@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 1.9
+ * Version: 2.0.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '1.9');
+define('AIPS_VERSION', '2.0.1');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -335,9 +335,15 @@ final class AI_Post_Scheduler {
         }
         
         // Initialize schedulers (both admin and frontend)
-        new AIPS_Scheduler();
-        new AIPS_Author_Topics_Scheduler();
-        new AIPS_Author_Post_Generator();
+        $aips_scheduler = new AIPS_Scheduler();
+        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
+        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+
+        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
+        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+
+        $aips_author_post_generator = new AIPS_Author_Post_Generator();
+        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
 

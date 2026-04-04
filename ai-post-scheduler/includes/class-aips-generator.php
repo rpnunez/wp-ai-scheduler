@@ -559,6 +559,7 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+        $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
             'post_excerpt'   => false,
@@ -717,6 +718,19 @@ class AIPS_Generator {
                 'content_length' => strlen($content),
             ));
 
+            // Write a metric snapshot so the metrics repository can count this failure
+            // without querying scattered tables.
+            $this->current_history->record(
+                'metric_generation_result',
+                'Generation failed — post could not be created',
+                array(
+                    'outcome'          => 'failed',
+                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                    'image_attempted'  => false,
+                    'image_success'    => null,
+                )
+            );
+
             return $post_id;
         }
 
@@ -740,6 +754,21 @@ class AIPS_Generator {
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         ));
+
+        // Write a structured metric snapshot to history_log.  The metrics
+        // repository reads these entries to compute image failure rates and
+        // other per-generation signals without touching post_meta.
+        $image_was_attempted = $context->should_generate_featured_image();
+        $this->current_history->record(
+            'metric_generation_result',
+            'Generation metric snapshot',
+            array(
+                'outcome'          => $generation_incomplete ? 'partial' : 'completed',
+                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                'image_attempted'  => $image_was_attempted,
+                'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
+            )
+        );
 
         // Log activity
         if ($generation_incomplete) {
@@ -847,6 +876,7 @@ class AIPS_Generator {
      */
     private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null) {
         $featured_image_id = null;
+        $featured_image_source = '';
 
         if (!$context->should_generate_featured_image()) {
             $component_success = true;
@@ -860,6 +890,7 @@ class AIPS_Generator {
             $featured_image_source = 'ai_prompt';
         }
 
+        $image_generation_start = microtime(true);
         $featured_image_result = null;
 
         if ($featured_image_source === 'unsplash') {
@@ -939,6 +970,22 @@ class AIPS_Generator {
                     array('component' => 'featured_image', 'error' => $featured_image_result->get_error_message())
                 );
             }
+        }
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'metric_generation_result',
+                'Featured image generation metric snapshot',
+                array(
+                    'outcome'          => is_wp_error($featured_image_result) ? 'failed' : 'completed',
+                    'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
+                    'image_attempted'  => true,
+                    'image_success'    => !is_wp_error($featured_image_result),
+                    'image_source'     => $featured_image_source,
+                ),
+                null,
+                array('component' => 'featured_image')
+            );
         }
 
         return $featured_image_id;

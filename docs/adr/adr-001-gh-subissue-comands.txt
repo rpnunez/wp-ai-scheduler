@@ -1,0 +1,358 @@
+# GitHub CLI issue creation commands for ADR-001 follow-on sub-issues
+# File name intentionally matches requested spelling: adr-001-gh-subissue-comands.txt
+#
+# This script creates ADR-001 follow-on issues and links EACH one as a sub-issue
+# under parent issue #1060.
+#
+# Usage:
+# 1) Ensure GitHub CLI auth: gh auth status
+# 2) Run from repo root:
+#    bash docs/adr/adr-001-gh-subissue-comands.txt
+
+set -euo pipefail
+
+REPO="rpnunez/wp-ai-scheduler"
+PARENT_ISSUE_NUMBER="1060"
+PARENT_ISSUE_NODE_ID="I_kwDOQqvFoM73xWas"
+
+echo "Parent issue: https://github.com/$REPO/issues/$PARENT_ISSUE_NUMBER"
+
+# Optional label bootstrap (safe if label already exists)
+gh label create "adr-001" --repo "$REPO" --color "1D76DB" --description "Follow-on tasks from ADR-001 canonical generation boundary" >/dev/null 2>&1 || true
+
+link_subissue() {
+  local child_issue_url="$1"
+
+  gh api graphql \
+    -f query='mutation($issueId: ID!, $subIssueUrl: String!) { addSubIssue(input: { issueId: $issueId, subIssueUrl: $subIssueUrl, replaceParent: false }) { issue { number url } subIssue { number url } } }' \
+    -f issueId="$PARENT_ISSUE_NODE_ID" \
+    -f subIssueUrl="$child_issue_url" \
+    >/dev/null
+}
+
+create_and_link() {
+  local title="$1"
+  local milestone="$2"
+  local labels_csv="$3"
+  local body_file="$4"
+
+  local cmd=(gh issue create --repo "$REPO" --title "$title" --milestone "$milestone" --body-file "$body_file")
+
+  IFS=',' read -r -a labels <<< "$labels_csv"
+  for label in "${labels[@]}"; do
+    cmd+=(--label "$label")
+  done
+
+  local child_url
+  child_url=$("${cmd[@]}")
+
+  if [[ -z "$child_url" ]]; then
+    echo "Failed to create issue: $title" >&2
+    exit 1
+  fi
+
+  link_subissue "$child_url"
+  echo "Created and linked sub-issue: $child_url"
+}
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+cat > "$tmpdir/FOL-001.md" <<'EOF'
+## Summary
+Migrate Planner generation callsite to construct AIPS_Template_Context before invoking the generator.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-001
+
+## Problem
+Current Planner flow passes a raw template object into generator legacy signature, relying on internal generator adapter instantiation.
+
+## Scope
+- [ ] Update Planner callsite to instantiate AIPS_Template_Context explicitly.
+- [ ] Pass context object into generator path.
+- [ ] Remove comments that endorse legacy fallback usage.
+- [ ] Add/adjust tests for Planner generation path.
+
+## Acceptance Criteria
+- [ ] Planner no longer passes raw template object into generator for this path.
+- [ ] Behavior remains unchanged for success/failure outcomes.
+- [ ] Tests confirm context construction happens at callsite.
+
+## Risk Controls
+- Keep change limited to Planner callsite and related tests.
+- Validate manual and automated Planner flow before merge.
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-planner.php
+- ai-post-scheduler/includes/class-aips-generator.php
+EOF
+
+cat > "$tmpdir/FOL-002.md" <<'EOF'
+## Summary
+Migrate MCP bridge template/schedule generation path to construct context at callsite and apply overrides on context.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-002
+
+## Problem
+MCP bridge currently passes raw template object to generator and carries a TODO for override handling.
+
+## Scope
+- [ ] Instantiate AIPS_Template_Context in mcp-bridge template/schedule path.
+- [ ] Apply override logic to context path where appropriate.
+- [ ] Remove stale TODO once implementation is complete.
+- [ ] Add tests for MCP template/schedule generation branch.
+
+## Acceptance Criteria
+- [ ] mcp-bridge template/schedule path no longer passes raw template to generator.
+- [ ] Overrides are handled in context-based flow.
+- [ ] MCP bridge generation behavior remains compatible.
+
+## Risk Controls
+- Keep author-topic path behavior unchanged.
+- Add focused tests for both template/schedule and author-topic branches.
+
+## Files Of Interest
+- ai-post-scheduler/mcp-bridge.php
+- ai-post-scheduler/includes/class-aips-generator.php
+EOF
+
+cat > "$tmpdir/FOL-003.md" <<'EOF'
+## Summary
+Introduce context-based title generation API and deprecate legacy template-based generate_title signature.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-003
+
+## Problem
+generate_title currently accepts raw template input and performs internal adapter instantiation, violating explicit boundary ownership.
+
+## Scope
+- [ ] Add context-based title generation entrypoint.
+- [ ] Mark legacy generate_title signature as deprecated.
+- [ ] Migrate internal callers to context-based API where possible.
+- [ ] Add compatibility tests for transitional behavior.
+
+## Acceptance Criteria
+- [ ] Context-based title API exists and is used by primary internal flows.
+- [ ] Legacy method remains available but explicitly deprecated.
+- [ ] No regression in title generation behavior.
+
+## Risk Controls
+- Confirm external callsites before any breaking removal.
+- Keep deprecation period explicit and documented.
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-generator.php
+- ai-post-scheduler/includes/class-aips-prompt-builder.php
+EOF
+
+cat > "$tmpdir/FOL-004.md" <<'EOF'
+## Summary
+Remove dual-path instanceof branching from generate_post once raw-template callsites are migrated.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-004
+
+## Dependency
+- Requires completion of FOL-001 and FOL-002.
+
+## Problem
+Branching in generate_post keeps canonical boundary ambiguous and broadens the test surface.
+
+## Scope
+- [ ] Remove input-type branching from generate_post execution path.
+- [ ] Ensure canonical context path remains the single execution path.
+- [ ] Update tests to validate no dual-path behavior remains.
+
+## Acceptance Criteria
+- [ ] generate_post no longer branches by input type for canonical flow.
+- [ ] All migrated callsites continue working.
+- [ ] Regression tests pass for manual, scheduled, and MCP-triggered runs.
+
+## Risk Controls
+- Validate all known generation entrypoints before merge.
+- Keep rollback option available until full smoke test pass.
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-generator.php
+EOF
+
+cat > "$tmpdir/FOL-005.md" <<'EOF'
+## Summary
+Remove generator-owned adapter instantiation so adapter ownership remains at callsites.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-005
+
+## Dependency
+- Requires completion of FOL-001 and FOL-002.
+
+## Problem
+Inline adapter construction in generator is the key boundary violation identified by ADR-001.
+
+## Scope
+- [ ] Remove inline new AIPS_Template_Context(...) from generate_post.
+- [ ] Ensure generator expects context-based input path.
+- [ ] Update docblocks/comments to reflect canonical boundary.
+
+## Acceptance Criteria
+- [ ] Generator no longer instantiates AIPS_Template_Context internally.
+- [ ] Existing migrated callsites remain functional.
+- [ ] Boundary ownership is explicit in code.
+
+## Risk Controls
+- Do not remove fallback until migrations are merged and validated.
+- Add regression tests before removal.
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-generator.php
+EOF
+
+cat > "$tmpdir/FOL-006.md" <<'EOF'
+## Summary
+Refactor Schedule Processor to avoid constructing intermediate synthetic template objects before context creation.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-006
+
+## Problem
+Schedule Processor is partially compliant: it passes context to generator but builds a synthetic template object first.
+
+## Scope
+- [ ] Build context data directly from schedule fields.
+- [ ] Remove synthetic template intermediate object construction where possible.
+- [ ] Update tests for schedule processing and context fidelity.
+
+## Acceptance Criteria
+- [ ] Schedule Processor context path no longer depends on synthetic template object creation.
+- [ ] Schedule-driven generation behavior remains stable.
+- [ ] Tests cover schedule field-to-context mapping.
+
+## Risk Controls
+- Implement incrementally and preserve behavior parity.
+- Validate with schedule edge cases (frequency, voice, structure, image options).
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-schedule-processor.php
+EOF
+
+cat > "$tmpdir/FOL-007.md" <<'EOF'
+## Summary
+Add boundary-level tests focused on canonical context execution to prevent regression during boundary cleanup.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-007
+
+## Problem
+Boundary migration requires high-confidence tests that validate context-driven generation in isolation.
+
+## Scope
+- [ ] Add mock/stub AIPS_Generation_Context test implementations.
+- [ ] Add boundary-level tests for generate_post canonical path.
+- [ ] Validate success, failure, and notification behavior where applicable.
+
+## Acceptance Criteria
+- [ ] Tests verify canonical context path without raw template assumptions.
+- [ ] Regressions in boundary behavior are detectable via automated tests.
+- [ ] Test names and fixtures clearly reflect boundary intent.
+
+## Risk Controls
+- Keep tests deterministic and independent of external services.
+- Reuse existing bootstrap mocks to avoid brittle integration setup.
+
+## Files Of Interest
+- ai-post-scheduler/tests/
+- ai-post-scheduler/includes/class-aips-generator.php
+- ai-post-scheduler/includes/interface-aips-generation-context.php
+EOF
+
+cat > "$tmpdir/FOL-008.md" <<'EOF'
+## Summary
+Assess and plan retirement of AIPS_Template_Context once template row model is unified into structured context-native inputs.
+
+## ADR Reference
+- ADR-001: Canonical Generation Boundary and Legacy Adapter Strategy
+- Follow-on ID: FOL-008
+
+## Problem
+Adapter remains necessary while legacy template-row model exists; long-term architecture should reduce adapter reliance.
+
+## Scope
+- [ ] Define readiness criteria for adapter retirement.
+- [ ] Inventory remaining adapter-dependent paths.
+- [ ] Propose migration plan and risk assessment for removal.
+
+## Acceptance Criteria
+- [ ] Readiness criteria are explicit and measurable.
+- [ ] Dependency inventory is complete.
+- [ ] Retirement plan exists with phased rollout and rollback strategy.
+
+## Risk Controls
+- This is an evaluation/planning task, not immediate adapter deletion.
+- Avoid forcing model unification without phased validation.
+
+## Files Of Interest
+- ai-post-scheduler/includes/class-aips-template-context.php
+- ai-post-scheduler/includes/interface-aips-generation-context.php
+EOF
+
+echo "Creating and linking ADR-001 follow-on sub-issues under #$PARENT_ISSUE_NUMBER..."
+
+create_and_link \
+  "ADR-001/FOL-001: Migrate AIPS_Planner ajax_generate_posts to construct AIPS_Template_Context at callsite" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,tech-debt,phase-2,adr-001" \
+  "$tmpdir/FOL-001.md"
+
+create_and_link \
+  "ADR-001/FOL-002: Migrate mcp-bridge template/schedule path to construct AIPS_Template_Context at callsite" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,tech-debt,phase-2,adr-001" \
+  "$tmpdir/FOL-002.md"
+
+create_and_link \
+  "ADR-001/FOL-003: Deprecate legacy generate_title signature and introduce context-based title API" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,phase-2,adr-001" \
+  "$tmpdir/FOL-003.md"
+
+create_and_link \
+  "ADR-001/FOL-004: Remove instanceof branching from AIPS_Generator::generate_post after callsite migration" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,phase-2,adr-001" \
+  "$tmpdir/FOL-004.md"
+
+create_and_link \
+  "ADR-001/FOL-005: Remove inline AIPS_Template_Context instantiation from AIPS_Generator::generate_post" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,phase-2,adr-001" \
+  "$tmpdir/FOL-005.md"
+
+create_and_link \
+  "ADR-001/FOL-006: Refactor AIPS_Schedule_Processor to build context directly from schedule fields" \
+  "PSE 90-Day Plan - Phase 3" \
+  "architecture,scheduler,tech-debt,phase-3,adr-001" \
+  "$tmpdir/FOL-006.md"
+
+create_and_link \
+  "ADR-001/FOL-007: Add boundary-level integration tests using mock AIPS_Generation_Context implementations" \
+  "PSE 90-Day Plan - Phase 2" \
+  "architecture,generation,observability,phase-2,adr-001" \
+  "$tmpdir/FOL-007.md"
+
+create_and_link \
+  "ADR-001/FOL-008: Evaluate retirement of AIPS_Template_Context after template model unification" \
+  "PSE 90-Day Plan - Phase 3" \
+  "architecture,tech-debt,phase-3,adr-001" \
+  "$tmpdir/FOL-008.md"
+
+echo "Done. All ADR-001 follow-on issues were created and linked as sub-issues under #$PARENT_ISSUE_NUMBER."

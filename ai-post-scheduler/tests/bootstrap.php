@@ -144,6 +144,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+    if (!function_exists("esc_js")) {
+        function esc_js($text) {
+            return addslashes($text);
+        }
+    }
+
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -297,6 +303,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('delete_transient')) {
         function delete_transient($transient) {
             return delete_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('wp_using_ext_object_cache')) {
+        function wp_using_ext_object_cache() {
+            return false;
         }
     }
     
@@ -887,6 +899,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $get_col_return_val = null;
             public $get_results_return_val = null;
             public $get_var_return_val = null;
+            public $get_row_return_val = null;
             private $data = array();
             
             public function esc_like($text) {
@@ -919,10 +932,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_results($query, $output = OBJECT) {
+                if (isset($this->get_results_return_val)) {
+                    return $this->get_results_return_val;
+                }
+
                 return array();
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
+                if (isset($this->get_row_return_val)) {
+                    return $this->get_row_return_val;
+                }
+
                 // Return a default object with common properties to prevent null reference errors
                 $obj = new stdClass();
                 $obj->id = 1; // Default ID
@@ -1010,6 +1031,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-image-service.php',
         'class-aips-research-service.php',
         'interface-aips-generation-context.php',
+        'interface-aips-cron-generation-handler.php',
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
@@ -1023,8 +1045,11 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-ai-edit-controller.php',
         // History service layer
         'class-aips-history-type.php',
+        'class-aips-utilities.php',
+        'class-aips-correlation-id.php',
         'class-aips-history-container.php',
         'class-aips-history-service.php',
+        'class-aips-generation-execution-runner.php',
         'class-aips-schedule-processor.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
@@ -1063,6 +1088,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
+        'class-aips-metrics-repository.php',
     ];
     
     foreach ($files as $file) {

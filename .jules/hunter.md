@@ -21,3 +21,10 @@
 ## 2026-03-25 - [Missing wp_unslash on Arrays]
 **Learning:** `$_POST` array inputs containing user-supplied text (e.g. topic titles, names, free-form text from text inputs) must be unslashed before sanitizing or mapping, otherwise WordPress magic quotes will persist and leave backslashes in stored data. However, arrays whose values are IDs or structured keys from checkbox/bulk-selection submissions (e.g. `"type:id"` pairs like `"template:5"`) contain no characters affected by magic quotes and do not need `wp_unslash()`.
 **Action:** Apply `wp_unslash()` to `$_POST['array_key']` only when the values are text or user input (titles, labels, free-form strings). Skip it when the values are integer IDs, slugs, or structured keys from bulk-selection checkboxes, as those values are sanitized by `absint()` or `sanitize_key()` and contain no quotable characters.
+
+## 2024-03-31 - Fix PHP Warning in AIPS_Schedule_Processor and missing mock support in Tests
+
+**Learning:**
+The tests rely on `$wpdb->get_results` properly simulating queries with complex joins, but in limited test mode, a mocked `get_results_return_val` is needed, but missing in `tests/bootstrap.php`. Additionally, `AIPS_Schedule_Processor::execute_schedule_logic()` assumes `$actual_template_model` has a `post_quantity` property, which emits a PHP Warning if the object exists but lacks the property (e.g., from mock environments or incomplete data).
+**Action:**
+Added `get_results_return_val` to the mock `wpdb` class in `tests/bootstrap.php` and modified `get_results()` to return it if set. Also fixed the PHP Warning in `AIPS_Schedule_Processor` by checking `isset($actual_template_model->post_quantity)`.
