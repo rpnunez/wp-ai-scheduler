@@ -363,10 +363,18 @@ class AIPS_Schedule_Processor {
         // state.  We resume from last_index+1 so we never re-generate posts
         // that already exist, and we count previously completed posts toward
         // the total so the batch finishes at the right size.
+        //
+        // Manual runs always start from index 0 and clear any stale progress
+        // cursor left by a previous automated run so the next cron run is
+        // not affected by the manual execution.
         $start_index       = 0;
         $prior_completed   = 0;
 
-        if (!$is_manual && !empty($schedule->batch_progress)) {
+        if ($is_manual) {
+            // Clear any stale progress left by a previous interrupted automated run
+            // so the next scheduled execution starts a fresh batch.
+            $this->repository->clear_batch_progress($schedule->schedule_id);
+        } elseif (!empty($schedule->batch_progress)) {
             $saved = json_decode($schedule->batch_progress, true);
             if (
                 is_array($saved) &&
@@ -383,11 +391,20 @@ class AIPS_Schedule_Processor {
             $result = $this->generator->generate_post($context);
             if (is_wp_error($result)) {
                 $errors[] = $result;
-                // Store the error text for operator visibility and circuit-breaker
-                // future use, then stop the batch so progress is preserved.
+                // Persist the current run state so operators and future
+                // circuit-breaker logic can inspect what happened.
                 if (!$is_manual) {
-                    $this->repository->update_last_error($schedule->schedule_id, $result->get_error_message());
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_run_state($schedule->schedule_id, array(
+                        'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
+                        'error_code'    => $result->get_error_code(),
+                        'error_message' => $result->get_error_message(),
+                        'completed'     => $completed_so_far,
+                        'total'         => $post_quantity,
+                        'timestamp'     => gmdate('c'),
+                    ));
                 }
+                // Stop the batch so batch_progress is preserved for resumption.
                 break;
             } else {
                 $successful_post_ids[] = $result;
@@ -405,28 +422,54 @@ class AIPS_Schedule_Processor {
             }
         }
 
-        // Determine whether the full batch finished.
+        // Determine whether the full batch finished without any errors.
         $total_completed = $prior_completed + count($successful_post_ids);
         $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
 
         if (!$is_manual) {
-            if ($batch_finished && $post_quantity > 1) {
-                // All posts generated — wipe the progress marker so the next
-                // scheduled run starts a fresh batch.
+            if ($batch_finished) {
+                // All posts generated — wipe progress and clear run_state to
+                // indicate a clean completion on the next admin view.
                 $this->repository->clear_batch_progress($schedule->schedule_id);
-            } elseif (empty($errors) && $post_quantity === 1) {
-                // Single-post schedule — nothing to track; clear any stale progress.
-                $this->repository->clear_batch_progress($schedule->schedule_id);
+                $this->repository->update_run_state($schedule->schedule_id, array(
+                    'status'    => 'success',
+                    'completed' => $total_completed,
+                    'total'     => $post_quantity,
+                    'timestamp' => gmdate('c'),
+                ));
             }
         }
 
-        // Overall result for backward compatibility / logging
-        if (empty($successful_post_ids) && !empty($errors)) {
-            // If everything failed, return the first error
-            $overall_result = $errors[0];
-        } elseif (!empty($successful_post_ids)) {
-            // Return array of successful IDs
+        // ── Build the overall result ─────────────────────────────────────────
+        // A partial batch (some posts generated, then one failed) is treated as
+        // incomplete — NOT as a success.  This prevents one-time schedules from
+        // being deleted and recurring schedules from being logged as successful
+        // when only a subset of the requested posts were produced.
+        if ($batch_finished || ($is_manual && !empty($successful_post_ids) && empty($errors))) {
+            // Full success (all posts generated) or manual run with no errors.
             $overall_result = $successful_post_ids;
+        } elseif (!empty($errors)) {
+            // Batch failed or was partially interrupted — surface the error.
+            // Previously generated $successful_post_ids are preserved in the DB;
+            // batch_progress holds the resumption cursor for the next run.
+            if (!empty($successful_post_ids)) {
+                // Partial: some posts were created before the error.
+                // Return a WP_Error that carries context about the partial success
+                // so handle_execution_failure can log it properly.
+                $overall_result = new WP_Error(
+                    'batch_partially_failed',
+                    sprintf(
+                        /* translators: 1: completed count, 2: total requested, 3: original error */
+                        __('%1$d of %2$d posts generated before error: %3$s', 'ai-post-scheduler'),
+                        $total_completed,
+                        $post_quantity,
+                        $errors[0]->get_error_message()
+                    )
+                );
+            } else {
+                // Nothing generated — return the original error verbatim.
+                $overall_result = $errors[0];
+            }
         } else {
             $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
         }

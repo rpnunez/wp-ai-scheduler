@@ -285,7 +285,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 			return $col->Field;
 		}, $columns );
 
-		$expected = array( 'schedule_type', 'circuit_state', 'last_error', 'batch_progress' );
+		$expected = array( 'schedule_type', 'circuit_state', 'run_state', 'batch_progress' );
 
 		foreach ( $expected as $col ) {
 			$this->assertContains( $col, $column_names, "Column '{$col}' should exist in aips_schedule table" );
@@ -323,14 +323,14 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$schedule_id = (int) $wpdb->insert_id;
 
 		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT schedule_type, circuit_state, last_error, batch_progress FROM {$table_name} WHERE id = %d",
+			"SELECT schedule_type, circuit_state, run_state, batch_progress FROM {$table_name} WHERE id = %d",
 			$schedule_id
 		) );
 
 		$this->assertNotNull( $row, 'Inserted schedule should be retrievable' );
 		$this->assertEquals( 'post_generation', $row->schedule_type, 'schedule_type should default to post_generation' );
 		$this->assertEquals( 'closed', $row->circuit_state, 'circuit_state should default to closed' );
-		$this->assertNull( $row->last_error, 'last_error should default to NULL' );
+		$this->assertNull( $row->run_state, 'run_state should default to NULL' );
 		$this->assertNull( $row->batch_progress, 'batch_progress should default to NULL' );
 
 		// Clean up
@@ -339,9 +339,9 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that batch_progress and last_error can be stored and retrieved.
+	 * Test that batch_progress and run_state can be stored and retrieved.
 	 */
-	public function test_schedule_batch_progress_and_last_error_persist() {
+	public function test_schedule_batch_progress_and_run_state_persist() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aips_schedule';
 
@@ -366,31 +366,45 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		);
 		$schedule_id = (int) $wpdb->insert_id;
 
-		$progress = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2 ) );
-		$error    = 'AI service timeout';
+		$progress  = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2 ) );
+		$run_state = wp_json_encode( array(
+			'status'        => 'partial',
+			'error_code'    => 'ai_timeout',
+			'error_message' => 'AI service timeout',
+			'completed'     => 3,
+			'total'         => 10,
+			'timestamp'     => '2030-01-01T00:00:00+00:00',
+		) );
 
 		$wpdb->update(
 			$table_name,
 			array(
 				'batch_progress' => $progress,
-				'last_error'     => $error,
+				'run_state'      => $run_state,
 			),
 			array( 'id' => $schedule_id )
 		);
 
 		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT batch_progress, last_error FROM {$table_name} WHERE id = %d",
+			"SELECT batch_progress, run_state FROM {$table_name} WHERE id = %d",
 			$schedule_id
 		) );
 
 		$this->assertNotNull( $row );
 
-		$decoded = json_decode( $row->batch_progress, true );
-		$this->assertIsArray( $decoded, 'batch_progress should be valid JSON' );
-		$this->assertEquals( 3, $decoded['completed'] );
-		$this->assertEquals( 10, $decoded['total'] );
-		$this->assertEquals( 2, $decoded['last_index'] );
-		$this->assertEquals( $error, $row->last_error, 'last_error should be stored and retrievable' );
+		$decoded_progress = json_decode( $row->batch_progress, true );
+		$this->assertIsArray( $decoded_progress, 'batch_progress should be valid JSON' );
+		$this->assertEquals( 3, $decoded_progress['completed'] );
+		$this->assertEquals( 10, $decoded_progress['total'] );
+		$this->assertEquals( 2, $decoded_progress['last_index'] );
+
+		$decoded_state = json_decode( $row->run_state, true );
+		$this->assertIsArray( $decoded_state, 'run_state should be valid JSON' );
+		$this->assertEquals( 'partial', $decoded_state['status'], 'run_state.status should be stored' );
+		$this->assertEquals( 'ai_timeout', $decoded_state['error_code'], 'run_state.error_code should be stored' );
+		$this->assertEquals( 'AI service timeout', $decoded_state['error_message'], 'run_state.error_message should be stored' );
+		$this->assertEquals( 3, $decoded_state['completed'], 'run_state.completed should be stored' );
+		$this->assertEquals( 10, $decoded_state['total'], 'run_state.total should be stored' );
 
 		// Clean up
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );

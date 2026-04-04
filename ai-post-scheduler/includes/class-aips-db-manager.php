@@ -154,7 +154,7 @@ class AIPS_DB_Manager {
             schedule_history_id bigint(20) DEFAULT NULL,
             schedule_type varchar(50) NOT NULL DEFAULT 'post_generation',
             circuit_state varchar(20) NOT NULL DEFAULT 'closed',
-            last_error text DEFAULT NULL,
+            run_state text DEFAULT NULL,
             batch_progress longtext DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),

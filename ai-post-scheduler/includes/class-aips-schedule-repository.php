@@ -258,8 +258,8 @@ class AIPS_Schedule_Repository {
             $format[] = '%s';
         }
 
-        if (array_key_exists('last_error', $data)) {
-            $update_data['last_error'] = !empty($data['last_error']) ? sanitize_textarea_field($data['last_error']) : null;
+        if (array_key_exists('run_state', $data)) {
+            $update_data['run_state'] = !empty($data['run_state']) ? wp_unslash($data['run_state']) : null;
             $format[] = '%s';
         }
 
@@ -363,6 +363,11 @@ class AIPS_Schedule_Repository {
      * that an interrupted run can resume from the correct index on the next
      * cron invocation.
      *
+     * This method writes directly to the DB without invalidating the
+     * `aips_pending_schedule_stats` transient because it is called once per
+     * successfully generated post and the transient is not affected by
+     * in-flight progress data.
+     *
      * @param int $id        Schedule ID.
      * @param int $completed Number of posts successfully generated so far.
      * @param int $total     Total posts expected for this batch.
@@ -375,7 +380,14 @@ class AIPS_Schedule_Repository {
             'total'      => absint($total),
             'last_index' => absint($last_index),
         ));
-        return $this->update($id, array('batch_progress' => $progress));
+        $result = $this->wpdb->update(
+            $this->schedule_table,
+            array('batch_progress' => $progress),
+            array('id' => absint($id)),
+            array('%s'),
+            array('%d')
+        );
+        return $result !== false;
     }
 
     /**
@@ -389,14 +401,26 @@ class AIPS_Schedule_Repository {
     }
 
     /**
-     * Store the last error message that caused a schedule run to fail.
+     * Store the current run state for a schedule as a structured JSON object.
      *
-     * @param int    $id      Schedule ID.
-     * @param string $message Error message text.
+     * Captures the outcome of the most recent run attempt including success/failure
+     * status, post counts, and any error details.  Replaces the single `last_error`
+     * text field so callers can store richer context (e.g. partial successes, error
+     * codes, timestamps) that can drive future circuit-breaker logic.
+     *
+     * @param int   $id    Schedule ID.
+     * @param array $state Associative array to serialise as JSON.
+     *                     Recommended keys:
+     *                       - 'status'      string  'success' | 'partial' | 'failed'
+     *                       - 'error_code'  string  WP_Error error code, if any
+     *                       - 'error_message' string Human-readable error text, if any
+     *                       - 'completed'   int     Posts successfully generated
+     *                       - 'total'       int     Posts requested for this run
+     *                       - 'timestamp'   string  ISO-8601 timestamp of this state capture
      * @return bool True on success, false on failure.
      */
-    public function update_last_error($id, $message) {
-        return $this->update($id, array('last_error' => $message));
+    public function update_run_state($id, array $state) {
+        return $this->update($id, array('run_state' => wp_json_encode($state)));
     }
 
     /**
