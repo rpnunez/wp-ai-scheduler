@@ -889,6 +889,68 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!class_exists('WPAjaxDieStopException')) {
         class WPAjaxDieStopException extends Exception {}
     }
+
+    // Meow AI Engine stub classes for unit testing.
+    // These mirror the real query-object API documented at https://ai.thehiddendocs.com/php-classes/
+    // and allow tests to verify setter calls without a live AI Engine installation.
+    if (!class_exists('Meow_MWAI_Query_Text')) {
+        class Meow_MWAI_Query_Text {
+            public $message        = '';
+            public $model          = '';
+            public $env_id         = '';
+            public $max_tokens     = 1024;
+            public $temperature    = 0.8;
+            public $max_results    = 1;
+            public $context        = '';
+            public $instructions   = '';
+            public $messages       = array();
+            public $embeddings_env_id = '';
+            public $api_key        = '';
+
+            public function __construct($message = '') { $this->message = $message; }
+            public function set_message($message)    { $this->message = $message; }
+            public function get_message()             { return $this->message; }
+            public function set_messages($messages)  { $this->messages = $messages; }
+            public function set_instructions($v)     { $this->instructions = $v; }
+            public function set_env_id($v)           { $this->env_id = $v; }
+            public function set_embeddings_env_id($v){ $this->embeddings_env_id = $v; }
+            public function set_model($v)            { $this->model = $v; }
+            public function set_temperature($v)      { $this->temperature = $v; }
+            public function set_max_tokens($v)       { $this->max_tokens = $v; }
+            public function set_max_results($v)      { $this->max_results = $v; }
+            public function set_context($v)          { $this->context = $v; }
+            public function set_api_key($v)          { $this->api_key = $v; }
+        }
+    }
+
+    if (!class_exists('Meow_MWAI_Query_Image')) {
+        class Meow_MWAI_Query_Image {
+            public $message     = '';
+            public $model       = '';
+            public $env_id      = '';
+            public $max_results = 1;
+            public $api_key     = '';
+
+            public function __construct($message = '') { $this->message = $message; }
+            public function set_message($message) { $this->message = $message; }
+            public function set_model($v)         { $this->model = $v; }
+            public function set_env_id($v)        { $this->env_id = $v; }
+            public function set_max_results($v)   { $this->max_results = $v; }
+            public function set_api_key($v)       { $this->api_key = $v; }
+        }
+    }
+
+    if (!class_exists('Meow_MWAI_Reply')) {
+        class Meow_MWAI_Reply {
+            public $result  = '';
+            public $results = array();
+
+            public function __construct($result = '') {
+                $this->result  = $result;
+                $this->results = array($result);
+            }
+        }
+    }
     
     // Mock global $wpdb
     if (!isset($GLOBALS['wpdb'])) {
