@@ -377,7 +377,7 @@ if (!defined('ABSPATH')) {
 											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 											title="<?php esc_attr_e('Recover featured image using original generation context', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-update"></span>
+											<span class="dashicons dashicons-format-image"></span>
 											<?php esc_html_e('Recover Image', 'ai-post-scheduler'); ?>
 										</button>
 										<?php endif; ?>

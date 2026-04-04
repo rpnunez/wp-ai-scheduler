@@ -66,28 +66,31 @@
         success: function(response) {
           if (response && response.success) {
             var $row = $btn.closest('tr');
+            var resolvedLabel = (config.recoverImageResolved) ? config.recoverImageResolved : AIPS._recoveredLabel;
             $row.find('.aips-badge-info, .aips-badge-warning').first().replaceWith(
-              '<span class="aips-badge aips-badge-success">' + AIPS._recoveredLabel + '</span>'
+              '<span class="aips-badge aips-badge-success">' + resolvedLabel + '</span>'
             );
             $btn.remove();
           } else {
+            var errorLabel = (config.recoverImageError) ? config.recoverImageError : AIPS._recoverErrorLabel;
             var msg = (response && response.data && response.data.message)
               ? response.data.message
-              : AIPS._recoverErrorLabel;
+              : errorLabel;
             alert(msg);
             $btn.prop('disabled', false).removeClass('aips-btn-loading');
           }
         },
         error: function() {
-          alert(AIPS._recoverErrorLabel);
+          var errorLabel = (config.recoverImageError) ? config.recoverImageError : AIPS._recoverErrorLabel;
+          alert(errorLabel);
           $btn.prop('disabled', false).removeClass('aips-btn-loading');
         },
       });
     },
 
-    /** @type {string} Resolved state label shown after a successful recovery. */
+    /** @type {string} Fallback resolved label (overridden by aipsGeneratedPostsConfig.recoverImageResolved). */
     _recoveredLabel: 'Resolved',
-    /** @type {string} Fallback error message for image recovery failures. */
+    /** @type {string} Fallback error message (overridden by aipsGeneratedPostsConfig.recoverImageError). */
     _recoverErrorLabel: 'Image recovery failed. Please try again.',
   });
 

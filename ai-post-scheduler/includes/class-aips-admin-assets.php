@@ -471,6 +471,8 @@ class AIPS_Admin_Assets {
                 'siteUrl' => home_url(),
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+                'recoverImageResolved'   => __('Resolved', 'ai-post-scheduler'),
+                'recoverImageError'      => __('Image recovery failed. Please try again.', 'ai-post-scheduler'),
             ));
             
             // Localize Post Review script for Pending Review tab

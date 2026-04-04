@@ -646,13 +646,13 @@ class AIPS_AI_Edit_Controller {
 		} else {
 			// Stored component statuses are absent or malformed; fall back to a minimal
 			// update that at least clears the image-incomplete and recoverable flags.
-			$this->logger->log(
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log(
 				sprintf(
-					'aips_recover_post_image: could not decode component_statuses for post %d (raw: %s); using fallback.',
+					'AIPS aips_recover_post_image: could not decode component_statuses for post %d (raw: %s); using fallback.',
 					$post_id,
 					$raw_statuses_json
-				),
-				'warning'
+				)
 			);
 			$post_manager->update_generation_status_meta(
 				$post_id,

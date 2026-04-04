@@ -617,7 +617,7 @@ class AIPS_Notifications {
 		$title = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
 		if ($image_recoverable) {
 			$message = sprintf(
-				__('Post "%s" content was saved successfully. The featured image failed but can be recovered from the Partial Generations page.', 'ai-post-scheduler'),
+				__('Post "%s" content was saved successfully. The featured image failed but can be recovered from the Generated Posts page (Partial Generations tab).', 'ai-post-scheduler'),
 				$post_title
 			);
 		} else {
