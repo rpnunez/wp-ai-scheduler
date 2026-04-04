@@ -347,7 +347,7 @@
 			const formData = $form.serialize();
 
 			// Disable submit button
-			$submitBtn.prop('disabled', true).text(aipsAuthorsL10n.saving);
+			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
 
 			$.ajax({
 				url: ajaxurl,
@@ -366,7 +366,7 @@
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
-					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
+					AIPS.Utilities.resetButton($submitBtn);
 				}
 			});
 		},
@@ -439,7 +439,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -464,7 +464,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
 							},
 							complete: () => {
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -1528,7 +1528,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -1548,12 +1548,12 @@
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
 										'error'
 									);
-									$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+									AIPS.Utilities.resetButton($btn);
 								}
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -1831,7 +1831,7 @@
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
 						// Disable button while processing
-						$button.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
 
 						// Determine the AJAX action and data
 						let ajaxAction, data;
@@ -1845,7 +1845,7 @@
 								};
 							} else {
 								AIPS.Utilities.showToast('Invalid bulk action for feedback.', 'error');
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								return;
 							}
 						} else {
@@ -1864,7 +1864,7 @@
 									break;
 								default:
 									AIPS.Utilities.showToast('Invalid bulk action.', 'error');
-									$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+									AIPS.Utilities.resetButton($button);
 									return;
 							}
 							data = {
@@ -1908,7 +1908,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								// Reset dropdowns
 								$('.aips-bulk-action-select').val('');
 								// Uncheck all checkboxes
@@ -2015,7 +2015,7 @@
 
 			// Reset helper called when the request finishes.
 			const resetUI = () => {
-				$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+				AIPS.Utilities.resetButton($button);
 				$('.aips-bulk-action-select').val('');
 				$('.aips-select-all-topics').prop('checked', false);
 				$('.aips-topic-checkbox').prop('checked', false);
@@ -2197,9 +2197,10 @@
 			}
 
 			const $btn = $('#aips-suggest-authors-submit');
-			$btn.prop('disabled', true).html(
+			AIPS.Utilities.setButtonLoading($btn,
 				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...')
+				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...'),
+				{ isHtml: true }
 			);
 
 			$.ajax({
@@ -2228,10 +2229,7 @@
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
 				},
 				complete: () => {
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-lightbulb"></span> ' +
-						(aipsAuthorsL10n.generateSuggestions || 'Generate Suggestions')
-					);
+					AIPS.Utilities.resetButton($btn);
 				}
 			});
 		},
@@ -2310,9 +2308,10 @@
 			}
 
 			const suggestion = suggestions[index];
-			$btn.prop('disabled', true).html(
+			AIPS.Utilities.setButtonLoading($btn,
 				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.importingAuthor || 'Importing...')
+				(aipsAuthorsL10n.importingAuthor || 'Importing...'),
+				{ isHtml: true }
 			);
 
 			$.ajax({
@@ -2355,18 +2354,12 @@
 							? response.data.message
 							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
 						AIPS.Utilities.showToast(msg, 'error');
-						$btn.prop('disabled', false).html(
-							'<span class="dashicons dashicons-download"></span> ' +
-							(aipsAuthorsL10n.importAuthor || 'Import Author')
-						);
+						AIPS.Utilities.resetButton($btn);
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-download"></span> ' +
-						(aipsAuthorsL10n.importAuthor || 'Import Author')
-					);
+					AIPS.Utilities.resetButton($btn);
 				}
 			});
 		}
@@ -2735,7 +2728,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$button.prop('disabled', true).text(aipsAuthorsL10n.generating || 'Generating...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
 
 						$.ajax({
 							url: ajaxurl,
@@ -2766,7 +2759,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 							}
 						});
 					}
