@@ -177,7 +177,8 @@ class AIPS_Image_Service {
      * Upload an image from a URL to WordPress media library.
      *
      * Downloads an image from a given URL and creates a WordPress attachment.
-     * Performs security validation on the response.
+     * Performs security validation on the response. Explicitly logs failures
+     * when cleaning up temporary files.
      *
      * @param string $image_url  The URL of the image to download.
      * @param string $post_title The post title to use for the image filename.
@@ -289,7 +290,9 @@ class AIPS_Image_Service {
         if (is_wp_error($attachment_id)) {
             // Clean up the file if attachment creation failed
             if (file_exists($file_path)) {
-                unlink($file_path);
+                if (!unlink($file_path)) {
+                    $this->logger->log(sprintf('Failed to delete temporary image file after attachment creation failed: %s', $file_path), 'warning');
+                }
             }
             return $attachment_id;
         }
