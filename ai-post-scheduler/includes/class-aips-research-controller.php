@@ -512,7 +512,6 @@ class AIPS_Research_Controller {
         $total_requested     = count($topics);
         $generated_topic_ids = array();
         $logger              = $this->logger;
-        $repository          = $this->repository;
 
         $result = $this->bulk_generator_service->run(
             $topics,
