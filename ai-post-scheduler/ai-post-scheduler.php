@@ -62,6 +62,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_process_embeddings_batch' => array(
+                'schedule' => 'hourly',
+                'label'   => __( 'Embeddings Batch Indexing', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -328,6 +332,8 @@ final class AI_Post_Scheduler {
             new AIPS_Calendar_Controller();
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
+            // Internal Links controller (AJAX + page render)
+            new AIPS_Internal_Links_Controller();
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
@@ -346,6 +352,30 @@ final class AI_Post_Scheduler {
         add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
+
+        // Embeddings batch worker (runs hourly via WP Cron)
+        add_action('aips_process_embeddings_batch', function() {
+            (new AIPS_Internal_Links_Service())->process_pending_batch(10);
+        });
+
+        // Async single-post indexing (fired via wp_schedule_single_event from save_post hook)
+        add_action('aips_index_single_post_async', function($post_id) {
+            (new AIPS_Internal_Links_Service())->index_post((int) $post_id);
+        });
+
+        // Auto-index on post save when the option is enabled
+        if (get_option('aips_internal_links_auto_index')) {
+            add_action('save_post', function($post_id) {
+                if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+                    return;
+                }
+                $post = get_post($post_id);
+                if (!$post || $post->post_type !== 'post' || $post->post_status !== 'publish') {
+                    return;
+                }
+                wp_schedule_single_event(time() + 5, 'aips_index_single_post_async', array($post_id));
+            });
+        }
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

@@ -107,6 +107,15 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            // Pinecone / Internal Links
+            'aips_pinecone_api_key'            => '',
+            'aips_pinecone_index_name'         => '',
+            'aips_pinecone_namespace'          => 'aips',
+            'aips_pinecone_region'             => 'us-east-1',
+            'aips_pinecone_host'               => '',
+            'aips_internal_links_top_n'        => 10,
+            'aips_internal_links_min_score'    => 0.75,
+            'aips_internal_links_auto_index'   => 0,
         );
     }
     
