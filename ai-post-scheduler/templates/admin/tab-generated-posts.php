@@ -20,7 +20,7 @@
  */
 
 if (!defined('ABSPATH')) {
-exit;
+	exit;
 }
 ?>
 			<!-- Filter Bar -->
