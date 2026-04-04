@@ -117,29 +117,16 @@ class AIPS_Planner {
         // Sanitize topics
         $topics = AIPS_Utilities::sanitize_string_array($topics);
 
-        $scheduler = new AIPS_Scheduler();
+        $scheduler = $this->make_scheduler();
         $count = 0;
         $base_time = strtotime($start_date);
-
-        // Determine interval in seconds
-        $intervals = $scheduler->get_intervals();
-        $interval = 86400; // default fallback
-
-        if (isset($intervals[$frequency])) {
-            $interval = $intervals[$frequency]['interval'];
-        }
-
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
+        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $index => $topic) {
-            $next_run_timestamp = $base_time + ($index * $interval);
-            $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
-
+        foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
@@ -247,6 +234,15 @@ class AIPS_Planner {
             'post_ids' => $post_ids,
             'errors'   => $errors,
         ));
+    }
+
+    /**
+     * Factory method for AIPS_Scheduler. Overrideable in tests.
+     *
+     * @return AIPS_Scheduler
+     */
+    protected function make_scheduler() {
+        return new AIPS_Scheduler();
     }
 
     /**
