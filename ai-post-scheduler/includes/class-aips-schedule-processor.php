@@ -445,7 +445,9 @@ class AIPS_Schedule_Processor {
         // incomplete — NOT as a success.  This prevents one-time schedules from
         // being deleted and recurring schedules from being logged as successful
         // when only a subset of the requested posts were produced.
-        if ($batch_finished || ($is_manual && !empty($successful_post_ids) && empty($errors))) {
+        $manual_success = $is_manual && !empty($successful_post_ids) && empty($errors);
+
+        if ($batch_finished || $manual_success) {
             // Full success (all posts generated) or manual run with no errors.
             $overall_result = $successful_post_ids;
         } elseif (!empty($errors)) {
