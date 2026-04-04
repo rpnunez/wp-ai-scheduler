@@ -9,14 +9,12 @@ This runbook covers repeatable investigation and recovery procedures for queue-b
 
 ## Quick-Reference: System Status Indicators
 
-| Indicator | Location | Meaning |
-|---|---|---|
-| Queue Backlog | System Status → Queue Health | Jobs waiting to start (pending) or partially complete |
-| Stuck Jobs | System Status → Queue Health | Jobs in pending/partial status for > 30 minutes |
-| Retry Saturation | System Status → Queue Health | % of recent jobs that failed — proxy for retry pressure |
-| Circuit Breaker | System Status → Queue Health | Whether AI requests are currently blocked |
-| Schedule Run Success Rate | System Status → Scheduler Health | % of scheduled runs that completed a post in last 30 d |
-| WP-Cron Events | System Status → Scheduler Health | Whether required cron hooks are registered correctly |
+| Indicator        | Location                         | Meaning                                                     |
+|------------------|----------------------------------|-------------------------------------------------------------|
+| Queue Backlog    | System Status → Queue Health     | Jobs waiting to start (pending) or partially complete       |
+| Stuck Jobs       | System Status → Queue Health     | Jobs in pending/partial status for > 30 minutes             |
+| Retry Saturation | System Status → Queue Health     | % of recent jobs that failed — proxy for retry pressure     |
+| Circuit Breaker  | System Status → Queue Health     | Whether AI requests are currently blocked                   |
 
 ---
 
