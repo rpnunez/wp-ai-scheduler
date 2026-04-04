@@ -612,8 +612,17 @@ class AIPS_Notifications {
 		$post = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
+		$image_recoverable = !empty($payload['image_recoverable']);
+
 		$title = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
-		$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
+		if ($image_recoverable) {
+			$message = sprintf(
+				__('Post "%s" content was saved successfully. The featured image failed but can be recovered from the Partial Generations page.', 'ai-post-scheduler'),
+				$post_title
+			);
+		} else {
+			$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
+		}
 		$url = !empty($payload['url']) ? $payload['url'] : admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
 
 		$this->dispatch_notification('partial_generation_completed', array(

@@ -158,6 +158,7 @@ class AIPS_Generated_Posts_Controller {
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
+				'is_image_recoverable' => ('true' === (string) get_post_meta($item->post_id, 'aips_post_generation_image_recoverable', true)),
 				'source' => $this->format_source($item),
 				'missing_components' => $this->get_missing_components($item->component_statuses),
 			);

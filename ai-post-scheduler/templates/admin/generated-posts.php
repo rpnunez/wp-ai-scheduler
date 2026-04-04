@@ -336,7 +336,11 @@ if (!defined('ABSPATH')) {
 								</td>
 								<td>
 									<?php if (!empty($post_data['is_currently_incomplete'])): ?>
+										<?php if (!empty($post_data['is_image_recoverable'])): ?>
+										<span class="aips-badge aips-badge-info"><?php esc_html_e('Image Recoverable', 'ai-post-scheduler'); ?></span>
+										<?php else: ?>
 										<span class="aips-badge aips-badge-warning"><?php esc_html_e('Incomplete', 'ai-post-scheduler'); ?></span>
+										<?php endif; ?>
 									<?php else: ?>
 										<span class="aips-badge aips-badge-success"><?php esc_html_e('Resolved', 'ai-post-scheduler'); ?></span>
 									<?php endif; ?>
@@ -368,6 +372,15 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
+										<?php if (!empty($post_data['is_image_recoverable'])): ?>
+										<button class="aips-btn aips-btn-sm aips-btn-primary aips-recover-image-btn"
+											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('Recover featured image using original generation context', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-update"></span>
+											<?php esc_html_e('Recover Image', 'ai-post-scheduler'); ?>
+										</button>
+										<?php endif; ?>
 								<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
 									data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 									title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">

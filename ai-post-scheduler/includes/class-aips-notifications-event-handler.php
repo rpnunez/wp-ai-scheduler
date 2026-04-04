@@ -403,12 +403,15 @@ class AIPS_Notifications_Event_Handler {
 			return;
 		}
 
-		$missing_components = $this->get_missing_components(is_array($component_statuses) ? $component_statuses : array());
+		$missing_components  = $this->get_missing_components(is_array($component_statuses) ? $component_statuses : array());
+		$image_recoverable   = 'true' === (string) get_post_meta($post_id, 'aips_post_generation_image_recoverable', true);
+
 		$this->notifications->partial_generation_completed(array(
 			'post_id'            => $post_id,
 			'history_id'         => absint($history_id),
 			'source'             => $this->get_source_label($context),
 			'missing_components' => $missing_components,
+			'image_recoverable'  => $image_recoverable,
 			'url'                => admin_url('admin.php?page=aips-generated-posts#aips-partial-generations'),
 			'dedupe_key'         => 'partial_generation_completed_' . $post_id,
 			'dedupe_window'      => 60,

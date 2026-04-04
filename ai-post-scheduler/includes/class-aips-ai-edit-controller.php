@@ -45,6 +45,7 @@ class AIPS_AI_Edit_Controller {
 		add_action('wp_ajax_aips_save_post_components', array($this, 'ajax_save_post_components'));
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
+		add_action('wp_ajax_aips_recover_post_image', array($this, 'ajax_recover_post_image'));
 	}
 	
 	/**
@@ -569,6 +570,89 @@ class AIPS_AI_Edit_Controller {
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
 			'component' => $component,
 			'value' => $restored_value,
+		));
+	}
+
+	/**
+	 * AJAX handler: Recover featured image for a post whose image generation failed but
+	 * whose content succeeded (image-only recoverable failure).
+	 *
+	 * The endpoint is intentionally bounded: it only runs when the post is explicitly
+	 * marked recoverable (`aips_post_generation_image_recoverable = 'true'`) so it
+	 * cannot be misused as a general regeneration route.
+	 *
+	 * @return void
+	 */
+	public function ajax_recover_post_image() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('edit_posts')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id    = isset($_POST['post_id'])    ? absint($_POST['post_id'])                                  : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id'])                               : 0;
+
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+		}
+
+		// Gate: only run for posts explicitly marked as image-recoverable.
+		$recoverable = get_post_meta($post_id, 'aips_post_generation_image_recoverable', true);
+		if ('true' !== (string) $recoverable) {
+			wp_send_json_error(array(
+				'message' => __('This post is not marked as image-recoverable.', 'ai-post-scheduler'),
+				'code'    => 'not_recoverable',
+			));
+		}
+
+		// Resolve the generation context so we can use the original prompt/template.
+		$context = $history_id ? $this->service->get_generation_context($history_id) : new WP_Error('no_history', __('No history ID provided.', 'ai-post-scheduler'));
+		if (is_wp_error($context)) {
+			wp_send_json_error(array('message' => $context->get_error_message()));
+		}
+
+		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
+			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+		}
+
+		$post = get_post($post_id);
+		if (!$post) {
+			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+		}
+
+		$context['post_id']        = $post_id;
+		$context['history_id']     = $history_id;
+		$context['current_title']  = $post->post_title;
+
+		$result = $this->service->regenerate_featured_image($context);
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		// On success, update component statuses so the post is no longer marked incomplete
+		// for the image component and clear the recoverable flag.
+		$post_manager = new AIPS_Post_Manager();
+		$statuses     = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		if (is_array($statuses)) {
+			$statuses['featured_image'] = true;
+			$post_manager->update_generation_status_meta($post_id, $statuses, null);
+		}
+
+		// Fire reconciliation hook so other listeners (e.g. state reconciler) can react.
+		do_action('aips_post_components_updated', $post_id, array('featured_image'), array(
+			'featured_image_id' => isset($result['attachment_id']) ? absint($result['attachment_id']) : 0,
+		));
+
+		wp_send_json_success(array(
+			'message'       => __('Featured image recovered successfully.', 'ai-post-scheduler'),
+			'attachment_id' => isset($result['attachment_id']) ? absint($result['attachment_id']) : 0,
+			'url'           => isset($result['url']) ? esc_url($result['url']) : '',
 		));
 	}
 

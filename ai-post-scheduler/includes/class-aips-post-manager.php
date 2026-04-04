@@ -287,6 +287,19 @@ class AIPS_Post_Manager {
         if ($had_partial) {
             update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
         }
+
+        // Detect image-only recoverable failures: content and title succeeded, but featured
+        // image was attempted (i.e. component_statuses includes featured_image = false) and
+        // failed.  A featured_image = false entry only appears when generation was requested
+        // and failed, because the generator pre-initialises it to true when not requested.
+        if (is_array($normalized_statuses)) {
+            $content_ok = !empty($normalized_statuses['post_content']) && !empty($normalized_statuses['post_title']);
+            $image_attempted_and_failed = array_key_exists('featured_image', $normalized_statuses)
+                && !$normalized_statuses['featured_image'];
+
+            $image_recoverable = $content_ok && $image_attempted_and_failed;
+            update_post_meta($post_id, 'aips_post_generation_image_recoverable', $image_recoverable ? 'true' : 'false');
+        }
     }
 
     /**

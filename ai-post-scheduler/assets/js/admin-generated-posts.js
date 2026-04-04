@@ -8,49 +8,110 @@
  * @since 2.0.0
  */
 (function($) {
+  'use strict';
+
+  window.AIPS = window.AIPS || {};
+  var AIPS = window.AIPS;
+
+  Object.assign(AIPS, {
+    /**
+     * Initialise the Generated Posts page.
+     *
+     * @return {void}
+     */
+    initGeneratedPosts: function() {
+      this.bindGeneratedPostsEvents();
+    },
+
+    /**
+     * Bind UI event listeners for the Generated Posts page.
+     *
+     * @return {void}
+     */
+    bindGeneratedPostsEvents: function() {
+      $(document).on('click', '.aips-recover-image-btn', this.handleRecoverImage.bind(this));
+    },
+
+    /**
+     * Handle a click on the "Recover Image" button.
+     *
+     * Sends an AJAX request to regenerate the featured image for an image-only
+     * recoverable partial generation.  On success the row state badge is updated
+     * so the operator sees the result without a full page reload.
+     *
+     * @param {Event} e Click event.
+     * @return {void}
+     */
+    handleRecoverImage: function(e) {
+      var $btn    = $(e.currentTarget);
+      var postId  = $btn.data('post-id');
+      var historyId = $btn.data('history-id');
+      var config  = window.aipsGeneratedPostsConfig || {};
+
+      if (!postId || !config.ajaxUrl || !config.nonce) {
+        return;
+      }
+
+      $btn.prop('disabled', true).addClass('aips-btn-loading');
+
+      $.ajax({
+        url: config.ajaxUrl,
+        type: 'POST',
+        data: {
+          action:     'aips_recover_post_image',
+          nonce:      config.nonce,
+          post_id:    postId,
+          history_id: historyId,
+        },
+        success: function(response) {
+          if (response && response.success) {
+            var $row = $btn.closest('tr');
+            $row.find('.aips-badge-info, .aips-badge-warning').first().replaceWith(
+              '<span class="aips-badge aips-badge-success">' + AIPS._recoveredLabel + '</span>'
+            );
+            $btn.remove();
+          } else {
+            var msg = (response && response.data && response.data.message)
+              ? response.data.message
+              : AIPS._recoverErrorLabel;
+            alert(msg);
+            $btn.prop('disabled', false).removeClass('aips-btn-loading');
+          }
+        },
+        error: function() {
+          alert(AIPS._recoverErrorLabel);
+          $btn.prop('disabled', false).removeClass('aips-btn-loading');
+        },
+      });
+    },
+
+    /** @type {string} Resolved state label shown after a successful recovery. */
+    _recoveredLabel: 'Resolved',
+    /** @type {string} Fallback error message for image recovery failures. */
+    _recoverErrorLabel: 'Image recovery failed. Please try again.',
+  });
 
   // Initialize on document ready
   $(document).ready(function() {
-      // View Session functionality is automatically initialized by admin-view-session.js
+      AIPS.initGeneratedPosts();
 
       // Post Preview Modal - Hover functionality
       var previewModal = $('#aips-post-preview-modal');
       var previewIframe = $('#aips-post-preview-iframe');
       var hoverTimeout;
-      
+
       // Show preview on hover
       $(document).on('click', '.aips-preview-trigger', function(e) {
           clearTimeout(hoverTimeout);
-          
+
           var postId = $(this).data('post-id');
           var siteUrl = (aipsGeneratedPostsConfig && aipsGeneratedPostsConfig.siteUrl) ? aipsGeneratedPostsConfig.siteUrl : '';
           var previewUrl = siteUrl + '/?p=' + postId + '&preview=true';
-          
+
           previewIframe.attr('src', previewUrl);
           previewModal.fadeIn(200);
       });
-      
-      // Hide preview when leaving icon
-    //   $(document).on('mouseleave', '.aips-preview-trigger', function() {
-    //       hoverTimeout = setTimeout(function() {
-    //           if (!previewModal.is(':hover')) {
-    //               closePreviewModal();
-    //           }
-    //       }, 200);
-    //   });
-      
-      // Keep modal open when hovering over it
-    //   previewModal.on('mouseenter', function() {
-    //       clearTimeout(hoverTimeout);
-    //   });
-      
-    //   // Close when leaving modal
-    //   previewModal.on('mouseleave', function() {
-    //       hoverTimeout = setTimeout(function() {
-    //           closePreviewModal();
-    //       }, 200);
-    //   });
-      
+
       // Close preview modal
       /**
        * Fade out the post preview modal and clear the iframe `src`.
@@ -63,13 +124,13 @@
               previewIframe.attr('src', '');
           });
       }
-      
+
       // Close button handler
       $(document).on('click', '#aips-post-preview-modal .aips-modal-close', function(e) {
           e.preventDefault();
           closePreviewModal();
       });
-      
+
       // Close on Escape key
       $(document).on('keydown', function(e) {
           if (e.key === 'Escape' && previewModal.is(':visible')) {

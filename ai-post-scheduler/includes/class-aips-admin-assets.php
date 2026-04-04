@@ -469,6 +469,8 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-generated-posts', 'aipsGeneratedPostsConfig', array(
                 'clientLogThreshold' => $client_threshold,
                 'siteUrl' => home_url(),
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
             ));
             
             // Localize Post Review script for Pending Review tab
