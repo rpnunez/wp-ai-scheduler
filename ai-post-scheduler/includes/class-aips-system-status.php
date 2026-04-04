@@ -35,7 +35,7 @@ class AIPS_System_Status {
     const QUEUE_STUCK_WARN_THRESHOLD = 1;
 
     /**
-     * Number of stuck jobs above which the status escalates to 'error'.
+     * Number of stuck jobs at or above which the status escalates to 'error'.
      */
     const QUEUE_STUCK_ERROR_THRESHOLD = 5;
 
