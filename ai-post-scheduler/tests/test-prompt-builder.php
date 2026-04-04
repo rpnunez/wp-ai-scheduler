@@ -549,42 +549,79 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Regression test: AI variable placeholders in title prompts must be substituted
 	 * before the prompt is sent to the AI model.
 	 *
-	 * When a template uses AI variables (e.g. {{PHPTopic}}) in its title prompt and
-	 * those placeholders are NOT replaced prior to the AI call, the model receives raw
-	 * {{VariableName}} syntax in its instructions. It then responds with only the
-	 * variable value — a single word — instead of a full title.
+	 * This test exercises AIPS_Generator::generate_title() end-to-end using a stub
+	 * AI service that captures the exact prompt passed to generate_text(). When
+	 * resolved AI variables are provided, the captured prompt must contain the
+	 * resolved value and must not contain any raw {{VariableName}} placeholder.
+	 *
+	 * Before the fix, generate_title_from_context() never called
+	 * process_with_ai_variables(), so the model received raw {{PHPTopic}} syntax and
+	 * responded with only the variable value — a single word — instead of a full title.
 	 *
 	 * @see class-aips-generator.php generate_title_from_context()
 	 */
-	public function test_title_prompt_ai_variables_are_substituted() {
-		$template_processor = new AIPS_Template_Processor();
-		$title_builder      = new AIPS_Prompt_Builder_Post_Title($template_processor);
+	public function test_generator_substitutes_ai_variables_in_title_prompt() {
+		// Stub AI service that captures every prompt sent to generate_text().
+		$captured_prompts = array();
+		$stub_ai_service  = new class( $captured_prompts ) {
+			private $captured_prompts;
 
-		// Simulate a template whose title prompt contains an AI variable.
+			public function __construct( &$captured_prompts ) {
+				$this->captured_prompts = &$captured_prompts;
+			}
+
+			public function is_available() {
+				return true;
+			}
+
+			public function generate_text( $prompt, $options = array() ) {
+				$this->captured_prompts[] = $prompt;
+				// Return a realistic title so the generator does not fall back.
+				return 'PHP 9.4 Release Candidate: What Senior Developers Need to Know';
+			}
+		};
+
+		$template_processor = new AIPS_Template_Processor();
+
+		$generator = new AIPS_Generator(
+			null,               // logger  – use default
+			$stub_ai_service,   // ai_service
+			$template_processor // template_processor
+		);
+
+		// Template whose title prompt contains an AI variable placeholder.
 		$template = (object) array(
 			'title_prompt'         => 'Write a compelling title about {{PHPTopic}} for senior developers.',
 			'prompt_template'      => 'Write about {{topic}}',
 			'article_structure_id' => null,
+			'voice_id'             => null,
 		);
 
-		$content       = 'This article explores PHP 9.4 release candidate features in depth.';
-		$raw_prompt    = $title_builder->build($template, null, null, $content);
-
-		// The prompt builder does NOT resolve AI variables — it only handles system vars.
-		// Verify the placeholder is still present in the raw prompt.
-		$this->assertStringContainsString('{{PHPTopic}}', $raw_prompt, 'Title prompt should still contain the AI variable placeholder after build().');
-
-		// Now simulate what generate_title_from_context() must do: apply resolved AI
-		// variables via process_with_ai_variables() before sending to the AI service.
+		$content              = 'This article explores PHP 9.4 release candidate features in depth.';
 		$resolved_ai_variables = array( 'PHPTopic' => 'PHP 9.4 Release Candidate' );
-		$final_prompt = $template_processor->process_with_ai_variables(
-			$raw_prompt,
-			null,
-			$resolved_ai_variables
+
+		$result = $generator->generate_title( $template, null, null, $content, array(), $resolved_ai_variables );
+
+		// generate_title() must succeed (not a WP_Error).
+		$this->assertNotInstanceOf( 'WP_Error', $result, 'generate_title() should not return WP_Error when AI service succeeds.' );
+
+		// Exactly one AI call must have been made for the title prompt.
+		$this->assertNotEmpty( $captured_prompts, 'Stub AI service was never called — something prevented the title generation path.' );
+
+		$title_prompt = $captured_prompts[0];
+
+		// The resolved value must be present in the prompt that reached the AI.
+		$this->assertStringContainsString(
+			'PHP 9.4 Release Candidate',
+			$title_prompt,
+			'Resolved AI variable value must appear in the prompt sent to the AI service.'
 		);
 
-		// The placeholder must be fully resolved in the prompt that reaches the AI.
-		$this->assertStringNotContainsString('{{PHPTopic}}', $final_prompt, 'AI variable placeholder must be substituted before the prompt reaches the AI model.');
-		$this->assertStringContainsString('PHP 9.4 Release Candidate', $final_prompt, 'Resolved AI variable value must appear in the final title prompt.');
+		// The raw placeholder must NOT reach the AI — that is the bug this test guards.
+		$this->assertStringNotContainsString(
+			'{{PHPTopic}}',
+			$title_prompt,
+			'Raw AI variable placeholder must be substituted before the prompt is sent to the AI service.'
+		);
 	}
 }
