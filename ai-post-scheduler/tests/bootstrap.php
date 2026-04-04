@@ -776,6 +776,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('_doing_it_wrong')) {
+        function _doing_it_wrong($function_name, $message, $version) {
+            // No-op stub: in real WordPress this triggers a developer notice.
+        }
+    }
+
     if (!function_exists('wp_parse_str')) {
         function wp_parse_str($string, &$array) {
             parse_str($string, $array);

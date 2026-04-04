@@ -5,7 +5,13 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Planner {
 
+    /**
+     * @var AIPS_Bulk_Generator_Service Shared bulk generation harness.
+     */
+    private $bulk_generator_service;
+
     public function __construct() {
+        $this->bulk_generator_service = $this->make_bulk_generator_service();
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
         add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
@@ -117,29 +123,16 @@ class AIPS_Planner {
         // Sanitize topics
         $topics = AIPS_Utilities::sanitize_string_array($topics);
 
-        $scheduler = new AIPS_Scheduler();
+        $scheduler = $this->make_scheduler();
         $count = 0;
         $base_time = strtotime($start_date);
-
-        // Determine interval in seconds
-        $intervals = $scheduler->get_intervals();
-        $interval = 86400; // default fallback
-
-        if (isset($intervals[$frequency])) {
-            $interval = $intervals[$frequency]['interval'];
-        }
-
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
+        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $index => $topic) {
-            $next_run_timestamp = $base_time + ($index * $interval);
-            $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
-
+        foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
@@ -178,10 +171,11 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
         }
 
-        // Enforce a bulk limit for synchronous generation to avoid PHP timeouts
-        $max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
-        $max_bulk = absint($max_bulk);
-        if (0 === $max_bulk) {
+        // Enforce the bulk limit BEFORE the expensive template lookup so the
+        // error is returned immediately (this also preserves original method ordering
+        // that existing tests depend on).
+        $max_bulk = absint(apply_filters('aips_bulk_run_now_limit', 5));
+        if ($max_bulk < 1) {
             $max_bulk = 5;
         }
         if (count($topics) > $max_bulk) {
@@ -193,6 +187,7 @@ class AIPS_Planner {
                     $max_bulk
                 ),
             ));
+            return;
         }
 
         $template = $this->get_template_by_id($template_id);
@@ -207,46 +202,65 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
-        $post_ids = array();
-        $errors = array();
+        // Pass a matching limit so the service never rejects (pre-check already done above).
+        $result = $this->bulk_generator_service->run(
+            $topics,
+            function ( $topic ) use ( $generator, $template ) {
+                return $generator->generate_post($template, null, $topic);
+            },
+            array(
+                'limit_default'   => $max_bulk,
+                'history_type'    => 'bulk_generate_now',
+                'trigger_name'    => 'ajax_bulk_generate_now',
+                'user_action'     => 'bulk_generate_now',
+                'user_message'    => sprintf(
+                    /* translators: %d: number of topics */
+                    __('User initiated bulk generation for %d topics', 'ai-post-scheduler'),
+                    count($topics)
+                ),
+                'error_formatter' => function ( $topic, $msg ) {
+                    /* translators: 1: topic string, 2: error message */
+                    return sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $msg);
+                },
+            )
+        );
 
-        foreach ($topics as $topic) {
-            // Using legacy signature which generates a context inside AIPS_Generator
-            $result = $generator->generate_post($template, null, $topic);
-
-            if (is_wp_error($result)) {
-                $errors[] = sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $result->get_error_message());
-            } else {
-                $post_ids[] = is_array($result) ? $result : (int) $result;
-            }
-        }
-
-        if (empty($post_ids) && !empty($errors)) {
+        if (empty($result->post_ids) && !empty($result->errors)) {
             wp_send_json_error(array(
                 'message' => __('All topic generations failed.', 'ai-post-scheduler'),
-                'errors'  => $errors,
+                'errors'  => $result->errors,
             ));
+            return;
         }
 
         $message = sprintf(
             /* translators: %d: number of posts */
-            _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
-            count($post_ids)
+            _n('%d post generated successfully!', '%d posts generated successfully!', count($result->post_ids), 'ai-post-scheduler'),
+            count($result->post_ids)
         );
 
-        if (!empty($errors)) {
+        if (!empty($result->errors)) {
             $message .= ' ' . sprintf(
                 /* translators: %d: number of failed topics */
-                _n('(%d failed)', '(%d failed)', count($errors), 'ai-post-scheduler'),
-                count($errors)
+                _n('(%d failed)', '(%d failed)', count($result->errors), 'ai-post-scheduler'),
+                count($result->errors)
             );
         }
 
         wp_send_json_success(array(
             'message'  => $message,
-            'post_ids' => $post_ids,
-            'errors'   => $errors,
+            'post_ids' => $result->post_ids,
+            'errors'   => $result->errors,
         ));
+    }
+
+    /**
+     * Factory method for AIPS_Scheduler. Overrideable in tests.
+     *
+     * @return AIPS_Scheduler
+     */
+    protected function make_scheduler() {
+        return new AIPS_Scheduler();
     }
 
     /**
@@ -259,6 +273,15 @@ class AIPS_Planner {
     }
 
     /**
+     * Factory method for AIPS_Bulk_Generator_Service. Overrideable in tests.
+     *
+     * @return AIPS_Bulk_Generator_Service
+     */
+    protected function make_bulk_generator_service() {
+        return new AIPS_Bulk_Generator_Service();
+    }
+
+    /**
      * Retrieve a template by ID. Overrideable in tests.
      *
      * @param int $template_id
@@ -267,14 +290,5 @@ class AIPS_Planner {
     protected function get_template_by_id( $template_id ) {
         $templates = new AIPS_Templates();
         return $templates->get($template_id);
-    }
-
-    public function render_page() {
-        // Just for consistency if we want to render the planner page separately,
-        // but currently we might include it in the main admin view.
-        $templates_obj = new AIPS_Templates();
-        $templates = $templates_obj->get_all(true); // Active only
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/planner.php';
     }
 }

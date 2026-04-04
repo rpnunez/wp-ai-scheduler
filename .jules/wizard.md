@@ -59,3 +59,7 @@
 ## 2026-04-03 - Added "Clear Filters" to PHP-driven Filter Bars
 **Learning:** While JS-driven search bars had clear buttons, the PHP-driven filter bars (for Author and Template dropdowns) lacked an easy way to reset the filters without manually selecting "All" and resubmitting.
 **Action:** Added a contextual "Clear Filters" ghost button next to the "Filter" submit button in `generated-posts.php` and `post-review.php` that only appears when a filter is actively applied.
+
+## 2024-04-04 - Search Empty States
+Learning: PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
+Action: Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
