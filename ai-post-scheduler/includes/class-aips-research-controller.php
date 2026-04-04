@@ -315,17 +315,15 @@ class AIPS_Research_Controller {
         }
 
         $count = 0;
-        $interval_duration = $interval_calculator->get_interval_duration($frequency);
+        $next_run = date('Y-m-d H:i:s', $base_time);
 
         $schedules_to_create = array();
-        
-        foreach ($topics as $index => $topic) {
-            $next_run_time = $base_time + ($interval_duration * $index);
-            
+
+        foreach ($topics as $topic) {
             $schedules_to_create[] = array(
                 'template_id' => $template_id,
                 'frequency' => $frequency,
-                'next_run' => date('Y-m-d H:i:s', $next_run_time),
+                'next_run' => $next_run,
                 'is_active' => 1,
                 'topic' => $topic,
             );
