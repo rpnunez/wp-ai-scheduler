@@ -197,12 +197,12 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                 </table>
 
                 <!-- No Search Results State (client-side live filter) -->
-                <div id="aips-history-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                <div id="aips-history-search-no-results" class="aips-empty-state" style="display: none;">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No History Found', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('No history containers match your search criteria. Try a different search term or filter.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
                             <span class="dashicons dashicons-dismiss"></span>
                             <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>

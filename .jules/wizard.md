@@ -63,3 +63,7 @@
 ## 2024-04-04 - Search Empty States
 Learning: PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
 Action: Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
+
+## 2026-04-05 - Standardize Empty State UI and CTAs
+**Learning:** Empty states across the plugin lacked consistency in CSS classes (e.g. missing .aips-empty-state-actions wrappers), missing specific Call-to-Actions (CTAs), and some dynamically rendered JS lists completely lacked standard empty state designs with relevant "Generate" or "View" actions.
+**Action:** Replaced simple HTML `<p>` messages in JS and inline styles in PHP with full standard empty state HTML structures containing icons, standard headings, description, and direct button CTAs matching the UI kit.

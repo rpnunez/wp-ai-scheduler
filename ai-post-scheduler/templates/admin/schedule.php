@@ -338,12 +338,12 @@ if (!function_exists('aips_next_run_relative')) {
 				</table>
 
 				<!-- No Search Results State -->
-				<div id="aips-unified-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
+				<div id="aips-unified-search-no-results" class="aips-empty-state" style="display:none;">
 					<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-unified-search-btn">
 							<span class="dashicons dashicons-dismiss"></span>
 							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 						</button>
@@ -352,7 +352,7 @@ if (!function_exists('aips_next_run_relative')) {
 
 				<?php else: ?>
 				<!-- Empty State -->
-				<div class="aips-empty-state" style="padding:60px 20px;">
+				<div class="aips-empty-state">
 					<div class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true"></div>
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Yet', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description">

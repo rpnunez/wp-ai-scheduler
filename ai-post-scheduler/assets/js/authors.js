@@ -555,7 +555,14 @@
 		 */
 		renderTopics: function (topics, status) {
 			if (!topics || topics.length === 0) {
-				$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
+				$('#aips-topics-content').html(
+					'<div class="aips-panel-body"><div class="aips-empty-state">'
+					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
+					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noTopicsFoundTitle || 'No Topics Found') + '</h3>'
+					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noTopicsFound || 'No topics found for this status.') + '</p>'
+					+ '<div class="aips-empty-state-actions"><button type="button" class="aips-btn aips-btn-primary" onclick="$(\'.aips-tab-link[data-tab=\\\'suggest_topics\\\']\').click();">' + (aipsAuthorsL10n.generateTopics || 'Generate Topics') + '</button></div>'
+					+ '</div></div>'
+				);
 				return;
 			}
 
@@ -1328,7 +1335,14 @@
 		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
-				$('#aips-topics-content').html('<p>' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>');
+				$('#aips-topics-content').html(
+					'<div class="aips-panel-body"><div class="aips-empty-state">'
+					+ '<div class="dashicons dashicons-testimonial aips-empty-state-icon" aria-hidden="true"></div>'
+					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noFeedbackYetTitle || 'No Feedback Found') + '</h3>'
+					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>'
+					+ '<div class="aips-empty-state-actions"><button type="button" class="aips-btn aips-btn-primary" onclick="$(\'.aips-tab-link[data-tab=\\\'topics\\\']\').click();">' + (aipsAuthorsL10n.viewTopics || 'View Pending Topics') + '</button></div>'
+					+ '</div></div>'
+				);
 				return;
 			}
 
@@ -2542,6 +2556,7 @@
 					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
 					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found') + '</h3>'
 					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>'
+					+ '<div class="aips-empty-state-actions"><button type="button" class="aips-btn aips-btn-primary" onclick="$(\'.aips-tab-link[data-tab=\\\'topics\\\']\').click();">' + (aipsAuthorsL10n.viewTopics || 'View Pending Topics') + '</button></div>'
 					+ '</div></div>'
 				);
 				$('#aips-queue-tablenav').hide();
