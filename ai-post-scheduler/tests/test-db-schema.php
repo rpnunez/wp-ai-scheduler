@@ -272,4 +272,143 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		// Clean up
 		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
 	}
+
+	/**
+	 * Test that aips_schedule table has the new health & progress columns.
+	 */
+	public function test_schedule_table_has_health_and_progress_columns() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		$columns = $wpdb->get_results( "SHOW COLUMNS FROM {$table_name}" );
+		$column_names = array_map( function ( $col ) {
+			return $col->Field;
+		}, $columns );
+
+		$expected = array( 'schedule_type', 'circuit_state', 'run_state', 'batch_progress' );
+
+		foreach ( $expected as $col ) {
+			$this->assertContains( $col, $column_names, "Column '{$col}' should exist in aips_schedule table" );
+		}
+	}
+
+	/**
+	 * Test default values for new schedule columns.
+	 */
+	public function test_schedule_health_columns_default_values() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		// Need a template to satisfy the FK-like NOT NULL constraint.
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'            => 'Schema Default Test Template',
+				'prompt_template' => 'Write about defaults',
+				'is_active'       => 1,
+			)
+		);
+		$template_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$table_name,
+			array(
+				'template_id' => $template_id,
+				'frequency'   => 'daily',
+				'next_run'    => '2030-01-01 00:00:00',
+				'is_active'   => 1,
+			)
+		);
+		$schedule_id = (int) $wpdb->insert_id;
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT schedule_type, circuit_state, run_state, batch_progress FROM {$table_name} WHERE id = %d",
+			$schedule_id
+		) );
+
+		$this->assertNotNull( $row, 'Inserted schedule should be retrievable' );
+		$this->assertEquals( 'post_generation', $row->schedule_type, 'schedule_type should default to post_generation' );
+		$this->assertEquals( 'closed', $row->circuit_state, 'circuit_state should default to closed' );
+		$this->assertNull( $row->run_state, 'run_state should default to NULL' );
+		$this->assertNull( $row->batch_progress, 'batch_progress should default to NULL' );
+
+		// Clean up
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
+	}
+
+	/**
+	 * Test that batch_progress and run_state can be stored and retrieved.
+	 */
+	public function test_schedule_batch_progress_and_run_state_persist() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'            => 'Batch Progress Test Template',
+				'prompt_template' => 'Write about batch',
+				'is_active'       => 1,
+			)
+		);
+		$template_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$table_name,
+			array(
+				'template_id' => $template_id,
+				'frequency'   => 'daily',
+				'next_run'    => '2030-01-01 00:00:00',
+				'is_active'   => 1,
+			)
+		);
+		$schedule_id = (int) $wpdb->insert_id;
+
+		$progress  = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2, 'post_ids' => array( 101, 102, 103 ) ) );
+		$run_state = wp_json_encode( array(
+			'status'        => 'partial',
+			'error_code'    => 'ai_timeout',
+			'error_message' => 'AI service timeout',
+			'completed'     => 3,
+			'total'         => 10,
+			'timestamp'     => '2030-01-01T00:00:00+00:00',
+		) );
+
+		$wpdb->update(
+			$table_name,
+			array(
+				'batch_progress' => $progress,
+				'run_state'      => $run_state,
+			),
+			array( 'id' => $schedule_id )
+		);
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT batch_progress, run_state FROM {$table_name} WHERE id = %d",
+			$schedule_id
+		) );
+
+		$this->assertNotNull( $row );
+
+		$decoded_progress = json_decode( $row->batch_progress, true );
+		$this->assertIsArray( $decoded_progress, 'batch_progress should be valid JSON' );
+		$this->assertEquals( 3, $decoded_progress['completed'] );
+		$this->assertEquals( 10, $decoded_progress['total'] );
+		$this->assertEquals( 2, $decoded_progress['last_index'] );
+		$this->assertArrayHasKey( 'post_ids', $decoded_progress, 'batch_progress should contain post_ids' );
+		$this->assertEquals( array( 101, 102, 103 ), $decoded_progress['post_ids'], 'batch_progress.post_ids should round-trip correctly' );
+
+		$decoded_state = json_decode( $row->run_state, true );
+		$this->assertIsArray( $decoded_state, 'run_state should be valid JSON' );
+		$this->assertEquals( 'partial', $decoded_state['status'], 'run_state.status should be stored' );
+		$this->assertEquals( 'ai_timeout', $decoded_state['error_code'], 'run_state.error_code should be stored' );
+		$this->assertEquals( 'AI service timeout', $decoded_state['error_message'], 'run_state.error_message should be stored' );
+		$this->assertEquals( 3, $decoded_state['completed'], 'run_state.completed should be stored' );
+		$this->assertEquals( 10, $decoded_state['total'], 'run_state.total should be stored' );
+
+		// Clean up
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
+	}
 }

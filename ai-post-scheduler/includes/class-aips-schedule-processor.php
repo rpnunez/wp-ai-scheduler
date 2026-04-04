@@ -357,22 +357,166 @@ class AIPS_Schedule_Processor {
         $successful_post_ids = array();
         $errors = array();
 
-        for ($i = 0; $i < $post_quantity; $i++) {
-            $result = $this->generator->generate_post($context);
-            if (is_wp_error($result)) {
-                $errors[] = $result;
+        // ── Resumable batch progress ────────────────────────────────────────
+        // Determine where to start the loop.  When a previous automated run
+        // was interrupted mid-batch, batch_progress holds the last completed
+        // state.  We resume from last_index+1 so we never re-generate posts
+        // that already exist, and we count previously completed posts toward
+        // the total so the batch finishes at the right size.
+        //
+        // Manual runs always start from index 0 and clear any stale progress
+        // cursor left by a previous automated run so the next cron run is
+        // not affected by the manual execution.
+        $start_index       = 0;
+        $prior_completed   = 0;
+
+        if ($is_manual) {
+            // Clear any stale progress left by a previous interrupted automated run
+            // so the next scheduled execution starts a fresh batch.
+            $this->repository->clear_batch_progress($schedule->schedule_id);
+        } elseif (!empty($schedule->batch_progress)) {
+            $saved = json_decode($schedule->batch_progress, true);
+            if (
+                is_array($saved) &&
+                isset($saved['completed'], $saved['total'], $saved['last_index'])
+            ) {
+                $saved_completed = (int) $saved['completed'];
+                $saved_total     = (int) $saved['total'];
+                $saved_last_index = (int) $saved['last_index'];
+                $is_valid_cursor = (
+                    $saved_total === $post_quantity &&
+                    $saved_completed >= 0 &&
+                    $saved_completed < $post_quantity &&
+                    $saved_last_index >= 0 &&
+                    $saved_last_index < $post_quantity &&
+                    $saved_last_index >= ($saved_completed - 1) &&
+                    $saved_last_index <= $saved_completed
+                );
+
+                if ($is_valid_cursor) {
+                    // When the cursor includes the IDs of already-generated posts,
+                    // use count(post_ids) as the authoritative completed count.
+                    // This prevents re-generating the last post if the process
+                    // crashed after creation but before the cursor was updated.
+                    $saved_post_ids = isset($saved['post_ids']) && is_array($saved['post_ids'])
+                        ? array_map('absint', $saved['post_ids'])
+                        : array();
+
+                    if (!empty($saved_post_ids)) {
+                        // New cursor format: post_ids is the authoritative source.
+                        // Even if $saved_completed disagrees (e.g. a crash wrote the
+                        // post but not the cursor), count(post_ids) reflects the true
+                        // number of already-created posts.
+                        $successful_post_ids = $saved_post_ids;
+                        $prior_completed     = count($saved_post_ids);
+                        $start_index         = count($saved_post_ids);
+                    } else {
+                        // Legacy cursor (no post_ids): resume from the recorded index.
+                        $prior_completed = $saved_completed;
+                        $start_index     = $saved_last_index + 1;
+                    }
+                } else {
+                    // Ignore and clear inconsistent saved progress so the
+                    // schedule can restart instead of getting stuck on an
+                    // impossible resume cursor.
+                    $this->repository->clear_batch_progress($schedule->schedule_id);
+                }
             } else {
-                $successful_post_ids[] = $result;
+                // Malformed progress payloads should not block future runs.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
             }
         }
 
-        // Overall result for backward compatibility / logging
-        if (empty($successful_post_ids) && !empty($errors)) {
-            // If everything failed, return the first error
-            $overall_result = $errors[0];
-        } elseif (!empty($successful_post_ids)) {
-            // Return array of successful IDs
+        for ($i = $start_index; $i < $post_quantity; $i++) {
+            $result = $this->generator->generate_post($context);
+            if (is_wp_error($result)) {
+                $errors[] = $result;
+                // Persist the current run state so operators and future
+                // circuit-breaker logic can inspect what happened.
+                if (!$is_manual) {
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_run_state($schedule->schedule_id, array(
+                        'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
+                        'error_code'    => $result->get_error_code(),
+                        'error_message' => $result->get_error_message(),
+                        'completed'     => $completed_so_far,
+                        'total'         => $post_quantity,
+                        'timestamp'     => gmdate('c'),
+                    ));
+                }
+                // Stop the batch so batch_progress is preserved for resumption.
+                break;
+            } else {
+                $successful_post_ids[] = $result;
+                // Persist progress after every successful generation so that a
+                // mid-batch crash still records how far we got.  Storing the
+                // accumulated post IDs makes the cursor atomic with creation:
+                // if a crash occurs after the post is created but before this
+                // write lands, the next run uses count(post_ids) as the start
+                // index instead of last_index+1, preventing duplicate posts.
+                if (!$is_manual && $post_quantity > 1) {
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_batch_progress(
+                        $schedule->schedule_id,
+                        $completed_so_far,
+                        $post_quantity,
+                        $i,
+                        $successful_post_ids
+                    );
+                }
+            }
+        }
+
+        // Determine whether the full batch finished without any errors.
+        $total_completed = $prior_completed + count($successful_post_ids);
+        $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
+
+        if (!$is_manual) {
+            if ($batch_finished) {
+                // All posts generated — clear batch progress and persist a
+                // success run_state to indicate a clean completion.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
+                $this->repository->update_run_state($schedule->schedule_id, array(
+                    'status'    => 'success',
+                    'completed' => $total_completed,
+                    'total'     => $post_quantity,
+                    'timestamp' => gmdate('c'),
+                ));
+            }
+        }
+
+        // ── Build the overall result ─────────────────────────────────────────
+        // A partial batch (some posts generated, then one failed) is treated as
+        // incomplete — NOT as a success.  This prevents one-time schedules from
+        // being deleted and recurring schedules from being logged as successful
+        // when only a subset of the requested posts were produced.
+        $manual_success = $is_manual && !empty($successful_post_ids) && empty($errors);
+
+        if ($batch_finished || $manual_success) {
+            // Full success (all posts generated) or manual run with no errors.
             $overall_result = $successful_post_ids;
+        } elseif (!empty($errors)) {
+            // Batch failed or was partially interrupted — surface the error.
+            // Previously generated $successful_post_ids are preserved in the DB;
+            // batch_progress holds the resumption cursor for the next run.
+            if (!empty($successful_post_ids)) {
+                // Partial: some posts were created before the error.
+                // Return a WP_Error that carries context about the partial success
+                // so handle_execution_failure can log it properly.
+                $overall_result = new WP_Error(
+                    'batch_partially_failed',
+                    sprintf(
+                        /* translators: 1: completed count, 2: total requested, 3: original error */
+                        __('%1$d of %2$d posts generated before error: %3$s', 'ai-post-scheduler'),
+                        $total_completed,
+                        $post_quantity,
+                        $errors[0]->get_error_message()
+                    )
+                );
+            } else {
+                // Nothing generated — return the original error verbatim.
+                $overall_result = $errors[0];
+            }
         } else {
             $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
         }
