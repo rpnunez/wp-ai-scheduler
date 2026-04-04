@@ -41,6 +41,7 @@ class AIPS_AI_Edit_Controller {
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
 		add_action('wp_ajax_aips_regenerate_component', array($this, 'ajax_regenerate_component'));
+		add_action('wp_ajax_aips_regenerate_all_components', array($this, 'ajax_regenerate_all_components'));
 		add_action('wp_ajax_aips_save_post_components', array($this, 'ajax_save_post_components'));
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
@@ -231,6 +232,105 @@ class AIPS_AI_Edit_Controller {
 		
 		wp_send_json_success(array('new_value' => $result));
 	}
+
+	/**
+	 * AJAX handler: Regenerate all components.
+	 *
+	 * Regenerates title, excerpt, and content. Featured image regeneration is
+	 * conditional and only runs when a prior image exists or original generation
+	 * logged a featured-image failure.
+	 */
+	public function ajax_regenerate_all_components() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('edit_posts')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		$manual_snapshots = isset($_POST['manual_snapshots']) && is_array($_POST['manual_snapshots'])
+			? $_POST['manual_snapshots']
+			: array();
+
+		if (!$post_id || !$history_id) {
+			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+		}
+
+		$context = $this->service->get_generation_context($history_id);
+		if (is_wp_error($context)) {
+			wp_send_json_error(array('message' => $context->get_error_message()));
+		}
+
+		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
+			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+		}
+
+		$post = get_post($post_id);
+		if (!$post) {
+			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+		}
+
+		$context['post_id'] = $post_id;
+		$context['history_id'] = $history_id;
+		$context['current_title'] = $post->post_title;
+		$context['current_excerpt'] = $post->post_excerpt;
+		$context['current_content'] = $post->post_content;
+
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		foreach ($manual_snapshots as $component => $value) {
+			if (!in_array($component, $valid_components, true)) {
+				continue;
+			}
+
+			$sanitized_snapshot_value = $this->sanitize_component_revision_value($component, wp_unslash($value));
+			$snapshot_result = $this->service->capture_component_revision(
+				$post_id,
+				$history_id,
+				$component,
+				$sanitized_snapshot_value,
+				'manual_edit',
+				'pre_regenerate_all_manual'
+			);
+
+			if (is_wp_error($snapshot_result)) {
+				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+			}
+		}
+
+		$result = $this->service->regenerate_all_components($context);
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		$regenerated_count = count($result['regenerated']);
+		$error_count = count($result['errors']);
+
+		if ($regenerated_count === 0) {
+			wp_send_json_error(array(
+				'message' => __('No components were regenerated.', 'ai-post-scheduler'),
+				'regenerated' => $result['regenerated'],
+				'skipped' => $result['skipped'],
+				'errors' => $result['errors'],
+			));
+		}
+
+		$message = __('Components regenerated successfully.', 'ai-post-scheduler');
+		if ($error_count > 0) {
+			$message = __('Some components were regenerated, but others failed.', 'ai-post-scheduler');
+		}
+
+		wp_send_json_success(array(
+			'message' => $message,
+			'regenerated' => $result['regenerated'],
+			'skipped' => $result['skipped'],
+			'errors' => $result['errors'],
+		));
+	}
 	
 	/**
 	 * AJAX handler: Save post components
@@ -261,17 +361,17 @@ class AIPS_AI_Edit_Controller {
 		$updated_components = array();
 		
 		if (isset($components['title'])) {
-			$post_data['post_title'] = sanitize_text_field($components['title']);
+			$post_data['post_title'] = sanitize_text_field(wp_unslash($components['title']));
 			$updated_components[] = 'title';
 		}
 		
 		if (isset($components['excerpt'])) {
-			$post_data['post_excerpt'] = sanitize_textarea_field($components['excerpt']);
+			$post_data['post_excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
 			$updated_components[] = 'excerpt';
 		}
 		
 		if (isset($components['content'])) {
-			$post_data['post_content'] = wp_kses_post($components['content']);
+			$post_data['post_content'] = wp_kses_post(wp_unslash($components['content']));
 			$updated_components[] = 'content';
 		}
 		

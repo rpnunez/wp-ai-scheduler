@@ -71,6 +71,7 @@ class AIPS_History_Repository {
             'search' => '',
             'template_id' => 0,
             'author_id' => 0,
+            'correlation_id' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
             'fields' => 'all',
@@ -82,13 +83,13 @@ class AIPS_History_Repository {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
         } else {
             // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
         }
 
         // Build where clauses
@@ -108,6 +109,11 @@ class AIPS_History_Repository {
         if (!empty($args['author_id'])) {
             $where_clauses[] = "h.author_id = %d";
             $where_args[] = $args['author_id'];
+        }
+
+        if (!empty($args['correlation_id'])) {
+            $where_clauses[] = "h.correlation_id = %s";
+            $where_args[] = sanitize_text_field($args['correlation_id']);
         }
 
         if (!empty($args['search'])) {
@@ -352,6 +358,34 @@ class AIPS_History_Repository {
             $post_id
         ));
     }
+
+    /**
+     * Get all history records that share the given correlation ID.
+     *
+     * Returns an array of lightweight history objects (id, uuid, correlation_id,
+     * post_id, template_id, author_id, topic_id, status, creation_method,
+     * created_at, completed_at) sorted oldest-first so callers can replay the
+     * execution timeline in order.
+     *
+     * @param string $correlation_id The correlation ID to search for.
+     * @return array Array of history record objects (empty if none found).
+     */
+    public function get_by_correlation_id($correlation_id) {
+        $correlation_id = sanitize_text_field((string) $correlation_id);
+
+        if ($correlation_id === '') {
+            return array();
+        }
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
+                    status, creation_method, generated_title, error_message, created_at, completed_at
+             FROM {$this->table_name}
+             WHERE correlation_id = %s
+             ORDER BY created_at ASC",
+            $correlation_id
+        ));
+    }
     
     /**
      * Add a log entry to a history item.
@@ -464,11 +498,11 @@ class AIPS_History_Repository {
         ");
 
         $stats = array(
-            'total' => (int) $results->total,
-            'completed' => (int) $results->completed,
-            'failed' => (int) $results->failed,
-            'processing' => (int) $results->processing,
-            'partial' => (int) $results->partial,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'completed' => isset($results->completed) ? (int) $results->completed : 0,
+            'failed' => isset($results->failed) ? (int) $results->failed : 0,
+            'processing' => isset($results->processing) ? (int) $results->processing : 0,
+            'partial' => isset($results->partial) ? (int) $results->partial : 0,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
@@ -667,7 +701,10 @@ class AIPS_History_Repository {
      * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
      * @return array Array of log entry objects.
      */
-    public function get_logs_by_history_id($history_id, $type_filter = array()) {
+    public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) {
+        $limit = absint($limit);
+        $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+
         if (!empty($type_filter)) {
             $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
             $args = array_merge(array($history_id), $type_filter);
@@ -675,7 +712,7 @@ class AIPS_History_Repository {
                 $this->wpdb->prepare(
                     "SELECT * FROM {$this->table_name_log}
                      WHERE history_id = %d AND history_type_id IN ($placeholders)
-                     ORDER BY timestamp ASC",
+                     ORDER BY timestamp DESC" . $limit_sql,
                     $args
                 )
             );
@@ -683,7 +720,7 @@ class AIPS_History_Repository {
 
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp DESC" . $limit_sql,
                 $history_id
             )
         );
@@ -712,6 +749,7 @@ class AIPS_History_Repository {
     public function create($data) {
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
+            'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
@@ -724,7 +762,7 @@ class AIPS_History_Repository {
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -898,26 +936,32 @@ class AIPS_History_Repository {
         $args = wp_parse_args($args, $defaults);
         
         $where = array();
+        $query_args = array();
         
         // Add age filter if specified
         if ($args['older_than_days'] > 0) {
             $date = date('Y-m-d H:i:s', strtotime("-{$args['older_than_days']} days"));
-            $where[] = $this->wpdb->prepare("created_at < %s", $date);
+            $where[] = "created_at < %s";
+            $query_args[] = $date;
         }
         
         // Add status filter if not 'all'
         if ($args['status'] !== 'all') {
-            $where[] = $this->wpdb->prepare("status = %s", $args['status']);
+            $where[] = "status = %s";
+            $query_args[] = $args['status'];
         }
         
         // Build WHERE clause
         $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
         
         // Count records that will be deleted
-        $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} $where_clause");
-        
-        // Delete records
-        $deleted = $this->wpdb->query("DELETE FROM {$this->table_name} $where_clause");
+        if (!empty($query_args)) {
+            $count = $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} $where_clause", $query_args));
+            $deleted = $this->wpdb->query($this->wpdb->prepare("DELETE FROM {$this->table_name} $where_clause", $query_args));
+        } else {
+            $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
+            $deleted = $this->wpdb->query("DELETE FROM {$this->table_name}");
+        }
         
         // Clear cache
         if ($deleted !== false && $deleted > 0) {
@@ -929,6 +973,34 @@ class AIPS_History_Repository {
             'deleted' => $deleted !== false ? (int) $deleted : 0,
             'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
         );
+    }
+
+    /**
+     * Determine whether featured image generation failed for a history run.
+     *
+     * @param int $history_id History ID.
+     * @return bool True when featured image generation was attempted and failed.
+     */
+    public function did_featured_image_generation_fail($history_id) {
+        $history_id = absint($history_id);
+
+        if (!$history_id) {
+            return false;
+        }
+
+        $count = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM {$this->table_name_log}
+            WHERE history_id = %d
+            AND log_type = 'metric_generation_result'
+            AND details LIKE %s
+            AND details LIKE %s",
+            $history_id,
+            '%"image_attempted":true%',
+            '%"image_success":false%'
+        ));
+
+        return ((int) $count) > 0;
     }
 
     /**

@@ -56,6 +56,7 @@ class AIPS_Admin_Assets {
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
             'seconds'                  => __('seconds', 'ai-post-scheduler'),
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
@@ -93,6 +94,9 @@ class AIPS_Admin_Assets {
             'saveSectionFailed' => __('Failed to save prompt section.', 'ai-post-scheduler'),
             'loadSectionFailed' => __('Failed to load prompt section.', 'ai-post-scheduler'),
             'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
+            'activeLabel'  => __('Active', 'ai-post-scheduler'),
+            'inactiveLabel' => __('Inactive', 'ai-post-scheduler'),
+            'defaultLabel'  => __('Default', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
             // Template Wizard strings
@@ -338,6 +342,25 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
+            // Date formatting strings used by formatTopicDate()
+            'dateToday'     => __('Today', 'ai-post-scheduler'),
+            'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),
+            'dateAM'        => _x('am', 'time of day', 'ai-post-scheduler'),
+            'datePM'        => _x('pm', 'time of day', 'ai-post-scheduler'),
+            'dateMonthNames' => array(
+                __('January', 'ai-post-scheduler'),
+                __('February', 'ai-post-scheduler'),
+                __('March', 'ai-post-scheduler'),
+                __('April', 'ai-post-scheduler'),
+                __('May', 'ai-post-scheduler'),
+                __('June', 'ai-post-scheduler'),
+                __('July', 'ai-post-scheduler'),
+                __('August', 'ai-post-scheduler'),
+                __('September', 'ai-post-scheduler'),
+                __('October', 'ai-post-scheduler'),
+                __('November', 'ai-post-scheduler'),
+                __('December', 'ai-post-scheduler'),
+            ),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
@@ -457,11 +480,13 @@ class AIPS_Admin_Assets {
                 'confirmDelete' => __('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete' => __('Are you sure you want to delete %d selected post(s)? This action cannot be undone.', 'ai-post-scheduler'),
                 'confirmRegenerate' => __('Are you sure you want to regenerate this post? The current post will be deleted.', 'ai-post-scheduler'),
+                'confirmBulkRegenerate' => __('Are you sure you want to regenerate %d selected post(s)? The current posts will be deleted.', 'ai-post-scheduler'),
                 'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
                 'bulkPublishSuccess' => __('%d posts published successfully!', 'ai-post-scheduler'),
                 'deleteSuccess' => __('Post deleted successfully!', 'ai-post-scheduler'),
                 'bulkDeleteSuccess' => __('%d posts deleted successfully!', 'ai-post-scheduler'),
                 'regenerateSuccess' => __('Post regeneration started!', 'ai-post-scheduler'),
+                'bulkRegenerateSuccess' => __('%d posts regeneration started!', 'ai-post-scheduler'),
                 'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
                 'deleteError' => __('Failed to delete post.', 'ai-post-scheduler'),
                 'regenerateError' => __('Failed to regenerate post.', 'ai-post-scheduler'),
@@ -501,6 +526,10 @@ class AIPS_Admin_Assets {
                 'nonce' => wp_create_nonce('aips_ajax_nonce'),
                 'regenerate' => __('Re-generate', 'ai-post-scheduler'),
                 'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
+                'regenerateAll' => __('Regenerate All', 'ai-post-scheduler'),
+                'regeneratingAll' => __('Regenerating all components...', 'ai-post-scheduler'),
+                'regenerateAllSuccess' => __('Components regenerated successfully.', 'ai-post-scheduler'),
+                'regenerateAllError' => __('Failed to regenerate all components.', 'ai-post-scheduler'),
                 'regenerateSuccess' => __('Component regenerated successfully!', 'ai-post-scheduler'),
                 'regenerateError' => __('Failed to regenerate component.', 'ai-post-scheduler'),
                 'save' => __('Save Changes', 'ai-post-scheduler'),
@@ -638,6 +667,17 @@ class AIPS_Admin_Assets {
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
+        }
+
+        // Settings Page Scripts
+        if (strpos($hook, 'aips-settings') !== false) {
+            wp_enqueue_script(
+                'aips-admin-settings',
+                AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
         }
     }
 }

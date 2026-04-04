@@ -27,6 +27,7 @@ class AIPS_DB_Manager {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
         add_action('wp_ajax_aips_wipe_db', array($this, 'ajax_wipe_db'));
+        add_action('wp_ajax_aips_flush_cron_events', array($this, 'ajax_flush_cron_events'));
     }
 
     /**
@@ -74,6 +75,7 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
+            correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
@@ -96,7 +98,8 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at)
+            KEY template_created (template_id, created_at),
+            KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -314,12 +317,19 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_notifications (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(100) NOT NULL,
+            title varchar(255) DEFAULT NULL,
             message text NOT NULL,
             url varchar(500) DEFAULT NULL,
+            level varchar(20) NOT NULL DEFAULT 'info',
+            meta longtext DEFAULT NULL,
+            dedupe_key varchar(191) DEFAULT NULL,
             is_read tinyint(1) NOT NULL DEFAULT 0,
+            read_at datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY type (type),
+            KEY level (level),
+            KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
             KEY created_at (created_at)
         ) $charset_collate;";
@@ -354,8 +364,15 @@ class AIPS_DB_Manager {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();
         $schema = $instance->get_schema();
+        global $wpdb;
+
         foreach ($schema as $sql) {
+            $pre_error = $wpdb->last_error;
             dbDelta($sql);
+
+            if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
+                return new WP_Error('db_install_failed', $wpdb->last_error);
+            }
         }
 
         // Seed default data for new installations or upgrades
@@ -363,6 +380,8 @@ class AIPS_DB_Manager {
 
         // Record that the DB schema is now at the current plugin version
         update_option('aips_db_version', AIPS_VERSION);
+
+        return true;
     }
 
     public function drop_tables() {
@@ -461,6 +480,78 @@ class AIPS_DB_Manager {
 
         $this->truncate_tables();
         wp_send_json_success(array('message' => 'Plugin data wiped successfully.'));
+    }
+
+    /**
+     * AJAX handler: flush all plugin WP-Cron events and re-register each exactly once.
+     *
+     * Removes every scheduled instance of every plugin cron hook (handles
+     * cases where duplicate/stacked events have accumulated), then schedules
+     * each hook once with its configured recurrence.
+     *
+     * @return void
+     */
+    public function ajax_flush_cron_events() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'ai-post-scheduler')));
+        }
+
+        $cron_events    = AI_Post_Scheduler::get_cron_events();
+        $unscheduled    = array();
+        $rescheduled    = array();
+        $failed         = array();
+
+        foreach ($cron_events as $hook => $config) {
+            $schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
+            $label    = isset($config['label']) ? $config['label'] : $hook;
+
+            // Remove all existing instances of this hook from the cron table.
+            wp_unschedule_hook($hook);
+            $unscheduled[] = $label;
+
+            // Re-register exactly once. Use a 60-second offset to avoid an
+            // immediate burst of AI calls right after flushing.
+            $scheduled = wp_schedule_event(time() + 60, $schedule, $hook);
+            if ($scheduled !== false) {
+                $rescheduled[] = $label;
+            } else {
+                $failed[] = $label;
+            }
+        }
+
+        if (!empty($failed)) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: %s: comma-separated hook labels that failed to reschedule */
+                    __('Cron events flushed but some hooks could not be rescheduled: %s', 'ai-post-scheduler'),
+                    implode(', ', $failed)
+                ),
+                'details' => array(
+                    'unscheduled' => $unscheduled,
+                    'rescheduled' => $rescheduled,
+                    'failed'      => $failed,
+                ),
+            ));
+            return;
+        }
+
+        wp_send_json_success(array(
+            'message' => sprintf(
+                /* translators: %d: number of cron hooks flushed and rescheduled */
+                _n(
+                    '%d WP-Cron event flushed and rescheduled successfully.',
+                    '%d WP-Cron events flushed and rescheduled successfully.',
+                    count($rescheduled),
+                    'ai-post-scheduler'
+                ),
+                count($rescheduled)
+            ),
+            'details' => array(
+                'unscheduled' => $unscheduled,
+                'rescheduled' => $rescheduled,
+            ),
+        ));
     }
 
     /**

@@ -305,6 +305,62 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			is_wp_error($result)
 		);
 	}
+
+	/**
+	 * Test should_regenerate_featured_image returns true when post already has a thumbnail.
+	 */
+	public function test_should_regenerate_featured_image_true_for_existing_thumbnail() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Post With Image',
+		));
+
+		$attachment_id = $this->factory->post->create(array(
+			'post_type' => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_title' => 'Existing Thumbnail',
+			'post_status' => 'inherit',
+		));
+
+		update_post_meta($post_id, '_thumbnail_id', $attachment_id);
+
+		$this->assertTrue($this->service->should_regenerate_featured_image($post_id));
+	}
+
+	/**
+	 * Test should_regenerate_featured_image returns true when original generation marked image as failed.
+	 */
+	public function test_should_regenerate_featured_image_true_for_failed_component_status() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Post Without Image',
+		));
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => false,
+			'post_content' => true,
+		)));
+
+		$this->assertTrue($this->service->should_regenerate_featured_image($post_id));
+	}
+
+	/**
+	 * Test should_regenerate_featured_image returns false when there is no existing or failed image generation.
+	 */
+	public function test_should_regenerate_featured_image_false_when_not_eligible() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'No Image Context',
+		));
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
+
+		$this->assertFalse($this->service->should_regenerate_featured_image($post_id));
+	}
 	
 	/**
 	 * Test that service handles structured content properly

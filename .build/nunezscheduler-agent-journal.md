@@ -176,3 +176,34 @@
 - `ai-post-scheduler/assets/js/admin-planner.js`
 - `ai-post-scheduler/includes/class-aips-planner.php`
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution, fulfilling the "from research to schedule in one flow" shortcut.
+
+## 2026-03-25 - Planner Optimization
+**Target Feature:** Planner (Topic Brainstorming and Bulk Scheduling/Generation)
+**Improvement:** Optimized the flow by not clearing the entire list of topics upon bulk generation or scheduling. Instead, the UI now removes only the successfully processed topics. The results panel is only hidden when all selected topics are consumed. This allows users to generate or schedule partial batches without losing their work.
+**Files Modified:** ai-post-scheduler/assets/js/admin-planner.js
+**Outcome:** Users can now incrementally process brainstormed topics (e.g., generating some immediately and scheduling others) without their remaining topics disappearing unexpectedly, preserving their workflow.
+
+## 2026-03-26 - Templates Controller Optimization
+**Target Feature:** Templates Controller
+**Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
+**Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
+
+## 2026-03-31 - Post Review Optimization
+**Target Feature:** Post Review
+**Improvement:** Added Bulk Regenerate functionality to handle multiple poor generations efficiently.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Users can now select multiple draft posts and regenerate them all at once, streamlining the workflow and reducing manual effort.
+
+## 2026-03-30 - Author Topics Bulk Generation Flow Optimization
+**Target Feature:** Author Topics Controller
+**Improvement:** Optimized the workflow for generating content from brainstormed topics by enforcing a bulk limit for synchronous generation. Prevents PHP timeouts and silent failures when generating many posts at once from the Author Topics grid. Limit is configurable via the `aips_bulk_run_now_limit` filter.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-author-topics-controller.php`
+**Outcome:** Enhances stability and user experience by preventing fatal server timeouts during bulk generation, providing clear error messages when limits are exceeded, rather than leaving the user with a broken interface or incomplete generation sessions.
+
+## 2026-03-31 - Article Structures Flow Optimization
+**Target Feature:** Article Structures
+**Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.

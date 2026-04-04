@@ -37,7 +37,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </a>
 
-            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('post_review')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
+            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-visibility aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($pending_reviews); ?></span>
@@ -194,6 +194,16 @@ if (!defined('ABSPATH')) {
                         <div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></div>
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Yet', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('Start generating content by creating templates and schedules.', 'ai-post-scheduler'); ?></p>
+                        <div class="aips-empty-state-actions">
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
+                                <span class="dashicons dashicons-plus-alt"></span>
+                                <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
+                            </a>
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
+                                <span class="dashicons dashicons-calendar-alt"></span>
+                                <?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
+                            </a>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>

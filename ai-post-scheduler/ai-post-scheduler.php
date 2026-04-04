@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 1.8
+ * Version: 2.0.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '1.8');
+define('AIPS_VERSION', '2.0.1');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -54,9 +54,9 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Automated Research', 'ai-post-scheduler' ),
             ),
-            'aips_send_review_notifications' => array(
+            'aips_notification_rollups' => array(
                 'schedule' => 'daily',
-                'label'   => __( 'Review Notifications', 'ai-post-scheduler' ),
+                'label'   => __( 'Notification Rollups', 'ai-post-scheduler' ),
             ),
             'aips_cleanup_export_files' => array(
                 'schedule' => 'daily',
@@ -166,7 +166,23 @@ final class AI_Post_Scheduler {
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
-        AIPS_DB_Manager::install_tables();
+        $install_result = AIPS_DB_Manager::install_tables();
+
+        if (is_wp_error($install_result)) {
+            $logger->log('Table installation failed during activation: ' . $install_result->get_error_message(), 'error');
+
+            $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
+            if ($notifications instanceof AIPS_Notifications) {
+                $notifications->system_error(array(
+                    'title'         => __('Database installation failed', 'ai-post-scheduler'),
+                    'error_code'    => $install_result->get_error_code(),
+                    'error_message' => $install_result->get_error_message(),
+                    'url'           => admin_url('admin.php?page=aips-status'),
+                    'dedupe_key'    => 'db_install_failed_activation',
+                    'dedupe_window' => 1800,
+                ));
+            }
+        }
         
         $crons = self::get_cron_events();
 
@@ -279,6 +295,7 @@ final class AI_Post_Scheduler {
         
         if (is_admin()) {
             new AIPS_DB_Manager();
+            new AIPS_Admin_Menu();
             new AIPS_Settings();
             new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();
@@ -318,9 +335,15 @@ final class AI_Post_Scheduler {
         }
         
         // Initialize schedulers (both admin and frontend)
-        new AIPS_Scheduler();
-        new AIPS_Author_Topics_Scheduler();
-        new AIPS_Author_Post_Generator();
+        $aips_scheduler = new AIPS_Scheduler();
+        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
+        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+
+        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
+        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+
+        $aips_author_post_generator = new AIPS_Author_Post_Generator();
+        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
 
@@ -340,6 +363,11 @@ function aips_init() {
 
 add_action('plugins_loaded', 'aips_init', 5);
 
+// Backward-compatibility alias: old review hook now triggers the rollup hook.
+add_action('aips_send_review_notifications', function() {
+    do_action('aips_notification_rollups');
+}, 1);
+
 // Register cleanup cron handler
 add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
 
@@ -351,6 +379,11 @@ add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
 function aips_cleanup_export_files_handler() {
 	// Clean up files older than 24 hours (86400 seconds)
 	$result = AIPS_Session_To_JSON::cleanup_old_exports(86400);
+
+    do_action('aips_export_cleanup_completed', array(
+        'deleted' => isset($result['deleted']) ? (int) $result['deleted'] : 0,
+        'errors'  => isset($result['errors']) && is_array($result['errors']) ? count($result['errors']) : 0,
+    ));
 	
 	// Log the cleanup results
 	if (class_exists('AIPS_Logger')) {
