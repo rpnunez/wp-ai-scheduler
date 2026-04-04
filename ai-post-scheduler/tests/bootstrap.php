@@ -1029,7 +1029,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
-        'class-aips-generation-logger.php',
         'class-aips-generation-context-factory.php',
         'class-aips-post-manager.php',
         'class-aips-post-creator.php',

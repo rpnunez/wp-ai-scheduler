@@ -291,7 +291,6 @@ Key classes:
 - `AIPS_History_Service`
 - `AIPS_History_Container`
 - `AIPS_History_Repository`
-- `AIPS_Generation_Logger`
 
 For important user actions, AI requests, automation runs, retries, and failures, prefer structured history events over ad-hoc logging.
 
