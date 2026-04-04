@@ -55,3 +55,7 @@
 ## 2026-03-31 - Standardize Search Clear Buttons Classes
 **Learning:** Discovered inconsistencies in the CSS classes for "Search" and "Clear" buttons across various admin panel filter interfaces where `.aips-btn-sm` was omitted, violating standard UI component consistency guidelines.
 **Action:** Replaced `class="aips-btn aips-btn-secondary"` with `class="aips-btn aips-btn-sm aips-btn-secondary"` strictly on search and clear buttons within `.aips-filter-right` sections in all admin PHP templates to ensure uniform appearance across the plugin interface.
+
+## 2026-04-03 - Added "Clear Filters" to PHP-driven Filter Bars
+**Learning:** While JS-driven search bars had clear buttons, the PHP-driven filter bars (for Author and Template dropdowns) lacked an easy way to reset the filters without manually selecting "All" and resubmitting.
+**Action:** Added a contextual "Clear Filters" ghost button next to the "Filter" submit button in `generated-posts.php` and `post-review.php` that only appears when a filter is actively applied.

@@ -60,9 +60,6 @@ class AIPS_Author_Topics_Scheduler {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
-		
-		// Hook into WordPress cron
-		add_action('aips_generate_author_topics', array($this, 'process_topic_generation'));
 	}
 	
 	/**
