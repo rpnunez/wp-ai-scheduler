@@ -473,27 +473,65 @@ class AIPS_Post_Review {
 			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
 		}
 
+		// Determine batch size and limit the number of items processed in a single request.
+		$total_requested   = count($items);
+		$max_batch_size    = apply_filters('aips_post_review_bulk_regenerate_max_batch', 5);
+		$items_to_process  = $items;
+		$batch_was_limited = false;
+
+		if ($max_batch_size > 0 && $total_requested > $max_batch_size) {
+			$items_to_process  = array_slice($items, 0, $max_batch_size);
+			$batch_was_limited = true;
+		}
+
 		// Create history container for bulk regenerate operation
 		$history = $this->history_service->create('bulk_regenerate', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_bulk_regenerate_posts',
-			'entity_type' => 'draft_posts',
-			'entity_count' => count($items)
+			'user_id'        => get_current_user_id(),
+			'source'         => 'manual_ui',
+			'trigger'        => 'ajax_bulk_regenerate_posts',
+			'entity_type'    => 'draft_posts',
+			// Track how many posts were requested for regeneration, even if we process a subset.
+			'entity_count'   => $total_requested,
+			'processed_count' => count($items_to_process),
 		));
 
 		$history->record_user_action(
 			'bulk_regenerate_posts',
-			sprintf(__('User initiated bulk regenerate for %d draft posts', 'ai-post-scheduler'), count($items)),
-			array('item_count' => count($items))
+			sprintf(
+				/* translators: 1: number of requested draft posts, 2: number of processed draft posts */
+				__('User initiated bulk regenerate for %1$d draft posts (processing %2$d in this batch)', 'ai-post-scheduler'),
+				$total_requested,
+				count($items_to_process)
+			),
+			array(
+				'item_count'      => $total_requested,
+				'processed_count' => count($items_to_process),
+			)
 		);
+
+		if ($batch_was_limited) {
+			$history->record_activity(
+				'bulk_regenerate_batch_limited',
+				sprintf(
+					/* translators: 1: max batch size, 2: total requested items */
+					__('Bulk regenerate batch limited to %1$d items out of %2$d requested to avoid timeouts.', 'ai-post-scheduler'),
+					$max_batch_size,
+					$total_requested
+				),
+				array(
+					'max_batch_size'   => $max_batch_size,
+					'total_requested'  => $total_requested,
+					'processed_in_batch' => count($items_to_process),
+				)
+			);
+		}
 
 		$success_count = 0;
 		$failed_count = 0;
 		$generator = new AIPS_Generator();
 		$template_repository = new AIPS_Template_Repository();
 
-		foreach ($items as $item) {
+		foreach ($items_to_process as $item) {
 			if (!is_array($item)) {
 				$failed_count++;
 				continue;
