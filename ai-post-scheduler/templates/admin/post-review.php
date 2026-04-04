@@ -104,6 +104,7 @@ $templates = $template_repository->get_all();
 							<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 							<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
 							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+							<option value="regenerate"><?php esc_html_e('Regenerate', 'ai-post-scheduler'); ?></option>
 						</select>
 						<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
 					</div>
