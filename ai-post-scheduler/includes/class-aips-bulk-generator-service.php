@@ -8,6 +8,7 @@
  *   - AIPS_Author_Topics_Controller::ajax_bulk_generate_from_queue
  *   - AIPS_Planner::ajax_bulk_generate_now
  *   - AIPS_Post_Review::ajax_bulk_regenerate_posts
+ *   - AIPS_Research_Controller::ajax_generate_trending_topics_bulk
  *
  * Each caller passes a $generate_fn callable — the only thing that truly
  * differs per call site.  Everything else (limit enforcement, generation
