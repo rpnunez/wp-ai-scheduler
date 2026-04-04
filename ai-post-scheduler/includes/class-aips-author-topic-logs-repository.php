@@ -146,19 +146,6 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 	
 	/**
-	 * Get logs by post ID.
-	 *
-	 * @param int $post_id WordPress post ID.
-	 * @return array Array of log objects.
-	 */
-	public function get_by_post($post_id) {
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC",
-			$post_id
-		));
-	}
-	
-	/**
 	 * Delete all logs for the given topic IDs.
 	 *
 	 * @param int[] $topic_ids Array of author_topic IDs whose logs should be deleted.
