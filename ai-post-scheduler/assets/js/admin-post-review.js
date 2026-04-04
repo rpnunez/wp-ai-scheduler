@@ -335,19 +335,49 @@
                     nonce: aipsPostReviewL10n.nonce
                 },
                 success: function(response) {
-                    if (response.success) {
-                        var msg = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', response.data.success_count || count);
+                    if (response && response.success) {
+                        var successCount = (response.data && typeof response.data.success_count !== 'undefined') ? response.data.success_count : count;
+                        var msg = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', successCount);
                         AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
 
-                        checkedBoxes.each(function() {
+                        // Determine which items actually succeeded so we only remove those rows.
+                        var successIds = [];
+                        if (response.data) {
+                            if ($.isArray(response.data.success_ids)) {
+                                successIds = response.data.success_ids;
+                            } else if ($.isArray(response.data.items)) {
+                                $.each(response.data.items, function(index, item) {
+                                    if (item && item.status === 'success' && typeof item.post_id !== 'undefined') {
+                                        successIds.push(item.post_id);
+                                    }
+                                });
+                            }
+                        }
+
+                        var $rowsToRemove = checkedBoxes;
+                        if (successIds.length) {
+                            $rowsToRemove = checkedBoxes.filter(function() {
+                                var postId = $(this).data('post-id');
+                                return $.inArray(postId, successIds) !== -1;
+                            });
+                        }
+
+                        $rowsToRemove.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
                                 $(this).remove();
                                 updateDraftCount();
                                 checkEmptyState();
                             });
                         });
+
+                        // Surface partial failures when reported by the server.
+                        if (response.data && response.data.failed_count) {
+                            var failMsg = aipsPostReviewL10n.bulkRegeneratePartialFailure || aipsPostReviewL10n.regenerateError;
+                            failMsg = failMsg.replace('%d', response.data.failed_count);
+                            AIPS.Utilities.showToast(failMsg, 'warning');
+                        }
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+                        AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
                     }
                 },
                 error: function() {
