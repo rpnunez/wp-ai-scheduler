@@ -140,24 +140,6 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Partial Generations', 'ai-post-scheduler'),
-            __('Partial Generations', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-partial-generations',
-            array($this, 'render_partial_generations_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Pending Review', 'ai-post-scheduler'),
-            __('Pending Review', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-pending-review',
-            array($this, 'render_pending_review_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -348,38 +330,6 @@ class AIPS_Admin_Menu {
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
         $controller->render_page();
-    }
-
-    /**
-     * Render the Partial Generations page.
-     *
-     * Redirects to the Partial Generations tab on the Content page via JavaScript,
-     * since render callbacks fire after HTTP headers have been sent and hash
-     * fragments require client-side navigation.
-     *
-     * @return void
-     */
-    public function render_partial_generations_page() {
-        $url = AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts' ) . '#aips-partial-generations';
-        ?>
-        <script>window.location.replace( '<?php echo esc_js( $url ); ?>' );</script>
-        <?php
-    }
-
-    /**
-     * Render the Pending Review page.
-     *
-     * Redirects to the Pending Review tab on the Content page via JavaScript,
-     * since render callbacks fire after HTTP headers have been sent and hash
-     * fragments require client-side navigation.
-     *
-     * @return void
-     */
-    public function render_pending_review_page() {
-        $url = AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts' ) . '#aips-pending-review';
-        ?>
-        <script>window.location.replace( '<?php echo esc_js( $url ); ?>' );</script>
-        <?php
     }
 
     /*
