@@ -17,15 +17,23 @@
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
 
-	Object.assign(AIPS, {
+	/**
+	 * AIPS.SystemStatus — self-contained module for the System Status admin page.
+	 *
+	 * Follows the same init() / bindEvents() convention used throughout this
+	 * plugin (e.g. AIPS.History) so the page can be bootstrapped with a single
+	 * AIPS.SystemStatus.init() call without polluting the global AIPS namespace
+	 * with page-specific handlers.
+	 */
+	AIPS.SystemStatus = {
 
 		/**
 		 * Initialise System Status page behaviour.
 		 *
 		 * @return {void}
 		 */
-		initSystemStatus: function() {
-			this.bindSystemStatusEvents();
+		init: function() {
+			this.bindEvents();
 		},
 
 		/**
@@ -33,9 +41,9 @@
 		 *
 		 * @return {void}
 		 */
-		bindSystemStatusEvents: function() {
-			$(document).on('click', '.aips-toggle-log-details', $.proxy(this.toggleLogDetails, this));
-			$(document).on('click', '.aips-reset-circuit-breaker', $.proxy(this.resetCircuitBreaker, this));
+		bindEvents: function() {
+			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
+			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 		},
 
 		/**
@@ -108,10 +116,11 @@
 			});
 		},
 
-	});
+	};
 
 	$(document).ready(function() {
-		AIPS.initSystemStatus();
+		AIPS.SystemStatus.init();
 	});
 
 })(jQuery);
+
