@@ -40,9 +40,10 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	public function test_ajax_actions_registered() {
 		$this->assertTrue(has_action('wp_ajax_aips_get_post_components'));
 		$this->assertTrue(has_action('wp_ajax_aips_regenerate_component'));
+		$this->assertTrue(has_action('wp_ajax_aips_regenerate_all_components'));
 		$this->assertTrue(has_action('wp_ajax_aips_save_post_components'));
 	}
-	
+
 	/**
 	 * Test get_post_components requires proper nonce
 	 */

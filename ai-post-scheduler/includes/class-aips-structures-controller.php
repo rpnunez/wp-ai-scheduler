@@ -59,7 +59,7 @@ class AIPS_Structures_Controller {
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         $name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
-        $sections = isset($_POST['sections']) && is_array($_POST['sections']) ? array_map('sanitize_text_field', wp_unslash($_POST['sections'])) : array();
+        $sections = isset($_POST['sections']) && is_array($_POST['sections']) ? AIPS_Utilities::sanitize_string_array(wp_unslash($_POST['sections'])) : array();
         $prompt_template = isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '';
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         $is_default = isset($_POST['is_default']) ? 1 : 0;
@@ -75,13 +75,15 @@ class AIPS_Structures_Controller {
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             }
-            wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id));
+            $structure = $this->repo->get_by_id($id);
+            wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id, 'structure' => $structure));
         } else {
             $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
             if (is_wp_error($new_id)) {
                 wp_send_json_error(array('message' => $new_id->get_error_message()));
             }
-            wp_send_json_success(array('message' => __('Structure created.', 'ai-post-scheduler'), 'structure_id' => $new_id));
+            $structure = $this->repo->get_by_id($new_id);
+            wp_send_json_success(array('message' => __('Structure created.', 'ai-post-scheduler'), 'structure_id' => $new_id, 'structure' => $structure));
         }
     }
 

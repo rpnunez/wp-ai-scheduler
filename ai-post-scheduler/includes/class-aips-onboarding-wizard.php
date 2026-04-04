@@ -447,8 +447,8 @@ class AIPS_Onboarding_Wizard {
 		wp_send_json_success(array(
 			'message' => __('Post generated.', 'ai-post-scheduler'),
 			'post_id' => $post_id,
-			'edit_url' => get_edit_post_link($post_id, 'raw'),
-			'view_url' => get_permalink($post_id),
+			'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw')),
+			'view_url' => esc_url_raw(get_permalink($post_id)),
 		));
 	}
 

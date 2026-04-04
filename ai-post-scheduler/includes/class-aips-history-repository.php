@@ -498,11 +498,11 @@ class AIPS_History_Repository {
         ");
 
         $stats = array(
-            'total' => (int) $results->total,
-            'completed' => (int) $results->completed,
-            'failed' => (int) $results->failed,
-            'processing' => (int) $results->processing,
-            'partial' => (int) $results->partial,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'completed' => isset($results->completed) ? (int) $results->completed : 0,
+            'failed' => isset($results->failed) ? (int) $results->failed : 0,
+            'processing' => isset($results->processing) ? (int) $results->processing : 0,
+            'partial' => isset($results->partial) ? (int) $results->partial : 0,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
@@ -701,7 +701,10 @@ class AIPS_History_Repository {
      * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
      * @return array Array of log entry objects.
      */
-    public function get_logs_by_history_id($history_id, $type_filter = array()) {
+    public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) {
+        $limit = absint($limit);
+        $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+
         if (!empty($type_filter)) {
             $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
             $args = array_merge(array($history_id), $type_filter);
@@ -709,7 +712,7 @@ class AIPS_History_Repository {
                 $this->wpdb->prepare(
                     "SELECT * FROM {$this->table_name_log}
                      WHERE history_id = %d AND history_type_id IN ($placeholders)
-                     ORDER BY timestamp ASC",
+                     ORDER BY timestamp DESC" . $limit_sql,
                     $args
                 )
             );
@@ -717,7 +720,7 @@ class AIPS_History_Repository {
 
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp DESC" . $limit_sql,
                 $history_id
             )
         );
@@ -970,6 +973,34 @@ class AIPS_History_Repository {
             'deleted' => $deleted !== false ? (int) $deleted : 0,
             'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
         );
+    }
+
+    /**
+     * Determine whether featured image generation failed for a history run.
+     *
+     * @param int $history_id History ID.
+     * @return bool True when featured image generation was attempted and failed.
+     */
+    public function did_featured_image_generation_fail($history_id) {
+        $history_id = absint($history_id);
+
+        if (!$history_id) {
+            return false;
+        }
+
+        $count = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM {$this->table_name_log}
+            WHERE history_id = %d
+            AND log_type = 'metric_generation_result'
+            AND details LIKE %s
+            AND details LIKE %s",
+            $history_id,
+            '%"image_attempted":true%',
+            '%"image_success":false%'
+        ));
+
+        return ((int) $count) > 0;
     }
 
     /**
