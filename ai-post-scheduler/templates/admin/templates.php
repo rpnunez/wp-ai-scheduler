@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="5">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="3">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -207,19 +207,11 @@ if (!defined('ABSPATH')) {
                 </div>
                 <div class="aips-wizard-step" data-step="2">
                     <div class="aips-step-number">2</div>
-                    <div class="aips-step-label"><?php esc_html_e('Title & Excerpt', 'ai-post-scheduler'); ?></div>
+                    <div class="aips-step-label"><?php esc_html_e('Generation Settings', 'ai-post-scheduler'); ?></div>
                 </div>
                 <div class="aips-wizard-step" data-step="3">
                     <div class="aips-step-number">3</div>
-                    <div class="aips-step-label"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></div>
-                </div>
-                <div class="aips-wizard-step" data-step="4">
-                    <div class="aips-step-number">4</div>
-                    <div class="aips-step-label"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></div>
-                </div>
-                <div class="aips-wizard-step" data-step="5">
-                    <div class="aips-step-number">5</div>
-                    <div class="aips-step-label"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></div>
+                    <div class="aips-step-label"><?php esc_html_e('Review & Publish', 'ai-post-scheduler'); ?></div>
                 </div>
             </div>
             
@@ -227,14 +219,14 @@ if (!defined('ABSPATH')) {
                 <form id="aips-template-form">
                     <input type="hidden" name="template_id" id="template_id" value="">
                     
-                    <!-- Step 1: Basic Info (Name + Description) -->
+                    <!-- Step 1: Basic Info + Content Prompt -->
                     <div class="aips-wizard-step-content" data-step="1">
                         <h3>
-                            <?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Give your template a unique name and optional description to help organize your templates.', 'ai-post-scheduler'); ?>"></span>
+                            <?php esc_html_e('Basic Information & Content', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Give your template a unique name and define what content the AI should generate.', 'ai-post-scheduler'); ?>"></span>
                         </h3>
-                        <p class="description"><?php esc_html_e('Give your template a name and brief description to help you identify it later.', 'ai-post-scheduler'); ?></p>
-                        
+                        <p class="description"><?php esc_html_e('Define your template name and the content prompt that guides AI to generate your posts.', 'ai-post-scheduler'); ?></p>
+
                         <div class="aips-form-row">
                             <label for="template_name">
                                 <?php esc_html_e('Template Name', 'ai-post-scheduler'); ?> <span class="required">*</span>
@@ -243,25 +235,36 @@ if (!defined('ABSPATH')) {
                             <input type="text" id="template_name" name="name" required class="regular-text" placeholder="<?php esc_attr_e('e.g., Tech News Blog Post', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('A descriptive name for your template', 'ai-post-scheduler'); ?></p>
                         </div>
-                        
+
                         <div class="aips-form-row">
                             <label for="template_description">
                                 <?php esc_html_e('Template Description', 'ai-post-scheduler'); ?>
                                 <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional notes about what this template is used for, target audience, or any special instructions.', 'ai-post-scheduler'); ?>"></span>
                             </label>
-                            <textarea id="template_description" name="description" rows="4" class="large-text" placeholder="<?php esc_attr_e('Optional: Describe what this template is used for...', 'ai-post-scheduler'); ?>"></textarea>
+                            <textarea id="template_description" name="description" rows="3" class="large-text" placeholder="<?php esc_attr_e('Optional: Describe what this template is used for...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
                         </div>
+
+                        <div class="aips-form-row">
+                            <label for="prompt_template">
+                                <?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
+                            <textarea id="prompt_template" name="prompt_template" rows="8" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
+                            <p class="description">
+                                <?php esc_html_e('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}', 'ai-post-scheduler'); ?>
+                            </p>
+                        </div>
                     </div>
-                    
-                    <!-- Step 2: Title & Excerpt -->
+
+                    <!-- Step 2: Generation Settings (Title & Excerpt, Voice, Quantity, Sources, Featured Image) -->
                     <div class="aips-wizard-step-content" data-step="2" style="display: none;">
                         <h3>
-                            <?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.', 'ai-post-scheduler'); ?>"></span>
+                            <?php esc_html_e('Generation Settings', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles, excerpts, and other post components.', 'ai-post-scheduler'); ?>"></span>
                         </h3>
-                        <p class="description"><?php esc_html_e('Configure how the AI generates titles and excerpts for your posts.', 'ai-post-scheduler'); ?></p>
-                        
+                        <p class="description"><?php esc_html_e('Configure the AI generation settings for your posts, including title, excerpt, voice, and media options.', 'ai-post-scheduler'); ?></p>
+
                         <div class="aips-form-row">
                             <label for="title_prompt">
                                 <?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?>
@@ -314,27 +317,7 @@ if (!defined('ABSPATH')) {
                                 </div>
                             </details>
                         </div>
-                    </div>
-                    
-                    <!-- Step 3: Content -->
-                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
-                        <h3>
-                            <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
-                        </h3>
-                        <p class="description"><?php esc_html_e('Define the content prompt that guides AI to generate your post content.', 'ai-post-scheduler'); ?></p>
-                        
-                        <div class="aips-form-row">
-                            <label for="prompt_template">
-                                <?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span>
-                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.', 'ai-post-scheduler'); ?>"></span>
-                            </label>
-                            <textarea id="prompt_template" name="prompt_template" rows="8" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
-                            <p class="description">
-                                <?php esc_html_e('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}', 'ai-post-scheduler'); ?>
-                            </p>
-                        </div>
-                        
+
                         <div class="aips-form-row">
                             <label for="voice_id"><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></label>
                             <div class="aips-voice-selector">
@@ -345,7 +328,7 @@ if (!defined('ABSPATH')) {
                                 <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
-                        
+
                         <div class="aips-form-row">
                             <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>
                             <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
@@ -393,13 +376,7 @@ if (!defined('ABSPATH')) {
                                 <?php endif; ?>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Step 4: Featured Image -->
-                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
-                        <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>
-                        <p class="description"><?php esc_html_e('Configure whether and how to generate featured images for your posts.', 'ai-post-scheduler'); ?></p>
-                        
+
                         <div class="aips-form-row">
                             <label class="aips-checkbox-label">
                                 <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1">
@@ -443,12 +420,13 @@ if (!defined('ABSPATH')) {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Step 5: Summary & Post Settings -->
-                    <div class="aips-wizard-step-content" data-step="5" style="display: none;">
+
+
+                    <!-- Step 3: Review & Post Settings -->
+                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
                         <h3><?php esc_html_e('Review & Post Settings', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Review your template configuration and set post publishing options.', 'ai-post-scheduler'); ?></p>
-                        
+
                         <!-- Summary Display -->
                         <div class="aips-template-summary">
                             <h4><?php esc_html_e('Template Summary', 'ai-post-scheduler'); ?></h4>
@@ -483,10 +461,10 @@ if (!defined('ABSPATH')) {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Post Settings -->
                         <h4 style="margin-top: 20px;"><?php esc_html_e('Post Settings', 'ai-post-scheduler'); ?></h4>
-                        
+
                         <div class="aips-form-columns">
                             <div class="aips-form-row">
                                 <label for="post_status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
@@ -496,7 +474,7 @@ if (!defined('ABSPATH')) {
                                     <option value="publish"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></option>
                                 </select>
                             </div>
-                            
+
                             <div class="aips-form-row">
                                 <label for="post_category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></label>
                                 <select id="post_category" name="post_category">
@@ -507,13 +485,13 @@ if (!defined('ABSPATH')) {
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="aips-form-row">
                             <label for="post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label>
                             <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>
                         </div>
-                        
+
                         <div class="aips-form-row">
                             <label for="post_author"><?php esc_html_e('Author', 'ai-post-scheduler'); ?></label>
                             <select id="post_author" name="post_author">
@@ -524,7 +502,7 @@ if (!defined('ABSPATH')) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        
+
                         <div class="aips-form-row">
                             <label class="aips-checkbox-label">
                                 <input type="checkbox" id="is_active" name="is_active" value="1" checked>
