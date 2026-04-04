@@ -195,6 +195,13 @@
 **Files Modified:** `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
 **Outcome:** Users can now select multiple draft posts and regenerate them all at once, streamlining the workflow and reducing manual effort.
 
+## 2026-03-30 - Author Topics Bulk Generation Flow Optimization
+**Target Feature:** Author Topics Controller
+**Improvement:** Optimized the workflow for generating content from brainstormed topics by enforcing a bulk limit for synchronous generation. Prevents PHP timeouts and silent failures when generating many posts at once from the Author Topics grid. Limit is configurable via the `aips_bulk_run_now_limit` filter.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-author-topics-controller.php`
+**Outcome:** Enhances stability and user experience by preventing fatal server timeouts during bulk generation, providing clear error messages when limits are exceeded, rather than leaving the user with a broken interface or incomplete generation sessions.
+
 ## 2026-03-31 - Article Structures Flow Optimization
 **Target Feature:** Article Structures
 **Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
