@@ -113,11 +113,11 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 						_n(
 							'%s item',
 							'%s items',
-							$status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'],
+							$total_items,
 							'ai-post-scheduler'
 						)
 					),
-					number_format_i18n( $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] )
+					number_format_i18n( $total_items )
 				);
 				?>
 			</span>

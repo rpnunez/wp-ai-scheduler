@@ -93,20 +93,31 @@ class AIPS_Taxonomy_Repository {
 	 */
 	public function insert($data) {
 		$defaults = array(
-			'name' => '',
-			'taxonomy_type' => '',
-			'status' => 'pending',
-			'base_post_ids' => '',
+			'name'              => '',
+			'taxonomy_type'     => '',
+			'status'            => 'pending',
+			'base_post_ids'     => '',
 			'generation_prompt' => '',
-			'created_at' => current_time('mysql'),
+			'created_at'        => current_time('mysql'),
 		);
 
-		$data = wp_parse_args($data, $defaults);
+		$allowed_columns = array(
+			'name'              => '%s',
+			'taxonomy_type'     => '%s',
+			'status'            => '%s',
+			'base_post_ids'     => '%s',
+			'generation_prompt' => '%s',
+			'created_at'        => '%s',
+		);
+
+		$data   = wp_parse_args($data, $defaults);
+		$row    = array_intersect_key($data, $allowed_columns);
+		$format = array_values(array_intersect_key($allowed_columns, $row));
 
 		$result = $this->wpdb->insert(
 			$this->table_name,
-			$data,
-			array('%s', '%s', '%s', '%s', '%s', '%s')
+			$row,
+			$format
 		);
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -133,13 +144,12 @@ class AIPS_Taxonomy_Repository {
 	 * Update the status of a taxonomy item.
 	 *
 	 * @param int    $id     Taxonomy item ID.
-	 * @param string $status New status (pending, approved, rejected).
-	 * @param int    $user_id User ID making the change.
+	 * @param string $status New status (pending, approved, rejected, created).
 	 * @return bool True on success, false on failure.
 	 */
-	public function update_status($id, $status, $user_id = 0) {
+	public function update_status($id, $status) {
 		return $this->update($id, array(
-			'status' => $status,
+			'status'     => $status,
 			'updated_at' => current_time('mysql'),
 		));
 	}
@@ -183,8 +193,17 @@ class AIPS_Taxonomy_Repository {
 			),
 		);
 
+		$taxonomy_type_map = array(
+			'category' => 'categories',
+			'post_tag'  => 'tags',
+		);
+
 		foreach ($results as $row) {
-			$type_key = $row->taxonomy_type === 'category' ? 'categories' : 'tags';
+			if (!isset($taxonomy_type_map[$row->taxonomy_type])) {
+				continue;
+			}
+
+			$type_key = $taxonomy_type_map[$row->taxonomy_type];
 			if (isset($counts[$type_key][$row->status])) {
 				$counts[$type_key][$row->status] = (int) $row->count;
 			}
