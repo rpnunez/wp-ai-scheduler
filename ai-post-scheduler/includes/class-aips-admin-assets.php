@@ -670,6 +670,13 @@ class AIPS_Admin_Assets {
         }
 
         if (strpos($hook, 'aips-taxonomy') !== false) {
+            wp_enqueue_style(
+                'aips-authors-style',
+                AIPS_PLUGIN_URL . 'assets/css/authors.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-taxonomy',
                 AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',

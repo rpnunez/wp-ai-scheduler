@@ -30,11 +30,28 @@ class AIPS_Taxonomy_Controller {
 	private $history_service;
 
 	/**
-	 * Initialize the controller.
+	 * @var AIPS_Prompt_Builder_Taxonomy Prompt builder for taxonomy generation.
 	 */
-	public function __construct() {
-		$this->repository      = new AIPS_Taxonomy_Repository();
-		$this->history_service = new AIPS_History_Service();
+	private $prompt_builder;
+
+	/**
+	 * @var AIPS_AI_Service AI service for text generation.
+	 */
+	private $ai_service;
+
+	/**
+	 * Initialize the controller.
+	 *
+	 * @param AIPS_Taxonomy_Repository|null     $repository Repository for taxonomy items.
+	 * @param AIPS_History_Service|null         $history_service History service.
+	 * @param AIPS_Prompt_Builder_Taxonomy|null $prompt_builder Prompt builder for taxonomy suggestions.
+	 * @param AIPS_AI_Service|null              $ai_service AI service.
+	 */
+	public function __construct($repository = null, $history_service = null, $prompt_builder = null, $ai_service = null) {
+		$this->repository      = $repository ?: new AIPS_Taxonomy_Repository();
+		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Taxonomy();
+		$this->ai_service      = $ai_service ?: new AIPS_AI_Service();
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_taxonomy_items', array($this, 'ajax_get_taxonomy_items'));
@@ -45,6 +62,7 @@ class AIPS_Taxonomy_Controller {
 		add_action('wp_ajax_aips_bulk_approve_taxonomy', array($this, 'ajax_bulk_approve_taxonomy'));
 		add_action('wp_ajax_aips_bulk_reject_taxonomy', array($this, 'ajax_bulk_reject_taxonomy'));
 		add_action('wp_ajax_aips_bulk_delete_taxonomy', array($this, 'ajax_bulk_delete_taxonomy'));
+		add_action('wp_ajax_aips_bulk_create_taxonomy_terms', array($this, 'ajax_bulk_create_taxonomy_terms'));
 		add_action('wp_ajax_aips_create_taxonomy_term', array($this, 'ajax_create_taxonomy_term'));
 		add_action('wp_ajax_aips_search_posts', array($this, 'ajax_search_posts'));
 	}
@@ -72,7 +90,7 @@ class AIPS_Taxonomy_Controller {
 			$items = $this->repository->get_by_type($taxonomy_type);
 		}
 
-		wp_send_json_success(array('items' => $items));
+		wp_send_json_success($this->build_items_response($items));
 	}
 
 	/**
@@ -133,7 +151,8 @@ class AIPS_Taxonomy_Controller {
 
 		wp_send_json_success(array(
 			'message' => sprintf(__('%d taxonomy items generated successfully.', 'ai-post-scheduler'), count($result)),
-			'items' => $result
+			'items' => $result,
+			'stats' => $this->get_stats_payload(),
 		));
 	}
 
@@ -146,13 +165,6 @@ class AIPS_Taxonomy_Controller {
 	 * @return array|WP_Error Array of generated items or WP_Error on failure.
 	 */
 	private function generate_taxonomy_items($taxonomy_type, $post_ids, $generation_prompt = '') {
-		// Get AI service
-		if (!class_exists('Meow_MWAI_Core')) {
-			return new WP_Error('ai_not_available', __('AI Engine plugin is not installed or active.', 'ai-post-scheduler'));
-		}
-
-		$ai_service = new AIPS_AI_Service();
-
 		// Build post content summary
 		$post_contents = array();
 		foreach ($post_ids as $post_id) {
@@ -165,26 +177,15 @@ class AIPS_Taxonomy_Controller {
 			}
 		}
 
-		// Build AI prompt
-		$type_label = $taxonomy_type === 'category' ? 'categories' : 'tags';
-		$prompt = "Based on the following posts, generate appropriate {$type_label} for a WordPress site.\n\n";
-		$prompt .= "Posts:\n";
-		foreach ($post_contents as $content) {
-			$prompt .= "- Title: {$content['title']}\n";
-			if (!empty($content['excerpt'])) {
-				$prompt .= "  Excerpt: {$content['excerpt']}\n";
-			}
+		if (empty($post_contents)) {
+			return new WP_Error('taxonomy_no_posts', __('No valid posts were found for taxonomy generation.', 'ai-post-scheduler'));
 		}
 
-		if (!empty($generation_prompt)) {
-			$prompt .= "\n\nAdditional instructions: {$generation_prompt}\n";
-		}
-
-		$prompt .= "\n\nGenerate 5-10 relevant {$type_label}. Return only the {$type_label} names, one per line, without numbering or bullet points.";
+		$prompt = $this->prompt_builder->build($taxonomy_type, $post_contents, $generation_prompt);
 
 		// Call AI service
 		try {
-			$response = $ai_service->generate_text($prompt);
+			$response = $this->ai_service->generate_text($prompt);
 			if (is_wp_error($response)) {
 				return $response;
 			}
@@ -220,6 +221,78 @@ class AIPS_Taxonomy_Controller {
 		} catch (Exception $e) {
 			return new WP_Error('ai_generation_failed', $e->getMessage());
 		}
+	}
+
+	/**
+	 * Build the standard item list response payload.
+	 *
+	 * @param array $items Taxonomy items.
+	 * @return array
+	 */
+	private function build_items_response($items) {
+		return array(
+			'items' => $items,
+			'stats' => $this->get_stats_payload(),
+		);
+	}
+
+	/**
+	 * Get summary stats for the Taxonomy page.
+	 *
+	 * @return array
+	 */
+	private function get_stats_payload() {
+		$status_counts = $this->repository->get_status_counts();
+
+		$categories_total = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'];
+		$tags_total       = $status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
+
+		return array(
+			'counts' => $status_counts,
+			'pending_total' => $status_counts['categories']['pending'] + $status_counts['tags']['pending'],
+			'approved_total' => $status_counts['categories']['approved'] + $status_counts['tags']['approved'],
+			'rejected_total' => $status_counts['categories']['rejected'] + $status_counts['tags']['rejected'],
+			'categories_total' => $categories_total,
+			'tags_total' => $tags_total,
+			'total_items' => $categories_total + $tags_total,
+		);
+	}
+
+	/**
+	 * Create a WordPress taxonomy term for an approved taxonomy item.
+	 *
+	 * @param int $item_id Taxonomy item ID.
+	 * @return array|WP_Error
+	 */
+	private function create_taxonomy_term_for_item($item_id) {
+		$item = $this->repository->get_by_id($item_id);
+
+		if (!$item) {
+			return new WP_Error('taxonomy_item_not_found', __('Item not found.', 'ai-post-scheduler'));
+		}
+
+		if ($item->status !== 'approved') {
+			return new WP_Error('taxonomy_item_not_approved', __('Only approved items can be created as terms.', 'ai-post-scheduler'));
+		}
+
+		if (!empty($item->term_id)) {
+			return new WP_Error('taxonomy_term_exists', __('A WordPress term has already been created for this item.', 'ai-post-scheduler'));
+		}
+
+		$term = wp_insert_term($item->name, $item->taxonomy_type);
+		if (is_wp_error($term)) {
+			return $term;
+		}
+
+		$this->repository->update($item_id, array(
+			'term_id' => $term['term_id'],
+			'updated_at' => current_time('mysql'),
+		));
+
+		return array(
+			'item' => $this->repository->get_by_id($item_id),
+			'term_id' => (int) $term['term_id'],
+		);
 	}
 
 	/**
@@ -443,6 +516,49 @@ class AIPS_Taxonomy_Controller {
 			'message'       => $message,
 			'success_count' => $success_count,
 			'failed_count'  => $failed_count,
+			'stats'         => $this->get_stats_payload(),
+		));
+	}
+
+	/**
+	 * AJAX handler for bulk creating WordPress taxonomy terms.
+	 */
+	public function ajax_bulk_create_taxonomy_terms() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
+
+		if (empty($item_ids)) {
+			wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+		}
+
+		$success_count = 0;
+		$failed_count  = 0;
+
+		foreach ($item_ids as $item_id) {
+			$result = $this->create_taxonomy_term_for_item($item_id);
+			if (is_wp_error($result)) {
+				$failed_count++;
+				continue;
+			}
+
+			$success_count++;
+		}
+
+		$message = sprintf(__('%d terms created successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+		}
+
+		wp_send_json_success(array(
+			'message'       => $message,
+			'success_count' => $success_count,
+			'failed_count'  => $failed_count,
+			'stats'         => $this->get_stats_payload(),
 		));
 	}
 
@@ -462,32 +578,17 @@ class AIPS_Taxonomy_Controller {
 			wp_send_json_error(array('message' => __('Invalid item ID.', 'ai-post-scheduler')));
 		}
 
-		$item = $this->repository->get_by_id($item_id);
+		$result = $this->create_taxonomy_term_for_item($item_id);
 
-		if (!$item) {
-			wp_send_json_error(array('message' => __('Item not found.', 'ai-post-scheduler')));
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
-
-		if ($item->status !== 'approved') {
-			wp_send_json_error(array('message' => __('Only approved items can be created as terms.', 'ai-post-scheduler')));
-		}
-
-		// Create the WordPress term
-		$term = wp_insert_term($item->name, $item->taxonomy_type);
-
-		if (is_wp_error($term)) {
-			wp_send_json_error(array('message' => $term->get_error_message()));
-		}
-
-		// Update item to mark it as created
-		$this->repository->update($item_id, array(
-			'term_id' => $term['term_id'],
-			'updated_at' => current_time('mysql'),
-		));
 
 		wp_send_json_success(array(
 			'message' => __('Term created successfully.', 'ai-post-scheduler'),
-			'term_id' => $term['term_id']
+			'term_id' => $result['term_id'],
+			'item'    => $result['item'],
+			'stats'   => $this->get_stats_payload(),
 		));
 	}
 

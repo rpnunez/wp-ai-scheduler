@@ -79,6 +79,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
+						<option value="generate_terms"><?php esc_html_e('Generate Terms', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
 					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
@@ -112,11 +113,11 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 						_n(
 							'%s item',
 							'%s items',
-							$status_counts['categories']['pending'],
+							$status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'],
 							'ai-post-scheduler'
 						)
 					),
-					number_format_i18n( $status_counts['categories']['pending'] )
+					number_format_i18n( $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] )
 				);
 				?>
 			</span>
@@ -149,6 +150,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				<label for="base_posts"><?php esc_html_e('Base Posts', 'ai-post-scheduler'); ?></label>
 				<input type="text" id="base_posts" name="base_posts" class="aips-form-input" placeholder="<?php esc_attr_e('Search and select posts...', 'ai-post-scheduler'); ?>">
 				<p class="description"><?php esc_html_e('Search for posts to base the taxonomy generation on.', 'ai-post-scheduler'); ?></p>
+				<div id="base-post-search-results" style="margin-top: 10px;"></div>
 				<div id="selected-posts-container" style="margin-top: 10px;"></div>
 			</div>
 
@@ -169,9 +171,8 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 <table class="aips-table aips-taxonomy-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-taxonomy"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-taxonomy" aria-label="{{selectAllLabel}}"></th>
 			<th class="column-name">{{nameLabel}}</th>
-			<th class="column-type">{{typeLabel}}</th>
 			<th class="column-status">{{statusLabel}}</th>
 			<th class="column-generated">{{generatedAtLabel}}</th>
 			<th class="column-actions">{{actionsLabel}}</th>
@@ -189,11 +190,8 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 	<td class="column-name">
 		<span class="taxonomy-name">{{name}}</span>
 	</td>
-	<td class="column-type">
-		<span class="aips-badge aips-badge-{{taxonomy_type}}">{{taxonomy_type_label}}</span>
-	</td>
 	<td class="column-status">
-		<span class="aips-status aips-status-{{status}}">{{status}}</span>
+		<span class="aips-status aips-status-{{status}}">{{status_label}}</span>
 	</td>
 	<td class="column-generated">{{generated_at}}</td>
 	<td class="taxonomy-actions column-actions">
@@ -211,7 +209,11 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 
 <script type="text/html" id="aips-tmpl-taxonomy-actions-approved">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-create-term" data-id="{{id}}">{{createLabel}}</button>
+	{{createControl}}
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-icon aips-delete-taxonomy" data-id="{{id}}" aria-label="{{deleteLabel}}">
+		<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+		<span class="screen-reader-text">{{deleteLabel}}</span>
+	</button>
 </div>
 </script>
 
