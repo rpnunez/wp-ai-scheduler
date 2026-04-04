@@ -464,6 +464,34 @@
 	color: var(--aips-gray-900);
 }
 
+/* Countdown text in the Next Run column */
+.aips-table .aips-next-run-countdown {
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-900);
+	cursor: default;
+}
+
+/* WordPress-style hover row actions for schedule rows */
+.aips-unified-row .aips-row-actions {
+	visibility: hidden;
+	margin-top: var(--aips-space-1);
+	font-size: var(--aips-text-xs);
+}
+
+.aips-unified-row:hover .aips-row-actions,
+.aips-unified-row:focus-within .aips-row-actions {
+	visibility: visible;
+}
+
+.aips-row-actions a {
+	color: var(--aips-primary);
+	text-decoration: none;
+}
+
+.aips-row-actions a:hover {
+	text-decoration: underline;
+}
+
 .aips-table .cell-meta {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
