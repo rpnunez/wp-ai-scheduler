@@ -49,6 +49,23 @@ class AIPS_Resilience_Service {
     );
 
     /**
+     * Error codes that execute_safely() must NOT record as circuit-breaker failures.
+     *
+     * - circuit_breaker_open / rate_limit_exceeded: self-generated resilience errors;
+     *   the CB is already in the correct state.
+     * - json_query_unavailable: non-fault sentinel returned by the generate_json closure
+     *   when simpleJsonQuery fails due to a method-level issue (not a provider error);
+     *   the caller will invoke the text-based fallback instead.
+     *
+     * @var string[]
+     */
+    const NON_FAULT_CODES = array(
+        'circuit_breaker_open',
+        'rate_limit_exceeded',
+        'json_query_unavailable',
+    );
+
+    /**
      * Message-based pattern map.
      *
      * Meow AI Engine forwards the raw provider error message as the PHP exception
@@ -240,9 +257,8 @@ class AIPS_Resilience_Service {
         // Self-generated resilience errors (circuit already open / rate-limited) and
         // the 'json_query_unavailable' signal (a non-fault fallback sentinel) are
         // excluded so that the caller's fallback path can record its own outcome.
-        $skip_recording = array('circuit_breaker_open', 'rate_limit_exceeded', 'json_query_unavailable');
         if (is_wp_error($result)) {
-            if (!in_array($result->get_error_code(), $skip_recording, true)) {
+            if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
                 $this->record_failure($result->get_error_code());
             }
         } else {

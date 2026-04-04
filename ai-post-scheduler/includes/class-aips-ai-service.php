@@ -258,7 +258,7 @@ class AIPS_AI_Service {
                 // caller triggers the text-based fallback path outside this closure.
                 $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
 
-                if (!empty($provider_code)) {
+                if ($provider_code !== '') {
                     $error = new WP_Error($provider_code, $e->getMessage());
                     $this->log_call('json', $prompt, $options, $error);
                     return $error;
