@@ -36,6 +36,11 @@ class AIPS_Research_Controller {
     private $logger;
 
     /**
+     * @var AIPS_History_Service History service instance
+     */
+    private $history_service;
+
+    /**
      * @var AIPS_Content_Auditor Content Auditor instance
      */
     private $content_auditor;
@@ -47,6 +52,7 @@ class AIPS_Research_Controller {
         $this->research_service = new AIPS_Research_Service();
         $this->repository = new AIPS_Trending_Topics_Repository();
         $this->logger = new AIPS_Logger();
+        $this->history_service = new AIPS_History_Service();
         $this->content_auditor = new AIPS_Content_Auditor();
         
         $this->init_hooks();
@@ -62,9 +68,11 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_delete_trending_topic', array($this, 'ajax_delete_trending_topic'));
         add_action('wp_ajax_aips_delete_trending_topic_bulk', array($this, 'ajax_delete_trending_topic_bulk'));
         add_action('wp_ajax_aips_schedule_trending_topics', array($this, 'ajax_schedule_trending_topics'));
+        add_action('wp_ajax_aips_generate_trending_topics_bulk', array($this, 'ajax_generate_trending_topics_bulk'));
+        add_action('wp_ajax_aips_get_trending_topic_posts', array($this, 'ajax_get_trending_topic_posts'));
         add_action('wp_ajax_aips_perform_gap_analysis', array($this, 'ajax_perform_gap_analysis'));
         add_action('wp_ajax_aips_generate_topics_from_gap', array($this, 'ajax_generate_topics_from_gap'));
-        
+
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
     }
@@ -130,11 +138,17 @@ class AIPS_Research_Controller {
         $min_score = isset($_POST['min_score']) ? absint($_POST['min_score']) : 0;
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 20;
         $fresh_only = isset($_POST['fresh_only']) && $_POST['fresh_only'] === 'true';
+        $status = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'new';
+
+        if ($status === 'all') {
+            $status = '';
+        }
         
         $args = array(
             'limit' => $limit,
             'min_score' => $min_score,
             'fresh_only' => $fresh_only,
+            'status' => $status,
         );
         
         if (!empty($niche)) {
@@ -142,12 +156,18 @@ class AIPS_Research_Controller {
         }
         
         $topics = $this->repository->get_all($args);
+
+        $topic_ids = array_map('absint', wp_list_pluck($topics, 'id'));
+        $post_counts = $this->repository->get_generated_post_counts($topic_ids);
         
-        // Parse keywords from JSON
+        // Parse keywords from JSON and enrich each topic with generated-post counts.
         foreach ($topics as &$topic) {
             if (!empty($topic['keywords'])) {
                 $topic['keywords'] = json_decode($topic['keywords'], true);
             }
+
+            $topic_id = isset($topic['id']) ? absint($topic['id']) : 0;
+            $topic['generated_post_count'] = isset($post_counts[$topic_id]) ? (int) $post_counts[$topic_id] : 0;
         }
         
         $stats = $this->repository->get_stats();
@@ -241,16 +261,37 @@ class AIPS_Research_Controller {
         
         // Get topics from database
         $topics = array();
+        $valid_topic_ids = array();
         foreach ($topic_ids as $topic_id) {
             $topic = $this->repository->get_by_id($topic_id);
             if ($topic) {
                 $topics[] = $topic['topic'];
+                $valid_topic_ids[] = $topic_id;
             }
         }
         
         if (empty($topics)) {
             wp_send_json_error(array('message' => __('No valid topics found.', 'ai-post-scheduler')));
         }
+
+        $history = $this->history_service->create('bulk_schedule', array(
+            'user_id' => get_current_user_id(),
+            'source' => 'manual_ui',
+            'trigger' => 'ajax_schedule_trending_topics',
+            'entity_type' => 'trending_topic',
+            'entity_count' => count($valid_topic_ids),
+        ));
+
+        $history->record_user_action(
+            'bulk_schedule_trending_topics',
+            sprintf(__('User scheduled %d trending topic(s)', 'ai-post-scheduler'), count($valid_topic_ids)),
+            array(
+                'topic_ids' => $valid_topic_ids,
+                'template_id' => $template_id,
+                'frequency' => $frequency,
+                'start_date' => $start_date,
+            )
+        );
         
         // Use scheduler to create schedules
         $scheduler = new AIPS_Scheduler();
@@ -287,6 +328,39 @@ class AIPS_Research_Controller {
         $result = $scheduler->save_schedule_bulk($schedules_to_create);
 
         if ($result) {
+            $status_updated = $this->repository->update_status_bulk($valid_topic_ids, 'scheduled');
+
+            if ($status_updated === false) {
+                $this->logger->log('Failed to update topic status after scheduling.', 'warning', array(
+                    'topic_ids' => $valid_topic_ids,
+                    'template_id' => $template_id,
+                ));
+
+                $history->record(
+                    'warning',
+                    __('Schedules were created but topic statuses could not be updated. Topics may still appear in the library.', 'ai-post-scheduler'),
+                    null,
+                    null,
+                    array(
+                        'topic_ids' => $valid_topic_ids,
+                        'status_update_failed' => true,
+                    )
+                );
+                $history->complete_failure(
+                    __('Schedules created but status update failed — topic library may be out of sync.', 'ai-post-scheduler'),
+                    array(
+                        'topic_ids' => $valid_topic_ids,
+                        'template_id' => $template_id,
+                        'frequency' => $frequency,
+                    )
+                );
+
+                wp_send_json_error(array(
+                    'message' => __('Schedules were created but topic statuses could not be updated. Please reload the library.', 'ai-post-scheduler'),
+                ));
+                return;
+            }
+
             // Restore per-topic hook for backward compatibility.
             foreach ($schedules_to_create as $schedule_data) {
                 /**
@@ -310,9 +384,46 @@ class AIPS_Research_Controller {
             }
             
             $count = (int) $result;
+            $status_updated_count = (int) $status_updated;
+
             $this->logger->log("Scheduled {$count} trending topics for generation", 'info', array(
                 'template_id' => $template_id,
                 'frequency' => $frequency,
+            ));
+
+            if ($status_updated_count === $count) {
+                $activity_message = sprintf(
+                    __('Scheduled %d trending topic(s) and hid them from library view', 'ai-post-scheduler'),
+                    $count
+                );
+            } else {
+                $activity_message = sprintf(
+                    /* translators: 1: number of schedules created, 2: number of topics whose status was updated */
+                    __('Scheduled %1$d trending topic(s), but only %2$d topic status(es) were updated in the library.', 'ai-post-scheduler'),
+                    $count,
+                    $status_updated_count
+                );
+                $this->logger->log('Scheduled/status-updated count mismatch after scheduling.', 'warning', array(
+                    'scheduled_count' => $count,
+                    'status_updated_count' => $status_updated_count,
+                ));
+            }
+
+            $history->record(
+                'activity',
+                $activity_message,
+                null,
+                null,
+                array(
+                    'scheduled_count' => $count,
+                    'status_updated_count' => $status_updated_count,
+                    'updated_status' => 'scheduled',
+                    'count_mismatch' => $status_updated_count !== $count,
+                )
+            );
+            $history->complete_success(array(
+                'scheduled_count' => $count,
+                'status_updated_count' => $status_updated_count,
             ));
             
             wp_send_json_success(array(
@@ -320,10 +431,323 @@ class AIPS_Research_Controller {
                 'scheduled_count' => $count,
             ));
         } else {
+            $history->complete_failure(
+                __('Failed to create schedules for selected trending topics.', 'ai-post-scheduler'),
+                array(
+                    'topic_ids' => $valid_topic_ids,
+                    'template_id' => $template_id,
+                    'frequency' => $frequency,
+                )
+            );
             wp_send_json_error(array('message' => __('Failed to create schedules.', 'ai-post-scheduler')));
         }
     }
-    
+
+    /**
+     * AJAX handler: Generate posts from trending topics immediately.
+     *
+     * Creates posts on-demand from selected trending topics.
+     */
+    public function ajax_generate_trending_topics_bulk() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
+
+        if (empty($topic_ids)) {
+            wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+        }
+
+        // Get topics from database
+        $topics = array();
+        foreach ($topic_ids as $topic_id) {
+            $topic = $this->repository->get_by_id($topic_id);
+            if ($topic) {
+                $topics[] = array(
+                    'id' => $topic_id,
+                    'topic' => $topic['topic']
+                );
+            }
+        }
+
+        if (empty($topics)) {
+            wp_send_json_error(array('message' => __('No valid topics found.', 'ai-post-scheduler')));
+        }
+
+        // Determine batch size and limit the number of topics processed in a single request.
+        $total_requested  = count($topics);
+        $max_batch_size   = apply_filters('aips_trending_bulk_generate_max_batch', 5);
+        $topics_to_process = $topics;
+        $batch_was_limited = false;
+
+        if ($max_batch_size > 0 && $total_requested > $max_batch_size) {
+            $topics_to_process = array_slice($topics, 0, $max_batch_size);
+            $batch_was_limited = true;
+        }
+
+        // Get a default template to use for generation
+        $template_repository = new AIPS_Template_Repository();
+        $templates = $template_repository->get_all(true);
+
+        if (empty($templates)) {
+            wp_send_json_error(array('message' => __('No active templates found. Please create a template first.', 'ai-post-scheduler')));
+        }
+
+        // Use the first active template
+        $template = $templates[0];
+
+        $history = $this->history_service->create('bulk_generate', array(
+            'user_id' => get_current_user_id(),
+            'source' => 'manual_ui',
+            'trigger' => 'ajax_generate_trending_topics_bulk',
+            'entity_type' => 'trending_topic',
+            'entity_count' => $total_requested,
+            'processed_count' => count($topics_to_process),
+            'template_id' => isset($template->id) ? absint($template->id) : 0,
+        ));
+
+        $history->record_user_action(
+            'bulk_generate_trending_topics',
+            sprintf(
+                /* translators: 1: number of topics requested, 2: number of topics to process in this batch */
+                __('User initiated generation for %1$d trending topic(s) (processing %2$d in this batch)', 'ai-post-scheduler'),
+                $total_requested,
+                count($topics_to_process)
+            ),
+            array(
+                'topic_ids' => wp_list_pluck($topics_to_process, 'id'),
+                'total_requested' => $total_requested,
+                'template_id' => isset($template->id) ? absint($template->id) : 0,
+            )
+        );
+
+        if ($batch_was_limited) {
+            $history->record(
+                'activity',
+                sprintf(
+                    /* translators: 1: max batch size, 2: total topics requested */
+                    __('Bulk generation batch limited to %1$d topic(s) out of %2$d requested to avoid timeouts.', 'ai-post-scheduler'),
+                    $max_batch_size,
+                    $total_requested
+                ),
+                null,
+                null,
+                array(
+                    'max_batch_size' => $max_batch_size,
+                    'total_requested' => $total_requested,
+                    'processed_in_batch' => count($topics_to_process),
+                )
+            );
+        }
+
+        // Initialize the generator
+        $generator = new AIPS_Generator();
+
+        if (!$generator->is_available()) {
+            $message = __('AI Engine is not available. Please install and configure Meow Apps AI Engine before generating posts.', 'ai-post-scheduler');
+
+            $this->logger->log($message, 'error', array(
+                'action' => 'ajax_generate_trending_topics_bulk',
+                'topic_ids' => wp_list_pluck($topics_to_process, 'id'),
+                'template_id' => isset($template->id) ? absint($template->id) : 0,
+            ));
+
+            $history->record_error(
+                __('Bulk trending topic generation unavailable because AI Engine is not available', 'ai-post-scheduler'),
+                array(
+                    'error_code' => 'TRENDING_BULK_GENERATE_UNAVAILABLE',
+                    'topic_ids' => wp_list_pluck($topics_to_process, 'id'),
+                    'template_id' => isset($template->id) ? absint($template->id) : 0,
+                ),
+                new WP_Error('ai_engine_unavailable', $message)
+            );
+
+            wp_send_json_error(array('message' => $message));
+        }
+        $success_count = 0;
+        $failed_topics = array();
+        $generated_topic_ids = array();
+
+        // Generate posts for each topic in this batch
+        foreach ($topics_to_process as $topic_data) {
+            $context = new AIPS_Template_Context($template, null, $topic_data['topic'], 'manual');
+
+            $post_id = $generator->generate_post($context);
+
+            if (is_wp_error($post_id)) {
+                $failed_topics[] = $topic_data['topic'];
+                $this->logger->log("Failed to generate post for topic: {$topic_data['topic']}", 'error', array(
+                    'error' => $post_id->get_error_message()
+                ));
+                $history->record_error(
+                    sprintf(__('Failed generating post for trending topic ID %d', 'ai-post-scheduler'), $topic_data['id']),
+                    array(
+                        'topic_id' => $topic_data['id'],
+                        'topic' => $topic_data['topic'],
+                        'error_code' => 'TRENDING_BULK_GENERATE_FAILED',
+                    ),
+                    $post_id
+                );
+            } else {
+                $success_count++;
+                $generated_topic_ids[] = $topic_data['id'];
+
+                // Persist a durable post-to-trending-topic link so the Research UI
+                // can show generated-post counts and drill into post lists later.
+                update_post_meta($post_id, '_aips_trending_topic_id', absint($topic_data['id']));
+                update_post_meta($post_id, '_aips_trending_topic_text', sanitize_text_field($topic_data['topic']));
+
+                $this->logger->log("Generated post #{$post_id} from trending topic: {$topic_data['topic']}", 'info');
+                $history->record(
+                    'activity',
+                    sprintf(__('Generated post from trending topic ID %d', 'ai-post-scheduler'), $topic_data['id']),
+                    null,
+                    null,
+                    array(
+                        'topic_id' => $topic_data['id'],
+                        'topic' => $topic_data['topic'],
+                        'post_id' => $post_id,
+                    )
+                );
+            }
+        }
+
+        $status_updated = 0;
+        if (!empty($generated_topic_ids)) {
+            $status_updated = $this->repository->update_status_bulk($generated_topic_ids, 'generated');
+        }
+
+        if ($success_count > 0) {
+            $message = sprintf(
+                _n(
+                    '%d post generated successfully.',
+                    '%d posts generated successfully.',
+                    $success_count,
+                    'ai-post-scheduler'
+                ),
+                $success_count
+            );
+
+            if ($batch_was_limited) {
+                $remaining = $total_requested - count($topics_to_process);
+                $message .= ' ' . sprintf(
+                    /* translators: %d: number of remaining topics not yet processed */
+                    _n(
+                        '%d topic remaining — please generate again to continue.',
+                        '%d topics remaining — please generate again to continue.',
+                        $remaining,
+                        'ai-post-scheduler'
+                    ),
+                    $remaining
+                );
+            }
+
+            if (!empty($failed_topics)) {
+                $message .= ' ' . sprintf(
+                    _n(
+                        '%d topic failed.',
+                        '%d topics failed.',
+                        count($failed_topics),
+                        'ai-post-scheduler'
+                    ),
+                    count($failed_topics)
+                );
+
+                $history->complete_failure(
+                    sprintf(__('Generated %d trending topic posts with %d failures.', 'ai-post-scheduler'), $success_count, count($failed_topics)),
+                    array(
+                        'success_count' => $success_count,
+                        'failed_count' => count($failed_topics),
+                        'status_updated_count' => (int) $status_updated,
+                        'updated_status' => 'generated',
+                    )
+                );
+            } else {
+                $history->complete_success(array(
+                    'success_count' => $success_count,
+                    'failed_count' => 0,
+                    'batch_limited' => $batch_was_limited,
+                    'total_requested' => $total_requested,
+                    'processed_in_batch' => count($topics_to_process),
+                    'status_updated_count' => (int) $status_updated,
+                ));
+            }
+
+            wp_send_json_success(array(
+                'message' => $message,
+                'success_count' => $success_count,
+                'failed_count' => count($failed_topics),
+                'batch_limited' => $batch_was_limited,
+                'total_requested' => $total_requested,
+                'processed_count' => count($topics_to_process),
+            ));
+        } else {
+            $history->complete_failure(
+                __('Failed to generate posts from selected trending topics.', 'ai-post-scheduler'),
+                array(
+                    'failed_topics' => $failed_topics,
+                    'status_updated_count' => 0,
+                )
+            );
+            wp_send_json_error(array(
+                'message' => __('Failed to generate posts from selected topics.', 'ai-post-scheduler'),
+                'failed_topics' => $failed_topics
+            ));
+        }
+    }
+
+    /**
+     * AJAX handler: Get generated posts linked to a trending topic.
+     */
+    public function ajax_get_trending_topic_posts() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+
+        if ($topic_id <= 0) {
+            wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+        }
+
+        $topic = $this->repository->get_by_id($topic_id);
+
+        if (!$topic) {
+            wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+        }
+
+        $posts = $this->repository->get_generated_posts_by_topic_id($topic_id);
+        $formatted_posts = array();
+
+        foreach ($posts as $post_row) {
+            $post_id = isset($post_row['post_id']) ? absint($post_row['post_id']) : 0;
+            $post_status = isset($post_row['post_status']) ? $post_row['post_status'] : '';
+
+            $formatted_posts[] = array(
+                'post_id' => $post_id,
+                'post_title' => isset($post_row['post_title']) ? $post_row['post_title'] : '',
+                'post_status' => $post_status,
+                'date_generated' => isset($post_row['post_date']) ? $post_row['post_date'] : '',
+                'date_published' => $post_status === 'publish' && isset($post_row['post_date']) ? $post_row['post_date'] : '',
+                'edit_url' => $post_id > 0 ? esc_url_raw(get_edit_post_link($post_id, '')) : '',
+                'post_url' => $post_id > 0 ? esc_url_raw(get_permalink($post_id)) : '',
+            );
+        }
+
+        wp_send_json_success(array(
+            'topic' => array(
+                'id' => isset($topic['id']) ? absint($topic['id']) : 0,
+                'topic' => isset($topic['topic']) ? $topic['topic'] : '',
+            ),
+            'posts' => $formatted_posts,
+        ));
+    }
+
     /**
      * Run scheduled research automatically.
      *
