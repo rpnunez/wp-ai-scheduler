@@ -50,15 +50,30 @@ class AIPS_Author_Topics_Controller {
 	private $history_service;
 
 	/**
-	 * Initialize the controller.
+	 * @var AIPS_Topic_Expansion_Service Service for topic expansion/similarity
 	 */
-	public function __construct() {
-		$this->repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
+	private $expansion_service;
+
+	/**
+	 * @var AIPS_History_Repository Repository for history data
+	 */
+	private $history_repository;
+
+	/**
+	 * Initialize the controller.
+	 *
+	 * @param AIPS_Topic_Expansion_Service|null $expansion_service  Topic expansion service.
+	 * @param AIPS_History_Repository|null      $history_repository History repository.
+	 */
+	public function __construct($expansion_service = null, $history_repository = null) {
+		$this->repository          = new AIPS_Author_Topics_Repository();
+		$this->logs_repository     = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->post_generator = new AIPS_Author_Post_Generator();
-		$this->penalty_service = new AIPS_Topic_Penalty_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->post_generator      = new AIPS_Author_Post_Generator();
+		$this->penalty_service     = new AIPS_Topic_Penalty_Service();
+		$this->history_service     = new AIPS_History_Service();
+		$this->expansion_service   = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->history_repository  = $history_repository ?: new AIPS_History_Repository();
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -650,8 +665,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		$similar_topics = $this->expansion_service->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -684,8 +698,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
+		$suggestions = $this->expansion_service->suggest_related_topics($author_id, $limit);
 
 		wp_send_json_success(array('suggestions' => $suggestions));
 	}
@@ -702,11 +715,10 @@ class AIPS_Author_Topics_Controller {
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
 		if ($author_id > 0) {
-			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+			$stats = $this->expansion_service->batch_compute_approved_embeddings($author_id);
 		} else {
-			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+			$stats = $this->expansion_service->batch_compute_all_approved_embeddings();
 		}
 
 		wp_send_json_success(array(
@@ -737,6 +749,11 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for bulk generating posts from queue topics.
+	 *
+	 * Uses the AIPS_Author_Post_Generator to immediately generate posts for the selected
+	 * topic IDs. This is a synchronous process, meaning the AJAX request will block until
+	 * all posts are generated. A configurable limit (`aips_bulk_run_now_limit`) is enforced
+	 * to prevent PHP timeouts when generating many posts at once.
 	 */
 	public function ajax_bulk_generate_from_queue() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -749,6 +766,23 @@ class AIPS_Author_Topics_Controller {
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+
+		// Enforce a bulk limit for synchronous generation to avoid PHP timeouts
+		$max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+		$max_bulk = absint($max_bulk);
+		if (0 === $max_bulk) {
+			$max_bulk = 5;
+		}
+		if (count($topic_ids) > $max_bulk) {
+			wp_send_json_error(array(
+				'message' => sprintf(
+					/* translators: 1: selected count, 2: max allowed */
+					__('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler'),
+					count($topic_ids),
+					$max_bulk
+				),
+			));
 		}
 
 		// Create history container for bulk operation
@@ -810,6 +844,11 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for bulk generating posts from topics.
+	 *
+	 * Uses the AIPS_Author_Post_Generator to immediately generate posts for the selected
+	 * topic IDs. This is a synchronous process, meaning the AJAX request will block until
+	 * all posts are generated. A configurable limit (`aips_bulk_run_now_limit`) is enforced
+	 * to prevent PHP timeouts when generating many posts at once.
 	 */
 	public function ajax_bulk_generate_topics() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -822,6 +861,23 @@ class AIPS_Author_Topics_Controller {
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+
+		// Enforce a bulk limit for synchronous generation to avoid PHP timeouts
+		$max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+		$max_bulk = absint($max_bulk);
+		if (0 === $max_bulk) {
+			$max_bulk = 5;
+		}
+		if (count($topic_ids) > $max_bulk) {
+			wp_send_json_error(array(
+				'message' => sprintf(
+					/* translators: 1: selected count, 2: max allowed */
+					__('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler'),
+					count($topic_ids),
+					$max_bulk
+				),
+			));
 		}
 
 		// Create history container for bulk generation
@@ -962,8 +1018,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Use the history repository to get the estimate based on historical performance
-		$history_repository = new AIPS_History_Repository();
-		$estimate           = $history_repository->get_estimated_generation_time(20);
+		$estimate           = $this->history_repository->get_estimated_generation_time(20);
 
 		$per_post_seconds   = $estimate['per_post_seconds'];
 		$sample_size        = $estimate['sample_size'];

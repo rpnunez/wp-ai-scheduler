@@ -497,7 +497,7 @@ class AIPS_MCP_Bridge {
 			return $result;
 		} catch (Exception $e) {
 			$this->logger->log("MCP Bridge: Tool '$tool_name' failed: " . $e->getMessage(), 'error');
-			return new WP_Error('tool_execution_error', 'Tool execution failed: ' . $e->getMessage());
+			return new WP_Error('tool_execution_error', 'Tool execution failed.');
 		}
 	}
 	
@@ -1328,7 +1328,8 @@ class AIPS_MCP_Bridge {
 					break;
 			}
 		} catch (Exception $e) {
-			return new WP_Error('regeneration_failed', 'Component regeneration failed: ' . $e->getMessage());
+			$this->logger->log('Component regeneration failed: ' . $e->getMessage(), 'error');
+			return new WP_Error('regeneration_failed', 'Component regeneration failed.');
 		}
 		
 		if (is_wp_error($result)) {
@@ -1629,10 +1630,12 @@ class AIPS_MCP_Bridge {
 		} catch (Exception $e) {
 			$elapsed_time = round((microtime(true) - $start_time) * 1000, 2);
 			
+			$this->logger->log('AI connection test failed: ' . $e->getMessage(), 'error');
+
 			return array(
 				'success' => false,
 				'connected' => false,
-				'error' => $e->getMessage(),
+				'error' => 'An error occurred during the AI connection test.',
 				'response_time_ms' => $elapsed_time
 			);
 		}
