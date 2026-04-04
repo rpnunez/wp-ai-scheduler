@@ -29,7 +29,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -388,7 +388,7 @@ if (!defined('ABSPATH')) {
                                 <?php else: ?>
                                     <p class="description">
                                         <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
                                     </p>
                                 <?php endif; ?>
                             </div>

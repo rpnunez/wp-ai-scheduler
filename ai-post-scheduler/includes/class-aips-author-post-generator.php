@@ -17,8 +17,11 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Author_Post_Generator
  *
  * Generates posts from approved author topics.
+ *
+ * Implements AIPS_Cron_Generation_Handler so it can be discovered and
+ * dispatched through the standard cron handler contract.
  */
-class AIPS_Author_Post_Generator {
+class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	
 	/**
 	 * @var AIPS_Authors_Repository Repository for authors
@@ -50,8 +53,6 @@ class AIPS_Author_Post_Generator {
 	 */
 	private $interval_calculator;
 	
-
-	
 	/**
 	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
 	 */
@@ -61,6 +62,11 @@ class AIPS_Author_Post_Generator {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
+
+	/**
+	 * @var AIPS_Generation_Execution_Runner Shared execution harness.
+	 */
+	private $runner;
 	
 	/**
 	 * Initialize the generator.
@@ -74,17 +80,16 @@ class AIPS_Author_Post_Generator {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
-		
-		// Hook into WordPress cron
-		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));
+		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 	}
 	
 	/**
 	 * Process post generation for all due authors.
 	 *
-	 * This is called by WordPress cron on the scheduled interval.
+	 * Called by WordPress cron on the `aips_generate_author_posts` hook.
+	 * Implements AIPS_Cron_Generation_Handler::process().
 	 */
-	public function process_post_generation() {
+	public function process(): void {
 		$this->logger->log('Starting scheduled author post generation', 'info');
 		
 		// Get all authors due for post generation
@@ -97,9 +102,16 @@ class AIPS_Author_Post_Generator {
 		
 		$this->logger->log('Found ' . count($due_authors) . ' authors due for post generation', 'info');
 		
-		// Process each author
+		// Process each author through the shared execution harness, which scopes a
+		// unique correlation ID to each author's run and provides a Throwable safety net.
 		foreach ($due_authors as $author) {
-			$this->generate_post_for_author($author);
+			$this->runner->run(
+				function() use ($author) {
+					$this->generate_post_for_author($author);
+				},
+				'author_post_generation',
+				array('author_id' => $author->id)
+			);
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');
@@ -107,6 +119,22 @@ class AIPS_Author_Post_Generator {
 	
 	/**
 	 * Generate a post for a specific author from their approved topics.
+	 *
+	 * SCHEDULE-ADVANCEMENT STRATEGY — advance after execution:
+	 * `post_generation_next_run` is updated *after* the generation attempt
+	 * (success or failure) rather than before it.  This is intentional and
+	 * differs from the claim-first locking used by AIPS_Schedule_Processor.
+	 *
+	 * Rationale: per-author post-generation frequency is coarser (typically
+	 * daily or weekly), so the risk of two cron workers overlapping is low.
+	 * Advancing after execution ensures the schedule timestamp reflects when
+	 * work actually completed, giving a more accurate "next run" window and
+	 * avoiding the edge case where a crashed pre-execution advance could
+	 * silently delay the author's next post by a full interval.
+	 *
+	 * If concurrent-worker safety ever becomes a concern (e.g. Action
+	 * Scheduler with multiple workers), consider adding a claim-first lock
+	 * here as well.
 	 *
 	 * @param object $author Author object from database.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
@@ -248,6 +276,28 @@ class AIPS_Author_Post_Generator {
 			
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
+
+			$payload = array(
+				'resource_label'  => sprintf(__('author topic "%s"', 'ai-post-scheduler'), $topic->topic_title),
+				'schedule_name'   => sprintf(__('Author post generation for %s', 'ai-post-scheduler'), $author->name),
+				'error_code'      => 'generation_failed',
+				'error_message'   => $e->getMessage(),
+				'topic_id'        => $topic->id,
+				'topic_title'     => $topic->topic_title,
+				'author_id'       => $author->id,
+				'author_name'     => $author->name,
+				'creation_method' => $creation_method,
+				'correlation_id'  => AIPS_Correlation_ID::get(),
+				'url'             => 'scheduled' === $creation_method ? AIPS_Admin_Menu_Helper::get_page_url('schedule') : AIPS_Admin_Menu_Helper::get_page_url('history'),
+				'dedupe_key'      => sanitize_key($creation_method . '_author_topic_' . $topic->id . '_exception'),
+				'dedupe_window'   => 900,
+			);
+
+			if ('scheduled' === $creation_method) {
+				do_action('aips_scheduler_error', $payload);
+			} else {
+				do_action('aips_generation_failed', $payload);
+			}
 			
 			// Log exception using new History API
 			$history = $this->history_service->create('topic_post_generation', array(

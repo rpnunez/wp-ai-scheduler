@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$wizard_url = admin_url('admin.php?page=' . AIPS_Onboarding_Wizard::PAGE_SLUG);
+$wizard_url = AIPS_Admin_Menu_Helper::get_page_url(AIPS_Onboarding_Wizard::PAGE_SLUG);
 $completed = (bool) get_option('aips_onboarding_completed', false);
 
 $strategy_complete = !empty(get_option('aips_site_niche', ''));
@@ -25,6 +25,10 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 					<p class="aips-page-description"><?php esc_html_e('Get AI Post Scheduler ready by setting your site strategy, creating an author and template, and generating your first post.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-btn-group" style="gap: 8px;">
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-onboarding-skip">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e('Skip Onboarding', 'ai-post-scheduler'); ?>
+					</button>
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings') . '#content-strategy'); ?>">
 						<span class="dashicons dashicons-admin-settings"></span>
 						<?php esc_html_e('Open Settings', 'ai-post-scheduler'); ?>

@@ -1343,3 +1343,22 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
 - **Negative:** Added slightly more UI complexity to the settings page.
 **Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
+
+## 2025-02-12 - [Extract Admin Menu from Settings]
+**Context:** The `AIPS_Settings` class handled registering settings options via the WordPress Settings API and also managed rendering the admin UI and the admin menu registration via `add_menu_page`/`add_submenu_page`. This violated the Single Responsibility Principle, making `AIPS_Settings` overloaded and tightly coupling admin routing with options management.
+**Decision:** Created a new `AIPS_Admin_Menu` class to handle admin menu registration and page rendering logic. The `AIPS_Settings` class now solely focuses on settings initialization via the `admin_init` hook and some relevant AJAX actions.
+**Consequence:**
+- **Positive:** Improved class cohesion by decoupling the UI rendering layer from the options/settings logic. Each class now has a distinct, single responsibility.
+- **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
+**Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
+
+## 2026-03-08 - Extract Notifications Event Handler
+
+**Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
+**Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
+**Consequence:**
+* Reduced `AIPS_Notifications` by ~570 lines (33% reduction).
+* `AIPS_Notifications` is strictly focused on rendering templates, checking settings, and delivering payloads.
+* `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
+* Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
+**Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).

@@ -44,7 +44,12 @@ class AIPS_Author_Topics_Scheduler {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
-	
+
+	/**
+	 * @var AIPS_Notifications Notifications service
+	 */
+	private $notifications;
+
 	/**
 	 * Initialize the scheduler.
 	 */
@@ -54,9 +59,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
-		
-		// Hook into WordPress cron
-		add_action('aips_generate_author_topics', array($this, 'process_topic_generation'));
+		$this->notifications = new AIPS_Notifications();
 	}
 	
 	/**
@@ -77,9 +80,15 @@ class AIPS_Author_Topics_Scheduler {
 		
 		$this->logger->log('Found ' . count($due_authors) . ' authors due for topic generation', 'info');
 		
-		// Process each author
+		// Process each author, scoping a unique correlation ID to each author's
+		// generation run so the full chain (scheduler → topics → history) is traceable.
 		foreach ($due_authors as $author) {
-			$this->generate_topics_for_author($author);
+			AIPS_Correlation_ID::generate();
+			try {
+				$this->generate_topics_for_author($author);
+			} finally {
+				AIPS_Correlation_ID::reset();
+			}
 		}
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');
@@ -163,7 +172,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 
 		// Create admin bar notification
-		AIPS_Admin_Bar::notify_author_topics_generated($author->name, $topic_count, $author->id);
+		$this->notifications->author_topics_generated($author->name, $topic_count, $author->id);
 
 		return true;
 	}

@@ -67,7 +67,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -175,22 +175,26 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			</div>
 
 			<div id="aips-source-search-no-results" class="aips-empty-state" style="display:none;">
-				<span class="dashicons dashicons-search" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
-				<button type="button" class="aips-btn aips-btn-primary" id="aips-source-search-clear-2">
-					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-				</button>
+				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-source-search-clear-2">
+						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 
 			<?php else: ?>
 			<div class="aips-empty-state" id="aips-sources-empty">
-				<span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Trusted Sources Yet', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('Add URLs that the AI should reference when generating post content. Assign them to Source Groups so Authors and Templates can selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
-				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-empty-btn">
-					<?php esc_html_e('Add Your First Source', 'ai-post-scheduler'); ?>
-				</button>
+				<div class="dashicons dashicons-admin-links aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Trusted Sources Yet', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('Add URLs that the AI should reference when generating post content. Assign them to Source Groups so Authors and Templates can selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-empty-btn">
+						<?php esc_html_e('Add Your First Source', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 			<?php endif; ?>
 		</div>

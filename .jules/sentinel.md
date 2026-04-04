@@ -57,3 +57,28 @@
 **Vulnerability:** Potential SQL Injection in `AIPS_DB_Manager::drop_tables()`, `truncate_tables()`, and `backup_data()` due to unescaped string interpolation of table names.
 **Learning:** While the table names were retrieved internally from a static array, directly interpolating them into SQL queries (e.g. `$wpdb->query("DROP TABLE IF EXISTS $table")`) bypasses WordPress's recommended database preparation patterns and creates a latent risk if the table source ever becomes dynamic or user-influenced.
 **Prevention:** Use `$wpdb->prepare()` for parameters and use `esc_sql()` wrapped in backticks for table names/identifiers when constructing dynamic queries.
+
+## 2026-03-23 - [Fix error message leakage in export data]
+**Vulnerability:** Raw `Exception` messages were being returned directly to the client via `wp_send_json_error()` in `class-aips-data-management.php` during export operations. This could potentially expose sensitive internal paths, logic, or stack traces.
+**Learning:** Developers sometimes pass raw exception objects or their messages directly to API error responses for easier debugging, but this violates secure error handling principles by leaking internal details.
+**Prevention:** Always log detailed error messages internally (e.g., using `error_log()`) and return generic error messages to the client indicating that an error occurred.
+
+## 2026-03-23 - [Unsanitized POST array in AI Edit Controller Hook]
+**Vulnerability:** The `$components` array from `$_POST['components']` was passed directly to the `aips_post_components_updated` action hook without being sanitized first, exposing any listeners to potentially malicious unsanitized POST data (XSS, Injection).
+**Learning:** `$_POST` arrays should be recursively sanitized or validated field-by-field before passing them to do_action.
+**Prevention:** Always construct a new array with properly sanitized fields using functions like `sanitize_text_field` and `wp_kses_post` before exposing user input through action hooks.
+
+## 2026-03-24 - [Missing Input Unslashing before Sanitization]
+**Vulnerability:** Superglobals like `$_POST`, `$_GET`, and `$_REQUEST` were passed directly to sanitization functions (e.g., `sanitize_text_field`, `wp_kses_post`) without first being unslashed.
+**Learning:** WordPress automatically adds slashes to `$_POST`, `$_GET`, and `$_REQUEST` arrays. If these slashes are not removed using `wp_unslash()` before sanitization, it can lead to data corruption (e.g., literal backslashes being saved to the database) or potentially bypass certain sanitization filters, leading to XSS vulnerabilities.
+**Prevention:** Always apply `wp_unslash()` to values retrieved from `$_POST`, `$_GET`, or `$_REQUEST` immediately before passing them to any sanitization function.
+
+## 2026-03-24 - [Output Escaping on Generated Links in Onboarding and Notifications]
+**Vulnerability:** Unescaped usage of `get_permalink()` and `get_edit_post_link()` in `ai-post-scheduler/includes/class-aips-onboarding-wizard.php` (JSON API response) and `ai-post-scheduler/includes/class-aips-notifications.php`.
+**Learning:** Returning unescaped URLs within JSON payloads or notification data structures, even if they originate from core WordPress functions, can be a potential risk if they contain malicious characters or javascript: URIs that an unsuspecting frontend might evaluate. Also, using the 'display' context (default) for `get_edit_post_link` can cause double-encoded ampersands.
+**Prevention:** Use `esc_url_raw()` to escape URLs being returned as data within API, AJAX responses, or internal data structures. Use the 'raw' context for `get_edit_post_link()` when the output is not immediately rendered as HTML.
+
+## 2026-04-04 - [Prevent Fatal TypeError in array sanitization]
+**Vulnerability:** array_map() with sanitize_text_field() on nested arrays from user input causes fatal TypeErrors.
+**Learning:** PHP 8+ strict types require scalar validation before passing to string functions.
+**Prevention:** Use AIPS_Utilities::sanitize_string_array() which explicitly verifies is_scalar().

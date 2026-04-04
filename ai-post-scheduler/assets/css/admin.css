@@ -464,6 +464,34 @@
 	color: var(--aips-gray-900);
 }
 
+/* Countdown text in the Next Run column */
+.aips-table .aips-next-run-countdown {
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-900);
+	cursor: default;
+}
+
+/* WordPress-style hover row actions for schedule rows */
+.aips-unified-row .aips-row-actions {
+	visibility: hidden;
+	margin-top: var(--aips-space-1);
+	font-size: var(--aips-text-xs);
+}
+
+.aips-unified-row:hover .aips-row-actions,
+.aips-unified-row:focus-within .aips-row-actions {
+	visibility: visible;
+}
+
+.aips-row-actions a {
+	color: var(--aips-primary);
+	text-decoration: none;
+}
+
+.aips-row-actions a:hover {
+	text-decoration: underline;
+}
+
 .aips-table .cell-meta {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
@@ -1542,32 +1570,6 @@
     margin-right: 8px;
 }
 
-.aips-empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    border-radius: 4px;
-}
-
-.aips-empty-state .dashicons {
-    font-size: 60px;
-    width: 60px;
-    height: 60px;
-    color: #c3c4c7;
-    margin-bottom: 15px;
-}
-
-.aips-empty-state h3 {
-    margin: 0 0 10px;
-    color: #1d2327;
-}
-
-.aips-empty-state p {
-    color: #646970;
-    margin-bottom: 20px;
-}
-
 .aips-search-wrapper {
     margin-left: auto;
     display: flex;
@@ -1755,10 +1757,6 @@
 .aips-details-table th {
     text-align: left;
     padding: 8px 12px 8px 0;
-    vertical-align: top;
-    width: 150px;
-    color: #646970;
-    font-weight: 500;
 }
 
 .aips-details-table td {
@@ -2791,6 +2789,24 @@
     width: 0%;
 }
 
+.aips-progress-bar-fill--indeterminate {
+    width: 100% !important;
+    transition: width 0.5s ease-in-out;
+    background: linear-gradient(
+        90deg,
+        var(--aips-primary) 0%,
+        var(--aips-primary-hover) 50%,
+        var(--aips-primary) 100%
+    );
+    background-size: 200% 100%;
+    animation: aips-progress-shimmer 1.6s linear infinite;
+}
+
+@keyframes aips-progress-shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+}
+
 .aips-progress-status {
     margin: 0;
     font-size: var(--aips-text-sm);
@@ -3380,3 +3396,10 @@ margin-right: 8px;
     display: block;
 }
 
+/* Hide Author Topics from Admin Menu */
+li.toplevel_page_ai-post-scheduler li > a[href*="aips-author-topics"] {
+    display: none;
+}
+li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
+    display: none;
+}

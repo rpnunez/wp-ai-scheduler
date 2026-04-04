@@ -111,7 +111,7 @@ class AIPS_Post_Review {
 		}
 		
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
-		$search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 		
 		$draft_posts = $this->get_draft_posts(array(
@@ -564,9 +564,12 @@ class AIPS_Post_Review {
 		/**
 		 * Fires after a post is deleted from the review queue.
 		 *
-		 * @param int $post_id Post ID that was deleted.
+		 * @param int   $post_id Post ID that was deleted.
+		 * @param array $meta    Optional metadata for listeners.
 		 */
-		do_action('aips_post_review_deleted', $post_id);
+		do_action('aips_post_review_deleted', $post_id, array(
+			'post_title' => !empty($post->post_title) ? $post->post_title : '',
+		));
 		
 		wp_send_json_success(array(
 			'message' => __('Post deleted successfully.', 'ai-post-scheduler'),
@@ -659,9 +662,12 @@ class AIPS_Post_Review {
 				/**
 				 * Fires after a post is deleted from the review queue.
 				 *
-				 * @param int $post_id Post ID that was deleted.
+				 * @param int   $post_id Post ID that was deleted.
+				 * @param array $meta    Optional metadata for listeners.
 				 */
-				do_action('aips_post_review_deleted', $post_id);
+				do_action('aips_post_review_deleted', $post_id, array(
+					'post_title' => !empty($post->post_title) ? $post->post_title : '',
+				));
 			} else {
 				$failed_count++;
 				$history->record('warning', sprintf(__('Failed to delete post ID %d', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));

@@ -101,7 +101,7 @@ class AIPS_Author_Topics_Generator {
 		
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
-			'max_tokens' => 2000,
+			'maxTokens' => 2000,
 			'temperature' => 0.7
 		));
 		
@@ -262,7 +262,7 @@ class AIPS_Author_Topics_Generator {
 			$title = sanitize_text_field($item['title']);
 			$score = isset($item['score']) ? absint($item['score']) : 50;
 			$keywords = isset($item['keywords']) && is_array($item['keywords']) 
-				? array_map('sanitize_text_field', $item['keywords']) 
+				? AIPS_Utilities::sanitize_string_array($item['keywords'])
 				: array();
 			
 			// Skip if title is too short

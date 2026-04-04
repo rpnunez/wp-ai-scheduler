@@ -73,7 +73,7 @@ class AIPS_Generated_Posts_Controller {
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
 		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
 		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
-		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 
@@ -85,6 +85,7 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
+			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
 		// Get schedule data for each post

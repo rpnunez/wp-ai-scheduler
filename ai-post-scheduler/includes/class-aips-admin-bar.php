@@ -173,7 +173,12 @@ class AIPS_Admin_Bar {
 			));
 
 			foreach ($notifications as $notif) {
-				$node_title = '<span class="aips-notif-message">';
+				$title_markup = '';
+				if (!empty($notif->title)) {
+					$title_markup = '<span class="aips-notif-title">' . esc_html($notif->title) . '</span>';
+				}
+
+				$node_title = $title_markup . '<span class="aips-notif-message">';
 
 				if (!empty($notif->url)) {
 					$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
@@ -186,13 +191,18 @@ class AIPS_Admin_Bar {
 					. '<span class="dashicons dashicons-yes-alt"></span>'
 					. '</button>';
 
+				$level_class = '';
+				if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
+					$level_class = ' aips-notif-level-' . $notif->level;
+				}
+
 				$wp_admin_bar->add_node(array(
 					'id'     => 'aips-notif-' . absint($notif->id),
 					'parent' => 'aips-toolbar-notifications',
 					'title'  => $node_title,
 					'href'   => false,
 					'meta'   => array(
-						'class'         => 'aips-toolbar-notification ab-empty-item',
+						'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
 						'data-notif-id' => absint($notif->id),
 					),
 				));
@@ -255,25 +265,4 @@ class AIPS_Admin_Bar {
 		);
 	}
 
-	/**
-	 * Utility: create an "author topics generated" notification.
-	 *
-	 * @param string $author_name    Author display name.
-	 * @param int    $topic_count    Number of topics generated.
-	 * @param int    $author_id      Author ID (for link).
-	 */
-	public static function notify_author_topics_generated($author_name, $topic_count, $author_id) {
-		$repo = new AIPS_Notifications_Repository();
-
-		$url = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => absint($author_id), 'status' => 'pending'));
-
-		/* translators: 1: author name, 2: number of topics */
-		$message = sprintf(
-			__('Author (%1$s) generated %2$d pending topic(s) for review', 'ai-post-scheduler'),
-			$author_name,
-			(int) $topic_count
-		);
-
-		$repo->create('author_topics_generated', $message, $url);
-	}
 }

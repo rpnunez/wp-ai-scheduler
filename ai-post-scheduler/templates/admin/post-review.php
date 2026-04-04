@@ -18,7 +18,7 @@ if (!isset($aips_post_review_handler) && !isset($post_review_handler)) {
 
 // Get filter parameters
 $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 $template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 
 // Get draft posts
@@ -79,15 +79,18 @@ $templates = $template_repository->get_all();
 						<?php endforeach; ?>
 					</select>
 					<button type="submit" class="aips-btn aips-btn-secondary"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+					<?php if (!empty($template_id)): ?>
+					<a href="<?php echo esc_url(remove_query_arg('template_id')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+					<?php endif; ?>
 					<?php endif; ?>
 				</div>
 				
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-post-search-input" name="s" class="aips-form-input" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-					<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
+					<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
 					<?php if (!empty($search_query)): ?>
-						<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+						<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
 					<?php endif; ?>
 				</div>
 			</form>
@@ -258,11 +261,15 @@ $templates = $template_repository->get_all();
 			<?php else: ?>
 			<!-- Empty State -->
 			<div class="aips-empty-state">
-				<div class="aips-empty-icon">
-					<span class="dashicons dashicons-yes-alt"></span>
+				<div class="dashicons dashicons-yes-alt aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-calendar-alt"></span>
+						<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
+					</a>
 				</div>
-				<h3 class="aips-empty-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
 			</div>
 			<?php endif; ?>
 		</div>

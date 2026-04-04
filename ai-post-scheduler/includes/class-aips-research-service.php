@@ -77,11 +77,11 @@ class AIPS_Research_Service {
         // Use generate_json for structured data response
         // $result = $this->ai_service->generate_json($prompt, array(
         //     'temperature' => 0.7,
-        //     'max_tokens' => 2000,
+        //     'maxTokens' => 2000,
         // ));
         $result = $this->ai_service->generate_text($prompt, array(
             'temperature' => 0.7,
-            'max_tokens' => 2000,
+            'maxTokens' => 2000,
         ));
 
         if (is_wp_error($result)) {
@@ -295,7 +295,7 @@ class AIPS_Research_Service {
             'score' => absint($topic['score']),
             'reason' => isset($topic['reason']) ? sanitize_text_field($topic['reason']) : '',
             'keywords' => isset($topic['keywords']) && is_array($topic['keywords'])
-                ? array_map('sanitize_text_field', $topic['keywords'])
+                ? AIPS_Utilities::sanitize_string_array($topic['keywords'])
                 : array(),
             'researched_at' => current_time('mysql'),
         );

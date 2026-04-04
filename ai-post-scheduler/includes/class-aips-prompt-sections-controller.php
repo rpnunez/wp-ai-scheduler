@@ -78,10 +78,10 @@ class AIPS_Prompt_Sections_Controller {
 		}
 
 		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
-		$name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-		$description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
-		$section_key = isset($_POST['section_key']) ? sanitize_key($_POST['section_key']) : '';
-		$content = isset($_POST['content']) ? wp_kses_post($_POST['content']) : '';
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
+		$section_key = isset($_POST['section_key']) ? sanitize_key(wp_unslash($_POST['section_key'])) : '';
+		$content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '';
 		$is_active = isset($_POST['is_active']) ? 1 : 0;
 
 		if (empty($name) || empty($section_key) || empty($content)) {
@@ -105,16 +105,16 @@ class AIPS_Prompt_Sections_Controller {
 			if (!$result) {
 				wp_send_json_error(array('message' => __('Failed to update prompt section.', 'ai-post-scheduler')));
 			}
-
-			wp_send_json_success(array('message' => __('Section updated.', 'ai-post-scheduler'), 'section_id' => $id));
+			$section = $this->repo->get_by_id($id);
+			wp_send_json_success(array('message' => __('Section updated.', 'ai-post-scheduler'), 'section_id' => $id, 'section' => $section));
 		}
 
 		$new_id = $this->repo->create($data);
 		if (!$new_id) {
 			wp_send_json_error(array('message' => __('Failed to create prompt section.', 'ai-post-scheduler')));
 		}
-
-		wp_send_json_success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id));
+		$section = $this->repo->get_by_id($new_id);
+		wp_send_json_success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id, 'section' => $section));
 	}
 
 	public function ajax_delete_section() {
