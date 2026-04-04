@@ -1352,8 +1352,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
 
-## 2026-03-08 - Extract Notifications Event Handler
-
+## 2026-03-08 - [Extract Notifications Event Handler]
 **Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
 **Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
 **Consequence:**
