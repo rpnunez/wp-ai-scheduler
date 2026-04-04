@@ -857,6 +857,17 @@ class AIPS_System_Status {
         return $logs_data;
     }
 
+    /**
+     * Scan a log file for errors.
+     *
+     * Defensively reads the last N lines of a file, handling empty files and
+     * filesystem read errors.
+     *
+     * @param string $file_path     The path to the file to scan.
+     * @param int    $lines         The number of lines to read from the end.
+     * @param bool   $filter_plugin Whether to filter lines containing the plugin slug.
+     * @return array The extracted error lines.
+     */
     private function scan_file_for_errors($file_path, $lines = 100, $filter_plugin = false) {
         if (!file_exists($file_path)) {
             return array();
@@ -865,7 +876,7 @@ class AIPS_System_Status {
         $chunk_size = 1024 * 100; // Read last 100KB
         $file_size = filesize($file_path);
 
-        if ($file_size === 0) {
+        if ($file_size === false || $file_size === 0) {
             return array();
         }
 
