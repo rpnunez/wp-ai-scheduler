@@ -446,6 +446,73 @@
             }
 
             return { complete: complete, cancel: cancel };
+        },
+
+        // ── Action-state helpers ────────────────────────────────────────────────
+
+        /**
+         * Puts a button into a loading state.
+         *
+         * Saves the button's current HTML to a private data attribute so that
+         * `resetButton()` can restore it exactly, then disables the button and
+         * replaces its visible content with a loading label.
+         *
+         * Pair every call with a corresponding `resetButton()` call (typically
+         * in the AJAX `complete` callback) to re-enable the button and restore
+         * its original label.
+         *
+         * @param {jQuery} $btn         - The button element to update.
+         * @param {string} loadingLabel - The text (or HTML when opts.isHtml=true)
+         *                                to display while loading.
+         * @param {Object} [opts]       - Optional settings.
+         * @param {boolean} [opts.isHtml] - When true, loadingLabel is inserted as
+         *                                  raw HTML rather than escaped text.
+         *
+         * @example
+         * // Simple text label
+         * AIPS.Utilities.setButtonLoading($saveBtn, aipsAdminL10n.saving);
+         *
+         * @example
+         * // HTML label with a dashicon
+         * AIPS.Utilities.setButtonLoading(
+         *     $draftBtn,
+         *     '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving,
+         *     { isHtml: true }
+         * );
+         */
+        setButtonLoading: function($btn, loadingLabel, opts) {
+            opts = opts || {};
+            $btn.data('aips-btn-original', $btn.html());
+            $btn.prop('disabled', true);
+            if (opts.isHtml) {
+                $btn.html(loadingLabel);
+            } else {
+                $btn.text(loadingLabel);
+            }
+        },
+
+        /**
+         * Restores a button that was disabled by `setButtonLoading()`.
+         *
+         * Re-enables the element and restores its original HTML (saved by
+         * `setButtonLoading()`). Safe to call even if `setButtonLoading()` was
+         * never called — the button will simply be re-enabled with no label change.
+         *
+         * @param {jQuery} $btn - The button element to reset.
+         *
+         * @example
+         * $.ajax({
+         *     ...
+         *     complete: function() { AIPS.Utilities.resetButton($saveBtn); }
+         * });
+         */
+        resetButton: function($btn) {
+            var original = $btn.data('aips-btn-original');
+            if (original !== undefined) {
+                $btn.html(original);
+                $btn.removeData('aips-btn-original');
+            }
+            $btn.prop('disabled', false);
         }
     };
 

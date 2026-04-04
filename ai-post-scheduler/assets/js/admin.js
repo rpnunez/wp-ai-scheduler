@@ -683,7 +683,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -728,7 +728,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Save Template');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -755,7 +755,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).html('<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving, {isHtml: true});
 
             // Save with is_active set to 0 (inactive)
             $.ajax({
@@ -805,7 +805,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saveDraft);
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -832,8 +832,7 @@
             }
 
             var $btn = $(this);
-            var originalText = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating);
+            AIPS.Utilities.setButtonLoading($btn, '<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating, {isHtml: true});
 
             // Gather all form data
             var data = {
@@ -886,7 +885,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html(originalText);
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -906,7 +905,7 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            $btn.prop('disabled', true).text(aipsAdminL10n.generating);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.generating);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -934,7 +933,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text(aipsAdminL10n.runNow);
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -1075,7 +1074,7 @@
                 $form[0].reportValidity();
                 return;
             }
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -1125,7 +1124,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text(aipsAdminL10n.saveVoice);
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -1303,7 +1302,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1362,7 +1361,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Save Schedule');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -1391,7 +1390,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1444,7 +1443,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text(aipsAdminL10n.saveSchedule || 'Save Schedule');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
@@ -3004,7 +3003,7 @@
          */
         saveStructure: function() {
             var $btn = $(this);
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_structure',
@@ -3019,7 +3018,7 @@
             };
 
             $.post(aipsAjax.ajaxUrl, data, function(response){
-                $btn.prop('disabled', false).text('Save Structure');
+                AIPS.Utilities.resetButton($btn);
                 if (response.success) {
                     AIPS.Utilities.showToast(response.data.message || 'Structure saved successfully', 'success');
                     $('#aips-structure-modal').hide();
@@ -3058,7 +3057,7 @@
                     AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
                 }
             }).fail(function(){
-                $btn.prop('disabled', false).text('Save Structure');
+                AIPS.Utilities.resetButton($btn);
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
             });
         },
@@ -3164,7 +3163,7 @@
          */
         saveSection: function() {
             var $btn = $(this);
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
+            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_prompt_section',
@@ -3178,7 +3177,7 @@
             };
 
             $.post(aipsAjax.ajaxUrl, data, function(response){
-                $btn.prop('disabled', false).text('Save Section');
+                AIPS.Utilities.resetButton($btn);
                 if (response.success) {
                     AIPS.Utilities.showToast(response.data.message || 'Section saved successfully', 'success');
                     $('#aips-section-modal').hide();
@@ -3226,7 +3225,7 @@
                     AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
                 }
             }).fail(function(){
-                $btn.prop('disabled', false).text('Save Section');
+                AIPS.Utilities.resetButton($btn);
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
             });
         },
@@ -3415,7 +3414,7 @@
 
             if (!templateId) return;
 
-            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsAdminL10n.generating);
+            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span> ' + aipsAdminL10n.generating, {isHtml: true});
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -3443,7 +3442,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> ' + aipsAdminL10n.runNow);
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
