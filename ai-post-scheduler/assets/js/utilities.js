@@ -13,6 +13,18 @@
 
     window.AIPS = window.AIPS || {};
 
+    // Shared constant reused by escapeAttribute — defined once to avoid per-call allocation.
+    var AIPS_ATTR_ENTITY_MAP = {
+        '&':  '&amp;',
+        '"':  '&quot;',
+        "'":  '&#039;',
+        '<':  '&lt;',
+        '>':  '&gt;',
+        '\r': '&#13;',
+        '\n': '&#10;',
+        '\t': '&#9;'
+    };
+
     window.AIPS.Utilities = {
 
         /**
@@ -550,18 +562,8 @@
             if (text === null || text === undefined) {
                 return '';
             }
-            var entityMap = {
-                '&':  '&amp;',
-                '"':  '&quot;',
-                "'":  '&#039;',
-                '<':  '&lt;',
-                '>':  '&gt;',
-                '\r': '&#13;',
-                '\n': '&#10;',
-                '\t': '&#9;'
-            };
             return String(text).replace(/[&"'<>\r\n\t]/g, function(match) {
-                return entityMap[match];
+                return AIPS_ATTR_ENTITY_MAP[match];
             });
         },
 
