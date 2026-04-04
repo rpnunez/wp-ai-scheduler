@@ -3427,6 +3427,26 @@ margin-right: 5px;
 font-size: 13px;
 }
 
+/* Keep System Status table columns aligned across all sections */
+.aips-health-check-table {
+table-layout: fixed;
+}
+
+.aips-health-check-table thead th:nth-child(1),
+.aips-health-check-table tbody td:nth-child(1) {
+width: 26%;
+}
+
+.aips-health-check-table thead th:nth-child(2),
+.aips-health-check-table tbody td:nth-child(2) {
+width: 54%;
+}
+
+.aips-health-check-table thead th:nth-child(3),
+.aips-health-check-table tbody td:nth-child(3) {
+width: 20%;
+}
+
 /* Log-details collapsible block */
 .aips-log-details {
 display: none;
@@ -3499,4 +3519,17 @@ margin-top: 8px;
 margin-top: 16px;
 color: #666;
 font-size: 13px;
+}
+
+/* AI Engine status actions */
+.aips-test-connection-wrapper {
+margin-top: 15px;
+}
+
+.aips-spinner-inline {
+float: none;
+}
+
+.aips-ai-engine-download-wrap {
+margin-top: 10px;
 }

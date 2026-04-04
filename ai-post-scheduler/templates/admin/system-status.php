@@ -28,6 +28,8 @@ if (!defined('ABSPATH')) {
 
                 <!-- Section Panel -->
                 <div class="aips-content-panel">
+                    <div class="aips-panel-header">
+                        <h2><?php echo esc_html(ucwords(str_replace(array('_', '-'), ' ', (string) $section))); ?></h2>
                     </div>
                     <div class="aips-panel-body no-padding">
                         <table class="aips-table aips-health-check-table">
@@ -85,6 +87,96 @@ if (!defined('ABSPATH')) {
                 </div>
             <?php endforeach; ?>
 
+            <!-- Cron Status -->
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-clock"></span>
+                        <?php esc_html_e('Cron Status', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <?php
+                    $next_scheduled = wp_next_scheduled('aips_generate_scheduled_posts');
+                    if ($next_scheduled) : ?>
+                        <p class="aips-status-message aips-status-success">
+                            <span class="aips-badge aips-badge-success">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+                            </span>
+                            <?php
+                            printf(
+                                esc_html__('Next scheduled check: %s', 'ai-post-scheduler'),
+                                '<strong>' . esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_scheduled)) . '</strong>'
+                            );
+                            ?>
+                        </p>
+                    <?php else : ?>
+                        <p class="aips-status-message aips-status-error">
+                            <span class="aips-badge aips-badge-warning">
+                                <span class="dashicons dashicons-warning"></span>
+                                <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
+                            </span>
+                            <?php esc_html_e('Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler'); ?>
+                        </p>
+                    <?php endif; ?>
+
+                    <p><?php esc_html_e('If duplicate or stacked cron events have accumulated (which can trigger excessive AI calls), flush and re-register all plugin events with one click.', 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-btn-group aips-action-group">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
+                            <span class="dashicons dashicons-controls-repeat"></span>
+                            <?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                    <div class="aips-flush-cron-result"></div>
+                </div>
+            </div>
+
+            <!-- AI Engine Status -->
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-admin-plugins"></span>
+                        <?php esc_html_e('AI Engine Status', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <?php if (class_exists('Meow_MWAI_Core')): ?>
+                        <p class="aips-status-message aips-status-success">
+                            <span class="aips-badge aips-badge-success">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <?php esc_html_e('Connected', 'ai-post-scheduler'); ?>
+                            </span>
+                            <?php esc_html_e('AI Engine is installed and active.', 'ai-post-scheduler'); ?>
+                        </p>
+                        <div class="aips-test-connection-wrapper">
+                            <button type="button" id="aips-test-connection" class="aips-btn aips-btn-secondary">
+                                <span class="dashicons dashicons-update"></span>
+                                <?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?>
+                            </button>
+                            <span class="spinner aips-spinner-inline"></span>
+                            <span id="aips-connection-result" class="aips-connection-result"></span>
+                        </div>
+                    <?php else: ?>
+                        <p class="aips-status-message aips-status-error">
+                            <span class="aips-badge aips-badge-error">
+                                <span class="dashicons dashicons-dismiss"></span>
+                                <?php esc_html_e('Not Found', 'ai-post-scheduler'); ?>
+                            </span>
+                            <?php esc_html_e('AI Engine is not installed or not activated. Please install and activate the AI Engine plugin.', 'ai-post-scheduler'); ?>
+                        </p>
+                        <p class="aips-ai-engine-download-wrap">
+                            <a href="https://wordpress.org/plugins/ai-engine/" target="_blank" rel="noopener" class="aips-btn aips-btn-primary">
+                                <span class="dashicons dashicons-download"></span>
+                                <?php esc_html_e('Download AI Engine', 'ai-post-scheduler'); ?>
+                            </a>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <!-- Database Management -->
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
@@ -133,7 +225,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-panel-body">
 
                     <!-- Export -->
-                    <h3 style="margin-top: 0;"><?php esc_html_e('Export', 'ai-post-scheduler'); ?></h3>
+                    <h3 class="aips-panel-section-heading"><?php esc_html_e('Export', 'ai-post-scheduler'); ?></h3>
                     <p><?php esc_html_e('Download a backup of all plugin data in the selected format.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-btn-group">
                         <label for="aips-export-format" class="screen-reader-text">
@@ -150,10 +242,10 @@ if (!defined('ABSPATH')) {
                         </button>
                     </div>
 
-                    <hr style="margin: 20px 0;">
+                    <hr class="aips-section-divider">
 
                     <!-- Import -->
-                    <h3 style="margin-top: 0;"><?php esc_html_e('Import', 'ai-post-scheduler'); ?></h3>
+                    <h3 class="aips-panel-section-heading"><?php esc_html_e('Import', 'ai-post-scheduler'); ?></h3>
                     <p><?php esc_html_e('Restore plugin data from a previously exported file. This will overwrite existing data.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-btn-group">
                         <label for="aips-import-format" class="screen-reader-text">
@@ -167,7 +259,7 @@ if (!defined('ABSPATH')) {
                         <label for="aips-import-file" class="screen-reader-text">
                             <?php esc_html_e('Import file', 'ai-post-scheduler'); ?>
                         </label>
-                        <input type="file" id="aips-import-file" style="display: inline-block; vertical-align: middle;">
+                        <input type="file" id="aips-import-file" class="aips-file-input">
                         <button type="button" class="aips-btn aips-btn-secondary aips-import-data">
                             <span class="dashicons dashicons-upload"></span>
                             <?php esc_html_e('Import Data', 'ai-post-scheduler'); ?>
@@ -178,54 +270,32 @@ if (!defined('ABSPATH')) {
             </div>
 
             <!-- Notifications Maintenance -->
-            <div class="aips-content-panel" style="margin-bottom: 20px;">
+            <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2>
-                        <span class="dashicons dashicons-bell" style="margin-right: 5px;"></span>
+                        <span class="dashicons dashicons-bell"></span>
                         <?php esc_html_e('Notifications Maintenance', 'ai-post-scheduler'); ?>
                     </h2>
                 </div>
                 <div class="aips-panel-body">
                     <p><?php esc_html_e('Run a one-time hygiene command to clean legacy notification options, unschedule deprecated cron hooks, and normalize notification channel preferences.', 'ai-post-scheduler'); ?></p>
 
-                    <div class="aips-btn-group" style="margin-bottom: 8px;">
+                    <div class="aips-btn-group aips-action-group">
                         <button type="button" class="aips-btn aips-btn-secondary aips-notifications-hygiene">
                             <span class="dashicons dashicons-broom"></span>
                             <?php esc_html_e('Run Notifications Hygiene', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
 
-                    <div class="aips-notifications-hygiene-result" style="display:none;"></div>
-                </div>
-            </div>
-
-            <!-- Scheduler Management -->
-            <div class="aips-content-panel" style="margin-bottom: 20px;">
-                <div class="aips-panel-header">
-                    <h2>
-                        <span class="dashicons dashicons-clock" style="margin-right: 5px;"></span>
-                        <?php esc_html_e('Scheduler Management', 'ai-post-scheduler'); ?>
-                    </h2>
-                </div>
-                <div class="aips-panel-body">
-                    <p><?php esc_html_e('Use this tool to reset the plugin\'s WP-Cron events. If duplicate or stacked cron events have accumulated (which can trigger excessive AI calls), flush and re-register all events with one click.', 'ai-post-scheduler'); ?></p>
-
-                    <div class="aips-btn-group" style="margin-bottom: 8px;">
-                        <button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
-                            <span class="dashicons dashicons-controls-repeat"></span>
-                            <?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
-                        </button>
-                    </div>
-
-                    <div class="aips-flush-cron-result" style="display:none;"></div>
+                    <div class="aips-notifications-hygiene-result"></div>
                 </div>
             </div>
 
             <!-- Operator Runbook -->
-            <div class="aips-content-panel" style="margin-bottom: 20px;">
+            <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2>
-                        <span class="dashicons dashicons-media-document" style="margin-right: 5px;"></span>
+                        <span class="dashicons dashicons-media-document"></span>
                         <?php esc_html_e('Operator Runbook: Queue &amp; Generation Incidents', 'ai-post-scheduler'); ?>
                     </h2>
                 </div>
@@ -233,8 +303,8 @@ if (!defined('ABSPATH')) {
                     <p><?php esc_html_e('Use the following procedures to investigate and recover from common queue and generation incidents. Follow each section in order and stop when the issue is resolved.', 'ai-post-scheduler'); ?></p>
 
                     <!-- RB-1 -->
-                    <h3 style="margin-top: 16px;">
-                        <span class="dashicons dashicons-search" style="vertical-align: middle;"></span>
+                    <h3 class="aips-runbook-section">
+                        <span class="dashicons dashicons-search"></span>
                         <?php esc_html_e('RB-1 — Stuck or Missing Generations', 'ai-post-scheduler'); ?>
                     </h3>
                     <ol>
@@ -247,8 +317,8 @@ if (!defined('ABSPATH')) {
                     </ol>
 
                     <!-- RB-2 -->
-                    <h3 style="margin-top: 16px;">
-                        <span class="dashicons dashicons-warning" style="vertical-align: middle;"></span>
+                    <h3 class="aips-runbook-section">
+                        <span class="dashicons dashicons-warning"></span>
                         <?php esc_html_e('RB-2 — High Failure Rate / Retry Saturation', 'ai-post-scheduler'); ?>
                     </h3>
                     <ol>
@@ -260,8 +330,8 @@ if (!defined('ABSPATH')) {
                     </ol>
 
                     <!-- RB-3 -->
-                    <h3 style="margin-top: 16px;">
-                        <span class="dashicons dashicons-block-default" style="vertical-align: middle;"></span>
+                    <h3 class="aips-runbook-section">
+                        <span class="dashicons dashicons-block-default"></span>
                         <?php esc_html_e('RB-3 — Circuit Breaker is Open', 'ai-post-scheduler'); ?>
                     </h3>
                     <ol>
@@ -271,7 +341,7 @@ if (!defined('ABSPATH')) {
                         <li><?php esc_html_e('After resetting, monitor "Queue Health" for a few minutes to confirm failure rate returns to normal before enabling more schedules.', 'ai-post-scheduler'); ?></li>
                     </ol>
                     <?php if ( class_exists( 'AIPS_AI_Service' ) ) : ?>
-                    <div class="notice notice-warning inline" style="margin-top: 8px;">
+                    <div class="notice notice-warning inline aips-runbook-notice">
                         <p>
                             <?php esc_html_e('Circuit breaker reset is not available from this screen yet. Resolve the underlying AI service issue first, then use the plugin’s implemented recovery/reset workflow when available.', 'ai-post-scheduler'); ?>
                         </p>
@@ -279,8 +349,8 @@ if (!defined('ABSPATH')) {
                     <?php endif; ?>
 
                     <!-- RB-4 -->
-                    <h3 style="margin-top: 16px;">
-                        <span class="dashicons dashicons-database" style="vertical-align: middle;"></span>
+                    <h3 class="aips-runbook-section">
+                        <span class="dashicons dashicons-database"></span>
                         <?php esc_html_e('RB-4 — Backlog Not Draining', 'ai-post-scheduler'); ?>
                     </h3>
                     <ol>
@@ -291,8 +361,8 @@ if (!defined('ABSPATH')) {
                     </ol>
 
                     <!-- RB-5 -->
-                    <h3 style="margin-top: 16px;">
-                        <span class="dashicons dashicons-image-filter" style="vertical-align: middle;"></span>
+                    <h3 class="aips-runbook-section">
+                        <span class="dashicons dashicons-image-filter"></span>
                         <?php esc_html_e('RB-5 — High Image Generation Failure Rate', 'ai-post-scheduler'); ?>
                     </h3>
                     <ol>
@@ -302,7 +372,7 @@ if (!defined('ABSPATH')) {
                         <li><?php esc_html_e('Use "Partial Generation Recovery" to regenerate featured images for posts where generation failed.', 'ai-post-scheduler'); ?></li>
                     </ol>
 
-                    <p style="margin-top: 16px; color: #666; font-size: 13px;">
+                    <p class="aips-runbook-footer">
                         <?php
                         echo wp_kses(
                             sprintf(
