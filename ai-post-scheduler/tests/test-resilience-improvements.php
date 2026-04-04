@@ -385,4 +385,89 @@ delete_transient( 'aips_rate_limiter_requests' );
 $this->assertNotNull( $received, 'aips_rate_limit_reached action should have fired' );
 $this->assertArrayHasKey( 'max_requests', $received );
 }
+
+// -----------------------------------------------------------------------
+// execute_safely — CB state mutated exactly once per operation
+// -----------------------------------------------------------------------
+
+/**
+ * Helper: service with both retry and circuit breaker enabled.
+ *
+ * @param int $threshold CB failure threshold.
+ * @param int $max_attempts Retry attempts.
+ * @return AIPS_Resilience_Service
+ */
+private function make_full_service( $threshold = 10, $max_attempts = 3 ) {
+$GLOBALS['aips_test_options'] = array(
+'aips_enable_circuit_breaker'    => true,
+'aips_circuit_breaker_threshold' => $threshold,
+'aips_circuit_breaker_timeout'   => 300,
+'aips_enable_retry'              => true,
+'aips_retry_max_attempts'        => $max_attempts,
+'aips_retry_initial_delay'       => 0,
+'aips_retry_jitter'              => false,
+'aips_enable_rate_limiting'      => false,
+);
+
+delete_transient( 'aips_circuit_breaker_state' );
+
+return new AIPS_Resilience_Service();
+}
+
+/**
+ * execute_safely must record exactly one failure even when the retry loop
+ * makes multiple attempts — not one per attempt.
+ */
+public function test_execute_safely_records_failure_once_after_multiple_retries() {
+$service = $this->make_full_service( 10, 3 );
+
+$service->execute_safely(
+function() {
+return new WP_Error( 'generation_failed', 'Transient error' );
+},
+'text', 'prompt', array()
+);
+
+$status = $service->get_circuit_breaker_status();
+$this->assertSame( 1, $status['failures'], 'Failure counter should be 1, not 3 (one per retry)' );
+}
+
+/**
+ * execute_safely must record exactly one success.
+ */
+public function test_execute_safely_records_success_once() {
+$service = $this->make_full_service( 10, 3 );
+
+// Record a couple of failures first so we have something to reset.
+$service->record_failure();
+$service->record_failure();
+
+$service->execute_safely(
+function() {
+return 'OK';
+},
+'text', 'prompt', array()
+);
+
+$status = $service->get_circuit_breaker_status();
+$this->assertSame( 0, $status['failures'], 'Failure counter should be reset to 0 on success' );
+}
+
+/**
+ * execute_safely must NOT record a failure for the json_query_unavailable
+ * sentinel — that is a non-fault fallback signal, not a provider failure.
+ */
+public function test_execute_safely_does_not_record_failure_for_json_query_unavailable() {
+$service = $this->make_full_service( 10, 1 );
+
+$service->execute_safely(
+function() {
+return new WP_Error( 'json_query_unavailable', 'Method failed' );
+},
+'json', 'prompt', array()
+);
+
+$status = $service->get_circuit_breaker_status();
+$this->assertSame( 0, $status['failures'], 'json_query_unavailable should not count as a CB failure' );
+}
 }

@@ -209,7 +209,14 @@ class AIPS_Resilience_Service {
     /**
      * Execute a function with full resilience (Circuit Breaker, Rate Limiter, Retry).
      *
-     * @param callable $function Function to execute.
+     * Circuit-breaker state is mutated exactly once per execute_safely() call,
+     * regardless of how many retry attempts were made internally.  Callers must
+     * NOT call record_failure() / record_success() inside the $function closure;
+     * those side-effects are handled here after the retry loop completes.
+     *
+     * @param callable $function Function to execute.  Must return a non-WP_Error value
+     *                           on success, or a WP_Error (with a meaningful error code)
+     *                           on failure.  Must NOT call record_failure/record_success.
      * @param string   $type     Request type for logging.
      * @param string   $prompt   Prompt for logging.
      * @param array    $options  Options for logging.
@@ -227,7 +234,22 @@ class AIPS_Resilience_Service {
         }
 
         // Execute with retry logic
-        return $this->execute_with_retry($function, $type, $prompt, $options);
+        $result = $this->execute_with_retry($function, $type, $prompt, $options);
+
+        // Mutate circuit-breaker state exactly once per execute_safely() call.
+        // Self-generated resilience errors (circuit already open / rate-limited) and
+        // the 'json_query_unavailable' signal (a non-fault fallback sentinel) are
+        // excluded so that the caller's fallback path can record its own outcome.
+        $skip_recording = array('circuit_breaker_open', 'rate_limit_exceeded', 'json_query_unavailable');
+        if (is_wp_error($result)) {
+            if (!in_array($result->get_error_code(), $skip_recording, true)) {
+                $this->record_failure($result->get_error_code());
+            }
+        } else {
+            $this->record_success();
+        }
+
+        return $result;
     }
 
     /**
