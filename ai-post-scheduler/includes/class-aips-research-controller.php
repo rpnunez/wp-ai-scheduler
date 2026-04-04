@@ -457,6 +457,27 @@ class AIPS_Research_Controller {
         // Initialize the generator
         $generator = new AIPS_Generator();
 
+        if (!$generator->is_available()) {
+            $message = __('AI Engine is not available. Please install and configure Meow Apps AI Engine before generating posts.', 'ai-post-scheduler');
+
+            $this->logger->log($message, 'error', array(
+                'action' => 'ajax_generate_trending_topics_bulk',
+                'topic_ids' => wp_list_pluck($topics, 'id'),
+                'template_id' => isset($template->id) ? absint($template->id) : 0,
+            ));
+
+            $history->record_error(
+                __('Bulk trending topic generation unavailable because AI Engine is not available', 'ai-post-scheduler'),
+                array(
+                    'error_code' => 'TRENDING_BULK_GENERATE_UNAVAILABLE',
+                    'topic_ids' => wp_list_pluck($topics, 'id'),
+                    'template_id' => isset($template->id) ? absint($template->id) : 0,
+                ),
+                new WP_Error('ai_engine_unavailable', $message)
+            );
+
+            wp_send_json_error(array('message' => $message));
+        }
         $success_count = 0;
         $failed_topics = array();
         $generated_topic_ids = array();
@@ -604,8 +625,8 @@ class AIPS_Research_Controller {
                 'post_status' => $post_status,
                 'date_generated' => isset($post_row['post_date']) ? $post_row['post_date'] : '',
                 'date_published' => $post_status === 'publish' && isset($post_row['post_date']) ? $post_row['post_date'] : '',
-                'edit_url' => $post_id > 0 ? get_edit_post_link($post_id, '') : '',
-                'post_url' => $post_id > 0 ? get_permalink($post_id) : '',
+                'edit_url' => $post_id > 0 ? esc_url_raw(get_edit_post_link($post_id, '')) : '',
+                'post_url' => $post_id > 0 ? esc_url_raw(get_permalink($post_id)) : '',
             );
         }
 

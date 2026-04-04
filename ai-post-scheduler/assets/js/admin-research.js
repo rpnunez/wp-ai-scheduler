@@ -731,10 +731,10 @@
             var rowsHtml = posts.map(function(post) {
                 var actionsHtml = '';
                 if (post.edit_url) {
-                    actionsHtml += '<a href="' + esc(post.edit_url) + '" class="button" target="_blank">' + esc(aipsResearchL10n.editPost || 'Edit Post') + '</a> ';
+                    actionsHtml += '<a href="' + esc(post.edit_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(aipsResearchL10n.editPost || 'Edit Post') + '</a> ';
                 }
                 if (post.post_url && post.post_status === 'publish') {
-                    actionsHtml += '<a href="' + esc(post.post_url) + '" class="button" target="_blank">' + esc(aipsResearchL10n.viewPost || 'View Post') + '</a>';
+                    actionsHtml += '<a href="' + esc(post.post_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(aipsResearchL10n.viewPost || 'View Post') + '</a>';
                 }
 
                 return AIPS.Templates.renderRaw('aips-tmpl-research-topic-post-row', {
