@@ -199,7 +199,7 @@ class AIPS_Admin_Bar {
 				$node_title .= '<span class="aips-notif-datetime">' . esc_html($timestamp_label) . '</span>';
 
 				if (!empty($notif->url)) {
-					$node_title .= '<span class="aips-notif-action-cell"><a class="aips-notif-action" href="' . esc_url($notif->url) . '">' . esc_html__('View Post', 'ai-post-scheduler') . '</a></span>';
+					$node_title .= '<span class="aips-notif-action-cell"><a class="aips-notif-action" href="' . esc_url($notif->url) . '">' . esc_html__('View', 'ai-post-scheduler') . '</a></span>';
 				} else {
 					$node_title .= '<span class="aips-notif-action-cell"></span>';
 				}

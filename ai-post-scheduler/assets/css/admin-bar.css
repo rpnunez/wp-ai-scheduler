@@ -294,8 +294,8 @@
    Notification severity levels
 ------------------------------------------------------- */
 #wpadminbar .aips-notif-level-warning > .ab-item {
-	border-left-color: #5f9dd9;
-	background: rgba(41, 90, 138, 0.2);
+	border-left-color: #e6a817;
+	background: rgba(120, 80, 0, 0.22);
 }
 
 #wpadminbar .aips-notif-level-error > .ab-item {
