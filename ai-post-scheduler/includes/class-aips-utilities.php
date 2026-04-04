@@ -45,4 +45,26 @@ class AIPS_Utilities {
 			random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
 		);
 	}
+
+	/**
+	 * Safely sanitizes an array of strings, preventing fatal TypeErrors in PHP 8+
+	 * when non-scalar values (like nested arrays) are passed.
+	 *
+	 * @param array $input The raw array to sanitize.
+	 * @return array The sanitized array of strings.
+	 */
+	public static function sanitize_string_array($input) {
+		if (!is_array($input)) {
+			return array();
+		}
+
+		$sanitized = array();
+		foreach ($input as $key => $item) {
+			if (is_scalar($item)) {
+				$sanitized[$key] = sanitize_text_field((string) $item);
+			}
+		}
+
+		return $sanitized;
+	}
 }

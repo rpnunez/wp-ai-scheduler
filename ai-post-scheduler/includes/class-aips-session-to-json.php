@@ -25,12 +25,18 @@ class AIPS_Session_To_JSON {
 	 * @var AIPS_History_Repository Repository for database operations
 	 */
 	private $history_repository;
-	
+
+	/**
+	 * @var AIPS_Logger Logger instance
+	 */
+	private $logger;
+
 	/**
 	 * Initialize the converter
 	 */
 	public function __construct() {
 		$this->history_repository = new AIPS_History_Repository();
+		$this->logger = new AIPS_Logger();
 	}
 	
 	/**
@@ -296,7 +302,7 @@ class AIPS_Session_To_JSON {
 	 *
 	 * This is useful for very large sessions where returning the JSON string directly may
 	 * be impractical. The file will be created under wp_upload_dir()/aips-exports.
-	 * Failures to set restrictive permissions (chmod) are logged instead of causing a fatal error.
+	 * Logs an error if file permission changes fail.
 	 *
 	 * @param int  $history_id   The history item ID
 	 * @param bool $pretty_print Whether to format JSON with indentation
@@ -345,7 +351,7 @@ class AIPS_Session_To_JSON {
 		
 		// Try to set restrictive permissions
 		if (!chmod($filepath, 0644)) {
-			error_log('AIPS_Session_To_JSON: Failed to set permissions on export file ' . $filepath);
+			$this->logger->log('Failed to set permissions on export file: ' . $filepath, 'warning');
 		}
 		
 		return array(
@@ -356,7 +362,8 @@ class AIPS_Session_To_JSON {
 	}
 	
 	/**
-	 * Create .htaccess file to protect export directory
+	 * Create .htaccess file to protect export directory.
+	 * Explicitly checks file creation success and logs errors instead of silencing them.
 	 *
 	 * Creates an .htaccess and index.php file to prevent direct directory listing
 	 * and access to the JSON export files. Logs errors on write failures.
@@ -377,23 +384,22 @@ class AIPS_Session_To_JSON {
 			$content .= "</Files>\n";
 
 			if (file_put_contents($htaccess_file, $content) === false) {
-				error_log('AIPS_Session_To_JSON: Failed to write .htaccess protection file to ' . $dir);
+				$this->logger->log('Failed to create .htaccess file in export directory: ' . $htaccess_file, 'warning');
 			}
 		}
 		
 		if (!file_exists($index_file)) {
 			if (file_put_contents($index_file, '<?php // Silence is golden') === false) {
-				error_log('AIPS_Session_To_JSON: Failed to write index.php protection file to ' . $dir);
+				$this->logger->log('Failed to create index.php file in export directory: ' . $index_file, 'warning');
 			}
 		}
 	}
 	
 	/**
-	 * Clean up old export files
+	 * Clean up old export files.
 	 *
 	 * Removes files older than the specified age in seconds.
-	 * Should be called regularly via WP-Cron. Validates file writability
-	 * before unlinking and collects errors on failure.
+	 * Should be called regularly via WP-Cron. Explicitly checks unlink success.
 	 *
 	 * @param int $max_age Maximum age in seconds (default: 1 hour)
 	 * @return array Array with 'deleted' count and 'errors' array
@@ -418,7 +424,8 @@ class AIPS_Session_To_JSON {
 			$result['errors'][] = 'Failed to read export directory';
 			return $result;
 		}
-		
+
+		$logger = new AIPS_Logger();
 		foreach ($files as $file) {
 			if (!is_file($file)) {
 				continue;
@@ -441,6 +448,7 @@ class AIPS_Session_To_JSON {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);
+					$logger->log('Failed to delete old export file: ' . $file, 'warning');
 				}
 			}
 		}

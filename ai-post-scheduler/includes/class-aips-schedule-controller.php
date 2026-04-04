@@ -689,15 +689,16 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $id    = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type  = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 0;
 
         if (!$id || empty($type)) {
             wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $entries = $service->get_history($id, $type);
+        $entries = $service->get_history($id, $type, $limit);
 
         wp_send_json_success(array('entries' => $entries));
     }
