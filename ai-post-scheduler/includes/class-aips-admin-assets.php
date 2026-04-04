@@ -572,6 +572,14 @@ class AIPS_Admin_Assets {
 
         // Internal Links page script
         if (strpos($hook, 'aips-internal-links') !== false) {
+            // Reuse shared stats/tabs styling currently defined in authors.css.
+            wp_enqueue_style(
+                'aips-authors-style',
+                AIPS_PLUGIN_URL . 'assets/css/authors.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-internal-links',
                 AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
