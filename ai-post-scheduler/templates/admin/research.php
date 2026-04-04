@@ -178,11 +178,15 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-toolbar-left">
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-topics" disabled>
                         <span class="dashicons dashicons-trash"></span>
-                        <?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?>
+                        <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-schedule-selected-topics" disabled>
+                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <?php esc_html_e('Schedule', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-generate-selected-topics" disabled>
                         <span class="dashicons dashicons-media-text"></span>
-                        <?php esc_html_e('Generate Selected', 'ai-post-scheduler'); ?>
+                        <?php esc_html_e('Generate', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-topics-btn">
                         <span class="dashicons dashicons-update"></span>

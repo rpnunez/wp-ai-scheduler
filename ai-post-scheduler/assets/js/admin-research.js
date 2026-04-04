@@ -43,7 +43,8 @@
             $(document).on('click', '#analyze-gaps-btn', AIPS.analyzeGaps);
             $(document).on('click', '.generate-gap-ideas', AIPS.generateGapIdeas);
             $(document).on('click', '#aips-delete-selected-topics', AIPS.bulkDeleteSelectedTopics);
-            $(document).on('click', '#aips-generate-selected-topics', AIPS.generateSelectedTopics);
+            $(document).on('click', '#aips-schedule-selected-topics', AIPS.scheduleSelectedTopics);
+            $(document).on('click', '#aips-generate-selected-topics', AIPS.bulkGenerateSelectedTopics);
             $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
         },
 
@@ -356,6 +357,7 @@
 
             var hasSelected = AIPS.researchSelectedTopics.length > 0;
             $('#aips-delete-selected-topics').prop('disabled', !hasSelected);
+            $('#aips-schedule-selected-topics').prop('disabled', !hasSelected);
             $('#aips-generate-selected-topics').prop('disabled', !hasSelected);
         },
 
@@ -672,7 +674,7 @@
          *
          * @param {Event} e Click event.
          */
-        generateSelectedTopics: function(e) {
+        scheduleSelectedTopics: function(e) {
             e.preventDefault();
 
             if (AIPS.researchSelectedTopics.length === 0) {
@@ -693,6 +695,61 @@
                     scrollTop: $('#bulk-schedule-section').offset().top - 50
                 }, 400);
             }
+        },
+
+        /**
+         * Bulk generate posts from selected topics immediately (on-demand).
+         *
+         * @param {Event} e Click event.
+         */
+        bulkGenerateSelectedTopics: function(e) {
+            e.preventDefault();
+
+            if (AIPS.researchSelectedTopics.length === 0) {
+                return;
+            }
+
+            AIPS.Utilities.confirm(
+                'Generate ' + AIPS.researchSelectedTopics.length + ' post(s) immediately from selected topics?',
+                'Confirm Generation',
+                [
+                    { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    {
+                        label: 'Generate Now',
+                        className: 'aips-btn aips-btn-primary',
+                        action: function() {
+                            var $btn = $('#aips-generate-selected-topics');
+                            var originalText = $btn.html();
+                            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
+
+                            $.ajax({
+                                url: ajaxurl,
+                                type: 'POST',
+                                data: {
+                                    action: 'aips_generate_trending_topics_bulk',
+                                    nonce: $('#aips_nonce').val(),
+                                    topic_ids: AIPS.researchSelectedTopics
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        AIPS.Utilities.showToast(response.data.message, 'success');
+                                        AIPS.researchSelectedTopics = [];
+                                        $('#load-topics').trigger('click');
+                                    } else {
+                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                                    }
+                                },
+                                error: function(xhr, status, error) {
+                                    AIPS.Utilities.showToast('Error: ' + error, 'error');
+                                },
+                                complete: function() {
+                                    $btn.prop('disabled', false).html(originalText);
+                                }
+                            });
+                        }
+                    }
+                ]
+            );
         },
 
         /**

@@ -62,9 +62,10 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_delete_trending_topic', array($this, 'ajax_delete_trending_topic'));
         add_action('wp_ajax_aips_delete_trending_topic_bulk', array($this, 'ajax_delete_trending_topic_bulk'));
         add_action('wp_ajax_aips_schedule_trending_topics', array($this, 'ajax_schedule_trending_topics'));
+        add_action('wp_ajax_aips_generate_trending_topics_bulk', array($this, 'ajax_generate_trending_topics_bulk'));
         add_action('wp_ajax_aips_perform_gap_analysis', array($this, 'ajax_perform_gap_analysis'));
         add_action('wp_ajax_aips_generate_topics_from_gap', array($this, 'ajax_generate_topics_from_gap'));
-        
+
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
     }
@@ -323,7 +324,113 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Failed to create schedules.', 'ai-post-scheduler')));
         }
     }
-    
+
+    /**
+     * AJAX handler: Generate posts from trending topics immediately.
+     *
+     * Creates posts on-demand from selected trending topics.
+     */
+    public function ajax_generate_trending_topics_bulk() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
+
+        if (empty($topic_ids)) {
+            wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+        }
+
+        // Get topics from database
+        $topics = array();
+        foreach ($topic_ids as $topic_id) {
+            $topic = $this->repository->get_by_id($topic_id);
+            if ($topic) {
+                $topics[] = array(
+                    'id' => $topic_id,
+                    'topic' => $topic['topic']
+                );
+            }
+        }
+
+        if (empty($topics)) {
+            wp_send_json_error(array('message' => __('No valid topics found.', 'ai-post-scheduler')));
+        }
+
+        // Get a default template to use for generation
+        $template_repository = new AIPS_Template_Repository();
+        $templates = $template_repository->get_all(true);
+
+        if (empty($templates)) {
+            wp_send_json_error(array('message' => __('No active templates found. Please create a template first.', 'ai-post-scheduler')));
+        }
+
+        // Use the first active template
+        $template = $templates[0];
+
+        // Initialize the generator
+        $generator = new AIPS_Generator();
+        $context_factory = new AIPS_Generation_Context_Factory();
+
+        $success_count = 0;
+        $failed_topics = array();
+
+        // Generate posts for each topic
+        foreach ($topics as $topic_data) {
+            $context = $context_factory->create_from_template($template, null, $topic_data['topic']);
+            $context->set_creation_method('manual');
+
+            $post_id = $generator->generate_post($context);
+
+            if (is_wp_error($post_id)) {
+                $failed_topics[] = $topic_data['topic'];
+                $this->logger->log("Failed to generate post for topic: {$topic_data['topic']}", 'error', array(
+                    'error' => $post_id->get_error_message()
+                ));
+            } else {
+                $success_count++;
+                $this->logger->log("Generated post #{$post_id} from trending topic: {$topic_data['topic']}", 'info');
+            }
+        }
+
+        if ($success_count > 0) {
+            $message = sprintf(
+                _n(
+                    '%d post generated successfully.',
+                    '%d posts generated successfully.',
+                    $success_count,
+                    'ai-post-scheduler'
+                ),
+                $success_count
+            );
+
+            if (!empty($failed_topics)) {
+                $message .= ' ' . sprintf(
+                    _n(
+                        '%d topic failed.',
+                        '%d topics failed.',
+                        count($failed_topics),
+                        'ai-post-scheduler'
+                    ),
+                    count($failed_topics)
+                );
+            }
+
+            wp_send_json_success(array(
+                'message' => $message,
+                'success_count' => $success_count,
+                'failed_count' => count($failed_topics),
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => __('Failed to generate posts from selected topics.', 'ai-post-scheduler'),
+                'failed_topics' => $failed_topics
+            ));
+        }
+    }
+
     /**
      * Run scheduled research automatically.
      *
