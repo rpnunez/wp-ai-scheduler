@@ -665,8 +665,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = $this->expansion_service;
-		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		$similar_topics = $this->expansion_service->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -699,8 +698,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = $this->expansion_service;
-		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
+		$suggestions = $this->expansion_service->suggest_related_topics($author_id, $limit);
 
 		wp_send_json_success(array('suggestions' => $suggestions));
 	}
@@ -717,11 +715,10 @@ class AIPS_Author_Topics_Controller {
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 
-		$expansion_service = $this->expansion_service;
 		if ($author_id > 0) {
-			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+			$stats = $this->expansion_service->batch_compute_approved_embeddings($author_id);
 		} else {
-			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+			$stats = $this->expansion_service->batch_compute_all_approved_embeddings();
 		}
 
 		wp_send_json_success(array(
@@ -1021,8 +1018,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Use the history repository to get the estimate based on historical performance
-		$history_repository = $this->history_repository;
-		$estimate           = $history_repository->get_estimated_generation_time(20);
+		$estimate           = $this->history_repository->get_estimated_generation_time(20);
 
 		$per_post_seconds   = $estimate['per_post_seconds'];
 		$sample_size        = $estimate['sample_size'];

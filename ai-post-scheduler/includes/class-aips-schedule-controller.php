@@ -250,8 +250,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
         }
 
-        $repository = $this->schedule_repository;
-        $deleted = $repository->delete_bulk($ids);
+        $deleted = $this->schedule_repository->delete_bulk($ids);
 
         if ($deleted !== false) {
             wp_send_json_success(array(
@@ -281,8 +280,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
         }
 
-        $repository = $this->schedule_repository;
-        $updated = $repository->set_active_bulk($ids, $is_active);
+        $updated = $this->schedule_repository->set_active_bulk($ids, $is_active);
 
         if ($updated !== false) {
             $count = (int) $updated ?: count($ids);
@@ -386,8 +384,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_success(array('count' => 0));
         }
 
-        $repository = $this->schedule_repository;
-        $count = $repository->get_post_count_for_schedules($ids);
+        $count = $this->schedule_repository->get_post_count_for_schedules($ids);
 
         wp_send_json_success(array('count' => $count));
     }
@@ -410,8 +407,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        $schedule_repository = $this->schedule_repository;
-        $schedule = $schedule_repository->get_by_id($schedule_id);
+        $schedule = $this->schedule_repository->get_by_id($schedule_id);
 
         if (!$schedule) {
             wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
@@ -421,8 +417,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_success(array('entries' => array()));
         }
 
-        $history_repository = $this->history_repository;
-        $logs = $history_repository->get_logs_by_history_id(
+        $logs = $this->history_repository->get_logs_by_history_id(
             absint($schedule->schedule_history_id),
             array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
         );
