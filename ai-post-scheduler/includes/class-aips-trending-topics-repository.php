@@ -141,6 +141,85 @@ class AIPS_Trending_Topics_Repository {
         
         return $this->wpdb->get_row($query, ARRAY_A);
     }
+
+    /**
+     * Get generated post counts keyed by trending topic ID.
+     *
+     * Counts posts linked through `_aips_trending_topic_id` post meta.
+     *
+     * @param array $topic_ids Topic IDs.
+     * @return array Map of topic_id => count.
+     */
+    public function get_generated_post_counts($topic_ids) {
+        if (empty($topic_ids) || !is_array($topic_ids)) {
+            return array();
+        }
+
+        $topic_ids = array_map('absint', $topic_ids);
+        $topic_ids = array_values(array_filter($topic_ids, function($id) {
+            return $id > 0;
+        }));
+
+        if (empty($topic_ids)) {
+            return array();
+        }
+
+        $post_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+        $placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+
+        $query = "SELECT CAST(pm.meta_value AS UNSIGNED) AS topic_id, COUNT(DISTINCT p.ID) AS post_count
+            FROM {$postmeta_table} pm
+            INNER JOIN {$post_table} p ON p.ID = pm.post_id
+            WHERE pm.meta_key = %s
+            AND CAST(pm.meta_value AS UNSIGNED) IN ({$placeholders})
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('auto-draft', 'trash')
+            GROUP BY topic_id";
+
+        $prepare_values = array_merge(array('_aips_trending_topic_id'), $topic_ids, array('post'));
+        $rows = $this->wpdb->get_results($this->wpdb->prepare($query, $prepare_values), ARRAY_A);
+
+        $counts = array();
+        foreach ($rows as $row) {
+            $counts[(int) $row['topic_id']] = (int) $row['post_count'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Get generated posts linked to a specific trending topic.
+     *
+     * @param int $topic_id Trending topic ID.
+     * @return array List of generated posts.
+     */
+    public function get_generated_posts_by_topic_id($topic_id) {
+        $topic_id = absint($topic_id);
+
+        if ($topic_id <= 0) {
+            return array();
+        }
+
+        $post_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+
+        $query = $this->wpdb->prepare(
+            "SELECT DISTINCT p.ID AS post_id, p.post_title, p.post_status, p.post_date
+            FROM {$postmeta_table} pm
+            INNER JOIN {$post_table} p ON p.ID = pm.post_id
+            WHERE pm.meta_key = %s
+            AND CAST(pm.meta_value AS UNSIGNED) = %d
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('auto-draft', 'trash')
+            ORDER BY p.post_date DESC",
+            '_aips_trending_topic_id',
+            $topic_id,
+            'post'
+        );
+
+        return $this->wpdb->get_results($query, ARRAY_A);
+    }
     
     /**
      * Get trending topics for a specific niche.
@@ -480,6 +559,41 @@ class AIPS_Trending_Topics_Repository {
         );
         
         return $result !== false;
+    }
+
+    /**
+     * Update status for multiple trending topics.
+     *
+     * @param array  $ids    Topic IDs.
+     * @param string $status New status value.
+     * @return int|false Number of updated rows, 0 for no valid IDs, or false on error.
+     */
+    public function update_status_bulk($ids, $status) {
+        if (empty($ids) || !is_array($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_values(array_filter($ids, function($id) {
+            return $id > 0;
+        }));
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $sanitized_status = sanitize_key($status);
+        if ($sanitized_status === '') {
+            return false;
+        }
+
+        $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $query = "UPDATE {$this->table_name} SET status = %s WHERE id IN ({$id_placeholders})";
+        $prepare_values = array_merge(array($sanitized_status), $ids);
+
+        $prepared_query = $this->wpdb->prepare($query, $prepare_values);
+
+        return $this->wpdb->query($prepared_query);
     }
     
     /**

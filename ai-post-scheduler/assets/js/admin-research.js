@@ -45,6 +45,7 @@
             $(document).on('click', '#aips-delete-selected-topics', AIPS.bulkDeleteSelectedTopics);
             $(document).on('click', '#aips-schedule-selected-topics', AIPS.scheduleSelectedTopics);
             $(document).on('click', '#aips-generate-selected-topics', AIPS.bulkGenerateSelectedTopics);
+            $(document).on('click', '.aips-post-count-badge', AIPS.viewTrendingTopicPosts);
             $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
         },
 
@@ -172,6 +173,8 @@
             var niche = $('#filter-niche').val();
             var minScore = $('#filter-score').val();
             var freshOnly = $('#filter-fresh').is(':checked');
+            var includeUsed = $('#filter-include-used').is(':checked');
+            var status = includeUsed ? 'all' : 'new';
 
             $.ajax({
                 url: ajaxurl,
@@ -181,15 +184,20 @@
                     nonce: $('#aips_nonce').val(),
                     niche: niche,
                     min_score: minScore,
-                    fresh_only: freshOnly,
+                    fresh_only: freshOnly ? 'true' : 'false',
+                    status: status,
                     limit: 50
                 },
                 success: function(response) {
-                    if (response.success) {
+                    if (response.success && response.data && response.data.topics) {
                         AIPS.renderTopicsTable(response.data.topics);
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        var errorMsg = response.data && response.data.message ? response.data.message : 'Unknown error';
+                        AIPS.Utilities.showToast('Error: ' + errorMsg, 'error');
                     }
+                },
+                error: function(xhr, status, error) {
+                    AIPS.Utilities.showToast('Error loading topics: ' + error, 'error');
                 }
             });
         },
@@ -204,7 +212,8 @@
             var niche = $('#filter-niche').val();
             var minScore = $('#filter-score').val();
             var freshOnly = $('#filter-fresh').is(':checked');
-            var isFiltered = niche || minScore !== '0' || freshOnly;
+            var includeUsed = $('#filter-include-used').is(':checked');
+            var isFiltered = niche || minScore !== '0' || freshOnly || includeUsed;
             var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
 
             AIPS.researchSelectedTopics = [];
@@ -240,10 +249,31 @@
                     var reasonHtml = topic.reason
                         ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
                         : '';
+                    
+                    var generatedPostCount = parseInt(topic.generated_post_count || 0, 10);
+                    var postCountBadgeHtml = generatedPostCount > 0
+                        ? AIPS.Templates.render('aips-tmpl-research-topic-post-count-badge', {
+                            topic_id: esc(topic.id),
+                            count: esc(generatedPostCount)
+                        })
+                        : '';
+
+                    var statusLabel = (topic.status || 'new').toLowerCase();
+                    var statusLabelText = {
+                        'new': aipsResearchL10n.statusNew || 'New',
+                        'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
+                        'generated': aipsResearchL10n.statusGenerated || 'Generated'
+                    }[statusLabel] || statusLabel;
+                    var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
+                        status: esc(statusLabel),
+                        status_label: esc(statusLabelText)
+                    });
 
                     return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
                         id: esc(topic.id),
                         topic: esc(topic.topic),
+                        status_chip_html: statusChipHtml,
+                        post_count_badge_html: postCountBadgeHtml,
                         reason_html: reasonHtml,
                         score_class: esc(scoreClass),
                         score: esc(topic.score),
@@ -437,6 +467,8 @@
                         $('.topic-checkbox').prop('checked', false);
                         $('#select-all-topics').prop('checked', false);
                         AIPS.updateSelectedTopics();
+                        $('#bulk-schedule-section').hide();
+                        $('#load-topics').trigger('click');
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
@@ -461,6 +493,7 @@
             $('#filter-niche').val('');
             $('#filter-score').val('0');
             $('#filter-fresh').prop('checked', false);
+            $('#filter-include-used').prop('checked', false);
             $('#load-topics').trigger('click');
         },
 
@@ -625,6 +658,107 @@
         },
 
         /**
+         * Open modal to view posts generated from a trending topic.
+         *
+         * @param {Event} e Click event.
+         */
+        viewTrendingTopicPosts: function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var topicId = $(e.currentTarget).data('topic-id');
+
+            if (!topicId) {
+                return;
+            }
+
+            $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.loadingPosts || 'Loading posts...') + '</p>');
+            $('#aips-trending-topic-posts-modal').fadeIn();
+
+            AIPS.loadTrendingTopicPosts(topicId);
+        },
+
+        /**
+         * Fetch generated posts for a trending topic.
+         *
+         * @param {number} topicId Trending topic ID.
+         */
+        loadTrendingTopicPosts: function(topicId) {
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_trending_topic_posts',
+                    nonce: $('#aips_nonce').val(),
+                    topic_id: topicId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var topicTitle = response.data.topic && response.data.topic.topic
+                            ? response.data.topic.topic
+                            : '';
+
+                        $('#aips-trending-topic-posts-modal-title').text(
+                            (aipsResearchL10n.postsGeneratedFrom || 'Posts Generated from Topic') + ': ' + topicTitle
+                        );
+
+                        AIPS.renderTrendingTopicPosts(response.data.posts || []);
+                    } else {
+                        $('#aips-trending-topic-posts-content').html(
+                            '<p>' + (response.data && response.data.message ? response.data.message : (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.')) + '</p>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.') + '</p>');
+                }
+            });
+        },
+
+        /**
+         * Render generated posts table in the trending-topic posts modal.
+         *
+         * @param {Array<Object>} posts Generated post records.
+         */
+        renderTrendingTopicPosts: function(posts) {
+            if (!posts || posts.length === 0) {
+                $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.noPostsFound || 'No posts found.') + '</p>');
+                return;
+            }
+
+            var esc = AIPS.Templates ? AIPS.Templates.escape : AIPS.escapeHtml;
+
+            var rowsHtml = posts.map(function(post) {
+                var actionsHtml = '';
+                if (post.edit_url) {
+                    actionsHtml += '<a href="' + esc(post.edit_url) + '" class="button" target="_blank">' + esc(aipsResearchL10n.editPost || 'Edit Post') + '</a> ';
+                }
+                if (post.post_url && post.post_status === 'publish') {
+                    actionsHtml += '<a href="' + esc(post.post_url) + '" class="button" target="_blank">' + esc(aipsResearchL10n.viewPost || 'View Post') + '</a>';
+                }
+
+                return AIPS.Templates.renderRaw('aips-tmpl-research-topic-post-row', {
+                    post_id: esc(post.post_id || ''),
+                    post_title: esc(post.post_title || ''),
+                    date_generated: esc(post.date_generated || ''),
+                    date_published: esc(post.date_published || (aipsResearchL10n.notPublished || 'Not published')),
+                    actions: actionsHtml
+                });
+            }).join('');
+
+            var tableHtml = AIPS.Templates.renderRaw('aips-tmpl-research-topic-posts-table', {
+                id_label: esc(aipsResearchL10n.postId || 'Post ID'),
+                title_label: esc(aipsResearchL10n.postTitle || 'Post Title'),
+                generated_label: esc(aipsResearchL10n.dateGenerated || 'Date Generated'),
+                published_label: esc(aipsResearchL10n.datePublished || 'Date Published'),
+                actions_label: esc(aipsResearchL10n.actions || 'Actions'),
+                rows: rowsHtml
+            });
+
+            $('#aips-trending-topic-posts-content').html(tableHtml);
+        },
+
+        /**
          * Bulk-delete selected topics.
          *
          * @param {Event} e Click event.
@@ -719,37 +853,113 @@
                         className: 'aips-btn aips-btn-primary',
                         action: function() {
                             var $btn = $('#aips-generate-selected-topics');
-                            var originalText = $btn.html();
                             $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
 
-                            $.ajax({
-                                url: ajaxurl,
-                                type: 'POST',
-                                data: {
-                                    action: 'aips_generate_trending_topics_bulk',
-                                    nonce: $('#aips_nonce').val(),
-                                    topic_ids: AIPS.researchSelectedTopics
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        AIPS.Utilities.showToast(response.data.message, 'success');
-                                        AIPS.researchSelectedTopics = [];
-                                        $('#load-topics').trigger('click');
-                                    } else {
-                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                                    }
-                                },
-                                error: function(xhr, status, error) {
-                                    AIPS.Utilities.showToast('Error: ' + error, 'error');
-                                },
-                                complete: function() {
-                                    $btn.prop('disabled', false).html(originalText);
-                                }
+                            AIPS.runResearchBulkGenerateWithProgress($btn, {
+                                action: 'aips_generate_trending_topics_bulk',
+                                nonce: $('#aips_nonce').val(),
+                                topic_ids: AIPS.researchSelectedTopics
                             });
                         }
                     }
                 ]
             );
+        },
+
+        /**
+         * Fetch a per-post generation-time estimate and then launch bulk
+         * generation with a progress bar.
+         *
+         * Uses the same estimate endpoint as Author Topics (`aips_get_bulk_generate_estimate`)
+         * so the progress duration reflects recent real-world generation timing.
+         *
+         * @param {jQuery} $button   Generate button element.
+         * @param {Object} ajaxData  POST payload for bulk generate request.
+         */
+        runResearchBulkGenerateWithProgress: function($button, ajaxData) {
+            var DEFAULT_PER_POST_SECONDS = 30;
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_bulk_generate_estimate',
+                    nonce: $('#aips_nonce').val()
+                },
+                success: function(estimateResponse) {
+                    var perPost = DEFAULT_PER_POST_SECONDS;
+
+                    if (
+                        estimateResponse &&
+                        estimateResponse.success &&
+                        estimateResponse.data &&
+                        estimateResponse.data.per_post_seconds > 0
+                    ) {
+                        perPost = estimateResponse.data.per_post_seconds;
+                    }
+
+                    AIPS.launchResearchBulkGenerateProgress($button, ajaxData, perPost);
+                },
+                error: function() {
+                    AIPS.launchResearchBulkGenerateProgress($button, ajaxData, DEFAULT_PER_POST_SECONDS);
+                }
+            });
+        },
+
+        /**
+         * Open a progress bar modal and execute bulk topic generation.
+         *
+         * @param {jQuery} $button          Generate button element.
+         * @param {Object} ajaxData         POST payload for bulk generate request.
+         * @param {number} perPostSeconds   Estimated seconds per generated post.
+         */
+        launchResearchBulkGenerateProgress: function($button, ajaxData, perPostSeconds) {
+            var topicCount = AIPS.researchSelectedTopics.length;
+            var MIN_PROGRESS_SECONDS = 10;
+            var totalSeconds = Math.max(perPostSeconds * topicCount, MIN_PROGRESS_SECONDS);
+            var buttonDefaultText = aipsResearchL10n.generateSelected;
+            var progressTitle = aipsResearchL10n.generatingPostsTitle;
+            var progressMessage = aipsResearchL10n.generatingPostsMessage;
+
+            var progressBar = AIPS.Utilities.showProgressBar({
+                title: progressTitle,
+                message: progressMessage,
+                totalSeconds: totalSeconds
+            });
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: ajaxData,
+                success: function(response) {
+                    if (response.success) {
+                        progressBar.complete(response.data.message, 'success');
+                        AIPS.researchSelectedTopics = [];
+                        setTimeout(function() {
+                            $('#load-topics').trigger('click');
+                        }, 1400);
+                    } else {
+                        var errorMessage = response.data && response.data.message
+                            ? response.data.message
+                            : aipsResearchL10n.generateError;
+
+                        progressBar.complete(errorMessage, 'error');
+                        setTimeout(function() {
+                            AIPS.Utilities.showToast('Error: ' + errorMessage, 'error');
+                        }, 1400);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    var fallbackError = error ? error : aipsResearchL10n.generateError;
+                    progressBar.complete(fallbackError, 'error');
+                    setTimeout(function() {
+                        AIPS.Utilities.showToast('Error: ' + fallbackError, 'error');
+                    }, 1400);
+                },
+                complete: function() {
+                    $button.prop('disabled', false).html(buttonDefaultText);
+                }
+            });
         },
 
         /**

@@ -359,10 +359,11 @@
                                 $btn.prop('disabled', false).text('Flush WP-Cron Events');
                             }
                         });
-                    }}
+                    } }
                 ]
             );
         }
+    });
 
     // Bind DB Management Events
     $(document).ready(function() {

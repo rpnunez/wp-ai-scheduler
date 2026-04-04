@@ -160,6 +160,11 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         <input type="checkbox" id="filter-fresh" value="1">
                         <?php echo esc_html__('Fresh Only (Last 7 Days)', 'ai-post-scheduler'); ?>
                     </label>
+
+                    <label class="aips-filter-label-inline">
+                        <input type="checkbox" id="filter-include-used" value="1">
+                        <?php echo esc_html__('Include used topics', 'ai-post-scheduler'); ?>
+                    </label>
                     
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="load-topics">
                         <span class="dashicons dashicons-filter"></span>
@@ -295,6 +300,17 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
 
+    <!-- Trending Topic Posts Modal -->
+    <div id="aips-trending-topic-posts-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <h2 id="aips-trending-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+            <div id="aips-trending-topic-posts-content">
+                <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Client-side HTML templates (used by assets/js/admin-research.js) -->
     <script type="text/html" id="aips-tmpl-research-results-summary">
         <p><strong>{{saved_count}} {{topics_saved}} "{{niche}}"</strong></p>
@@ -354,6 +370,8 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
             <td>
                 <strong>{{topic}}</strong>
+                {{status_chip_html}}
+                {{post_count_badge_html}}
                 {{reason_html}}
             </td>
             <td><span class="aips-score-badge aips-score-{{score_class}}">{{score}}</span></td>
@@ -376,6 +394,42 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 
     <script type="text/html" id="aips-tmpl-research-topic-reason">
         <br><small>{{reason}}</small>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topic-post-count-badge">
+        <br><span class="aips-post-count-badge" data-topic-id="{{topic_id}}">
+            <span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
+            {{count}}
+        </span>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topic-status-chip">
+        <span class="aips-topic-status-chip aips-topic-status-{{status}}">{{status_label}}</span>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topic-posts-table">
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>{{id_label}}</th>
+                    <th>{{title_label}}</th>
+                    <th>{{generated_label}}</th>
+                    <th>{{published_label}}</th>
+                    <th>{{actions_label}}</th>
+                </tr>
+            </thead>
+            <tbody>{{rows}}</tbody>
+        </table>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topic-post-row">
+        <tr>
+            <td>{{post_id}}</td>
+            <td>{{post_title}}</td>
+            <td>{{date_generated}}</td>
+            <td>{{date_published}}</td>
+            <td>{{actions}}</td>
+        </tr>
     </script>
 
     <script type="text/html" id="aips-tmpl-research-keyword-tag">
