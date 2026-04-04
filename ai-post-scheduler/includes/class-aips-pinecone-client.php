@@ -66,7 +66,8 @@ class AIPS_Pinecone_Client {
 		$this->index_name = (string) get_option('aips_pinecone_index_name', '');
 		$this->region     = (string) get_option('aips_pinecone_region', 'us-east-1');
 		$this->namespace  = (string) get_option('aips_pinecone_namespace', 'aips');
-		$this->host       = (string) get_option('aips_pinecone_host', '') ?: null;
+		$host             = (string) get_option('aips_pinecone_host', '');
+		$this->host       = ($host !== '') ? $host : null;
 		$this->logger     = $logger ?: new AIPS_Logger();
 	}
 

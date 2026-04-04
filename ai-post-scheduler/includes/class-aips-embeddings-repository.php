@@ -279,11 +279,11 @@ class AIPS_Embeddings_Repository {
 		$where_sql = implode(' AND ', $where);
 
 		// Fetch total
-		$count_sql = "SELECT COUNT(*) FROM {$table} e LEFT JOIN {$posts_table} p ON p.ID = e.post_id WHERE {$where_sql}";
+		$count_sql    = "SELECT COUNT(*) FROM {$table} e LEFT JOIN {$posts_table} p ON p.ID = e.post_id WHERE {$where_sql}";
+		$count_params = array_merge($params, array());
+
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
-		$total = (int) (empty($params)
-			? $wpdb->get_var($count_sql)
-			: $wpdb->get_var($wpdb->prepare($count_sql, $params)));
+		$total = (int) $wpdb->get_var($wpdb->prepare($count_sql, $count_params));
 
 		// Fetch items
 		$items_sql = "SELECT e.*, p.post_title, p.post_type FROM {$table} e LEFT JOIN {$posts_table} p ON p.ID = e.post_id WHERE {$where_sql} ORDER BY e.updated_at DESC LIMIT %d OFFSET %d";

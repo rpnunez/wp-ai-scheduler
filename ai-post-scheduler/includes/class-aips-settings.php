@@ -1207,38 +1207,12 @@ class AIPS_Settings {
      */
     public function integrations_section_callback() {
         echo '<p>' . esc_html__('Configure Pinecone vector database credentials for Semantic Internal Linking.', 'ai-post-scheduler') . '</p>';
-        ?>
-        <p>
-            <button type="button" id="aips-test-pinecone-connection" class="button button-secondary">
-                <?php esc_html_e('Test Pinecone Connection', 'ai-post-scheduler'); ?>
-            </button>
+        echo '<p>
+            <button type="button" id="aips-test-pinecone-connection" class="button button-secondary">'
+            . esc_html__('Test Pinecone Connection', 'ai-post-scheduler') .
+            '</button>
             <span id="aips-pinecone-test-result" style="margin-left:10px;"></span>
-        </p>
-        <script>
-        jQuery(function($){
-            $('#aips-test-pinecone-connection').on('click', function(){
-                var $btn = $(this);
-                var $result = $('#aips-pinecone-test-result');
-                $btn.prop('disabled', true);
-                $result.text('<?php echo esc_js(__('Testing…', 'ai-post-scheduler')); ?>');
-                $.post(ajaxurl, {
-                    action: 'aips_test_pinecone_connection',
-                    nonce:  '<?php echo esc_js(wp_create_nonce('aips_ajax_nonce')); ?>',
-                }, function(response){
-                    $btn.prop('disabled', false);
-                    if (response.success) {
-                        $result.css('color','green').text(response.data.message + ' (vectors: ' + response.data.vector_count + ')');
-                    } else {
-                        $result.css('color','red').text(response.data.message);
-                    }
-                }).fail(function(){
-                    $btn.prop('disabled', false);
-                    $result.css('color','red').text('<?php echo esc_js(__('Request failed.', 'ai-post-scheduler')); ?>');
-                });
-            });
-        });
-        </script>
-        <?php
+        </p>';
     }
 
     /**

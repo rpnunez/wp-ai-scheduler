@@ -702,6 +702,33 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+            // Inline handler for the "Test Pinecone Connection" button on the Integrations tab
+            $test_nonce = wp_create_nonce('aips_ajax_nonce');
+            $inline_js  = '
+jQuery(function($){
+    $("#aips-test-pinecone-connection").on("click", function(){
+        var $btn = $(this);
+        var $result = $("#aips-pinecone-test-result");
+        $btn.prop("disabled", true);
+        $result.css("color","").text(' . wp_json_encode(__('Testing…', 'ai-post-scheduler')) . ');
+        $.post(ajaxurl, {
+            action: "aips_test_pinecone_connection",
+            nonce:  ' . wp_json_encode($test_nonce) . ',
+        }, function(response){
+            $btn.prop("disabled", false);
+            if (response.success) {
+                $result.css("color","green").text(response.data.message + " (vectors: " + response.data.vector_count + ")");
+            } else {
+                $result.css("color","red").text(response.data.message);
+            }
+        }).fail(function(){
+            $btn.prop("disabled", false);
+            $result.css("color","red").text(' . wp_json_encode(__('Request failed.', 'ai-post-scheduler')) . ');
+        });
+    });
+});';
+            wp_add_inline_script('aips-admin-settings', $inline_js);
         }
 
         // Internal Links Page Scripts & Styles

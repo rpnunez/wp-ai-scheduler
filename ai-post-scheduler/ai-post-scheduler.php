@@ -370,7 +370,7 @@ final class AI_Post_Scheduler {
                     return;
                 }
                 $post = get_post($post_id);
-                if (!$post || $post->post_status !== 'publish') {
+                if (!$post || $post->post_type !== 'post' || $post->post_status !== 'publish') {
                     return;
                 }
                 wp_schedule_single_event(time() + 5, 'aips_index_single_post_async', array($post_id));

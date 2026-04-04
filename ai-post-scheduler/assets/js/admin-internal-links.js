@@ -341,15 +341,19 @@
                 clearInterval(AIPS.ilPollingTimer);
             }
 
+            var consecutiveFailures = 0;
+            var MAX_FAILURES = 5;
+
             AIPS.ilPollingTimer = setInterval(function() {
                 $.get(aipsAjax.ajaxUrl, {
                     action: 'aips_get_indexing_progress',
                     nonce:  aipsAjax.nonce,
                 }, function(response) {
+                    consecutiveFailures = 0;
+
                     if (!response.success) { return; }
 
                     var pending = parseInt(response.data.pending, 10);
-                    var indexed = parseInt(response.data.indexed, 10);
 
                     $('#aips-stat-pending-count').text(pending);
 
@@ -357,6 +361,13 @@
                         clearInterval(AIPS.ilPollingTimer);
                         AIPS.ilPollingTimer = null;
                         AIPS.loadIndexTable(AIPS.ilCurrentPage);
+                    }
+                }).fail(function() {
+                    consecutiveFailures++;
+                    if (consecutiveFailures >= MAX_FAILURES) {
+                        clearInterval(AIPS.ilPollingTimer);
+                        AIPS.ilPollingTimer = null;
+                        AIPS.showNotice(aipsInternalLinksL10n.errorGeneric, 'error');
                     }
                 });
             }, 5000);
