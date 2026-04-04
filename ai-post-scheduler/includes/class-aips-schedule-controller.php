@@ -94,7 +94,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        if ($this->scheduler->delete_schedule($id)) {
+        if ($this->schedule_repository->delete($id)) {
             wp_send_json_success(array('message' => __('Schedule deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete schedule.', 'ai-post-scheduler')));

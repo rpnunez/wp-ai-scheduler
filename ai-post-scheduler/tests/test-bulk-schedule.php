@@ -7,12 +7,12 @@
 
 class Test_Bulk_Schedule extends WP_UnitTestCase {
 
-    private $scheduler;
+    private $schedule_repository;
     private $planner;
 
     public function setUp(): void {
         parent::setUp();
-        $this->scheduler = new AIPS_Scheduler();
+        $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->planner = new AIPS_Planner();
     }
 
@@ -45,7 +45,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
             )
         );
 
-        $count = $this->scheduler->save_schedule_bulk($schedules);
+        $count = $this->schedule_repository->create_bulk($schedules);
 
         $this->assertEquals(2, $count);
 

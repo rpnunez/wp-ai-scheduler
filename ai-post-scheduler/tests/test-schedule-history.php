@@ -28,7 +28,7 @@ wp_set_current_user( $user_id );
 
 $mock_scheduler = $this->getMockBuilder( 'AIPS_Scheduler' )
 ->disableOriginalConstructor()
-->onlyMethods( array( 'run_schedule_now', 'save_schedule', 'delete_schedule', 'toggle_active' ) )
+->onlyMethods( array( 'run_schedule_now', 'save_schedule', 'toggle_active' ) )
 ->getMock();
 
 $this->controller = new AIPS_Schedule_Controller( $mock_scheduler );

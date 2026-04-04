@@ -293,8 +293,8 @@ class AIPS_Research_Controller {
             )
         );
         
-        // Use scheduler to create schedules
-        $scheduler = new AIPS_Scheduler();
+        // Use schedule repository to create schedules
+        $schedule_repository = new AIPS_Schedule_Repository();
         $interval_calculator = new AIPS_Interval_Calculator();
         
         $base_time = strtotime($start_date);
@@ -325,7 +325,7 @@ class AIPS_Research_Controller {
             );
         }
         
-        $result = $scheduler->save_schedule_bulk($schedules_to_create);
+        $result = $schedule_repository->create_bulk($schedules_to_create);
 
         if ($result) {
             $status_updated = $this->repository->update_status_bulk($valid_topic_ids, 'scheduled');

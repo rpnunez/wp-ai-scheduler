@@ -186,8 +186,7 @@ class AIPS_Unified_Schedule_Service {
 	public function delete($id, $type) {
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
-				$scheduler = new AIPS_Scheduler();
-				if ($scheduler->delete_schedule($id)) {
+				if ($this->schedule_repository->delete($id)) {
 					return true;
 				}
 

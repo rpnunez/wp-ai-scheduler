@@ -117,20 +117,18 @@ class AIPS_Planner {
         // Sanitize topics
         $topics = AIPS_Utilities::sanitize_string_array($topics);
 
-        $scheduler = new AIPS_Scheduler();
+        $interval_calculator = new AIPS_Interval_Calculator();
+        $schedule_repository = new AIPS_Schedule_Repository();
         $count = 0;
         $base_time = strtotime($start_date);
 
         // Determine interval in seconds
-        $intervals = $scheduler->get_intervals();
+        $intervals = $interval_calculator->get_intervals();
         $interval = 86400; // default fallback
 
         if (isset($intervals[$frequency])) {
             $interval = $intervals[$frequency]['interval'];
         }
-
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
@@ -149,7 +147,7 @@ class AIPS_Planner {
             );
         }
 
-        $count = $scheduler->save_schedule_bulk($schedules);
+        $count = $schedule_repository->create_bulk($schedules);
 
         if ($count === false || $count === 0) {
             wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
