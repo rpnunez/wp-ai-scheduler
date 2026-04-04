@@ -189,6 +189,12 @@
 **Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
 **Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
 
+## 2026-03-31 - Post Review Optimization
+**Target Feature:** Post Review
+**Improvement:** Added Bulk Regenerate functionality to handle multiple poor generations efficiently.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Users can now select multiple draft posts and regenerate them all at once, streamlining the workflow and reducing manual effort.
+
 ## 2026-03-30 - Author Topics Bulk Generation Flow Optimization
 **Target Feature:** Author Topics Controller
 **Improvement:** Optimized the workflow for generating content from brainstormed topics by enforcing a bulk limit for synchronous generation. Prevents PHP timeouts and silent failures when generating many posts at once from the Author Topics grid. Limit is configurable via the `aips_bulk_run_now_limit` filter.
