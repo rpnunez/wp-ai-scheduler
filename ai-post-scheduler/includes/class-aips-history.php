@@ -366,29 +366,6 @@ class AIPS_History {
     }
 
     /**
-     * Generate pagination HTML for history table.
-     *
-     * @param array  $history       History data array.
-     * @param string $base_url      Base URL for pagination links.
-     * @param string $status_filter Current status filter.
-     * @return string HTML for pagination.
-     */
-    public function generate_pagination_html($history, $base_url, $status_filter = '') {
-        if ($history['pages'] <= 1) {
-            return '';
-        }
-
-        $url = $base_url;
-        if ($status_filter) {
-            $url = add_query_arg('status', $status_filter, $url);
-        }
-
-        ob_start();
-        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
-        return ob_get_clean();
-    }
-
-    /**
      * Get aggregate history statistics.
      *
      * @return array
