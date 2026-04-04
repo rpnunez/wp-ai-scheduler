@@ -71,6 +71,7 @@ class AIPS_History_Repository {
             'search' => '',
             'template_id' => 0,
             'author_id' => 0,
+            'post_ids' => array(),
             'correlation_id' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
@@ -109,6 +110,19 @@ class AIPS_History_Repository {
         if (!empty($args['author_id'])) {
             $where_clauses[] = "h.author_id = %d";
             $where_args[] = $args['author_id'];
+        }
+
+        if (!empty($args['post_ids']) && is_array($args['post_ids'])) {
+            $post_ids = array_map('absint', $args['post_ids']);
+            $post_ids = array_values(array_filter($post_ids, function($post_id) {
+                return $post_id > 0;
+            }));
+
+            if (!empty($post_ids)) {
+                $placeholders = implode(', ', array_fill(0, count($post_ids), '%d'));
+                $where_clauses[] = "h.post_id IN ({$placeholders})";
+                $where_args = array_merge($where_args, $post_ids);
+            }
         }
 
         if (!empty($args['correlation_id'])) {
@@ -356,6 +370,34 @@ class AIPS_History_Repository {
         return $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
             $post_id
+        ));
+    }
+
+    /**
+     * Get all history records that share the given correlation ID.
+     *
+     * Returns an array of lightweight history objects (id, uuid, correlation_id,
+     * post_id, template_id, author_id, topic_id, status, creation_method,
+     * created_at, completed_at) sorted oldest-first so callers can replay the
+     * execution timeline in order.
+     *
+     * @param string $correlation_id The correlation ID to search for.
+     * @return array Array of history record objects (empty if none found).
+     */
+    public function get_by_correlation_id($correlation_id) {
+        $correlation_id = sanitize_text_field((string) $correlation_id);
+
+        if ($correlation_id === '') {
+            return array();
+        }
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
+                    status, creation_method, generated_title, error_message, created_at, completed_at
+             FROM {$this->table_name}
+             WHERE correlation_id = %s
+             ORDER BY created_at ASC",
+            $correlation_id
         ));
     }
     

@@ -570,6 +570,36 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        // Internal Links page script
+        if (strpos($hook, 'aips-internal-links') !== false) {
+            // Reuse shared stats/tabs styling currently defined in authors.css.
+            wp_enqueue_style(
+                'aips-authors-style',
+                AIPS_PLUGIN_URL . 'assets/css/authors.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-internal-links',
+                AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksL10n', array(
+                'loading' => __('Loading...', 'ai-post-scheduler'),
+                'indexing' => __('Indexing...', 'ai-post-scheduler'),
+                'indexAllComplete' => __('Post indexing complete.', 'ai-post-scheduler'),
+                'indexFailed' => __('Failed to index posts.', 'ai-post-scheduler'),
+                'selectSourcePost' => __('Select a source post first.', 'ai-post-scheduler'),
+                'findRelatedFailed' => __('Failed to find related posts.', 'ai-post-scheduler'),
+                'previewFailed' => __('Failed to preview links.', 'ai-post-scheduler'),
+                'saveFailed' => __('Failed to apply links.', 'ai-post-scheduler'),
+            ));
+        }
+
         // Calendar Page Scripts
         if (strpos($hook, 'aips-schedule-calendar') !== false) {
             wp_enqueue_style(

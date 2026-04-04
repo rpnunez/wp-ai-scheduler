@@ -140,6 +140,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Internal Links', 'ai-post-scheduler'),
+            __('Internal Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-internal-links',
+            array($this, 'render_internal_links_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -329,6 +338,19 @@ class AIPS_Admin_Menu {
      */
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Internal Links page.
+     *
+     * @return void
+     */
+    public function render_internal_links_page() {
+        global $aips_internal_links_controller;
+        $controller = isset($aips_internal_links_controller) && $aips_internal_links_controller instanceof AIPS_Internal_Links_Controller
+            ? $aips_internal_links_controller
+            : new AIPS_Internal_Links_Controller();
         $controller->render_page();
     }
 

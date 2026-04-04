@@ -318,7 +318,6 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
-            
             // Authors feature controllers
             new AIPS_Authors_Controller();
             new AIPS_Author_Topics_Controller();
@@ -333,6 +332,10 @@ final class AI_Post_Scheduler {
                 new AIPS_Dev_Tools();
             }
         }
+
+        // Internal Links controller must be available on cron and frontend contexts.
+        global $aips_internal_links_controller;
+        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
         
         // Initialize schedulers (both admin and frontend)
         $aips_scheduler = new AIPS_Scheduler();

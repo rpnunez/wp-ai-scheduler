@@ -87,6 +87,125 @@ if (!defined('ABSPATH')) {
                 </div>
             <?php endforeach; ?>
 
+            <!-- Vector Diagnostics -->
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-chart-area"></span>
+                        <?php esc_html_e('Vector Diagnostics', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body no-padding">
+                    <table class="aips-table aips-health-check-table">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('Check', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Value', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong><?php esc_html_e('Active Provider', 'ai-post-scheduler'); ?></strong></td>
+                                <td id="aips-vector-active-provider"><?php echo esc_html($vector_diagnostics['active_provider']); ?></td>
+                                <td>
+                                    <span class="aips-badge aips-badge-info">
+                                        <span class="dashicons dashicons-info"></span>
+                                        <?php esc_html_e('Info', 'ai-post-scheduler'); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong><?php esc_html_e('Pinecone Reachability', 'ai-post-scheduler'); ?></strong></td>
+                                <td>
+                                    <span id="aips-vector-reachability-label"><?php echo esc_html($vector_diagnostics['pinecone_reachability']['label']); ?></span>
+                                    <?php if (!empty($vector_diagnostics['pinecone_reachability']['details'])) : ?>
+                                        <br>
+                                        <span id="aips-vector-reachability-details" class="description"><?php echo esc_html($vector_diagnostics['pinecone_reachability']['details']); ?></span>
+                                    <?php else : ?>
+                                        <span id="aips-vector-reachability-details" class="description" style="display:none;"></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td id="aips-vector-reachability-status-cell">
+                                    <?php
+                                    $reachability_status = isset($vector_diagnostics['pinecone_reachability']['status']) ? $vector_diagnostics['pinecone_reachability']['status'] : 'info';
+                                    $badge_class = 'aips-badge-info';
+                                    $badge_icon = 'dashicons-info';
+                                    $badge_label = __('Info', 'ai-post-scheduler');
+                                    if ($reachability_status === 'ok') {
+                                        $badge_class = 'aips-badge-success';
+                                        $badge_icon = 'dashicons-yes-alt';
+                                        $badge_label = __('OK', 'ai-post-scheduler');
+                                    } elseif ($reachability_status === 'warning') {
+                                        $badge_class = 'aips-badge-warning';
+                                        $badge_icon = 'dashicons-warning';
+                                        $badge_label = __('Warning', 'ai-post-scheduler');
+                                    } elseif ($reachability_status === 'error') {
+                                        $badge_class = 'aips-badge-error';
+                                        $badge_icon = 'dashicons-dismiss';
+                                        $badge_label = __('Error', 'ai-post-scheduler');
+                                    }
+                                    ?>
+                                    <span class="aips-badge <?php echo esc_attr($badge_class); ?>">
+                                        <span class="dashicons <?php echo esc_attr($badge_icon); ?>"></span>
+                                        <?php echo esc_html($badge_label); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong><?php esc_html_e('Recent Upserts (24h)', 'ai-post-scheduler'); ?></strong></td>
+                                <td>
+                                    <span id="aips-vector-upsert-success"><?php echo esc_html((string) $vector_diagnostics['upsert_success']); ?></span>
+                                    <?php esc_html_e('success', 'ai-post-scheduler'); ?> /
+                                    <span id="aips-vector-upsert-error"><?php echo esc_html((string) $vector_diagnostics['upsert_error']); ?></span>
+                                    <?php esc_html_e('failed', 'ai-post-scheduler'); ?>
+                                </td>
+                                <td>
+                                    <span class="aips-badge aips-badge-info">
+                                        <span class="dashicons dashicons-chart-line"></span>
+                                        <?php esc_html_e('Metrics', 'ai-post-scheduler'); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong><?php esc_html_e('Recent Queries (24h)', 'ai-post-scheduler'); ?></strong></td>
+                                <td>
+                                    <span id="aips-vector-query-success"><?php echo esc_html((string) $vector_diagnostics['query_success']); ?></span>
+                                    <?php esc_html_e('success', 'ai-post-scheduler'); ?> /
+                                    <span id="aips-vector-query-error"><?php echo esc_html((string) $vector_diagnostics['query_error']); ?></span>
+                                    <?php esc_html_e('failed', 'ai-post-scheduler'); ?>
+                                </td>
+                                <td>
+                                    <span class="aips-badge aips-badge-info">
+                                        <span class="dashicons dashicons-chart-line"></span>
+                                        <?php esc_html_e('Metrics', 'ai-post-scheduler'); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong><?php esc_html_e('Last Error', 'ai-post-scheduler'); ?></strong></td>
+                                <td id="aips-vector-last-error"><?php echo esc_html($vector_diagnostics['last_error_message'] ? $vector_diagnostics['last_error_message'] : __('None', 'ai-post-scheduler')); ?></td>
+                                <td>
+                                    <span class="aips-badge aips-badge-info">
+                                        <span class="dashicons dashicons-info"></span>
+                                        <?php esc_html_e('Info', 'ai-post-scheduler'); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="aips-panel-body">
+                    <div class="aips-btn-group aips-action-group">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-refresh-vector-diagnostics">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Refresh Vector Diagnostics', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <div class="aips-vector-diagnostics-result"></div>
+                </div>
+            </div>
+
             <!-- Tools Row: Cron + AI Engine -->
             <div class="aips-status-tools-row">
                 <!-- Cron Status -->

@@ -362,6 +362,78 @@
                     } }
                 ]
             );
+        },
+
+        /**
+         * Refresh vector diagnostics panel data in System Status.
+         *
+         * @param {Event} e - Click event from `.aips-refresh-vector-diagnostics`.
+         */
+        refreshVectorDiagnostics: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $result = $('.aips-vector-diagnostics-result');
+
+            $btn.prop('disabled', true).text('Refreshing...');
+            $result.hide().empty();
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_vector_diagnostics',
+                    nonce: aipsAjax.nonce
+                },
+                success: function(response) {
+                    if (!response || !response.success || !response.data || !response.data.diagnostics) {
+                        var fallbackError = (response && response.data && response.data.message) ? response.data.message : 'Failed to refresh vector diagnostics.';
+                        AIPS.Utilities.showToast(fallbackError, 'error');
+                        $result.html('<p class="aips-status-message aips-status-error">' + $('<span>').text(fallbackError).html() + '</p>').show();
+                        return;
+                    }
+
+                    var diagnostics = response.data.diagnostics;
+
+                    $('#aips-vector-active-provider').text(diagnostics.active_provider || 'local');
+                    $('#aips-vector-reachability-label').text((diagnostics.pinecone_reachability && diagnostics.pinecone_reachability.label) ? diagnostics.pinecone_reachability.label : 'Unknown');
+
+                    var detailsText = (diagnostics.pinecone_reachability && diagnostics.pinecone_reachability.details) ? diagnostics.pinecone_reachability.details : '';
+                    if (detailsText) {
+                        $('#aips-vector-reachability-details').text(detailsText).show();
+                    } else {
+                        $('#aips-vector-reachability-details').text('').hide();
+                    }
+
+                    var reachabilityStatus = diagnostics.pinecone_reachability && diagnostics.pinecone_reachability.status ? diagnostics.pinecone_reachability.status : 'info';
+                    var badgeHtml = '<span class="aips-badge aips-badge-info"><span class="dashicons dashicons-info"></span>Info</span>';
+                    if (reachabilityStatus === 'ok') {
+                        badgeHtml = '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span>OK</span>';
+                    } else if (reachabilityStatus === 'warning') {
+                        badgeHtml = '<span class="aips-badge aips-badge-warning"><span class="dashicons dashicons-warning"></span>Warning</span>';
+                    } else if (reachabilityStatus === 'error') {
+                        badgeHtml = '<span class="aips-badge aips-badge-error"><span class="dashicons dashicons-dismiss"></span>Error</span>';
+                    }
+                    $('#aips-vector-reachability-status-cell').html(badgeHtml);
+
+                    $('#aips-vector-upsert-success').text(parseInt(diagnostics.upsert_success || 0, 10));
+                    $('#aips-vector-upsert-error').text(parseInt(diagnostics.upsert_error || 0, 10));
+                    $('#aips-vector-query-success').text(parseInt(diagnostics.query_success || 0, 10));
+                    $('#aips-vector-query-error').text(parseInt(diagnostics.query_error || 0, 10));
+                    $('#aips-vector-last-error').text(diagnostics.last_error_message ? diagnostics.last_error_message : 'None');
+
+                    var successMessage = response.data.message || 'Vector diagnostics refreshed.';
+                    AIPS.Utilities.showToast(successMessage, 'success');
+                    $result.html('<p class="aips-status-message aips-status-success">' + $('<span>').text(successMessage).html() + '</p>').show();
+                },
+                error: function() {
+                    var errorMessage = 'An error occurred while refreshing vector diagnostics.';
+                    AIPS.Utilities.showToast(errorMessage, 'error');
+                    $result.html('<p class="aips-status-message aips-status-error">' + $('<span>').text(errorMessage).html() + '</p>').show();
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Refresh Vector Diagnostics');
+                }
+            });
         }
     });
 
@@ -374,6 +446,7 @@
         $(document).on('click', '.aips-import-data', window.AIPS.importData);
 		$(document).on('click', '.aips-notifications-hygiene', window.AIPS.runNotificationsHygiene);
         $(document).on('click', '.aips-flush-cron', window.AIPS.flushCronEvents);
+        $(document).on('click', '.aips-refresh-vector-diagnostics', window.AIPS.refreshVectorDiagnostics);
     });
 
 })(jQuery);

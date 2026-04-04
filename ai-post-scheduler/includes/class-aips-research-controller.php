@@ -49,6 +49,16 @@ class AIPS_Research_Controller {
      * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
      */
     private $bulk_generator_service;
+
+    /**
+     * @var AIPS_Embeddings_Service Embeddings service
+     */
+    private $embeddings_service;
+
+    /**
+     * @var AIPS_Vector_Service Vector retrieval service
+     */
+    private $vector_service;
     
     /**
      * Initialize the controller.
@@ -60,6 +70,8 @@ class AIPS_Research_Controller {
         $this->history_service        = new AIPS_History_Service();
         $this->content_auditor        = new AIPS_Content_Auditor();
         $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
+        $this->embeddings_service     = new AIPS_Embeddings_Service();
+        $this->vector_service         = new AIPS_Vector_Service();
         
         $this->init_hooks();
     }
@@ -109,6 +121,8 @@ class AIPS_Research_Controller {
         if (is_wp_error($topics)) {
             wp_send_json_error(array('message' => $topics->get_error_message()));
         }
+
+        $topics = $this->apply_semantic_trending_dedupe($topics, $niche);
         
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
@@ -702,6 +716,8 @@ class AIPS_Research_Controller {
                 $this->logger->log("Research failed for {$niche}: " . $topics->get_error_message(), 'error');
                 continue;
             }
+
+            $topics = $this->apply_semantic_trending_dedupe($topics, $niche);
             
             // Save results
             $saved_count = $this->repository->save_research_batch($topics, $niche);
@@ -772,6 +788,8 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => $topics->get_error_message()));
         }
 
+        $topics = $this->apply_semantic_trending_dedupe($topics, $niche);
+
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
 
@@ -779,5 +797,84 @@ class AIPS_Research_Controller {
             'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),
             'count' => count($topics)
         ));
+    }
+
+    /**
+     * Remove semantically duplicated trending topics and upsert retained vectors.
+     *
+     * @param array  $topics Candidate topics.
+     * @param string $niche  Research niche.
+     * @return array
+     */
+    private function apply_semantic_trending_dedupe($topics, $niche) {
+        if (empty($topics) || !is_array($topics)) {
+            return array();
+        }
+
+        if (!$this->embeddings_service->is_embeddings_supported()) {
+            return $topics;
+        }
+
+        $raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
+        $threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
+
+        $retained_topics = array();
+        $vector_records = array();
+
+        foreach ($topics as $topic) {
+            if (empty($topic['topic'])) {
+                continue;
+            }
+
+            $topic_text = sanitize_text_field((string) $topic['topic']);
+            $reason_text = !empty($topic['reason']) ? sanitize_text_field((string) $topic['reason']) : '';
+            $embedding_input = trim($topic_text . ' ' . $reason_text);
+
+            $embedding = $this->embeddings_service->generate_embedding($embedding_input);
+            if (is_wp_error($embedding) || !is_array($embedding) || empty($embedding)) {
+                $retained_topics[] = $topic;
+                continue;
+            }
+
+            $matches = $this->vector_service->query_neighbors('trending_topics', $embedding, array(
+                'top_k' => 1,
+                'filter' => array(
+                    'niche' => sanitize_text_field((string) $niche),
+                ),
+            ));
+
+            $is_duplicate = false;
+            if (is_array($matches) && !empty($matches)) {
+                $match_score = isset($matches[0]['score']) ? (float) $matches[0]['score'] : 0.0;
+                if ($match_score >= $threshold) {
+                    $is_duplicate = true;
+                }
+            }
+
+            if ($is_duplicate) {
+                $this->logger->log('Skipping semantically duplicated trending topic.', 'debug', array(
+                    'topic' => $topic_text,
+                    'niche' => $niche,
+                ));
+                continue;
+            }
+
+            $retained_topics[] = $topic;
+            $vector_records[] = array(
+                'id' => 'trend_' . md5(strtolower($niche . '|' . $topic_text)),
+                'values' => $embedding,
+                'metadata' => array(
+                    'niche' => sanitize_text_field((string) $niche),
+                    'topic' => $topic_text,
+                    'status' => isset($topic['status']) ? sanitize_key((string) $topic['status']) : 'new',
+                ),
+            );
+        }
+
+        if (!empty($vector_records)) {
+            $this->vector_service->upsert_vectors('trending_topics', $vector_records);
+        }
+
+        return $retained_topics;
     }
 }

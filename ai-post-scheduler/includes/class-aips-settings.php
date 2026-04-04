@@ -22,6 +22,7 @@ class AIPS_Settings {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
+        add_action('wp_ajax_aips_get_vector_diagnostics', array($this, 'ajax_get_vector_diagnostics'));
     }
 
     /**
@@ -87,6 +88,20 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_env_id', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_vector_provider', array(
+            'sanitize_callback' => array($this, 'sanitize_vector_provider'),
+            'default' => 'local'
+        ));
+        register_setting('aips_settings', 'aips_vector_fail_open', array(
+            'sanitize_callback' => 'absint',
+            'default' => 1
+        ));
+        register_setting('aips_settings', 'aips_pinecone_api_key', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
+        register_setting('aips_settings', 'aips_pinecone_index_host', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -150,6 +165,38 @@ class AIPS_Settings {
             'aips_ai_env_id',
             __('Environment ID', 'ai-post-scheduler'),
             array($this, 'ai_env_id_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_vector_provider',
+            __('Vector Provider', 'ai-post-scheduler'),
+            array($this, 'vector_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_vector_fail_open',
+            __('Vector Fail-Open Mode', 'ai-post-scheduler'),
+            array($this, 'vector_fail_open_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_pinecone_index_host',
+            __('Pinecone Index Host', 'ai-post-scheduler'),
+            array($this, 'pinecone_index_host_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_pinecone_api_key',
+            __('Pinecone API Key', 'ai-post-scheduler'),
+            array($this, 'pinecone_api_key_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );
@@ -575,6 +622,73 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
         <?php
     }
+
+    /**
+     * Sanitize vector provider setting.
+     *
+     * @param mixed $value Raw input value.
+     * @return string
+     */
+    public function sanitize_vector_provider($value) {
+        $provider = sanitize_key((string) $value);
+        return in_array($provider, array('local', 'pinecone'), true) ? $provider : 'local';
+    }
+
+    /**
+     * Render the vector provider selector.
+     *
+     * @return void
+     */
+    public function vector_provider_field_callback() {
+        $value = get_option('aips_vector_provider', 'local');
+        ?>
+        <select name="aips_vector_provider">
+            <option value="local" <?php selected($value, 'local'); ?>><?php esc_html_e('Local (in-plugin cosine similarity)', 'ai-post-scheduler'); ?></option>
+            <option value="pinecone" <?php selected($value, 'pinecone'); ?>><?php esc_html_e('Pinecone (remote vector search)', 'ai-post-scheduler'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Choose where semantic nearest-neighbor search runs. Local mode keeps everything in-plugin. Pinecone mode offloads retrieval to your Pinecone index.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render fail-open toggle for vector operations.
+     *
+     * @return void
+     */
+    public function vector_fail_open_field_callback() {
+        $value = (int) get_option('aips_vector_fail_open', 1);
+        ?>
+        <input type="hidden" name="aips_vector_fail_open" value="0">
+        <input type="checkbox" name="aips_vector_fail_open" value="1" <?php checked(1, $value); ?>>
+        <p class="description"><?php esc_html_e('If enabled, vector provider failures will gracefully fall back instead of blocking generation/search workflows.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Pinecone index host field.
+     *
+     * @return void
+     */
+    public function pinecone_index_host_field_callback() {
+        $value = get_option('aips_pinecone_index_host', '');
+        ?>
+        <input type="text" name="aips_pinecone_index_host" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="your-index-xxxx.svc.region.pinecone.io">
+        <p class="description"><?php esc_html_e('Pinecone index host (with or without https://). Required when Vector Provider is Pinecone.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Pinecone API key field.
+     *
+     * @return void
+     */
+    public function pinecone_api_key_field_callback() {
+        $value = get_option('aips_pinecone_api_key', '');
+        ?>
+        <input type="password" name="aips_pinecone_api_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <p class="description"><?php esc_html_e('API key used by server-side Pinecone upsert/query calls. Keep this key private.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
     
     /**
      * Render Unsplash access key field.
@@ -904,6 +1018,27 @@ class AIPS_Settings {
                 'rollup_scheduled'   => $rollup_scheduled ? 1 : 0,
                 'preferences_changed'=> $preferences_changed ? 1 : 0,
             ),
+        ));
+    }
+
+    /**
+     * AJAX endpoint for refreshing vector diagnostics on System Status page.
+     *
+     * @return void
+     */
+    public function ajax_get_vector_diagnostics() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $status_handler = new AIPS_System_Status();
+        $payload = $status_handler->get_vector_diagnostics_payload(true);
+
+        wp_send_json_success(array(
+            'message' => __('Vector diagnostics refreshed.', 'ai-post-scheduler'),
+            'diagnostics' => $payload,
         ));
     }
 
