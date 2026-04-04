@@ -737,6 +737,11 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for bulk generating posts from queue topics.
+	 *
+	 * Uses the AIPS_Author_Post_Generator to immediately generate posts for the selected
+	 * topic IDs. This is a synchronous process, meaning the AJAX request will block until
+	 * all posts are generated. A configurable limit (`aips_bulk_run_now_limit`) is enforced
+	 * to prevent PHP timeouts when generating many posts at once.
 	 */
 	public function ajax_bulk_generate_from_queue() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -749,6 +754,23 @@ class AIPS_Author_Topics_Controller {
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+
+		// Enforce a bulk limit for synchronous generation to avoid PHP timeouts
+		$max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+		$max_bulk = absint($max_bulk);
+		if (0 === $max_bulk) {
+			$max_bulk = 5;
+		}
+		if (count($topic_ids) > $max_bulk) {
+			wp_send_json_error(array(
+				'message' => sprintf(
+					/* translators: 1: selected count, 2: max allowed */
+					__('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler'),
+					count($topic_ids),
+					$max_bulk
+				),
+			));
 		}
 
 		// Create history container for bulk operation
@@ -810,6 +832,11 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for bulk generating posts from topics.
+	 *
+	 * Uses the AIPS_Author_Post_Generator to immediately generate posts for the selected
+	 * topic IDs. This is a synchronous process, meaning the AJAX request will block until
+	 * all posts are generated. A configurable limit (`aips_bulk_run_now_limit`) is enforced
+	 * to prevent PHP timeouts when generating many posts at once.
 	 */
 	public function ajax_bulk_generate_topics() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -822,6 +849,23 @@ class AIPS_Author_Topics_Controller {
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+
+		// Enforce a bulk limit for synchronous generation to avoid PHP timeouts
+		$max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+		$max_bulk = absint($max_bulk);
+		if (0 === $max_bulk) {
+			$max_bulk = 5;
+		}
+		if (count($topic_ids) > $max_bulk) {
+			wp_send_json_error(array(
+				'message' => sprintf(
+					/* translators: 1: selected count, 2: max allowed */
+					__('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler'),
+					count($topic_ids),
+					$max_bulk
+				),
+			));
 		}
 
 		// Create history container for bulk generation
