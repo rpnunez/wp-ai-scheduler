@@ -701,7 +701,10 @@ class AIPS_History_Repository {
      * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
      * @return array Array of log entry objects.
      */
-    public function get_logs_by_history_id($history_id, $type_filter = array()) {
+    public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) {
+        $limit = absint($limit);
+        $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+
         if (!empty($type_filter)) {
             $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
             $args = array_merge(array($history_id), $type_filter);
@@ -709,7 +712,7 @@ class AIPS_History_Repository {
                 $this->wpdb->prepare(
                     "SELECT * FROM {$this->table_name_log}
                      WHERE history_id = %d AND history_type_id IN ($placeholders)
-                     ORDER BY timestamp ASC",
+                     ORDER BY timestamp DESC" . $limit_sql,
                     $args
                 )
             );
@@ -717,7 +720,7 @@ class AIPS_History_Repository {
 
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp DESC" . $limit_sql,
                 $history_id
             )
         );
