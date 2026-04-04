@@ -378,12 +378,33 @@ class AIPS_Schedule_Processor {
             $saved = json_decode($schedule->batch_progress, true);
             if (
                 is_array($saved) &&
-                isset($saved['completed'], $saved['total'], $saved['last_index']) &&
-                (int) $saved['total'] === $post_quantity &&
-                (int) $saved['completed'] < $post_quantity
+                isset($saved['completed'], $saved['total'], $saved['last_index'])
             ) {
-                $prior_completed = (int) $saved['completed'];
-                $start_index     = (int) $saved['last_index'] + 1;
+                $saved_completed = (int) $saved['completed'];
+                $saved_total     = (int) $saved['total'];
+                $saved_last_index = (int) $saved['last_index'];
+                $is_valid_cursor = (
+                    $saved_total === $post_quantity &&
+                    $saved_completed >= 0 &&
+                    $saved_completed < $post_quantity &&
+                    $saved_last_index >= 0 &&
+                    $saved_last_index < $post_quantity &&
+                    $saved_last_index >= ($saved_completed - 1) &&
+                    $saved_last_index <= $saved_completed
+                );
+
+                if ($is_valid_cursor) {
+                    $prior_completed = $saved_completed;
+                    $start_index     = $saved_last_index + 1;
+                } else {
+                    // Ignore and clear inconsistent saved progress so the
+                    // schedule can restart instead of getting stuck on an
+                    // impossible resume cursor.
+                    $this->repository->clear_batch_progress($schedule->schedule_id);
+                }
+            } else {
+                // Malformed progress payloads should not block future runs.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
             }
         }
 
@@ -428,8 +449,8 @@ class AIPS_Schedule_Processor {
 
         if (!$is_manual) {
             if ($batch_finished) {
-                // All posts generated — wipe progress and clear run_state to
-                // indicate a clean completion on the next admin view.
+                // All posts generated — clear batch progress and persist a
+                // success run_state to indicate a clean completion.
                 $this->repository->clear_batch_progress($schedule->schedule_id);
                 $this->repository->update_run_state($schedule->schedule_id, array(
                     'status'    => 'success',

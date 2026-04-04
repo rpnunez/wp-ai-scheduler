@@ -300,7 +300,6 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$table_name = $wpdb->prefix . 'aips_schedule';
 
 		// Need a template to satisfy the FK-like NOT NULL constraint.
-		$template_id = $wpdb->insert_id;
 		$wpdb->insert(
 			$wpdb->prefix . 'aips_templates',
 			array(
