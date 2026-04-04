@@ -658,22 +658,6 @@ class AIPS_Trending_Topics_Repository {
 
         return $this->wpdb->query($query);
     }
-
-    /**
-     * Delete old research data.
-     *
-     * @param int $days Delete topics older than N days.
-     * @return int|false Number of deleted records, or false on failure.
-     */
-    public function delete_old_topics($days = 30) {
-        $query = $this->wpdb->prepare(
-            "DELETE FROM {$this->table_name} 
-            WHERE researched_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
-            $days
-        );
-        
-        return $this->wpdb->query($query);
-    }
     
     /**
      * Get statistics about researched topics.
@@ -714,22 +698,6 @@ class AIPS_Trending_Topics_Repository {
      * Get statistics for a specific niche.
      *
      * @param string $niche Niche name.
-     * @return array Niche-specific statistics.
-     */
-    public function get_niche_stats($niche) {
-        $stats = array(
-            'topic_count' => 0,
-            'avg_score' => 0,
-            'highest_score' => 0,
-            'latest_research' => null,
-        );
-        
-        $query = $this->wpdb->prepare(
-            "SELECT 
-                COUNT(*) as topic_count,
-                AVG(score) as avg_score,
-                MAX(score) as highest_score,
-                MAX(researched_at) as latest_research
             FROM {$this->table_name}
             WHERE niche = %s",
             $niche
