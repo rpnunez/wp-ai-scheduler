@@ -349,18 +349,6 @@ class AIPS_Generator {
         // Delegate prompt building to AIPS_Prompt_Builder_Post_Title
         $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
-        // Apply resolved AI variables so that any {{VariableName}} placeholders in the
-        // title instructions are substituted before the prompt is sent to the AI.
-        // Without this step, raw placeholder syntax reaches the model and causes it to
-        // respond with only the variable value (e.g. a single word) instead of a full title.
-        if (!empty($ai_variables)) {
-            $prompt = $this->template_processor->process_with_ai_variables(
-                $prompt,
-                $context->get_topic(),
-                $ai_variables
-            );
-        }
-
         // Set token limit for title generation
         $options['maxTokens'] = 100;
 

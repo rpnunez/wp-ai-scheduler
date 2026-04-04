@@ -146,35 +146,21 @@ if (!defined('ABSPATH')) {
 						</tbody>
 					</table>
 					<?php else: ?>
-						<?php if (!empty($search_query)): ?>
-						<div class="aips-empty-state">
-							<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-							<h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Found', 'ai-post-scheduler'); ?></h3>
-							<p class="aips-empty-state-description"><?php esc_html_e('No generated posts match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
-							<div class="aips-empty-state-actions">
-								<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-primary">
-									<span class="dashicons dashicons-dismiss"></span>
-									<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-								</a>
-							</div>
+					<div class="aips-empty-state">
+						<div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></div>
+						<h3 class="aips-empty-state-title"><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
+						<p class="aips-empty-state-description"><?php esc_html_e('No generated posts found. Start creating content by setting up templates and schedules.', 'ai-post-scheduler'); ?></p>
+						<div class="aips-empty-state-actions">
+							<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
+								<span class="dashicons dashicons-plus-alt"></span>
+								<?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
+							</a>
+							<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
+								<span class="dashicons dashicons-calendar-alt"></span>
+								<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
+							</a>
 						</div>
-						<?php else: ?>
-						<div class="aips-empty-state">
-							<div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></div>
-							<h3 class="aips-empty-state-title"><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
-							<p class="aips-empty-state-description"><?php esc_html_e('No generated posts found. Start creating content by setting up templates and schedules.', 'ai-post-scheduler'); ?></p>
-							<div class="aips-empty-state-actions">
-								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
-									<span class="dashicons dashicons-plus-alt"></span>
-									<?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
-								</a>
-								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-									<span class="dashicons dashicons-calendar-alt"></span>
-									<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
-								</a>
-							</div>
-						</div>
-						<?php endif; ?>
+					</div>
 					<?php endif; ?>
 				</div>
 
