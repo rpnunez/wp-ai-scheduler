@@ -335,20 +335,16 @@ class AIPS_Admin_Menu {
     /**
      * Render the Post Review page.
      *
-     * Includes the post review template file.
+     * Redirects to the Pending Review tab on the Generated Posts page.
+     * Post review content was merged into Generated Posts (Tab 3) and the
+     * standalone post-review.php template has been removed.
      *
      * @return void
      */
     public function render_post_review_page() {
-        // Get the globally-initialized Post Review handler to avoid duplicate AJAX registration
-        global $aips_post_review_handler;
-        if (!isset($aips_post_review_handler)) {
-            // Fallback: repository only (AJAX handlers already registered in main init)
-            $post_review_handler = null;
-        } else {
-            $post_review_handler = $aips_post_review_handler;
-        }
-        include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
+        // Post review is now rendered as Tab 3 of the Generated Posts page.
+        wp_safe_redirect( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts' ) . '#aips-pending-review' );
+        exit;
     }
 
     /*
