@@ -18,11 +18,12 @@
 
 	/** Mutable state for the currently-open compare session. */
 	var multiDraftState = {
-		postId:     null,
-		historyId:  null,
+		postId:          null,
+		historyId:       null,
 		currentComponents: {},
-		variants:   [],
-		selections: {}
+		variants:        [],
+		selections:      {},
+		tokensPerVariant: null
 	};
 
 	Object.assign(AIPS, {
@@ -44,7 +45,7 @@
 			$(document).on('click',  '#aips-multi-draft-generate',                    AIPS.generateVariants);
 			$(document).on('click',  '#aips-multi-draft-apply',                       AIPS.applyMergedDraft);
 			$(document).on('change', '.aips-variant-select-radio',                    AIPS.onVariantRadioChange);
-			$(document).on('input change', '#aips-multi-draft-count',                 AIPS.updateMultiDraftCostEstimate);
+			$(document).on('input change', '#aips-multi-draft-count',                 AIPS.onMultiDraftCountChange);
 		},
 
 		/**
@@ -56,21 +57,26 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 
-			multiDraftState.postId    = $btn.data('post-id');
-			multiDraftState.historyId = $btn.data('history-id');
+			multiDraftState.postId           = $btn.data('post-id');
+			multiDraftState.historyId        = $btn.data('history-id');
 			multiDraftState.currentComponents = {};
-			multiDraftState.variants  = [];
-			multiDraftState.selections = {};
+			multiDraftState.variants         = [];
+			multiDraftState.selections       = {};
+			multiDraftState.tokensPerVariant  = null;
 
 			var maxVariants = parseInt(aipsMultiDraftL10n.maxVariants, 10) || 3;
 			$('#aips-multi-draft-count')
 				.attr('max', maxVariants)
 				.val(maxVariants);
 
-			AIPS.updateMultiDraftCostEstimate();
+			// Show "Estimating cost…" while we fetch the real token count.
+			$('#aips-multi-draft-cost-estimate').text(aipsMultiDraftL10n.estimatingCost || '');
 			AIPS.showMultiDraftStep('config');
 			$('#aips-multi-draft-modal').show();
 			$('body').addClass('aips-modal-open');
+
+			// Fetch real token estimate from the server (non-blocking).
+			AIPS.fetchMultiDraftTokenEstimate(multiDraftState.postId, maxVariants);
 		},
 
 		/**
@@ -95,35 +101,82 @@
 		},
 
 		/**
+		 * Request a real token-count estimate from the server via `mwai_estimate_tokens`.
+		 *
+		 * Fires the `aips_estimate_variant_tokens` AJAX endpoint and, on success,
+		 * stores the per-variant token count in state and refreshes the cost notice.
+		 * Silently falls back to the formula-based estimate on failure.
+		 *
+		 * @param {number} postId        The post to estimate tokens for.
+		 * @param {number} variantCount  The currently selected variant count.
+		 */
+		fetchMultiDraftTokenEstimate: function(postId, variantCount) {
+			$.ajax({
+				url:  aipsMultiDraftL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action:        'aips_estimate_variant_tokens',
+					nonce:         aipsMultiDraftL10n.nonce,
+					post_id:       postId,
+					variant_count: variantCount
+				},
+				success: function(response) {
+					if (response.success && response.data && response.data.tokens_per_variant) {
+						multiDraftState.tokensPerVariant = response.data.tokens_per_variant
+						? parseInt(response.data.tokens_per_variant, 10)
+						: null;
+					}
+					AIPS.updateMultiDraftCostEstimate();
+				},
+				error: function() {
+					// Silently fall back to formula-based estimate.
+					AIPS.updateMultiDraftCostEstimate();
+				}
+			});
+		},
+
+		/**
 		 * Format the cost estimate message using the localized template.
 		 *
-		 * Supports numbered placeholders like `%1$d` / `%2$d`
+		 * Uses the token-enriched string when a token estimate is available,
+		 * falling back to the basic API-call count string otherwise.
 		 *
-		 * @param {number} variants Number of variants to generate.
-		 * @param {number} calls    Estimated API call count.
+		 * @param {number}      variants Number of variants to generate.
+		 * @param {number}      calls    Estimated total API call count.
+		 * @param {number|null} tokens   Estimated total token count (null = unknown).
 		 * @returns {string} Formatted cost estimate message.
 		 */
-		formatMultiDraftCostEstimate: function(variants, calls) {
-			var template = (typeof aipsMultiDraftL10n !== 'undefined' && aipsMultiDraftL10n && aipsMultiDraftL10n.costEstimate)
-				? aipsMultiDraftL10n.costEstimate
-				: '';
+		formatMultiDraftCostEstimate: function(variants, calls, tokens) {
+			var l10n = (typeof aipsMultiDraftL10n !== 'undefined') ? aipsMultiDraftL10n : {};
 
+			if (tokens !== null && tokens !== undefined && l10n.costEstimateTokens) {
+				var formattedTokens = tokens.toLocaleString();
+				return l10n.costEstimateTokens
+					.replace(/%1\$d/g, variants)
+					.replace(/%2\$d/g, calls)
+					.replace(/%3\$s/g, formattedTokens);
+			}
+
+			var template = l10n.costEstimate || '';
 			if (!template) {
 				return '';
 			}
 
 			return template
-					.replace(/%1\$d/g, variants)
-					.replace(/%2\$d/g, calls);
+				.replace(/%1\$d/g, variants)
+				.replace(/%2\$d/g, calls);
 		},
 
 		/**
-		 * Recalculate and display the expected API-call impact before generating.
+		 * Recalculate and display the expected API-call / token impact before generating.
 		 */
 		updateMultiDraftCostEstimate: function() {
 			var count = parseInt($('#aips-multi-draft-count').val(), 10) || 2;
 			var calls = count * 3; // content + title + excerpt per variant
-			var message = AIPS.formatMultiDraftCostEstimate(count, calls);
+			var totalTokens = (multiDraftState.tokensPerVariant !== null)
+				? multiDraftState.tokensPerVariant * count * 3
+				: null;
+			var message = AIPS.formatMultiDraftCostEstimate(count, calls, totalTokens);
 			$('#aips-multi-draft-cost-estimate').text(message);
 		},
 
@@ -262,6 +315,22 @@
 			});
 
 			$('#aips-multi-draft-compare-body').html(html);
+		},
+
+		/**
+		 * Update the cost estimate when the variant count input changes.
+		 *
+		 * Re-fetches the server-side token estimate (since total tokens depend on
+		 * the count) and immediately refreshes the display with the formula-based
+		 * value while the fetch is in flight.
+		 */
+		onMultiDraftCountChange: function() {
+			var count = parseInt($('#aips-multi-draft-count').val(), 10) || 2;
+			// Show current estimate immediately, then refresh with updated server data.
+			AIPS.updateMultiDraftCostEstimate();
+			if (multiDraftState.postId) {
+				AIPS.fetchMultiDraftTokenEstimate(multiDraftState.postId, count);
+			}
 		},
 
 		/**

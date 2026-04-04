@@ -55,6 +55,7 @@ class Test_AIPS_Multi_Draft_Controller extends WP_UnitTestCase {
 	public function test_ajax_actions_registered() {
 		$this->assertTrue( has_action( 'wp_ajax_aips_generate_variants' ) !== false );
 		$this->assertTrue( has_action( 'wp_ajax_aips_apply_merged_draft' ) !== false );
+		$this->assertTrue( has_action( 'wp_ajax_aips_estimate_variant_tokens' ) !== false );
 	}
 
 	// -----------------------------------------------------------------------
@@ -575,5 +576,181 @@ class Test_AIPS_Multi_Draft_Controller extends WP_UnitTestCase {
 
 		$this->assertTrue( $action_fired );
 		$this->assertEquals( $post_id, $captured_post_id );
+	}
+
+	// -----------------------------------------------------------------------
+	// ajax_estimate_variant_tokens
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Missing or bad nonce must be rejected.
+	 *
+	 * @covers AIPS_Multi_Draft_Controller::ajax_estimate_variant_tokens
+	 */
+	public function test_estimate_tokens_requires_valid_nonce() {
+		$_POST = array(
+			'action'  => 'aips_estimate_variant_tokens',
+			'nonce'   => 'bad_nonce',
+			'post_id' => 1,
+		);
+
+		$threw = false;
+		ob_start();
+		try {
+			$this->controller->ajax_estimate_variant_tokens();
+		} catch ( WPAjaxDieStopException $e ) {
+			$threw = true;
+		} catch ( WPAjaxDieContinueException $e ) {
+			$threw = true;
+		}
+		$output = ob_get_clean();
+
+		if ( ! $threw ) {
+			$response = json_decode( $output, true );
+			$this->assertFalse( $response['success'] ?? true, 'Bad nonce should return error.' );
+		}
+	}
+
+	/**
+	 * A subscriber (no edit_posts cap) must be denied.
+	 *
+	 * @covers AIPS_Multi_Draft_Controller::ajax_estimate_variant_tokens
+	 */
+	public function test_estimate_tokens_requires_edit_posts_cap() {
+		if ( ! function_exists( 'wp_create_nonce' ) || ! function_exists( 'wp_set_current_user' ) ) {
+			$this->markTestSkipped( 'Requires full WordPress environment.' );
+		}
+
+		$subscriber = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber );
+
+		$_POST = array(
+			'action'  => 'aips_estimate_variant_tokens',
+			'nonce'   => wp_create_nonce( 'aips_ajax_nonce' ),
+			'post_id' => 1,
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_estimate_variant_tokens();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output   = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'Permission denied', $response['data']['message'] );
+	}
+
+	/**
+	 * A missing post_id must return an error.
+	 *
+	 * @covers AIPS_Multi_Draft_Controller::ajax_estimate_variant_tokens
+	 */
+	public function test_estimate_tokens_requires_post_id() {
+		if ( ! function_exists( 'wp_create_nonce' ) ) {
+			$this->markTestSkipped( 'Requires full WordPress environment.' );
+		}
+
+		$_POST = array(
+			'action' => 'aips_estimate_variant_tokens',
+			'nonce'  => wp_create_nonce( 'aips_ajax_nonce' ),
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_estimate_variant_tokens();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output   = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		$this->assertFalse( $response['success'] );
+	}
+
+	/**
+	 * A valid request must return token counts and API call stats.
+	 *
+	 * @covers AIPS_Multi_Draft_Controller::ajax_estimate_variant_tokens
+	 */
+	public function test_estimate_tokens_returns_estimate_for_valid_post() {
+		if ( ! function_exists( 'wp_create_nonce' ) || ! method_exists( $this->factory->post, 'create' ) || ! class_exists( 'WP_Post' ) ) {
+			$this->markTestSkipped( 'Requires full WordPress environment.' );
+		}
+
+		$post_id = $this->factory->post->create( array(
+			'post_title'   => 'Sample Title for Token Estimation',
+			'post_excerpt' => 'Short excerpt.',
+			'post_content' => 'Some post content to estimate tokens from.',
+		) );
+
+		$_POST = array(
+			'action'        => 'aips_estimate_variant_tokens',
+			'nonce'         => wp_create_nonce( 'aips_ajax_nonce' ),
+			'post_id'       => $post_id,
+			'variant_count' => 2,
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_estimate_variant_tokens();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output   = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertArrayHasKey( 'tokens_per_variant', $response['data'] );
+		$this->assertArrayHasKey( 'total_tokens',       $response['data'] );
+		$this->assertArrayHasKey( 'total_calls',        $response['data'] );
+		$this->assertGreaterThan( 0, $response['data']['tokens_per_variant'] );
+		$this->assertEquals( 2 * 3, $response['data']['total_calls'] );
+	}
+
+	/**
+	 * The mwai_estimate_tokens filter must be applied when estimating tokens.
+	 *
+	 * @covers AIPS_Multi_Draft_Controller::ajax_estimate_variant_tokens
+	 */
+	public function test_estimate_tokens_applies_mwai_filter() {
+		if ( ! function_exists( 'wp_create_nonce' ) || ! method_exists( $this->factory->post, 'create' ) || ! class_exists( 'WP_Post' ) ) {
+			$this->markTestSkipped( 'Requires full WordPress environment.' );
+		}
+
+		$post_id = $this->factory->post->create( array(
+			'post_title'   => 'Filter Test Post',
+			'post_content' => 'Content for filter test.',
+		) );
+
+		// Override the token estimate via the filter.
+		add_filter( 'mwai_estimate_tokens', function( $tokens, $text ) {
+			return 9999;
+		}, 10, 2 );
+
+		$_POST = array(
+			'action'        => 'aips_estimate_variant_tokens',
+			'nonce'         => wp_create_nonce( 'aips_ajax_nonce' ),
+			'post_id'       => $post_id,
+			'variant_count' => 2,
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_estimate_variant_tokens();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output   = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		remove_all_filters( 'mwai_estimate_tokens' );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertEquals( 9999, $response['data']['tokens_per_variant'] );
+		// total_tokens = 9999 * 2 variants * 3 calls/variant
+		$this->assertEquals( 9999 * 2 * 3, $response['data']['total_tokens'] );
 	}
 }

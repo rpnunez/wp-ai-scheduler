@@ -39,8 +39,9 @@ class AIPS_Multi_Draft_Controller {
 		$this->service   = new AIPS_Component_Regeneration_Service();
 		$this->generator = new AIPS_Generator();
 
-		add_action( 'wp_ajax_aips_generate_variants',  array( $this, 'ajax_generate_variants' ) );
-		add_action( 'wp_ajax_aips_apply_merged_draft', array( $this, 'ajax_apply_merged_draft' ) );
+		add_action( 'wp_ajax_aips_generate_variants',       array( $this, 'ajax_generate_variants' ) );
+		add_action( 'wp_ajax_aips_apply_merged_draft',      array( $this, 'ajax_apply_merged_draft' ) );
+		add_action( 'wp_ajax_aips_estimate_variant_tokens', array( $this, 'ajax_estimate_variant_tokens' ) );
 	}
 
 	/**
@@ -52,6 +53,74 @@ class AIPS_Multi_Draft_Controller {
 	 */
 	public static function get_max_variants() {
 		return max( 2, min( 3, (int) get_option( 'aips_multi_draft_max_variants', 3 ) ) );
+	}
+
+	/**
+	 * AJAX handler: Estimate the token count for generating draft variants.
+	 *
+	 * Uses the `mwai_estimate_tokens` filter provided by Meow AI Engine to
+	 * calculate an approximate token cost based on the actual post content.
+	 * Falls back to a simple 4-chars-per-token heuristic when the filter is
+	 * not available (AI Engine not installed / inactive).
+	 *
+	 * Accepts POST fields:
+	 *   post_id       (int)
+	 *   variant_count (int, 2–max)
+	 *
+	 * Returns JSON success with:
+	 *   variant_count       int
+	 *   tokens_per_variant  int  estimated prompt tokens for one variant
+	 *   calls_per_variant   int  number of AI calls per variant (always 3)
+	 *   total_tokens        int  tokens_per_variant × variant_count × calls_per_variant
+	 *   total_calls         int  variant_count × calls_per_variant
+	 */
+	public function ajax_estimate_variant_tokens() {
+		check_ajax_referer( 'aips_ajax_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ai-post-scheduler' ) ) );
+		}
+
+		$post_id       = isset( $_POST['post_id'] )       ? absint( $_POST['post_id'] )       : 0;
+		$variant_count = isset( $_POST['variant_count'] ) ? absint( $_POST['variant_count'] ) : 2;
+
+		if ( ! $post_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'ai-post-scheduler' ) ) );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			wp_send_json_error( array( 'message' => __( 'Post not found.', 'ai-post-scheduler' ) ) );
+		}
+
+		// Clamp to the configured limit.
+		$max_variants  = self::get_max_variants();
+		$variant_count = max( 2, min( $variant_count, $max_variants ) );
+
+		// Combine all post components into a single string that approximates the
+		// context sent to the AI during one generation call.
+		$combined_text = implode( ' ', array(
+			$post->post_title,
+			$post->post_excerpt,
+			wp_strip_all_tags( $post->post_content ),
+		) );
+
+		// Simple fallback: ~4 characters per token (standard GPT approximation).
+		$fallback_tokens = max( 1, (int) ( mb_strlen( $combined_text ) / 4 ) );
+
+		// Let Meow AI Engine (or any override plugin) refine the estimate.
+		$tokens_per_variant = max( 1, absint( apply_filters( 'mwai_estimate_tokens', $fallback_tokens, $combined_text ) ) );
+
+		// Each variant requires 3 AI calls: title, excerpt, and content.
+		$calls_per_variant = 3;
+
+		wp_send_json_success( array(
+			'variant_count'      => $variant_count,
+			'tokens_per_variant' => $tokens_per_variant,
+			'calls_per_variant'  => $calls_per_variant,
+			'total_tokens'       => $tokens_per_variant * $variant_count * $calls_per_variant,
+			'total_calls'        => $variant_count * $calls_per_variant,
+		) );
 	}
 
 	/**
