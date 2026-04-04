@@ -300,7 +300,13 @@ class AIPS_Trending_Topics_Repository {
                 $keywords_json = '[]';
             }
 
-            $status = isset($data['status']) ? sanitize_key($data['status']) : 'new';
+            $status = 'new';
+            if (isset($data['status'])) {
+                $sanitized_status = sanitize_key($data['status']);
+                if ($sanitized_status !== '') {
+                    $status = $sanitized_status;
+                }
+            }
             $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
 
             array_push(
