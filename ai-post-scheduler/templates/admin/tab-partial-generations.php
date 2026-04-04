@@ -23,10 +23,7 @@ if (!defined('ABSPATH')) {
 exit;
 }
 ?>
-		<!-- Tab 2 panel -->
-		<div id="aips-partial-generations-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
-			<div class="aips-content-panel">
-				<!-- Filter Bar -->
+			<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
@@ -192,6 +189,4 @@ exit;
 					</div>
 					<?php endif; ?>
 				</div>
-			</div>
-		</div>
 

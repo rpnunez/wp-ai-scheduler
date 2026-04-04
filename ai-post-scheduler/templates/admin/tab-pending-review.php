@@ -20,10 +20,7 @@ if (!defined('ABSPATH')) {
 exit;
 }
 ?>
-		<!-- Tab 3 panel -->
-		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
-			<div class="aips-content-panel">
-				<!-- Filter Bar -->
+			<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<form method="get" class="aips-post-review-filters aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
@@ -265,5 +262,4 @@ exit;
 					</div>
 					<?php endif; ?>
 				</div>
-			</div><!-- .aips-content-panel -->
-		</div><!-- .aips-tab-content -->
+

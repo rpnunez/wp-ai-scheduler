@@ -38,11 +38,26 @@ if (!defined('ABSPATH')) {
 			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
 		</div>
 
-		<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-generated-posts.php'; ?>
+		<!-- Tab 1: Generated Posts -->
+		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+			<div class="aips-content-panel">
+				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-generated-posts.php'; ?>
+			</div>
+		</div>
 
-		<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-partial-generations.php'; ?>
+		<!-- Tab 2: Partial Generations -->
+		<div id="aips-partial-generations-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">
+				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-partial-generations.php'; ?>
+			</div>
+		</div>
 
-		<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
+		<!-- Tab 3: Pending Review -->
+		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">
+				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
+			</div>
+		</div>
 	</div>
 </div>
 
