@@ -83,7 +83,7 @@ class AIPS_Research_Controller {
         
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
-        $keywords = isset($_POST['keywords']) ? array_map('sanitize_text_field', (array) wp_unslash($_POST['keywords'])) : array();
+        $keywords = isset($_POST['keywords']) ? AIPS_Utilities::sanitize_string_array((array) wp_unslash($_POST['keywords'])) : array();
         
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
