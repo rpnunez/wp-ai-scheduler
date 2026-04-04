@@ -240,8 +240,10 @@ class AIPS_Metrics_Repository {
 	 *     @type int        $stuck_count                Jobs in 'pending' or 'partial' status
 	 *                                                  created more than STUCK_JOB_THRESHOLD_MINUTES ago.
 	 *     @type int|null   $oldest_stuck_age_minutes   Age (minutes) of the oldest stuck job, or null if none.
-	 *     @type int        $failed_24h                 Jobs that transitioned to 'failed' in the last 24 hours.
-	 *     @type float      $retry_saturation_pct       Percentage of jobs in the last 24 hours that failed
+	 *     @type int        $failed_24h                 Jobs that transitioned to 'failed' in the last 24 hours
+	 *                                                  (window based on completed_at).
+	 *     @type float      $retry_saturation_pct       Percentage of jobs that completed or failed in the last
+	 *                                                  24 hours (window based on completed_at) that failed
 	 *                                                  (proxy for retry pressure; 0–100 or -1 if no data).
 	 *     @type array      $circuit_breaker            State dict from AIPS_Resilience_Service, or
 	 *                                                  array('state'=>'unknown') when unavailable.
@@ -289,11 +291,14 @@ class AIPS_Metrics_Repository {
 		}
 
 		// --- Recent failures (last 24 h) ---
+		// Use completed_at so we capture jobs that started before the window but
+		// failed within it, matching the docblock wording ("transitioned to failed").
 		$failed_24h = (int) $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				"SELECT COUNT(*) FROM {$this->table_history}
 				WHERE status = 'failed'
-				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
+				  AND completed_at IS NOT NULL
+				  AND completed_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
 				self::RETRY_WINDOW_HOURS
 			)
 		);
@@ -301,6 +306,8 @@ class AIPS_Metrics_Repository {
 		// Retry saturation = failed / (completed + failed) over the same 24-h window.
 		// We intentionally exclude 'partial' from the denominator: partial jobs are
 		// still in-flight or abandoned, not cleanly completed or failed.
+		// Use completed_at (not created_at) so long-running jobs that finish within
+		// the window are counted correctly.
 		$window_row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
@@ -308,7 +315,8 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
 				FROM {$this->table_history}
 				WHERE status IN ('completed','failed')
-				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
+				  AND completed_at IS NOT NULL
+				  AND completed_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
 				self::RETRY_WINDOW_HOURS
 			)
 		);
@@ -353,7 +361,7 @@ class AIPS_Metrics_Repository {
 	 * Invalidate all cached metrics.
 	 *
 	 * Removes every `aips_metrics_generation_*` transient stored by this class
-	 * regardless of window size, plus the queue-depth transient.
+	 * regardless of window size, plus the queue-depth and queue-health transients.
 	 *
 	 * When WordPress is using an external object cache (e.g. Redis/Memcached),
 	 * transients do not live in the options table, so `delete_transient()` is

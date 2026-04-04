@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
                     <h1 class="aips-page-title"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('Monitor system health, PHP configuration, WordPress environment, and plugin compatibility.', 'ai-post-scheduler'); ?></p>
                 </div>
-                <div class="aips-btn-group" style="gap: 8px;">
+                <div class="aips-btn-group">
                     <a class="aips-btn aips-btn-primary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('onboarding')); ?>">
                         <span class="dashicons dashicons-welcome-learn-more"></span>
                         <?php esc_html_e('Run Onboarding Wizard', 'ai-post-scheduler'); ?>
@@ -27,9 +27,7 @@ if (!defined('ABSPATH')) {
                 <?php if (empty($checks)) continue; ?>
 
                 <!-- Section Panel -->
-                <div class="aips-content-panel" style="margin-bottom: 20px;">
-                    <div class="aips-panel-header">
-                        <h2><?php echo esc_html(ucfirst($section)); ?></h2>
+                <div class="aips-content-panel">
                     </div>
                     <div class="aips-panel-body no-padding">
                         <table class="aips-table aips-health-check-table">
@@ -48,11 +46,11 @@ if (!defined('ABSPATH')) {
                                             <?php echo esc_html($check['value']); ?>
                                             <?php if (!empty($check['details'])) : ?>
                                                 <br>
-                                                <a href="#" class="aips-toggle-log-details" data-target="log-details-<?php echo esc_attr($key); ?>" style="font-size: 13px;">
+                                                <a href="#" class="aips-toggle-log-details" data-target="log-details-<?php echo esc_attr($key); ?>">
                                                     <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                                 </a>
-                                                <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
-                                                    <textarea class="aips-form-input" rows="10" readonly style="font-family: monospace; font-size: 12px;"><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                                <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details">
+                                                    <textarea class="aips-form-input" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                                 </div>
                                             <?php endif; ?>
                                         </td>
@@ -88,17 +86,17 @@ if (!defined('ABSPATH')) {
             <?php endforeach; ?>
 
             <!-- Database Management -->
-            <div class="aips-content-panel" style="margin-bottom: 20px;">
+            <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2>
-                        <span class="dashicons dashicons-database" style="margin-right: 5px;"></span>
+                        <span class="dashicons dashicons-database"></span>
                         <?php esc_html_e('Database Management', 'ai-post-scheduler'); ?>
                     </h2>
                 </div>
                 <div class="aips-panel-body">
                     <p><?php esc_html_e("Use these tools to repair, reinstall, or wipe the plugin's database tables. Destructive actions require confirmation.", 'ai-post-scheduler'); ?></p>
 
-                    <div class="aips-btn-group" style="margin-bottom: 16px;">
+                    <div class="aips-btn-group aips-db-actions">
                         <button type="button" class="aips-btn aips-btn-secondary aips-repair-db">
                             <span class="dashicons dashicons-hammer"></span>
                             <?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
@@ -116,7 +114,7 @@ if (!defined('ABSPATH')) {
                     </div>
 
                     <div>
-                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <label class="aips-backup-label">
                             <input type="checkbox" id="aips-backup-db" value="1">
                             <?php esc_html_e('Back up data before reinstalling (data will be restored afterwards)', 'ai-post-scheduler'); ?>
                         </label>
@@ -125,10 +123,10 @@ if (!defined('ABSPATH')) {
             </div>
 
             <!-- Data Management -->
-            <div class="aips-content-panel" style="margin-bottom: 20px;">
+            <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2>
-                        <span class="dashicons dashicons-migrate" style="margin-right: 5px;"></span>
+                        <span class="dashicons dashicons-migrate"></span>
                         <?php esc_html_e('Data Management', 'ai-post-scheduler'); ?>
                     </h2>
                 </div>

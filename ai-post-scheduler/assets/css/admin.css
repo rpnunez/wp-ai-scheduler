@@ -3403,3 +3403,100 @@ li.toplevel_page_ai-post-scheduler li > a[href*="aips-author-topics"] {
 li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
     display: none;
 }
+/* -----------------------------------------------------------------------
+   System Status page
+   ----------------------------------------------------------------------- */
+
+/* Space between panels on the status page */
+.aips-status-page .aips-content-panel {
+margin-bottom: 20px;
+}
+
+/* Gap on the page-header action button group */
+.aips-status-page .aips-page-header-top .aips-btn-group {
+gap: 8px;
+}
+
+/* Panel header h2 icon spacing */
+.aips-panel-header h2 .dashicons {
+margin-right: 5px;
+}
+
+/* Log-details toggle link */
+.aips-toggle-log-details {
+font-size: 13px;
+}
+
+/* Log-details collapsible block */
+.aips-log-details {
+display: none;
+margin-top: 10px;
+}
+
+/* Monospace textarea inside a log-details block */
+.aips-log-details .aips-form-input {
+font-family: monospace;
+font-size: 12px;
+}
+
+/* DB-management action button group */
+.aips-db-actions {
+margin-bottom: 16px;
+}
+
+/* Backup checkbox label */
+.aips-backup-label {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+cursor: pointer;
+}
+
+/* First-child section heading inside a panel body (no top gap) */
+.aips-panel-section-heading {
+margin-top: 0;
+}
+
+/* Horizontal divider between data-management sub-sections */
+.aips-section-divider {
+margin: 20px 0;
+}
+
+/* File-input element alignment */
+.aips-file-input {
+display: inline-block;
+vertical-align: middle;
+}
+
+/* Action button group with bottom margin */
+.aips-action-group {
+margin-bottom: 8px;
+}
+
+/* Async-action result containers (hidden until JS populates them) */
+.aips-notifications-hygiene-result,
+.aips-flush-cron-result {
+display: none;
+}
+
+/* Runbook section headings */
+.aips-runbook-section {
+margin-top: 16px;
+}
+
+/* Icon alignment inside runbook section headings */
+.aips-runbook-section .dashicons {
+vertical-align: middle;
+}
+
+/* Runbook inline notice */
+.aips-runbook-notice {
+margin-top: 8px;
+}
+
+/* Runbook footer / reference link */
+.aips-runbook-footer {
+margin-top: 16px;
+color: #666;
+font-size: 13px;
+}
