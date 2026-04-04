@@ -1362,3 +1362,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
 * Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
 **Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
+
+## 2026-03-08 - Extract Unified Schedule Controller
+
+**Context:** The `AIPS_Schedule_Controller` class contained both legacy schedule endpoints and the newer Unified Schedule AJAX endpoints (e.g., `ajax_unified_run_now`, `ajax_unified_toggle`). This created a "God Object" with over 700 lines of code, violating the Single Responsibility Principle and mixing two different architectural patterns for schedule handling.
+**Decision:** Applied "Separation of Concerns". Extracted all unified schedule AJAX actions and their corresponding callback methods into a dedicated `AIPS_Unified_Schedule_Controller` class.
+**Consequence:**
+* `AIPS_Schedule_Controller` is now smaller and exclusively handles legacy schedule endpoints.
+* `AIPS_Unified_Schedule_Controller` is focused solely on unified scheduling endpoints.
+* Both controllers are instantiated sequentially during the plugin bootstrap sequence in `ai-post-scheduler.php`, maintaining 100% backward compatibility.
+**Tests:** Updated `test-autoloader.php` to verify that `AIPS_Unified_Schedule_Controller` is loaded correctly. Ran PHP syntax checks and PHPUnit tests.
