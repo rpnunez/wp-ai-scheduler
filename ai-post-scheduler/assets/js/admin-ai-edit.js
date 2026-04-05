@@ -791,7 +791,19 @@
 			
 			if (componentType === 'featured_image') {
 				if (revision.value && revision.value.url) {
-					$value.html('<img src="' + window.AIPS.Utilities.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+					var sanitizedImageUrl = window.AIPS.Utilities.sanitizeUrl(revision.value.url);
+					
+					if (sanitizedImageUrl) {
+						$value.empty().append(
+							$('<img>', {
+								src: sanitizedImageUrl,
+								alt: 'Revision',
+								'class': 'aips-revision-value-image'
+							})
+						);
+					} else {
+						$value.text('No image');
+					}
 				} else {
 					$value.text('No image');
 				}
