@@ -949,7 +949,7 @@ class AIPS_System_Status {
         $chunk_size = 1024 * 100; // Read last 100KB
         $file_size = filesize($file_path);
 
-        if ($file_size === 0) {
+        if ($file_size === false || $file_size === 0) {
             return array();
         }
 
