@@ -849,7 +849,7 @@
 
 			const iconHtml = iconClass ? '<span class="dashicons ' + iconClass + '"></span>' : '';
 
-			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + AIPS.Utilities.escapeHtml(label) + '">' +
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + AIPS.Utilities.escapeAttribute(label) + '">' +
 				iconHtml + AIPS.Utilities.escapeHtml(label) +
 			'</span>';
 		},

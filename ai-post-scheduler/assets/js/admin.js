@@ -3872,7 +3872,7 @@
             // Build the variable tags
             var html = '';
             variables.forEach(function(varName) {
-                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.Utilities.escapeHtml(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
+                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.Utilities.escapeAttribute(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
                 html += '<span class="dashicons dashicons-tag"></span>';
                 html += '{{' + AIPS.Utilities.escapeHtml(varName) + '}}';
                 html += '</span>';
