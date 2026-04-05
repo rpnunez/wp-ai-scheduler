@@ -207,3 +207,8 @@
 **Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
+## 2024-04-05 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Combined the 'Title & Excerpt' step into the 'Content' step to streamline the wizard flow, reducing total steps from 5 to 4. Updated corresponding JS validation logic to reflect new DOM structure.
+**Files Modified:** ai-post-scheduler/templates/admin/templates.php, ai-post-scheduler/assets/js/admin.js
+**Outcome:** Reduced friction during template creation by presenting title/excerpt settings alongside the main content prompt, allowing users to configure core generative instructions on a single screen without extra clicks.
