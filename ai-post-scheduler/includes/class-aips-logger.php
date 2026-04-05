@@ -200,10 +200,12 @@ class AIPS_Logger {
         $log_files = array();
         
         foreach ($files as $file) {
+            $fsize = filesize($file);
+            $fmtime = filemtime($file);
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
-                'modified' => date('Y-m-d H:i:s', filemtime($file)),
+                'size' => size_format($fsize !== false ? $fsize : 0),
+                'modified' => date('Y-m-d H:i:s', $fmtime !== false ? $fmtime : time()),
             );
         }
         
