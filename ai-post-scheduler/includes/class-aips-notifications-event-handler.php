@@ -134,6 +134,18 @@ class AIPS_Notifications_Event_Handler {
 				'accepted_args' => 1,
 			),
 			array(
+				'hook'          => 'aips_circuit_breaker_opened',
+				'method'        => 'handle_circuit_breaker_opened_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_rate_limit_reached',
+				'method'        => 'handle_rate_limit_reached_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+      ),
+      array(
 				'hook'          => 'aips_scheduled_research_completed',
 				'method'        => 'handle_research_topics_notification',
 				'priority'      => 10,
@@ -513,6 +525,34 @@ class AIPS_Notifications_Event_Handler {
 	}
 
 	/**
+	 * Hook handler for circuit-breaker-opened notifications.
+	 *
+	 * @param array $payload Event payload.
+	 * @return void
+	 */
+	public function handle_circuit_breaker_opened_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->notifications->circuit_breaker_opened($payload);
+	}
+
+	/**
+	 * Hook handler for rate-limit-reached notifications.
+	 *
+	 * @param array $payload Event payload.
+	 * @return void
+	 */
+	public function handle_rate_limit_reached_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->notifications->rate_limit_reached($payload);
+  }
+  
+  /*
 	 * Hook handler for scheduled research completion notifications.
 	 *
 	 * Fires when the cron-driven research run saves new trending topics.
