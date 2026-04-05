@@ -47,6 +47,16 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      * @var AIPS_Schedule_Processor Processor for executing schedules
      */
     private $processor;
+
+    /**
+     * @var AIPS_Generation_Queue_Worker|null Worker for queue-backed execution.
+     */
+    private $queue_worker;
+
+    /**
+     * @var AIPS_Generation_Queue_Repository|null Queue repository (lazy-created when queue mode is active).
+     */
+    private $queue_repository;
     
     public function __construct() {
         global $wpdb;
@@ -379,6 +389,24 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     }
     
     /**
+     * Set a custom queue worker instance (dependency injection / testing).
+     *
+     * @param AIPS_Generation_Queue_Worker $worker
+     */
+    public function set_queue_worker( $worker ) {
+        $this->queue_worker = $worker;
+    }
+
+    /**
+     * Set a custom queue repository instance (dependency injection / testing).
+     *
+     * @param AIPS_Generation_Queue_Repository $repository
+     */
+    public function set_queue_repository( $repository ) {
+        $this->queue_repository = $repository;
+    }
+
+    /**
      * Run a specific schedule immediately.
      *
      * @param int      $schedule_id      The schedule ID.
@@ -394,8 +422,27 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      *
      * Called by WordPress cron on the aips_generate_scheduled_posts hook.
      * Implements AIPS_Cron_Generation_Handler::process().
+     *
+     * When the 'queue_backed_scheduler' feature flag is enabled, due schedules
+     * are first enqueued as idempotent job records, then a bounded worker batch
+     * is processed.  This prevents duplicate work on overlapping cron invocations
+     * and keeps per-tick execution bounded and configurable.
+     *
+     * When the flag is disabled the legacy direct-execution path is used so
+     * existing behaviour is fully preserved.
      */
     public function process(): void {
-        $this->processor->process_due_schedules();
+        if ( AIPS_Config::get_instance()->is_feature_enabled( 'queue_backed_scheduler' ) ) {
+            $queue_repository = $this->queue_repository ?: new AIPS_Generation_Queue_Repository();
+            $this->processor->enqueue_due_schedules( $queue_repository );
+
+            $worker = $this->queue_worker ?: new AIPS_Generation_Queue_Worker(
+                $queue_repository,
+                $this->processor
+            );
+            $worker->process_batch();
+        } else {
+            $this->processor->process_due_schedules();
+        }
     }
 }
