@@ -221,7 +221,7 @@ class AIPS_Templates {
             'taxonomy'   => 'aips_source_group',
             'hide_empty' => false,
         ));
-        if (is_wp_error($template_source_groups) || !is_array($template_source_groups)) {
+        if (is_wp_error($template_source_groups)) {
             $template_source_groups = array();
         }
 
