@@ -712,6 +712,9 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for computing topic embeddings.
+	 *
+	 * Schedules background jobs instead of computing embeddings inline.
+	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -721,22 +724,68 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
 
-		if ($author_id > 0) {
-			$stats = $this->expansion_service->batch_compute_approved_embeddings($author_id);
+		// Sanitize batch size
+		$batch_size = max(1, min(100, $batch_size));
+
+		$queued_count = 0;
+
+		if ($author_id === 0) {
+			// Schedule one job per author
+			$authors_repo = new AIPS_Authors_Repository();
+			$authors = $authors_repo->get_all();
+
+			foreach ($authors as $author) {
+				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0);
+				$queued_count++;
+			}
+
+			$message = sprintf(
+				__('Queued embeddings processing for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
+				$queued_count
+			);
 		} else {
-			$stats = $this->expansion_service->batch_compute_all_approved_embeddings();
+			// Schedule one job for the given author
+			$this->schedule_embeddings_job($author_id, $batch_size, 0);
+			$queued_count = 1;
+
+			$message = sprintf(
+				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
+				$author_id
+			);
 		}
 
 		wp_send_json_success(array(
-			'message' => sprintf(
-				__('Computed embeddings: %d successful, %d failed, %d skipped (already existed).', 'ai-post-scheduler'),
-				$stats['success'],
-				$stats['failed'],
-				$stats['skipped']
-			),
-			'stats' => $stats
+			'message' => $message,
+			'queued_count' => $queued_count
 		));
+	}
+
+	/**
+	 * Schedule a background embeddings processing job.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Batch size for processing.
+	 * @param int $last_processed_id Last processed topic ID.
+	 * @return void
+	 */
+	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+
+		// Schedule to run in a few seconds
+		$timestamp = time() + 5;
+
+		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action($timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
+		} else {
+			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
+		}
 	}
 
 	/**

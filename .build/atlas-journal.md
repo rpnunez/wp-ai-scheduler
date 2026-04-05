@@ -1362,3 +1362,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
 * Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
 **Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
+
+## 2026-03-08 - Extract Settings Callbacks and UI rendering
+
+**Context:** The `AIPS_Settings` class had grown to over 1100 lines and acted as a "God Object", handling settings registration (`register_setting`), rendering sections and fields callbacks, sanitizing inputs, and processing AJAX endpoints (`ajax_test_connection`, `ajax_notifications_data_hygiene`). This violated the Single Responsibility Principle, tightly coupling data structure initialization with UI rendering and request handling.
+**Decision:** Applied "Separation of Concerns". Created `AIPS_Settings_UI` (to house all `_callback` methods and `sanitize_` routines) and `AIPS_Settings_AJAX` (to house the `wp_ajax_` handlers). The `AIPS_Settings` class now cleanly instantiates these helper classes inside its constructor and focuses purely on `register_settings` and schema definitions.
+**Consequence:**
+* `AIPS_Settings` is reduced to roughly half its size, delegating UI generation and AJAX to their respective classes.
+* Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
+* Maintains 100% backward compatibility for existing settings data and hooks.
+**Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
