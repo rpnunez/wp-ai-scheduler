@@ -632,7 +632,8 @@
 				if (topic.potential_duplicate) {
 					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
 					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
-					const dupTitle = topic.duplicate_match ? safeDupLabel + ': ' + AIPS.Utilities.escapeHtml(topic.duplicate_match) : safeDupLabel;
+					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
+					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
 					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
 				}
 
