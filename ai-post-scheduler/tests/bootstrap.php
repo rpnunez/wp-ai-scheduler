@@ -1066,6 +1066,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
+        'class-aips-settings-ui.php',
+        'class-aips-settings-ajax.php',
         'class-aips-notification-template.php',
         'class-aips-notification-templates.php',
         'class-aips-notifications-repository.php',
