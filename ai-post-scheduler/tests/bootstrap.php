@@ -255,6 +255,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('remove_all_actions')) {
+        function remove_all_actions($hook_name, $priority = false) {
+            if (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name])) {
+                if ($priority === false) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name]);
+                } elseif (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority])) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority]);
+                }
+            }
+            return true;
+        }
+    }
+
     if (!isset($GLOBALS['aips_test_options'])) {
         $GLOBALS['aips_test_options'] = array();
     }
