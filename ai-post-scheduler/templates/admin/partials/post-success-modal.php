@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 				<p style="font-size: 16px; margin-top: 20px;" id="aips-success-message"><?php esc_html_e('Your post has been successfully generated!', 'ai-post-scheduler'); ?></p>
 				<div id="aips-post-link-container" style="margin-top: 20px;">
 					<strong><?php esc_html_e('Link to Post:', 'ai-post-scheduler'); ?></strong><br>
-					<a href="#" id="aips-post-link" target="_blank" class="button button-primary" style="margin-top: 10px;"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
+					<a href="#" id="aips-post-link" target="_blank" rel="noopener noreferrer" class="button button-primary" style="margin-top: 10px;"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
 				</div>
 			</div>
 		</div>
