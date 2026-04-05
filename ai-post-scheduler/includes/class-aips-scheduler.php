@@ -433,14 +433,20 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      */
     public function process(): void {
         if ( AIPS_Config::get_instance()->is_feature_enabled( 'queue_backed_scheduler' ) ) {
+            // Resolve the queue repository once so that enqueue_due_schedules() and
+            // the worker share the same instance (and therefore the same DB connection
+            // state) when no injected worker is present.
             $queue_repository = $this->queue_repository ?: new AIPS_Generation_Queue_Repository();
             $this->processor->enqueue_due_schedules( $queue_repository );
 
-            $worker = $this->queue_worker ?: new AIPS_Generation_Queue_Worker(
-                $queue_repository,
-                $this->processor
-            );
-            $worker->process_batch();
+            if ( $this->queue_worker ) {
+                // Use the injected worker as-is (test or custom override).
+                $this->queue_worker->process_batch();
+            } else {
+                // Build a worker that explicitly shares the same repository instance
+                // used for enqueueing, making the data flow unambiguous.
+                ( new AIPS_Generation_Queue_Worker( $queue_repository, $this->processor ) )->process_batch();
+            }
         } else {
             $this->processor->process_due_schedules();
         }
