@@ -212,9 +212,9 @@ class AIPS_Feedback_Repository {
 		));
 		
 		return array(
-			'total' => (int) $results->total,
-			'approved' => (int) $results->approved,
-			'rejected' => (int) $results->rejected
+			'total' => isset($results->total) ? (int) $results->total : 0,
+			'approved' => isset($results->approved) ? (int) $results->approved : 0,
+			'rejected' => isset($results->rejected) ? (int) $results->rejected : 0
 		);
 	}
 	
@@ -316,9 +316,9 @@ class AIPS_Feedback_Repository {
 		$result = array();
 		foreach ($rows as $row) {
 			$result[(int) $row->author_id] = array(
-				'total'    => (int) $row->total,
-				'approved' => (int) $row->approved,
-				'rejected' => (int) $row->rejected,
+				'total'    => isset($row->total) ? (int) $row->total : 0,
+				'approved' => isset($row->approved) ? (int) $row->approved : 0,
+				'rejected' => isset($row->rejected) ? (int) $row->rejected : 0,
 			);
 		}
 
