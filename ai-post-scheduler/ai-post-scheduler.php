@@ -111,6 +111,14 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
+        // Load Composer autoloader (PSR-4 + classmap) when available.
+        // This must run before the legacy AIPS_ autoloader so that namespaced
+        // classes under AIPS\ are resolvable from the very first require.
+        $composer_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $composer_autoload ) ) {
+            require_once $composer_autoload;
+        }
+
         // Register autoloader
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
