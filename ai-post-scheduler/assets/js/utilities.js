@@ -601,7 +601,9 @@
                     return '';
                 }
             }
-            if (urlStr.indexOf('/') === 0) {
+            // Allow root-relative paths (/path/to/page) but reject protocol-relative
+            // URLs (//evil.example) to avoid external navigation via same-origin bypass.
+            if (urlStr.indexOf('/') === 0 && urlStr.indexOf('//') !== 0) {
                 return urlStr;
             }
             return '';

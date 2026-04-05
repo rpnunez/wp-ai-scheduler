@@ -1522,7 +1522,10 @@
                         var msg = AIPS.Utilities.escapeHtml(response.data.message || 'Post generated successfully!');
 
                         if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.Utilities.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                            var safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+                            if (safeEditUrl) {
+                                msg += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">Edit Post</a>';
+                            }
                         }
 
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
@@ -2393,7 +2396,10 @@
                     if (response.success) {
                         var msg = AIPS.Utilities.escapeHtml(response.data.message || 'Executed successfully!');
                         if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.Utilities.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                            var safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+                            if (safeEditUrl) {
+                                msg += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">Edit Post</a>';
+                            }
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {

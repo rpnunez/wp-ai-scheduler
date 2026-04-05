@@ -614,7 +614,7 @@
 				let expandBtnHtml = '';
 				let detailSectionHtml = '';
 				if (detailContentHtml !== '') {
-					const viewDetailsTitle = AIPS.Utilities.escapeHtml(aipsAuthorsL10n.viewDetails || 'View Details');
+					const viewDetailsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewDetails || 'View Details');
 					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
 						id: topic.id,
@@ -624,7 +624,7 @@
 
 				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
-					const viewPostsTitle = AIPS.Utilities.escapeHtml(aipsAuthorsL10n.viewPosts || 'View Posts');
+					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
 					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
@@ -641,7 +641,7 @@
 				if (topic.last_feedback) {
 					const fbAction = topic.last_feedback.action;
 					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
-					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeHtml(fbLabel) + ': ' + AIPS.Utilities.escapeHtml(topic.last_feedback.reason) : AIPS.Utilities.escapeHtml(fbLabel);
+					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeAttribute(fbLabel) + ': ' + AIPS.Utilities.escapeAttribute(topic.last_feedback.reason) : AIPS.Utilities.escapeAttribute(fbLabel);
 					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + AIPS.Utilities.escapeHtml(fbLabel) + '</span>';
 					if (topic.last_feedback.reason_category) {
 						feedbackBadgeHtml += ' ' + this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
@@ -2358,11 +2358,11 @@
 			$fieldFilter.find('option:not(:first)').remove();
 
 			authors.forEach(author => {
-				$authorFilter.append('<option value="' + AIPS.Utilities.escapeHtml(author) + '">' + AIPS.Utilities.escapeHtml(author) + '</option>');
+				$authorFilter.append($('<option>').val(author).text(author));
 			});
 
 			fields.forEach(field => {
-				$fieldFilter.append('<option value="' + AIPS.Utilities.escapeHtml(field) + '">' + AIPS.Utilities.escapeHtml(field) + '</option>');
+				$fieldFilter.append($('<option>').val(field).text(field));
 			});
 
 			$authorFilter.val(authorValue);

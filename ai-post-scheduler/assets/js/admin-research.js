@@ -580,13 +580,13 @@
                     }));
                 } else {
                     var cardHtml = '';
-                    cardHtml += '<div class="aips-gap-card priority-' + AIPS.Utilities.escapeHtml(priorityClass) + '">';
-                    cardHtml += '<span class="aips-gap-badge ' + AIPS.Utilities.escapeHtml(priorityClass) + '">' + AIPS.Utilities.escapeHtml(gap.priority) + ' Priority</span>';
+                    cardHtml += '<div class="aips-gap-card priority-' + AIPS.Utilities.escapeAttribute(priorityClass) + '">';
+                    cardHtml += '<span class="aips-gap-badge ' + AIPS.Utilities.escapeAttribute(priorityClass) + '">' + AIPS.Utilities.escapeHtml(gap.priority) + ' Priority</span>';
                     cardHtml += '<h4>' + AIPS.Utilities.escapeHtml(gap.missing_topic) + '</h4>';
                     cardHtml += '<p class="aips-gap-reason">' + AIPS.Utilities.escapeHtml(gap.reason) + '</p>';
                     cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.Utilities.escapeHtml(gap.search_intent) + '</p>';
                     cardHtml += '<div class="aips-gap-actions">';
-                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.Utilities.escapeHtml(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
+                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.Utilities.escapeAttribute(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
                     cardHtml += '</div></div>';
                     $grid.append(cardHtml);
                 }
