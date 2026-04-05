@@ -217,6 +217,13 @@ class AIPS_Templates {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+        $template_source_groups = get_terms(array(
+            'taxonomy'   => 'aips_source_group',
+            'hide_empty' => false,
+        ));
+        if (is_wp_error($template_source_groups)) {
+            $template_source_groups = array();
+        }
 
         include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
     }
