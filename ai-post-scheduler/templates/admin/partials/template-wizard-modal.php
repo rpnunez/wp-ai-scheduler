@@ -148,11 +148,7 @@ if (!defined('ABSPATH')) {
 					</div>
 
 					<?php
-					$template_source_groups = get_terms(array(
-						'taxonomy'   => 'aips_source_group',
-						'hide_empty' => false,
-					));
-					if (is_wp_error($template_source_groups)) {
+					if (!isset($template_source_groups) || is_wp_error($template_source_groups) || !is_array($template_source_groups)) {
 						$template_source_groups = array();
 					}
 					?>
