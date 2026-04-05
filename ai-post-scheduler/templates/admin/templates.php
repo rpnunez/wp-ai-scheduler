@@ -197,4 +197,3 @@ include AIPS_PLUGIN_DIR . 'templates/admin/partials/template-wizard-modal.php';
 include AIPS_PLUGIN_DIR . 'templates/admin/partials/test-result-modal.php';
 include AIPS_PLUGIN_DIR . 'templates/admin/partials/post-success-modal.php';
 ?>
-</div>
