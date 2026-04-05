@@ -59,6 +59,17 @@ class AIPS_Generation_Queue_Repository {
 	const ACTIVE_STATUSES = array( 'pending', 'processing' );
 
 	/**
+	 * Known job type discriminators.
+	 *
+	 * Only these values may be enqueued.  enqueue() returns false for unknown
+	 * types rather than silently sanitizing them, so callers are alerted to
+	 * mismatches between enqueue-site and worker-dispatcher expectations.
+	 *
+	 * @var string[]
+	 */
+	const JOB_TYPES = array( 'template_schedule' );
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -84,9 +95,15 @@ class AIPS_Generation_Queue_Repository {
 	 * @param array       $payload         Structured job parameters (will be JSON-encoded).
 	 * @param string|null $available_at    MySQL datetime when the job becomes eligible for processing.
 	 *                                     Defaults to the current WordPress time when null.
-	 * @return int|false  New row ID on success, false if a duplicate active job exists or on DB error.
+	 * @return int|false  New row ID on success, false if a duplicate active job exists, an unknown
+	 *                    job_type is supplied, or a DB error occurs.
 	 */
 	public function enqueue( $idempotency_key, $job_type, $payload, $available_at = null ) {
+		// Validate job_type against the known whitelist before touching the DB.
+		if ( ! in_array( $job_type, self::JOB_TYPES, true ) ) {
+			return false;
+		}
+
 		if ( $available_at === null ) {
 			$available_at = current_time( 'mysql' );
 		}
@@ -115,7 +132,7 @@ class AIPS_Generation_Queue_Repository {
 			$this->table,
 			array(
 				'idempotency_key' => $idempotency_key,
-				'job_type'        => sanitize_key( $job_type ),
+				'job_type'        => $job_type,
 				'payload'         => wp_json_encode( $payload ),
 				'status'          => 'pending',
 				'attempt_count'   => 0,
@@ -243,13 +260,17 @@ class AIPS_Generation_Queue_Repository {
 		$new_status    = $is_dead ? 'dead' : 'pending';
 
 		// Exponential back-off: 5, 10, 20 … minutes per retry tier.
+		// Cap the exponent at 5 to avoid unreasonably long delays
+		// (max back-off ≈ 160 minutes).
+		$exponent    = min( $attempt_count - 1, 5 );
 		$backoff_secs = $is_dead
 			? 0
-			: ( 5 * MINUTE_IN_SECONDS * ( 2 ** ( $attempt_count - 1 ) ) );
+			: ( 5 * MINUTE_IN_SECONDS * ( 2 ** $exponent ) );
 
+		$now         = current_time( 'timestamp' );
 		$available_at = $is_dead
-			? current_time( 'mysql' )
-			: date( 'Y-m-d H:i:s', current_time( 'timestamp' ) + $backoff_secs );
+			? date( 'Y-m-d H:i:s', $now )
+			: date( 'Y-m-d H:i:s', $now + $backoff_secs );
 
 		// Persist the error inside the payload for operator visibility.
 		$payload_data              = json_decode( (string) $row->payload, true );

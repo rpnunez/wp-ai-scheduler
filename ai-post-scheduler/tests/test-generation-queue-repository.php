@@ -208,14 +208,17 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 	/**
 	 * release_stale_locks() should be called at the start of every process_batch()
 	 * invocation so stale processing locks are freed before claiming new work.
+	 * The lock timeout from config must be passed through.
 	 */
 	public function test_worker_releases_stale_locks_before_claiming() {
-		$released_times = 0;
+		$released_times   = 0;
+		$received_timeouts = array();
 
 		$queue_repo = $this->createMock( AIPS_Generation_Queue_Repository::class );
 		$queue_repo->method( 'release_stale_locks' )->willReturnCallback(
-			function () use ( &$released_times ) {
+			function ( $timeout ) use ( &$released_times, &$received_timeouts ) {
 				$released_times++;
+				$received_timeouts[] = $timeout;
 				return 0;
 			}
 		);
@@ -227,6 +230,9 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 		$worker->process_batch( 5 );
 
 		$this->assertSame( 1, $released_times, 'release_stale_locks() should be called once per process_batch()' );
+		$this->assertNotEmpty( $received_timeouts, 'A timeout value must be passed to release_stale_locks()' );
+		$this->assertIsInt( $received_timeouts[0], 'Timeout must be an integer number of seconds' );
+		$this->assertGreaterThan( 0, $received_timeouts[0], 'Timeout must be positive' );
 	}
 
 	// =========================================================================
@@ -416,6 +422,28 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 		$this->assertContains( 'processing', AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
 		$this->assertNotContains( 'done',    AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
 		$this->assertNotContains( 'dead',    AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
+	}
+
+	/**
+	 * AIPS_Generation_Queue_Repository::JOB_TYPES should list known types.
+	 */
+	public function test_queue_repository_job_types_constant() {
+		$this->assertContains( 'template_schedule', AIPS_Generation_Queue_Repository::JOB_TYPES );
+	}
+
+	/**
+	 * enqueue() with an unknown job_type should return false without touching the DB.
+	 */
+	public function test_enqueue_returns_false_for_unknown_job_type() {
+		// Use the mock wpdb (no real DB needed) — the whitelist check happens before any query.
+		$repo   = new AIPS_Generation_Queue_Repository();
+		$result = $repo->enqueue(
+			'some_key',
+			'totally_unknown_job_type',
+			array( 'foo' => 'bar' )
+		);
+
+		$this->assertFalse( $result, 'Unknown job_type should be rejected' );
 	}
 
 	// =========================================================================

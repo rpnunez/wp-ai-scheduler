@@ -227,6 +227,10 @@ class AIPS_Generation_Queue_Worker {
 	/**
 	 * Generate a unique lock token for this worker invocation.
 	 *
+	 * Uses wp_generate_uuid4() when available (WordPress 4.7+).  Falls back to
+	 * random_int()-based UUID generation so the token remains unpredictable even
+	 * when the WP function is absent (e.g. in unit-test stubs).
+	 *
 	 * @return string UUID-style string.
 	 */
 	private function generate_lock_token() {
@@ -236,11 +240,11 @@ class AIPS_Generation_Queue_Worker {
 
 		return sprintf(
 			'%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0x0fff ) | 0x4000,
-			mt_rand( 0, 0x3fff ) | 0x8000,
-			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+			random_int( 0, 0xffff ), random_int( 0, 0xffff ),
+			random_int( 0, 0xffff ),
+			random_int( 0, 0x0fff ) | 0x4000,
+			random_int( 0, 0x3fff ) | 0x8000,
+			random_int( 0, 0xffff ), random_int( 0, 0xffff ), random_int( 0, 0xffff )
 		);
 	}
 }
