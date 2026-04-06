@@ -44,12 +44,17 @@ class AIPS_Internal_Links_Service {
 	/**
 	 * Default minimum similarity score to include a suggestion.
 	 *
+	 * A value of 0.70 means posts must share at least 70% semantic similarity
+	 * (cosine similarity) to be suggested as internal link targets.
+	 *
 	 * @var float
 	 */
 	const DEFAULT_SIMILARITY_THRESHOLD = 0.70;
 
 	/**
 	 * Default maximum number of link suggestions per source post.
+	 *
+	 * Capped at 5 to keep the suggestions actionable without overwhelming editors.
 	 *
 	 * @var int
 	 */
