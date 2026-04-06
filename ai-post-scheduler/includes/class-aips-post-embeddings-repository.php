@@ -107,6 +107,34 @@ class AIPS_Post_Embeddings_Repository {
 	}
 
 	/**
+	 * Get post embeddings for similarity search, constrained to a specific post type and status.
+	 *
+	 * JOINs against wp_posts to exclude embeddings for deleted posts or posts of a different
+	 * type/status, keeping the candidate set small and relevant for the source post being processed.
+	 *
+	 * @param string $post_type   Post type to filter (default: 'post').
+	 * @param string $post_status Post status to filter (default: 'publish').
+	 * @return object[] Array of row objects with post_id and embedding columns.
+	 */
+	public function get_all_for_similarity_by_type($post_type = 'post', $post_status = 'publish') {
+		$post_type   = sanitize_key($post_type);
+		$post_status = sanitize_key($post_status);
+
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT e.post_id, e.embedding
+				FROM {$this->table} e
+				INNER JOIN {$this->wpdb->posts} p ON e.post_id = p.ID
+				WHERE p.post_type = %s
+				AND p.post_status = %s
+				ORDER BY e.post_id ASC",
+				$post_type,
+				$post_status
+			)
+		);
+	}
+
+	/**
 	 * Get the total number of indexed posts.
 	 *
 	 * @return int Count of indexed posts.

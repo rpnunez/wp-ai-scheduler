@@ -221,8 +221,16 @@ class AIPS_Internal_Links_Service {
 			return new WP_Error('invalid_embedding', __('Source post has an invalid embedding.', 'ai-post-scheduler'));
 		}
 
-		// Fetch all other indexed embeddings for comparison
-		$all_rows = $this->embeddings_repo->get_all_for_similarity();
+		// Fetch embeddings constrained to the same post type and status as the source post.
+		// This excludes deleted posts and posts of a different type from the candidate set,
+		// reducing memory usage and improving relevance on sites with many post types.
+		$source_post = get_post($source_post_id);
+		if (!$source_post) {
+			return new WP_Error('post_not_found', __('Source post no longer exists.', 'ai-post-scheduler'));
+		}
+		$post_type   = $source_post->post_type;
+		$post_status = $source_post->post_status;
+		$all_rows    = $this->embeddings_repo->get_all_for_similarity_by_type($post_type, $post_status);
 
 		$candidates = array();
 		foreach ($all_rows as $row) {
@@ -243,10 +251,12 @@ class AIPS_Internal_Links_Service {
 			return array();
 		}
 
+		// Fetch extra neighbors to account for both threshold filtering and
+		// targets that already have non-pending suggestions (accepted/rejected/inserted).
 		$neighbors = $this->embeddings_service->find_nearest_neighbors(
 			$source_embedding,
 			$candidates,
-			$max_suggestions * 2 // fetch extra to apply threshold filter below
+			$max_suggestions * 3
 		);
 
 		// Filter by similarity threshold
@@ -256,6 +266,26 @@ class AIPS_Internal_Links_Service {
 				return isset($n['similarity']) && $n['similarity'] >= $similarity_threshold;
 			}
 		);
+
+		// Collect target IDs that already have a non-pending suggestion from this source.
+		// These must be excluded so regeneration does not produce fewer than max_suggestions
+		// when accepted/rejected/inserted rows exist for some top neighbors.
+		$existing_rows      = $this->links_repo->get_by_source_post($source_post_id);
+		$excluded_target_ids = array();
+		foreach ($existing_rows as $row) {
+			if ('pending' !== $row->status) {
+				$excluded_target_ids[] = (int) $row->target_post_id;
+			}
+		}
+
+		if (!empty($excluded_target_ids)) {
+			$neighbors = array_filter(
+				$neighbors,
+				function ($n) use ($excluded_target_ids) {
+					return !in_array((int) $n['id'], $excluded_target_ids, true);
+				}
+			);
+		}
 
 		$neighbors = array_slice(array_values($neighbors), 0, $max_suggestions);
 
