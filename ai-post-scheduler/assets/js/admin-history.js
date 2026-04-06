@@ -613,6 +613,175 @@
 		},
 
 		/**
+		 * Build HTML for all history table rows from a JSON items array using
+		 * the AIPS.Templates engine and the script templates defined in history.php.
+		 *
+		 * @param {Object[]} items Array of history item objects returned by the server.
+		 * @return {string} HTML string ready to be inserted into the tbody.
+		 */
+		renderHistoryRows: function (items) {
+			var T       = AIPS.Templates;
+			var rowsHtml = '';
+
+			$.each(items, function (i, item) {
+				// Title cell HTML.
+				var titleHtml;
+				if (item.edit_url) {
+					titleHtml = T.renderRaw('aips-tmpl-history-row-title-link', {
+						editUrl: T.escape(item.edit_url),
+						title:   T.escape(item.generated_title || aipsHistoryL10n.untitled || 'Untitled')
+					});
+				} else {
+					titleHtml = T.render('aips-tmpl-history-row-title-text', {
+						title: item.generated_title || aipsHistoryL10n.untitled || 'Untitled'
+					});
+				}
+
+				// Inline error message (failed items only).
+				var errorHtml = '';
+				if (item.status === 'failed' && item.error_message) {
+					errorHtml = T.render('aips-tmpl-history-row-error', {
+						message: item.error_message
+					});
+				}
+
+				// Template/topic label.
+				var templateText;
+				if (item.template_name) {
+					templateText = item.template_name;
+				} else if (item.template_id) {
+					templateText = (aipsHistoryL10n.templateDeleted || 'Template #%d (deleted)').replace('%d', String(item.template_id));
+				} else if (item.topic_id) {
+					templateText = aipsHistoryL10n.fromTopic || 'From Topic';
+				} else {
+					templateText = '-';
+				}
+
+				// Status badge.
+				var statusMap = {
+					'completed':  { cls: 'aips-badge-success', icon: 'yes-alt' },
+					'failed':     { cls: 'aips-badge-error',   icon: 'dismiss' },
+					'processing': { cls: 'aips-badge-info',    icon: 'update' }
+				};
+				var statusInfo = statusMap[item.status] || { cls: 'aips-badge-neutral', icon: 'minus' };
+				var statusLabel = item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '';
+				var statusHtml = T.renderRaw('aips-tmpl-history-row-status-badge', {
+					statusClass: T.escape(statusInfo.cls),
+					icon:        T.escape(statusInfo.icon),
+					label:       T.escape(statusLabel)
+				});
+
+				// Action buttons.
+				var actionsHtml = T.renderRaw('aips-tmpl-history-action-view-logs', {
+					id:    T.escape(String(item.id)),
+					title: T.escape(aipsHistoryL10n.viewLogs || 'View Logs'),
+					label: T.escape(aipsHistoryL10n.viewLogs || 'View Logs')
+				});
+
+				if (item.post_id && item.post_url) {
+					actionsHtml += T.renderRaw('aips-tmpl-history-action-view-post', {
+						postUrl: T.escape(item.post_url),
+						title:   T.escape(aipsHistoryL10n.viewPost || 'View Post'),
+						label:   T.escape(aipsHistoryL10n.viewPost || 'View')
+					});
+				} else if (item.status === 'processing') {
+					actionsHtml += T.renderRaw('aips-tmpl-history-action-view-session', {
+						id:    T.escape(String(item.id)),
+						title: T.escape(aipsHistoryL10n.viewSession || 'View Session'),
+						label: T.escape(aipsHistoryL10n.viewSession || 'View Session')
+					});
+				}
+
+				if (item.status === 'failed' && item.template_id) {
+					actionsHtml += T.renderRaw('aips-tmpl-history-action-retry', {
+						id:    T.escape(String(item.id)),
+						title: T.escape(aipsHistoryL10n.retryGeneration || 'Retry Generation'),
+						label: T.escape(aipsHistoryL10n.retry || 'Retry')
+					});
+				}
+
+				// Assemble the full row.
+				rowsHtml += T.renderRaw('aips-tmpl-history-row', {
+					id:           T.escape(String(item.id)),
+					selectLabel:  T.escape(aipsHistoryL10n.selectItem || 'Select Item'),
+					titleHtml:    titleHtml,
+					errorHtml:    errorHtml,
+					templateText: T.escape(templateText),
+					statusHtml:   statusHtml,
+					createdAt:    T.escape(item.created_at_formatted || item.created_at || ''),
+					actionsHtml:  actionsHtml
+				});
+			});
+
+			return rowsHtml;
+		},
+
+		/**
+		 * Build HTML for the pagination footer from the pagination data returned
+		 * by the server, using the AIPS.Templates engine.
+		 *
+		 * @param {Object} pagination Pagination data: { total, pages, current_page }.
+		 * @return {string} HTML string ready to be inserted into the pagination cell.
+		 */
+		renderHistoryPagination: function (pagination) {
+			var T           = AIPS.Templates;
+			var current     = pagination.current_page;
+			var pages       = pagination.pages;
+			var totalItems  = (aipsHistoryL10n.itemCount || '%d items').replace('%d', String(pagination.total));
+
+			if (pages <= 1) {
+				return T.render('aips-tmpl-history-pagination-simple', { totalItems: totalItems });
+			}
+
+			// Build numbered page buttons.
+			var start    = Math.max(1, current - 3);
+			var end      = Math.min(pages, current + 3);
+			var pagesHtml = '';
+
+			if (start > 1) {
+				pagesHtml += T.renderRaw('aips-tmpl-history-pagination-page-btn', {
+					btnClass:   T.escape('aips-btn-secondary'),
+					page:       T.escape('1'),
+					ariaCurrent: ''
+				});
+				if (start > 2) {
+					pagesHtml += T.render('aips-tmpl-history-pagination-ellipsis', {});
+				}
+			}
+
+			for (var p = start; p <= end; p++) {
+				var isActive = (p === current);
+				pagesHtml += T.renderRaw('aips-tmpl-history-pagination-page-btn', {
+					btnClass:   T.escape(isActive ? 'aips-btn-primary' : 'aips-btn-secondary'),
+					page:       T.escape(String(p)),
+					ariaCurrent: isActive ? 'aria-current="page"' : ''
+				});
+			}
+
+			if (end < pages) {
+				if (end < pages - 1) {
+					pagesHtml += T.render('aips-tmpl-history-pagination-ellipsis', {});
+				}
+				pagesHtml += T.renderRaw('aips-tmpl-history-pagination-page-btn', {
+					btnClass:   T.escape('aips-btn-secondary'),
+					page:       T.escape(String(pages)),
+					ariaCurrent: ''
+				});
+			}
+
+			return T.renderRaw('aips-tmpl-history-pagination', {
+				totalItems:  T.escape(totalItems),
+				prevPage:    T.escape(String(current - 1)),
+				prevDisabled: current <= 1 ? 'disabled' : '',
+				prevLabel:   T.escape(aipsHistoryL10n.prevPage || 'Previous page'),
+				pages:       pagesHtml,
+				nextPage:    T.escape(String(current + 1)),
+				nextDisabled: current >= pages ? 'disabled' : '',
+				nextLabel:   T.escape(aipsHistoryL10n.nextPage || 'Next page')
+			});
+		},
+
+		/**
 		 * Reload the history table via AJAX applying the current filter and search.
 		 *
 		 * @param {number} [paged=1] 1-based page number to load.
@@ -659,11 +828,11 @@
 						return;
 					}
 
-					var itemsHtml = response.data.items_html || '';
+					var items = response.data.items || [];
 
 					if ($tbody.length) {
-						if (itemsHtml) {
-							$tbody.html(itemsHtml);
+						if (items.length) {
+							$tbody.html(self.renderHistoryRows(items));
 							$('#aips-history-search-no-results').hide();
 						} else {
 							// No results: render a friendly inline empty state.
@@ -673,8 +842,9 @@
 						}
 					}
 
-					if ($pagCell.length && response.data.pagination_html !== undefined) {
-						$pagCell.html(response.data.pagination_html);
+					// Render pagination using AIPS.Templates.
+					if ($pagCell.length && response.data.pagination) {
+						$pagCell.html(self.renderHistoryPagination(response.data.pagination));
 					}
 
 					// Refresh stat cards.

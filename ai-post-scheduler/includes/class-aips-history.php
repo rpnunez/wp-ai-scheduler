@@ -286,26 +286,38 @@ class AIPS_History {
 
         $stats = $this->get_stats();
 
-        ob_start();
+        $date_format = get_option('date_format') . ' ' . get_option('time_format');
+        $items       = array();
         if (!empty($history['items'])) {
             foreach ($history['items'] as $item) {
-                include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
+                $items[] = array(
+                    'id'                   => (int) $item->id,
+                    'post_id'              => $item->post_id ? (int) $item->post_id : null,
+                    'generated_title'      => $item->generated_title ?: '',
+                    'status'               => $item->status,
+                    'error_message'        => ($item->status === 'failed') ? ($item->error_message ?: '') : '',
+                    'template_name'        => $item->template_name ?: '',
+                    'template_id'          => $item->template_id ? (int) $item->template_id : null,
+                    'topic_id'             => $item->topic_id ? (int) $item->topic_id : null,
+                    'created_at_formatted' => date_i18n($date_format, strtotime($item->created_at)),
+                    'edit_url'             => $item->post_id ? get_edit_post_link($item->post_id) : null,
+                    'post_url'             => $item->post_id ? get_permalink($item->post_id) : null,
+                );
             }
         }
-        $items_html = ob_get_clean();
-
-        ob_start();
-        $this->render_pagination_html($history, $status_filter, $search_query);
-        $pagination_html = ob_get_clean();
 
         wp_send_json_success(array(
-            'items_html' => $items_html,
-            'pagination_html' => $pagination_html,
+            'items'      => $items,
+            'pagination' => array(
+                'total'        => (int) $history['total'],
+                'pages'        => (int) $history['pages'],
+                'current_page' => (int) $history['current_page'],
+            ),
             'paged' => $paged,
             'stats' => array(
-                'total' => (int) $stats['total'],
-                'completed' => (int) $stats['completed'],
-                'failed' => (int) $stats['failed'],
+                'total'        => (int) $stats['total'],
+                'completed'    => (int) $stats['completed'],
+                'failed'       => (int) $stats['failed'],
                 'success_rate' => (float) $stats['success_rate'],
             ),
         ));

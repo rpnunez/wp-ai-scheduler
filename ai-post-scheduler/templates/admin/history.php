@@ -339,3 +339,115 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 		<pre style="max-height:200px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;">{{details}}</pre>
 	</div>
 </script>
+
+<!-- =====================================================================
+     History table row templates — used by renderHistoryRows() in admin-history.js
+     All {{token}} values are pre-escaped before being passed to renderRaw().
+     ===================================================================== -->
+
+<!-- Template: full history table row; all slot values are pre-escaped / pre-built HTML -->
+<script type="text/html" id="aips-tmpl-history-row">
+	<tr data-history-id="{{id}}">
+		<th scope="row" class="check-column">
+			<label class="screen-reader-text" for="cb-select-{{id}}">{{selectLabel}}</label>
+			<input id="cb-select-{{id}}" type="checkbox" class="aips-history-cb" name="history[]" value="{{id}}">
+		</th>
+		<td class="column-title">{{titleHtml}}{{errorHtml}}</td>
+		<td class="column-template"><span class="aips-meta-text">{{templateText}}</span></td>
+		<td class="column-status">{{statusHtml}}</td>
+		<td class="column-date"><span class="aips-meta-text">{{createdAt}}</span></td>
+		<td class="column-actions"><div class="aips-btn-group aips-btn-group-inline">{{actionsHtml}}</div></td>
+	</tr>
+</script>
+
+<!-- Template: title cell — post title linked to the edit screen (when post_id exists) -->
+<script type="text/html" id="aips-tmpl-history-row-title-link">
+	<a href="{{editUrl}}">{{title}}</a>
+</script>
+
+<!-- Template: title cell — plain text title (when no post is linked) -->
+<script type="text/html" id="aips-tmpl-history-row-title-text">
+	{{title}}
+</script>
+
+<!-- Template: inline error message shown beneath failed-item titles -->
+<script type="text/html" id="aips-tmpl-history-row-error">
+	<div class="aips-error-message" style="font-size:12px;color:#dc3232;margin-top:4px;">{{message}}</div>
+</script>
+
+<!-- Template: status badge with dashicon; use renderRaw() with pre-escaped values -->
+<script type="text/html" id="aips-tmpl-history-row-status-badge">
+	<span class="aips-badge {{statusClass}}">
+		<span class="dashicons dashicons-{{icon}}" aria-hidden="true"></span>
+		{{label}}
+	</span>
+</script>
+
+<!-- Template: "View Logs" action button -->
+<script type="text/html" id="aips-tmpl-history-action-view-logs">
+	<button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="{{id}}" title="{{title}}" aria-label="{{title}}">
+		<span class="dashicons dashicons-list-view" aria-hidden="true"></span>
+		{{label}}
+	</button>
+</script>
+
+<!-- Template: "View Post" action link (shown when a post is linked) -->
+<script type="text/html" id="aips-tmpl-history-action-view-post">
+	<a href="{{postUrl}}" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" title="{{title}}">
+		<span class="dashicons dashicons-external" aria-hidden="true"></span>
+		{{label}}
+	</a>
+</script>
+
+<!-- Template: "View Session" action button (shown while processing) -->
+<script type="text/html" id="aips-tmpl-history-action-view-session">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="{{id}}" title="{{title}}">
+		<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+		{{label}}
+	</button>
+</script>
+
+<!-- Template: "Retry" action button (shown for failed items with a template) -->
+<script type="text/html" id="aips-tmpl-history-action-retry">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="{{id}}" title="{{title}}">
+		<span class="dashicons dashicons-update" aria-hidden="true"></span>
+		{{label}}
+	</button>
+</script>
+
+<!-- =====================================================================
+     Pagination templates — used by renderHistoryPagination() in admin-history.js
+     ===================================================================== -->
+
+<!-- Template: pagination footer with prev/next and numbered page buttons -->
+<script type="text/html" id="aips-tmpl-history-pagination">
+	<div class="aips-history-pagination aips-panel-footer">
+		<span class="aips-history-pagination-info">{{totalItems}}</span>
+		<div class="aips-history-pagination-links">
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" data-page="{{prevPage}}" {{prevDisabled}} aria-label="{{prevLabel}}">
+				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+			</button>
+			<span class="aips-history-page-numbers">{{pages}}</span>
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" data-page="{{nextPage}}" {{nextDisabled}} aria-label="{{nextLabel}}">
+				<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+			</button>
+		</div>
+	</div>
+</script>
+
+<!-- Template: simple pagination footer (single page — no prev/next controls) -->
+<script type="text/html" id="aips-tmpl-history-pagination-simple">
+	<div class="aips-history-pagination aips-panel-footer">
+		<span class="aips-history-pagination-info">{{totalItems}}</span>
+	</div>
+</script>
+
+<!-- Template: a single numbered page button inside the pagination strip -->
+<script type="text/html" id="aips-tmpl-history-pagination-page-btn">
+	<button type="button" class="aips-btn aips-btn-sm {{btnClass}} aips-history-page-link" data-page="{{page}}" {{ariaCurrent}}>{{page}}</button>
+</script>
+
+<!-- Template: ellipsis separator between non-contiguous page number groups -->
+<script type="text/html" id="aips-tmpl-history-pagination-ellipsis">
+	<span class="aips-history-page-ellipsis">&#8230;</span>
+</script>

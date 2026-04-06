@@ -654,6 +654,18 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'untitled'             => __('Untitled', 'ai-post-scheduler'),
+                'fromTopic'            => __('From Topic', 'ai-post-scheduler'),
+                'templateDeleted'      => __('Template #%d (deleted)', 'ai-post-scheduler'),
+                'selectItem'           => __('Select Item', 'ai-post-scheduler'),
+                'viewLogs'             => __('View Logs', 'ai-post-scheduler'),
+                'viewPost'             => __('View', 'ai-post-scheduler'),
+                'viewSession'          => __('View Session', 'ai-post-scheduler'),
+                'retry'                => __('Retry', 'ai-post-scheduler'),
+                'retryGeneration'      => __('Retry Generation', 'ai-post-scheduler'),
+                'itemCount'            => __('%d items', 'ai-post-scheduler'),
+                'prevPage'             => __('Previous page', 'ai-post-scheduler'),
+                'nextPage'             => __('Next page', 'ai-post-scheduler'),
             ));
         }
 
