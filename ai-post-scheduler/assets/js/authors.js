@@ -300,6 +300,7 @@
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
+						$('#post_generation_only_without_generated_posts').prop('checked', author.post_generation_only_without_generated_posts == 1);
 						$('#is_active').prop('checked', author.is_active == 1);
 
 						// Restore source group settings.

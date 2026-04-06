@@ -141,9 +141,16 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	 */
 	public function generate_post_for_author($author) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
-		
-		// Get the next approved topic for this author
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, 1);
+
+		// Optionally restrict scheduled generation to approved topics that have
+		// not yet produced a post.
+		$only_without_generated_posts = !empty($author->post_generation_only_without_generated_posts);
+
+		if ($only_without_generated_posts) {
+			$topics = $this->topics_repository->get_approved_without_generated_posts_for_generation($author->id, 1);
+		} else {
+			$topics = $this->topics_repository->get_approved_for_generation($author->id, 1);
+		}
 		
 		if (empty($topics)) {
 			$this->logger->log("No approved topics available for author {$author->id}", 'warning');

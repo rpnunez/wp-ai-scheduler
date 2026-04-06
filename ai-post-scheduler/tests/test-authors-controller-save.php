@@ -268,6 +268,50 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 		);
 	}
 
+	/**
+	 * The "only generate from approved topics without generated posts" flag
+	 * should be persisted as an integer checkbox value.
+	 */
+	public function test_save_author_persists_post_generation_topic_filter_flag() {
+		wp_set_current_user($this->admin_user_id);
+
+		global $wpdb;
+		$original_wpdb = $wpdb;
+
+		$proxy = $this->make_capturing_wpdb();
+		$wpdb  = $proxy;
+
+		try {
+			$controller = new AIPS_Authors_Controller();
+
+			$_POST = array(
+				'nonce'                                        => wp_create_nonce('aips_ajax_nonce'),
+				'name'                                         => 'Test Author Checkbox',
+				'field_niche'                                  => 'Engineering',
+				'topic_generation_frequency'                   => 'weekly',
+				'post_generation_frequency'                    => 'daily',
+				'post_generation_only_without_generated_posts' => '1',
+			);
+
+			$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
+		} finally {
+			$wpdb = $original_wpdb;
+		}
+
+		$this->assertTrue($response['success'], 'Expected success response for author save.');
+		$this->assertNotNull($proxy->inserted, 'Expected insert payload for new author save.');
+		$this->assertArrayHasKey(
+			'post_generation_only_without_generated_posts',
+			$proxy->inserted,
+			'Expected checkbox field in insert payload.'
+		);
+		$this->assertSame(
+			1,
+			(int) $proxy->inserted['post_generation_only_without_generated_posts'],
+			'Expected checkbox flag to persist as 1 when checked.'
+		);
+	}
+
 	// =========================================================================
 	// Permission and validation guards
 	// =========================================================================

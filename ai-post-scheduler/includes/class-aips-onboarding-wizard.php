@@ -271,6 +271,7 @@ class AIPS_Onboarding_Wizard {
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? max(1, absint($_POST['topic_generation_quantity'])) : 5,
 			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['topic_generation_frequency'])) : 'weekly',
 			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['post_generation_frequency'])) : 'daily',
+			'post_generation_only_without_generated_posts' => 0,
 			'post_status' => get_option('aips_default_post_status', 'draft'),
 			'post_category' => (int) get_option('aips_default_category', 0),
 			'post_author' => get_current_user_id(),

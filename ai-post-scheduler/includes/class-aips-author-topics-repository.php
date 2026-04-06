@@ -276,6 +276,33 @@ class AIPS_Author_Topics_Repository {
 			$limit
 		));
 	}
+
+	/**
+	 * Get approved topics for an author that do not yet have generated posts.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit Optional. Maximum number of topics to return. Default 1.
+	 * @return array Array of approved topic objects.
+	 */
+	public function get_approved_without_generated_posts_for_generation($author_id, $limit = 1) {
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT t.*
+			FROM {$this->table_name} t
+			LEFT JOIN {$logs_table} l
+				ON l.author_topic_id = t.id
+				AND l.action = 'post_generated'
+				AND l.post_id IS NOT NULL
+			WHERE t.author_id = %d
+			AND t.status = 'approved'
+			AND l.id IS NULL
+			ORDER BY t.reviewed_at ASC
+			LIMIT %d",
+			$author_id,
+			$limit
+		));
+	}
 	
 	/**
 	 * Get summary of approved topics for context (for feedback loop).
