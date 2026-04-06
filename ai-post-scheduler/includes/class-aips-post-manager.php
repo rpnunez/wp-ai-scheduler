@@ -57,7 +57,7 @@ class AIPS_Post_Manager {
             $post_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();
         } elseif ($template) {
-            $post_status = !empty($template->post_status) ? $template->post_status : get_option('aips_default_post_status', 'draft');
+            $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
             $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
