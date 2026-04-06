@@ -108,10 +108,10 @@ class AIPS_Internal_Links_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
-		$page    = max(1, absint(isset($_POST['page']) ? $_POST['page'] : 1));
-		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? $_POST['per_page'] : 20)));
-		$status  = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
-		$search  = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$page     = max(1, absint(isset($_POST['page']) ? wp_unslash($_POST['page']) : 1));
+		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? wp_unslash($_POST['per_page']) : 20)));
+		$status   = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+		$search   = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 
 		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search);
 		$total = $this->links_repo->get_paginated_count($status, $search);
