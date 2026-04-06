@@ -494,8 +494,21 @@ class AIPS_Admin_Menu {
      */
     public function render_internal_links_page() {
         global $aips_internal_links_controller;
+
         if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-            $aips_internal_links_controller->render_page();
+            try {
+                $aips_internal_links_controller->render_page();
+                return;
+            } catch (Throwable $throwable) {
+                echo '<div class="notice notice-error"><p>' .
+                    esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+                '</p></div>';
+                return;
+            }
         }
+
+        echo '<div class="notice notice-error"><p>' .
+            esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
+        '</p></div>';
     }
 }
