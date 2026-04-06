@@ -193,8 +193,9 @@ class AIPS_Schedule_Processor {
      * this method and handles queue bookkeeping (mark_done / mark_failed).
      *
      * @param int $schedule_id The schedule ID from the queue job payload.
-     * @return mixed Array of generated post IDs on success, WP_Error on failure,
-     *               or null if the schedule/template is missing.
+     * @return array|WP_Error Array of generated post IDs on success, or WP_Error on failure
+     *                        (including schedule/template not found, lock acquisition failure,
+     *                        and generation errors).
      */
     public function process_queued_schedule( $schedule_id ) {
         $schedule = $this->repository->get_by_id( $schedule_id );

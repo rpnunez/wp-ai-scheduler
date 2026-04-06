@@ -94,7 +94,7 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When process_queued_schedule() returns a success value (non-WP_Error),
+	 * When process_queued_schedule() returns a success value (non-empty array of post IDs),
 	 * mark_done() should be called.
 	 */
 	public function test_worker_marks_done_on_success() {
@@ -120,6 +120,82 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 		$worker->process_batch( 1 );
 
 		$this->assertContains( 20, $done_ids );
+	}
+
+	/**
+	 * When process_queued_schedule() returns null (e.g. claim-first lock already held
+	 * by another worker), mark_failed() — not mark_done() — should be called so the
+	 * job can be retried.
+	 */
+	public function test_worker_marks_failed_when_processor_returns_null() {
+		$job  = $this->make_job( 21, 'template_schedule', array( 'schedule_id' => 51 ) );
+		$jobs = array( $job );
+
+		$done_ids   = array();
+		$failed_ids = array();
+
+		$queue_repo = $this->createMock( AIPS_Generation_Queue_Repository::class );
+		$queue_repo->method( 'release_stale_locks' )->willReturn( 0 );
+		$queue_repo->method( 'claim_batch' )->willReturn( $jobs );
+		$queue_repo->method( 'mark_done' )->willReturnCallback(
+			function ( $id ) use ( &$done_ids ) {
+				$done_ids[] = $id;
+				return true;
+			}
+		);
+		$queue_repo->method( 'mark_failed' )->willReturnCallback(
+			function ( $id ) use ( &$failed_ids ) {
+				$failed_ids[] = $id;
+				return true;
+			}
+		);
+
+		$processor = $this->createMock( AIPS_Schedule_Processor::class );
+		// null simulates an early-return from the claim-first lock path.
+		$processor->method( 'process_queued_schedule' )->willReturn( null );
+
+		$worker = new AIPS_Generation_Queue_Worker( $queue_repo, $processor );
+		$worker->process_batch( 1 );
+
+		$this->assertContains( 21, $failed_ids, 'null result must trigger mark_failed (retriable)' );
+		$this->assertNotContains( 21, $done_ids, 'null result must not trigger mark_done' );
+	}
+
+	/**
+	 * When process_queued_schedule() returns an empty array (no posts generated),
+	 * mark_failed() should be called rather than mark_done().
+	 */
+	public function test_worker_marks_failed_when_processor_returns_empty_array() {
+		$job  = $this->make_job( 22, 'template_schedule', array( 'schedule_id' => 52 ) );
+		$jobs = array( $job );
+
+		$done_ids   = array();
+		$failed_ids = array();
+
+		$queue_repo = $this->createMock( AIPS_Generation_Queue_Repository::class );
+		$queue_repo->method( 'release_stale_locks' )->willReturn( 0 );
+		$queue_repo->method( 'claim_batch' )->willReturn( $jobs );
+		$queue_repo->method( 'mark_done' )->willReturnCallback(
+			function ( $id ) use ( &$done_ids ) {
+				$done_ids[] = $id;
+				return true;
+			}
+		);
+		$queue_repo->method( 'mark_failed' )->willReturnCallback(
+			function ( $id ) use ( &$failed_ids ) {
+				$failed_ids[] = $id;
+				return true;
+			}
+		);
+
+		$processor = $this->createMock( AIPS_Schedule_Processor::class );
+		$processor->method( 'process_queued_schedule' )->willReturn( array() );
+
+		$worker = new AIPS_Generation_Queue_Worker( $queue_repo, $processor );
+		$worker->process_batch( 1 );
+
+		$this->assertContains( 22, $failed_ids, 'Empty array result must trigger mark_failed' );
+		$this->assertNotContains( 22, $done_ids, 'Empty array result must not trigger mark_done' );
 	}
 
 	/**
@@ -422,6 +498,20 @@ class Test_AIPS_Generation_Queue_Logic extends WP_UnitTestCase {
 		$this->assertContains( 'processing', AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
 		$this->assertNotContains( 'done',    AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
 		$this->assertNotContains( 'dead',    AIPS_Generation_Queue_Repository::ACTIVE_STATUSES );
+	}
+
+	/**
+	 * AIPS_Generation_Queue_Repository::STATUSES should contain the four lifecycle states.
+	 * 'failed' is not a status: retries go back to 'pending', terminal state is 'dead'.
+	 */
+	public function test_queue_repository_statuses_constant_does_not_include_failed() {
+		$statuses = AIPS_Generation_Queue_Repository::STATUSES;
+
+		$this->assertContains( 'pending',    $statuses );
+		$this->assertContains( 'processing', $statuses );
+		$this->assertContains( 'done',       $statuses );
+		$this->assertContains( 'dead',       $statuses );
+		$this->assertNotContains( 'failed',  $statuses, "'failed' is not a valid status; retries use 'pending', terminal is 'dead'" );
 	}
 
 	/**

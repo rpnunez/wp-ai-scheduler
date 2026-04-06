@@ -399,7 +399,7 @@ class AIPS_DB_Manager {
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             completed_at datetime DEFAULT NULL,
             PRIMARY KEY  (id),
-            KEY idempotency_key (idempotency_key),
+            UNIQUE KEY idempotency_key (idempotency_key),
             KEY status_available (status, available_at),
             KEY lock_token (lock_token),
             KEY job_type (job_type),

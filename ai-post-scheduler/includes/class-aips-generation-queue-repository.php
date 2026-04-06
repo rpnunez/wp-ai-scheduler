@@ -45,9 +45,12 @@ class AIPS_Generation_Queue_Repository {
 	/**
 	 * Allowed job status values.
 	 *
+	 * Lifecycle: pending → processing → done (success) or dead (exhausted retries).
+	 * Between retries a processing job is reset to pending with exponential back-off.
+	 *
 	 * @var string[]
 	 */
-	const STATUSES = array( 'pending', 'processing', 'done', 'failed', 'dead' );
+	const STATUSES = array( 'pending', 'processing', 'done', 'dead' );
 
 	/**
 	 * Statuses that represent active (in-flight) work.

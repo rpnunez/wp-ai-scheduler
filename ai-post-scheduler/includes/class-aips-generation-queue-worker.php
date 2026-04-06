@@ -199,8 +199,19 @@ class AIPS_Generation_Queue_Worker {
 					$result->get_error_message(),
 					$this->get_max_attempts()
 				);
-			} else {
+			} elseif ( is_array( $result ) && ! empty( $result ) ) {
+				// Definite success: one or more post IDs were returned.
 				$this->queue_repository->mark_done( $job->id );
+			} else {
+				// null or an unexpected value means the job did not definitively
+				// succeed (e.g. the schedule's claim-first lock was already held by
+				// another worker and the inner callable returned early without
+				// generating any posts).  Mark as failed so it can be retried.
+				$this->queue_repository->mark_failed(
+					$job->id,
+					'Schedule execution returned no post IDs (possible concurrent lock contention)',
+					$this->get_max_attempts()
+				);
 			}
 		} catch ( \Throwable $e ) {
 			$this->logger->log(
