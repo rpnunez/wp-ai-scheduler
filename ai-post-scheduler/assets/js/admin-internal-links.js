@@ -351,11 +351,11 @@ actions +=
 actions +=
 '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="' + item.id + '" data-anchor="' + anchor + '">' +
 '<span class="dashicons dashicons-edit" aria-hidden="true"></span>' +
-'<span class="screen-reader-text">' + aipsInternalLinksL10n.anchorUpdated + '</span>' +
+'<span class="screen-reader-text">Edit anchor text</span>' +
 '</button> ' +
 '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="' + item.id + '">' +
 '<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
-'<span class="screen-reader-text">' + aipsInternalLinksL10n.confirmDelete + '</span>' +
+'<span class="screen-reader-text">Delete suggestion</span>' +
 '</button>';
 
 return '<tr data-id="' + item.id + '">' +
