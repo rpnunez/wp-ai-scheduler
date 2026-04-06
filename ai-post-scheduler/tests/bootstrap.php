@@ -914,6 +914,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $rows_affected = 0;
+            public $last_error = '';
             public $postmeta = 'wp_postmeta';
             public $get_col_return_val = null;
             public $get_results_return_val = null;
@@ -1114,6 +1116,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
         'class-aips-metrics-repository.php',
+        // Queue-backed scheduler (v2.3.0)
+        'class-aips-generation-queue-repository.php',
+        'class-aips-generation-queue-worker.php',
     ];
     
     foreach ($files as $file) {

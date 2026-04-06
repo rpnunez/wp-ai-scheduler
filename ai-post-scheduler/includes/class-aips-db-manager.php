@@ -22,6 +22,7 @@ class AIPS_DB_Manager {
         'aips_sources',
         'aips_source_group_terms',
         'aips_taxonomy',
+        'aips_generation_queue',
     );
 
     public function __construct() {
@@ -71,6 +72,7 @@ class AIPS_DB_Manager {
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_generation_queue     = $tables['aips_generation_queue'];
 
         $sql = array();
 
@@ -381,6 +383,26 @@ class AIPS_DB_Manager {
             KEY taxonomy_type (taxonomy_type),
             KEY status (status),
             KEY term_id (term_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_generation_queue (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            idempotency_key varchar(191) NOT NULL,
+            job_type varchar(50) NOT NULL,
+            payload longtext NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            lock_token varchar(36) DEFAULT NULL,
+            locked_at datetime DEFAULT NULL,
+            attempt_count int NOT NULL DEFAULT 0,
+            available_at datetime NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at datetime DEFAULT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY idempotency_key (idempotency_key),
+            KEY status_available (status, available_at),
+            KEY lock_token (lock_token),
+            KEY job_type (job_type),
             KEY created_at (created_at)
         ) $charset_collate;";
 
