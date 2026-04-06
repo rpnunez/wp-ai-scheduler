@@ -87,6 +87,24 @@
 			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
 			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
 			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
+
+			// Empty state CTA buttons that switch to a named tab
+			$(document).on('click', '.aips-empty-state-tab-cta', this.onEmptyStateTabCta.bind(this));
+		},
+
+		/**
+		 * Handle a click on an empty-state CTA button that switches to a named tab.
+		 *
+		 * Reads the `data-tab` attribute from the clicked button and triggers a
+		 * click on the matching `.aips-tab-link` navigation element.
+		 *
+		 * @param {Event} e - Click event from `.aips-empty-state-tab-cta`.
+		 */
+		onEmptyStateTabCta: function (e) {
+			var tab = $(e.currentTarget).data('tab');
+			if (tab) {
+				$('.aips-tab-link[data-tab="' + tab + '"]').trigger('click');
+			}
 		},
 
 		/**
@@ -555,7 +573,13 @@
 		 */
 		renderTopics: function (topics, status) {
 			if (!topics || topics.length === 0) {
-				$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
+				$('#aips-topics-content').html(
+					AIPS.Templates.render('aips-tmpl-topics-empty-state', {
+						title:       aipsAuthorsL10n.noTopicsFoundTitle || 'No Topics Found',
+						description: aipsAuthorsL10n.noTopicsFound     || 'No topics found for this status.',
+						ctaLabel:    aipsAuthorsL10n.generateTopics     || 'Generate Topics',
+					})
+				);
 				return;
 			}
 
@@ -1313,7 +1337,13 @@
 		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
-				$('#aips-topics-content').html('<p>' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>');
+				$('#aips-topics-content').html(
+					AIPS.Templates.render('aips-tmpl-feedback-empty-state', {
+						title:       aipsAuthorsL10n.noFeedbackYetTitle || 'No Feedback Found',
+						description: aipsAuthorsL10n.noFeedbackYet      || 'No feedback yet.',
+						ctaLabel:    aipsAuthorsL10n.viewTopics          || 'View Pending Topics',
+					})
+				);
 				return;
 			}
 
@@ -2423,11 +2453,11 @@
 
 			if (!topics || topics.length === 0) {
 				$('#aips-queue-topics-list').html(
-					'<div class="aips-panel-body"><div class="aips-empty-state">'
-					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
-					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found') + '</h3>'
-					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>'
-					+ '</div></div>'
+					AIPS.Templates.render('aips-tmpl-queue-empty-state', {
+						title:       aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found',
+						description: aipsAuthorsL10n.noQueueTopics      || 'No approved topics in the queue yet.',
+						ctaLabel:    aipsAuthorsL10n.viewTopics          || 'View Pending Topics',
+					})
 				);
 				$('#aips-queue-tablenav').hide();
 				return;
