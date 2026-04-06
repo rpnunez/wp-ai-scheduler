@@ -767,5 +767,37 @@ class AIPS_Admin_Assets {
                 'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
         }
+
+        // Internal Links Page Scripts
+        if (strpos($hook, 'aips-internal-links') !== false) {
+            wp_enqueue_script(
+                'aips-admin-internal-links',
+                AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+            wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksL10n', array(
+                'nonce'                    => wp_create_nonce('aips_ajax_nonce'),
+                'confirmDelete'            => __('Delete this suggestion? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmClearIndex'        => __('Clear the entire index and all suggestions? This cannot be undone.', 'ai-post-scheduler'),
+                'indexingStarted'          => __('Indexing started. Posts will be processed in the background.', 'ai-post-scheduler'),
+                'indexingNotAvailable'     => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler'),
+                'generating'               => __('Generating…', 'ai-post-scheduler'),
+                'reindexing'               => __('Re-indexing…', 'ai-post-scheduler'),
+                'loading'                  => __('Loading…', 'ai-post-scheduler'),
+                'noSuggestions'            => __('No suggestions found. Run indexing and generate suggestions to see results.', 'ai-post-scheduler'),
+                'errorLoading'             => __('Error loading suggestions.', 'ai-post-scheduler'),
+                'errorDeleting'            => __('Error deleting suggestion.', 'ai-post-scheduler'),
+                'statusUpdated'            => __('Status updated.', 'ai-post-scheduler'),
+                'anchorUpdated'            => __('Anchor text updated.', 'ai-post-scheduler'),
+                'statusUpdateFailed'       => __('Failed to update status.', 'ai-post-scheduler'),
+                'anchorUpdateFailed'       => __('Failed to update anchor text.', 'ai-post-scheduler'),
+                'accepted'                 => __('Accepted', 'ai-post-scheduler'),
+                'rejected'                 => __('Rejected', 'ai-post-scheduler'),
+                'pending'                  => __('Pending', 'ai-post-scheduler'),
+                'inserted'                 => __('Inserted', 'ai-post-scheduler'),
+            ));
+        }
     }
 }

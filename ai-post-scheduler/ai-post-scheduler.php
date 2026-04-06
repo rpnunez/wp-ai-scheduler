@@ -352,6 +352,10 @@ final class AI_Post_Scheduler {
         $aips_embeddings_cron = new AIPS_Embeddings_Cron();
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
 
+        // Internal Links controller (registered outside admin-only block so cron callback works)
+        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+        add_action('aips_index_posts_batch', array($aips_internal_links_controller, 'process_indexing_batch_cron'));
+
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
 
