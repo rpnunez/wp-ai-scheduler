@@ -327,4 +327,13 @@ class AIPS_Internal_Links_Repository {
 
 		return $counts;
 	}
+
+	/**
+	 * Delete all link suggestions.
+	 *
+	 * @return int|false Number of rows deleted or false on failure.
+	 */
+	public function delete_all() {
+		return $this->wpdb->query( "DELETE FROM {$this->table}" );
+	}
 }

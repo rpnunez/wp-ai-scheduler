@@ -487,12 +487,15 @@ class AIPS_Admin_Menu {
     /**
      * Render the Internal Links page.
      *
-     * Delegates rendering to the AIPS_Internal_Links_Controller.
+     * Reuses the globally-registered controller instance to avoid
+     * re-registering AJAX hooks.
      *
      * @return void
      */
     public function render_internal_links_page() {
-        $controller = new AIPS_Internal_Links_Controller();
-        $controller->render_page();
+        global $aips_internal_links_controller;
+        if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
+            $aips_internal_links_controller->render_page();
+        }
     }
 }

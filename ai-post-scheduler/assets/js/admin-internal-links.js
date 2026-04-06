@@ -316,7 +316,10 @@
 				action: 'aips_internal_links_start_indexing',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
-				$btn.prop('disabled', false).html('<span class="dashicons dashicons-database-import"></span> ' + $btn.data('original-text'));
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalIndexText).html()
+				);
 
 				if (response.success) {
 					AIPS.Utilities.showNotice(response.data.message, 'success');
@@ -367,7 +370,7 @@
 			var $feedback   = $('#aips-gen-feedback');
 
 			if (!postId) {
-				self.showGenerateFeedback(__('Please enter a valid post ID.', 'ai-post-scheduler'), 'error');
+				self.showGenerateFeedback(aipsInternalLinksL10n.invalidPostId, 'error');
 				return;
 			}
 
@@ -381,7 +384,10 @@
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
 			}, function (response) {
-				$btn.prop('disabled', false).html('<span class="dashicons dashicons-search"></span> ' + self.originalGenerateText);
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalGenerateText).html()
+				);
 
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
@@ -420,7 +426,10 @@
 				nonce:   aipsInternalLinksL10n.nonce,
 				post_id: postId,
 			}, function (response) {
-				$btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span> ' + self.originalReindexText);
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalReindexText).html()
+				);
 
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
@@ -588,7 +597,7 @@
 		// Store original button texts before any modification
 		AIPS.InternalLinks.originalGenerateText = $('#aips-generate-for-post-btn').text().trim();
 		AIPS.InternalLinks.originalReindexText  = $('#aips-reindex-post-btn').text().trim();
-		$('#aips-start-indexing-btn').data('original-text', $('#aips-start-indexing-btn').text().trim());
+		AIPS.InternalLinks.originalIndexText    = $('#aips-start-indexing-btn').text().trim();
 
 		AIPS.InternalLinks.init();
 	});

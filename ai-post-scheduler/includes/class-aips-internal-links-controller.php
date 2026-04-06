@@ -369,11 +369,7 @@ class AIPS_Internal_Links_Controller {
 		}
 
 		$this->embeddings_repo->delete_all();
-
-		// Also delete all pending suggestions
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_internal_links';
-		$wpdb->query( "DELETE FROM {$table}" );
+		$this->links_repo->delete_all();
 
 		wp_send_json_success(array(
 			'message' => __('Index cleared. All embeddings and suggestions have been removed.', 'ai-post-scheduler'),

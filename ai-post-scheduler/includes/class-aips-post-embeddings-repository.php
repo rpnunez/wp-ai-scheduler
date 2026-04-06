@@ -64,11 +64,14 @@ class AIPS_Post_Embeddings_Repository {
 			return array();
 		}
 
-		$post_ids   = array_map('absint', $post_ids);
-		$ids_string = implode(',', $post_ids);
+		$post_ids = array_map('absint', $post_ids);
+		$placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
 
 		$rows = $this->wpdb->get_results(
-			"SELECT * FROM {$this->table} WHERE post_id IN ($ids_string)"
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table} WHERE post_id IN ($placeholders)",
+				...$post_ids
+			)
 		);
 
 		$indexed = array();
@@ -180,29 +183,46 @@ class AIPS_Post_Embeddings_Repository {
 	 * @return int[] Array of post IDs.
 	 */
 	public function get_unindexed_post_ids($limit = 20, $last_post_id = 0, $post_type = 'post', $post_status = 'publish') {
-		$post_type   = sanitize_key($post_type);
-		$post_status = sanitize_key($post_status);
-		$limit       = absint($limit);
+		$post_type    = sanitize_key($post_type);
+		$post_status  = sanitize_key($post_status);
+		$limit        = absint($limit);
 		$last_post_id = absint($last_post_id);
 
-		$where_cursor = $last_post_id ? $this->wpdb->prepare('AND p.ID > %d', $last_post_id) : '';
-
-		$results = $this->wpdb->get_col(
-			$this->wpdb->prepare(
-				"SELECT p.ID
-				FROM {$this->wpdb->posts} p
-				LEFT JOIN {$this->table} e ON p.ID = e.post_id
-				WHERE p.post_type = %s
-				AND p.post_status = %s
-				AND e.post_id IS NULL
-				{$where_cursor}
-				ORDER BY p.ID ASC
-				LIMIT %d",
-				$post_type,
-				$post_status,
-				$limit
-			)
-		);
+		if ($last_post_id > 0) {
+			$results = $this->wpdb->get_col(
+				$this->wpdb->prepare(
+					"SELECT p.ID
+					FROM {$this->wpdb->posts} p
+					LEFT JOIN {$this->table} e ON p.ID = e.post_id
+					WHERE p.post_type = %s
+					AND p.post_status = %s
+					AND e.post_id IS NULL
+					AND p.ID > %d
+					ORDER BY p.ID ASC
+					LIMIT %d",
+					$post_type,
+					$post_status,
+					$last_post_id,
+					$limit
+				)
+			);
+		} else {
+			$results = $this->wpdb->get_col(
+				$this->wpdb->prepare(
+					"SELECT p.ID
+					FROM {$this->wpdb->posts} p
+					LEFT JOIN {$this->table} e ON p.ID = e.post_id
+					WHERE p.post_type = %s
+					AND p.post_status = %s
+					AND e.post_id IS NULL
+					ORDER BY p.ID ASC
+					LIMIT %d",
+					$post_type,
+					$post_status,
+					$limit
+				)
+			);
+		}
 
 		return array_map('intval', $results);
 	}

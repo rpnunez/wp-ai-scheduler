@@ -138,7 +138,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					</table>
 
 					<!-- Pagination -->
-					<div class="aips-panel-toolbar" style="justify-content:flex-end;padding:10px 16px;" id="aips-il-pagination" style="display:none;">
+					<div class="aips-panel-toolbar" id="aips-il-pagination" style="justify-content:flex-end;padding:10px 16px;display:none;">
 						<div class="aips-pagination" id="aips-il-page-controls"></div>
 					</div>
 				</div><!-- /.aips-panel-body -->

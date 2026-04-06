@@ -793,6 +793,7 @@ class AIPS_Admin_Assets {
                 'anchorUpdated'            => __('Anchor text updated.', 'ai-post-scheduler'),
                 'statusUpdateFailed'       => __('Failed to update status.', 'ai-post-scheduler'),
                 'anchorUpdateFailed'       => __('Failed to update anchor text.', 'ai-post-scheduler'),
+                'invalidPostId'            => __('Please enter a valid post ID.', 'ai-post-scheduler'),
                 'accepted'                 => __('Accepted', 'ai-post-scheduler'),
                 'rejected'                 => __('Rejected', 'ai-post-scheduler'),
                 'pending'                  => __('Pending', 'ai-post-scheduler'),
