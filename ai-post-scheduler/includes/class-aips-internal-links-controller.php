@@ -452,7 +452,7 @@ class AIPS_Internal_Links_Controller {
 		$timestamp = time() + 5;
 
 		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_index_posts_batch', $args, 'aips-internal-links');
+			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
 		} else {
 			wp_schedule_single_event($timestamp, 'aips_index_posts_batch', array($args));
 		}
