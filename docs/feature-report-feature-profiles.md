@@ -6,8 +6,9 @@
 * **Class**: `AIPS_AI_Edit_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Document all custom hooks in HOOKS.md for third-party developers
-    2. Ensure unit tests cover all public methods and edge cases
+    1. Consider refactoring - class has 614 lines (may violate SRP)
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -17,10 +18,11 @@
 * **Class**: `AIPS_AI_Service`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 623 lines (may violate SRP)
-    2. Add comprehensive error handling with specific exception types
-    3. Ensure unit tests cover all public methods and edge cases
-    4. Consider using WordPress transients API for caching expensive operations
+    1. Consider refactoring - class has 747 lines (may violate SRP)
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Add comprehensive error handling with specific exception types
+    4. Ensure unit tests cover all public methods and edge cases
+    5. Consider using WordPress transients API for caching expensive operations
 
 ---
 
@@ -30,7 +32,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 644 lines (may violate SRP)
+    1. Consider refactoring - class has 772 lines (may violate SRP)
     2. Document all custom hooks in HOOKS.md for third-party developers
     3. Ensure unit tests cover all public methods and edge cases
 
@@ -44,6 +46,19 @@
 * **Recommended Improvements**: 
     1. Document all custom hooks in HOOKS.md for third-party developers
     2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Admin Menu
+* **Summary**: Class AIPS_Admin_Menu
+* **File**: `ai-post-scheduler/includes/class-aips-admin-menu.php`
+* **Class**: `AIPS_Admin_Menu`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. High method count (22+ methods) - consider splitting responsibilities
+    2. High coupling - depends on 10 classes
+    3. Document all custom hooks in HOOKS.md for third-party developers
+    4. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -87,7 +102,7 @@
     * No dedicated error handling methods visible
     * No logging methods for debugging and monitoring
 * **Recommended Improvements**: 
-    1. High coupling - depends on 9 classes
+    1. High coupling - depends on 13 classes
     2. Document all custom hooks in HOOKS.md for third-party developers
     3. Add comprehensive error handling with specific exception types
     4. Ensure unit tests cover all public methods and edge cases
@@ -124,9 +139,9 @@
 * **Class**: `AIPS_Author_Topics_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 935 lines (may violate SRP)
+    1. Consider refactoring - class has 1029 lines (may violate SRP)
     2. High method count (21+ methods) - consider splitting responsibilities
-    3. High coupling - depends on 8 classes
+    3. High coupling - depends on 10 classes
     4. Document all custom hooks in HOOKS.md for third-party developers
     5. Ensure unit tests cover all public methods and edge cases
 
@@ -141,7 +156,7 @@
     * No dedicated error handling methods visible
     * No logging methods for debugging and monitoring
 * **Recommended Improvements**: 
-    1. High coupling - depends on 7 classes
+    1. High coupling - depends on 8 classes
     2. Add comprehensive error handling with specific exception types
     3. Ensure unit tests cover all public methods and edge cases
 
@@ -163,9 +178,8 @@
 * **Class**: `AIPS_Author_Topics_Scheduler`
 * **Missing Functionality**: No logging methods for debugging and monitoring
 * **Recommended Improvements**: 
-    1. High coupling - depends on 6 classes
-    2. Document all custom hooks in HOOKS.md for third-party developers
-    3. Ensure unit tests cover all public methods and edge cases
+    1. High coupling - depends on 7 classes
+    2. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -175,9 +189,10 @@
 * **Class**: `AIPS_Authors_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. High coupling - depends on 7 classes
-    2. Document all custom hooks in HOOKS.md for third-party developers
-    3. Ensure unit tests cover all public methods and edge cases
+    1. Consider refactoring - class has 517 lines (may violate SRP)
+    2. High coupling - depends on 7 classes
+    3. Document all custom hooks in HOOKS.md for third-party developers
+    4. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -202,6 +217,17 @@
 
 ---
 
+### Bulk Generation Result
+* **Summary**: Bulk Generator Service
+* **File**: `ai-post-scheduler/includes/class-aips-bulk-generator-service.php`
+* **Class**: `AIPS_Bulk_Generation_Result`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. High coupling - depends on 7 classes
+    2. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Calendar Controller
 * **Summary**: Class AIPS_Calendar_Controller
 * **File**: `ai-post-scheduler/includes/class-aips-calendar-controller.php`
@@ -221,10 +247,11 @@
     * No logging methods for debugging and monitoring
     * No input validation methods visible
 * **Recommended Improvements**: 
-    1. High coupling - depends on 12 classes
-    2. Add comprehensive error handling with specific exception types
-    3. Ensure unit tests cover all public methods and edge cases
-    4. Consider using WordPress transients API for caching expensive operations
+    1. Consider refactoring - class has 528 lines (may violate SRP)
+    2. High coupling - depends on 12 classes
+    3. Add comprehensive error handling with specific exception types
+    4. Ensure unit tests cover all public methods and edge cases
+    5. Consider using WordPress transients API for caching expensive operations
 
 ---
 
@@ -249,13 +276,23 @@
 
 ---
 
+### Correlation Id
+* **Summary**: Correlation ID Manager
+* **File**: `ai-post-scheduler/includes/class-aips-correlation-id.php`
+* **Class**: `AIPS_Correlation_ID`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Db Manager
 * **Summary**: No description available
 * **File**: `ai-post-scheduler/includes/class-aips-db-manager.php`
 * **Class**: `AIPS_DB_Manager`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 665 lines (may violate SRP)
+    1. Consider refactoring - class has 783 lines (may violate SRP)
     2. Consider using Repository pattern for database access instead of direct $wpdb
     3. Document all custom hooks in HOOKS.md for third-party developers
     4. Ensure unit tests cover all public methods and edge cases
@@ -364,6 +401,17 @@
 
 ---
 
+### Embeddings Cron
+* **Summary**: Embeddings Cron Handler
+* **File**: `ai-post-scheduler/includes/class-aips-embeddings-cron.php`
+* **Class**: `AIPS_Embeddings_Cron`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document all custom hooks in HOOKS.md for third-party developers
+    2. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Embeddings Service
 * **Summary**: Embeddings Service
 * **File**: `ai-post-scheduler/includes/class-aips-embeddings-service.php`
@@ -375,6 +423,16 @@
     1. Add comprehensive error handling with specific exception types
     2. Ensure unit tests cover all public methods and edge cases
     3. Consider using WordPress transients API for caching expensive operations
+
+---
+
+### Error Handler
+* **Summary**: AIPS_Error_Handler
+* **File**: `ai-post-scheduler/includes/class-aips-error-handler.php`
+* **Class**: `AIPS_Error_Handler`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -394,7 +452,7 @@
 * **Class**: `AIPS_Generated_Posts_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 529 lines (may violate SRP)
+    1. Consider refactoring - class has 530 lines (may violate SRP)
     2. High coupling - depends on 9 classes
     3. Document all custom hooks in HOOKS.md for third-party developers
     4. Ensure unit tests cover all public methods and edge cases
@@ -409,6 +467,17 @@
 * **Recommended Improvements**: 
     1. High coupling - depends on 7 classes
     2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Generation Execution Runner
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-generation-execution-runner.php`
+* **Class**: `AIPS_Generation_Execution_Runner`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
+    2. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -441,8 +510,8 @@
     * No dedicated error handling methods visible
     * No logging methods for debugging and monitoring
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 932 lines (may violate SRP)
-    2. High coupling - depends on 13 classes
+    1. Consider refactoring - class has 1042 lines (may violate SRP)
+    2. High coupling - depends on 14 classes
     3. Document all custom hooks in HOOKS.md for third-party developers
     4. Add comprehensive error handling with specific exception types
     5. Ensure unit tests cover all public methods and edge cases
@@ -476,8 +545,8 @@
 * **Class**: `AIPS_History_Repository`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 1018 lines (may violate SRP)
-    2. High method count (22+ methods) - consider splitting responsibilities
+    1. Consider refactoring - class has 1067 lines (may violate SRP)
+    2. High method count (23+ methods) - consider splitting responsibilities
     3. Ensure unit tests cover all public methods and edge cases
 
 ---
@@ -549,6 +618,63 @@
 
 ---
 
+### Metrics Repository
+* **Summary**: Metrics Repository
+* **File**: `ai-post-scheduler/includes/class-aips-metrics-repository.php`
+* **Class**: `AIPS_Metrics_Repository`
+* **Missing Functionality**: Missing save/update methods for data persistence
+* **Recommended Improvements**: 
+    1. Consider refactoring - class has 698 lines (may violate SRP)
+    2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Notification Template
+* **Summary**: Notification Template Value Object
+* **File**: `ai-post-scheduler/includes/class-aips-notification-template.php`
+* **Class**: `AIPS_Notification_Template`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Notification Templates
+* **Summary**: Notification Templates Registry
+* **File**: `ai-post-scheduler/includes/class-aips-notification-templates.php`
+* **Class**: `AIPS_Notification_Templates`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document all custom hooks in HOOKS.md for third-party developers
+    2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Notifications
+* **Summary**: Central Notifications Service
+* **File**: `ai-post-scheduler/includes/class-aips-notifications.php`
+* **Class**: `AIPS_Notifications`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Consider refactoring - class has 1264 lines (may violate SRP)
+    2. High method count (27+ methods) - consider splitting responsibilities
+    3. High coupling - depends on 6 classes
+    4. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Notifications Event Handler
+* **Summary**: Notifications Event Handler
+* **File**: `ai-post-scheduler/includes/class-aips-notifications-event-handler.php`
+* **Class**: `AIPS_Notifications_Event_Handler`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Consider refactoring - class has 695 lines (may violate SRP)
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Notifications Repository
 * **Summary**: Class AIPS_Notifications_Repository
 * **File**: `ai-post-scheduler/includes/class-aips-notifications-repository.php`
@@ -572,17 +698,6 @@
 
 ---
 
-### Partial Generation Notifications
-* **Summary**: Partial Generation Email Notifications
-* **File**: `ai-post-scheduler/includes/class-aips-partial-generation-notifications.php`
-* **Class**: `AIPS_Partial_Generation_Notifications`
-* **Missing Functionality**: None identified
-* **Recommended Improvements**: 
-    1. Document all custom hooks in HOOKS.md for third-party developers
-    2. Ensure unit tests cover all public methods and edge cases
-
----
-
 ### Partial Generation State Reconciler
 * **Summary**: Partial Generation State Reconciler
 * **File**: `ai-post-scheduler/includes/class-aips-partial-generation-state-reconciler.php`
@@ -600,10 +715,9 @@
 * **Class**: `AIPS_Planner`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider using Repository pattern for database access instead of direct $wpdb
-    2. Document all custom hooks in HOOKS.md for third-party developers
-    3. Ensure unit tests cover all public methods and edge cases
-    4. Add comprehensive class-level PHPDoc documentation
+    1. Document all custom hooks in HOOKS.md for third-party developers
+    2. Ensure unit tests cover all public methods and edge cases
+    3. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -634,20 +748,9 @@
 * **Class**: `AIPS_Post_Review`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 693 lines (may violate SRP)
+    1. Consider refactoring - class has 916 lines (may violate SRP)
     2. Document all custom hooks in HOOKS.md for third-party developers
     3. Ensure unit tests cover all public methods and edge cases
-
----
-
-### Post Review Notifications
-* **Summary**: Post Review Email Notifications
-* **File**: `ai-post-scheduler/includes/class-aips-post-review-notifications.php`
-* **Class**: `AIPS_Post_Review_Notifications`
-* **Missing Functionality**: None identified
-* **Recommended Improvements**: 
-    1. Document all custom hooks in HOOKS.md for third-party developers
-    2. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -737,6 +840,16 @@
 
 ---
 
+### Prompt Builder Taxonomy
+* **Summary**: Taxonomy Prompt Builder
+* **File**: `ai-post-scheduler/includes/class-aips-prompt-builder-taxonomy.php`
+* **Class**: `AIPS_Prompt_Builder_Taxonomy`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Prompt Builder Topic
 * **Summary**: Topic Prompt Builder
 * **File**: `ai-post-scheduler/includes/class-aips-prompt-builder-topic.php`
@@ -774,9 +887,10 @@
 * **Class**: `AIPS_Research_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. High coupling - depends on 6 classes
-    2. Document all custom hooks in HOOKS.md for third-party developers
-    3. Ensure unit tests cover all public methods and edge cases
+    1. Consider refactoring - class has 784 lines (may violate SRP)
+    2. High coupling - depends on 12 classes
+    3. Document all custom hooks in HOOKS.md for third-party developers
+    4. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -802,8 +916,10 @@
     * No logging methods for debugging and monitoring
     * No input validation methods visible
 * **Recommended Improvements**: 
-    1. Add comprehensive error handling with specific exception types
-    2. Ensure unit tests cover all public methods and edge cases
+    1. Consider refactoring - class has 624 lines (may violate SRP)
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Add comprehensive error handling with specific exception types
+    4. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -813,7 +929,7 @@
 * **Class**: `AIPS_Schedule_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 705 lines (may violate SRP)
+    1. Consider refactoring - class has 713 lines (may violate SRP)
     2. High coupling - depends on 9 classes
     3. Document all custom hooks in HOOKS.md for third-party developers
     4. Ensure unit tests cover all public methods and edge cases
@@ -827,8 +943,8 @@
 * **Class**: `AIPS_Schedule_Processor`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 531 lines (may violate SRP)
-    2. High coupling - depends on 10 classes
+    1. Consider refactoring - class has 758 lines (may violate SRP)
+    2. High coupling - depends on 13 classes
     3. Document all custom hooks in HOOKS.md for third-party developers
     4. Ensure unit tests cover all public methods and edge cases
 
@@ -840,21 +956,20 @@
 * **Class**: `AIPS_Schedule_Repository`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 530 lines (may violate SRP)
-    2. Ensure unit tests cover all public methods and edge cases
+    1. Consider refactoring - class has 649 lines (may violate SRP)
+    2. High method count (23+ methods) - consider splitting responsibilities
+    3. Ensure unit tests cover all public methods and edge cases
 
 ---
 
 ### Scheduler
-* **Summary**: No description available
+* **Summary**: Class AIPS_Scheduler
 * **File**: `ai-post-scheduler/includes/class-aips-scheduler.php`
 * **Class**: `AIPS_Scheduler`
 * **Missing Functionality**: No logging methods for debugging and monitoring
 * **Recommended Improvements**: 
-    1. High coupling - depends on 8 classes
-    2. Document all custom hooks in HOOKS.md for third-party developers
-    3. Ensure unit tests cover all public methods and edge cases
-    4. Add comprehensive class-level PHPDoc documentation
+    1. High coupling - depends on 9 classes
+    2. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -901,11 +1016,32 @@
 * **Class**: `AIPS_Settings`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 1306 lines (may violate SRP)
-    2. High method count (54+ methods) - consider splitting responsibilities
-    3. High coupling - depends on 13 classes
-    4. Document all custom hooks in HOOKS.md for third-party developers
-    5. Ensure unit tests cover all public methods and edge cases
+    1. High coupling - depends on 6 classes
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Settings Ajax
+* **Summary**: Class AIPS_Settings_AJAX
+* **File**: `ai-post-scheduler/includes/class-aips-settings-ajax.php`
+* **Class**: `AIPS_Settings_AJAX`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document all custom hooks in HOOKS.md for third-party developers
+    2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Settings Ui
+* **Summary**: Class AIPS_Settings_UI
+* **File**: `ai-post-scheduler/includes/class-aips-settings-ui.php`
+* **Class**: `AIPS_Settings_UI`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Consider refactoring - class has 560 lines (may violate SRP)
+    2. High method count (37+ methods) - consider splitting responsibilities
+    3. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -958,9 +1094,32 @@
 * **Class**: `AIPS_System_Status`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider using Repository pattern for database access instead of direct $wpdb
-    2. Ensure unit tests cover all public methods and edge cases
-    3. Add comprehensive class-level PHPDoc documentation
+    1. Consider refactoring - class has 998 lines (may violate SRP)
+    2. High coupling - depends on 6 classes
+    3. Ensure unit tests cover all public methods and edge cases
+    4. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Taxonomy Controller
+* **Summary**: Taxonomy Controller
+* **File**: `ai-post-scheduler/includes/class-aips-taxonomy-controller.php`
+* **Class**: `AIPS_Taxonomy_Controller`
+* **Missing Functionality**: No input validation methods visible
+* **Recommended Improvements**: 
+    1. Consider refactoring - class has 657 lines (may violate SRP)
+    2. Document all custom hooks in HOOKS.md for third-party developers
+    3. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Taxonomy Repository
+* **Summary**: Taxonomy Repository
+* **File**: `ai-post-scheduler/includes/class-aips-taxonomy-repository.php`
+* **Class**: `AIPS_Taxonomy_Repository`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -1059,9 +1218,10 @@
     * No logging methods for debugging and monitoring
     * No input validation methods visible
 * **Recommended Improvements**: 
-    1. Add comprehensive error handling with specific exception types
-    2. Ensure unit tests cover all public methods and edge cases
-    3. Consider using WordPress transients API for caching expensive operations
+    1. Consider refactoring - class has 519 lines (may violate SRP)
+    2. Add comprehensive error handling with specific exception types
+    3. Ensure unit tests cover all public methods and edge cases
+    4. Consider using WordPress transients API for caching expensive operations
 
 ---
 
@@ -1085,7 +1245,7 @@
 * **Class**: `AIPS_Trending_Topics_Repository`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring - class has 617 lines (may violate SRP)
+    1. Consider refactoring - class has 758 lines (may violate SRP)
     2. Ensure unit tests cover all public methods and edge cases
 
 ---
@@ -1113,6 +1273,16 @@
 * **Recommended Improvements**: 
     1. Ensure unit tests cover all public methods and edge cases
     2. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Utilities
+* **Summary**: General Utilities
+* **File**: `ai-post-scheduler/includes/class-aips-utilities.php`
+* **Class**: `AIPS_Utilities`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Ensure unit tests cover all public methods and edge cases
 
 ---
 
