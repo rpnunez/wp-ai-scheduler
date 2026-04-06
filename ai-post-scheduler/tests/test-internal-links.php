@@ -226,4 +226,62 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$this->assertCount( 0, $this->links_repo->get_by_source_post( 5 ) );
 		$this->assertCount( 1, $this->links_repo->get_by_source_post( 8 ) );
 	}
+
+	/**
+	 * delete_pending_by_source_post() should only delete pending rows,
+	 * leaving accepted/rejected/inserted suggestions intact.
+	 */
+	public function test_links_delete_pending_preserves_non_pending() {
+		$id_pending  = $this->links_repo->insert( 20, 21, 0.8 );
+		$id_accepted = $this->links_repo->insert( 20, 22, 0.9 );
+		$id_rejected = $this->links_repo->insert( 20, 23, 0.75 );
+
+		$this->links_repo->update_status( $id_accepted, 'accepted' );
+		$this->links_repo->update_status( $id_rejected, 'rejected' );
+
+		// Sanity check: 3 rows before deletion.
+		$this->assertCount( 3, $this->links_repo->get_by_source_post( 20 ) );
+
+		$this->links_repo->delete_pending_by_source_post( 20 );
+
+		$remaining = $this->links_repo->get_by_source_post( 20 );
+		$this->assertCount( 2, $remaining, 'Only the pending row should be deleted' );
+
+		$statuses = array_column( $remaining, 'status' );
+		$this->assertContains( 'accepted', $statuses );
+		$this->assertContains( 'rejected', $statuses );
+		$this->assertNotContains( 'pending', $statuses );
+	}
+
+	/**
+	 * Multiple source posts can suggest the same target post.
+	 */
+	public function test_links_multiple_sources_can_share_target() {
+		$id1 = $this->links_repo->insert( 30, 99, 0.85 );
+		$id2 = $this->links_repo->insert( 31, 99, 0.80 );
+		$id3 = $this->links_repo->insert( 32, 99, 0.75 );
+
+		$this->assertNotFalse( $id1 );
+		$this->assertNotFalse( $id2 );
+		$this->assertNotFalse( $id3 );
+
+		// Each source independently points to target 99
+		$this->assertCount( 1, $this->links_repo->get_by_source_post( 30 ) );
+		$this->assertCount( 1, $this->links_repo->get_by_source_post( 31 ) );
+		$this->assertCount( 1, $this->links_repo->get_by_source_post( 32 ) );
+	}
+
+	/**
+	 * One source post can have multiple suggestions pointing to different targets.
+	 */
+	public function test_links_one_source_multiple_targets() {
+		$this->links_repo->insert( 40, 41, 0.9 );
+		$this->links_repo->insert( 40, 42, 0.85 );
+		$this->links_repo->insert( 40, 43, 0.80 );
+		$this->links_repo->insert( 40, 44, 0.75 );
+		$this->links_repo->insert( 40, 45, 0.70 );
+
+		$rows = $this->links_repo->get_by_source_post( 40 );
+		$this->assertCount( 5, $rows, 'One source should be able to have 5 link suggestions' );
+	}
 }

@@ -773,7 +773,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-internal-links',
                 AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -794,6 +794,7 @@ class AIPS_Admin_Assets {
                 'statusUpdateFailed'       => __('Failed to update status.', 'ai-post-scheduler'),
                 'anchorUpdateFailed'       => __('Failed to update anchor text.', 'ai-post-scheduler'),
                 'invalidPostId'            => __('Please enter a valid post ID.', 'ai-post-scheduler'),
+                'requestFailed'            => __('Request failed. Please try again.', 'ai-post-scheduler'),
                 'accepted'                 => __('Accepted', 'ai-post-scheduler'),
                 'rejected'                 => __('Rejected', 'ai-post-scheduler'),
                 'pending'                  => __('Pending', 'ai-post-scheduler'),

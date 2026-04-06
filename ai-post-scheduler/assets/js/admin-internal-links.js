@@ -331,13 +331,12 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalIndexText).html()
+				);
 			});
 		},
-
-		/**
-		 * Clear the full index and all suggestions.
-		 */
 		clearIndex: function () {
 			var self = this;
 
@@ -399,14 +398,13 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
-				self.showGenerateFeedback('Request failed.', 'error');
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalGenerateText).html()
+				);
+				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
 		},
-
-		/**
-		 * Re-index a single post by ID.
-		 */
 		reindexPost: function () {
 			var self      = this;
 			var postId    = parseInt($('#aips-gen-post-id').val(), 10);
@@ -442,7 +440,10 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalReindexText).html()
+				);
 			});
 		},
 

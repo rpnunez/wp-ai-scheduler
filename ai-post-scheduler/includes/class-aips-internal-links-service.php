@@ -259,8 +259,10 @@ class AIPS_Internal_Links_Service {
 
 		$neighbors = array_slice(array_values($neighbors), 0, $max_suggestions);
 
-		// Delete existing pending suggestions before reinserting
-		$this->links_repo->delete_by_source_post($source_post_id);
+		// Delete only existing PENDING suggestions before reinserting.
+		// Accepted, rejected, and inserted suggestions are preserved so that
+		// editorial decisions and insertion tracking are not lost during regeneration.
+		$this->links_repo->delete_pending_by_source_post($source_post_id);
 
 		$created_ids = array();
 
@@ -298,7 +300,7 @@ class AIPS_Internal_Links_Service {
 	 */
 	public function get_indexing_status($post_type = 'post', $post_status = 'publish') {
 		$total_posts = (int) wp_count_posts($post_type)->$post_status;
-		$indexed     = $this->embeddings_repo->count();
+		$indexed     = $this->embeddings_repo->count_indexed_for_type($post_type, $post_status);
 		$unindexed   = max(0, $total_posts - $indexed);
 		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 

@@ -118,6 +118,33 @@ class AIPS_Post_Embeddings_Repository {
 	}
 
 	/**
+	 * Count indexed posts that actually exist with the given post_type and post_status.
+	 *
+	 * This gives an accurate count for the indexing-progress bar by joining against
+	 * wp_posts and excluding embeddings for deleted posts or posts of a different type.
+	 *
+	 * @param string $post_type   Post type to filter (default: 'post').
+	 * @param string $post_status Post status to filter (default: 'publish').
+	 * @return int Count of indexed posts matching the given type/status.
+	 */
+	public function count_indexed_for_type($post_type = 'post', $post_status = 'publish') {
+		$post_type   = sanitize_key($post_type);
+		$post_status = sanitize_key($post_status);
+
+		return (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*)
+				FROM {$this->table} e
+				INNER JOIN {$this->wpdb->posts} p ON e.post_id = p.ID
+				WHERE p.post_type = %s
+				AND p.post_status = %s",
+				$post_type,
+				$post_status
+			)
+		);
+	}
+
+	/**
 	 * Upsert a post embedding.
 	 *
 	 * Inserts a new record or updates an existing one for the given post ID.
