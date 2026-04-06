@@ -22,6 +22,8 @@ class AIPS_DB_Manager {
         'aips_sources',
         'aips_source_group_terms',
         'aips_taxonomy',
+        'aips_post_embeddings',
+        'aips_internal_links',
     );
 
     public function __construct() {
@@ -71,6 +73,8 @@ class AIPS_DB_Manager {
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_post_embeddings      = $tables['aips_post_embeddings'];
+        $table_internal_links       = $tables['aips_internal_links'];
 
         $sql = array();
 
@@ -382,6 +386,34 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY term_id (term_id),
             KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_embeddings (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            embedding longtext NOT NULL,
+            model varchar(100) DEFAULT '',
+            indexed_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY post_id (post_id),
+            KEY indexed_at (indexed_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_internal_links (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL,
+            similarity_score float NOT NULL DEFAULT 0,
+            anchor_text varchar(500) DEFAULT '',
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY source_post_id (source_post_id),
+            KEY target_post_id (target_post_id),
+            KEY status (status),
+            KEY similarity_score (similarity_score),
+            UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
 
         return $sql;

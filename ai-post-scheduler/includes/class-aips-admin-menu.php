@@ -167,6 +167,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Internal Links', 'ai-post-scheduler'),
+            __('Internal Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-internal-links',
+            array($this, 'render_internal_links_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -473,5 +482,20 @@ class AIPS_Admin_Menu {
      */
     public function render_taxonomy_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+    }
+
+    /**
+     * Render the Internal Links page.
+     *
+     * Reuses the globally-registered controller instance to avoid
+     * re-registering AJAX hooks.
+     *
+     * @return void
+     */
+    public function render_internal_links_page() {
+        global $aips_internal_links_controller;
+        if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
+            $aips_internal_links_controller->render_page();
+        }
     }
 }

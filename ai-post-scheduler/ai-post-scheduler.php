@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.2.0
+ * Version: 2.2.2
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '2.2.0');
+define('AIPS_VERSION', '2.2.2');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -351,6 +351,11 @@ final class AI_Post_Scheduler {
         // Embeddings background worker
         $aips_embeddings_cron = new AIPS_Embeddings_Cron();
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+
+        // Internal Links controller (registered outside admin-only block so cron callback works)
+        global $aips_internal_links_controller;
+        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+        add_action('aips_index_posts_batch', array($aips_internal_links_controller, 'process_indexing_batch_cron'));
 
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
