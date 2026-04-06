@@ -262,7 +262,7 @@
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    $topicsList.append(AIPS.Templates.renderRaw('aips-tmpl-planner-search-empty', {}));
+                    $topicsList.append(AIPS.Templates.render('aips-tmpl-planner-search-empty', {}));
                 }
             } else {
                 if ($emptyState.length) {
