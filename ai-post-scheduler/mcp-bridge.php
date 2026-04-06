@@ -1540,7 +1540,7 @@ class AIPS_MCP_Bridge {
 		}
 		
 		// Get the current configured model
-		$current_model = get_option('aips_ai_model', '');
+		$current_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
 		
 		// Try to get available models from AI Engine
 		global $mwai;
@@ -1623,7 +1623,7 @@ class AIPS_MCP_Bridge {
 				'test_prompt' => $test_prompt,
 				'response' => substr($result, 0, 200), // Limit response length
 				'response_time_ms' => $elapsed_time,
-				'model' => get_option('aips_ai_model', 'default'),
+				'model' => AIPS_Config::get_instance()->get_option('aips_ai_model'),
 				'message' => 'AI Engine connection successful'
 			);
 			
@@ -1653,43 +1653,43 @@ class AIPS_MCP_Bridge {
 		// AI Settings
 		if ($category === 'all' || $category === 'ai') {
 			$settings['ai'] = array(
-				'model' => get_option('aips_ai_model', ''),
-				'maxTokens' => (int) get_option('aips_max_tokens', 2000),
-				'temperature' => (float) get_option('aips_temperature', 0.7),
-				'default_post_status' => get_option('aips_default_post_status', 'draft'),
-				'default_post_author' => (int) get_option('aips_default_post_author', 1)
+				'model' => $config->get_option('aips_ai_model'),
+				'maxTokens' => (int) $config->get_option('aips_max_tokens'),
+				'temperature' => (float) $config->get_option('aips_temperature'),
+				'default_post_status' => $config->get_option('aips_default_post_status'),
+				'default_post_author' => (int) $config->get_option('aips_default_post_author'),
 			);
 		}
 		
 		// Resilience Settings
 		if ($category === 'all' || $category === 'resilience') {
 			$settings['resilience'] = array(
-				'enable_retry' => (bool) get_option('aips_enable_retry', true),
-				'retry_max_attempts' => (int) get_option('aips_retry_max_attempts', 3),
-				'retry_initial_delay' => (int) get_option('aips_retry_initial_delay', 1),
-				'enable_rate_limiting' => (bool) get_option('aips_enable_rate_limiting', false),
-				'rate_limit_requests' => (int) get_option('aips_rate_limit_requests', 10),
-				'rate_limit_period' => (int) get_option('aips_rate_limit_period', 60),
-				'enable_circuit_breaker' => (bool) get_option('aips_enable_circuit_breaker', false),
-				'circuit_breaker_threshold' => (int) get_option('aips_circuit_breaker_threshold', 5),
-				'circuit_breaker_timeout' => (int) get_option('aips_circuit_breaker_timeout', 300)
+				'enable_retry' => (bool) $config->get_option('aips_enable_retry'),
+				'retry_max_attempts' => (int) $config->get_option('aips_retry_max_attempts'),
+				'retry_initial_delay' => (int) $config->get_option('aips_retry_initial_delay'),
+				'enable_rate_limiting' => (bool) $config->get_option('aips_enable_rate_limiting'),
+				'rate_limit_requests' => (int) $config->get_option('aips_rate_limit_requests'),
+				'rate_limit_period' => (int) $config->get_option('aips_rate_limit_period'),
+				'enable_circuit_breaker' => (bool) $config->get_option('aips_enable_circuit_breaker'),
+				'circuit_breaker_threshold' => (int) $config->get_option('aips_circuit_breaker_threshold'),
+				'circuit_breaker_timeout' => (int) $config->get_option('aips_circuit_breaker_timeout'),
 			);
 		}
 		
 		// Logging Settings
 		if ($category === 'all' || $category === 'logging') {
 			$settings['logging'] = array(
-				'enable_logging' => (bool) get_option('aips_enable_logging', true),
-				'log_retention_days' => (int) get_option('aips_log_retention_days', 30)
+				'enable_logging' => (bool) $config->get_option('aips_enable_logging'),
+				'log_retention_days' => (int) $config->get_option('aips_log_retention_days'),
 			);
 		}
 		
 		// Export Thresholds
 		if ($category === 'all') {
 			$settings['thresholds'] = array(
-				'generated_posts_log_threshold_tmpfile' => (int) get_option('generated_posts_log_threshold_tmpfile', 200),
-				'generated_posts_log_threshold_client' => (int) get_option('generated_posts_log_threshold_client', 20),
-				'history_export_max_records' => (int) get_option('history_export_max_records', 10000)
+				'generated_posts_log_threshold_tmpfile' => (int) $config->get_option('generated_posts_log_threshold_tmpfile'),
+				'generated_posts_log_threshold_client' => (int) $config->get_option('generated_posts_log_threshold_client'),
+				'history_export_max_records' => (int) $config->get_option('history_export_max_records'),
 			);
 		}
 		

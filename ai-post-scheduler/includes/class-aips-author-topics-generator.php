@@ -384,7 +384,7 @@ class AIPS_Author_Topics_Generator {
 			return $topics;
 		}
 
-		$threshold = (float) get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = (float) AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
 		foreach ($topics as &$topic) {
 			$text = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 			if (empty($text)) {
