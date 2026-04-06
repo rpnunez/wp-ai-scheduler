@@ -35,3 +35,31 @@ For any schema change (new table, column, or index):
 ## SQL: Repository Classes Only
 
 All `$wpdb` queries belong in `class-aips-*-repository.php` files. Never write inline SQL in Controllers, Services, Schedulers, or templates. If a needed query method doesn't exist, add it to the appropriate repository.
+
+---
+
+## JS Feedback: Use AIPS.Utilities.showToast, Never alert()
+
+Never call the native `alert()` function. Always use:
+- `AIPS.Utilities.showToast(message, type, opts)` — `type` is `'success'`, `'error'`, `'warning'`, or `'info'`.
+- Plain-text messages are auto-escaped. Pass `opts.isHtml = true` only for pre-trusted HTML.
+- Set `opts.duration = 0` to suppress auto-dismiss.
+
+The shorthand `AIPS.showToast(message, type, opts)` delegates to the same method.
+
+---
+
+## JS Confirmation: Use AIPS.Utilities.confirm, Never confirm()
+
+Never call the native `confirm()` function. Always use:
+- `AIPS.Utilities.confirm(message, heading, buttons)` — renders a styled, accessible modal dialog.
+- `buttons` is an array of `{ label, className, action }` objects. Omit `action` for a close-only button.
+- The modal closes on the action callback, Escape key, or backdrop click.
+
+---
+
+## JS DOM Refresh: Never Use location.reload()
+
+Never call `location.reload()` after an AJAX action. Instead:
+- Re-fetch the updated data via a follow-up AJAX call and re-render the affected UI region using `AIPS.Templates.render()` / `renderRaw()`.
+- Only replace or patch the specific DOM nodes that changed; leave the rest of the page untouched.
