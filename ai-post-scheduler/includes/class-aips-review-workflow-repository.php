@@ -70,8 +70,10 @@ class AIPS_Review_Workflow_Repository {
 			'order'       => 'DESC',
 		);
 
-		$args   = wp_parse_args($args, $defaults);
-		$offset = ($args['page'] - 1) * $args['per_page'];
+		$args              = wp_parse_args($args, $defaults);
+		$args['page']      = max(1, (int) $args['page']);
+		$args['per_page']  = max(1, (int) $args['per_page']);
+		$offset            = ($args['page'] - 1) * $args['per_page'];
 
 		$where      = array( '1=1' );
 		$where_args = array();
