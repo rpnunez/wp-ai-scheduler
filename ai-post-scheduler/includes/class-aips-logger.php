@@ -109,6 +109,15 @@ class AIPS_Logger {
         $this->log($message, 'error', $context);
     }
     
+    /**
+     * Get recent lines from the log file.
+     *
+     * Defensively reads from the end of the log file using fseek and ftell,
+     * gracefully handling file size detection failures.
+     *
+     * @param int $lines Number of lines to return.
+     * @return array Array of log lines.
+     */
     public function get_logs($lines = 100) {
         if (!file_exists($this->log_file)) {
             return array();
@@ -125,7 +134,7 @@ class AIPS_Logger {
         fseek($fp, 0, SEEK_END);
         $filesize = ftell($fp);
 
-        if ($filesize <= 0) {
+        if ($filesize === false || $filesize <= 0) {
             fclose($fp);
             return array();
         }
@@ -188,6 +197,14 @@ class AIPS_Logger {
         return true;
     }
     
+    /**
+     * Get a list of available log files.
+     *
+     * Scans the log directory and defensively retrieves file size and modification time,
+     * using fallback values if filesystem functions return false.
+     *
+     * @return array Array of log file metadata.
+     */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
@@ -200,10 +217,13 @@ class AIPS_Logger {
         $log_files = array();
         
         foreach ($files as $file) {
+            $size = filesize($file);
+            $mtime = filemtime($file);
+
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
-                'modified' => date('Y-m-d H:i:s', filemtime($file)),
+                'size' => size_format($size !== false ? $size : 0),
+                'modified' => $mtime !== false ? date('Y-m-d H:i:s', $mtime) : __('Unknown', 'ai-post-scheduler'),
             );
         }
         
