@@ -82,3 +82,7 @@
 **Vulnerability:** array_map() with sanitize_text_field() on nested arrays from user input causes fatal TypeErrors.
 **Learning:** PHP 8+ strict types require scalar validation before passing to string functions.
 **Prevention:** Use AIPS_Utilities::sanitize_string_array() which explicitly verifies is_scalar().
+## 2026-04-06 - Secure Onboarding Wizard AJAX
+**Vulnerability:** Missing proper explicit nonce handling in Onboarding Wizard AJAX endpoints (relied on implicit wp_die instead of explicitly handling false parameter).
+**Learning:** Relying on default check_ajax_referer behavior causes a wp_die() without proper JSON response, leading to poor UX and non-standard generic error handling.
+**Prevention:** Always verify nonce explicitly using false parameter and return generic errors via wp_send_json_error instead of relying on default wp_die() behavior.
