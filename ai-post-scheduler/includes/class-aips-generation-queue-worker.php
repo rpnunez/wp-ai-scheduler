@@ -89,11 +89,11 @@ class AIPS_Generation_Queue_Worker {
 	 */
 	public function process_batch( $batch_size = null ) {
 		if ( $batch_size === null ) {
-			$batch_size = (int) $this->config->get_option( 'aips_queue_batch_size', 5 );
+			$batch_size = (int) $this->config->get_option( 'aips_queue_batch_size' );
 		}
 
 		$batch_size   = max( 1, absint( $batch_size ) );
-		$lock_timeout = (int) $this->config->get_option( 'aips_queue_lock_timeout', 300 );
+		$lock_timeout = (int) $this->config->get_option( 'aips_queue_lock_timeout' );
 
 		// Free jobs whose processing lock has expired so they can be retried.
 		$released = $this->queue_repository->release_stale_locks( $lock_timeout );
@@ -232,7 +232,7 @@ class AIPS_Generation_Queue_Worker {
 	 * @return int
 	 */
 	private function get_max_attempts() {
-		return max( 1, (int) $this->config->get_option( 'aips_queue_max_attempts', 3 ) );
+		return max( 1, (int) $this->config->get_option( 'aips_queue_max_attempts' ) );
 	}
 
 	/**

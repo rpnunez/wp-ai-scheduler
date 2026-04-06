@@ -29,6 +29,7 @@ if (!defined('ABSPATH')) {
 					<button type="button" class="aips-tab-link" data-tab="settings-feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-resilience"><?php esc_html_e('Resilience &amp; Limits', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-scheduler"><?php esc_html_e('Scheduler', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-content-strategy"><?php esc_html_e('Content Strategy', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-api-keys"><?php esc_html_e('API Keys', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-developers"><?php esc_html_e('Developers', 'ai-post-scheduler'); ?></button>
@@ -86,6 +87,17 @@ if (!defined('ABSPATH')) {
 						<p class="description"><?php esc_html_e('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler'); ?></p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_resilience_section'); ?>
+						</table>
+						<p class="submit">
+							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+						</p>
+					</div>
+
+					<!-- Scheduler Tab -->
+					<div id="settings-scheduler-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Configure the queue-backed scheduler behaviour. These settings take effect when the queue_backed_scheduler feature flag is enabled.', 'ai-post-scheduler'); ?></p>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_scheduler_section'); ?>
 						</table>
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
