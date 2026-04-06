@@ -207,3 +207,8 @@
 **Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
+## 2026-04-06 - History Optimization
+**Target Feature:** History
+**Improvement:** Replaced jarring full page reloads with asynchronous targeted DOM reloads in History admin for improved flow.
+**Files Modified:** ai-post-scheduler/assets/js/admin-history.js
+**Outcome:** Improved user workflow and perception of speed by eliminating page reloads during bulk delete, single delete, and retry actions.

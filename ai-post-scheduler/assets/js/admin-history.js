@@ -512,6 +512,7 @@
 			var id       = $(e.currentTarget).data('id');
 			var $btn     = $(e.currentTarget);
 			var origHtml = $btn.html();
+			var self     = this;
 
 			$btn.prop('disabled', true).html(
 				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
@@ -528,7 +529,7 @@
 				success: function (response) {
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message, 'success');
-						location.reload();
+						self.reload();
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
 						$btn.prop('disabled', false).html(origHtml);
