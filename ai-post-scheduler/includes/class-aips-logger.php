@@ -109,6 +109,15 @@ class AIPS_Logger {
         $this->log($message, 'error', $context);
     }
     
+    /**
+     * Retrieve the most recent log entries.
+     *
+     * Safely reads the end of the log file using chunking and strict type checks
+     * on filesystem operations (e.g., ftell) to avoid fatal errors if the file is unreadable.
+     *
+     * @param int $lines Number of lines to retrieve.
+     * @return array Array of log lines.
+     */
     public function get_logs($lines = 100) {
         if (!file_exists($this->log_file)) {
             return array();
@@ -125,7 +134,7 @@ class AIPS_Logger {
         fseek($fp, 0, SEEK_END);
         $filesize = ftell($fp);
 
-        if ($filesize <= 0) {
+        if ($filesize === false || $filesize <= 0) {
             fclose($fp);
             return array();
         }
@@ -188,6 +197,14 @@ class AIPS_Logger {
         return true;
     }
     
+    /**
+     * Get a list of available log files.
+     *
+     * Safely checks file sizes and modification times, providing fallbacks
+     * to prevent fatal TypeErrors if filesystem functions return false.
+     *
+     * @return array Array of log file details (name, size, modified).
+     */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
@@ -200,10 +217,12 @@ class AIPS_Logger {
         $log_files = array();
         
         foreach ($files as $file) {
+            $fsize = filesize($file);
+            $fmtime = filemtime($file);
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
-                'modified' => date('Y-m-d H:i:s', filemtime($file)),
+                'size' => $fsize !== false ? size_format($fsize) : '0 B',
+                'modified' => $fmtime !== false ? date('Y-m-d H:i:s', $fmtime) : 'Unknown',
             );
         }
         
