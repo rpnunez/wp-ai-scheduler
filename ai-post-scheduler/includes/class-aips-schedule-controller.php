@@ -37,6 +37,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_toggle', array($this, 'ajax_unified_toggle'));
         add_action('wp_ajax_aips_unified_bulk_toggle', array($this, 'ajax_unified_bulk_toggle'));
         add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
+        add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
     }
 
@@ -93,7 +94,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        if ($this->scheduler->delete_schedule($id)) {
+        if ($this->schedule_repository->delete($id)) {
             wp_send_json_success(array('message' => __('Schedule deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete schedule.', 'ai-post-scheduler')));
@@ -681,6 +682,83 @@ class AIPS_Schedule_Controller {
             'message' => $message,
             'success' => $success,
             'errors'  => $errors,
+        ));
+    }
+
+    /**
+     * AJAX: Bulk delete schedules of mixed types.
+     *
+     * Expects POST: items (array of {id, type}).
+     * Only template schedules are deletable.
+     */
+    public function ajax_unified_bulk_delete() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+
+        if (empty($items)) {
+            wp_send_json_error(array('message' => __('No items provided.', 'ai-post-scheduler')));
+        }
+
+        $service       = new AIPS_Unified_Schedule_Service();
+        $deleted_count = 0;
+        $deleted_items = array();
+        $failed_items  = array();
+
+        foreach ($items as $item) {
+            $id   = isset($item['id']) ? absint($item['id']) : 0;
+            $type = isset($item['type']) ? sanitize_key($item['type']) : '';
+
+            if (!$id || empty($type)) {
+                continue;
+            }
+
+            $result = $service->delete($id, $type);
+            if (is_wp_error($result)) {
+                $failed_items[] = array(
+                    'id'      => $id,
+                    'type'    => $type,
+                    'message' => $result->get_error_message(),
+                );
+            } else {
+                $deleted_count++;
+                $deleted_items[] = array(
+                    'id'   => $id,
+                    'type' => $type,
+                );
+            }
+        }
+
+        if ($deleted_count === 0) {
+            wp_send_json_error(array(
+                'message'      => __('No selected schedules could be deleted.', 'ai-post-scheduler'),
+                'deleted'      => 0,
+                'deleted_items'=> array(),
+                'failed_items' => $failed_items,
+            ));
+        }
+
+        $message = sprintf(
+            _n('%d schedule deleted successfully.', '%d schedules deleted successfully.', $deleted_count, 'ai-post-scheduler'),
+            $deleted_count
+        );
+
+        if (!empty($failed_items)) {
+            $message .= ' ' . sprintf(
+                _n('(%d could not be deleted)', '(%d could not be deleted)', count($failed_items), 'ai-post-scheduler'),
+                count($failed_items)
+            );
+        }
+
+        wp_send_json_success(array(
+            'message'      => $message,
+            'deleted'      => $deleted_count,
+            'deleted_items'=> $deleted_items,
+            'failed_items' => $failed_items,
         ));
     }
 
