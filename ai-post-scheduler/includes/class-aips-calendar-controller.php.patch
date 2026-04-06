@@ -1,0 +1,15 @@
+--- includes/class-aips-calendar-controller.php
++++ includes/class-aips-calendar-controller.php
+@@ -213,6 +213,7 @@
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
++			return;
+		}
+
+		$year = isset($_POST['year']) ? absint($_POST['year']) : date('Y');
+@@ -221,6 +222,7 @@
+		// Validate month
+		if ($month < 1 || $month > 12) {
+			wp_send_json_error(array('message' => __('Invalid month.', 'ai-post-scheduler')));
++			return;
+		}
