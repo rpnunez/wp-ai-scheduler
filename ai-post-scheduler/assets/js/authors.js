@@ -93,16 +93,24 @@
 		},
 
 		/**
-		 * Handle a click on an empty-state CTA button that switches to a named tab.
+		 * Handle a click on an empty-state CTA button.
 		 *
-		 * Reads the `data-tab` attribute from the clicked button and triggers a
-		 * click on the matching `.aips-tab-link` navigation element.
+		 * Supports two modes via `data-*` attributes:
+		 * - `data-tab`: triggers a click on the matching `.aips-tab-link` to
+		 *   switch the active tab panel.
+		 * - `data-action="generate-topics"`: triggers the `.aips-generate-topics-now`
+		 *   button so the user can immediately kick off topic generation.
 		 *
 		 * @param {Event} e - Click event from `.aips-empty-state-tab-cta`.
 		 */
 		onEmptyStateTabCta: function (e) {
-			var tab = $(e.currentTarget).data('tab');
-			if (tab) {
+			var $btn   = $(e.currentTarget);
+			var tab    = $btn.data('tab');
+			var action = $btn.data('action');
+
+			if (action === 'generate-topics') {
+				$('.aips-generate-topics-now').first().trigger('click');
+			} else if (tab) {
 				$('.aips-tab-link[data-tab="' + tab + '"]').trigger('click');
 			}
 		},
@@ -2454,9 +2462,9 @@
 			if (!topics || topics.length === 0) {
 				$('#aips-queue-topics-list').html(
 					AIPS.Templates.render('aips-tmpl-queue-empty-state', {
-						title:       aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found',
+						title:       aipsAuthorsL10n.noQueueTopicsTitle || 'No Topics in Queue',
 						description: aipsAuthorsL10n.noQueueTopics      || 'No approved topics in the queue yet.',
-						ctaLabel:    aipsAuthorsL10n.viewTopics          || 'View Pending Topics',
+						ctaLabel:    aipsAuthorsL10n.viewAuthorsList     || 'View Authors',
 					})
 				);
 				$('#aips-queue-tablenav').hide();
