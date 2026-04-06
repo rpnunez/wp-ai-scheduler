@@ -134,28 +134,6 @@
         },
 
         /**
-         * Show or hide `.topic-item` rows based on whether their text input
-         * value matches the current `#planner-topic-search` value.
-         *
-         * Only tests `.topic-item` elements that are currently visible.
-         * Calls `updateSelectionCount` after filtering to keep the count accurate.
-         *
-         * Bound to the first `keyup search` listener on `#planner-topic-search`.
-         */
-        filterTopics: function() {
-            var filter = $('#planner-topic-search').val().toLowerCase();
-            $('.topic-item').each(function() {
-                var text = $(this).find('.topic-text-input').val().toLowerCase();
-                if (text.indexOf(filter) > -1) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            });
-            window.AIPS.updateSelectionCount();
-        },
-
-        /**
          * Sync all `.topic-checkbox` elements with the state of the
          * `#check-all-topics` "select all" checkbox.
          *
@@ -236,8 +214,9 @@
          * whether the search field is non-empty. Shows an inline empty-state
          * message when no topics match the term. Removes the empty-state message
          * when the field is cleared or topics become visible again.
+         * Calls `updateSelectionCount` after filtering to keep the count accurate.
          *
-         * Bound to the second `keyup search` listener on `#planner-topic-search`.
+         * Bound to the `keyup search` event on `#planner-topic-search`.
          */
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
@@ -269,6 +248,8 @@
                     $emptyState.remove();
                 }
             }
+
+            window.AIPS.updateSelectionCount();
         },
 
         /**
@@ -536,7 +517,6 @@
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
-        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-clear-topic-search-btn', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
