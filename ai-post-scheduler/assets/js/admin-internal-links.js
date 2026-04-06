@@ -214,17 +214,17 @@
 			var statusLabel = this.getStatusLabel(item.status);
 			var statusClass = 'aips-status-' + item.status;
 			var score       = Math.round(parseFloat(item.similarity_score) * 100) + '%';
-			var anchor      = AIPS.Templates.render(item.anchor_text || '');
+			var anchor      = AIPS.Templates.escape(item.anchor_text || '');
 
-			var sourceTitle = AIPS.Templates.render(item.source_post_title || '(#' + item.source_post_id + ')');
-			var targetTitle = AIPS.Templates.render(item.target_post_title || '(#' + item.target_post_id + ')');
+			var sourceTitle = AIPS.Templates.escape(item.source_post_title || '(#' + item.source_post_id + ')');
+			var targetTitle = AIPS.Templates.escape(item.target_post_title || '(#' + item.target_post_id + ')');
 
 			var sourceLink = item.source_edit_url
-				? '<a href="' + AIPS.Templates.render(item.source_edit_url) + '" target="_blank" rel="noopener noreferrer">' + sourceTitle + '</a>'
+				? '<a href="' + AIPS.Templates.escape(item.source_edit_url) + '" target="_blank" rel="noopener noreferrer">' + sourceTitle + '</a>'
 				: sourceTitle;
 
 			var targetLink = item.target_edit_url
-				? '<a href="' + AIPS.Templates.render(item.target_edit_url) + '" target="_blank" rel="noopener noreferrer">' + targetTitle + '</a>'
+				? '<a href="' + AIPS.Templates.escape(item.target_edit_url) + '" target="_blank" rel="noopener noreferrer">' + targetTitle + '</a>'
 				: targetTitle;
 
 			var actions = '';
@@ -322,10 +322,10 @@
 				);
 
 				if (response.success) {
-					AIPS.Utilities.showNotice(response.data.message, 'success');
+					AIPS.Utilities.showToast(response.data.message, 'success');
 					setTimeout(function () { self.refreshStatus(); }, 2000);
 				} else {
-					AIPS.Utilities.showNotice(
+					AIPS.Utilities.showToast(
 						(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
 						'error'
 					);
@@ -346,11 +346,11 @@
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
 				if (response.success) {
-					AIPS.Utilities.showNotice(response.data.message, 'success');
+					AIPS.Utilities.showToast(response.data.message, 'success');
 					self.loadSuggestions();
 					self.refreshStatus();
 				} else {
-					AIPS.Utilities.showNotice(
+					AIPS.Utilities.showToast(
 						(response.data && response.data.message) || 'Error.',
 						'error'
 					);
@@ -466,9 +466,9 @@
 					// Reload to reflect updated status and re-render actions
 					self.loadSuggestions();
 					self.refreshStatus();
-					AIPS.Utilities.showNotice(aipsInternalLinksL10n.statusUpdated, 'success');
+					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdated, 'success');
 				} else {
-					AIPS.Utilities.showNotice(aipsInternalLinksL10n.statusUpdateFailed, 'error');
+					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdateFailed, 'error');
 				}
 			});
 		},
@@ -491,7 +491,7 @@
 					$row.fadeOut(200, function () { $(this).remove(); });
 					self.refreshStatus();
 				} else {
-					AIPS.Utilities.showNotice(aipsInternalLinksL10n.errorDeleting, 'error');
+					AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -519,9 +519,9 @@
 					$('tr[data-id="' + id + '"] .aips-il-anchor-cell').text(anchorText);
 					// Update data attribute on edit button
 					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
-					AIPS.Utilities.showNotice(aipsInternalLinksL10n.anchorUpdated, 'success');
+					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
 				} else {
-					AIPS.Utilities.showNotice(aipsInternalLinksL10n.anchorUpdateFailed, 'error');
+					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdateFailed, 'error');
 				}
 			});
 		},
