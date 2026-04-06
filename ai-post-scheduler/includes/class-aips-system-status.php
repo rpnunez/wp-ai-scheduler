@@ -98,6 +98,7 @@ class AIPS_System_Status {
             'scheduler health'   => $this->check_scheduler_health(),
             'queue health'       => $this->check_queue_health(),
             'generation metrics' => $this->check_generation_metrics(),
+            'resilience'         => $this->check_resilience(),
             'notifications'      => $this->check_notifications(),
             'logs'               => $this->check_logs(),
         );
@@ -653,6 +654,89 @@ class AIPS_System_Status {
         return $checks;
     }
 
+    /**
+     * Check circuit breaker and rate limiter status.
+     *
+     * Exposes the current state of the resilience layer so admins can see
+     * whether the circuit is open and reset it from the System Status page.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function check_resilience() {
+        if ( ! class_exists( 'AIPS_Resilience_Service' ) ) {
+            return array(
+                'unavailable' => array(
+                    'label'  => __( 'Resilience', 'ai-post-scheduler' ),
+                    'value'  => __( 'Resilience service not available', 'ai-post-scheduler' ),
+                    'status' => 'info',
+                ),
+            );
+        }
+
+        $resilience = new AIPS_Resilience_Service();
+        $cb         = $resilience->get_circuit_breaker_status();
+        $rl         = $resilience->get_rate_limiter_status();
+
+        $checks = array();
+
+        // Circuit breaker
+        $cb_state    = isset( $cb['state'] ) ? $cb['state'] : 'unknown';
+        $cb_failures = isset( $cb['failures'] ) ? (int) $cb['failures'] : 0;
+        $cb_last     = isset( $cb['last_failure_time'] ) ? (int) $cb['last_failure_time'] : 0;
+
+        $cb_status_map = array(
+            'closed'    => 'ok',
+            'half_open' => 'warning',
+            'open'      => 'error',
+        );
+        $cb_health = isset( $cb_status_map[ $cb_state ] ) ? $cb_status_map[ $cb_state ] : 'info';
+
+        $cb_details = array(
+            sprintf( __( 'State: %s', 'ai-post-scheduler' ), strtoupper( $cb_state ) ),
+            sprintf( __( 'Failure count: %d', 'ai-post-scheduler' ), $cb_failures ),
+        );
+        if ( $cb_last > 0 ) {
+            $cb_details[] = sprintf( __( 'Last failure: %s', 'ai-post-scheduler' ), wp_date( 'Y-m-d H:i:s', $cb_last ) );
+        }
+
+        $checks['circuit_breaker'] = array(
+            'label'   => __( 'Circuit Breaker', 'ai-post-scheduler' ),
+            'value'   => sprintf( __( 'State: %s | Failures: %d', 'ai-post-scheduler' ), strtoupper( $cb_state ), $cb_failures ),
+            'status'  => $cb_health,
+            'details' => $cb_details,
+            'cb_open' => $cb_state === 'open',
+        );
+
+        // Rate limiter
+        if ( $rl['enabled'] ) {
+            $rl_remaining = (int) $rl['remaining'];
+            $rl_current   = (int) $rl['current_requests'];
+            $rl_max       = (int) $rl['max_requests'];
+
+            $rl_health = $rl_remaining > 0 ? 'ok' : 'error';
+
+            $checks['rate_limiter'] = array(
+                'label'  => __( 'Rate Limiter', 'ai-post-scheduler' ),
+                'value'  => sprintf(
+                    /* translators: 1: current 2: max 3: remaining */
+                    __( '%1$d/%2$d requests used (%3$d remaining)', 'ai-post-scheduler' ),
+                    $rl_current,
+                    $rl_max,
+                    $rl_remaining
+                ),
+                'status' => $rl_health,
+            );
+        } else {
+            $checks['rate_limiter'] = array(
+                'label'  => __( 'Rate Limiter', 'ai-post-scheduler' ),
+                'value'  => __( 'Disabled', 'ai-post-scheduler' ),
+                'status' => 'info',
+            );
+        }
+
+        return $checks;
+    }
+
     private function check_environment() {
         global $wp_version, $wpdb;
         return array(
@@ -857,15 +941,23 @@ class AIPS_System_Status {
         return $logs_data;
     }
 
+    /**
+     * Scans a log file for recent errors.
+     *
+     * @param string $file_path     The path to the file to scan.
+     * @param int    $lines         The number of lines to scan from the end.
+     * @param bool   $filter_plugin Whether to filter only plugin-related errors.
+     * @return array Array of error lines found.
+     */
     private function scan_file_for_errors($file_path, $lines = 100, $filter_plugin = false) {
-        if (!file_exists($file_path)) {
+        if (!file_exists($file_path) || !is_readable($file_path)) {
             return array();
         }
 
         $chunk_size = 1024 * 100; // Read last 100KB
         $file_size = filesize($file_path);
 
-        if ($file_size === 0) {
+        if ($file_size === false || $file_size === 0) {
             return array();
         }
 

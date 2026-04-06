@@ -748,5 +748,24 @@ class AIPS_Admin_Assets {
                 true
             );
         }
+
+        // System Status Page Scripts
+        if (strpos($hook, 'aips-status') !== false) {
+            wp_enqueue_script(
+                'aips-admin-system-status',
+                AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
+                'nonce'         => wp_create_nonce('aips_reset_circuit_breaker'),
+                'hideDetails'   => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'   => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'  => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'   => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
+            ));
+        }
     }
 }

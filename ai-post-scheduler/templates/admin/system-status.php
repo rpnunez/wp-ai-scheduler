@@ -55,6 +55,14 @@ if (!defined('ABSPATH')) {
                                                     <textarea class="aips-form-input" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if (!empty($check['cb_open'])) : ?>
+                                                <br>
+                                                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-reset-circuit-breaker" style="margin-top: 6px;">
+                                                    <span class="dashicons dashicons-controls-repeat"></span>
+                                                    <?php esc_html_e('Reset Circuit', 'ai-post-scheduler'); ?>
+                                                </button>
+                                                <span class="aips-reset-circuit-result" style="display:none; margin-left: 8px;"></span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($check['status'] === 'ok') : ?>
@@ -396,18 +404,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<script>
-// Toggle log details
-jQuery(document).ready(function($) {
-    $('.aips-toggle-log-details').on('click', function(e) {
-        e.preventDefault();
-        var target = $(this).data('target');
-        $('#' + target).slideToggle();
-        var text = $('#' + target).is(':visible')
-            ? <?php echo wp_json_encode( __( 'Hide Details', 'ai-post-scheduler' ) ); ?>
-            : <?php echo wp_json_encode( __( 'Show Details', 'ai-post-scheduler' ) ); ?>;
-        $(this).text(text);
-    });
-});
-</script>
