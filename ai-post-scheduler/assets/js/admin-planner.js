@@ -96,16 +96,7 @@
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
-                // Escape HTML for value attribute
-                var div = document.createElement('div');
-                div.textContent = topic;
-                var safeTopic = div.innerHTML.replace(/"/g, '&quot;');
-
-                html += '<div class="topic-item">';
-                html += '<input type="checkbox" class="topic-checkbox" checked>';
-                html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
-                html += '<button type="button" class="aips-remove-topic-btn" aria-label="Remove Topic" title="Remove Topic"><span class="dashicons dashicons-dismiss"></span></button>';
-                html += '</div>';
+                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
             });
 
             if (append) {
@@ -271,17 +262,7 @@
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    var emptyStateHtml = '<div class="topics-empty-state aips-empty-state" style="padding: 60px 20px;">' +
-                        '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>' +
-                        '<h3 class="aips-empty-state-title">No Topics Found</h3>' +
-                        '<p class="aips-empty-state-description">No topics match your search criteria. Try a different search term.</p>' +
-                        '<div class="aips-empty-state-actions">' +
-                            '<button type="button" class="aips-btn aips-btn-primary aips-clear-topic-search-btn">' +
-                                '<span class="dashicons dashicons-dismiss"></span> Clear Search' +
-                            '</button>' +
-                        '</div>' +
-                    '</div>';
-                    $topicsList.append(emptyStateHtml);
+                    $topicsList.append(AIPS.Templates.renderRaw('aips-tmpl-planner-search-empty', {}));
                 }
             } else {
                 if ($emptyState.length) {
