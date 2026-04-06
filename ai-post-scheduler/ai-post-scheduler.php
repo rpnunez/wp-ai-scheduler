@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.2.0
+ * Version: 2.3.0
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '2.2.0');
+define('AIPS_VERSION', '2.3.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -311,6 +311,9 @@ final class AI_Post_Scheduler {
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Generated_Posts_Controller();
+            // Initialize Review Workflow controller globally to avoid duplicate AJAX registration.
+            global $aips_review_workflow_controller;
+            $aips_review_workflow_controller = new AIPS_Review_Workflow_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
             new AIPS_Data_Management();
@@ -357,6 +360,9 @@ final class AI_Post_Scheduler {
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
+
+        // Review workflow hooks run in all contexts (cron + admin + frontend).
+        new AIPS_Review_Workflow_Service();
     }
 }
 
