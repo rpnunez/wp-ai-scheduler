@@ -344,6 +344,10 @@ class AIPS_Session_To_JSON {
 		$filepath = trailingslashit($base_dir) . $filename;
 		$fileurl = trailingslashit($base_url) . $filename;
 		
+		if (!is_writable($base_dir)) {
+			return new WP_Error('dir_not_writable', __('Export directory is not writable.', 'ai-post-scheduler'));
+		}
+
 		$bytes = file_put_contents($filepath, $json_string, LOCK_EX);
 		if ($bytes === false) {
 			return new WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
@@ -383,13 +387,13 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			if (file_put_contents($htaccess_file, $content) === false) {
+			if (is_writable($base_dir) && file_put_contents($htaccess_file, $content) === false) {
 				$this->logger->log('Failed to create .htaccess file in export directory: ' . $htaccess_file, 'warning');
 			}
 		}
 		
 		if (!file_exists($index_file)) {
-			if (file_put_contents($index_file, '<?php // Silence is golden') === false) {
+			if (is_writable($base_dir) && file_put_contents($index_file, '<?php // Silence is golden') === false) {
 				$this->logger->log('Failed to create index.php file in export directory: ' . $index_file, 'warning');
 			}
 		}
