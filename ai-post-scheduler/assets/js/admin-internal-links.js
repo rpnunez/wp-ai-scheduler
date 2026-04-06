@@ -334,15 +334,17 @@ var targetLink = item.target_edit_url
 : targetTitle;
 
 var actions = '';
+var acceptActionLabel = aipsInternalLinksL10n.acceptAction || 'Accept suggestion';
+var rejectActionLabel = aipsInternalLinksL10n.rejectAction || 'Reject suggestion';
 if (item.status === 'pending') {
 actions +=
 '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="' + item.id + '">' +
 '<span class="dashicons dashicons-yes" aria-hidden="true"></span>' +
-'<span class="screen-reader-text">' + aipsInternalLinksL10n.accepted + '</span>' +
+'<span class="screen-reader-text">' + acceptActionLabel + '</span>' +
 '</button> ' +
 '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="' + item.id + '">' +
 '<span class="dashicons dashicons-no" aria-hidden="true"></span>' +
-'<span class="screen-reader-text">' + aipsInternalLinksL10n.rejected + '</span>' +
+'<span class="screen-reader-text">' + rejectActionLabel + '</span>' +
 '</button> ';
 }
 
