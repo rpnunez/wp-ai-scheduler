@@ -109,12 +109,15 @@ class AIPS_History {
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
         $filename = sanitize_file_name($filename);
 
+        $output = fopen('php://output', 'w');
+        if ($output === false) {
+            wp_die(__('Failed to open output stream for CSV export.', 'ai-post-scheduler'));
+        }
+
         if (!headers_sent()) {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '"');
         }
-
-        $output = fopen('php://output', 'w');
 
         // Add BOM for Excel compatibility
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
