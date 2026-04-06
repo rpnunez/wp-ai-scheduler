@@ -442,7 +442,10 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
+				$btn.prop('disabled', false).html(
+					'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
+					$('<span>').text(self.originalReindexText).html()
+				);
 			});
 		},
 
