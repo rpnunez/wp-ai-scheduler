@@ -16,6 +16,31 @@ if (!defined('ABSPATH')) {
 class AIPS_Review_Workflow_Service {
 
 	/**
+	 * WP-Cron hook name for the incremental backfill.
+	 */
+	const BACKFILL_CRON_HOOK = 'aips_review_workflow_backfill_batch';
+
+	/**
+	 * Option that tracks incremental backfill progress.
+	 */
+	const BACKFILL_STATE_OPTION = 'aips_review_workflow_backfill_state';
+
+	/**
+	 * Option that marks the backfill as fully complete.
+	 */
+	const BACKFILL_DONE_OPTION = 'aips_review_workflow_backfill_done';
+
+	/**
+	 * Number of posts to process per cron batch.
+	 */
+	const BACKFILL_BATCH_SIZE = 50;
+
+	/**
+	 * Seconds to wait before scheduling the next backfill batch.
+	 */
+	const BACKFILL_SCHEDULE_DELAY = 5;
+
+	/**
 	 * @var AIPS_Review_Workflow_Repository
 	 */
 	private $repository;
@@ -28,8 +53,12 @@ class AIPS_Review_Workflow_Service {
 		add_action('aips_post_review_deleted', array($this, 'handle_post_deleted'), 10, 2);
 		add_action('transition_post_status', array($this, 'handle_transition_post_status'), 10, 3);
 
+		// Register the WP-Cron callback so it fires even during cron/frontend contexts.
+		add_action(self::BACKFILL_CRON_HOOK, array($this, 'run_backfill_batch'));
+
+		// On admin_init, only schedule the cron event if the backfill hasn't run yet.
 		if (is_admin()) {
-			add_action('admin_init', array($this, 'maybe_backfill'), 20);
+			add_action('admin_init', array($this, 'maybe_schedule_backfill'), 20);
 		}
 	}
 
@@ -121,57 +150,94 @@ class AIPS_Review_Workflow_Service {
 	}
 
 	/**
-	 * Backfill existing draft posts in the legacy review queue into workflow items.
+	 * Schedule the WP-Cron backfill event if the backfill has not yet completed.
+	 *
+	 * Called on admin_init – performs only an option-check and a single
+	 * wp_schedule_single_event() call so it never blocks the admin request.
 	 *
 	 * @return void
 	 */
-	public function maybe_backfill() {
+	public function maybe_schedule_backfill() {
 		if (!current_user_can('manage_options')) {
 			return;
 		}
 
-		if ((bool) get_option('aips_review_workflow_backfill_done', false)) {
+		if ((bool) get_option(self::BACKFILL_DONE_OPTION, false)) {
 			return;
 		}
 
-		$repo = new AIPS_Post_Review_Repository();
+		// Only schedule if not already queued.
+		if (!wp_next_scheduled(self::BACKFILL_CRON_HOOK)) {
+			wp_schedule_single_event(time() + self::BACKFILL_SCHEDULE_DELAY, self::BACKFILL_CRON_HOOK);
+		}
+	}
 
-		$page     = 1;
-		$per_page = 200;
-		$seen     = 0;
+	/**
+	 * Process a single batch of the backfill via WP-Cron.
+	 *
+	 * Reads the current page from the persisted state option, processes
+	 * up to BACKFILL_BATCH_SIZE items, then either reschedules the next
+	 * batch or marks the backfill as complete.
+	 *
+	 * @return void
+	 */
+	public function run_backfill_batch() {
+		if ((bool) get_option(self::BACKFILL_DONE_OPTION, false)) {
+			return;
+		}
 
-		do {
-			$result = $repo->get_draft_posts(array(
-				'page'     => $page,
-				'per_page' => $per_page,
-			));
+		$state = get_option(self::BACKFILL_STATE_OPTION, array());
+		$state = is_array($state) ? $state : array();
 
-			$items = !empty($result['items']) && is_array($result['items']) ? $result['items'] : array();
+		$page = !empty($state['page']) ? max(1, absint($state['page'])) : 1;
+		$seen = !empty($state['seen']) ? absint($state['seen']) : 0;
 
-			foreach ($items as $row) {
-				$post_id = !empty($row->post_id) ? absint($row->post_id) : 0;
-				$history_id = !empty($row->id) ? absint($row->id) : 0;
-				if (!$post_id) {
-					continue;
-				}
+		$repo   = new AIPS_Post_Review_Repository();
+		$result = $repo->get_draft_posts(array(
+			'page'     => $page,
+			'per_page' => self::BACKFILL_BATCH_SIZE,
+		));
 
-				$this->repository->get_or_create_item_for_post($post_id, $history_id, array(
-					'template_id' => !empty($row->template_id) ? absint($row->template_id) : 0,
-					'author_id'   => !empty($row->author_id) ? absint($row->author_id) : 0,
-					'topic_id'    => !empty($row->topic_id) ? absint($row->topic_id) : 0,
-				));
-				$seen++;
+		$items = !empty($result['items']) && is_array($result['items']) ? $result['items'] : array();
+
+		foreach ($items as $row) {
+			$post_id    = !empty($row->post_id) ? absint($row->post_id) : 0;
+			$history_id = !empty($row->id) ? absint($row->id) : 0;
+			if (!$post_id) {
+				continue;
 			}
 
-			$page++;
-		} while (!empty($items) && count($items) === $per_page);
+			$this->repository->get_or_create_item_for_post($post_id, $history_id, array(
+				'template_id' => !empty($row->template_id) ? absint($row->template_id) : 0,
+				'author_id'   => !empty($row->author_id) ? absint($row->author_id) : 0,
+				'topic_id'    => !empty($row->topic_id) ? absint($row->topic_id) : 0,
+			));
+			$seen++;
+		}
 
-		update_option('aips_review_workflow_backfill_done', 1, false);
+		if (count($items) === self::BACKFILL_BATCH_SIZE) {
+			// More pages may remain – persist progress and schedule the next batch.
+			update_option(
+				self::BACKFILL_STATE_OPTION,
+				array(
+					'page' => $page + 1,
+					'seen' => $seen,
+				),
+				false
+			);
+
+			wp_schedule_single_event(time() + self::BACKFILL_SCHEDULE_DELAY, self::BACKFILL_CRON_HOOK);
+			return;
+		}
+
+		// All batches processed – clean up state and mark done.
+		delete_option(self::BACKFILL_STATE_OPTION);
+		update_option(self::BACKFILL_DONE_OPTION, 1, false);
 
 		/**
 		 * Fires after the workflow backfill completes.
 		 *
-		 * @param int $count Number of posts backfilled.
+		 * @param int $count Total number of posts backfilled.
 		 */
 		do_action('aips_review_workflow_backfilled', $seen);
 	}
