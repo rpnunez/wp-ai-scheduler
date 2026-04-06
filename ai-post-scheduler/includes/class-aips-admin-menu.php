@@ -140,6 +140,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Review Workflow', 'ai-post-scheduler'),
+            __('Review Workflow', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-review-workflow',
+            array($this, 'render_review_workflow_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -338,6 +347,17 @@ class AIPS_Admin_Menu {
      */
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Review Workflow page.
+     *
+     * @return void
+     */
+    public function render_review_workflow_page() {
+        global $aips_review_workflow_controller;
+        $controller = isset($aips_review_workflow_controller) ? $aips_review_workflow_controller : new AIPS_Review_Workflow_Controller();
         $controller->render_page();
     }
 

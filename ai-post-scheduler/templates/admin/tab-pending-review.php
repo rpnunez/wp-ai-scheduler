@@ -45,6 +45,10 @@ if (!defined('ABSPATH')) {
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
+							<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('review_workflow')); ?>" class="aips-btn aips-btn-sm aips-btn-primary" style="margin-right: 8px;">
+								<span class="dashicons dashicons-yes"></span>
+								<?php esc_html_e('Open Review Workflow', 'ai-post-scheduler'); ?>
+							</a>
 							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
