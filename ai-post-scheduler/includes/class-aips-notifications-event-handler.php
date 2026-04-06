@@ -133,6 +133,24 @@ class AIPS_Notifications_Event_Handler {
 				'priority'      => 10,
 				'accepted_args' => 1,
 			),
+			array(
+				'hook'          => 'aips_circuit_breaker_opened',
+				'method'        => 'handle_circuit_breaker_opened_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_rate_limit_reached',
+				'method'        => 'handle_rate_limit_reached_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+      ),
+      array(
+				'hook'          => 'aips_scheduled_research_completed',
+				'method'        => 'handle_research_topics_notification',
+				'priority'      => 10,
+				'accepted_args' => 3,
+			),
 		);
 
 		/**
@@ -504,6 +522,57 @@ class AIPS_Notifications_Event_Handler {
 		}
 
 		$this->notifications->author_suggestions($payload);
+	}
+
+	/**
+	 * Hook handler for circuit-breaker-opened notifications.
+	 *
+	 * @param array $payload Event payload.
+	 * @return void
+	 */
+	public function handle_circuit_breaker_opened_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->notifications->circuit_breaker_opened($payload);
+	}
+
+	/**
+	 * Hook handler for rate-limit-reached notifications.
+	 *
+	 * @param array $payload Event payload.
+	 * @return void
+	 */
+	public function handle_rate_limit_reached_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->notifications->rate_limit_reached($payload);
+  }
+  
+  /*
+	 * Hook handler for scheduled research completion notifications.
+	 *
+	 * Fires when the cron-driven research run saves new trending topics.
+	 *
+	 * @param string $niche       Niche that was researched.
+	 * @param int    $saved_count Number of topics saved.
+	 * @param array  $topics      Raw topic data returned by the research service.
+	 * @return void
+	 */
+	public function handle_research_topics_notification($niche, $saved_count, $topics) {
+		$saved_count = absint($saved_count);
+		if ($saved_count < 1) {
+			return;
+		}
+
+		$this->notifications->research_topics_ready(array(
+			'niche' => sanitize_text_field((string) $niche),
+			'count' => $saved_count,
+			'topics' => is_array($topics) ? $topics : array(),
+		));
 	}
 
 	/**

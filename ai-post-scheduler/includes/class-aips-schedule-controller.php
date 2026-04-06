@@ -7,8 +7,20 @@ class AIPS_Schedule_Controller {
 
     private $scheduler;
 
-    public function __construct($scheduler = null) {
-        $this->scheduler = $scheduler ?: new AIPS_Scheduler();
+    /**
+     * @var AIPS_Schedule_Repository
+     */
+    private $schedule_repository;
+
+    /**
+     * @var AIPS_History_Repository
+     */
+    private $history_repository;
+
+    public function __construct($scheduler = null, $schedule_repository = null, $history_repository = null) {
+        $this->scheduler           = $scheduler ?: new AIPS_Scheduler();
+        $this->schedule_repository = $schedule_repository ?: new AIPS_Schedule_Repository();
+        $this->history_repository  = $history_repository ?: new AIPS_History_Repository();
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -238,8 +250,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
         }
 
-        $repository = new AIPS_Schedule_Repository();
-        $deleted = $repository->delete_bulk($ids);
+        $deleted = $this->schedule_repository->delete_bulk($ids);
 
         if ($deleted !== false) {
             wp_send_json_success(array(
@@ -269,8 +280,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
         }
 
-        $repository = new AIPS_Schedule_Repository();
-        $updated = $repository->set_active_bulk($ids, $is_active);
+        $updated = $this->schedule_repository->set_active_bulk($ids, $is_active);
 
         if ($updated !== false) {
             $count = (int) $updated ?: count($ids);
@@ -374,8 +384,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_success(array('count' => 0));
         }
 
-        $repository = new AIPS_Schedule_Repository();
-        $count = $repository->get_post_count_for_schedules($ids);
+        $count = $this->schedule_repository->get_post_count_for_schedules($ids);
 
         wp_send_json_success(array('count' => $count));
     }
@@ -398,8 +407,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        $schedule_repository = new AIPS_Schedule_Repository();
-        $schedule = $schedule_repository->get_by_id($schedule_id);
+        $schedule = $this->schedule_repository->get_by_id($schedule_id);
 
         if (!$schedule) {
             wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
@@ -409,8 +417,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_success(array('entries' => array()));
         }
 
-        $history_repository = new AIPS_History_Repository();
-        $logs = $history_repository->get_logs_by_history_id(
+        $logs = $this->history_repository->get_logs_by_history_id(
             absint($schedule->schedule_history_id),
             array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
         );
@@ -689,15 +696,16 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $id    = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type  = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 0;
 
         if (!$id || empty($type)) {
             wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $entries = $service->get_history($id, $type);
+        $entries = $service->get_history($id, $type, $limit);
 
         wp_send_json_success(array('entries' => $entries));
     }

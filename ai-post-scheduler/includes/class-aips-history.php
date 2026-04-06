@@ -109,12 +109,15 @@ class AIPS_History {
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
         $filename = sanitize_file_name($filename);
 
+        $output = fopen('php://output', 'w');
+        if ($output === false) {
+            wp_die(__('Failed to open output stream for CSV export.', 'ai-post-scheduler'));
+        }
+
         if (!headers_sent()) {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '"');
         }
-
-        $output = fopen('php://output', 'w');
 
         // Add BOM for Excel compatibility
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
@@ -363,29 +366,6 @@ class AIPS_History {
      */
     public function get_history($args = array()) {
         return $this->repository->get_history($args);
-    }
-
-    /**
-     * Generate pagination HTML for history table.
-     *
-     * @param array  $history       History data array.
-     * @param string $base_url      Base URL for pagination links.
-     * @param string $status_filter Current status filter.
-     * @return string HTML for pagination.
-     */
-    public function generate_pagination_html($history, $base_url, $status_filter = '') {
-        if ($history['pages'] <= 1) {
-            return '';
-        }
-
-        $url = $base_url;
-        if ($status_filter) {
-            $url = add_query_arg('status', $status_filter, $url);
-        }
-
-        ob_start();
-        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
-        return ob_get_clean();
     }
 
     /**

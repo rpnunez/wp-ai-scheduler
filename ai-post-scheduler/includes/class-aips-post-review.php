@@ -29,13 +29,19 @@ class AIPS_Post_Review {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
+
+	/**
+	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
+	 */
+	private $bulk_generator_service;
 	
 	/**
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Post_Review_Repository();
-		$this->history_service = new AIPS_History_Service();
+		$this->repository             = new AIPS_Post_Review_Repository();
+		$this->history_service        = new AIPS_History_Service();
+		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
@@ -44,6 +50,7 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_draft_post', array($this, 'ajax_delete_draft_post'));
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
+		add_action('wp_ajax_aips_bulk_regenerate_posts', array($this, 'ajax_bulk_regenerate_posts'));
 		add_action('wp_ajax_aips_get_draft_post_preview', array($this, 'ajax_get_draft_post_preview'));
 	}
 	
@@ -456,6 +463,216 @@ class AIPS_Post_Review {
 		));
 	}
 	
+	/**
+	 * AJAX handler to regenerate multiple posts.
+	 *
+	 * Delegates the batch harness (soft limit, history, loop) to
+	 * AIPS_Bulk_Generator_Service.  Per-item validation guards are moved into
+	 * the $generate_fn closure so they return WP_Error (counted as failures)
+	 * rather than using continue statements.
+	 *
+	 * The `aips_post_review_bulk_regenerate_max_batch` filter controls how many
+	 * items are processed in one request (soft truncation).
+	 */
+	public function ajax_bulk_regenerate_posts() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? wp_unslash($_POST['items']) : array();
+
+		if (empty($items)) {
+			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
+		}
+
+		$total_requested = count($items);
+		$history_service = $this->history_service;
+		$generator       = new AIPS_Generator();
+		$template_repo   = new AIPS_Template_Repository();
+
+		$result = $this->bulk_generator_service->run(
+			$items,
+			function ( $item ) use ( $history_service, $generator, $template_repo ) {
+				if (!is_array($item)) {
+					return new WP_Error(
+						'invalid_item',
+						__('Invalid item format.', 'ai-post-scheduler')
+					);
+				}
+
+				$post_id    = isset($item['post_id'])    ? absint($item['post_id'])    : 0;
+				$history_id = isset($item['history_id']) ? absint($item['history_id']) : 0;
+
+				if (!$history_id) {
+					return new WP_Error(
+						'missing_history_id',
+						__('Missing history ID.', 'ai-post-scheduler')
+					);
+				}
+
+				$history_item = $history_service->get_by_id($history_id);
+
+				if (!$history_item || !$history_item->template_id) {
+					return new WP_Error(
+						'no_history',
+						sprintf(
+							/* translators: %d: history record ID */
+							__('History item not found or no template associated (history ID: %d)', 'ai-post-scheduler'),
+							$history_id
+						)
+					);
+				}
+
+				$history_post_id = isset($history_item->post_id) ? absint($history_item->post_id) : 0;
+				if (!$history_post_id) {
+					return new WP_Error(
+						'no_post_id',
+						sprintf(
+							/* translators: %d: history record ID */
+							__('History record %d has no associated post ID', 'ai-post-scheduler'),
+							$history_id
+						)
+					);
+				}
+
+				// Validate any client-supplied post_id against the trusted history value.
+				if ($post_id && $post_id !== $history_post_id) {
+					return new WP_Error(
+						'post_mismatch',
+						sprintf(
+							/* translators: 1: client post ID, 2: history post ID */
+							__('Post ID mismatch: client %1$d does not match history %2$d', 'ai-post-scheduler'),
+							$post_id,
+							$history_post_id
+						)
+					);
+				}
+
+				// Use the trusted ID from the history record from here on.
+				$post_id = $history_post_id;
+
+				$post = get_post($post_id);
+				if (!$post || $post->post_status !== 'draft') {
+					return new WP_Error(
+						'not_draft',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Post ID %d not found or not a draft', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
+
+				if (!$history_service->post_has_history_and_completed($post_id)) {
+					return new WP_Error(
+						'not_in_queue',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Post ID %d is not in the review queue', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
+
+				$template = $template_repo->get_by_id($history_item->template_id);
+				if (!$template) {
+					return new WP_Error(
+						'no_template',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Template not found for post ID %d', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
+
+				if (!current_user_can('delete_post', $post_id)) {
+					return new WP_Error(
+						'no_permission',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Insufficient permissions to regenerate post ID %d', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
+
+				if (!wp_delete_post($post_id, true)) {
+					return new WP_Error(
+						'delete_failed',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Failed to delete old post ID %d for regeneration', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
+
+				$history_service->update_history_record($history_id, array(
+					'status'        => 'pending',
+					'post_id'       => null,
+					'error_message' => null,
+				));
+
+				$regen_result = $generator->generate_post($template);
+
+				if (is_wp_error($regen_result)) {
+					return $regen_result;
+				}
+
+				/**
+				 * Fires after a post is regenerated from the review queue.
+				 *
+				 * @param int $history_id History ID of the regenerated post.
+				 */
+				do_action('aips_post_review_regenerated', $history_id);
+
+				return $regen_result;
+			},
+			array(
+				'limit_filter' => 'aips_post_review_bulk_regenerate_max_batch',
+				'limit_mode'   => 'soft',
+				'history_type' => 'bulk_regenerate',
+				'history_meta' => array(
+					'entity_type'  => 'draft_posts',
+					'entity_count' => $total_requested,
+				),
+				'trigger_name' => 'ajax_bulk_regenerate_posts',
+				'user_action'  => 'bulk_regenerate_posts',
+				'user_message' => sprintf(
+					/* translators: %d: number of draft posts */
+					__('User initiated bulk regenerate for %d draft posts', 'ai-post-scheduler'),
+					$total_requested
+				),
+			)
+		);
+
+		if ($result->failed_count > 0) {
+			wp_send_json_error(array(
+				'message'       => sprintf(
+					/* translators: 1: number of successful regenerations, 2: number of failures */
+					__('%1$d posts regeneration started successfully, %2$d failed.', 'ai-post-scheduler'),
+					$result->success_count,
+					$result->failed_count
+				),
+				'success_count' => $result->success_count,
+				'failed_count'  => $result->failed_count,
+			));
+		} else {
+			wp_send_json_success(array(
+				'message'       => sprintf(
+					/* translators: %d: number of posts */
+					__('%d posts regeneration started successfully.', 'ai-post-scheduler'),
+					$result->success_count
+				),
+				'success_count' => $result->success_count,
+				'failed_count'  => $result->failed_count,
+			));
+		}
+	}
+
 	/**
 	 * AJAX handler to delete a draft post.
 	 */

@@ -183,7 +183,7 @@ class AIPS_Generated_Posts_Controller {
 		// Make controller available to template for formatting
 		$controller = $this;
 		
-		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
+		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
 	}
 
 	/**

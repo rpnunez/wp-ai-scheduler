@@ -77,3 +77,12 @@
 **Vulnerability:** Unescaped usage of `get_permalink()` and `get_edit_post_link()` in `ai-post-scheduler/includes/class-aips-onboarding-wizard.php` (JSON API response) and `ai-post-scheduler/includes/class-aips-notifications.php`.
 **Learning:** Returning unescaped URLs within JSON payloads or notification data structures, even if they originate from core WordPress functions, can be a potential risk if they contain malicious characters or javascript: URIs that an unsuspecting frontend might evaluate. Also, using the 'display' context (default) for `get_edit_post_link` can cause double-encoded ampersands.
 **Prevention:** Use `esc_url_raw()` to escape URLs being returned as data within API, AJAX responses, or internal data structures. Use the 'raw' context for `get_edit_post_link()` when the output is not immediately rendered as HTML.
+
+## 2026-04-04 - [Prevent Fatal TypeError in array sanitization]
+**Vulnerability:** array_map() with sanitize_text_field() on nested arrays from user input causes fatal TypeErrors.
+**Learning:** PHP 8+ strict types require scalar validation before passing to string functions.
+**Prevention:** Use AIPS_Utilities::sanitize_string_array() which explicitly verifies is_scalar().
+## 2026-04-06 - Secure Onboarding Wizard AJAX
+**Vulnerability:** Missing proper explicit nonce handling in Onboarding Wizard AJAX endpoints (relied on implicit wp_die instead of explicitly handling false parameter).
+**Learning:** Relying on default check_ajax_referer behavior causes a wp_die() without proper JSON response, leading to poor UX and non-standard generic error handling.
+**Prevention:** Always verify nonce explicitly using false parameter and return generic errors via wp_send_json_error instead of relying on default wp_die() behavior.

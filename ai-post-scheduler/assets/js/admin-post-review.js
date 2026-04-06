@@ -31,7 +31,7 @@
             AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
                 { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
+                    AIPS.Utilities.setButtonLoading(button, aipsPostReviewL10n.loading || 'Publishing...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -60,12 +60,12 @@
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
+                        AIPS.Utilities.resetButton(button);
                     }
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
-                    button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
+                    AIPS.Utilities.resetButton(button);
                 }
             });
                 }}
@@ -83,7 +83,7 @@
             AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
                 { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.deleting || 'Deleting...');
+                    AIPS.Utilities.setButtonLoading(button, aipsPostReviewL10n.deleting || 'Deleting...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -105,12 +105,12 @@
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
+                        AIPS.Utilities.resetButton(button);
                     }
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
-                    button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
+                    AIPS.Utilities.resetButton(button);
                 }
             });
                 }}
@@ -127,7 +127,7 @@
             AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
                 { label: 'No, cancel',     className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.regenerating || 'Regenerating...');
+                    AIPS.Utilities.setButtonLoading(button, aipsPostReviewL10n.regenerating || 'Regenerating...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -151,12 +151,12 @@
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
+                        AIPS.Utilities.resetButton(button);
                     }
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
-                    button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
+                    AIPS.Utilities.resetButton(button);
                 }
             });
                 }}
@@ -182,6 +182,8 @@
                 bulkPublish(checkedBoxes);
             } else if (action === 'delete') {
                 bulkDelete(checkedBoxes);
+            } else if (action === 'regenerate') {
+                bulkRegenerate(checkedBoxes);
             }
         });
 
@@ -292,6 +294,94 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
+                }
+            });
+                }}
+            ]);
+        }
+
+        // Bulk regenerate
+        /**
+         * Bulk-regenerate the selected draft posts via `aips_bulk_regenerate_posts`.
+         *
+         * Shows a confirmation dialog with the post count. On confirmation,
+         * builds an array of `{post_id, history_id}` objects and sends them to
+         * the server. Fades out each regenerated row and refreshes the draft count and
+         * empty-state check on success.
+         *
+         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         */
+        function bulkRegenerate(checkedBoxes) {
+            var count = checkedBoxes.length;
+            var confirmMsg = aipsPostReviewL10n.confirmBulkRegenerate.replace('%d', count);
+
+            AIPS.Utilities.confirm(confirmMsg, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+            var items = [];
+            checkedBoxes.each(function() {
+                items.push({
+                    post_id: $(this).data('post-id'),
+                    history_id: $(this).data('history-id')
+                });
+            });
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_regenerate_posts',
+                    items: items,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response && response.success) {
+                        var successCount = (response.data && typeof response.data.success_count !== 'undefined') ? response.data.success_count : count;
+                        var msg = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', successCount);
+                        AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
+
+                        // Determine which items actually succeeded so we only remove those rows.
+                        var successIds = [];
+                        if (response.data) {
+                            if ($.isArray(response.data.success_ids)) {
+                                successIds = response.data.success_ids;
+                            } else if ($.isArray(response.data.items)) {
+                                $.each(response.data.items, function(index, item) {
+                                    if (item && item.status === 'success' && typeof item.post_id !== 'undefined') {
+                                        successIds.push(item.post_id);
+                                    }
+                                });
+                            }
+                        }
+
+                        var $rowsToRemove = checkedBoxes;
+                        if (successIds.length) {
+                            $rowsToRemove = checkedBoxes.filter(function() {
+                                var postId = $(this).data('post-id');
+                                return $.inArray(postId, successIds) !== -1;
+                            });
+                        }
+
+                        $rowsToRemove.each(function() {
+                            $(this).closest('tr').fadeOut(400, function() {
+                                $(this).remove();
+                                updateDraftCount();
+                                checkEmptyState();
+                            });
+                        });
+
+                        // Surface partial failures when reported by the server.
+                        if (response.data && response.data.failed_count) {
+                            var failMsg = aipsPostReviewL10n.bulkRegeneratePartialFailure || aipsPostReviewL10n.regenerateError;
+                            failMsg = failMsg.replace('%d', response.data.failed_count);
+                            AIPS.Utilities.showToast(failMsg, 'warning');
+                        }
+                    } else {
+                        AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
                 }
             });
                 }}

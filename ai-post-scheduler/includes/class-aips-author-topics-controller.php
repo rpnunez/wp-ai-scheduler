@@ -50,15 +50,37 @@ class AIPS_Author_Topics_Controller {
 	private $history_service;
 
 	/**
-	 * Initialize the controller.
+	 * @var AIPS_Topic_Expansion_Service Service for topic expansion/similarity
 	 */
-	public function __construct() {
-		$this->repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->post_generator = new AIPS_Author_Post_Generator();
-		$this->penalty_service = new AIPS_Topic_Penalty_Service();
-		$this->history_service = new AIPS_History_Service();
+	private $expansion_service;
+
+	/**
+	 * @var AIPS_History_Repository Repository for history data
+	 */
+	private $history_repository;
+
+	/**
+	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
+	 */
+	private $bulk_generator_service;
+
+	/**
+	 * Initialize the controller.
+	 *
+	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
+	 * @param AIPS_History_Repository|null       $history_repository     History repository.
+	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
+	 */
+	public function __construct($expansion_service = null, $history_repository = null, $bulk_generator_service = null) {
+		$this->repository             = new AIPS_Author_Topics_Repository();
+		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
+		$this->feedback_repository    = new AIPS_Feedback_Repository();
+		$this->post_generator         = new AIPS_Author_Post_Generator();
+		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
+		$this->history_service        = new AIPS_History_Service();
+		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->history_repository     = $history_repository ?: new AIPS_History_Repository();
+		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -650,8 +672,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		$similar_topics = $this->expansion_service->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -684,14 +705,16 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
+		$suggestions = $this->expansion_service->suggest_related_topics($author_id, $limit);
 
 		wp_send_json_success(array('suggestions' => $suggestions));
 	}
 
 	/**
 	 * AJAX handler for computing topic embeddings.
+	 *
+	 * Schedules background jobs instead of computing embeddings inline.
+	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -701,23 +724,68 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		if ($author_id > 0) {
-			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		// Sanitize batch size
+		$batch_size = max(1, min(100, $batch_size));
+
+		$queued_count = 0;
+
+		if ($author_id === 0) {
+			// Schedule one job per author
+			$authors_repo = new AIPS_Authors_Repository();
+			$authors = $authors_repo->get_all();
+
+			foreach ($authors as $author) {
+				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0);
+				$queued_count++;
+			}
+
+			$message = sprintf(
+				__('Queued embeddings processing for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
+				$queued_count
+			);
 		} else {
-			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+			// Schedule one job for the given author
+			$this->schedule_embeddings_job($author_id, $batch_size, 0);
+			$queued_count = 1;
+
+			$message = sprintf(
+				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
+				$author_id
+			);
 		}
 
 		wp_send_json_success(array(
-			'message' => sprintf(
-				__('Computed embeddings: %d successful, %d failed, %d skipped (already existed).', 'ai-post-scheduler'),
-				$stats['success'],
-				$stats['failed'],
-				$stats['skipped']
-			),
-			'stats' => $stats
+			'message' => $message,
+			'queued_count' => $queued_count
 		));
+	}
+
+	/**
+	 * Schedule a background embeddings processing job.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Batch size for processing.
+	 * @param int $last_processed_id Last processed topic ID.
+	 * @return void
+	 */
+	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+
+		// Schedule to run in a few seconds
+		$timestamp = time() + 5;
+
+		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action($timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
+		} else {
+			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
+		}
 	}
 
 	/**
@@ -737,6 +805,9 @@ class AIPS_Author_Topics_Controller {
 
 	/**
 	 * AJAX handler for bulk generating posts from queue topics.
+	 *
+	 * Delegates to AIPS_Bulk_Generator_Service via _do_bulk_generate_topics().
+	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
 	 */
 	public function ajax_bulk_generate_from_queue() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -751,65 +822,31 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
 		}
 
-		// Create history container for bulk operation
-		$history = $this->history_service->create('bulk_generation', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_bulk_generate_from_queue',
-			'topic_count' => count($topic_ids)
-		));
-
-		$history->record_user_action(
-			'bulk_generation',
-			sprintf(__('User initiated bulk generation for %d topics', 'ai-post-scheduler'), count($topic_ids)),
-			array('topic_ids' => $topic_ids, 'topic_count' => count($topic_ids))
+		$this->_do_bulk_generate_topics(
+			$topic_ids,
+			array(
+				'history_type' => 'bulk_generation',
+				'history_meta' => array( 'topic_count' => count( $topic_ids ) ),
+				'trigger_name' => 'ajax_bulk_generate_from_queue',
+				'user_action'  => 'bulk_generation',
+				'user_message' => sprintf(
+					/* translators: %d: number of topics */
+					__( 'User initiated bulk generation for %d topics', 'ai-post-scheduler' ),
+					count( $topic_ids )
+				),
+				'error_formatter' => function ( $topic_id, $msg ) {
+					/* translators: 1: topic ID, 2: error message */
+					return sprintf( __( 'Topic ID %1$d: %2$s', 'ai-post-scheduler' ), $topic_id, $msg );
+				},
+			)
 		);
-
-		$success_count = 0;
-		$failed_count = 0;
-		$errors = array();
-
-		foreach ($topic_ids as $topic_id) {
-			$result = $this->post_generator->generate_now($topic_id);
-
-			if (is_wp_error($result)) {
-				$failed_count++;
-				$errors[] = sprintf(__('Topic ID %d: %s', 'ai-post-scheduler'), $topic_id, $result->get_error_message());
-				$history->record_error(
-					sprintf(__('Bulk generation failed for topic ID %d', 'ai-post-scheduler'), $topic_id),
-					array('topic_id' => $topic_id, 'error_code' => 'BULK_GEN_FAILED'),
-					$result
-				);
-			} else {
-				$success_count++;
-				$history->record('activity', sprintf(__('Post generated for topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array(
-					'topic_id' => $topic_id,
-					'post_id' => $result
-				));
-			}
-		}
-
-		$message = sprintf(__('%d post(s) generated successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-			$history->complete_failure(
-				sprintf(__('Bulk generation completed with %d failures', 'ai-post-scheduler'), $failed_count),
-				array('success_count' => $success_count, 'failed_count' => $failed_count, 'errors' => $errors)
-			);
-		} else {
-			$history->complete_success(array('success_count' => $success_count, 'failed_count' => 0));
-		}
-
-		wp_send_json_success(array(
-			'message' => $message,
-			'success_count' => $success_count,
-			'failed_count' => $failed_count,
-			'errors' => $errors
-		));
 	}
 
 	/**
 	 * AJAX handler for bulk generating posts from topics.
+	 *
+	 * Delegates to AIPS_Bulk_Generator_Service via _do_bulk_generate_topics().
+	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
 	 */
 	public function ajax_bulk_generate_topics() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -824,61 +861,77 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
 		}
 
-		// Create history container for bulk generation
-		$history = $this->history_service->create('bulk_generate', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_bulk_generate_topics',
-			'entity_type' => 'topics',
-			'entity_count' => count($topic_ids)
-		));
+		$this->_do_bulk_generate_topics(
+			$topic_ids,
+			array(
+				'history_type' => 'bulk_generate',
+				'history_meta' => array( 'entity_type' => 'topics', 'entity_count' => count( $topic_ids ) ),
+				'trigger_name' => 'ajax_bulk_generate_topics',
+				'user_action'  => 'bulk_generate_topics',
+				'user_message' => sprintf(
+					/* translators: %d: number of topics */
+					__( 'User initiated bulk generation for %d topics', 'ai-post-scheduler' ),
+					count( $topic_ids )
+				),
+				'error_formatter' => function ( $topic_id, $msg ) {
+					/* translators: 1: topic ID, 2: error message */
+					return sprintf( __( 'Topic ID %1$d: %2$s', 'ai-post-scheduler' ), $topic_id, $msg );
+				},
+			)
+		);
+	}
 
-		$history->record_user_action(
-			'bulk_generate_topics',
-			sprintf(__('User initiated bulk generation for %d topics', 'ai-post-scheduler'), count($topic_ids)),
-			array('topic_ids' => $topic_ids, 'topic_count' => count($topic_ids))
+	/**
+	 * Shared bulk generation driver used by ajax_bulk_generate_topics() and
+	 * ajax_bulk_generate_from_queue().
+	 *
+	 * Delegates the batch harness (limit enforcement, loop, history) to
+	 * AIPS_Bulk_Generator_Service and emits the JSON response.
+	 *
+	 * @param int[]  $topic_ids Sanitized topic IDs to process.
+	 * @param array  $options   Options forwarded to AIPS_Bulk_Generator_Service::run().
+	 */
+	private function _do_bulk_generate_topics( array $topic_ids, array $options ): void {
+		$post_generator = $this->post_generator;
+
+		$result = $this->bulk_generator_service->run(
+			$topic_ids,
+			function ( $topic_id ) use ( $post_generator ) {
+				return $post_generator->generate_now( $topic_id );
+			},
+			$options
 		);
 
-		$success_count = 0;
-		$failed_count = 0;
-		$errors = array();
-
-		foreach ($topic_ids as $topic_id) {
-			$result = $this->post_generator->generate_now($topic_id);
-
-			if (is_wp_error($result)) {
-				$failed_count++;
-				$errors[] = sprintf(__('Topic ID %d: %s', 'ai-post-scheduler'), $topic_id, $result->get_error_message());
-				$history->record_error(
-					sprintf(__('Failed to generate post for topic ID %d', 'ai-post-scheduler'), $topic_id),
-					array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED'),
-					$result
-				);
-			} else {
-				$success_count++;
-				$history->record('activity', sprintf(__('Post generated for topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array(
-					'topic_id' => $topic_id,
-					'post_id' => $result
-				));
-			}
+		if ( $result->was_limited ) {
+			wp_send_json_error(array(
+				'message' => sprintf(
+					/* translators: 1: selected count, 2: max allowed */
+					__( 'Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler' ),
+					$result->failed_count,
+					$result->max_bulk
+				),
+			));
+			return;
 		}
 
-		$message = sprintf(__('%d post(s) generated successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-			$history->complete_failure(
-				sprintf(__('Bulk generation completed with %d failures', 'ai-post-scheduler'), $failed_count),
-				array('success_count' => $success_count, 'failed_count' => $failed_count, 'errors' => $errors)
+		$message = sprintf(
+			/* translators: %d: number of posts */
+			__( '%d post(s) generated successfully.', 'ai-post-scheduler' ),
+			$result->success_count
+		);
+		if ( $result->failed_count > 0 ) {
+			$message .= ' ' . sprintf(
+				/* translators: %d: number of failures */
+				__( '%d failed.', 'ai-post-scheduler' ),
+				$result->failed_count
 			);
-		} else {
-			$history->complete_success(array('success_count' => $success_count, 'failed_count' => 0));
 		}
 
 		wp_send_json_success(array(
-			'message' => $message,
-			'success_count' => $success_count,
-			'failed_count' => $failed_count,
-			'errors' => $errors
+			'message'       => $message,
+			'success_count' => $result->success_count,
+			'failed_count'  => $result->failed_count,
+			'errors'        => $result->errors,
 		));
 	}
 
@@ -962,8 +1015,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Use the history repository to get the estimate based on historical performance
-		$history_repository = new AIPS_History_Repository();
-		$estimate           = $history_repository->get_estimated_generation_time(20);
+		$estimate           = $this->history_repository->get_estimated_generation_time(20);
 
 		$per_post_seconds   = $estimate['per_post_seconds'];
 		$sample_size        = $estimate['sample_size'];

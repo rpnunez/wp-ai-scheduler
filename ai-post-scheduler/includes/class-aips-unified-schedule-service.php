@@ -72,18 +72,41 @@ class AIPS_Unified_Schedule_Service {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules());
 		}
 
-		// Sort by next_run ascending, nulls last.
-		usort($schedules, function ($a, $b) {
-			if (empty($a['next_run']) && empty($b['next_run'])) {
-				return 0;
+		// Sort by run proximity for better operator UX:
+		// 1) active upcoming schedules (soonest first)
+		// 2) active past-due schedules (least overdue first)
+		// 3) inactive/unscheduled rows (last)
+		$now_ts = current_time('timestamp');
+		usort($schedules, function ($a, $b) use ($now_ts) {
+			$a_active = !empty($a['is_active']);
+			$b_active = !empty($b['is_active']);
+
+			$a_ts = !empty($a['next_run']) ? strtotime($a['next_run']) : false;
+			$b_ts = !empty($b['next_run']) ? strtotime($b['next_run']) : false;
+
+			$a_group = 2;
+			if ($a_active && $a_ts !== false) {
+				$a_group = ($a_ts >= $now_ts) ? 0 : 1;
 			}
-			if (empty($a['next_run'])) {
-				return 1;
+
+			$b_group = 2;
+			if ($b_active && $b_ts !== false) {
+				$b_group = ($b_ts >= $now_ts) ? 0 : 1;
 			}
-			if (empty($b['next_run'])) {
-				return -1;
+
+			if ($a_group !== $b_group) {
+				return $a_group - $b_group;
 			}
-			return strcmp($a['next_run'], $b['next_run']);
+
+			if (($a_group === 0 || $a_group === 1) && $a_ts !== false && $b_ts !== false) {
+				return $a_ts - $b_ts;
+			}
+
+			if (!empty($a['title']) && !empty($b['title'])) {
+				return strcasecmp((string) $a['title'], (string) $b['title']);
+			}
+
+			return 0;
 		});
 
 		return $schedules;
@@ -154,11 +177,14 @@ class AIPS_Unified_Schedule_Service {
 	/**
 	 * Get run-history log entries for a schedule.
 	 *
-	 * @param int    $id   Numeric ID.
-	 * @param string $type One of the TYPE_* constants.
+	 * @param int    $id    Numeric ID.
+	 * @param string $type  One of the TYPE_* constants.
+	 * @param int    $limit Max entries to return; 0 = no limit.
 	 * @return array Normalised log entry arrays.
 	 */
-	public function get_history($id, $type) {
+	public function get_history($id, $type, $limit = 0) {
+		$limit = absint($limit);
+
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
 				$schedule = $this->schedule_repository->get_by_id($id);
@@ -167,7 +193,8 @@ class AIPS_Unified_Schedule_Service {
 				}
 				$logs = $this->history_repository->get_logs_by_history_id(
 					absint($schedule->schedule_history_id),
-					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
+					$limit
 				);
 				return $this->format_history_logs($logs);
 
@@ -175,7 +202,7 @@ class AIPS_Unified_Schedule_Service {
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
 					array('author_topic_generation'),
-					100
+					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
 
@@ -183,7 +210,7 @@ class AIPS_Unified_Schedule_Service {
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
 					array('topic_post_generation'),
-					100
+					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
 
@@ -291,11 +318,7 @@ class AIPS_Unified_Schedule_Service {
 			$result[] = array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_TOPIC,
-				'title'       => sprintf(
-					/* translators: Author name */
-					__('%s – Topic Generation', 'ai-post-scheduler'),
-					$author->name
-				),
+				'title'       => $author->name,
 				'subtitle'    => isset($author->field_niche) ? $author->field_niche : '',
 				'cron_hook'   => 'aips_generate_author_topics',
 				'frequency'   => $author->topic_generation_frequency,
@@ -363,11 +386,7 @@ class AIPS_Unified_Schedule_Service {
 			$result[] = array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_POST,
-				'title'       => sprintf(
-					/* translators: Author name */
-					__('%s – Post Generation', 'ai-post-scheduler'),
-					$author->name
-				),
+				'title'       => $author->name,
 				'subtitle'    => $author->field_niche,
 				'cron_hook'   => 'aips_generate_author_posts',
 				'frequency'   => $author->post_generation_frequency,

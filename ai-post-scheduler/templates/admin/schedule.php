@@ -55,25 +55,32 @@ if (!function_exists('aips_type_badge')) {
 }
 
 /**
- * Helper: render per-type run output labels for Last/Next run columns.
+ * Helper: render last-run output label for the Last Run column.
  */
 if (!function_exists('aips_run_output_label')) {
-	function aips_run_output_label($type, $context = 'next') {
+	function aips_run_output_label($type) {
 		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
-			return 'last' === $context
-				? __('Generated topics for author queue', 'ai-post-scheduler')
-				: __('Expected output: new author topics', 'ai-post-scheduler');
+			return __('Generated topics for author queue', 'ai-post-scheduler');
 		}
-
 		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
-			return 'last' === $context
-				? __('Generated approved-topic post', 'ai-post-scheduler')
-				: __('Expected output: approved-topic post', 'ai-post-scheduler');
+			return __('Generated approved-topic post', 'ai-post-scheduler');
 		}
+		return __('Generated post from template', 'ai-post-scheduler');
+	}
+}
 
-		return 'last' === $context
-			? __('Generated post from template', 'ai-post-scheduler')
-			: __('Expected output: generated post', 'ai-post-scheduler');
+/**
+ * Helper: format a future/past timestamp as a relative countdown string.
+ * Returns e.g. "In 2 hours", "In 5 minutes", or "Past due".
+ */
+if (!function_exists('aips_next_run_relative')) {
+	function aips_next_run_relative($timestamp) {
+		$diff = $timestamp - time();
+		if ($diff <= 0) {
+			return __('Past due', 'ai-post-scheduler');
+		}
+		/* translators: %s = human-readable time difference, e.g. "2 hours" */
+		return sprintf(__('In %s', 'ai-post-scheduler'), human_time_diff(time(), $timestamp));
 	}
 }
 ?>
@@ -218,16 +225,15 @@ if (!function_exists('aips_run_output_label')) {
 							<?php if (!empty($sched['subtitle'])): ?>
 							<div class="cell-meta"><?php echo esc_html($sched['subtitle']); ?></div>
 							<?php endif; ?>
-							<div class="cell-meta" style="margin-top:4px;">
-								<button type="button"
-									class="aips-btn aips-btn-sm aips-btn-ghost aips-view-unified-history"
+							<div class="aips-row-actions">
+								<a href="#"
+									class="aips-view-unified-history"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									data-name="<?php echo esc_attr($sched['title']); ?>"
-									style="padding:1px 6px;font-size:11px;">
-									<span class="dashicons dashicons-backup" style="font-size:14px;width:14px;height:14px;"></span>
-									<?php esc_html_e('Previous Runs', 'ai-post-scheduler'); ?>
-								</button>
+									data-limit="5">
+									<?php esc_html_e('History', 'ai-post-scheduler'); ?>
+								</a>
 							</div>
 						</td>
 						<td class="column-type">
@@ -244,16 +250,20 @@ if (!function_exists('aips_run_output_label')) {
 						<td class="column-last-run">
 							<?php if ($last_run_ts): ?>
 							<div class="cell-meta"><?php echo esc_html(date_i18n($date_format, $last_run_ts)); ?></div>
-							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(aips_run_output_label($sched['type'], 'last')); ?></div>
+							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(aips_run_output_label($sched['type'])); ?></div>
 							<?php else: ?>
 							<div class="cell-meta aips-muted"><?php esc_html_e('Never', 'ai-post-scheduler'); ?></div>
 							<?php endif; ?>
 						</td>
 						<td class="column-next-run">
-							<?php if ($next_run_ts): ?>
-							<div class="cell-meta"><?php echo esc_html(date_i18n($date_format, $next_run_ts)); ?></div>
-							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(aips_run_output_label($sched['type'], 'next')); ?></div>
-							<?php if ($next_run_ts < time() && $is_active): ?>
+							<?php if (!$is_active): ?>
+							<div class="cell-meta aips-muted"><?php esc_html_e('N/A', 'ai-post-scheduler'); ?></div>
+							<?php elseif ($next_run_ts): ?>
+							<div class="cell-primary aips-next-run-countdown" title="<?php echo esc_attr(date_i18n($date_format, $next_run_ts)); ?>">
+								<?php echo esc_html(aips_next_run_relative($next_run_ts)); ?>
+							</div>
+							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(date_i18n($date_format, $next_run_ts)); ?></div>
+							<?php if ($next_run_ts < time()): ?>
 							<div class="cell-meta" style="color:var(--aips-warning);font-size:11px;"><?php esc_html_e('Due — runs on next cron trigger', 'ai-post-scheduler'); ?></div>
 							<?php endif; ?>
 							<?php else: ?>
@@ -478,7 +488,7 @@ if (!function_exists('aips_run_output_label')) {
 	role="dialog" aria-modal="true" aria-labelledby="aips-schedule-history-modal-title">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
-			<h2 id="aips-schedule-history-modal-title"><?php esc_html_e('Previous Runs', 'ai-post-scheduler'); ?></h2>
+			<h2 id="aips-schedule-history-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
 			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

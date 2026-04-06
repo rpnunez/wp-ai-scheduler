@@ -13,6 +13,18 @@
 
     window.AIPS = window.AIPS || {};
 
+    // Shared constant reused by escapeAttribute — defined once to avoid per-call allocation.
+    var AIPS_ATTR_ENTITY_MAP = {
+        '&':  '&amp;',
+        '"':  '&quot;',
+        "'":  '&#039;',
+        '<':  '&lt;',
+        '>':  '&gt;',
+        '\r': '&#13;',
+        '\n': '&#10;',
+        '\t': '&#9;'
+    };
+
     window.AIPS.Utilities = {
 
         /**
@@ -274,7 +286,7 @@
             // AIPS admin page) → bare English fallbacks.  Never couple to aipsAuthorsL10n.
             var l10n = options.l10n || window.aipsUtilitiesL10n || {};
 
-            var title        = options.title        || 'Processing\u2026';
+            var title        = options.title        || 'Processing…';
             var message      = options.message      || '';
             var totalSeconds = options.totalSeconds  > 0 ? options.totalSeconds : 30;
             var stallAt      = (options.stallAt !== undefined) ? options.stallAt : 92;
@@ -381,7 +393,7 @@
                             .css('width', '100%')
                             .attr('aria-valuenow', '100')
                             .addClass('aips-progress-bar-fill--indeterminate');
-                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected\u2026';
+                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected…';
                         $statusLine.text(overdueMsg);
                         $liveRegion.text(overdueMsg); // Announce to screen readers.
                     }
@@ -446,14 +458,194 @@
             }
 
             return { complete: complete, cancel: cancel };
+        },
+
+        // ── Action-state helpers ────────────────────────────────────────────────
+
+        /**
+         * Puts a button into a loading state.
+         *
+         * Saves the button's current HTML to a private data attribute so that
+         * `resetButton()` can restore it exactly, then disables the button and
+         * replaces its visible content with a loading label.
+         *
+         * Pair every call with a corresponding `resetButton()` call (typically
+         * in the AJAX `complete` callback) to re-enable the button and restore
+         * its original label.
+         *
+         * @param {jQuery} $btn         - The button element to update.
+         * @param {string} loadingLabel - The text (or HTML when opts.isHtml=true)
+         *                                to display while loading.
+         * @param {Object} [opts]       - Optional settings.
+         * @param {boolean} [opts.isHtml] - When true, loadingLabel is inserted as
+         *                                  raw HTML rather than escaped text.
+         *
+         * @example
+         * // Simple text label
+         * AIPS.Utilities.setButtonLoading($saveBtn, aipsAdminL10n.saving);
+         *
+         * @example
+         * // HTML label with a dashicon
+         * AIPS.Utilities.setButtonLoading(
+         *     $draftBtn,
+         *     '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving,
+         *     { isHtml: true }
+         * );
+         */
+        setButtonLoading: function($btn, loadingLabel, opts) {
+            opts = opts || {};
+            $btn.data('aips-btn-original', $btn.html());
+            $btn.prop('disabled', true);
+            if (opts.isHtml) {
+                $btn.html(loadingLabel);
+            } else {
+                $btn.text(loadingLabel);
+            }
+        },
+
+        /**
+         * Restores a button that was disabled by `setButtonLoading()`.
+         *
+         * Re-enables the element and restores its original HTML (saved by
+         * `setButtonLoading()`). Safe to call even if `setButtonLoading()` was
+         * never called — the button will simply be re-enabled with no label change.
+         *
+         * @param {jQuery} $btn - The button element to reset.
+         *
+         * @example
+         * $.ajax({
+         *     ...
+         *     complete: function() { AIPS.Utilities.resetButton($saveBtn); }
+         * });
+         */
+        resetButton: function($btn) {
+            var original = $btn.data('aips-btn-original');
+            if (original !== undefined) {
+                $btn.html(original);
+                $btn.removeData('aips-btn-original');
+            }
+            $btn.prop('disabled', false);
+        },
+
+        // ── String / escaping helpers ───────────────────────────────────────────
+
+        /**
+         * Escape a plain-text value for safe insertion as HTML content.
+         *
+         * Uses a temporary <div> element and the browser's own textContent
+         * setter so the browser handles all entity encoding natively.
+         * Returns an empty string for null / undefined input.
+         *
+         * @param  {*}      text - Value to escape (coerced to string if needed).
+         * @return {string} HTML-safe string.
+         */
+        escapeHtml: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            var div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        },
+
+        /**
+         * Escape a plain-text value for safe use in an HTML attribute.
+         *
+         * Escapes &, ", ', <, >, and control characters (CR, LF, TAB) that are
+         * meaningful inside attribute values.  Do not pass already-encoded
+         * entities — they will be double-encoded.
+         *
+         * @param  {*}      text - Value to escape (coerced to string if needed).
+         * @return {string} Attribute-safe string.
+         */
+        escapeAttribute: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            return String(text).replace(/[&"'<>\r\n\t]/g, function(match) {
+                return AIPS_ATTR_ENTITY_MAP[match];
+            });
+        },
+
+        /**
+         * Sanitize a URL value for safe use in an href attribute.
+         *
+         * Validates the protocol and rejects dangerous schemes (javascript:,
+         * data:, vbscript:, file:).  Absolute http(s) URLs are normalised via
+         * the URL constructor; root-relative paths are returned as-is.
+         * Returns an empty string for any value that does not match an allowed
+         * pattern.
+         *
+         * @param  {*}      url - URL value to sanitize (coerced to string).
+         * @return {string} Safe URL string, or '' when the input is invalid.
+         */
+        sanitizeUrl: function(url) {
+            if (!url) {
+                return '';
+            }
+            var urlStr = String(url).trim();
+            if (!urlStr) {
+                return '';
+            }
+            var dangerous = ['javascript:', 'data:', 'vbscript:', 'file:'];
+            var lower = urlStr.toLowerCase();
+            for (var i = 0; i < dangerous.length; i++) {
+                if (lower.indexOf(dangerous[i]) === 0) {
+                    return '';
+                }
+            }
+            if (urlStr.indexOf('http://') === 0 || urlStr.indexOf('https://') === 0) {
+                try {
+                    return new URL(urlStr).href;
+                } catch (e) {
+                    return '';
+                }
+            }
+            // Allow root-relative paths (/path/to/page) but reject protocol-relative
+            // URLs (//evil.example) to avoid external navigation via same-origin bypass.
+            if (urlStr.indexOf('/') === 0 && urlStr.indexOf('//') !== 0) {
+                return urlStr;
+            }
+            return '';
+        },
+
+        /**
+         * Convert a string to Title Case.
+         *
+         * Lowercases the full input, replaces underscores and hyphens with
+         * spaces, then capitalises the first letter of every word.  Suitable
+         * for converting slug-style values ("in_progress", "well-researched")
+         * or mixed-case labels into human-readable headings.
+         *
+         * @param  {*}      text - Value to convert (coerced to string).
+         * @return {string} Title-cased string.
+         */
+        toTitleCase: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            return String(text)
+                .toLowerCase()
+                .replace(/[_-]/g, ' ')
+                .replace(/\b\w/g, function(letter) {
+                    return letter.toUpperCase();
+                });
         }
     };
 
     // ---------------------------------------------------------------------------
-    // Backward-compatibility shim: AIPS.showToast → AIPS.Utilities.showToast
+    // Backward-compatibility shims
     // ---------------------------------------------------------------------------
     window.AIPS.showToast = function(message, type, opts) {
         window.AIPS.Utilities.showToast(message, type, opts);
+    };
+
+    window.AIPS.escapeHtml = function(text) {
+        return window.AIPS.Utilities.escapeHtml(text);
+    };
+
+    window.AIPS.escapeAttribute = function(text) {
+        return window.AIPS.Utilities.escapeAttribute(text);
     };
 
     $(document).ready(function() {

@@ -358,34 +358,6 @@ class AIPS_History_Repository {
             $post_id
         ));
     }
-
-    /**
-     * Get all history records that share the given correlation ID.
-     *
-     * Returns an array of lightweight history objects (id, uuid, correlation_id,
-     * post_id, template_id, author_id, topic_id, status, creation_method,
-     * created_at, completed_at) sorted oldest-first so callers can replay the
-     * execution timeline in order.
-     *
-     * @param string $correlation_id The correlation ID to search for.
-     * @return array Array of history record objects (empty if none found).
-     */
-    public function get_by_correlation_id($correlation_id) {
-        $correlation_id = sanitize_text_field((string) $correlation_id);
-
-        if ($correlation_id === '') {
-            return array();
-        }
-
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
-                    status, creation_method, generated_title, error_message, created_at, completed_at
-             FROM {$this->table_name}
-             WHERE correlation_id = %s
-             ORDER BY created_at ASC",
-            $correlation_id
-        ));
-    }
     
     /**
      * Add a log entry to a history item.
@@ -498,11 +470,11 @@ class AIPS_History_Repository {
         ");
 
         $stats = array(
-            'total' => (int) $results->total,
-            'completed' => (int) $results->completed,
-            'failed' => (int) $results->failed,
-            'processing' => (int) $results->processing,
-            'partial' => (int) $results->partial,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'completed' => isset($results->completed) ? (int) $results->completed : 0,
+            'failed' => isset($results->failed) ? (int) $results->failed : 0,
+            'processing' => isset($results->processing) ? (int) $results->processing : 0,
+            'partial' => isset($results->partial) ? (int) $results->partial : 0,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
@@ -701,7 +673,10 @@ class AIPS_History_Repository {
      * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
      * @return array Array of log entry objects.
      */
-    public function get_logs_by_history_id($history_id, $type_filter = array()) {
+    public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) {
+        $limit = absint($limit);
+        $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+
         if (!empty($type_filter)) {
             $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
             $args = array_merge(array($history_id), $type_filter);
@@ -709,7 +684,7 @@ class AIPS_History_Repository {
                 $this->wpdb->prepare(
                     "SELECT * FROM {$this->table_name_log}
                      WHERE history_id = %d AND history_type_id IN ($placeholders)
-                     ORDER BY timestamp ASC",
+                     ORDER BY timestamp DESC" . $limit_sql,
                     $args
                 )
             );
@@ -717,7 +692,7 @@ class AIPS_History_Repository {
 
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp DESC" . $limit_sql,
                 $history_id
             )
         );

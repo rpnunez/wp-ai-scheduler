@@ -144,6 +144,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+    if (!function_exists("esc_js")) {
+        function esc_js($text) {
+            return addslashes($text);
+        }
+    }
+
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -243,6 +249,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     unset($GLOBALS['aips_test_hooks']['filters'][$hook_name]);
                 } elseif (isset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority])) {
                     unset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority]);
+                }
+            }
+            return true;
+        }
+    }
+
+    if (!function_exists('remove_all_actions')) {
+        function remove_all_actions($hook_name, $priority = false) {
+            if (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name])) {
+                if ($priority === false) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name]);
+                } elseif (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority])) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority]);
                 }
             }
             return true;
@@ -770,6 +789,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('_doing_it_wrong')) {
+        function _doing_it_wrong($function_name, $message, $version) {
+            // No-op stub: in real WordPress this triggers a developer notice.
+        }
+    }
+
     if (!function_exists('wp_parse_str')) {
         function wp_parse_str($string, &$array) {
             parse_str($string, $array);
@@ -955,6 +980,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                if (isset($this->get_var_return_val)) {
+                    return $this->get_var_return_val;
+                }
                 return null;
             }
             
@@ -1017,6 +1045,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-builder-article-structure-section.php',
         'class-aips-prompt-builder-topic.php',
         'class-aips-prompt-builder-authors.php',
+        'class-aips-prompt-builder-taxonomy.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
@@ -1050,6 +1079,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
+        'class-aips-settings-ui.php',
+        'class-aips-settings-ajax.php',
         'class-aips-notification-template.php',
         'class-aips-notification-templates.php',
         'class-aips-notifications-repository.php',
