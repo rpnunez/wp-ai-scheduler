@@ -18,7 +18,7 @@ class AIPS_Logger {
         $secret = $this->get_log_secret();
 
         $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
-        $this->enabled = (bool) get_option('aips_enable_logging', true);
+        $this->enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_logging');
     }
 
     /**

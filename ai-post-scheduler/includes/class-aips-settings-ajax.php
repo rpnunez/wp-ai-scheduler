@@ -81,9 +81,9 @@ class AIPS_Settings_AJAX {
 
         $registry = AIPS_Notifications::get_notification_type_registry();
         $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
-        $current_preferences = get_option('aips_notification_preferences', array());
+        $current_preferences = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $current_preferences = is_array($current_preferences) ? $current_preferences : array();
-        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $config_defaults = is_array($config_defaults) ? $config_defaults : array();
 
         $cleaned_preferences = array();
