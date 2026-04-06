@@ -187,9 +187,11 @@ class AIPS_Onboarding_Wizard {
 	// ---------------------------------------------------------------------
 
 	private function ajax_guard() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
-		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ai-post-scheduler' ) ), 403 );
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ai-post-scheduler' ) ), 403 );
 		}
 	}
 
