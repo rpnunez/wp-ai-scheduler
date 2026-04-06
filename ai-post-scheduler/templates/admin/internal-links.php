@@ -200,6 +200,56 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->
 
+<!-- Insert Link Modal -->
+<div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
+	<div class="aips-modal-content" style="max-width:860px;width:94%;">
+		<div class="aips-modal-header">
+			<h2 id="aips-insert-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-no-alt"></span>
+			</button>
+		</div>
+		<div class="aips-modal-body" style="padding:0;">
+
+			<!-- Suggested Links Section -->
+			<div style="padding:20px 24px;border-bottom:1px solid #e0e0e0;">
+				<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#555;">
+					<?php esc_html_e('Suggested Links', 'ai-post-scheduler'); ?>
+				</h3>
+				<div id="aips-insert-suggestions-list">
+					<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
+				</div>
+			</div>
+
+			<!-- AI Insertion Locations Section (hidden until Insert is clicked) -->
+			<div id="aips-insert-locations-section" style="display:none;padding:20px 24px;border-bottom:1px solid #e0e0e0;">
+				<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#555;">
+					<?php esc_html_e('Insertion Locations', 'ai-post-scheduler'); ?>
+					<span id="aips-insert-locations-spinner" class="spinner" style="float:none;vertical-align:middle;margin-left:6px;"></span>
+				</h3>
+				<div id="aips-insert-locations-list"></div>
+			</div>
+
+			<!-- Post Content Preview Section -->
+			<div style="padding:20px 24px;">
+				<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#555;">
+					<?php esc_html_e('Post Content', 'ai-post-scheduler'); ?>
+					<span id="aips-insert-post-title" style="font-weight:400;font-size:13px;color:#777;margin-left:6px;text-transform:none;letter-spacing:0;"></span>
+				</h3>
+				<div id="aips-insert-post-content-wrap" style="max-height:280px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:14px 16px;background:#fafafa;">
+					<div id="aips-insert-post-content" style="font-size:13px;line-height:1.7;color:#333;white-space:pre-wrap;word-break:break-word;">
+						<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
+					</div>
+				</div>
+			</div>
+
+		</div><!-- /.aips-modal-body -->
+		<div class="aips-modal-footer" style="padding:12px 20px;border-top:1px solid #ddd;display:flex;justify-content:flex-end;">
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+		</div>
+	</div>
+</div><!-- /#aips-insert-modal -->
+
 <!-- Edit Anchor Text Modal -->
 <div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
 	<div class="aips-modal-content">

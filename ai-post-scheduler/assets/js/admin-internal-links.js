@@ -127,6 +127,25 @@
 				$('#aips-anchor-modal-text').focus();
 			});
 
+			// Insert Link button (accepted rows)
+			$(document).on('click', '.aips-il-insert-btn', function () {
+				self.openInsertModal($(this).data('id'));
+			});
+
+			// Insert modal: Insert button on a single suggestion entry
+			$(document).on('click', '.aips-il-modal-insert-btn', function () {
+				self.findInsertLocations(parseInt($(this).data('id'), 10));
+			});
+
+			// Insert modal: Apply button on a location result
+			$(document).on('click', '.aips-il-apply-location-btn', function () {
+				var $btn    = $(this);
+				var sid     = parseInt($btn.data('suggestion-id'), 10);
+				var match   = $btn.data('match');
+				var replace = $btn.data('replace');
+				self.applyInsertion(sid, match, replace, $btn);
+			});
+
 			// Anchor modal
 			$(document).on('click', '.aips-modal-close', function () {
 				$('#aips-anchor-modal').hide();
@@ -237,6 +256,14 @@
 					'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="' + item.id + '">' +
 					'<span class="dashicons dashicons-no" aria-hidden="true"></span>' +
 					'<span class="screen-reader-text">' + aipsInternalLinksL10n.rejected + '</span>' +
+					'</button> ';
+			}
+
+			if (item.status === 'accepted') {
+				actions +=
+					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-insert-btn" data-id="' + item.id + '" title="' + (aipsInternalLinksL10n.insertLink || 'Insert Link') + '">' +
+					'<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span>' +
+					'<span class="screen-reader-text">' + (aipsInternalLinksL10n.insertLink || 'Insert Link') + '</span>' +
 					'</button> ';
 			}
 
@@ -590,6 +617,271 @@
 				.addClass('aips-notice-' + type)
 				.text(message)
 				.show();
+		},
+
+		// -----------------------------------------------------------------------
+		// Insert Link modal
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Open the Insert Link modal and load post content + accepted suggestions.
+		 *
+		 * @param {number} suggestionId Suggestion row ID.
+		 */
+		openInsertModal: function (suggestionId) {
+			var self = this;
+
+			// Reset modal state.
+			$('#aips-insert-suggestions-list').html(
+				'<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>'
+			);
+			$('#aips-insert-post-content').html(
+				'<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>'
+			);
+			$('#aips-insert-post-title').text('');
+			$('#aips-insert-locations-section').hide();
+			$('#aips-insert-locations-list').html('');
+			$('#aips-insert-modal').show();
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:        'aips_internal_links_get_post_for_insertion',
+				nonce:         aipsInternalLinksL10n.nonce,
+				suggestion_id: suggestionId,
+			}, function (response) {
+				if (!response.success) {
+					$('#aips-insert-suggestions-list').html(
+						'<p class="aips-notice aips-notice-error">' +
+						AIPS.Templates.escape((response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed) +
+						'</p>'
+					);
+					$('#aips-insert-post-content').text('');
+					return;
+				}
+
+				var data = response.data;
+
+				// Post title in sub-header.
+				$('#aips-insert-post-title').text(data.post_title || '');
+
+				// Render suggestions list.
+				self.renderInsertSuggestions(data.suggestions || []);
+
+				// Render post content (plain-text, HTML stripped for readability).
+				var plainContent = $('<div>').html(data.post_content || '').text();
+				$('#aips-insert-post-content').text(plainContent || aipsInternalLinksL10n.noContent);
+			}).fail(function () {
+				$('#aips-insert-suggestions-list').html(
+					'<p class="aips-notice aips-notice-error">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.loadingFailed) + '</p>'
+				);
+				$('#aips-insert-post-content').text('');
+			});
+		},
+
+		/**
+		 * Render the accepted suggestions list inside the Insert modal.
+		 *
+		 * @param {Array} suggestions Array of suggestion objects from the server.
+		 */
+		renderInsertSuggestions: function (suggestions) {
+			var $list = $('#aips-insert-suggestions-list');
+
+			if (!suggestions || suggestions.length === 0) {
+				$list.html(
+					'<p style="color:#888;margin:0;">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.noInsertSuggestions) + '</p>'
+				);
+				return;
+			}
+
+			var html = '<ul style="margin:0;padding:0;list-style:none;">';
+
+			$.each(suggestions, function (i, s) {
+				var score   = Math.round(parseFloat(s.similarity_score) * 100) + '%';
+				var title   = AIPS.Templates.escape(s.target_post_title || '#' + s.target_post_id);
+				var anchor  = AIPS.Templates.escape(s.anchor_text || s.target_post_title || '');
+				var target  = AIPS.Templates.escape(s.target_url || '');
+
+				html +=
+					'<li style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;">' +
+					'<div style="flex:1;min-width:0;">' +
+					'<strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + title + '">' + title + '</strong>' +
+					'<span style="font-size:12px;color:#888;">Anchor: ' + anchor + ' &nbsp;|&nbsp; ' + score + '</span>' +
+					(target ? '<br><a href="' + target + '" target="_blank" rel="noopener noreferrer" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:300px;">' + target + '</a>' : '') +
+					'</div>' +
+					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-modal-insert-btn" data-id="' + parseInt(s.id, 10) + '">' +
+					'<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.insertBtn) +
+					'</button>' +
+					'</li>';
+			});
+
+			html += '</ul>';
+			$list.html(html);
+		},
+
+		/**
+		 * Call the AI to find insertion locations for a specific suggestion.
+		 *
+		 * @param {number} suggestionId Suggestion row ID.
+		 */
+		findInsertLocations: function (suggestionId) {
+			var self = this;
+
+			$('#aips-insert-locations-section').show();
+			$('#aips-insert-locations-list').html('');
+			$('#aips-insert-locations-spinner').addClass('is-active');
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:        'aips_internal_links_find_insert_locations',
+				nonce:         aipsInternalLinksL10n.nonce,
+				suggestion_id: suggestionId,
+			}, function (response) {
+				$('#aips-insert-locations-spinner').removeClass('is-active');
+
+				if (!response.success) {
+					$('#aips-insert-locations-list').html(
+						'<p class="aips-notice aips-notice-error">' +
+						AIPS.Templates.escape((response.data && response.data.message) || aipsInternalLinksL10n.locationsFailed) +
+						'</p>'
+					);
+					return;
+				}
+
+				var locations = response.data.locations || [];
+				self.renderInsertLocations(suggestionId, locations);
+			}).fail(function () {
+				$('#aips-insert-locations-spinner').removeClass('is-active');
+				$('#aips-insert-locations-list').html(
+					'<p class="aips-notice aips-notice-error">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.locationsFailed) + '</p>'
+				);
+			});
+		},
+
+		/**
+		 * Render the AI-generated insertion location options.
+		 *
+		 * @param {number} suggestionId Suggestion row ID (passed through to apply).
+		 * @param {Array}  locations    Array of location objects {reason, match_snippet, replacement_snippet}.
+		 */
+		renderInsertLocations: function (suggestionId, locations) {
+			var $list = $('#aips-insert-locations-list');
+
+			if (!locations || locations.length === 0) {
+				$list.html(
+					'<p style="color:#888;margin:0;">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.noLocations) + '</p>'
+				);
+				return;
+			}
+
+			var html = '';
+
+			$.each(locations, function (i, loc) {
+				var num     = i + 1;
+				var reason  = AIPS.Templates.escape(loc.reason || '');
+				var match   = AIPS.Templates.escape(loc.match_snippet || '');
+				var replace = AIPS.InternalLinks.formatReplacementPreview(loc.replacement_snippet || '');
+
+				html +=
+					'<div class="aips-insert-location-card" style="' +
+					'border:1px solid #c3c4c7;border-radius:4px;padding:14px 16px;margin-bottom:10px;background:#fff;">' +
+
+					'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
+					'<div style="flex:1;min-width:0;">' +
+
+					'<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#1d2327;">Option ' + num + '</p>' +
+
+					(reason
+						? '<p style="margin:0 0 8px;font-size:12px;color:#555;">' +
+						  '<strong>' + AIPS.Templates.escape(aipsInternalLinksL10n.reasonLabel) + ':</strong> ' + reason + '</p>'
+						: '') +
+
+					'<div style="margin-bottom:8px;">' +
+					'<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.originalSnippetLabel) + '</p>' +
+					'<blockquote style="margin:0;padding:6px 10px;background:#f6f7f7;border-left:3px solid #c3c4c7;font-size:12px;color:#444;font-style:italic;">' +
+					match + '</blockquote>' +
+					'</div>' +
+
+					'<div>' +
+					'<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.withLinkLabel) + '</p>' +
+					'<blockquote style="margin:0;padding:6px 10px;background:#f0f6fc;border-left:3px solid #2271b1;font-size:12px;color:#444;font-style:italic;">' +
+					replace + '</blockquote>' +
+					'</div>' +
+
+					'</div>' + // flex inner
+
+					'<div style="flex-shrink:0;">' +
+					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-apply-location-btn"' +
+					' data-suggestion-id="' + parseInt(suggestionId, 10) + '"' +
+					' data-match="' + AIPS.Templates.escape(loc.match_snippet || '') + '"' +
+					' data-replace="' + AIPS.Templates.escape(loc.replacement_snippet || '') + '">' +
+					AIPS.Templates.escape(aipsInternalLinksL10n.applyBtn) +
+					'</button>' +
+					'</div>' +
+					'</div>' + // outer flex
+
+					'</div>'; // card
+			});
+
+			$list.html(html);
+		},
+
+		/**
+		 * Format a plain-text replacement snippet for safe preview in the modal.
+		 *
+		 * Highlights the [[anchor text]] marker without treating the snippet as
+		 * trusted HTML.
+		 *
+		 * @param {string} replacementSnippet Plain-text replacement snippet.
+		 * @return {string} Safe HTML preview string.
+		 */
+		formatReplacementPreview: function (replacementSnippet) {
+			var escaped = AIPS.Templates.escape(replacementSnippet || '');
+
+			return escaped.replace(/\[\[(.*?)\]\]/g, '<mark style="background:#fff1c6;padding:0 2px;border-radius:2px;">$1</mark>');
+		},
+
+		/**
+		 * Apply a chosen insertion location to the post content.
+		 *
+		 * @param {number} suggestionId      Suggestion row ID.
+		 * @param {string} matchSnippet      Exact text excerpt from the post.
+		 * @param {string} replacementSnippet Plain-text snippet with [[anchor marker]].
+		 * @param {jQuery} $btn              The Apply button element.
+		 */
+		applyInsertion: function (suggestionId, matchSnippet, replacementSnippet, $btn) {
+			var self = this;
+
+			$btn.prop('disabled', true).text(aipsInternalLinksL10n.applying);
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:               'aips_internal_links_apply_insertion',
+				nonce:                aipsInternalLinksL10n.nonce,
+				suggestion_id:        suggestionId,
+				match_snippet:        matchSnippet,
+				replacement_snippet:  replacementSnippet,
+			}, function (response) {
+				$btn.prop('disabled', false).text(aipsInternalLinksL10n.applyBtn);
+
+				if (response.success) {
+					$('#aips-insert-modal').hide();
+					AIPS.Utilities.showToast(response.data.message || aipsInternalLinksL10n.applied, 'success');
+					self.loadSuggestions();
+					self.refreshStatus();
+				} else {
+					AIPS.Utilities.showToast(
+						(response.data && response.data.message) || aipsInternalLinksL10n.applyFailed,
+						'error'
+					);
+				}
+			}).fail(function () {
+				$btn.prop('disabled', false).text(aipsInternalLinksL10n.applyBtn);
+				AIPS.Utilities.showToast(aipsInternalLinksL10n.applyFailed, 'error');
+			});
 		},
 	};
 

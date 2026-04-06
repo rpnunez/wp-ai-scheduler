@@ -46,6 +46,27 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Get a single suggestion by ID.
+	 *
+	 * @param int $id Row ID.
+	 * @return object|null Row object with source/target post titles, or null if not found.
+	 */
+	public function get_by_id($id) {
+		return $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT il.*,
+					sp.post_title AS source_post_title,
+					tp.post_title AS target_post_title
+				FROM {$this->table} il
+				LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
+				LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
+				WHERE il.id = %d",
+				absint($id)
+			)
+		);
+	}
+
+	/**
 	 * Get all internal link suggestions for a source post.
 	 *
 	 * @param int    $source_post_id Source post ID.

@@ -40,6 +40,11 @@ class AIPS_Internal_Links_Controller {
 	private $embeddings_repo;
 
 	/**
+	 * @var AIPS_Internal_Link_Inserter_Service
+	 */
+	private $inserter_service;
+
+	/**
 	 * @var AIPS_Logger
 	 */
 	private $logger;
@@ -47,23 +52,26 @@ class AIPS_Internal_Links_Controller {
 	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
-	 * @param AIPS_Internal_Links_Service|null     $service         Internal links service.
-	 * @param AIPS_Internal_Links_Repository|null  $links_repo      Links repository.
-	 * @param AIPS_Post_Embeddings_Repository|null $embeddings_repo Embeddings repository.
-	 * @param AIPS_Logger|null                     $logger          Logger instance.
+	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
+	 * @param AIPS_Internal_Links_Repository|null       $links_repo       Links repository.
+	 * @param AIPS_Post_Embeddings_Repository|null      $embeddings_repo  Embeddings repository.
+	 * @param AIPS_Logger|null                          $logger           Logger instance.
+	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
 	 */
 	public function __construct(
 		$service = null,
 		$links_repo = null,
 		$embeddings_repo = null,
-		$logger = null
+		$logger = null,
+		$inserter_service = null
 	) {
-		$this->service         = $service         ?: new AIPS_Internal_Links_Service();
-		$this->links_repo      = $links_repo      ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo = $embeddings_repo ?: new AIPS_Post_Embeddings_Repository();
-		$this->logger          = $logger          ?: new AIPS_Logger();
+		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
+		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
+		$this->embeddings_repo  = $embeddings_repo  ?: new AIPS_Post_Embeddings_Repository();
+		$this->logger           = $logger           ?: new AIPS_Logger();
+		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
 
-		// AJAX endpoints
+		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
 		add_action('wp_ajax_aips_internal_links_generate_suggestions', array($this, 'ajax_generate_suggestions'));
 		add_action('wp_ajax_aips_internal_links_update_status', array($this, 'ajax_update_status'));
@@ -73,6 +81,11 @@ class AIPS_Internal_Links_Controller {
 		add_action('wp_ajax_aips_internal_links_get_status', array($this, 'ajax_get_status'));
 		add_action('wp_ajax_aips_internal_links_reindex_post', array($this, 'ajax_reindex_post'));
 		add_action('wp_ajax_aips_internal_links_clear_index', array($this, 'ajax_clear_index'));
+
+		// AJAX endpoints — link insertion workflow
+		add_action('wp_ajax_aips_internal_links_get_post_for_insertion', array($this, 'ajax_get_post_for_insertion'));
+		add_action('wp_ajax_aips_internal_links_find_insert_locations', array($this, 'ajax_find_insert_locations'));
+		add_action('wp_ajax_aips_internal_links_apply_insertion', array($this, 'ajax_apply_insertion'));
 	}
 
 	// -------------------------------------------------------------------------
@@ -373,6 +386,122 @@ class AIPS_Internal_Links_Controller {
 
 		wp_send_json_success(array(
 			'message' => __('Index cleared. All embeddings and suggestions have been removed.', 'ai-post-scheduler'),
+		));
+	}
+
+	// -------------------------------------------------------------------------
+	// Link insertion AJAX handlers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * AJAX: Get source post content and its accepted suggestions for the insertion modal.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_post_for_insertion() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+		}
+
+		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
+
+		if (!$suggestion_id) {
+			wp_send_json_error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
+		}
+
+		$suggestion = $this->links_repo->get_by_id($suggestion_id);
+
+		if (!$suggestion) {
+			wp_send_json_error(array('message' => __('Suggestion not found.', 'ai-post-scheduler')));
+		}
+
+		$source_post = get_post($suggestion->source_post_id);
+
+		if (!$source_post) {
+			wp_send_json_error(array('message' => __('Source post not found.', 'ai-post-scheduler')));
+		}
+
+		// Fetch all accepted suggestions for this source post.
+		$accepted = $this->links_repo->get_by_source_post($suggestion->source_post_id, 'accepted');
+
+		$suggestions_data = array();
+		foreach ($accepted as $s) {
+			$target_post = get_post($s->target_post_id);
+			$suggestions_data[] = array(
+				'id'                => (int) $s->id,
+				'target_post_id'    => (int) $s->target_post_id,
+				'target_post_title' => $target_post ? $target_post->post_title : '#' . $s->target_post_id,
+				'target_url'        => get_permalink($s->target_post_id),
+				'anchor_text'       => $s->anchor_text,
+				'similarity_score'  => (float) $s->similarity_score,
+			);
+		}
+
+		wp_send_json_success(array(
+			'post_id'      => (int) $source_post->ID,
+			'post_title'   => $source_post->post_title,
+			'post_content' => $source_post->post_content,
+			'suggestions'  => $suggestions_data,
+		));
+	}
+
+	/**
+	 * AJAX: Ask AI for the 3 best insertion locations for a given suggestion.
+	 *
+	 * @return void
+	 */
+	public function ajax_find_insert_locations() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+		}
+
+		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
+
+		if (!$suggestion_id) {
+			wp_send_json_error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
+		}
+
+		$result = $this->inserter_service->find_insertion_locations($suggestion_id);
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		wp_send_json_success(array('locations' => $result));
+	}
+
+	/**
+	 * AJAX: Apply a specific insertion to the source post content.
+	 *
+	 * @return void
+	 */
+	public function ajax_apply_insertion() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+		}
+
+		$suggestion_id       = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
+		$match_snippet       = isset($_POST['match_snippet']) ? wp_unslash($_POST['match_snippet']) : '';
+		$replacement_snippet = isset($_POST['replacement_snippet']) ? wp_unslash($_POST['replacement_snippet']) : '';
+
+		if (!$suggestion_id || empty($match_snippet) || empty($replacement_snippet)) {
+			wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+		}
+
+		$result = $this->inserter_service->apply_insertion($suggestion_id, $match_snippet, $replacement_snippet);
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		wp_send_json_success(array(
+			'message' => __('Link inserted successfully.', 'ai-post-scheduler'),
 		));
 	}
 
