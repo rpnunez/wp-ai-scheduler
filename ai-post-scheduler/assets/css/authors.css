@@ -363,6 +363,47 @@
 	cursor: pointer;
 }
 
+.aips-taxonomy-table thead .check-column {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
+	text-align: center;
+	vertical-align: middle;
+	border-bottom: 2px solid var(--aips-gray-200);
+	background: var(--aips-gray-50);
+}
+
+.aips-taxonomy-table tbody .check-column {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
+	text-align: center;
+	vertical-align: middle;
+	border-bottom: 1px solid var(--aips-gray-100);
+	background: var(--aips-white);
+}
+
+.aips-taxonomy-table thead .check-column input[type="checkbox"],
+.aips-taxonomy-table tbody .check-column input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.aips-taxonomy-table tbody tr:last-child .check-column {
+	border-bottom: none;
+}
+
+.aips-taxonomy-table .taxonomy-actions .cell-actions {
+	justify-content: flex-start;
+}
+
+.aips-taxonomy-term-created {
+	font-size: 12px;
+	font-weight: 600;
+	color: #2271b1;
+	white-space: nowrap;
+}
+
 .aips-select-all-topics {
 	cursor: pointer;
 }

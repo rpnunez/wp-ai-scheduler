@@ -158,6 +158,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Taxonomy', 'ai-post-scheduler'),
+            __('Taxonomy', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-taxonomy',
+            array($this, 'render_taxonomy_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -453,5 +462,16 @@ class AIPS_Admin_Menu {
         // It's a lightweight class, mostly for AJAX and rendering.
         $dev_tools = new AIPS_Dev_Tools();
         $dev_tools->render_page();
+    }
+
+    /**
+     * Render the Taxonomy page.
+     *
+     * Includes the taxonomy template file.
+     *
+     * @return void
+     */
+    public function render_taxonomy_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
     }
 }

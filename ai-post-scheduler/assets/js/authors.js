@@ -347,7 +347,7 @@
 			const formData = $form.serialize();
 
 			// Disable submit button
-			$submitBtn.prop('disabled', true).text(aipsAuthorsL10n.saving);
+			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
 
 			$.ajax({
 				url: ajaxurl,
@@ -366,7 +366,7 @@
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
-					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
+					AIPS.Utilities.resetButton($submitBtn);
 				}
 			});
 		},
@@ -439,7 +439,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -464,7 +464,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
 							},
 							complete: () => {
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -592,8 +592,8 @@
 						categoryBadgeHtml = this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
 					}
 
-					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + this.escapeHtml(topic.last_feedback.reason) : '';
-					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
+					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + AIPS.Utilities.escapeHtml(topic.last_feedback.reason) : '';
+					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + AIPS.Utilities.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
 
 					detailContentHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-detail-feedback', {
 						label: AIPS.Templates.escape(aipsAuthorsL10n.lastFeedback || 'Last Feedback'),
@@ -614,7 +614,7 @@
 				let expandBtnHtml = '';
 				let detailSectionHtml = '';
 				if (detailContentHtml !== '') {
-					const viewDetailsTitle = this.escapeHtml(aipsAuthorsL10n.viewDetails || 'View Details');
+					const viewDetailsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewDetails || 'View Details');
 					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
 						id: topic.id,
@@ -624,15 +624,16 @@
 
 				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
-					const viewPostsTitle = this.escapeHtml(aipsAuthorsL10n.viewPosts || 'View Posts');
+					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
 					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
 				let duplicateBadgeHtml = '';
 				if (topic.potential_duplicate) {
 					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
-					const safeDupLabel = this.escapeHtml(dupLabel);
-					const dupTitle = topic.duplicate_match ? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match) : safeDupLabel;
+					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
+					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
+					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
 					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
 				}
 
@@ -640,8 +641,8 @@
 				if (topic.last_feedback) {
 					const fbAction = topic.last_feedback.action;
 					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
-					const fbTitle = topic.last_feedback.reason ? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason) : this.escapeHtml(fbLabel);
-					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
+					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeAttribute(fbLabel) + ': ' + AIPS.Utilities.escapeAttribute(topic.last_feedback.reason) : AIPS.Utilities.escapeAttribute(fbLabel);
+					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + AIPS.Utilities.escapeHtml(fbLabel) + '</span>';
 					if (topic.last_feedback.reason_category) {
 						feedbackBadgeHtml += ' ' + this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
 					}
@@ -738,7 +739,7 @@
 						}
 
 						const badgeClass = this.getSimilarityBadgeClass(score);
-						const label = this.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
+						const label = AIPS.Utilities.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
 						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
 
 						if ($slot.length) {
@@ -766,22 +767,6 @@
 			}
 
 			return 'aips-topic-similarity-low';
-		},
-
-		/**
-		 * Convert a label to Title Case while preserving separators like
-		 * slashes and hyphens.
-		 *
-		 * @param {string} text - Input label text.
-		 * @returns {string} Title-cased label.
-		 */
-		toTitleCase: function (text) {
-			if (!text || typeof text !== 'string') {
-				return text;
-			}
-			return text.toLowerCase().replace(/\b\w/g, function (match) {
-				return match.toUpperCase();
-			});
 		},
 
 		/**
@@ -825,7 +810,7 @@
 			}
 
 			const rawLabel = this.getCategoryLabel(action, category);
-			const label = this.toTitleCase(rawLabel);
+			const label = AIPS.Utilities.toTitleCase(rawLabel);
 			const isPositive = action === 'approved';
 			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
 			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
@@ -864,8 +849,8 @@
 
 			const iconHtml = iconClass ? '<span class="dashicons ' + iconClass + '"></span>' : '';
 
-			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">' +
-				iconHtml + this.escapeHtml(label) +
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + AIPS.Utilities.escapeAttribute(label) + '">' +
+				iconHtml + AIPS.Utilities.escapeHtml(label) +
 			'</span>';
 		},
 
@@ -1514,7 +1499,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -1534,12 +1519,12 @@
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
 										'error'
 									);
-									$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+									AIPS.Utilities.resetButton($btn);
 								}
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -1678,7 +1663,7 @@
 						const posts = response.data.posts;
 						
 						$('#aips-topic-posts-modal-title').text(
-							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
+							aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
 						);
 						
 						this.renderTopicPosts(posts);
@@ -1714,10 +1699,10 @@
 			posts.forEach(post => {
 				let actionsHtml = '';
 				if (post.edit_url) {
-					actionsHtml += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.editPost) + '</a> ';
+					actionsHtml += '<a href="' + AIPS.Utilities.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.editPost) + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					actionsHtml += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.viewPost) + '</a>';
+					actionsHtml += '<a href="' + AIPS.Utilities.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.viewPost) + '</a>';
 				}
 
 				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-post-row', {
@@ -1817,7 +1802,7 @@
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
 						// Disable button while processing
-						$button.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
 
 						// Determine the AJAX action and data
 						let ajaxAction, data;
@@ -1831,7 +1816,7 @@
 								};
 							} else {
 								AIPS.Utilities.showToast('Invalid bulk action for feedback.', 'error');
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								return;
 							}
 						} else {
@@ -1850,7 +1835,7 @@
 									break;
 								default:
 									AIPS.Utilities.showToast('Invalid bulk action.', 'error');
-									$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+									AIPS.Utilities.resetButton($button);
 									return;
 							}
 							data = {
@@ -1894,7 +1879,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								// Reset dropdowns
 								$('.aips-bulk-action-select').val('');
 								// Uncheck all checkboxes
@@ -2001,7 +1986,7 @@
 
 			// Reset helper called when the request finishes.
 			const resetUI = () => {
-				$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+				AIPS.Utilities.resetButton($button);
 				$('.aips-bulk-action-select').val('');
 				$('.aips-select-all-topics').prop('checked', false);
 				$('.aips-topic-checkbox').prop('checked', false);
@@ -2060,99 +2045,6 @@
 		},
 
 		/**
-		 * Escape a value for safe insertion as HTML text content.
-		 *
-		 * Converts the input to a string and replaces the five characters that
-		 * are significant in HTML (`&`, `<`, `>`, `"`, `'`) with their entity
-		 * equivalents. Returns an empty string for `null`, `undefined`, or on
-		 * any unexpected error.
-		 *
-		 * @param  {*}      text - Value to escape (coerced to string if needed).
-		 * @return {string} HTML-safe string.
-		 */
-		escapeHtml: function (text) {
-			try {
-				// Handle null, undefined, or non-string values
-				if (text === null || text === undefined) {
-					return '';
-				}
-				
-				// Convert to string if not already
-				const str = String(text);
-				
-				const map = {
-					'&': '&amp;',
-					'<': '&lt;',
-					'>': '&gt;',
-					'"': '&quot;',
-					"'": '&#039;'
-				};
-				return str.replace(/[&<>"']/g, m => map[m]);
-			} catch (error) {
-				console.error('Error in escapeHtml:', error);
-				// Return empty string as a safe fallback
-				return '';
-			}
-		},
-
-		/**
-		 * Sanitize and validate URLs for use in href attributes
-		 * Validates URL protocol and format without HTML-escaping (browsers handle href encoding)
-		 * @param {string} url - The URL to sanitize
-		 * @returns {string} - Validated URL or empty string if invalid
-		 */
-		sanitizeUrl: function (url) {
-			try {
-				// Handle null, undefined, or empty values
-				if (!url) {
-					return '';
-				}
-				
-				// Convert to string and trim whitespace
-				const urlStr = String(url).trim();
-				
-				if (!urlStr) {
-					return '';
-				}
-				
-				// Check for dangerous protocols (case-insensitive)
-				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
-				const lowerUrl = urlStr.toLowerCase();
-				
-				for (const protocol of dangerousProtocols) {
-					if (lowerUrl.startsWith(protocol)) {
-						console.warn('Dangerous URL protocol detected:', protocol);
-						return '';
-					}
-				}
-				
-				// For absolute URLs, validate with URL constructor
-				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-					try {
-						const urlObj = new URL(urlStr);
-						// Return the normalized URL (URL constructor already handles encoding)
-						return urlObj.href;
-					} catch (e) {
-						console.warn('Invalid URL format:', urlStr);
-						return '';
-					}
-				}
-				
-				// For relative URLs (WordPress admin paths), return as-is after validation
-				if (urlStr.startsWith('/')) {
-					return urlStr;
-				}
-				
-				// Reject anything else
-				console.warn('URL does not match allowed patterns:', urlStr);
-				return '';
-			} catch (error) {
-				console.error('Error in sanitizeUrl:', error);
-				return '';
-			}
-		},
-
-		/**
 		 * Open the Author Suggestions modal.
 		 *
 		 * @param {Event} e - Click event from `#aips-suggest-authors-btn`.
@@ -2183,9 +2075,10 @@
 			}
 
 			const $btn = $('#aips-suggest-authors-submit');
-			$btn.prop('disabled', true).html(
+			AIPS.Utilities.setButtonLoading($btn,
 				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...')
+				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...'),
+				{ isHtml: true }
 			);
 
 			$.ajax({
@@ -2214,10 +2107,7 @@
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
 				},
 				complete: () => {
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-lightbulb"></span> ' +
-						(aipsAuthorsL10n.generateSuggestions || 'Generate Suggestions')
-					);
+					AIPS.Utilities.resetButton($btn);
 				}
 			});
 		},
@@ -2296,9 +2186,10 @@
 			}
 
 			const suggestion = suggestions[index];
-			$btn.prop('disabled', true).html(
+			AIPS.Utilities.setButtonLoading($btn,
 				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.importingAuthor || 'Importing...')
+				(aipsAuthorsL10n.importingAuthor || 'Importing...'),
+				{ isHtml: true }
 			);
 
 			$.ajax({
@@ -2341,18 +2232,12 @@
 							? response.data.message
 							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
 						AIPS.Utilities.showToast(msg, 'error');
-						$btn.prop('disabled', false).html(
-							'<span class="dashicons dashicons-download"></span> ' +
-							(aipsAuthorsL10n.importAuthor || 'Import Author')
-						);
+						AIPS.Utilities.resetButton($btn);
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-download"></span> ' +
-						(aipsAuthorsL10n.importAuthor || 'Import Author')
-					);
+					AIPS.Utilities.resetButton($btn);
 				}
 			});
 		}
@@ -2473,11 +2358,11 @@
 			$fieldFilter.find('option:not(:first)').remove();
 
 			authors.forEach(author => {
-				$authorFilter.append('<option value="' + AuthorsModule.escapeHtml(author) + '">' + AuthorsModule.escapeHtml(author) + '</option>');
+				$authorFilter.append($('<option>').val(author).text(author));
 			});
 
 			fields.forEach(field => {
-				$fieldFilter.append('<option value="' + AuthorsModule.escapeHtml(field) + '">' + AuthorsModule.escapeHtml(field) + '</option>');
+				$fieldFilter.append($('<option>').val(field).text(field));
 			});
 
 			$authorFilter.val(authorValue);
@@ -2720,7 +2605,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$button.prop('disabled', true).text(aipsAuthorsL10n.generating || 'Generating...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
 
 						$.ajax({
 							url: ajaxurl,
@@ -2751,7 +2636,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 							}
 						});
 					}

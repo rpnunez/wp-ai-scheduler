@@ -218,7 +218,7 @@
 			var $button = $(e.currentTarget);
 			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
 
-			$button.prop('disabled', true).text(aipsAIEditL10n.regeneratingAll);
+			window.AIPS.Utilities.setButtonLoading($button, aipsAIEditL10n.regeneratingAll);
 			$('.aips-regenerate-btn').prop('disabled', true);
 
 			$.ajax({
@@ -244,7 +244,7 @@
 		 * Handle Regenerate All success/error payload.
 		 */
 		onRegenerateAllSuccess: function($button, response) {
-			$button.prop('disabled', false).text(aipsAIEditL10n.regenerateAll);
+			window.AIPS.Utilities.resetButton($button);
 			$('.aips-regenerate-btn').prop('disabled', false);
 
 			if (!response.success) {
@@ -286,7 +286,7 @@
 		 * Handle Regenerate All network error.
 		 */
 		onRegenerateAllError: function($button) {
-			$button.prop('disabled', false).text(aipsAIEditL10n.regenerateAll);
+			window.AIPS.Utilities.resetButton($button);
 			$('.aips-regenerate-btn').prop('disabled', false);
 			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
 		},
@@ -533,7 +533,7 @@
 			});
 			
 			// Disable save button
-			$('#aips-ai-edit-save').prop('disabled', true).text(aipsAIEditL10n.saving);
+			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
 			
 			$.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
@@ -553,7 +553,7 @@
 		 * Handle successful save
 		 */
 		onAIEditSaveSuccess: function(response) {
-			$('#aips-ai-edit-save').prop('disabled', false).text(aipsAIEditL10n.save);
+			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
 			
 			if (response.success) {
 				window.AIPS.showAIEditNotice(response.data.message, 'success');
@@ -574,7 +574,7 @@
 		 * Handle save error
 		 */
 		onAIEditSaveError: function() {
-			$('#aips-ai-edit-save').prop('disabled', false).text(aipsAIEditL10n.save);
+			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
 			window.AIPS.showAIEditNotice(aipsAIEditL10n.saveError, 'error');
 		},
 		
@@ -782,8 +782,8 @@
 			// Meta information
 			var $meta = $('<div class="aips-revision-meta"></div>');
 			$meta.append('<span class="dashicons dashicons-backup"></span>');
-			$meta.append('<span class="aips-revision-source">' + window.AIPS.escapeHtml(revisionLabel) + '</span>');
-			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(timestamp) + '</span>');
+			$meta.append('<span class="aips-revision-source">' + window.AIPS.Utilities.escapeHtml(revisionLabel) + '</span>');
+			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.Utilities.escapeHtml(timestamp) + '</span>');
 			$content.append($meta);
 			
 			// Value preview
@@ -791,7 +791,19 @@
 			
 			if (componentType === 'featured_image') {
 				if (revision.value && revision.value.url) {
-					$value.html('<img src="' + window.AIPS.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+					var sanitizedImageUrl = window.AIPS.Utilities.sanitizeUrl(revision.value.url);
+					
+					if (sanitizedImageUrl) {
+						$value.empty().append(
+							$('<img>', {
+								src: sanitizedImageUrl,
+								alt: 'Revision',
+								'class': 'aips-revision-value-image'
+							})
+						);
+					} else {
+						$value.text('No image');
+					}
 				} else {
 					$value.text('No image');
 				}
@@ -918,20 +930,6 @@
 				$input.trigger('input');
 			}
 		},
-		
-		/**
-		 * Escape HTML for safe rendering
-		 */
-		escapeHtml: function(text) {
-			var map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
-		}
 		
 	});
 	

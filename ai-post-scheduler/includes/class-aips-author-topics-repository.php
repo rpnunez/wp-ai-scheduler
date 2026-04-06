@@ -247,15 +247,30 @@ class AIPS_Author_Topics_Repository {
 	 * Get approved topics for an author (for post generation).
 	 *
 	 * @param int $author_id Author ID.
-	 * @param int $limit Optional. Maximum number of topics to return. Default 1.
+	 * @param int $limit     Optional. Maximum number of topics to return. Default 1.
+	 * @param int $after_id  Optional. Return topics with ID greater than this value. Default 0.
 	 * @return array Array of approved topic objects.
 	 */
-	public function get_approved_for_generation($author_id, $limit = 1) {
+	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
+		if ($after_id > 0) {
+			return $this->wpdb->get_results($this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name}
+				WHERE author_id = %d
+				AND status = 'approved'
+				AND id > %d
+				ORDER BY id ASC
+				LIMIT %d",
+				$author_id,
+				$after_id,
+				$limit
+			));
+		}
+
 		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} 
-			WHERE author_id = %d 
-			AND status = 'approved' 
-			ORDER BY reviewed_at ASC 
+			"SELECT * FROM {$this->table_name}
+			WHERE author_id = %d
+			AND status = 'approved'
+			ORDER BY id ASC
 			LIMIT %d",
 			$author_id,
 			$limit

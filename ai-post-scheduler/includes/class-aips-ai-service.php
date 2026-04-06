@@ -117,7 +117,9 @@ class AIPS_AI_Service {
         
         $params = $this->prepare_options($options);
         
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state (record_failure / record_success) is managed by execute_safely — do NOT
+        // call those methods inside this closure.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
                 // Use simpleTextQuery API method
@@ -125,20 +127,16 @@ class AIPS_AI_Service {
 
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $options, null, $result);
-                    $this->resilience_service->record_success();
                     return $result;
                 }
-
-                $this->resilience_service->record_failure();
 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
 
             } catch (Exception $e) {
-                $this->resilience_service->record_failure();
-
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
             }
@@ -190,7 +188,13 @@ class AIPS_AI_Service {
         
         $params = $this->prepare_options($options);
         
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state is managed by execute_safely — do NOT call record_failure / record_success
+        // inside this closure.
+        // The closure must NOT invoke fallback_json_generation() because that method calls
+        // generate_text() → execute_safely(), creating a nested resilience context inside a
+        // retry iteration.  Instead, return WP_Error('json_query_unavailable', …) as a
+        // sentinel so the caller can invoke the fallback after execute_safely() returns.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
@@ -229,7 +233,6 @@ class AIPS_AI_Service {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
 
                     $this->log_call('json', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
@@ -239,22 +242,41 @@ class AIPS_AI_Service {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
 
                     $this->log_call('json', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
                 
                 $this->log_call('json', $prompt, $options, null, wp_json_encode($result));
-                $this->resilience_service->record_success();
 
                 return $result;
             } catch (Exception $e) {
-                // If simpleJsonQuery fails (e.g. unsupported params), try fallback
-                $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
+                // Extract the provider error code from the message.
+                // If a known provider code is found, propagate it so the retry loop can classify
+                // it (permanent codes abort immediately; others are retried normally).
+                // If the exception is not a recognisable provider error (e.g. the method itself
+                // rejected the params), return the 'json_query_unavailable' sentinel so the
+                // caller triggers the text-based fallback path outside this closure.
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
 
-                return $this->fallback_json_generation($prompt, $options);
+                if ($provider_code !== '') {
+                    $error = new WP_Error($provider_code, $e->getMessage());
+                    $this->log_call('json', $prompt, $options, $error);
+                    return $error;
+                }
+
+                $this->logger->log('simpleJsonQuery failed with non-provider error, will try fallback: ' . $e->getMessage(), 'warning');
+
+                return new WP_Error('json_query_unavailable', $e->getMessage());
             }
         }, 'json', $prompt, $options);
+
+        // If simpleJsonQuery failed with a non-provider error, fall back to text-based JSON
+        // generation.  The fallback calls generate_text() which runs its own execute_safely()
+        // pass — no nesting within the retry closure above.
+        if (is_wp_error($result) && $result->get_error_code() === 'json_query_unavailable') {
+            $this->logger->log('Falling back to text-based JSON generation after simpleJsonQuery failure', 'info');
+            return $this->fallback_json_generation($prompt, $options);
+        }
 
         // Log resilience failures (circuit breaker, rate limit)
         if (is_wp_error($result)) {
@@ -355,7 +377,9 @@ class AIPS_AI_Service {
             return $error;
         }
 
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state is managed by execute_safely — do NOT call record_failure / record_success
+        // inside this closure.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
                 // Build params array for simpleImageQuery
@@ -373,7 +397,6 @@ class AIPS_AI_Service {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
 
                     $this->log_call('image', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
@@ -387,20 +410,18 @@ class AIPS_AI_Service {
                     $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
 
                     $this->log_call('image', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
 
                 $this->log_call('image', $prompt, $options, null, $image_url);
-                $this->resilience_service->record_success();
 
                 return $image_url;
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
 
                 $this->log_call('image', $prompt, $options, $error);
-                $this->resilience_service->record_failure();
 
                 return $error;
             }
