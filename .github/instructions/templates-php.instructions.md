@@ -43,4 +43,5 @@ Use this file for PHP template changes in `templates/**/*.php`.
 - Prefer small, focused template changes and avoid broad UI refactors unless requested.
 - When behavior changes, update related docs/tests and verify affected admin pages manually.
 
+> **Note:** Only read `docs/DEVELOPMENT_GUIDELINES.md` if you have not already read it in this session.
 > **Also read:** [`docs/DEVELOPMENT_GUIDELINES.md`](../../docs/DEVELOPMENT_GUIDELINES.md) for project-specific coding and architectural guidelines (SQL ownership, settings registration, HTML templating, and versioning rules).
