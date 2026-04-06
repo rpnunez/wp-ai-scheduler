@@ -941,15 +941,23 @@ class AIPS_System_Status {
         return $logs_data;
     }
 
+    /**
+     * Scans a log file for recent errors.
+     *
+     * @param string $file_path     The path to the file to scan.
+     * @param int    $lines         The number of lines to scan from the end.
+     * @param bool   $filter_plugin Whether to filter only plugin-related errors.
+     * @return array Array of error lines found.
+     */
     private function scan_file_for_errors($file_path, $lines = 100, $filter_plugin = false) {
-        if (!file_exists($file_path)) {
+        if (!file_exists($file_path) || !is_readable($file_path)) {
             return array();
         }
 
         $chunk_size = 1024 * 100; // Read last 100KB
         $file_size = filesize($file_path);
 
-        if ($file_size === 0) {
+        if ($file_size === false || $file_size === 0) {
             return array();
         }
 
