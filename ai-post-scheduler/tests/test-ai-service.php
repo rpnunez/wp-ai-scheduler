@@ -410,9 +410,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
      * Test that maxTokens is dynamically calculated when no token option is supplied.
      *
      * With no explicit maxTokens and no request_type, the 'content' type sizing is used.
-     * Calculation: (prompt_tokens + output_tokens) * 1.25, capped at aips_max_tokens_limit (16000).
-     * For a prompt of "Prompt" (6 chars → 2 tokens) + content base 4000:
-     * (2 + 4000) * 1.25 = 5002.5 → ceil buffer = 5003.
+     * Calculation: (prompt_tokens + output_tokens) + 25% buffer, capped at aips_max_tokens_limit (16000).
+     * For a prompt of "Prompt" (6 chars): prompt_tokens = ceil(6/4) = 2; output_tokens = 4000 (content);
+     * base_total = 4002; buffer = ceil(4002 * 0.25) = ceil(1000.5) = 1001; result = 4002 + 1001 = 5003.
      */
     public function test_prepare_options_default_maxTokens_used_when_not_specified() {
         global $mwai;
@@ -430,7 +430,8 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
             $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
             $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
-            // "Prompt" = 6 chars → 2 tokens; content base = 4000; total = 4002; +25% buffer = ceil(1000.5) = 1001; result = 5003.
+            // "Prompt" = 6 chars → prompt_tokens = ceil(6/4) = 2; content output_tokens = 4000;
+            // base_total = 4002; buffer = ceil(4002 * 0.25) = ceil(1000.5) = 1001; result = 4002 + 1001 = 5003.
             $prompt_tokens = (int) ceil(strlen('Prompt') / 4); // 2
             $output_tokens = 4000;
             $base_total    = $prompt_tokens + $output_tokens;
