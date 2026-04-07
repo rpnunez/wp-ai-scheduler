@@ -1067,6 +1067,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
+        // AI Provider abstraction
+        'interface-aips-ai-provider.php',
+        'class-aips-ai-engine-provider.php',
+        'class-aips-custom-ai-provider.php',
+        'class-aips-ai-provider-factory.php',
+        // AI Services
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
         'class-aips-research-service.php',
