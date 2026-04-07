@@ -127,6 +127,23 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the max tokens limit setting field.
+     *
+     * Sets a hard upper bound on the number of tokens the plugin will ever request
+     * from the AI in a single call. The dynamic token calculation will never exceed
+     * this value, preventing unexpectedly large or costly requests.
+     *
+     * @return void
+     */
+    public function max_tokens_limit_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
+        ?>
+        <input type="number" name="aips_max_tokens_limit" value="<?php echo esc_attr($value); ?>" min="100" class="small-text">
+        <p class="description"><?php esc_html_e('Hard maximum number of tokens that can be requested in a single AI call. The plugin calculates tokens dynamically per request type (title, excerpt, content) and will never exceed this limit. Default: 16000.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render Unsplash access key field.
      *
      * Provides a place to store the Unsplash API key required for image searches.
