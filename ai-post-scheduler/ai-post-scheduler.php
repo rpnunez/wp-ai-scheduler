@@ -18,6 +18,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+define('AIPS_AI_DEBUG_LOG_PROMPTS', true);
+
 // Define plugin constants
 define('AIPS_VERSION', '2.3.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
