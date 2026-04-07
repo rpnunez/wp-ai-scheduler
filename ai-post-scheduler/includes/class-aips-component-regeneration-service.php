@@ -143,7 +143,8 @@ class AIPS_Component_Regeneration_Service {
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
 			// For topic context, build the prompt and generate using generic method
-			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, '');
+			$post_content = $post_id ? get_post_field('post_content', $post_id) : '';
+			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, $post_content);
 			// Use generate_content with log_type 'title' for proper logging
 			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
