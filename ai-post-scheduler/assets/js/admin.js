@@ -11,7 +11,7 @@
     // Each entry maps a 1-based step number to its required field selector and l10n message key.
     var WIZARD_REQUIRED_FIELDS = [
         { step: 1, selector: '#template_name',   messageKey: 'templateNameRequired' },
-        { step: 3, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
+        { step: 2, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
     ];
 
     // Required-field rules for the schedule wizard.
@@ -824,7 +824,7 @@
             e.preventDefault();
             
             // Validate at least prompt is there
-            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 3; })[0];
+            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 2; })[0];
             if (promptRule && !$(promptRule.selector).val().trim()) {
                 AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
                 $(promptRule.selector).focus();
