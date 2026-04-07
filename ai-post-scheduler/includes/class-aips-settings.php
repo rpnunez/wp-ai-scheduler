@@ -44,73 +44,87 @@ class AIPS_Settings {
      * @return void
      */
     public function register_settings() {
+        $defaults = AIPS_Config::get_instance()->get_default_options();
+
         register_setting('aips_settings', 'aips_default_post_status', array(
-            'sanitize_callback' => 'sanitize_text_field'
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_default_post_status'],
         ));
         register_setting('aips_settings', 'aips_default_category', array(
-            'sanitize_callback' => 'absint'
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_default_category'],
         ));
         register_setting('aips_settings', 'aips_enable_logging', array(
-            'sanitize_callback' => 'absint'
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_enable_logging'],
         ));
         register_setting('aips_settings', 'aips_developer_mode', array(
-            'sanitize_callback' => 'absint'
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_developer_mode'],
         ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
-            'default' => 1
+            'default'           => $defaults['aips_enable_retry'],
         ));
         register_setting('aips_settings', 'aips_retry_max_attempts', array(
             'sanitize_callback' => 'absint',
-            'default' => 3
+            'default'           => $defaults['aips_retry_max_attempts'],
         ));
         register_setting('aips_settings', 'aips_retry_initial_delay', array(
             'sanitize_callback' => 'absint',
-            'default' => 1
+            'default'           => $defaults['aips_retry_initial_delay'],
         ));
         register_setting('aips_settings', 'aips_enable_rate_limiting', array(
             'sanitize_callback' => 'absint',
-            'default' => 0
+            'default'           => $defaults['aips_enable_rate_limiting'],
         ));
         register_setting('aips_settings', 'aips_rate_limit_requests', array(
             'sanitize_callback' => 'absint',
-            'default' => 10
+            'default'           => $defaults['aips_rate_limit_requests'],
         ));
         register_setting('aips_settings', 'aips_rate_limit_period', array(
             'sanitize_callback' => 'absint',
-            'default' => 60
+            'default'           => $defaults['aips_rate_limit_period'],
         ));
         register_setting('aips_settings', 'aips_enable_circuit_breaker', array(
             'sanitize_callback' => 'absint',
-            'default' => 0
+            'default'           => $defaults['aips_enable_circuit_breaker'],
         ));
         register_setting('aips_settings', 'aips_circuit_breaker_threshold', array(
             'sanitize_callback' => 'absint',
-            'default' => 5
+            'default'           => $defaults['aips_circuit_breaker_threshold'],
         ));
         register_setting('aips_settings', 'aips_circuit_breaker_timeout', array(
             'sanitize_callback' => 'absint',
-            'default' => 300
+            'default'           => $defaults['aips_circuit_breaker_timeout'],
         ));
         register_setting('aips_settings', 'aips_ai_model', array(
-            'sanitize_callback' => 'sanitize_text_field'
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_ai_model'],
         ));
         register_setting('aips_settings', 'aips_ai_env_id', array(
-            'sanitize_callback' => 'sanitize_text_field'
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_ai_env_id'],
+        ));
+        register_setting('aips_settings', 'aips_max_tokens_limit', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_max_tokens_limit'],
         ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
-            'sanitize_callback' => 'sanitize_text_field'
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_unsplash_access_key'],
         ));
         register_setting('aips_settings', 'aips_review_notifications_email', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_notification_emails')
+            'sanitize_callback' => array($this->ui, 'sanitize_notification_emails'),
+            'default'           => $defaults['aips_review_notifications_email'],
         ));
         register_setting('aips_settings', 'aips_notification_preferences', array(
             'sanitize_callback' => array($this->ui, 'sanitize_notification_preferences'),
-            'default' => AIPS_Config::get_instance()->get_option('aips_notification_preferences', array())
+            'default'           => $defaults['aips_notification_preferences'],
         ));
         register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
             'sanitize_callback' => array($this->ui, 'sanitize_similarity_threshold'),
-            'default' => 0.8
+            'default'           => $defaults['aips_topic_similarity_threshold'],
         ));
         
         // -----------------------------------------------------------------------
@@ -161,6 +175,14 @@ class AIPS_Settings {
             'aips_ai_env_id',
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens_limit',
+            __('Max Tokens Limit', 'ai-post-scheduler'),
+            array($this->ui, 'max_tokens_limit_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );
@@ -435,41 +457,42 @@ class AIPS_Settings {
      *     Associative array keyed by the full WordPress option name.
      */
     public static function get_content_strategy_options() {
+        $config_defaults = AIPS_Config::get_instance()->get_default_options();
         return array(
             'aips_site_niche' => array(
                 'key'               => 'niche',
                 'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_niche'],
             ),
             'aips_site_target_audience' => array(
                 'key'               => 'target_audience',
                 'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_target_audience'],
             ),
             'aips_site_content_goals' => array(
                 'key'               => 'content_goals',
                 'sanitize_callback' => 'sanitize_textarea_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_content_goals'],
             ),
             'aips_site_brand_voice' => array(
                 'key'               => 'brand_voice',
                 'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_brand_voice'],
             ),
             'aips_site_content_language' => array(
                 'key'               => 'content_language',
                 'sanitize_callback' => 'sanitize_text_field',
-                'default'           => 'en',
+                'default'           => $config_defaults['aips_site_content_language'],
             ),
             'aips_site_content_guidelines' => array(
                 'key'               => 'content_guidelines',
                 'sanitize_callback' => 'sanitize_textarea_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_content_guidelines'],
             ),
             'aips_site_excluded_topics' => array(
                 'key'               => 'excluded_topics',
                 'sanitize_callback' => 'sanitize_textarea_field',
-                'default'           => '',
+                'default'           => $config_defaults['aips_site_excluded_topics'],
             ),
         );
     }
