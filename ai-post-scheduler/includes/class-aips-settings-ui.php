@@ -184,7 +184,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_content');
         ?>
         <input type="number" name="aips_max_tokens_content" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected output token budget for full post content generation (~3000–4000 words). Default: 4000.', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Expected output token budget for full post content generation (approximately 2,000–3,000 words, depending on the model and content). Default: 4000. Actual output is also capped by the Max Tokens Limit setting.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
