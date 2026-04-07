@@ -186,9 +186,9 @@ class AIPS_Config {
      */
     public function get_ai_config() {
         return array(
-            'model' => $this->get_option('aips_ai_model', ''),
-            'max_tokens' => (int) $this->get_option('aips_max_tokens', 2000),
-            'temperature' => (float) $this->get_option('aips_temperature', 0.7),
+            'model' => $this->get_option('aips_ai_model'),
+            'max_tokens' => (int) $this->get_option('aips_max_tokens'),
+            'temperature' => (float) $this->get_option('aips_temperature'),
         );
     }
     
@@ -199,9 +199,9 @@ class AIPS_Config {
      */
     public function get_retry_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_retry', false),
-            'max_attempts' => (int) $this->get_option('aips_retry_max_attempts', 3),
-            'initial_delay' => (int) $this->get_option('aips_retry_initial_delay', 1),
+            'enabled' => (bool) $this->get_option('aips_enable_retry'),
+            'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
+            'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
             'exponential' => true,
             'jitter' => true,
         );
@@ -214,9 +214,9 @@ class AIPS_Config {
      */
     public function get_rate_limit_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_rate_limiting', false),
-            'requests' => (int) $this->get_option('aips_rate_limit_requests', 10),
-            'period' => (int) $this->get_option('aips_rate_limit_period', 60),
+            'enabled' => (bool) $this->get_option('aips_enable_rate_limiting'),
+            'requests' => (int) $this->get_option('aips_rate_limit_requests'),
+            'period' => (int) $this->get_option('aips_rate_limit_period'),
         );
     }
     
@@ -227,9 +227,9 @@ class AIPS_Config {
      */
     public function get_circuit_breaker_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_circuit_breaker', false),
-            'failure_threshold' => (int) $this->get_option('aips_circuit_breaker_threshold', 5),
-            'timeout' => (int) $this->get_option('aips_circuit_breaker_timeout', 300),
+            'enabled' => (bool) $this->get_option('aips_enable_circuit_breaker'),
+            'failure_threshold' => (int) $this->get_option('aips_circuit_breaker_threshold'),
+            'timeout' => (int) $this->get_option('aips_circuit_breaker_timeout'),
         );
     }
     
@@ -240,8 +240,8 @@ class AIPS_Config {
      */
     public function get_logging_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_logging', true),
-            'retention_days' => (int) $this->get_option('aips_log_retention_days', 30),
+            'enabled' => (bool) $this->get_option('aips_enable_logging'),
+            'retention_days' => (int) $this->get_option('aips_log_retention_days'),
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
         );
     }

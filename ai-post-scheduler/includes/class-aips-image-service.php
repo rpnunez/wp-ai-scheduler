@@ -118,7 +118,7 @@ class AIPS_Image_Service {
      * @return string|WP_Error Image URL on success, WP_Error on failure.
      */
     private function fetch_unsplash_image_url($keywords) {
-        $access_key = trim(get_option('aips_unsplash_access_key', ''));
+        $access_key = trim(AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'));
 
         if (empty($access_key)) {
             return new WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));

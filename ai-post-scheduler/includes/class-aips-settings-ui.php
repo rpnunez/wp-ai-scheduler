@@ -66,7 +66,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function post_status_field_callback() {
-        $value = get_option('aips_default_post_status', 'draft');
+        $value = AIPS_Config::get_instance()->get_option('aips_default_post_status');
         ?>
         <select name="aips_default_post_status">
             <option value="draft" <?php selected($value, 'draft'); ?>><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
@@ -85,7 +85,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function category_field_callback() {
-        $value = get_option('aips_default_category', 0);
+        $value = AIPS_Config::get_instance()->get_option('aips_default_category');
         wp_dropdown_categories(array(
             'name' => 'aips_default_category',
             'selected' => $value,
@@ -104,7 +104,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function ai_model_field_callback() {
-        $value = get_option('aips_ai_model', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
@@ -119,7 +119,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function ai_env_id_field_callback() {
-        $value = get_option('aips_ai_env_id', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
         <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
         <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
@@ -134,7 +134,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function unsplash_access_key_field_callback() {
-        $value = get_option('aips_unsplash_access_key', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_unsplash_access_key');
         ?>
         <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
@@ -152,7 +152,7 @@ class AIPS_Settings_UI {
      * Render the enable retry setting field.
      */
     public function enable_retry_field_callback() {
-        $value = get_option('aips_enable_retry', 1);
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_retry');
         ?>
         <input type="hidden" name="aips_enable_retry" value="0">
         <input type="checkbox" name="aips_enable_retry" value="1" <?php checked(1, $value); ?>>
@@ -164,7 +164,7 @@ class AIPS_Settings_UI {
      * Render the max retries setting field.
      */
     public function max_retries_field_callback() {
-        $value = get_option('aips_retry_max_attempts', 3);
+        $value = AIPS_Config::get_instance()->get_option('aips_retry_max_attempts');
         ?>
         <input type="number" name="aips_retry_max_attempts" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
         <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
@@ -175,7 +175,7 @@ class AIPS_Settings_UI {
      * Render the retry initial delay setting field.
      */
     public function retry_initial_delay_field_callback() {
-        $value = get_option('aips_retry_initial_delay', 1);
+        $value = AIPS_Config::get_instance()->get_option('aips_retry_initial_delay');
         ?>
         <input type="number" name="aips_retry_initial_delay" value="<?php echo esc_attr($value); ?>" min="1" max="60" class="small-text">
         <p class="description"><?php esc_html_e('Initial delay (in seconds) before the first retry attempt.', 'ai-post-scheduler'); ?></p>
@@ -186,7 +186,7 @@ class AIPS_Settings_UI {
      * Render the enable rate limiting setting field.
      */
     public function enable_rate_limiting_field_callback() {
-        $value = get_option('aips_enable_rate_limiting', 0);
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_rate_limiting');
         ?>
         <input type="hidden" name="aips_enable_rate_limiting" value="0">
         <input type="checkbox" name="aips_enable_rate_limiting" value="1" <?php checked(1, $value); ?>>
@@ -198,7 +198,7 @@ class AIPS_Settings_UI {
      * Render the rate limit requests setting field.
      */
     public function rate_limit_requests_field_callback() {
-        $value = get_option('aips_rate_limit_requests', 10);
+        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_requests');
         ?>
         <input type="number" name="aips_rate_limit_requests" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
         <p class="description"><?php esc_html_e('Maximum number of allowed requests within the defined period.', 'ai-post-scheduler'); ?></p>
@@ -209,7 +209,7 @@ class AIPS_Settings_UI {
      * Render the rate limit period setting field.
      */
     public function rate_limit_period_field_callback() {
-        $value = get_option('aips_rate_limit_period', 60);
+        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_period');
         ?>
         <input type="number" name="aips_rate_limit_period" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
         <p class="description"><?php esc_html_e('Period (in seconds) for rate limiting (e.g., 60 = 1 minute).', 'ai-post-scheduler'); ?></p>
@@ -220,7 +220,7 @@ class AIPS_Settings_UI {
      * Render the enable circuit breaker setting field.
      */
     public function enable_circuit_breaker_field_callback() {
-        $value = get_option('aips_enable_circuit_breaker', 0);
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_circuit_breaker');
         ?>
         <input type="hidden" name="aips_enable_circuit_breaker" value="0">
         <input type="checkbox" name="aips_enable_circuit_breaker" value="1" <?php checked(1, $value); ?>>
@@ -232,7 +232,7 @@ class AIPS_Settings_UI {
      * Render the circuit breaker threshold setting field.
      */
     public function circuit_breaker_threshold_field_callback() {
-        $value = get_option('aips_circuit_breaker_threshold', 5);
+        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_threshold');
         ?>
         <input type="number" name="aips_circuit_breaker_threshold" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
         <p class="description"><?php esc_html_e('Number of consecutive failures required to open the circuit.', 'ai-post-scheduler'); ?></p>
@@ -243,7 +243,7 @@ class AIPS_Settings_UI {
      * Render the circuit breaker timeout setting field.
      */
     public function circuit_breaker_timeout_field_callback() {
-        $value = get_option('aips_circuit_breaker_timeout', 300);
+        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_timeout');
         ?>
         <input type="number" name="aips_circuit_breaker_timeout" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
         <p class="description"><?php esc_html_e('Time (in seconds) to keep the circuit open before attempting to recover.', 'ai-post-scheduler'); ?></p>
@@ -258,7 +258,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function logging_field_callback() {
-        $value = get_option('aips_enable_logging', 1);
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_logging');
         ?>
         <input type="hidden" name="aips_enable_logging" value="0">
         <label>
@@ -276,7 +276,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function developer_mode_field_callback() {
-        $value = get_option('aips_developer_mode', 0);
+        $value = AIPS_Config::get_instance()->get_option('aips_developer_mode');
         ?>
         <input type="hidden" name="aips_developer_mode" value="0">
         <label>
@@ -318,8 +318,10 @@ class AIPS_Settings_UI {
      */
     public function notification_preference_field_callback($args) {
         $type = isset($args['type']) ? sanitize_key($args['type']) : '';
-        $preferences = get_option('aips_notification_preferences', array());
-        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $preferences_stored = get_option('aips_notification_preferences');
+        $preferences = is_array($preferences_stored) ? $preferences_stored : array();
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
+        $defaults = is_array($defaults) ? $defaults : array();
         $registry = AIPS_Notifications::get_notification_type_registry();
         $registry_default = isset($registry[$type]['default_mode']) ? $registry[$type]['default_mode'] : AIPS_Notifications::MODE_BOTH;
         $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : $registry_default);
@@ -366,7 +368,7 @@ class AIPS_Settings_UI {
      */
     public function sanitize_notification_preferences($value) {
         $preferences = is_array($value) ? $value : array();
-        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
         $sanitized = array();
 
@@ -408,7 +410,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function topic_similarity_threshold_field_callback() {
-        $raw = get_option('aips_topic_similarity_threshold', 0.8);
+        $raw = AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
         // Normalize on read so the UI always reflects the effective runtime value.
         $value = is_numeric($raw) ? min(1.0, max(0.1, (float) $raw)) : 0.8;
         ?>
@@ -446,7 +448,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_niche_field_callback() {
-        $value = get_option('aips_site_niche', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_niche');
         ?>
         <input type="text" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('The main topic or industry your website covers. Used as context for Author Suggestions and AI generation.', 'ai-post-scheduler'); ?></p>
@@ -459,7 +461,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_target_audience_field_callback() {
-        $value = get_option('aips_site_target_audience', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_target_audience');
         ?>
         <input type="text" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('Who your content is written for. Helps the AI tailor the language and depth of generated topics and posts.', 'ai-post-scheduler'); ?></p>
@@ -472,7 +474,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_content_goals_field_callback() {
-        $value = get_option('aips_site_content_goals', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_content_goals');
         ?>
         <textarea name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
@@ -485,7 +487,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_brand_voice_field_callback() {
-        $value = get_option('aips_site_brand_voice', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_brand_voice');
         ?>
         <input type="text" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('The overall voice and tone of your brand. Applied as a default across all authors unless overridden per-author.', 'ai-post-scheduler'); ?></p>
@@ -498,7 +500,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_content_language_field_callback() {
-        $value = get_option('aips_site_content_language', 'en');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_content_language');
         $languages = array(
             'en'    => __('English', 'ai-post-scheduler'),
             'es'    => __('Spanish', 'ai-post-scheduler'),
@@ -536,7 +538,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_content_guidelines_field_callback() {
-        $value = get_option('aips_site_content_guidelines', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_content_guidelines');
         ?>
         <textarea name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('General rules and guidelines for all generated content. Included in every generation prompt as hard constraints.', 'ai-post-scheduler'); ?></p>
@@ -549,7 +551,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function site_excluded_topics_field_callback() {
-        $value = get_option('aips_site_excluded_topics', '');
+        $value = AIPS_Config::get_instance()->get_option('aips_site_excluded_topics');
         ?>
         <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>

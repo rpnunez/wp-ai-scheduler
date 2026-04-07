@@ -32,6 +32,9 @@
 		/** Per-page row count */
 		perPage: 20,
 
+		/** Debounce timer handle for search input */
+		_searchTimer: null,
+
 		/**
 		 * Bootstrap the module.
 		 */
@@ -44,88 +47,29 @@
 		 * Bind all UI event listeners.
 		 */
 		bindEvents: function () {
-			var self = this;
-
 			// Tab navigation
-			$(document).on('click', '.aips-tab-link', function (e) {
-				e.preventDefault();
-				var tab = $(this).data('tab');
-				$('.aips-tab-link').removeClass('active');
-				$(this).addClass('active');
-				$('.aips-tab-content').hide().attr('aria-hidden', 'true');
-				$('#' + tab + '-tab').show().attr('aria-hidden', 'false');
-			});
+			$(document).on('click', '.aips-tab-link', this.onTabClick.bind(this));
 
 			// Status filter
-			$(document).on('change', '#aips-il-status-filter', function () {
-				self.currentStatus = $(this).val();
-				self.currentPage   = 1;
-				self.loadSuggestions();
-			});
+			$(document).on('change', '#aips-il-status-filter', this.onStatusFilterChange.bind(this));
 
 			// Search
-			var searchTimer;
-			$(document).on('input', '#aips-il-search', function () {
-				clearTimeout(searchTimer);
-				var val = $(this).val().trim();
-				$('#aips-il-search-clear').toggle(val.length > 0);
-				searchTimer = setTimeout(function () {
-					self.currentSearch = val;
-					self.currentPage   = 1;
-					self.loadSuggestions();
-				}, 400);
-			});
+			$(document).on('input', '#aips-il-search', this.onSearchInput.bind(this));
+			$(document).on('click', '#aips-il-search-clear', this.onSearchClear.bind(this));
 
-			$(document).on('click', '#aips-il-search-clear', function () {
-				$('#aips-il-search').val('').trigger('input');
-			});
+			// Index management
+			$(document).on('click', '#aips-start-indexing-btn', this.onStartIndexingClick.bind(this));
+			$(document).on('click', '#aips-clear-index-btn', this.onClearIndexClick.bind(this));
 
-			// Start indexing
-			$(document).on('click', '#aips-start-indexing-btn', function () {
-				self.startIndexing();
-			});
-
-			// Clear index
-			$(document).on('click', '#aips-clear-index-btn', function () {
-				if (!window.confirm(aipsInternalLinksL10n.confirmClearIndex)) {
-					return;
-				}
-				self.clearIndex();
-			});
-
-			// Generate for post
-			$(document).on('click', '#aips-generate-for-post-btn', function () {
-				self.generateForPost();
-			});
-
-			// Re-index post
-			$(document).on('click', '#aips-reindex-post-btn', function () {
-				self.reindexPost();
-			});
+			// Per-post generation
+			$(document).on('click', '#aips-generate-for-post-btn', this.onGenerateForPostClick.bind(this));
+			$(document).on('click', '#aips-reindex-post-btn', this.onReindexPostClick.bind(this));
 
 			// Row actions (delegated)
-			$(document).on('click', '.aips-il-accept-btn', function () {
-				self.updateStatus($(this).data('id'), 'accepted', $(this).closest('tr'));
-			});
-
-			$(document).on('click', '.aips-il-reject-btn', function () {
-				self.updateStatus($(this).data('id'), 'rejected', $(this).closest('tr'));
-			});
-
-			$(document).on('click', '.aips-il-delete-btn', function () {
-				if (!window.confirm(aipsInternalLinksL10n.confirmDelete)) {
-					return;
-				}
-				self.deleteSuggestion($(this).data('id'), $(this).closest('tr'));
-			});
-
-			$(document).on('click', '.aips-il-edit-anchor-btn', function () {
-				var $btn = $(this);
-				$('#aips-anchor-modal-id').val($btn.data('id'));
-				$('#aips-anchor-modal-text').val($btn.data('anchor'));
-				$('#aips-anchor-modal').show();
-				$('#aips-anchor-modal-text').focus();
-			});
+			$(document).on('click', '.aips-il-accept-btn', this.onAcceptClick.bind(this));
+			$(document).on('click', '.aips-il-reject-btn', this.onRejectClick.bind(this));
+			$(document).on('click', '.aips-il-delete-btn', this.onDeleteClick.bind(this));
+			$(document).on('click', '.aips-il-edit-anchor-btn', this.onEditAnchorClick.bind(this));
 
 			// Insert Link button (accepted rows)
 			$(document).on('click', '.aips-il-insert-btn', function () {
@@ -147,22 +91,184 @@
 			});
 
 			// Anchor modal
-			$(document).on('click', '.aips-modal-close', function () {
-				$('#aips-anchor-modal').hide();
-			});
-
-			$(document).on('click', '#aips-anchor-modal-save', function () {
-				self.saveAnchorText();
-			});
+			$(document).on('click', '.aips-modal-close', this.onModalClose.bind(this));
+			$(document).on('click', '#aips-anchor-modal-save', this.onAnchorModalSave.bind(this));
 
 			// Pagination
-			$(document).on('click', '.aips-page-btn', function () {
-				var page = parseInt($(this).data('page'), 10);
-				if (page && page !== self.currentPage) {
-					self.currentPage = page;
-					self.loadSuggestions();
-				}
-			});
+			$(document).on('click', '.aips-page-btn', this.onPageClick.bind(this));
+		},
+
+		// -----------------------------------------------------------------------
+		// Event handlers
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Switch the visible tab panel.
+		 *
+		 * @param {Event} e Click event from a `.aips-tab-link` element.
+		 */
+		onTabClick: function (e) {
+			e.preventDefault();
+			var tab = $(e.currentTarget).data('tab');
+			$('.aips-tab-link').removeClass('active');
+			$(e.currentTarget).addClass('active');
+			$('.aips-tab-content').hide().attr('aria-hidden', 'true');
+			$('#' + tab + '-tab').show().attr('aria-hidden', 'false');
+		},
+
+		/**
+		 * Reload the suggestions table when the status filter changes.
+		 *
+		 * @param {Event} e Change event from `#aips-il-status-filter`.
+		 */
+		onStatusFilterChange: function (e) {
+			this.currentStatus = $(e.currentTarget).val();
+			this.currentPage   = 1;
+			this.loadSuggestions();
+		},
+
+		/**
+		 * Debounced live search: reload suggestions 400 ms after the user stops typing.
+		 *
+		 * @param {Event} e Input event from `#aips-il-search`.
+		 */
+		onSearchInput: function (e) {
+			var self = this;
+			var val  = $(e.currentTarget).val().trim();
+
+			$('#aips-il-search-clear').toggle(val.length > 0);
+
+			clearTimeout(self._searchTimer);
+			self._searchTimer = setTimeout(function () {
+				self.currentSearch = val;
+				self.currentPage   = 1;
+				self.loadSuggestions();
+			}, 400);
+		},
+
+		/**
+		 * Clear the search field and reload the suggestions table.
+		 *
+		 * @param {Event} e Click event from `#aips-il-search-clear`.
+		 */
+		onSearchClear: function (e) {
+			$('#aips-il-search').val('').trigger('input');
+		},
+
+		/**
+		 * Start background indexing when the "Start Indexing" button is clicked.
+		 *
+		 * @param {Event} e Click event from `#aips-start-indexing-btn`.
+		 */
+		onStartIndexingClick: function (e) {
+			this.startIndexing();
+		},
+
+		/**
+		 * Ask for confirmation then clear the full index.
+		 *
+		 * @param {Event} e Click event from `#aips-clear-index-btn`.
+		 */
+		onClearIndexClick: function (e) {
+			if (!window.confirm(aipsInternalLinksL10n.confirmClearIndex)) {
+				return;
+			}
+			this.clearIndex();
+		},
+
+		/**
+		 * Generate suggestions for the entered post ID.
+		 *
+		 * @param {Event} e Click event from `#aips-generate-for-post-btn`.
+		 */
+		onGenerateForPostClick: function (e) {
+			this.generateForPost();
+		},
+
+		/**
+		 * Re-index the entered post ID.
+		 *
+		 * @param {Event} e Click event from `#aips-reindex-post-btn`.
+		 */
+		onReindexPostClick: function (e) {
+			this.reindexPost();
+		},
+
+		/**
+		 * Accept a suggestion row.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-accept-btn` element.
+		 */
+		onAcceptClick: function (e) {
+			var $btn = $(e.currentTarget);
+			this.updateStatus($btn.data('id'), 'accepted', $btn.closest('tr'));
+		},
+
+		/**
+		 * Reject a suggestion row.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-reject-btn` element.
+		 */
+		onRejectClick: function (e) {
+			var $btn = $(e.currentTarget);
+			this.updateStatus($btn.data('id'), 'rejected', $btn.closest('tr'));
+		},
+
+		/**
+		 * Ask for confirmation then delete a suggestion row.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-delete-btn` element.
+		 */
+		onDeleteClick: function (e) {
+			if (!window.confirm(aipsInternalLinksL10n.confirmDelete)) {
+				return;
+			}
+			var $btn = $(e.currentTarget);
+			this.deleteSuggestion($btn.data('id'), $btn.closest('tr'));
+		},
+
+		/**
+		 * Open the anchor-text edit modal for the clicked suggestion.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-edit-anchor-btn` element.
+		 */
+		onEditAnchorClick: function (e) {
+			var $btn = $(e.currentTarget);
+			$('#aips-anchor-modal-id').val($btn.data('id'));
+			$('#aips-anchor-modal-text').val($btn.data('anchor'));
+			$('#aips-anchor-modal').show();
+			$('#aips-anchor-modal-text').focus();
+		},
+
+		/**
+		 * Close any visible modal.
+		 *
+		 * @param {Event} e Click event from an `.aips-modal-close` element.
+		 */
+		onModalClose: function (e) {
+			$('#aips-anchor-modal').hide();
+		},
+
+		/**
+		 * Save the edited anchor text from the modal.
+		 *
+		 * @param {Event} e Click event from `#aips-anchor-modal-save`.
+		 */
+		onAnchorModalSave: function (e) {
+			this.saveAnchorText();
+		},
+
+		/**
+		 * Navigate to the clicked page.
+		 *
+		 * @param {Event} e Click event from a `.aips-page-btn` element.
+		 */
+		onPageClick: function (e) {
+			var page = parseInt($(e.currentTarget).data('page'), 10);
+			if (page && page !== this.currentPage) {
+				this.currentPage = page;
+				this.loadSuggestions();
+			}
 		},
 
 		// -----------------------------------------------------------------------
@@ -177,9 +283,9 @@
 			var $tbody = $('#aips-suggestions-tbody');
 
 			$tbody.html(
-				'<tr class="aips-table-loading"><td colspan="6">' +
-				'<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>' +
-				aipsInternalLinksL10n.loading + '</td></tr>'
+			'<tr class="aips-table-loading"><td colspan="6">' +
+			'<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>' +
+			aipsInternalLinksL10n.loading + '</td></tr>'
 			);
 
 			$.post(aipsAjax.ajaxUrl, {
@@ -192,8 +298,8 @@
 			}, function (response) {
 				if (!response.success) {
 					$tbody.html(
-						'<tr><td colspan="6" class="aips-table-empty">' +
-						aipsInternalLinksL10n.errorLoading + '</td></tr>'
+					'<tr><td colspan="6" class="aips-table-empty">' +
+					aipsInternalLinksL10n.errorLoading + '</td></tr>'
 					);
 					return;
 				}
@@ -202,8 +308,8 @@
 
 				if (!data.items || data.items.length === 0) {
 					$tbody.html(
-						'<tr><td colspan="6" class="aips-table-empty">' +
-						aipsInternalLinksL10n.noSuggestions + '</td></tr>'
+					'<tr><td colspan="6" class="aips-table-empty">' +
+					aipsInternalLinksL10n.noSuggestions + '</td></tr>'
 					);
 					self.renderPagination(0, 0);
 					return;
@@ -217,8 +323,8 @@
 				self.renderPagination(data.total, data.total_pages);
 			}).fail(function () {
 				$tbody.html(
-					'<tr><td colspan="6" class="aips-table-empty">' +
-					aipsInternalLinksL10n.errorLoading + '</td></tr>'
+				'<tr><td colspan="6" class="aips-table-empty">' +
+				aipsInternalLinksL10n.errorLoading + '</td></tr>'
 				);
 			});
 		},
@@ -239,24 +345,26 @@
 			var targetTitle = AIPS.Templates.escape(item.target_post_title || '(#' + item.target_post_id + ')');
 
 			var sourceLink = item.source_edit_url
-				? '<a href="' + AIPS.Templates.escape(item.source_edit_url) + '" target="_blank" rel="noopener noreferrer">' + sourceTitle + '</a>'
-				: sourceTitle;
+			? '<a href="' + AIPS.Templates.escape(item.source_edit_url) + '" target="_blank" rel="noopener noreferrer">' + sourceTitle + '</a>'
+			: sourceTitle;
 
 			var targetLink = item.target_edit_url
-				? '<a href="' + AIPS.Templates.escape(item.target_edit_url) + '" target="_blank" rel="noopener noreferrer">' + targetTitle + '</a>'
-				: targetTitle;
+			? '<a href="' + AIPS.Templates.escape(item.target_edit_url) + '" target="_blank" rel="noopener noreferrer">' + targetTitle + '</a>'
+			: targetTitle;
 
 			var actions = '';
+			var acceptActionLabel = aipsInternalLinksL10n.acceptAction || 'Accept suggestion';
+			var rejectActionLabel = aipsInternalLinksL10n.rejectAction || 'Reject suggestion';
 			if (item.status === 'pending') {
 				actions +=
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="' + item.id + '">' +
-					'<span class="dashicons dashicons-yes" aria-hidden="true"></span>' +
-					'<span class="screen-reader-text">' + aipsInternalLinksL10n.accepted + '</span>' +
-					'</button> ' +
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="' + item.id + '">' +
-					'<span class="dashicons dashicons-no" aria-hidden="true"></span>' +
-					'<span class="screen-reader-text">' + aipsInternalLinksL10n.rejected + '</span>' +
-					'</button> ';
+				'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="' + item.id + '">' +
+				'<span class="dashicons dashicons-yes" aria-hidden="true"></span>' +
+				'<span class="screen-reader-text">' + acceptActionLabel + '</span>' +
+				'</button> ' +
+				'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="' + item.id + '">' +
+				'<span class="dashicons dashicons-no" aria-hidden="true"></span>' +
+				'<span class="screen-reader-text">' + rejectActionLabel + '</span>' +
+				'</button> ';
 			}
 
 			if (item.status === 'accepted') {
@@ -268,23 +376,23 @@
 			}
 
 			actions +=
-				'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="' + item.id + '" data-anchor="' + anchor + '">' +
-				'<span class="dashicons dashicons-edit" aria-hidden="true"></span>' +
-				'<span class="screen-reader-text">' + aipsInternalLinksL10n.anchorUpdated + '</span>' +
-				'</button> ' +
-				'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="' + item.id + '">' +
-				'<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
-				'<span class="screen-reader-text">' + aipsInternalLinksL10n.confirmDelete + '</span>' +
-				'</button>';
+			'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="' + item.id + '" data-anchor="' + anchor + '">' +
+			'<span class="dashicons dashicons-edit" aria-hidden="true"></span>' +
+			'<span class="screen-reader-text">Edit anchor text</span>' +
+			'</button> ' +
+			'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="' + item.id + '">' +
+			'<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
+			'<span class="screen-reader-text">Delete suggestion</span>' +
+			'</button>';
 
 			return '<tr data-id="' + item.id + '">' +
-				'<td class="cell-primary">' + sourceLink + '</td>' +
-				'<td>' + targetLink + '</td>' +
-				'<td>' + score + '</td>' +
-				'<td class="aips-il-anchor-cell">' + anchor + '</td>' +
-				'<td><span class="aips-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-				'<td class="cell-actions">' + actions + '</td>' +
-				'</tr>';
+			'<td class="cell-primary">' + sourceLink + '</td>' +
+			'<td>' + targetLink + '</td>' +
+			'<td>' + score + '</td>' +
+			'<td class="aips-il-anchor-cell">' + anchor + '</td>' +
+			'<td><span class="aips-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+			'<td class="cell-actions">' + actions + '</td>' +
+			'</tr>';
 		},
 
 		/**
@@ -331,7 +439,7 @@
 		// -----------------------------------------------------------------------
 
 		/**
-		 * Start background indexing.
+		 * Start background indexing of unindexed posts.
 		 */
 		startIndexing: function () {
 			var self = this;
@@ -344,8 +452,8 @@
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
 				$btn.prop('disabled', false).html(
-					'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
-					$('<span>').text(self.originalIndexText).html()
+				'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalIndexText).html()
 				);
 
 				if (response.success) {
@@ -353,17 +461,20 @@
 					setTimeout(function () { self.refreshStatus(); }, 2000);
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
-						'error'
+					(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
+					'error'
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
+				$btn.prop('disabled', false).html(
+				'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalIndexText).html()
+				);
 			});
 		},
 
 		/**
-		 * Clear the full index and all suggestions.
+		 * Clear the full embeddings index and all suggestions.
 		 */
 		clearIndex: function () {
 			var self = this;
@@ -378,8 +489,8 @@
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
 			});
@@ -412,8 +523,8 @@
 				threshold:       threshold || 0.70,
 			}, function (response) {
 				$btn.prop('disabled', false).html(
-					'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
-					$('<span>').text(self.originalGenerateText).html()
+				'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalGenerateText).html()
 				);
 
 				if (response.success) {
@@ -421,18 +532,21 @@
 					self.loadSuggestions();
 				} else {
 					self.showGenerateFeedback(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
-				self.showGenerateFeedback('Request failed.', 'error');
+				$btn.prop('disabled', false).html(
+				'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalGenerateText).html()
+				);
+				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
 		},
 
 		/**
-		 * Re-index a single post by ID.
+		 * Re-index a single post by ID (refresh its stored embedding).
 		 */
 		reindexPost: function () {
 			var self      = this;
@@ -441,7 +555,7 @@
 			var $feedback = $('#aips-gen-feedback');
 
 			if (!postId) {
-				self.showGenerateFeedback('Please enter a valid post ID.', 'error');
+				self.showGenerateFeedback(aipsInternalLinksL10n.invalidPostId, 'error');
 				return;
 			}
 
@@ -454,8 +568,8 @@
 				post_id: postId,
 			}, function (response) {
 				$btn.prop('disabled', false).html(
-					'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
-					$('<span>').text(self.originalReindexText).html()
+				'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalReindexText).html()
 				);
 
 				if (response.success) {
@@ -464,12 +578,15 @@
 					self.refreshStatus();
 				} else {
 					self.showGenerateFeedback(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false);
+				$btn.prop('disabled', false).html(
+				'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
+				$('<span>').text(self.originalReindexText).html()
+				);
 			});
 		},
 
@@ -572,7 +689,7 @@
 
 				if (idx) {
 					$('#aips-stat-indexed').html(
-						idx.indexed + ' <span style="font-size:14px;color:#888;">/ ' + idx.total_posts + '</span>'
+					idx.indexed + ' <span style="font-size:14px;color:#888;">/ ' + idx.total_posts + '</span>'
 					);
 					$('#aips-index-progress-bar').css('width', idx.percent + '%');
 				}
@@ -614,9 +731,9 @@
 		showGenerateFeedback: function (message, type) {
 			var $el = $('#aips-gen-feedback');
 			$el.removeClass('aips-notice-success aips-notice-error')
-				.addClass('aips-notice-' + type)
-				.text(message)
-				.show();
+			.addClass('aips-notice-' + type)
+			.text(message)
+			.show();
 		},
 
 		// -----------------------------------------------------------------------

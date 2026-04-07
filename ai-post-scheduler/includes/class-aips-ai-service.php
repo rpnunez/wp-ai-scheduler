@@ -618,14 +618,15 @@ class AIPS_AI_Service {
      * @return array Normalized options array.
      */
     private function prepare_options($options) {
-        $model = get_option('aips_ai_model', '');
-        $env_id = get_option('aips_ai_env_id', '');
+        $config = AIPS_Config::get_instance();
+        $model = $config->get_option('aips_ai_model');
+        $env_id = $config->get_option('aips_ai_env_id');
         
         $default_options = array(
             'model' => $model,
             'envId' => $env_id,
-            'maxTokens' => 2000,
-            'temperature' => 0.7,
+            'maxTokens' => (int) $config->get_option('aips_max_tokens'),
+            'temperature' => (float) $config->get_option('aips_temperature'),
         );
 
         if (isset($options['max_tokens'])) {
@@ -745,7 +746,7 @@ class AIPS_AI_Service {
             'dedupe_key'     => 'integration_error_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
             'url'            => admin_url('admin.php?page=aips-settings'),
-            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+            'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }
 
@@ -765,7 +766,7 @@ class AIPS_AI_Service {
             'dedupe_key'     => 'quota_alert_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
             'url'            => admin_url('admin.php?page=aips-settings'),
-            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+            'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }
     

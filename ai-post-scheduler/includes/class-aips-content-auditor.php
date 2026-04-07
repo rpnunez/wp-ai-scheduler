@@ -110,7 +110,7 @@ class AIPS_Content_Auditor {
         );
 
         // Check if a specific model is configured in settings, if it's "gpt-5-mini" (which doesn't exist publicly yet), override it.
-        $configured_model = get_option('aips_ai_model', '');
+        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
         if ($configured_model === 'gpt-5-mini') {
              $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
         }
@@ -162,7 +162,7 @@ class AIPS_Content_Auditor {
         );
         
         // Override potentially bad model setting
-        $configured_model = get_option('aips_ai_model', '');
+        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
         if ($configured_model === 'gpt-5-mini') {
              $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
         }

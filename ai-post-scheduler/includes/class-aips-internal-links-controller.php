@@ -121,10 +121,10 @@ class AIPS_Internal_Links_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
-		$page    = max(1, absint(isset($_POST['page']) ? $_POST['page'] : 1));
-		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? $_POST['per_page'] : 20)));
-		$status  = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
-		$search  = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$page     = max(1, absint(isset($_POST['page']) ? wp_unslash($_POST['page']) : 1));
+		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? wp_unslash($_POST['per_page']) : 20)));
+		$status   = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+		$search   = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 
 		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search);
 		$total = $this->links_repo->get_paginated_count($status, $search);
@@ -156,10 +156,16 @@ class AIPS_Internal_Links_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
-		$post_id          = absint(isset($_POST['post_id']) ? $_POST['post_id'] : 0);
-		$max_suggestions  = absint(isset($_POST['max_suggestions']) ? $_POST['max_suggestions'] : AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS);
-		$threshold        = isset($_POST['threshold']) ? (float) $_POST['threshold'] : AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
+		$post_id_raw = isset($_POST['post_id']) ? wp_unslash($_POST['post_id']) : 0;
+		$post_id     = absint($post_id_raw);
 
+		$max_suggestions_raw = isset($_POST['max_suggestions']) ? wp_unslash($_POST['max_suggestions']) : AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
+		$max_suggestions     = is_numeric($max_suggestions_raw) ? (int) $max_suggestions_raw : (int) AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
+		$max_suggestions     = max(1, min(20, $max_suggestions));
+
+		$threshold_raw = isset($_POST['threshold']) ? wp_unslash($_POST['threshold']) : AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
+		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
+		$threshold     = max(0, min(1, $threshold));
 		if (!$post_id) {
 			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
 		}
@@ -580,7 +586,7 @@ class AIPS_Internal_Links_Controller {
 		$timestamp = time() + 5;
 
 		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_index_posts_batch', $args, 'aips-internal-links');
+			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
 		} else {
 			wp_schedule_single_event($timestamp, 'aips_index_posts_batch', array($args));
 		}

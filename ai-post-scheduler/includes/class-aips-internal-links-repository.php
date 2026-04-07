@@ -304,6 +304,26 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Delete only PENDING suggestions for a source post.
+	 *
+	 * Accepted, rejected, and inserted suggestions are preserved so that
+	 * editorial decisions are not lost when suggestions are regenerated.
+	 *
+	 * @param int $source_post_id Source post ID.
+	 * @return int|false Number of deleted rows or false on failure.
+	 */
+	public function delete_pending_by_source_post($source_post_id) {
+		return $this->wpdb->delete(
+			$this->table,
+			array(
+				'source_post_id' => absint($source_post_id),
+				'status'         => 'pending',
+			),
+			array('%d', '%s')
+		);
+	}
+
+	/**
 	 * Delete all suggestions for a target post (e.g. when a post is trashed).
 	 *
 	 * @param int $target_post_id Target post ID.
