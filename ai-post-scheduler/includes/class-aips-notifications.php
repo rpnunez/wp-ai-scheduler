@@ -494,6 +494,10 @@ class AIPS_Notifications {
 	/**
 	 * Dispatch a notification using the resolved channels.
 	 *
+	 * Public visibility is intentional: this method is part of the public API
+	 * contract and is injected as a callable into AIPS_Notification_Senders via
+	 * the constructor to support dependency injection without tight coupling.
+	 *
 	 * @param string $type    Notification type.
 	 * @param array  $options Notification options.
 	 * @return bool True when at least one channel was used.
@@ -676,6 +680,10 @@ class AIPS_Notifications {
 
 	/**
 	 * Build standard notification template variables.
+	 *
+	 * Public visibility is intentional: this method is part of the public API
+	 * contract and is injected as a callable into AIPS_Notification_Senders via
+	 * the constructor to support dependency injection without tight coupling.
 	 *
 	 * @param string $title        Notification title.
 	 * @param string $message      Notification message.

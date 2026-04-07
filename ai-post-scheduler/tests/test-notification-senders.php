@@ -54,7 +54,7 @@ class Test_AIPS_Notification_Senders extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 
 	private function last_dispatch() {
-		return end($this->dispatched);
+		return $this->dispatched[ count( $this->dispatched ) - 1 ];
 	}
 
 	// -----------------------------------------------------------------------

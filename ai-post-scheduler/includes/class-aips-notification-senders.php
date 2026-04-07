@@ -56,7 +56,7 @@ class AIPS_Notification_Senders {
 	 * @param callable $dispatcher   Dispatch callable (wraps dispatch_notification).
 	 * @param callable $vars_builder Vars-builder callable (wraps build_standard_notification_vars).
 	 */
-	public function __construct( $dispatcher, $vars_builder ) {
+	public function __construct( callable $dispatcher, callable $vars_builder ) {
 		$this->dispatcher   = $dispatcher;
 		$this->vars_builder = $vars_builder;
 	}
