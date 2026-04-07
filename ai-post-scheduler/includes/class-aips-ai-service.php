@@ -115,7 +115,7 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        $params = $this->prepare_options($options);
+        $params = $this->prepare_options($options, $prompt);
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
@@ -186,7 +186,7 @@ class AIPS_AI_Service {
             return $this->fallback_json_generation($prompt, $options);
         }
         
-        $params = $this->prepare_options($options);
+        $params = $this->prepare_options($options, $prompt);
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state is managed by execute_safely — do NOT call record_failure / record_success
@@ -441,14 +441,67 @@ class AIPS_AI_Service {
     }
     
     /**
+     * Calculate the appropriate maxTokens for an AI request.
+     *
+     * Determines the output token limit based on the type of request, applies a
+     * safety buffer, and caps the result at the configured aips_max_tokens_limit
+     * setting to prevent unexpectedly large or costly requests.
+     *
+     * @param string     $prompt The prompt that will be sent to the AI.
+     * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
+     *                           custom integer token count. Unknown string types fall
+     *                           back to 'content' sizing.
+     * @return int The calculated maxTokens value (always ≥ 1).
+     */
+    private function calculate_max_tokens($prompt, $type = 'content') {
+        // If a custom integer token count is provided, use it as the base.
+        if (is_int($type) && $type > 0) {
+            $base_tokens = $type;
+        } else {
+            // Realistic expected output token counts per request type.
+            // Approximation: 1 token ≈ 4 characters.
+            switch ($type) {
+                case 'title':
+                    // Short titles: ~10-20 words, generous ceiling.
+                    $base_tokens = 150;
+                    break;
+                case 'excerpt':
+                    // 2-3 sentence summary: ~50-75 words.
+                    $base_tokens = 300;
+                    break;
+                case 'content':
+                default:
+                    // Full article body: up to ~3000-4000 words.
+                    $base_tokens = 4000;
+                    break;
+            }
+        }
+
+        // Apply a 25% safety buffer to avoid truncation near the boundary.
+        $buffer     = (int) ceil($base_tokens * 0.25);
+        $calculated = $base_tokens + $buffer;
+
+        // Respect the hard maximum configured in settings.
+        $limit = (int) AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
+        if ($limit > 0 && $calculated > $limit) {
+            $calculated = $limit;
+        }
+
+        return max(1, $calculated);
+    }
+
+    /**
      * Prepare and normalize AI generation options.
      *
      * Merges user-provided options with defaults from plugin settings.
+     * When the caller has not explicitly set maxTokens, the value is calculated
+     * dynamically via calculate_max_tokens() based on the prompt and request type.
      *
-     * @param array $options User-provided options.
+     * @param array  $options User-provided options.
+     * @param string $prompt  The prompt that will be sent to the AI (used for dynamic token calculation).
      * @return array Normalized options array.
      */
-    private function prepare_options($options) {
+    private function prepare_options($options, $prompt = '') {
         $config = AIPS_Config::get_instance();
         $model = $config->get_option('aips_ai_model');
         $env_id = $config->get_option('aips_ai_env_id');
@@ -456,13 +509,8 @@ class AIPS_AI_Service {
         $default_options = array(
             'model' => $model,
             'envId' => $env_id,
-            'maxTokens' => (int) $config->get_option('aips_max_tokens'),
             'temperature' => (float) $config->get_option('aips_temperature'),
         );
-
-        if (isset($options['max_tokens'])) {
-            $default_options['maxTokens'] = $options['max_tokens'];
-        }
 
         if (isset($options['env_id'])) {
             $default_options['envId'] = $options['env_id'];
@@ -481,11 +529,16 @@ class AIPS_AI_Service {
             $params['envId'] = $options['envId'];
         }
 
+        // Determine maxTokens: respect any explicit developer override; otherwise
+        // calculate dynamically based on the prompt and request type.
         if (isset($options['maxTokens'])) {
             $params['maxTokens'] = $options['maxTokens'];
         } elseif (isset($options['max_tokens'])) {
             // Backward compatibility for legacy callers.
             $params['maxTokens'] = $options['max_tokens'];
+        } else {
+            $type               = isset($options['request_type']) ? $options['request_type'] : 'content';
+            $params['maxTokens'] = $this->calculate_max_tokens($prompt, $type);
         }
 
         if (isset($options['temperature'])) {

@@ -407,7 +407,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
-     * Test that the default maxTokens of 2000 is used when no token option is supplied.
+     * Test that maxTokens is dynamically calculated when no token option is supplied.
+     *
+     * With no explicit maxTokens and no request_type, the 'content' type sizing is
+     * used: base 4000 tokens + 25% buffer = 5000, capped at aips_max_tokens_limit (16000).
      */
     public function test_prepare_options_default_maxTokens_used_when_not_specified() {
         global $mwai;
@@ -422,7 +425,11 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $result  = $service->generate_text('Prompt');
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame(2000, $capture->params['maxTokens'], 'Default maxTokens should be 2000.');
+            $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
+            $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
+            $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
+            // With 'content' sizing: base 4000 + 25% buffer = 5000 (below default limit of 16000).
+            $this->assertSame(5000, $capture->params['maxTokens'], 'Dynamic maxTokens for content type should be 5000.');
         } finally {
             $mwai = $original_mwai;
         }

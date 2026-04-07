@@ -35,7 +35,7 @@ class AIPS_Settings_AJAX {
         }
 
         $ai_service = new AIPS_AI_Service();
-        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('maxTokens' => 10));
+        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array());
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

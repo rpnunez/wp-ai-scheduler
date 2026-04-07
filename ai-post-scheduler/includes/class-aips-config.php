@@ -68,6 +68,7 @@ class AIPS_Config {
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens' => 2000,
+            'aips_max_tokens_limit' => 16000,
             'aips_temperature' => 0.7,
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
