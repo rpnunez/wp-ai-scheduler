@@ -516,15 +516,15 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	}
 
 	public function test_settings_sanitize_notification_emails_accepts_multiple_addresses() {
-		$settings = new AIPS_Settings();
-		$sanitized = $settings->sanitize_notification_emails('one@example.com, invalid-email, two@example.com, one@example.com');
+		$settings_ui = new AIPS_Settings_UI();
+		$sanitized = $settings_ui->sanitize_notification_emails('one@example.com, invalid-email, two@example.com, one@example.com');
 
 		$this->assertSame('one@example.com, two@example.com', $sanitized);
 	}
 
 	public function test_settings_sanitize_notification_preferences_covers_full_registry() {
-		$settings = new AIPS_Settings();
-		$sanitized = $settings->sanitize_notification_preferences(array(
+		$settings_ui = new AIPS_Settings_UI();
+		$sanitized = $settings_ui->sanitize_notification_preferences(array(
 			'daily_digest' => 'db',
 			'generation_failed' => 'invalid-mode',
 		));

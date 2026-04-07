@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="5">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -203,22 +203,18 @@ if (!defined('ABSPATH')) {
             <div class="aips-wizard-progress">
                 <div class="aips-wizard-step" data-step="1">
                     <div class="aips-step-number">1</div>
-                    <div class="aips-step-label"><?php esc_html_e('Basic Info', 'ai-post-scheduler'); ?></div>
+                    <div class="aips-step-label"><?php esc_html_e('Basic Info & Title', 'ai-post-scheduler'); ?></div>
                 </div>
                 <div class="aips-wizard-step" data-step="2">
                     <div class="aips-step-number">2</div>
-                    <div class="aips-step-label"><?php esc_html_e('Title & Excerpt', 'ai-post-scheduler'); ?></div>
+                    <div class="aips-step-label"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></div>
                 </div>
                 <div class="aips-wizard-step" data-step="3">
                     <div class="aips-step-number">3</div>
-                    <div class="aips-step-label"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></div>
+                    <div class="aips-step-label"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></div>
                 </div>
                 <div class="aips-wizard-step" data-step="4">
                     <div class="aips-step-number">4</div>
-                    <div class="aips-step-label"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></div>
-                </div>
-                <div class="aips-wizard-step" data-step="5">
-                    <div class="aips-step-number">5</div>
                     <div class="aips-step-label"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></div>
                 </div>
             </div>
@@ -227,7 +223,7 @@ if (!defined('ABSPATH')) {
                 <form id="aips-template-form">
                     <input type="hidden" name="template_id" id="template_id" value="">
                     
-                    <!-- Step 1: Basic Info (Name + Description) -->
+                    <!-- Step 1: Basic Info & Title -->
                     <div class="aips-wizard-step-content" data-step="1">
                         <h3>
                             <?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?>
@@ -252,10 +248,9 @@ if (!defined('ABSPATH')) {
                             <textarea id="template_description" name="description" rows="4" class="large-text" placeholder="<?php esc_attr_e('Optional: Describe what this template is used for...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
                         </div>
-                    </div>
-                    
-                    <!-- Step 2: Title & Excerpt -->
-                    <div class="aips-wizard-step-content" data-step="2" style="display: none;">
+
+                        <hr style="margin: 20px 0;">
+
                         <h3>
                             <?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?>
                             <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.', 'ai-post-scheduler'); ?>"></span>
@@ -316,8 +311,8 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                     
-                    <!-- Step 3: Content -->
-                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
+                    <!-- Step 2: Content -->
+                    <div class="aips-wizard-step-content" data-step="2" style="display: none;">
                         <h3>
                             <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
                             <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
@@ -395,8 +390,8 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                     
-                    <!-- Step 4: Featured Image -->
-                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
+                    <!-- Step 3: Featured Image -->
+                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
                         <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Configure whether and how to generate featured images for your posts.', 'ai-post-scheduler'); ?></p>
                         
@@ -444,8 +439,8 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                     
-                    <!-- Step 5: Summary & Post Settings -->
-                    <div class="aips-wizard-step-content" data-step="5" style="display: none;">
+                    <!-- Step 4: Summary & Post Settings -->
+                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
                         <h3><?php esc_html_e('Review & Post Settings', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Review your template configuration and set post publishing options.', 'ai-post-scheduler'); ?></p>
                         
@@ -533,8 +528,8 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                     
-                    <!-- Step 6: Post-Save Next Steps (shown after successful save) -->
-                    <div class="aips-wizard-step-content aips-post-save-step" data-step="6" style="display: none;">
+                    <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
+                    <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
                         <div style="text-align: center; padding: 30px 20px;">
                             <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
                             <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>

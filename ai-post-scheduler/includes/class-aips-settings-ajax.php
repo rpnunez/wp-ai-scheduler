@@ -35,7 +35,12 @@ class AIPS_Settings_AJAX {
         }
 
         $ai_service = new AIPS_AI_Service();
-        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('maxTokens' => 10));
+        $result = $ai_service->generate_text(
+            'Say "Hello World" in 2 words.',
+            array(
+                'maxTokens' => 20,
+            )
+        );
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
@@ -81,9 +86,9 @@ class AIPS_Settings_AJAX {
 
         $registry = AIPS_Notifications::get_notification_type_registry();
         $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
-        $current_preferences = get_option('aips_notification_preferences', array());
+        $current_preferences = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $current_preferences = is_array($current_preferences) ? $current_preferences : array();
-        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $config_defaults = is_array($config_defaults) ? $config_defaults : array();
 
         $cleaned_preferences = array();

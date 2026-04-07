@@ -508,6 +508,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('get_the_title')) {
+        function get_the_title($post = 0) {
+            $post_obj = get_post($post);
+            return $post_obj ? $post_obj->post_title : '';
+        }
+    }
+
+    if (!function_exists('get_post_field')) {
+        function get_post_field($field, $post_id = null, $context = 'edit') {
+            $post_obj = get_post($post_id);
+            if (!$post_obj) {
+                return '';
+            }
+            return isset($post_obj->$field) ? $post_obj->$field : '';
+        }
+    }
+
     if (!function_exists('get_permalink')) {
         function get_permalink($post = 0, $leavename = false) {
             return 'http://example.com/?p=' . $post;
@@ -636,6 +653,27 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_schedule_single_event')) {
+        function wp_schedule_single_event($timestamp, $hook, $args = array()) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_safe_remote_head')) {
+        function wp_safe_remote_head($url, $args = array()) {
+            if (strpos($url, 'non-existent') !== false) {
+                return new WP_Error('http_request_failed', 'cURL error 6: Could not resolve host');
+            }
+            return array('response' => array('code' => 200));
+        }
+    }
+
+    if (!function_exists('wp_update_post')) {
+        function wp_update_post($postarr, $wp_error = false) {
+            return isset($postarr['ID']) ? $postarr['ID'] : 1;
+        }
+    }
+
     // Mock AJAX functions
     if (!function_exists('check_ajax_referer')) {
         function check_ajax_referer($action = -1, $query_arg = '_wpnonce', $die = true) {
@@ -915,6 +953,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $prefix = 'wp_';
             public $insert_id = 0;
             public $postmeta = 'wp_postmeta';
+            public $posts = 'wp_posts';
             public $get_col_return_val = null;
             public $get_results_return_val = null;
             public $get_var_return_val = null;

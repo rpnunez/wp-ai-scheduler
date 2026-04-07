@@ -101,8 +101,7 @@ class AIPS_Author_Topics_Generator {
 		
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
-			'maxTokens' => 2000,
-			'temperature' => 0.7
+			'temperature' => 0.7,
 		));
 		
 		if (is_wp_error($response)) {
@@ -384,7 +383,7 @@ class AIPS_Author_Topics_Generator {
 			return $topics;
 		}
 
-		$threshold = (float) get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = (float) AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
 		foreach ($topics as &$topic) {
 			$text = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 			if (empty($text)) {

@@ -18,7 +18,7 @@ class AIPS_Logger {
         $secret = $this->get_log_secret();
 
         $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
-        $this->enabled = (bool) get_option('aips_enable_logging', true);
+        $this->enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_logging');
     }
 
     /**
@@ -89,7 +89,8 @@ class AIPS_Logger {
         );
         
         if (!empty($context)) {
-            $log_entry .= ' | Context: ' . json_encode($context);
+            $log_entry .= PHP_EOL;
+            $log_entry .= 'Context: ' . json_encode($context, JSON_PRETTY_PRINT);
         }
         
         $log_entry .= PHP_EOL;
@@ -107,6 +108,14 @@ class AIPS_Logger {
 
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
+    }
+
+    public function addSeparator($text) {
+        $separator = str_repeat('-', 20);
+        if (!empty($text)) {
+            $separator .= ' ' . $text . ' ' . str_repeat('-', 20);
+        }
+        $this->log($separator, 'info'); // Use 'info' level for separators
     }
     
     /**

@@ -1104,7 +1104,7 @@ class AIPS_Notifications {
 		$mode = null;
 
 		if (isset($config['default_mode'])) {
-			$preferences = get_option('aips_notification_preferences', array());
+			$preferences = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
 			$mode = isset($preferences[$type]) ? $preferences[$type] : (isset($config['default_mode']) ? $config['default_mode'] : self::MODE_BOTH);
 		}
 
