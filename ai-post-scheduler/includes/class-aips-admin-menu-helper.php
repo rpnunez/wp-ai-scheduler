@@ -34,6 +34,9 @@ class AIPS_Admin_Menu_Helper {
 		'system_status'        => 'aips-status',
 		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
+		'history'              => 'aips-history',
+		'seeder'               => 'aips-seeder',
+		'research'             => 'aips-research',
 	);
 
 	/**

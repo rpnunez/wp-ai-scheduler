@@ -451,7 +451,7 @@ class AIPS_Notification_Senders {
 			isset($payload['errors'])       ? (int) $payload['errors']       : 0
 		);
 
-		$url = AIPS_Admin_Menu_Helper::get_page_url('aips-history');
+		$url = AIPS_Admin_Menu_Helper::get_page_url('history');
 
 		call_user_func(
 			$this->dispatcher,
@@ -485,7 +485,7 @@ class AIPS_Notification_Senders {
 			isset($payload['errors'])       ? (int) $payload['errors']       : 0
 		);
 
-		$url = AIPS_Admin_Menu_Helper::get_page_url('status');
+		$url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
 
 		call_user_func(
 			$this->dispatcher,
@@ -523,7 +523,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => $title,
 				'message' => $message,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('status'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('system_status'),
 				'level'   => $errors > 0 ? 'warning' : 'info',
 				'meta'    => $payload,
 			)
