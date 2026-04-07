@@ -15,7 +15,7 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
 
         // Mock Scheduler
         $this->scheduler = $this->getMockBuilder('AIPS_Scheduler')
-            ->onlyMethods(array('run_schedule_now', 'save_schedule', 'delete_schedule', 'toggle_active'))
+            ->onlyMethods(array('run_schedule_now', 'save_schedule', 'toggle_active'))
             ->getMock();
 
         $this->controller = new AIPS_Schedule_Controller($this->scheduler);
