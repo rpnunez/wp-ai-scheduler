@@ -494,6 +494,10 @@ class AIPS_AI_Service {
                     $output_tokens = (int) $config->get_option('aips_max_tokens_content');
                     break;
             }
+
+            // Option values can be empty or zero after sanitization/casting.
+            // Ensure a minimum non-zero output budget for calculation safety.
+            $output_tokens = max(1, $output_tokens);
         }
 
         // Sum prompt input cost and expected output size, then apply a 25% buffer.
