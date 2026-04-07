@@ -81,7 +81,6 @@ class AIPS_Research_Service {
         // ));
         $result = $this->ai_service->generate_text($prompt, array(
             'temperature' => 0.7,
-            'maxTokens' => 2000,
         ));
 
         if (is_wp_error($result)) {

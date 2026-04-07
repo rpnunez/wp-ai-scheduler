@@ -29,3 +29,6 @@
 ## 2024-03-31 - [Fix PHP Warning in AIPS_Schedule_Processor and missing mock support in Tests]
 **Learning:** The tests rely on `$wpdb->get_results` properly simulating queries with complex joins, but in limited test mode, a mocked `get_results_return_val` is needed, but missing in `tests/bootstrap.php`. Additionally, `AIPS_Schedule_Processor::execute_schedule_logic()` assumes `$actual_template_model` has a `post_quantity` property, which emits a PHP Warning if the object exists but lacks the property (e.g., from mock environments or incomplete data).
 **Action:** Added `get_results_return_val` to the mock `wpdb` class in `tests/bootstrap.php` and modified `get_results()` to return it if set. Also fixed the PHP Warning in `AIPS_Schedule_Processor` by checking `isset($actual_template_model->post_quantity)`.
+## 2026-04-04 - [Missing isset on db queries]
+**Learning:** Directly accessing properties of objects returned by database queries like `$wpdb->get_row()` triggers PHP Warnings if the query fails or returns nothing (null) and the code assumes an object structure.
+**Action:** Always wrap direct property access from potentially null query results with an `isset()` check (e.g. `isset($results->count) ? $results->count : 0`) before casting or returning.

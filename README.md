@@ -121,6 +121,7 @@ vendor/bin/phpunit tests/test-template-processor.php
 - [docs/HOOKS.md](docs/HOOKS.md)
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/SETUP.md](docs/SETUP.md)
+- [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — project-specific coding and architectural guidelines for developers and AI agents
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing
