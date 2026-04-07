@@ -241,12 +241,19 @@
 		},
 
 		/**
-		 * Close any visible modal.
+		 * Close the modal associated with the clicked close control.
 		 *
 		 * @param {Event} e Click event from an `.aips-modal-close` element.
 		 */
 		onModalClose: function (e) {
-			$('#aips-anchor-modal').hide();
+			var $modal = $(e.currentTarget).closest('.aips-modal');
+
+			if ($modal.length) {
+				$modal.hide();
+				return;
+			}
+
+			$('#aips-anchor-modal, #aips-insert-modal').hide();
 		},
 
 		/**
