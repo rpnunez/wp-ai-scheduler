@@ -116,6 +116,13 @@ class AIPS_AI_Service {
         }
         
         $params = $this->prepare_options($options, $prompt);
+
+        $this->logger->addSeparator('[AIPS_AI_Service->generate_text] New AI Text Generation Request');
+        $this->logger->log('Prepared AI generation options', 'debug', array(
+            'options' => $options,
+            'params' => $params,
+            'prompt' => $prompt,
+        ));
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
@@ -124,6 +131,10 @@ class AIPS_AI_Service {
             try {
                 // Use simpleTextQuery API method
                 $result = $ai->simpleTextQuery($prompt, $params);
+
+                $this->logger->log('Received response from simpleTextQuery', 'debug', array(
+                    'response' => $result,
+                ));
 
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $options, null, $result);
@@ -463,16 +474,16 @@ class AIPS_AI_Service {
             switch ($type) {
                 case 'title':
                     // Short titles: ~10-20 words, generous ceiling.
-                    $base_tokens = 150;
+                    $base_tokens = 500;
                     break;
                 case 'excerpt':
                     // 2-3 sentence summary: ~50-75 words.
-                    $base_tokens = 300;
+                    $base_tokens = 2500;
                     break;
                 case 'content':
                 default:
                     // Full article body: up to ~3000-4000 words.
-                    $base_tokens = 4000;
+                    $base_tokens = 10000;
                     break;
             }
         }
@@ -703,7 +714,11 @@ class AIPS_AI_Service {
         $this->logger->log($message, $level, array(
             'type' => $type,
             'prompt_length' => strlen($prompt_for_length),
+            'prompt' => $prompt,
             'response_length' => strlen($response_for_length),
+            'response' => $response,
+            'options' => $options,
+            'error_message' => $error_message,
         ));
     }
     
