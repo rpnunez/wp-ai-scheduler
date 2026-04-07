@@ -559,8 +559,8 @@
 			if (meta.schedule_id) {
 				buttons += '<a href="' + data.scheduleUrl + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewSchedule + '</a>';
 			}
-			if (meta.topic_id) {
-				buttons += '<a href="' + data.authorTopicsUrl + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewTopic + '</a>';
+			if (meta.topic_id && meta.author_id) {
+				buttons += '<a href="' + data.authorTopicsUrl + '&author_id=' + encodeURIComponent(meta.author_id) + '&topic_id=' + encodeURIComponent(meta.topic_id) + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewTopic + '</a>';
 			}
 
 			if (!buttons) {
