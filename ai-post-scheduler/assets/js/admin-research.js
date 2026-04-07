@@ -45,7 +45,7 @@
             $(document).on('click', '#aips-delete-selected-topics', AIPS.bulkDeleteSelectedTopics);
             $(document).on('click', '#aips-schedule-selected-topics', AIPS.scheduleSelectedTopics);
             $(document).on('click', '#aips-generate-selected-topics', AIPS.bulkGenerateSelectedTopics);
-            $(document).on('click', '.aips-post-count-badge', AIPS.viewTrendingTopicPosts);
+	            $(document).on('click', '.aips-post-count-badge[data-context="trending-topic"]', AIPS.viewTrendingTopicPosts);
             $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
         },
 
