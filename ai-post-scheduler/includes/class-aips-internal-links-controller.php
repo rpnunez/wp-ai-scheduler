@@ -448,7 +448,8 @@ class AIPS_Internal_Links_Controller {
 	}
 
 	/**
-	 * AJAX: Ask AI for the 3 best insertion locations for a given suggestion.
+	 * AJAX: Ask AI for up to the configured number of insertion locations for a
+	 * given suggestion.
 	 *
 	 * @return void
 	 */
@@ -471,7 +472,11 @@ class AIPS_Internal_Links_Controller {
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
 
-		wp_send_json_success(array('locations' => $result));
+		wp_send_json_success(array(
+			'locations'       => $result,
+			'requested_count' => AIPS_Internal_Link_Inserter_Service::NUM_LOCATIONS_TO_REQUEST,
+			'returned_count'  => count($result),
+		));
 	}
 
 	/**

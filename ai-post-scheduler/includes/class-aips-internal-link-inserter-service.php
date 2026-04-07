@@ -17,7 +17,8 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Internal_Link_Inserter_Service
  *
  * Provides two operations:
- *  1. find_insertion_locations() — calls AI to identify up to 3 ideal positions
+ *  1. find_insertion_locations() — calls AI to identify up to
+ *     NUM_LOCATIONS_TO_REQUEST ideal positions
  *     within a post's content to insert a given internal link.
  *  2. apply_insertion() — performs the actual string replacement in the post and
  *     marks the linked suggestion as inserted.
@@ -28,9 +29,34 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * Marker used in AI plain-text replacements to denote the exact words
 	 * that should become the hyperlink.
 	 *
-	 * @var string
+	 * @var string Regex pattern for the link marker.
 	 */
 	const LINK_MARKER_PATTERN = '/\[\[(.*?)\]\]/s';
+
+	/**
+	 * Default number of insertion locations to request from the AI.
+	 */
+	const NUM_LOCATIONS_TO_REQUEST = 3;
+
+	/**
+	 * Hard upper bound for AI max_tokens requests.
+	 */
+	const MAX_TOKENS_LIMIT = 10000;
+
+	/**
+	 * Character-to-token estimate used for dynamic max_tokens calculation.
+	 */
+	const CHARS_PER_TOKEN_ESTIMATE = 4;
+
+	/**
+	 * Base response-token buffer for JSON envelope + metadata text.
+	 */
+	const BASE_RESPONSE_TOKENS_BUFFER = 180;
+
+	/**
+	 * Additional response-token buffer per requested location object.
+	 */
+	const RESPONSE_TOKENS_PER_LOCATION = 220;
 
 	/**
 	 * @var AIPS_Internal_Links_Repository
@@ -69,9 +95,11 @@ class AIPS_Internal_Link_Inserter_Service {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Ask AI to identify up to 3 best positions for inserting an internal link.
+	 * Ask AI to identify up to NUM_LOCATIONS_TO_REQUEST best positions for
+	 * inserting an internal link.
 	 *
-	 * Returns an array of up to 3 location objects, each containing:
+	 * Returns an array of 0 to NUM_LOCATIONS_TO_REQUEST location objects, each
+	 * containing:
 	 *   - reason              (string) Why this location is relevant.
 	 *   - match_snippet       (string) ~15-word excerpt of the original content.
 	 *   - replacement_snippet (string) The same excerpt in plain text with the
@@ -117,85 +145,30 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		$plain_text_content = $this->truncate_prompt_content($plain_text_content, 4000);
+		$plain_text_content = $this->truncate_prompt_content($plain_text_content, 1400);
 
 		$target_url  = get_permalink($target_post->ID);
 		$anchor_text = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : $target_post->post_title;
 		$post_title  = $target_post->post_title;
 
-		$prompt = $this->build_prompt($plain_text_content, $post_title, $anchor_text, $target_url);
-
-        $this->logger->log(
-            sprintf(
-                'Finding insertion locations for suggestion #%d (source=%d, target=%d)',
-                (int) $suggestion->id,
-                (int) $suggestion->source_post_id,
-                (int) $suggestion->target_post_id
-            ),
-            'info'
-        );
+		$prompt = $this->build_prompt($plain_text_content, $post_title, $anchor_text, $target_url, self::NUM_LOCATIONS_TO_REQUEST);
+		$max_tokens = $this->calculate_max_tokens($prompt, self::NUM_LOCATIONS_TO_REQUEST);
 
 		$this->logger->log(
 			sprintf(
-				'Prompt sent to AI for suggestion #%d: %s',
-                (int) $suggestion->id,
-                $prompt
-            ),
-            'debug'
-        );
-
-		$ai_result = $this->ai_service->generate_json(
+				'Finding insertion locations for suggestion #%d (source=%d, target=%d)',
+				(int) $suggestion->id,
+				(int) $suggestion->source_post_id,
+				(int) $suggestion->target_post_id
+			),
+			'info'
+		);
+		$ai_result = $this->ai_service->generate_json_from_text(
 			$prompt,
 			array(
-				'max_tokens'  => 700,
-				'temperature' => 0.2,
+				'max_tokens'  => $max_tokens,
 			)
 		);
-
-        $this->logger->log(
-            sprintf(
-                'AI service returned result for suggestion #%d: %s',
-                (int) $suggestion->id,
-                is_wp_error($ai_result) ? 'Error: ' . $ai_result->get_error_message() : print_r($ai_result, true)
-            ),
-            is_wp_error($ai_result) ? 'error' : 'debug'
-        );
-
-		// Fallback path: if structured JSON mode fails, retry with a smaller text
-		// generation request and parse it locally.
-		if (is_wp_error($ai_result)) {
-			$fallback_prompt = $this->build_fallback_prompt($plain_text_content, $post_title, $anchor_text, $target_url);
-
-            $this->logger->log(
-                sprintf(
-                    'Retrying with fallback prompt for suggestion #%d due to error: %s',
-                    (int) $suggestion->id,
-                    $ai_result->get_error_message()
-                ),
-                'warning'
-            );
-
-			$raw_text = $this->ai_service->generate_text(
-				$fallback_prompt,
-				array(
-					'max_tokens'  => 500,
-					'temperature' => 0.1,
-				)
-			);
-
-            $this->logger->log(
-                sprintf(
-                    'Fallback text generation result for suggestion #%d: %s',
-                    (int) $suggestion->id,
-                    is_wp_error($raw_text) ? 'Error: ' . $raw_text->get_error_message() : print_r($raw_text, true)
-                ),
-                is_wp_error($raw_text) ? 'error' : 'debug'
-            );
-
-			if (!is_wp_error($raw_text)) {
-				$ai_result = $this->parse_json_response($raw_text);
-			}
-		}
 
 		if (is_wp_error($ai_result)) {
 			$this->logger->log(
@@ -212,14 +185,19 @@ class AIPS_Internal_Link_Inserter_Service {
 
 		$locations = $this->validate_locations($ai_result);
 
+		$locations = array_slice($locations, 0, self::NUM_LOCATIONS_TO_REQUEST);
+
 		if (empty($locations)) {
-			return new WP_Error(
-				'no_valid_locations',
-				__('The AI did not return any valid insertion locations.', 'ai-post-scheduler')
+			$this->logger->log(
+				sprintf(
+					'Internal link inserter: suggestion #%d returned 0 valid insertion locations.',
+					(int) $suggestion->id
+				),
+				'info'
 			);
 		}
 
-		return array_slice($locations, 0, 3);
+		return $locations;
 	}
 
 	/**
@@ -266,19 +244,15 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		$anchor_text = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : $target_post->post_title;
-		$target_url  = get_permalink($target_post->ID);
-		$link_html   = $this->build_anchor_html($target_url, $anchor_text);
+		$anchor_text      = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : $target_post->post_title;
+		$target_url       = get_permalink($target_post->ID);
+		$link_html        = $this->build_anchor_html($target_url, $anchor_text);
 		$replacement_html = $this->build_replacement_html($replacement_snippet, $link_html, $anchor_text);
 
 		if (is_wp_error($replacement_html)) {
 			return $replacement_html;
 		}
 
-		// Verify the snippet actually exists in the current content.
-		// Since the AI worked from plain-text content, we require that the same
-		// snippet is also present in the current raw HTML content so we can insert
-		// the anchor without flattening or rewriting the post formatting.
 		if (strpos($post_content, $match_snippet) === false) {
 			return new WP_Error(
 				'snippet_not_found',
@@ -302,7 +276,6 @@ class AIPS_Internal_Link_Inserter_Service {
 			return $result;
 		}
 
-		// Mark the suggestion as inserted.
 		$this->links_repo->update_status($suggestion_id, 'inserted');
 
 		$this->logger->log(
@@ -333,17 +306,9 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * @return string Sanitized plain text.
 	 */
 	private function normalize_content($post_content) {
-		// 1. Strip Gutenberg block comments and HTML tags.
 		$text = wp_strip_all_tags($post_content);
-
-		// 2. Decode HTML entities so the AI sees human-readable text.
 		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-		// 3. Remove non-printable control characters except tab (\x09),
-		//    LF (\x0A), and CR (\x0D) which are legitimate whitespace.
 		$text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
-
-		// 4. Normalize line endings and collapse runs of blank lines.
 		$text = str_replace("\r\n", "\n", $text);
 		$text = preg_replace('/\n{3,}/', "\n\n", $text);
 
@@ -351,75 +316,7 @@ class AIPS_Internal_Link_Inserter_Service {
 	}
 
 	/**
-	 * Parse and clean a raw AI text response as a JSON array.
-	 *
-	 * Strips markdown code fences, removes unescaped control characters inside
-	 * JSON string values, then runs json_decode.
-	 *
-	 * @param string $raw_text Raw text response from the AI.
-	 * @return array|WP_Error Parsed array or WP_Error on failure.
-	 */
-	private function parse_json_response($raw_text) {
-		$json = trim($raw_text);
-
-		// Strip optional markdown code fences.
-		$json = preg_replace('/^```(?:json)?\s*/im', '', $json);
-		$json = preg_replace('/```\s*$/im', '', $json);
-		$json = trim($json);
-
-		// Isolate the JSON array in case the AI prefixed it with prose.
-		if (preg_match('/\[.*\]/s', $json, $matches)) {
-			$json = $matches[0];
-		}
-
-		// Remove unescaped control characters that appear inside JSON string
-		// values (the primary cause of "Control character error" parse failures).
-		// Strategy: replace literal control chars (U+0000–U+001F, U+007F) with
-		// their JSON escape sequences, but only when they appear inside a
-		// JSON string (between double-quote delimiters). We use a character-by-
-		// character walk via preg_replace_callback on every "..." token.
-		$json = preg_replace_callback(
-			'/"((?:[^"\\\\]|\\\\.)*)"/',
-			function ($m) {
-				$inner = $m[1];
-				// Replace raw LF / CR / TAB with their JSON escape equivalents.
-				$inner = str_replace("\n", '\n', $inner);
-				$inner = str_replace("\r", '\r', $inner);
-				$inner = str_replace("\t", '\t', $inner);
-				// Strip remaining non-printable control characters.
-				$inner = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $inner);
-				return '"' . $inner . '"';
-			},
-			$json
-		);
-
-		$data = json_decode($json, true);
-
-		if (json_last_error() !== JSON_ERROR_NONE) {
-			return new WP_Error(
-				'json_parse_error',
-				sprintf(
-					/* translators: %s JSON error message */
-					__('Failed to parse AI response as JSON: %s', 'ai-post-scheduler'),
-					json_last_error_msg()
-				)
-			);
-		}
-
-		if (!is_array($data)) {
-			return new WP_Error(
-				'unexpected_format',
-				__('AI response was not a JSON array.', 'ai-post-scheduler')
-			);
-		}
-
-		return $data;
-	}
-
-	/**
 	 * Truncate prompt content to keep the AI request and response bounded.
-	 *
-	 * Prefers a sentence boundary near the limit when possible.
 	 *
 	 * @param string $content Normalized plain-text content.
 	 * @param int    $limit   Maximum characters to include.
@@ -431,10 +328,7 @@ class AIPS_Internal_Link_Inserter_Service {
 		}
 
 		$truncated = substr($content, 0, $limit);
-		$boundary  = max(
-			strrpos($truncated, '. '),
-			strrpos($truncated, "\n")
-		);
+		$boundary  = max(strrpos($truncated, '. '), strrpos($truncated, "\n"));
 
 		if ($boundary !== false && $boundary > (int) ($limit * 0.7)) {
 			$truncated = substr($truncated, 0, $boundary + 1);
@@ -449,48 +343,58 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * @param string $plain_text_content Normalized plain-text post content.
 	 * @param string $post_title         Target post title.
 	 * @param string $anchor_text        Suggested anchor text for the link.
+	 * @param string $target_url         Target post URL.
+     * @param int    $num_locations      Number of insertion locations to request.
 	 * @return string Prompt string.
 	 */
-	private function build_prompt($plain_text_content, $post_title, $anchor_text, $target_url) {
+	private function build_prompt($plain_text_content, $post_title, $anchor_text, $target_url, $num_locations = 1) {
 		return sprintf(
 			/* translators: internal use only — AI prompt, not shown to end users */
-			"Analyze this plain-text post and identify up to 3 best link insertion locations for the post title \"%s\" using exact anchor text \"%s\" and URL \"%s\". Return ONLY a JSON array. Each object must have exactly these keys: reason, match_snippet, replacement_snippet. Keep reason concise, maximum 12 words. match_snippet must be a unique exact excerpt from the post, ideally 10 to 18 words. replacement_snippet must be the same plain-text excerpt, but wrap the exact link words in double square brackets like [[%s]]. Do NOT output HTML, markdown, code fences, comments, or any extra text. If fewer than 3 confident locations exist, return fewer objects.\n\nPlain-text post content:\n%s",
+			"Return ONLY a valid JSON array. No markdown. No prose.\n"
+			. "Task: Find %d insertion locations for an internal link in the text below.\n"
+			. "Each array item must be an object with exactly these keys: reason, match_snippet, replacement_snippet.\n"
+			. "Rules:\n"
+			. "1) Return %d objects when possible. If not possible, return fewer. If none, return [].\n"
+			. "2) reason must be under 8 words.\n"
+			. "3) match_snippet must be an exact substring from the text.\n"
+			. "4) replacement_snippet must be the same excerpt as match_snippet, but with ONLY the link words wrapped as [[%s]].\n"
+			. "5) Do not change wording outside the wrapped link words.\n"
+			. "6) No HTML. No extra keys.\n\n"
+			. "Target post title: %s\n"
+			. "Anchor text: %s\n"
+			. "URL: %s\n\n"
+			. "Text:\n%s",
+			$num_locations,
+			$num_locations,
+			$anchor_text,
 			$post_title,
 			$anchor_text,
 			$target_url,
-			$anchor_text,
 			$plain_text_content
 		);
 	}
 
 	/**
-	 * Build a shorter fallback prompt for text-based generation when structured
-	 * JSON generation is unavailable or fails.
+	 * Calculate max_tokens dynamically from prompt size plus a response buffer.
 	 *
-	 * @param string $plain_text_content Normalized plain-text post content.
-	 * @param string $post_title         Target post title.
-	 * @param string $anchor_text        Suggested anchor text.
-	 * @param string $target_url         Target permalink.
-	 * @return string
+	 * @param string $prompt        Prompt string sent to the AI.
+	 * @param int    $num_locations Number of requested location objects.
+	 * @return int
 	 */
-	private function build_fallback_prompt($plain_text_content, $post_title, $anchor_text, $target_url) {
-		return sprintf(
-			"Return ONLY valid JSON. No markdown. No prose. Find up to 3 insertion points for post \"%s\" using anchor \"%s\" and URL \"%s\". Output an array of objects with keys reason, match_snippet, replacement_snippet. Keep reason under 8 words. Use exact excerpt text. In replacement_snippet, mark only the link words with [[%s]].\n\nText:\n%s",
-			$post_title,
-			$anchor_text,
-			$target_url,
-			$anchor_text,
-			$plain_text_content
-		);
+	private function calculate_max_tokens($prompt, $num_locations) {
+		$prompt_chars  = strlen((string) $prompt);
+		$prompt_tokens = (int) ceil($prompt_chars / self::CHARS_PER_TOKEN_ESTIMATE);
+		$response_tokens = self::BASE_RESPONSE_TOKENS_BUFFER + (max(1, (int) $num_locations) * self::RESPONSE_TOKENS_PER_LOCATION);
+
+		$calculated = $prompt_tokens + $response_tokens;
+
+		return (int) min(max(256, $calculated), self::MAX_TOKENS_LIMIT);
 	}
 
 	/**
 	 * Validate and normalize the raw AI response array.
 	 *
-	 * Filters out entries that are missing required fields and normalises
-	 * field names to the expected snake_case keys.
-	 *
-	 * @param mixed $raw Raw value from generate_json().
+	 * @param mixed $raw Raw value from generate_json_from_text().
 	 * @return array[] Validated location objects.
 	 */
 	private function validate_locations($raw) {
@@ -505,8 +409,7 @@ class AIPS_Internal_Link_Inserter_Service {
 				continue;
 			}
 
-			// Accept both camelCase and snake_case keys that AI might return.
-			$match_snippet       = isset($item['match_snippet'])       ? $item['match_snippet']       : (isset($item['matchSnippet'])       ? $item['matchSnippet']       : '');
+			$match_snippet       = isset($item['match_snippet']) ? $item['match_snippet'] : (isset($item['matchSnippet']) ? $item['matchSnippet'] : '');
 			$replacement_snippet = isset($item['replacement_snippet']) ? $item['replacement_snippet'] : (isset($item['replacementSnippet']) ? $item['replacementSnippet'] : '');
 
 			$match_snippet       = trim($match_snippet);
@@ -525,9 +428,9 @@ class AIPS_Internal_Link_Inserter_Service {
 			}
 
 			$locations[] = array(
-				'reason'               => isset($item['reason']) ? sanitize_text_field($item['reason']) : '',
-				'match_snippet'        => $match_snippet,
-				'replacement_snippet'  => $replacement_snippet,
+				'reason'              => isset($item['reason']) ? sanitize_text_field($item['reason']) : '',
+				'match_snippet'       => $match_snippet,
+				'replacement_snippet' => $replacement_snippet,
 			);
 		}
 
@@ -538,7 +441,7 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * Extract the marked anchor text from a plain-text replacement snippet.
 	 *
 	 * @param string $replacement_snippet Replacement snippet with [[marker]].
-	 * @return string|false Marked text, or false if the marker contract is invalid.
+	 * @return string|false Marked text, or false if invalid.
 	 */
 	private function extract_marked_anchor_text($replacement_snippet) {
 		if (!preg_match_all(self::LINK_MARKER_PATTERN, $replacement_snippet, $matches) || count($matches[1]) !== 1) {
@@ -551,7 +454,7 @@ class AIPS_Internal_Link_Inserter_Service {
 	}
 
 	/**
-	 * Build the final anchor HTML for the insertion.
+	 * Build the final anchor HTML for insertion.
 	 *
 	 * @param string $target_url  Target post permalink.
 	 * @param string $anchor_text Anchor text to display.
@@ -566,12 +469,12 @@ class AIPS_Internal_Link_Inserter_Service {
 	}
 
 	/**
-	 * Convert a plain-text replacement snippet into the final HTML replacement.
+	 * Convert a plain-text replacement snippet into final HTML replacement.
 	 *
-	 * @param string $replacement_snippet AI-provided plain-text replacement.
+	 * @param string $replacement_snippet AI plain-text replacement.
 	 * @param string $link_html           Final anchor HTML.
-	 * @param string $expected_anchor     Expected anchor text from the suggestion.
-	 * @return string|WP_Error HTML replacement string or WP_Error.
+	 * @param string $expected_anchor     Expected anchor text.
+	 * @return string|WP_Error
 	 */
 	private function build_replacement_html($replacement_snippet, $link_html, $expected_anchor) {
 		$marked_text = $this->extract_marked_anchor_text($replacement_snippet);
