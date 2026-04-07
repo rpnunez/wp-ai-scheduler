@@ -5,3 +5,7 @@
 ## 2024-04-06 - Fix silent filesystem failures
 **Learning:** Filesystem functions like `filesize()`, `filemtime()`, `glob()`, `fopen()`, and `ftell()` can return `false` on failure. If not checked explicitly, these boolean values can propagate to strict type-expecting functions (e.g. `size_format(filesize($file))`), causing fatal TypeErrors or unexpected application flow. `file_put_contents` needs directory writability checks, not just a false return check.
 **Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values. When dealing with directory modifications, verify `is_writable()` before writing files and verify `is_readable()` before opening files.
+
+## 2024-04-06 - [Fix Silent Filesystem Errors in validate-mcp-bridge.php]
+**Learning:** `filesize()` can return `false` on failure, which causes issues when passed to functions like `number_format()`.
+**Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values.

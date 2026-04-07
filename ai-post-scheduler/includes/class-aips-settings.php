@@ -110,6 +110,18 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_max_tokens_limit'],
         ));
+        register_setting('aips_settings', 'aips_max_tokens_title', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
+            'default'           => $defaults['aips_max_tokens_title'],
+        ));
+        register_setting('aips_settings', 'aips_max_tokens_excerpt', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
+            'default'           => $defaults['aips_max_tokens_excerpt'],
+        ));
+        register_setting('aips_settings', 'aips_max_tokens_content', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
+            'default'           => $defaults['aips_max_tokens_content'],
+        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_unsplash_access_key'],
@@ -183,6 +195,30 @@ class AIPS_Settings {
             'aips_max_tokens_limit',
             __('Max Tokens Limit', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_limit_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens_title',
+            __('Max Tokens for Post Titles', 'ai-post-scheduler'),
+            array($this->ui, 'max_tokens_title_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens_excerpt',
+            __('Max Tokens for Post Excerpts', 'ai-post-scheduler'),
+            array($this->ui, 'max_tokens_excerpt_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens_content',
+            __('Max Tokens for Post Content', 'ai-post-scheduler'),
+            array($this->ui, 'max_tokens_content_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );
