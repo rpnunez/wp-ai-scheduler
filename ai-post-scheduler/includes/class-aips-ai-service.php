@@ -117,11 +117,30 @@ class AIPS_AI_Service {
         
         $params = $this->prepare_options($options);
 
-        $this->logger->log('Calling AI Engine for text generation: '. print_r( array(
-            'prompt' => $prompt,
-            'options' => $options,
-            'params' => $params,
-        ), true), 'info');
+        $log_context = array(
+            'model' => isset($params['model']) ? $params['model'] : '',
+            'max_tokens' => isset($params['maxTokens']) ? $params['maxTokens'] : ( isset($params['max_tokens']) ? $params['max_tokens'] : '' ),
+            'temperature' => isset($params['temperature']) ? $params['temperature'] : '',
+            'prompt_length' => is_string($prompt) ? strlen($prompt) : 0,
+            'has_prompt' => !empty($prompt),
+        );
+
+        if (defined('AIPS_AI_DEBUG_LOG_PROMPTS') && AIPS_AI_DEBUG_LOG_PROMPTS) {
+            $prompt_preview = is_string($prompt) ? substr($prompt, 0, 500) : '';
+
+            if (is_string($prompt) && strlen($prompt) > 500) {
+                $prompt_preview .= '... [truncated]';
+            }
+
+            $log_context['prompt_preview'] = $prompt_preview;
+            $log_context['options_keys'] = array_keys($options);
+            $log_context['params_keys'] = array_keys($params);
+        }
+
+        $this->logger->log(
+            'Calling AI Engine for text generation: ' . wp_json_encode($log_context),
+            'info'
+        );
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
