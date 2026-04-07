@@ -216,8 +216,8 @@ class AIPS_Article_Structure_Repository {
 		");
 		
 		return array(
-			'total' => (int) $results->total,
-			'active' => (int) $results->active,
+			'total' => isset($results->total) ? (int) $results->total : 0,
+			'active' => isset($results->active) ? (int) $results->active : 0,
 		);
 	}
 	
