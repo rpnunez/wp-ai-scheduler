@@ -410,6 +410,14 @@ class AIPS_Admin_Assets {
               true
           );
 
+          wp_enqueue_script(
+              'aips-admin-planner',
+              AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
+              array('aips-admin-script'),
+              AIPS_VERSION,
+              true
+          );
+
           wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
               'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
               'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
@@ -453,26 +461,6 @@ class AIPS_Admin_Assets {
           ));
         }
 
-
-        // Planner Page Scripts
-
-        wp_enqueue_script(
-            'aips-admin-planner',
-            AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
-
-        // Database Page Scripts
-
-        wp_enqueue_script(
-            'aips-admin-db',
-            AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
 
         // Generated Posts Page Scripts
         if (strpos($hook, 'aips-generated-posts') !== false) {
@@ -678,6 +666,17 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
                 AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
+        // System Status Page Scripts
+        if (strpos($hook, 'aips-status') !== false) {
+            wp_enqueue_script(
+                'aips-admin-db',
+                AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
                 array('aips-admin-script'),
                 AIPS_VERSION,
                 true
