@@ -260,11 +260,24 @@
 				action: ajaxAction,
 				nonce:  aipsNotificationsData.nonce,
 				id:     notification.id,
-			}, function (response) {
+			})
+			.done(function (response) {
 				if (response.success) {
 					$('#aips-view-notification-modal').hide();
 					self.currentNotification = null;
 					self.loadNotifications();
+				} else {
+					var msg = (response.data && response.data.message)
+						? response.data.message
+						: aipsNotificationsData.l10n.error;
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(msg, 'error');
+					}
+				}
+			})
+			.fail(function () {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(aipsNotificationsData.l10n.error, 'error');
 				}
 			});
 		},
@@ -545,7 +558,10 @@
 			var buttons = '';
 
 			if (meta.post_id) {
-				buttons += '<a href="' + data.editPostUrl.replace('%d', meta.post_id) + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewPost + '</a>';
+				var postId = parseInt(meta.post_id, 10);
+				if (postId > 0) {
+					buttons += '<a href="' + data.editPostUrl.replace('%d', postId) + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewPost + '</a>';
+				}
 			}
 			if (meta.author_id) {
 				buttons += '<a href="' + data.authorTopicsUrl + '&author_id=' + encodeURIComponent(meta.author_id) + '" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">' + data.l10n.viewAuthorTopics + '</a>';

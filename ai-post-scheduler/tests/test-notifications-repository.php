@@ -459,4 +459,349 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertStringContainsString( '10', $unread[0]->message );
 		$this->assertStringContainsString( '42', $unread[0]->url );
 	}
+
+	// -----------------------------------------------------------------------
+	// Repository: get_paginated
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that get_paginated() returns all notifications with default args.
+	 */
+	public function test_get_paginated_returns_all_by_default() {
+		$this->repository->create( 'test', 'Msg 1' );
+		$this->repository->create( 'test', 'Msg 2' );
+		$this->repository->create( 'test', 'Msg 3' );
+
+		$result = $this->repository->get_paginated();
+
+		$this->assertArrayHasKey( 'items', $result );
+		$this->assertArrayHasKey( 'total', $result );
+		$this->assertArrayHasKey( 'pages', $result );
+		$this->assertCount( 3, $result['items'] );
+		$this->assertEquals( 3, $result['total'] );
+		$this->assertEquals( 1, $result['pages'] );
+	}
+
+	/**
+	 * Test that get_paginated() filters by level.
+	 */
+	public function test_get_paginated_filters_by_level() {
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Error msg',
+			'level'   => 'error',
+		) );
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Info msg',
+			'level'   => 'info',
+		) );
+
+		$result = $this->repository->get_paginated( array( 'level' => 'error' ) );
+
+		$this->assertEquals( 1, $result['total'] );
+		$this->assertEquals( 'error', $result['items'][0]->level );
+	}
+
+	/**
+	 * Test that get_paginated() filters by type.
+	 */
+	public function test_get_paginated_filters_by_type() {
+		$this->repository->create( 'type_a', 'Msg A1' );
+		$this->repository->create( 'type_a', 'Msg A2' );
+		$this->repository->create( 'type_b', 'Msg B1' );
+
+		$result = $this->repository->get_paginated( array( 'type' => 'type_a' ) );
+
+		$this->assertEquals( 2, $result['total'] );
+		foreach ( $result['items'] as $item ) {
+			$this->assertEquals( 'type_a', $item->type );
+		}
+	}
+
+	/**
+	 * Test that get_paginated() filters by read status (unread only).
+	 */
+	public function test_get_paginated_filters_by_is_read_unread() {
+		$id1 = $this->repository->create( 'test', 'Unread' );
+		$id2 = $this->repository->create( 'test', 'Read' );
+		$this->repository->mark_as_read( $id2 );
+
+		$result = $this->repository->get_paginated( array( 'is_read' => 0 ) );
+
+		$this->assertEquals( 1, $result['total'] );
+		$this->assertEquals( $id1, (int) $result['items'][0]->id );
+	}
+
+	/**
+	 * Test that get_paginated() filters by read status (read only).
+	 */
+	public function test_get_paginated_filters_by_is_read_read() {
+		$id1 = $this->repository->create( 'test', 'Unread' );
+		$id2 = $this->repository->create( 'test', 'Read' );
+		$this->repository->mark_as_read( $id2 );
+
+		$result = $this->repository->get_paginated( array( 'is_read' => 1 ) );
+
+		$this->assertEquals( 1, $result['total'] );
+		$this->assertEquals( $id2, (int) $result['items'][0]->id );
+	}
+
+	/**
+	 * Test that get_paginated() searches across title, message, and type.
+	 */
+	public function test_get_paginated_searches_message() {
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Contains the keyword needle',
+		) );
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'No match here',
+		) );
+
+		$result = $this->repository->get_paginated( array( 'search' => 'needle' ) );
+
+		$this->assertEquals( 1, $result['total'] );
+		$this->assertStringContainsString( 'needle', $result['items'][0]->message );
+	}
+
+	/**
+	 * Test that get_paginated() paginates correctly.
+	 */
+	public function test_get_paginated_pagination() {
+		for ( $i = 0; $i < 5; $i++ ) {
+			$this->repository->create( 'test', 'Msg ' . $i );
+		}
+
+		$page1 = $this->repository->get_paginated( array( 'page' => 1, 'per_page' => 2 ) );
+		$page2 = $this->repository->get_paginated( array( 'page' => 2, 'per_page' => 2 ) );
+		$page3 = $this->repository->get_paginated( array( 'page' => 3, 'per_page' => 2 ) );
+
+		$this->assertEquals( 5, $page1['total'] );
+		$this->assertEquals( 3, $page1['pages'] );
+		$this->assertCount( 2, $page1['items'] );
+		$this->assertCount( 2, $page2['items'] );
+		$this->assertCount( 1, $page3['items'] );
+	}
+
+	/**
+	 * Test that get_paginated() returns empty result when no notifications match.
+	 */
+	public function test_get_paginated_returns_empty_when_no_match() {
+		$result = $this->repository->get_paginated( array( 'level' => 'error' ) );
+
+		$this->assertEquals( 0, $result['total'] );
+		$this->assertEmpty( $result['items'] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: get_summary_counts
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that get_summary_counts() returns correct totals.
+	 */
+	public function test_get_summary_counts_returns_correct_totals() {
+		$id1 = $this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Error 1',
+			'level'   => 'error',
+		) );
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Warning 1',
+			'level'   => 'warning',
+		) );
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Info 1',
+			'level'   => 'info',
+		) );
+		$this->repository->mark_as_read( $id1 );
+
+		$counts = $this->repository->get_summary_counts();
+
+		$this->assertArrayHasKey( 'total', $counts );
+		$this->assertArrayHasKey( 'unread', $counts );
+		$this->assertArrayHasKey( 'errors', $counts );
+		$this->assertArrayHasKey( 'warnings', $counts );
+		$this->assertEquals( 3, $counts['total'] );
+		$this->assertEquals( 2, $counts['unread'] );
+		$this->assertEquals( 1, $counts['errors'] );
+		$this->assertEquals( 1, $counts['warnings'] );
+	}
+
+	/**
+	 * Test that get_summary_counts() returns all zeros when table is empty.
+	 */
+	public function test_get_summary_counts_returns_zeros_when_empty() {
+		$counts = $this->repository->get_summary_counts();
+
+		$this->assertEquals( 0, $counts['total'] );
+		$this->assertEquals( 0, $counts['unread'] );
+		$this->assertEquals( 0, $counts['errors'] );
+		$this->assertEquals( 0, $counts['warnings'] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: mark_as_unread
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that mark_as_unread() sets is_read to 0 and clears read_at.
+	 */
+	public function test_mark_as_unread_clears_read_flag() {
+		global $wpdb;
+		$id = $this->repository->create( 'test', 'Mark me unread' );
+		$this->repository->mark_as_read( $id );
+
+		$result = $this->repository->mark_as_unread( $id );
+
+		$this->assertTrue( $result );
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT is_read, read_at FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
+			$id
+		) );
+		$this->assertEquals( 0, (int) $row->is_read );
+		$this->assertNull( $row->read_at );
+	}
+
+	/**
+	 * Test that mark_as_unread() returns true for an already-unread notification.
+	 */
+	public function test_mark_as_unread_on_unread_notification_returns_true() {
+		$id = $this->repository->create( 'test', 'Already unread' );
+
+		$result = $this->repository->mark_as_unread( $id );
+
+		$this->assertTrue( $result );
+		$this->assertEquals( 1, $this->repository->count_unread() );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: delete_notification
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that delete_notification() removes the row from the database.
+	 */
+	public function test_delete_notification_removes_row() {
+		global $wpdb;
+		$id = $this->repository->create( 'test', 'Delete me' );
+
+		$result = $this->repository->delete_notification( $id );
+
+		$this->assertTrue( $result );
+		$exists = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
+			$id
+		) );
+		$this->assertEquals( 0, $exists );
+	}
+
+	/**
+	 * Test that delete_notification() does not affect other rows.
+	 */
+	public function test_delete_notification_leaves_others_intact() {
+		$id1 = $this->repository->create( 'test', 'Keep me' );
+		$id2 = $this->repository->create( 'test', 'Delete me' );
+
+		$this->repository->delete_notification( $id2 );
+
+		$result = $this->repository->get_paginated();
+		$ids    = array_map( function ( $r ) { return (int) $r->id; }, $result['items'] );
+		$this->assertContains( $id1, $ids );
+		$this->assertNotContains( $id2, $ids );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: bulk_mark_as_read
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that bulk_mark_as_read() marks multiple notifications as read.
+	 */
+	public function test_bulk_mark_as_read_marks_multiple() {
+		$id1 = $this->repository->create( 'test', 'Bulk 1' );
+		$id2 = $this->repository->create( 'test', 'Bulk 2' );
+		$id3 = $this->repository->create( 'test', 'Bulk 3' );
+
+		$result = $this->repository->bulk_mark_as_read( array( $id1, $id2 ) );
+
+		$this->assertTrue( $result );
+		$this->assertEquals( 1, $this->repository->count_unread() );
+	}
+
+	/**
+	 * Test that bulk_mark_as_read() returns false for empty array.
+	 */
+	public function test_bulk_mark_as_read_returns_false_for_empty_array() {
+		$this->assertFalse( $this->repository->bulk_mark_as_read( array() ) );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: bulk_mark_as_unread
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that bulk_mark_as_unread() marks multiple notifications as unread.
+	 */
+	public function test_bulk_mark_as_unread_marks_multiple() {
+		global $wpdb;
+		$id1 = $this->repository->create( 'test', 'BU 1' );
+		$id2 = $this->repository->create( 'test', 'BU 2' );
+		$this->repository->mark_as_read( $id1 );
+		$this->repository->mark_as_read( $id2 );
+
+		$result = $this->repository->bulk_mark_as_unread( array( $id1, $id2 ) );
+
+		$this->assertTrue( $result );
+		$this->assertEquals( 2, $this->repository->count_unread() );
+
+		foreach ( array( $id1, $id2 ) as $id ) {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT is_read, read_at FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
+				$id
+			) );
+			$this->assertEquals( 0, (int) $row->is_read );
+			$this->assertNull( $row->read_at );
+		}
+	}
+
+	/**
+	 * Test that bulk_mark_as_unread() returns false for empty array.
+	 */
+	public function test_bulk_mark_as_unread_returns_false_for_empty_array() {
+		$this->assertFalse( $this->repository->bulk_mark_as_unread( array() ) );
+	}
+
+	// -----------------------------------------------------------------------
+	// Repository: bulk_delete
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Test that bulk_delete() removes multiple rows.
+	 */
+	public function test_bulk_delete_removes_multiple_rows() {
+		global $wpdb;
+		$id1 = $this->repository->create( 'test', 'BD 1' );
+		$id2 = $this->repository->create( 'test', 'BD 2' );
+		$id3 = $this->repository->create( 'test', 'Keep this' );
+
+		$result = $this->repository->bulk_delete( array( $id1, $id2 ) );
+
+		$this->assertTrue( $result );
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}aips_notifications" );
+		$this->assertEquals( 1, $count );
+		$remaining = $wpdb->get_var( "SELECT id FROM {$wpdb->prefix}aips_notifications" );
+		$this->assertEquals( $id3, (int) $remaining );
+	}
+
+	/**
+	 * Test that bulk_delete() returns false for empty array.
+	 */
+	public function test_bulk_delete_returns_false_for_empty_array() {
+		$this->assertFalse( $this->repository->bulk_delete( array() ) );
+	}
 }
