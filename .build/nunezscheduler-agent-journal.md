@@ -207,3 +207,23 @@
 **Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
+
+## 2026-04-07 - Notifications God Object Refactoring
+**Target Feature:** Notifications System
+**Improvement:** Refactored the 1,263-line `AIPS_Notifications` "God Object" by extracting responsibilities into two focused classes, eliminating the Single Responsibility Principle violation while guaranteeing 100% backward compatibility.
+
+**Architecture changes:**
+1. **`AIPS_Notification_Registry`** (new, 239 lines) — Pure static class holding all type definitions and channel-mode constants. Provides `get_type_registry()`, `get_high_priority_types()`, and `get_channel_mode_options()`. No constructor, no state.
+2. **`AIPS_Notification_Senders`** (new, 736 lines) — Holds all 21 named sender/formatter methods (`author_topics_generated`, `generation_failed`, `quota_alert`, `integration_error`, `scheduler_error`, `system_error`, `template_generated`, `manual_generation_completed`, `post_ready_for_review`, `post_rejected`, `partial_generation_completed`, `daily_digest`, `weekly_summary`, `monthly_report`, `history_cleanup`, `seeder_complete`, `template_change`, `author_suggestions`, `circuit_breaker_opened`, `rate_limit_reached`, `research_topics_ready`). Constructor accepts `$dispatcher` and `$vars_builder` callables (dependency injection), keeping it decoupled from the core dispatch mechanism.
+3. **`AIPS_Notifications`** (refactored, 723 lines) — Reduced from 1,263 lines. Creates `$this->senders` internally. All 21 public sender methods now proxy to `$this->senders`. Static registry methods proxy to `AIPS_Notification_Registry`. All constants, `send()`, and internal dispatch logic unchanged.
+
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-notifications.php` — Reduced from 1,263 to 723 lines; added senders proxy layer; registry methods delegate to AIPS_Notification_Registry
+- `ai-post-scheduler/includes/class-aips-notification-registry.php` — New file (239 lines)
+- `ai-post-scheduler/includes/class-aips-notification-senders.php` — New file (736 lines)
+- `ai-post-scheduler/tests/test-notification-registry.php` — New test file (registry tests)
+- `ai-post-scheduler/tests/test-notification-senders.php` — New test file (senders tests)
+
+**Tests:** 64 new tests, 218 assertions — all pass. Zero regressions vs. baseline.
+**Branch:** `copilot/refactor-aips-notifications-class` (2 commits ahead of main)
+**Outcome:** AIPS_Notifications is no longer a God Object. Each class has a single, clear responsibility: Registry owns type definitions, Senders owns formatting/dispatch logic, Notifications orchestrates and maintains the backward-compatible public API. The autoloader picks up both new classes automatically via the existing `AIPS_Foo → class-aips-foo.php` convention.
