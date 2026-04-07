@@ -799,6 +799,25 @@ class AIPS_Admin_Assets {
                 'rejected'                 => __('Rejected', 'ai-post-scheduler'),
                 'pending'                  => __('Pending', 'ai-post-scheduler'),
                 'inserted'                 => __('Inserted', 'ai-post-scheduler'),
+                // Insert Link modal strings
+                'insertLink'               => __('Insert Link', 'ai-post-scheduler'),
+                'loadingFailed'            => __('Failed to load post data. Please try again.', 'ai-post-scheduler'),
+                'noContent'                => __('(No content)', 'ai-post-scheduler'),
+                'noInsertSuggestions'      => __('No accepted suggestions found for this post.', 'ai-post-scheduler'),
+                'insertBtn'                => __('Insert', 'ai-post-scheduler'),
+                'findingLocations'         => __('Finding insertion locations…', 'ai-post-scheduler'),
+                'locationsFailed'          => __('Failed to find insertion locations. Please try again.', 'ai-post-scheduler'),
+                'noLocations'              => __('The AI did not return any insertion locations. Try a different suggestion.', 'ai-post-scheduler'),
+                'insertionLocationsLabel'  => __('Insertion Locations', 'ai-post-scheduler'),
+                'returnedCountLabel'       => __('Returned %1$d of %2$d suggestions', 'ai-post-scheduler'),
+                'zeroSuggestionsReturned'  => __('0 suggestions returned', 'ai-post-scheduler'),
+                'reasonLabel'              => __('Reason', 'ai-post-scheduler'),
+                'originalSnippetLabel'     => __('Original text', 'ai-post-scheduler'),
+                'withLinkLabel'            => __('With link inserted', 'ai-post-scheduler'),
+                'applyBtn'                 => __('Apply', 'ai-post-scheduler'),
+                'applying'                 => __('Applying…', 'ai-post-scheduler'),
+                'applied'                  => __('Link inserted successfully.', 'ai-post-scheduler'),
+                'applyFailed'              => __('Failed to apply insertion. Please try again.', 'ai-post-scheduler'),
             ));
         }
     }
