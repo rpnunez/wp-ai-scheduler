@@ -505,6 +505,20 @@ class AIPS_Internal_Links_Controller {
 			wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
 		}
 
+		// Validate that snippets contain no HTML (they must be plain text).
+		if (strpos($match_snippet, '<') !== false || strpos($match_snippet, '>') !== false) {
+			wp_send_json_error(array('message' => __('Invalid match snippet.', 'ai-post-scheduler')));
+		}
+
+		if (strpos($replacement_snippet, '<') !== false || strpos($replacement_snippet, '>') !== false) {
+			wp_send_json_error(array('message' => __('Invalid replacement snippet.', 'ai-post-scheduler')));
+		}
+
+		// Require exactly one [[...]] link marker in the replacement snippet.
+		if (!preg_match('/\[\[.*?\]\]/s', $replacement_snippet) || preg_match_all('/\[\[.*?\]\]/s', $replacement_snippet) !== 1) {
+			wp_send_json_error(array('message' => __('Replacement snippet must contain exactly one [[link marker]].', 'ai-post-scheduler')));
+		}
+
 		$result = $this->inserter_service->apply_insertion($suggestion_id, $match_snippet, $replacement_snippet);
 
 		if (is_wp_error($result)) {

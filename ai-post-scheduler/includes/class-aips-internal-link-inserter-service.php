@@ -253,7 +253,9 @@ class AIPS_Internal_Link_Inserter_Service {
 			return $replacement_html;
 		}
 
-		if (strpos($post_content, $match_snippet) === false) {
+		$html_snippet = $this->find_snippet_in_html($match_snippet, $post_content);
+
+		if ($html_snippet === null) {
 			return new WP_Error(
 				'snippet_not_found',
 				__('The selected text was not found in the current post HTML content. Please choose another suggestion.', 'ai-post-scheduler')
@@ -262,7 +264,7 @@ class AIPS_Internal_Link_Inserter_Service {
 
 		$new_content = implode(
 			$replacement_html,
-			explode($match_snippet, $post_content, 2)
+			explode($html_snippet, $post_content, 2)
 		);
 
 		$update_args = array(
@@ -313,6 +315,68 @@ class AIPS_Internal_Link_Inserter_Service {
 		$text = preg_replace('/\n{3,}/', "\n\n", $text);
 
 		return trim($text);
+	}
+
+	/**
+	 * Find a plain-text snippet in an HTML string.
+	 *
+	 * Tries an exact match first (fast path for content without inline HTML).
+	 * Falls back to a word-aware regex that tolerates inline HTML tags
+	 * (e.g. <strong>, <em>, <a>) interspersed between words, as can occur when
+	 * the AI-generated snippet is derived from the strip_tags version of the
+	 * post but the stored content has inline formatting.
+	 *
+	 * Block-level tag boundaries (p, div, blockquote, h1–h6, ul, ol, li, etc.)
+	 * are NOT crossed; those indicate a different paragraph and the snippet
+	 * should not span them.
+	 *
+	 * @param string $match_snippet Plain-text snippet from the AI.
+	 * @param string $post_content  Raw post HTML.
+	 * @return string|null The actual substring from $post_content that matches,
+	 *                     or null if the snippet cannot be located.
+	 */
+	private function find_snippet_in_html($match_snippet, $post_content) {
+		// Fast path: verbatim match in the HTML.
+		if (strpos($post_content, $match_snippet) !== false) {
+			return $match_snippet;
+		}
+
+		// Slow path: split the snippet into words and build a regex that
+		// allows inline HTML tags (but not block-level boundaries) between them.
+		$words = preg_split('/\s+/', trim($match_snippet), -1, PREG_SPLIT_NO_EMPTY);
+
+		if (empty($words)) {
+			return null;
+		}
+
+		// Guard against ReDoS from excessively long snippets.
+		// AI snippets should be ~15 words; 60 is a very generous upper bound.
+		if (count($words) > 60) {
+			return null;
+		}
+
+		$escaped_words = array_map(
+			function ($w) {
+				return preg_quote($w, '/');
+			},
+			$words
+		);
+
+		// Pattern that matches whitespace or opening/closing inline tags between
+		// two consecutive words. The negative lookahead excludes block-level tags
+		// (p, div, blockquote, h1–h6, ul, ol, li, table rows/cells, br, hr,
+		// pre, figure, figcaption) so the match cannot span paragraph boundaries.
+		// Any other tag name (e.g. strong, em, a, span) is permitted.
+		$block_tags       = 'p|div|blockquote|h[1-6]|ul|ol|li|table|tr|td|th|br|hr|pre|figure|figcaption';
+		$inline_between   = '(?:\s|</?(?!(?:' . $block_tags . ')\b)[a-zA-Z][^>]*>)*';
+
+		$pattern = '/' . implode($inline_between, $escaped_words) . '/siu';
+
+		if (preg_match($pattern, $post_content, $matches)) {
+			return $matches[0];
+		}
+
+		return null;
 	}
 
 	/**

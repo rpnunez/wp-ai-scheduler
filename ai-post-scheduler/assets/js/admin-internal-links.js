@@ -47,6 +47,8 @@
 		 * Bind all UI event listeners.
 		 */
 		bindEvents: function () {
+			var self = this;
+
 			// Tab navigation
 			$(document).on('click', '.aips-tab-link', this.onTabClick.bind(this));
 
@@ -360,8 +362,8 @@
 			: targetTitle;
 
 			var actions = '';
-			var acceptActionLabel = aipsInternalLinksL10n.acceptAction || 'Accept suggestion';
-			var rejectActionLabel = aipsInternalLinksL10n.rejectAction || 'Reject suggestion';
+			var acceptActionLabel = AIPS.Templates.escape(aipsInternalLinksL10n.acceptAction || 'Accept suggestion');
+			var rejectActionLabel = AIPS.Templates.escape(aipsInternalLinksL10n.rejectAction || 'Reject suggestion');
 			if (item.status === 'pending') {
 				actions +=
 				'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="' + item.id + '">' +
