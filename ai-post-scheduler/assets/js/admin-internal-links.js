@@ -379,7 +379,7 @@
 				});
 			}
 
-			actions += ' ' + AIPS.Templates.render('aips-tmpl-il-actions-edit-delete', {
+			actions += AIPS.Templates.render('aips-tmpl-il-actions-edit-delete', {
 				id:          item.id,
 				anchor:      item.anchor_text || '',
 				editLabel:   aipsInternalLinksL10n.editAnchorText,

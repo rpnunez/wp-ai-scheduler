@@ -281,7 +281,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 <!-- Action buttons: edit anchor + delete (shown for all statuses) -->
 <script type="text/html" id="aips-tmpl-il-actions-edit-delete">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="{{id}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">{{deleteLabel}}</span></button>
+ <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="{{id}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">{{deleteLabel}}</span></button>
 </script>
 
 <!-- Full suggestion table row -->
