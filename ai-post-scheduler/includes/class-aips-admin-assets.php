@@ -573,6 +573,39 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        // Review Workflow Page Scripts
+        if (strpos($hook, 'aips-review-workflow') !== false) {
+            wp_enqueue_style(
+                'aips-admin-review-workflow',
+                AIPS_PLUGIN_URL . 'assets/css/admin-review-workflow.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-review-workflow',
+                AIPS_PLUGIN_URL . 'assets/js/admin-review-workflow.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            // Provide stage definitions and UI strings.
+            $defs = AIPS_Review_Workflow_Controller::get_stage_definitions();
+
+            wp_localize_script('aips-admin-review-workflow', 'aipsReviewWorkflowL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+                'stages'  => $defs,
+                'confirmApproveIncomplete' => __('Checklist is incomplete. Approve anyway?', 'ai-post-scheduler'),
+                'confirmPublish' => __('Publish this post now?', 'ai-post-scheduler'),
+                'confirmSchedule' => __('Schedule this post for the selected time?', 'ai-post-scheduler'),
+                'confirmArchive' => __('Archive this workflow item? (The WordPress post is unchanged.)', 'ai-post-scheduler'),
+                'loading' => __('Loading...', 'ai-post-scheduler'),
+                'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            ));
+        }
+
         // Calendar Page Scripts
         if (strpos($hook, 'aips-schedule-calendar') !== false) {
             wp_enqueue_style(

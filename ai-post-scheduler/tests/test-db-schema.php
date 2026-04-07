@@ -178,6 +178,62 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that review workflow tables exist.
+	 */
+	public function test_review_workflow_tables_exist() {
+		global $wpdb;
+
+		$items_table    = $wpdb->prefix . 'aips_post_review_items';
+		$stage_table    = $wpdb->prefix . 'aips_post_review_stage_data';
+		$comments_table = $wpdb->prefix . 'aips_post_review_comments';
+
+		$this->assertEquals($items_table, $wpdb->get_var("SHOW TABLES LIKE '{$items_table}'"), 'Items table should exist');
+		$this->assertEquals($stage_table, $wpdb->get_var("SHOW TABLES LIKE '{$stage_table}'"), 'Stage table should exist');
+		$this->assertEquals($comments_table, $wpdb->get_var("SHOW TABLES LIKE '{$comments_table}'"), 'Comments table should exist');
+	}
+
+	/**
+	 * Test that items table has unique index on post_id.
+	 */
+	public function test_review_workflow_items_unique_post_id() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_post_review_items';
+
+		$indexes = $wpdb->get_results("SHOW INDEX FROM {$table} WHERE Key_name = 'post_id'");
+		$this->assertNotEmpty($indexes, 'Index post_id should exist');
+
+		$unique = false;
+		foreach ($indexes as $idx) {
+			if ((int) $idx->Non_unique === 0) {
+				$unique = true;
+				break;
+			}
+		}
+
+		$this->assertTrue($unique, 'post_id index should be unique');
+	}
+
+	/**
+	 * Test that stage table has unique composite index (review_item_id, stage_key).
+	 */
+	public function test_review_workflow_stage_unique_composite_index() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_post_review_stage_data';
+
+		$indexes = $wpdb->get_results("SHOW INDEX FROM {$table} WHERE Key_name = 'review_item_stage'");
+		$this->assertNotEmpty($indexes, 'Composite index review_item_stage should exist');
+
+		$this->assertCount(2, $indexes, 'Composite index should have 2 columns');
+		$cols = array();
+		foreach ($indexes as $idx) {
+			$cols[(int) $idx->Seq_in_index] = $idx->Column_name;
+		}
+
+		$this->assertEquals('review_item_id', $cols[1], 'First column should be review_item_id');
+		$this->assertEquals('stage_key', $cols[2], 'Second column should be stage_key');
+	}
+
+	/**
 	 * Test that aips_templates table has description column.
 	 */
 	public function test_templates_table_has_description_column() {

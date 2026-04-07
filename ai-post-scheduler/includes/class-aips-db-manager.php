@@ -19,6 +19,9 @@ class AIPS_DB_Manager {
         'aips_author_topic_logs',
         'aips_topic_feedback',
         'aips_notifications',
+        'aips_post_review_items',
+        'aips_post_review_stage_data',
+        'aips_post_review_comments',
         'aips_sources',
         'aips_source_group_terms',
         'aips_taxonomy',
@@ -68,6 +71,9 @@ class AIPS_DB_Manager {
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
         $table_notifications        = $tables['aips_notifications'];
+        $table_post_review_items    = $tables['aips_post_review_items'];
+        $table_post_review_stage    = $tables['aips_post_review_stage_data'];
+        $table_post_review_comments = $tables['aips_post_review_comments'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_taxonomy             = $tables['aips_taxonomy'];
@@ -341,6 +347,60 @@ class AIPS_DB_Manager {
             KEY level (level),
             KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_review_items (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            history_id bigint(20) DEFAULT NULL,
+            template_id bigint(20) DEFAULT NULL,
+            author_id bigint(20) DEFAULT NULL,
+            topic_id bigint(20) DEFAULT NULL,
+            stage varchar(50) NOT NULL DEFAULT 'brief',
+            stage_state varchar(50) NOT NULL DEFAULT 'pending',
+            assigned_to bigint(20) DEFAULT NULL,
+            priority varchar(20) NOT NULL DEFAULT 'normal',
+            due_at datetime DEFAULT NULL,
+            closed_state varchar(20) NOT NULL DEFAULT 'open',
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY post_id (post_id),
+            KEY history_id (history_id),
+            KEY stage (stage),
+            KEY assigned_to (assigned_to),
+            KEY due_at (due_at),
+            KEY closed_state (closed_state),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_review_stage (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            review_item_id bigint(20) NOT NULL,
+            stage_key varchar(50) NOT NULL,
+            state varchar(50) NOT NULL DEFAULT 'pending',
+            checklist_state longtext,
+            notes text DEFAULT NULL,
+            reviewed_by bigint(20) DEFAULT NULL,
+            reviewed_at datetime DEFAULT NULL,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY review_item_stage (review_item_id, stage_key),
+            KEY review_item_id (review_item_id),
+            KEY stage_key (stage_key),
+            KEY state (state),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_review_comments (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            review_item_id bigint(20) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            comment text NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY review_item_id (review_item_id),
             KEY created_at (created_at)
         ) $charset_collate;";
 

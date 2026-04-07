@@ -1,0 +1,131 @@
+.aips-rw-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.aips-rw-overdue {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.aips-rw-drawer {
+	position: fixed;
+	top: 32px;
+	right: 0;
+	width: 520px;
+	max-width: 92vw;
+	height: calc(100vh - 32px);
+	background: #fff;
+	border-left: 1px solid #dcdcde;
+	box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
+	z-index: 100000;
+	transform: translateX(100%);
+	transition: transform 160ms ease;
+	display: flex;
+	flex-direction: column;
+}
+
+.aips-rw-drawer.is-open {
+	transform: translateX(0);
+}
+
+.aips-rw-drawer-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 12px 14px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.aips-rw-drawer-title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+#aips-rw-drawer-post-title {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.aips-rw-drawer-body {
+	overflow: auto;
+	padding: 12px 14px 20px;
+}
+
+.aips-rw-section {
+	margin-bottom: 18px;
+}
+
+.aips-rw-section h3 {
+	margin: 0 0 8px 0;
+}
+
+.aips-rw-controls {
+	display: grid;
+	grid-template-columns: 120px 1fr;
+	gap: 8px 10px;
+	align-items: center;
+	margin-bottom: 10px;
+}
+
+.aips-rw-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 10px 0;
+}
+
+.aips-rw-preview img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 4px;
+}
+
+.aips-rw-stage-notes textarea,
+.aips-rw-section textarea {
+	width: 100%;
+}
+
+.aips-rw-notes-actions {
+	margin-top: 8px;
+	display: flex;
+	gap: 8px;
+}
+
+.aips-rw-checklist h4 {
+	margin: 0 0 8px 0;
+}
+
+.aips-rw-checklist-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 6px 0;
+}
+
+.aips-rw-comments {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 10px;
+	background: #f6f7f7;
+	max-height: 220px;
+	overflow: auto;
+	margin-bottom: 10px;
+}
+
+.aips-rw-comment {
+	margin-bottom: 10px;
+}
+
+.aips-rw-comment-meta {
+	font-size: 12px;
+	color: #646970;
+	margin-bottom: 2px;
+}
+
