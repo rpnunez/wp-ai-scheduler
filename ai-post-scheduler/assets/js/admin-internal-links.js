@@ -1200,7 +1200,17 @@
 			for (var i = 0; i < this._pendingInsertions.length; i++) {
 				var ins          = this._pendingInsertions[i];
 				var escapedMatch = AIPS.Templates.escape(ins.matchSnippet);
-				var idx          = html.indexOf(escapedMatch);
+
+				// Search the already-modified HTML for the escaped match.
+				// The match is looked up after HTML-escaping both the stored plain text
+				// and the snippet, so standard HTML entities (&amp;, &lt;, etc.) round-trip
+				// correctly.  Rare double-encoded entities (e.g. &amp;amp; in source)
+				// may not match; in those cases the insertion is silently skipped in the
+				// preview but will still be applied correctly on the server.
+				//
+				// Only the first occurrence is replaced (consistent with the server-side
+				// apply_insertion() behaviour which also replaces the first occurrence).
+				var idx = html.indexOf(escapedMatch);
 
 				if (idx === -1) { continue; }
 
@@ -1272,12 +1282,16 @@
 		 * @param {string} newAnchor    New anchor text.
 		 */
 		editPreviewAnchor: function (suggestionId, newAnchor) {
+			// Strip any `]]` sequence from the anchor text to ensure the
+			// [[marker]] format in the replacement snippet remains valid.
+			var safeAnchor = String(newAnchor).replace(/\]\]/g, '');
+
 			for (var i = 0; i < this._pendingInsertions.length; i++) {
 				if (this._pendingInsertions[i].suggestionId === suggestionId) {
-					this._pendingInsertions[i].anchorText         = newAnchor;
+					this._pendingInsertions[i].anchorText         = safeAnchor;
 					this._pendingInsertions[i].replacementSnippet = this._pendingInsertions[i].replacementSnippet.replace(
 						/\[\[[\s\S]*?\]\]/,
-						'[[' + newAnchor + ']]'
+						'[[' + safeAnchor + ']]'
 					);
 					break;
 				}
