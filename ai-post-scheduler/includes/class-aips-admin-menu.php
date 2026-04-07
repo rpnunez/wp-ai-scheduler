@@ -149,6 +149,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Notifications', 'ai-post-scheduler'),
+            __('Notifications', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-notifications',
+            array($this, 'render_notifications_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Sources', 'ai-post-scheduler'),
             __('Sources', 'ai-post-scheduler'),
             'manage_options',
@@ -382,6 +391,17 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Notifications admin page.
+     *
+     * Includes the notifications template file.
+     *
+     * @return void
+     */
+    public function render_notifications_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/notifications.php';
     }
 
     /**

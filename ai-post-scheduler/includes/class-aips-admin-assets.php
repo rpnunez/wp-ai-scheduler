@@ -720,6 +720,66 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        if (strpos($hook, 'aips-notifications') !== false) {
+            wp_enqueue_script(
+                'aips-admin-notifications',
+                AIPS_PLUGIN_URL . 'assets/js/admin-notifications.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            $type_registry = AIPS_Notifications::get_notification_type_registry();
+            $types_map     = array();
+            foreach ($type_registry as $type_key => $type_def) {
+                $types_map[$type_key] = $type_def['label'];
+            }
+
+            wp_localize_script('aips-admin-notifications', 'aipsNotificationsData', array(
+                'ajaxUrl'         => admin_url('admin-ajax.php'),
+                'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+                'types'           => $types_map,
+                'editPostUrl'     => admin_url('post.php?post=%d&action=edit'),
+                'authorTopicsUrl' => admin_url('admin.php?page=aips-author-topics'),
+                'historyUrl'      => admin_url('admin.php?page=aips-history'),
+                'templatesUrl'    => admin_url('admin.php?page=aips-templates'),
+                'scheduleUrl'     => admin_url('admin.php?page=aips-schedule'),
+                'l10n'            => array(
+                    'selectAction'     => __('Please select a bulk action.', 'ai-post-scheduler'),
+                    'selectItems'      => __('Please select at least one notification.', 'ai-post-scheduler'),
+                    'error'            => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                    'loadError'        => __('Failed to load notifications.', 'ai-post-scheduler'),
+                    'noNotifications'  => __('No notifications found.', 'ai-post-scheduler'),
+                    'read'             => __('Read', 'ai-post-scheduler'),
+                    'unread'           => __('Unread', 'ai-post-scheduler'),
+                    'markRead'         => __('Mark as Read', 'ai-post-scheduler'),
+                    'markUnread'       => __('Mark as Unread', 'ai-post-scheduler'),
+                    'view'             => __('View', 'ai-post-scheduler'),
+                    'colTitle'         => __('Title', 'ai-post-scheduler'),
+                    'colType'          => __('Type', 'ai-post-scheduler'),
+                    'colLevel'         => __('Level', 'ai-post-scheduler'),
+                    'colMessage'       => __('Message', 'ai-post-scheduler'),
+                    'colDate'          => __('Date', 'ai-post-scheduler'),
+                    'colStatus'        => __('Status', 'ai-post-scheduler'),
+                    'colActions'       => __('Actions', 'ai-post-scheduler'),
+                    'totalLabel'       => __('Total', 'ai-post-scheduler'),
+                    'unreadLabel'      => __('Unread', 'ai-post-scheduler'),
+                    'errorsLabel'      => __('Errors', 'ai-post-scheduler'),
+                    'warningsLabel'    => __('Warnings', 'ai-post-scheduler'),
+                    /* translators: %d: total notification count */
+                    'countLabel'       => __('%d notifications', 'ai-post-scheduler'),
+                    'prev'             => __('Prev', 'ai-post-scheduler'),
+                    'next'             => __('Next', 'ai-post-scheduler'),
+                    'viewPost'         => __('View Post', 'ai-post-scheduler'),
+                    'viewAuthorTopics' => __('View Author Topics', 'ai-post-scheduler'),
+                    'viewHistory'      => __('View History', 'ai-post-scheduler'),
+                    'viewTemplate'     => __('View Template', 'ai-post-scheduler'),
+                    'viewSchedule'     => __('View Schedule', 'ai-post-scheduler'),
+                    'viewTopic'        => __('View Topic', 'ai-post-scheduler'),
+                ),
+            ));
+        }
+
         if (strpos($hook, 'aips-sources') !== false) {
             wp_enqueue_script(
                 'aips-admin-sources',

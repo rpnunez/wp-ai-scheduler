@@ -331,6 +331,8 @@ final class AI_Post_Scheduler {
             new AIPS_Calendar_Controller();
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
+            // Notifications controller (AJAX endpoints for notifications page)
+            new AIPS_Notifications_Controller();
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
