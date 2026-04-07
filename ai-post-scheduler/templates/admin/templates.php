@@ -138,12 +138,12 @@ if (!defined('ABSPATH')) {
                 </table>
                 
                 <!-- No Search Results State -->
-                <div id="aips-template-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                <div id="aips-template-search-no-results" class="aips-empty-state" style="display: none;">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Found', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('No templates match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <button type="button" class="aips-btn aips-btn-primary aips-clear-search-btn">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-search-btn">
                             <span class="dashicons dashicons-dismiss"></span>
                             <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>

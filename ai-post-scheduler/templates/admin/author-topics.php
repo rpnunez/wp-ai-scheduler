@@ -440,4 +440,33 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
 </script>
 
+<?php /* Empty state for the Topics tab (rendered by authors.js renderTopics).     */ ?>
+<?php /* CTA triggers the .aips-generate-topics-now button already in the header.  */ ?>
+<script type="text/html" id="aips-tmpl-topics-empty-state">
+<div class="aips-panel-body">
+	<div class="aips-empty-state">
+		<div class="dashicons dashicons-clipboard aips-empty-state-icon" aria-hidden="true"></div>
+		<h3 class="aips-empty-state-title">{{title}}</h3>
+		<p class="aips-empty-state-description">{{description}}</p>
+		<div class="aips-empty-state-actions">
+			<button type="button" class="aips-btn aips-btn-primary aips-empty-state-tab-cta" data-action="generate-topics">{{ctaLabel}}</button>
+		</div>
+	</div>
+</div>
+</script>
+
+<?php /* Empty state for the Feedback tab (rendered by authors.js renderFeedback). */ ?>
+<?php /* CTA switches to the Pending Review tab where topics can be actioned.      */ ?>
+<script type="text/html" id="aips-tmpl-feedback-empty-state">
+<div class="aips-panel-body">
+	<div class="aips-empty-state">
+		<div class="dashicons dashicons-testimonial aips-empty-state-icon" aria-hidden="true"></div>
+		<h3 class="aips-empty-state-title">{{title}}</h3>
+		<p class="aips-empty-state-description">{{description}}</p>
+		<div class="aips-empty-state-actions">
+			<button type="button" class="aips-btn aips-btn-primary aips-empty-state-tab-cta" data-tab="pending">{{ctaLabel}}</button>
+		</div>
+	</div>
+</div>
+</script>
 

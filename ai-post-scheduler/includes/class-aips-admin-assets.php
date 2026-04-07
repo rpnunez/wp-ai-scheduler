@@ -356,6 +356,13 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
+            // Empty-state labels used by renderTopics / renderFeedback / renderQueueTopics
+            'noTopicsFoundTitle'  => __('No Topics Found', 'ai-post-scheduler'),
+            'noFeedbackYetTitle'  => __('No Feedback Yet', 'ai-post-scheduler'),
+            'noQueueTopicsTitle'  => __('No Topics in Queue', 'ai-post-scheduler'),
+            'generateTopics'      => __('Generate Topics', 'ai-post-scheduler'),
+            'viewTopics'          => __('View Pending Topics', 'ai-post-scheduler'),
+            'viewAuthorsList'     => __('View Authors', 'ai-post-scheduler'),
             // Date formatting strings used by formatTopicDate()
             'dateToday'     => __('Today', 'ai-post-scheduler'),
             'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),

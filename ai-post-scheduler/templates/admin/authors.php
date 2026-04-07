@@ -274,7 +274,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </div>
 
                     <!-- No Search Results State -->
-                    <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                    <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
                         <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Found', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
@@ -896,4 +896,16 @@ $site_ctx = AIPS_Site_Context::get();
 <span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
 </script>
 
-
+<?php /* Empty state for the Generation Queue tab (rendered by authors.js renderQueueTopics) */ ?>
+<script type="text/html" id="aips-tmpl-queue-empty-state">
+<div class="aips-panel-body">
+	<div class="aips-empty-state">
+		<div class="dashicons dashicons-groups aips-empty-state-icon" aria-hidden="true"></div>
+		<h3 class="aips-empty-state-title">{{title}}</h3>
+		<p class="aips-empty-state-description">{{description}}</p>
+		<div class="aips-empty-state-actions">
+			<button type="button" class="aips-btn aips-btn-primary aips-empty-state-tab-cta" data-tab="authors-list">{{ctaLabel}}</button>
+		</div>
+	</div>
+</div>
+</script>
