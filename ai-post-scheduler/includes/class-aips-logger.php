@@ -89,8 +89,7 @@ class AIPS_Logger {
         );
         
         if (!empty($context)) {
-            $log_entry .= PHP_EOL;
-            $log_entry .= 'Context: ' . json_encode($context, JSON_PRETTY_PRINT);
+            $log_entry .= ' | Context: ' . json_encode($context);
         }
         
         $log_entry .= PHP_EOL;
@@ -108,14 +107,6 @@ class AIPS_Logger {
 
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
-    }
-
-    public function addSeparator($text) {
-        $separator = str_repeat('-', 20);
-        if (!empty($text)) {
-            $separator .= ' ' . $text . ' ' . str_repeat('-', 20);
-        }
-        $this->log($separator, 'info'); // Use 'info' level for separators
     }
     
     /**

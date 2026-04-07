@@ -521,91 +521,12 @@
 }
 
 /* Topic Posts Modal */
-.aips-topic-posts-list {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	margin-top: 12px;
+#aips-topic-posts-content table {
+	margin-top: 10px;
 }
 
-.aips-topic-post-item {
-	display: grid;
-	grid-template-columns: 1fr 220px;
-	gap: 18px;
-	padding: 18px;
-	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 8px;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.aips-topic-post-title {
-	margin: 0 0 10px;
-	font-size: 24px;
-	line-height: 1.25;
-	color: #1d2327;
-}
-
-.aips-topic-post-excerpt {
-	margin: 0 0 12px;
-	color: #3c434a;
-	font-size: 14px;
-	line-height: 1.65;
-}
-
-.aips-topic-post-meta {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px 20px;
-	margin-bottom: 12px;
-	font-size: 12px;
-	color: #50575e;
-}
-
-.aips-topic-post-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.aips-topic-post-media {
-	display: flex;
-	align-items: flex-start;
-	justify-content: flex-end;
-}
-
-.aips-topic-post-image {
-	width: 220px;
-	height: 150px;
-	object-fit: cover;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	display: block;
-}
-
-.aips-topic-post-image-placeholder {
-	width: 220px;
-	height: 150px;
-	border: 1px dashed #c3c4c7;
-	border-radius: 6px;
-	background: #f6f7f7;
-	color: #646970;
-	font-size: 12px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	padding: 12px;
-}
-
-@media (max-width: 782px) {
-	.aips-topic-post-item {
-		grid-template-columns: 1fr;
-	}
-
-	.aips-topic-post-media {
-		justify-content: flex-start;
-	}
+#aips-topic-posts-content .button {
+	margin-right: 5px;
 }
 
 /* Generation Queue Styles */

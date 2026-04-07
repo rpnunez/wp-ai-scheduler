@@ -441,23 +441,17 @@ class AIPS_Authors_Controller {
 		
 		$posts = array();
 		foreach ($logs as $log) {
-			// Only include post_generated logs with valid post IDs.
+			// Only include post_generated logs with valid post IDs
 			if ($log->action === 'post_generated' && $log->post_id) {
 				$wp_post = get_post($log->post_id);
 				if ($wp_post) {
-					$view_url = 'publish' === $wp_post->post_status
-						? get_permalink($wp_post->ID)
-						: get_preview_post_link($wp_post->ID);
-
 					$posts[] = array(
 						'post_id' => $log->post_id,
 						'post_title' => $wp_post->post_title,
 						'post_status' => $wp_post->post_status,
-						'post_excerpt' => wp_strip_all_tags(get_the_excerpt($wp_post->ID)),
-						'featured_image_url' => esc_url_raw((string) get_the_post_thumbnail_url($wp_post->ID, 'medium')),
 						'date_generated' => $log->created_at,
 						'date_published' => $wp_post->post_status === 'publish' ? $wp_post->post_date : null,
-						'post_url' => $view_url ? esc_url_raw($view_url) : '',
+						'post_url' => esc_url_raw(get_permalink($wp_post->ID)),
 						'edit_url' => esc_url_raw(get_edit_post_link($wp_post->ID, 'raw'))
 					);
 				}

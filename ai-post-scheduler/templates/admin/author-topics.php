@@ -399,45 +399,31 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 </script>
 
 <!-- Topic Posts Modal Templates -->
-<script type="text/html" id="aips-tmpl-topic-posts-list">
-<div class="aips-topic-posts-list">
-	{{items}}
-</div>
+<script type="text/html" id="aips-tmpl-topic-posts-table">
+<table class="wp-list-table widefat fixed striped">
+	<thead>
+		<tr>
+			<th>{{idLabel}}</th>
+			<th>{{titleLabel}}</th>
+			<th>{{generatedLabel}}</th>
+			<th>{{publishedLabel}}</th>
+			<th>{{actionsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
 </script>
 
-<script type="text/html" id="aips-tmpl-topic-post-item">
-<article class="aips-topic-post-item" data-post-id="{{postId}}">
-	<div class="aips-topic-post-main">
-		<h1 class="aips-topic-post-title">{{postTitle}}</h1>
-		<p class="aips-topic-post-excerpt">{{postExcerpt}}</p>
-		<div class="aips-topic-post-meta">
-			<span class="aips-topic-post-meta-item"><strong>{{generatedLabel}}:</strong> {{dateGenerated}}</span>
-			<span class="aips-topic-post-meta-item"><strong>{{publishedLabel}}:</strong> {{datePublished}}</span>
-		</div>
-		<div class="aips-topic-post-actions">
-			{{actions}}
-		</div>
-	</div>
-	<div class="aips-topic-post-media">
-		{{featuredImageMarkup}}
-	</div>
-</article>
-</script>
-
-<script type="text/html" id="aips-tmpl-topic-post-image">
-<img src="{{imageUrl}}" alt="{{imageAlt}}" class="aips-topic-post-image">
-</script>
-
-<script type="text/html" id="aips-tmpl-topic-post-image-placeholder">
-<div class="aips-topic-post-image-placeholder">{{placeholderText}}</div>
-</script>
-
-<script type="text/html" id="aips-tmpl-topic-post-action-link">
-<a href="{{url}}" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">{{label}}</a>
-</script>
-
-<script type="text/html" id="aips-tmpl-topic-post-action-publish">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
+<script type="text/html" id="aips-tmpl-topic-post-row">
+<tr>
+	<td>{{postId}}</td>
+	<td>{{postTitle}}</td>
+	<td>{{dateGenerated}}</td>
+	<td>{{datePublished}}</td>
+	<td>{{actions}}</td>
+</tr>
 </script>
 
 

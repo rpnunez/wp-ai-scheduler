@@ -26,6 +26,3 @@ Follow the `admin.js` module pattern for all plugin JavaScript files at a high l
 - Avoid introducing new build tooling for simple script updates.
 - Keep browser compatibility in mind for WordPress admin environments.
 - If behavior changes, update or add tests/documentation where applicable.
-
-> **Note:** Only read `docs/DEVELOPMENT_GUIDELINES.md` if you have not already read it in this session.
-> **Also read:** [`docs/DEVELOPMENT_GUIDELINES.md`](../../docs/DEVELOPMENT_GUIDELINES.md) for project-specific coding and architectural guidelines (HTML templating with `AIPS.Templates`, versioning rules, SQL ownership, and settings registration).

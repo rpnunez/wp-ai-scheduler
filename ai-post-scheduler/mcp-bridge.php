@@ -1654,7 +1654,7 @@ class AIPS_MCP_Bridge {
 		if ($category === 'all' || $category === 'ai') {
 			$settings['ai'] = array(
 				'model' => $config->get_option('aips_ai_model'),
-				'max_tokens_limit' => (int) $config->get_option('aips_max_tokens_limit'),
+				'maxTokens' => (int) $config->get_option('aips_max_tokens'),
 				'temperature' => (float) $config->get_option('aips_temperature'),
 				'default_post_status' => $config->get_option('aips_default_post_status'),
 				'default_post_author' => (int) $config->get_option('aips_default_post_author'),

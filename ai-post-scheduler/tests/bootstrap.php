@@ -508,23 +508,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
-    if (!function_exists('get_the_title')) {
-        function get_the_title($post = 0) {
-            $post_obj = get_post($post);
-            return $post_obj ? $post_obj->post_title : '';
-        }
-    }
-
-    if (!function_exists('get_post_field')) {
-        function get_post_field($field, $post_id = null, $context = 'edit') {
-            $post_obj = get_post($post_id);
-            if (!$post_obj) {
-                return '';
-            }
-            return isset($post_obj->$field) ? $post_obj->$field : '';
-        }
-    }
-
     if (!function_exists('get_permalink')) {
         function get_permalink($post = 0, $leavename = false) {
             return 'http://example.com/?p=' . $post;

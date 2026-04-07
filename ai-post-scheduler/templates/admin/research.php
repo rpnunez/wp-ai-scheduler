@@ -397,7 +397,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </script>
 
     <script type="text/html" id="aips-tmpl-research-topic-post-count-badge">
-        <br><span class="aips-post-count-badge" data-context="trending-topic" data-topic-id="{{topic_id}}">
+        <br><span class="aips-post-count-badge" data-topic-id="{{topic_id}}">
             <span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
             {{count}}
         </span>

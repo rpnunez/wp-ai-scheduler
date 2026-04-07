@@ -105,7 +105,8 @@ class AIPS_Content_Auditor {
 
         // 3. Call AI Service
         $options = array(
-            'temperature' => 0.7,
+            'maxTokens' => 2000,
+            'temperature' => 0.7
         );
 
         // Check if a specific model is configured in settings, if it's "gpt-5-mini" (which doesn't exist publicly yet), override it.
@@ -157,6 +158,7 @@ class AIPS_Content_Auditor {
         // 3. Call AI Service
         $options = array(
             'temperature' => 0.7,
+            'maxTokens' => 2000,
         );
         
         // Override potentially bad model setting
