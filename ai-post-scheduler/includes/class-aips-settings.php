@@ -106,6 +106,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_ai_env_id'],
         ));
+        register_setting('aips_settings', 'aips_max_tokens_limit', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_max_tokens_limit'],
+        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_unsplash_access_key'],
@@ -171,6 +175,14 @@ class AIPS_Settings {
             'aips_ai_env_id',
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens_limit',
+            __('Max Tokens Limit', 'ai-post-scheduler'),
+            array($this->ui, 'max_tokens_limit_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );
