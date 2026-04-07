@@ -342,10 +342,16 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- =====================================================================
      History table row templates — used by renderHistoryRows() in admin-history.js
-     All {{token}} values are pre-escaped before being passed to renderRaw().
+     These rows are rendered with renderRaw(), so only trusted, pre-escaped
+     plain-text/attribute values may be passed into standard {{token}} slots.
+     The explicit raw HTML slots in this template are {{titleHtml}},
+     {{errorHtml}}, {{statusHtml}}, and {{actionsHtml}}; those values must be
+     assembled from trusted markup with any dynamic content escaped before
+     rendering. Other templates in this file may be rendered with render(),
+     which auto-escapes plain-text placeholders.
      ===================================================================== -->
 
-<!-- Template: full history table row; all slot values are pre-escaped / pre-built HTML -->
+<!-- Template: full history table row; renderRaw() expects escaped text/id values and trusted prebuilt HTML only in the *Html slots -->
 <script type="text/html" id="aips-tmpl-history-row">
 	<tr data-history-id="{{id}}">
 		<th scope="row" class="check-column">
@@ -372,7 +378,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: inline error message shown beneath failed-item titles -->
 <script type="text/html" id="aips-tmpl-history-row-error">
-	<div class="aips-error-message" style="font-size:12px;color:#dc3232;margin-top:4px;">{{message}}</div>
+	<div class="aips-error-message">{{message}}</div>
 </script>
 
 <!-- Template: status badge with dashicon; use renderRaw() with pre-escaped values -->
@@ -393,7 +399,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: "View Post" action link (shown when a post is linked) -->
 <script type="text/html" id="aips-tmpl-history-action-view-post">
-	<a href="{{postUrl}}" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" title="{{title}}">
+	<a href="{{postUrl}}" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer" title="{{title}}">
 		<span class="dashicons dashicons-external" aria-hidden="true"></span>
 		{{label}}
 	</a>
