@@ -143,7 +143,8 @@ class AIPS_Component_Regeneration_Service {
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
 			// For topic context, build the prompt and generate using generic method
-			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, '');
+			$post_content = $post_id ? get_post_field('post_content', $post_id) : '';
+			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, $post_content);
 			// Use generate_content with log_type 'title' for proper logging
 			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
@@ -181,6 +182,14 @@ class AIPS_Component_Regeneration_Service {
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 		
+		// Fall back to post data when the caller did not supply current values
+		if (empty($title) && $post_id) {
+			$title = get_the_title($post_id);
+		}
+		if (empty($content) && $post_id) {
+			$content = get_post_field('post_content', $post_id);
+		}
+
 		// Get voice and topic for generator
 		$voice = null;
 		$topic_str = $generation_context->get_topic();
@@ -362,6 +371,12 @@ class AIPS_Component_Regeneration_Service {
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$post_id = absint($context['post_id']);
+
+		// Fall back to the post title when the caller did not supply one
+		if (empty($title) && $post_id) {
+			$title = get_the_title($post_id);
+		}
+
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		$image_generation_start = microtime(true);
 
