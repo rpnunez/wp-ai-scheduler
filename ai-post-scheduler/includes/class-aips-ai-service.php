@@ -490,7 +490,7 @@ class AIPS_AI_Service {
                     break;
                 case 'content':
                 default:
-                    // Full article body: up to ~3000-4000 words.
+                    // Full article body: use the configured content output token budget.
                     $output_tokens = (int) $config->get_option('aips_max_tokens_content');
                     break;
             }
