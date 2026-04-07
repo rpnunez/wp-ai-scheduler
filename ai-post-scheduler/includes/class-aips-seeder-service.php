@@ -8,13 +8,13 @@ class AIPS_Seeder_Service {
     private $generator;
     private $voices;
     private $templates;
-    private $scheduler;
+    private $schedule_repository;
 
     public function __construct() {
         $this->generator = new AIPS_Generator();
         $this->voices = new AIPS_Voices();
         $this->templates = new AIPS_Templates();
-        $this->scheduler = new AIPS_Scheduler();
+        $this->schedule_repository = new AIPS_Schedule_Repository();
     }
 
     /**
@@ -156,7 +156,7 @@ class AIPS_Seeder_Service {
             );
         }
 
-        $saved_count = $this->scheduler->save_schedule_bulk($schedules);
+        $saved_count = $this->schedule_repository->create_bulk($schedules);
 
         if ($saved_count === false) {
             return array('success' => false, 'message' => 'Failed to save schedules to database.');
@@ -207,7 +207,7 @@ class AIPS_Seeder_Service {
             );
         }
 
-        $saved_count = $this->scheduler->save_schedule_bulk($schedules);
+        $saved_count = $this->schedule_repository->create_bulk($schedules);
 
         if ($saved_count === false) {
             return array('success' => false, 'message' => 'Failed to save planner entries to database.');

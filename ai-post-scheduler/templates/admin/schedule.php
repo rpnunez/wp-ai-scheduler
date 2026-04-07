@@ -150,6 +150,7 @@ if (!function_exists('aips_next_run_relative')) {
 						<option value="run_now"><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></option>
 						<option value="pause"><?php esc_html_e('Pause', 'ai-post-scheduler'); ?></option>
 						<option value="resume"><?php esc_html_e('Resume', 'ai-post-scheduler'); ?></option>
+						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
 					<button type="button" id="aips-unified-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
 						<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
@@ -209,6 +210,7 @@ if (!function_exists('aips_next_run_relative')) {
 						data-id="<?php echo esc_attr($sched['id']); ?>"
 						data-type="<?php echo esc_attr($sched['type']); ?>"
 						data-row-key="<?php echo $row_key; ?>"
+						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>">

@@ -144,6 +144,51 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the max tokens for post titles setting field.
+     *
+     * Controls the expected output token budget when generating post titles.
+     *
+     * @return void
+     */
+    public function max_tokens_title_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_title');
+        ?>
+        <input type="number" name="aips_max_tokens_title" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Expected output token budget for post title generation (~10–20 words). Default: 150.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the max tokens for post excerpts setting field.
+     *
+     * Controls the expected output token budget when generating post excerpts.
+     *
+     * @return void
+     */
+    public function max_tokens_excerpt_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_excerpt');
+        ?>
+        <input type="number" name="aips_max_tokens_excerpt" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Expected output token budget for post excerpt generation (~2–3 sentence summary). Default: 300.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the max tokens for post content setting field.
+     *
+     * Controls the expected output token budget when generating full post content.
+     *
+     * @return void
+     */
+    public function max_tokens_content_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_content');
+        ?>
+        <input type="number" name="aips_max_tokens_content" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Expected output token budget for full post content generation (approximately 2,000–3,000 words, depending on the model and content). Default: 4000. Actual output is also capped by the Max Tokens Limit setting.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render Unsplash access key field.
      *
      * Provides a place to store the Unsplash API key required for image searches.
@@ -417,6 +462,21 @@ class AIPS_Settings_UI {
         }
         $float = (float) $value;
         return min(1.0, max(0.1, $float));
+    }
+
+    /**
+     * Sanitize a per-type token budget value.
+     *
+     * Ensures the saved value is a positive integer (≥ 1). An empty submission or
+     * a value of zero would silently remove the output token budget and cause the
+     * AI to receive an unexpectedly tiny maxTokens value, so we clamp to 1.
+     *
+     * @param mixed $value Raw input value.
+     * @return int Sanitized token budget (minimum 1).
+     */
+    public function sanitize_token_budget($value) {
+        $int = absint($value);
+        return max(1, $int);
     }
 
     /**

@@ -2740,6 +2740,7 @@
     font-size: var(--aips-text-base);
     color: var(--aips-gray-600);
     line-height: var(--aips-leading-normal);
+    white-space: pre-line;
 }
 
 .aips-confirm-footer {
