@@ -19,6 +19,7 @@
 	 * Handles all Notifications page interactions.
 	 */
 	AIPS.Notifications = {
+		MESSAGE_PREVIEW_LENGTH: 80,
 		currentPage: 1,
 		perPage: 20,
 		levelFilter: '',
@@ -421,7 +422,7 @@
 			var isRead     = parseInt(item.is_read, 10) === 1;
 			var rowClass   = isRead ? 'aips-notification-read' : 'aips-notification-unread';
 			var typeLabel  = this._getTypeLabel(item.type);
-			var msgPreview = item.message ? item.message.substring(0, 80) + (item.message.length > 80 ? '\u2026' : '') : '';
+			var msgPreview = item.message ? item.message.substring(0, AIPS.Notifications.MESSAGE_PREVIEW_LENGTH) + (item.message.length > AIPS.Notifications.MESSAGE_PREVIEW_LENGTH ? '\u2026' : '') : '';
 			var readBadge  = isRead
 				? '<span class="aips-status aips-status-approved">' + aipsNotificationsData.l10n.read + '</span>'
 				: '<span class="aips-status aips-status-pending">' + aipsNotificationsData.l10n.unread + '</span>';

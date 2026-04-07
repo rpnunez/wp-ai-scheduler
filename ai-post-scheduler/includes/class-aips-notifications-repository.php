@@ -409,7 +409,7 @@ class AIPS_Notifications_Repository {
 		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
 		$result       = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"UPDATE {$this->table} SET is_read = 0, read_at = NULL WHERE id IN ({$placeholders})",
+				"UPDATE {$this->table} SET is_read = 0, read_at = null WHERE id IN ({$placeholders})",
 				$ids
 			)
 		);

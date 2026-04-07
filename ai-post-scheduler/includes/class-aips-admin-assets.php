@@ -729,7 +729,7 @@ class AIPS_Admin_Assets {
                 true
             );
 
-            $type_registry = AIPS_Notifications::get_notification_type_registry();
+            $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_notification_type_registry() : array();
             $types_map     = array();
             foreach ($type_registry as $type_key => $type_def) {
                 $types_map[$type_key] = $type_def['label'];
