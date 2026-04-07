@@ -430,10 +430,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
             $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
             $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
-            // "Prompt" = 6 chars → prompt_tokens = ceil(6/4) = 2; content output_tokens = 4000;
-            // base_total = 4002; buffer = ceil(4002 * 0.25) = ceil(1000.5) = 1001; result = 4002 + 1001 = 5003.
+            // "Prompt" = 6 chars → prompt_tokens = ceil(6/4) = 2; content output_tokens from setting (default 4000);
+            // base_total = 2 + output_tokens; buffer = ceil(base_total * 0.25); result = base_total + buffer.
             $prompt_tokens = (int) ceil(strlen('Prompt') / 4); // 2
-            $output_tokens = 4000;
+            $output_tokens = (int) get_option('aips_max_tokens_content', 4000);
             $base_total    = $prompt_tokens + $output_tokens;
             $buffer        = (int) ceil($base_total * 0.25);
             $expected      = $base_total + $buffer;
@@ -461,7 +461,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service->generate_text($prompt, array('request_type' => 'title'));
 
             $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $output_tokens = 150;
+            $output_tokens = (int) get_option('aips_max_tokens_title', 150);
             $base_total    = $prompt_tokens + $output_tokens;
             $buffer        = (int) ceil($base_total * 0.25);
             $expected      = $base_total + $buffer;
@@ -490,7 +490,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service->generate_text($prompt, array('request_type' => 'excerpt'));
 
             $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $output_tokens = 300;
+            $output_tokens = (int) get_option('aips_max_tokens_excerpt', 300);
             $base_total    = $prompt_tokens + $output_tokens;
             $buffer        = (int) ceil($base_total * 0.25);
             $expected      = $base_total + $buffer;
@@ -498,6 +498,153 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertSame($expected, $capture->params['maxTokens'], 'Excerpt request_type should produce excerpt-sized maxTokens.');
         } finally {
             $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_title overrides the default title budget.
+     */
+    public function test_calculate_max_tokens_title_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_title');
+        update_option('aips_max_tokens_title', 500);
+
+        $prompt = 'Generate a title.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'title'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 500;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_title should override the default title budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_title');
+            } else {
+                update_option('aips_max_tokens_title', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_excerpt overrides the default excerpt budget.
+     */
+    public function test_calculate_max_tokens_excerpt_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_excerpt');
+        update_option('aips_max_tokens_excerpt', 800);
+
+        $prompt = 'Write an excerpt.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'excerpt'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 800;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_excerpt should override the default excerpt budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_excerpt');
+            } else {
+                update_option('aips_max_tokens_excerpt', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_content overrides the default content budget.
+     */
+    public function test_calculate_max_tokens_content_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_content');
+        update_option('aips_max_tokens_content', 8000);
+
+        $prompt = 'Write a full article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'content'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 8000;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_content should override the default content budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_content');
+            } else {
+                update_option('aips_max_tokens_content', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that a zero or empty per-type token option is clamped to 1 so
+     * maxTokens is always at least prompt-sized (never unexpectedly tiny).
+     */
+    public function test_calculate_max_tokens_zero_content_setting_clamped_to_one() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_content');
+        update_option('aips_max_tokens_content', 0);
+
+        $prompt = 'Write a full article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'content'));
+
+            // output_tokens clamped to 1; expected = (prompt_tokens + 1) + 25% buffer.
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 1;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be positive even when per-type setting is 0.');
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Zero content setting should be clamped to 1 for the output token budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_content');
+            } else {
+                update_option('aips_max_tokens_content', $original);
+            }
         }
     }
 

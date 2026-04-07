@@ -478,21 +478,26 @@ class AIPS_AI_Service {
             // Caller supplied a custom output token count as the base.
             $output_tokens = $type;
         } else {
+            $config = AIPS_Config::get_instance();
             switch ($type) {
                 case 'title':
                     // Short titles: ~10-20 words.
-                    $output_tokens = 150;
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_title');
                     break;
                 case 'excerpt':
                     // 2-3 sentence summary: ~50-75 words.
-                    $output_tokens = 300;
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_excerpt');
                     break;
                 case 'content':
                 default:
-                    // Full article body: up to ~3000-4000 words.
-                    $output_tokens = 4000;
+                    // Full article body: use the configured content output token budget.
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_content');
                     break;
             }
+
+            // Option values can be empty or zero after sanitization/casting.
+            // Ensure a minimum non-zero output budget for calculation safety.
+            $output_tokens = max(1, $output_tokens);
         }
 
         // Sum prompt input cost and expected output size, then apply a 25% buffer.
