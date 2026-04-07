@@ -645,17 +645,9 @@
 					});
 				}
 
-				// Template/topic label.
-				var templateText;
-				if (item.template_name) {
-					templateText = item.template_name;
-				} else if (item.template_id) {
-					templateText = (aipsHistoryL10n.templateDeleted || 'Template #%d (deleted)').replace('%d', String(item.template_id));
-				} else if (item.topic_id) {
-					templateText = aipsHistoryL10n.fromTopic || 'From Topic';
-				} else {
-					templateText = '-';
-				}
+				// Template/topic label — use the pre-formatted string from the server
+				// to avoid i18n-unsafe JS placeholder substitution.
+				var templateText = item.template_label || '-';
 
 				// Status badge.
 				var statusMap = {
@@ -727,7 +719,8 @@
 			var T           = AIPS.Templates;
 			var current     = pagination.current_page;
 			var pages       = pagination.pages;
-			var totalItems  = (aipsHistoryL10n.itemCount || '%d items').replace('%d', String(pagination.total));
+			// Use the pre-formatted label from the server (i18n-safe sprintf done in PHP).
+			var totalItems  = pagination.items_label || String(pagination.total);
 
 			if (pages <= 1) {
 				return T.render('aips-tmpl-history-pagination-simple', { totalItems: totalItems });

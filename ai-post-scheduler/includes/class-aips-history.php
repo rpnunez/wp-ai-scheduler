@@ -293,13 +293,34 @@ class AIPS_History {
         $items       = array();
         if (!empty($history['items'])) {
             foreach ($history['items'] as $item) {
+                /**
+                 * Build a pre-formatted, i18n-safe template label server-side so that
+                 * JavaScript never needs sprintf-style placeholder substitution:
+                 *
+                 *  - template_name set   → use the live template name as-is.
+                 *  - template_name empty + template_id set → template was deleted;
+                 *    format "Template #N (deleted)" with the numeric ID via PHP sprintf().
+                 *  - topic_id set (no template) → "From Topic".
+                 *  - otherwise → empty string (JS falls back to a dash placeholder).
+                 */
+                if (!empty($item->template_name)) {
+                    $template_label = $item->template_name;
+                } elseif (!empty($item->template_id)) {
+                    /* translators: %d: template ID */
+                    $template_label = sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), (int) $item->template_id);
+                } elseif (!empty($item->topic_id)) {
+                    $template_label = __('From Topic', 'ai-post-scheduler');
+                } else {
+                    $template_label = '';
+                }
+
                 $items[] = array(
                     'id'                   => (int) $item->id,
                     'post_id'              => $item->post_id ? (int) $item->post_id : null,
                     'generated_title'      => $item->generated_title ?: '',
                     'status'               => $item->status,
                     'error_message'        => ($item->status === 'failed') ? ($item->error_message ?: '') : '',
-                    'template_name'        => $item->template_name ?: '',
+                    'template_label'       => $template_label,
                     'template_id'          => $item->template_id ? (int) $item->template_id : null,
                     'topic_id'             => $item->topic_id ? (int) $item->topic_id : null,
                     'created_at_formatted' => date_i18n($date_format, strtotime($item->created_at)),
@@ -315,6 +336,8 @@ class AIPS_History {
                 'total'        => (int) $history['total'],
                 'pages'        => (int) $history['pages'],
                 'current_page' => (int) $history['current_page'],
+                /* translators: %d: number of history items */
+                'items_label'  => sprintf(__('%d items', 'ai-post-scheduler'), (int) $history['total']),
             ),
             'paged' => $paged,
             'stats' => array(
