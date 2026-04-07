@@ -11,6 +11,7 @@
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
+		currentTopicPostsTopicId: null,
 		hasImportedSuggestedAuthor: false,
 
 		/**
@@ -69,7 +70,8 @@
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
 			
 			// View topic posts
-			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
+			$(document).on('click', '.aips-post-count-badge[data-context="author-topic"]', this.viewTopicPosts.bind(this));
+			$(document).on('click', '.aips-publish-topic-post', this.publishTopicPost.bind(this));
 			
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
@@ -625,7 +627,7 @@
 				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
 					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
-					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
+					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-context="author-topic" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
 				let duplicateBadgeHtml = '';
@@ -1633,6 +1635,7 @@
 			e.stopPropagation();
 			
 			const topicId = $(e.currentTarget).data('topic-id');
+			this.currentTopicPostsTopicId = topicId;
 			
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
@@ -1680,11 +1683,10 @@
 		},
 		
 		/**
-		 * Build and inject the topic-posts HTML table into `#aips-topic-posts-content`.
+		 * Build and inject the topic-post list into `#aips-topic-posts-content`.
 		 *
-		 * Renders a WordPress-style table with post ID, title, generated date,
-		 * published date, and action links (Edit Post / View Post). Shows a
-		 * "no posts found" message when the array is empty.
+		 * Renders each post as a card-style list item with title, excerpt,
+		 * featured image, and action buttons.
 		 *
 		 * @param {Array<Object>} posts - Array of post objects from the server.
 		 */
@@ -1694,36 +1696,118 @@
 				return;
 			}
 
-			let rowsHtml = '';
+			let itemsHtml = '';
 
-			posts.forEach(post => {
+			posts.forEach((post) => {
 				let actionsHtml = '';
-				if (post.edit_url) {
-					actionsHtml += '<a href="' + AIPS.Utilities.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.editPost) + '</a> ';
-				}
-				if (post.post_url && post.post_status === 'publish') {
-					actionsHtml += '<a href="' + AIPS.Utilities.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.viewPost) + '</a>';
+				let featuredImageMarkup = AIPS.Templates.render('aips-tmpl-topic-post-image-placeholder', {
+					placeholderText: aipsAuthorsL10n.noFeaturedImage || 'No featured image'
+				});
+
+				if (post.featured_image_url) {
+					featuredImageMarkup = AIPS.Templates.render('aips-tmpl-topic-post-image', {
+						imageUrl: AIPS.Utilities.sanitizeUrl(post.featured_image_url),
+						imageAlt: post.post_title || ''
+					});
 				}
 
-				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-post-row', {
+				if (post.post_url) {
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-link', {
+						url: AIPS.Utilities.sanitizeUrl(post.post_url),
+						label: aipsAuthorsL10n.viewPost
+					});
+				}
+
+				if (post.edit_url) {
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-link', {
+						url: AIPS.Utilities.sanitizeUrl(post.edit_url),
+						label: aipsAuthorsL10n.editPost
+					});
+				}
+
+				if (post.post_status !== 'publish') {
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-publish', {
+						postId: post.post_id,
+						label: aipsAuthorsL10n.publishPost
+					});
+				}
+
+				itemsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-post-item', {
 					postId: AIPS.Templates.escape(post.post_id),
-					postTitle: AIPS.Templates.escape(post.post_title),
+					postTitle: AIPS.Templates.escape(post.post_title || ''),
+					postExcerpt: AIPS.Templates.escape(post.post_excerpt || ''),
 					dateGenerated: AIPS.Templates.escape(post.date_generated || ''),
 					datePublished: AIPS.Templates.escape(post.date_published || aipsAuthorsL10n.notPublished),
-					actions: actionsHtml
+					generatedLabel: AIPS.Templates.escape(aipsAuthorsL10n.dateGenerated),
+					publishedLabel: AIPS.Templates.escape(aipsAuthorsL10n.datePublished),
+					actions: actionsHtml,
+					featuredImageMarkup: featuredImageMarkup
 				});
 			});
 
-			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-posts-table', {
-				idLabel: AIPS.Templates.escape(aipsAuthorsL10n.postId),
-				titleLabel: AIPS.Templates.escape(aipsAuthorsL10n.postTitle),
-				generatedLabel: AIPS.Templates.escape(aipsAuthorsL10n.dateGenerated),
-				publishedLabel: AIPS.Templates.escape(aipsAuthorsL10n.datePublished),
-				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
-				rows: rowsHtml
-			});
+			$('#aips-topic-posts-content').html(AIPS.Templates.renderRaw('aips-tmpl-topic-posts-list', {
+				items: itemsHtml
+			}));
+		},
 
-			$('#aips-topic-posts-content').html(tableHtml);
+		/**
+		 * Publish a draft post from the topic-post modal.
+		 *
+		 * Uses the existing post-review publish endpoint, then reloads the current
+		 * topic-post list to keep modal content in sync without a full page reload.
+		 *
+		 * @param {Event} e - Click event from `.aips-publish-topic-post`.
+		 */
+		publishTopicPost: function (e) {
+			e.preventDefault();
+
+			const postId = parseInt($(e.currentTarget).data('post-id'), 10);
+			const $button = $(e.currentTarget);
+
+			if (!Number.isInteger(postId) || postId <= 0) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
+				return;
+			}
+
+			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmPublishPost || 'Are you sure you want to publish this post?', 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, publish',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.publishing || 'Publishing...');
+
+						$.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {
+								action: 'aips_publish_post',
+								nonce: aipsAuthorsL10n.nonce,
+								post_id: postId
+							},
+							success: (response) => {
+								if (response.success) {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.postPublished || 'Post published successfully.', 'success');
+									if (this.currentTopicPostsTopicId) {
+										this.loadTopicPosts(this.currentTopicPostsTopicId);
+									}
+									return;
+								}
+
+								AIPS.Utilities.resetButton($button);
+								AIPS.Utilities.showToast(
+									response.data && response.data.message ? response.data.message : (aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.'),
+									'error'
+								);
+							},
+							error: () => {
+								AIPS.Utilities.resetButton($button);
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
+							}
+						});
+					}
+				}
+			]);
 		},
 
 		/**
