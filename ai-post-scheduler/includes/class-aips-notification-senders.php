@@ -722,7 +722,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'         => sprintf(__('Research topics ready (%d)', 'ai-post-scheduler'), $count),
 				'message'       => sprintf(__('Scheduled research found %1$d new topic(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
-				'url'           => AIPS_Admin_Menu_Helper::get_page_url('research'),
+				'url'           => AIPS_Admin_Menu_Helper::get_page_url('aips-research'),
 				'level'         => 'info',
 				'meta'          => array(
 					'niche' => $niche,
