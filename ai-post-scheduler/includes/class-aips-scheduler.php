@@ -322,14 +322,6 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         return $container;
     }
 
-    public function save_schedule_bulk($schedules) {
-        return $this->repository->create_bulk($schedules);
-    }
-    
-    public function delete_schedule($id) {
-        return $this->repository->delete($id);
-    }
-
     public function toggle_active($id, $is_active) {
         $existing = $this->repository->get_by_id($id);
         $result = $this->repository->set_active($id, $is_active);
