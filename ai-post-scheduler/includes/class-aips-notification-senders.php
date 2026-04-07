@@ -560,7 +560,7 @@ class AIPS_Notification_Senders {
 	 * @return void
 	 */
 	public function template_change( array $payload ) {
-		$action        = !empty($payload['action'])        ? sanitize_key($payload['action'])                           : 'updated';
+		$action        = !empty($payload['action'])        ? sanitize_key($payload['action'])              : 'updated';
 		$template_name = !empty($payload['template_name']) ? sanitize_text_field($payload['template_name']) : __('Template', 'ai-post-scheduler');
 
 		call_user_func(
@@ -583,7 +583,7 @@ class AIPS_Notification_Senders {
 	 * @return void
 	 */
 	public function author_suggestions( array $payload ) {
-		$count = isset($payload['count'])      ? (int) $payload['count']                                    : 0;
+		$count = isset($payload['count'])       ? (int) $payload['count']                        : 0;
 		$niche = !empty($payload['site_niche']) ? sanitize_text_field($payload['site_niche']) : __('N/A', 'ai-post-scheduler');
 
 		call_user_func(
