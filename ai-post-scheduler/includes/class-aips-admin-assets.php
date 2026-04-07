@@ -820,6 +820,10 @@ class AIPS_Admin_Assets {
                 'applying'                 => __('Applying…', 'ai-post-scheduler'),
                 'applied'                  => __('Link inserted successfully.', 'ai-post-scheduler'),
                 'applyFailed'              => __('Failed to apply insertion. Please try again.', 'ai-post-scheduler'),
+                'editAnchorText'           => __('Edit anchor text', 'ai-post-scheduler'),
+                'deleteSuggestion'         => __('Delete suggestion', 'ai-post-scheduler'),
+                'anchorLabel'              => __('Anchor', 'ai-post-scheduler'),
+                'optionLabel'              => __('Option', 'ai-post-scheduler'),
             ));
         }
     }

@@ -250,6 +250,162 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 	</div>
 </div><!-- /#aips-insert-modal -->
 
+<!-- =====================================================================
+     AIPS.Templates engine blocks for admin-internal-links.js
+     ===================================================================== -->
+
+<!-- Loading row for the suggestions table -->
+<script type="text/html" id="aips-tmpl-il-tbody-loading">
+<tr class="aips-table-loading"><td colspan="6"><span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>{{message}}</td></tr>
+</script>
+
+<!-- Generic message row (empty state / error) -->
+<script type="text/html" id="aips-tmpl-il-tbody-message">
+<tr><td colspan="6" class="aips-table-empty">{{message}}</td></tr>
+</script>
+
+<!-- Linked post title (source or target column) -->
+<script type="text/html" id="aips-tmpl-il-post-link">
+<a href="{{url}}" target="_blank" rel="noopener noreferrer">{{title}}</a>
+</script>
+
+<!-- Action buttons: pending status -->
+<script type="text/html" id="aips-tmpl-il-actions-pending">
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="{{id}}"><span class="dashicons dashicons-yes" aria-hidden="true"></span><span class="screen-reader-text">{{acceptLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="{{id}}"><span class="dashicons dashicons-no" aria-hidden="true"></span><span class="screen-reader-text">{{rejectLabel}}</span></button>
+</script>
+
+<!-- Action button: accepted status — Insert Link -->
+<script type="text/html" id="aips-tmpl-il-actions-accepted">
+<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-insert-btn" data-id="{{id}}" title="{{insertLabel}}"><span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span><span class="screen-reader-text">{{insertLabel}}</span></button>
+</script>
+
+<!-- Action buttons: edit anchor + delete (shown for all statuses) -->
+<script type="text/html" id="aips-tmpl-il-actions-edit-delete">
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="{{id}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">{{deleteLabel}}</span></button>
+</script>
+
+<!-- Full suggestion table row -->
+<script type="text/html" id="aips-tmpl-il-suggestion-row">
+<tr data-id="{{id}}">
+	<td class="cell-primary">{{source}}</td>
+	<td>{{target}}</td>
+	<td>{{score}}</td>
+	<td class="aips-il-anchor-cell">{{anchor}}</td>
+	<td><span class="aips-badge {{statusClass}}">{{statusLabel}}</span></td>
+	<td class="cell-actions">{{actions}}</td>
+</tr>
+</script>
+
+<!-- Single pagination button -->
+<script type="text/html" id="aips-tmpl-il-page-btn">
+<button type="button" class="aips-btn aips-btn-sm {{classes}} aips-page-btn" data-page="{{page}}">{{label}}</button>
+</script>
+
+<!-- Indexed / total stat display -->
+<script type="text/html" id="aips-tmpl-il-indexed-stat">
+{{indexed}} <span style="font-size:14px;color:#888;">/ {{total}}</span>
+</script>
+
+<!-- Error notice paragraph -->
+<script type="text/html" id="aips-tmpl-il-notice-error">
+<p class="aips-notice aips-notice-error">{{message}}</p>
+</script>
+
+<!-- Muted info paragraph -->
+<script type="text/html" id="aips-tmpl-il-notice-muted">
+<p style="color:#888;margin:0;">{{message}}</p>
+</script>
+
+<!-- Spinner only (used for loading states in modals) -->
+<script type="text/html" id="aips-tmpl-il-spinner">
+<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
+</script>
+
+<!-- Insert modal: single accepted suggestion item -->
+<script type="text/html" id="aips-tmpl-il-insert-suggestion">
+<li class="aips-il-suggestion-item" data-suggestion-id="{{suggestionId}}" style="padding:10px 0 14px;border-bottom:1px solid #f0f0f0;">
+	<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+		<div style="flex:1;min-width:0;">
+			<strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{title}}">{{title}}</strong>
+			<span style="font-size:12px;color:#888;">{{anchorLabel}}: {{anchor}} &nbsp;|&nbsp; {{score}}</span>
+			{{targetLinkHtml}}
+		</div>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-modal-insert-btn" data-id="{{suggestionId}}">
+			<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> {{insertBtn}}
+		</button>
+	</div>
+	<div class="aips-il-inline-locations" style="display:none;margin-top:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:4px;">
+		<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+			<h4 style="margin:0;font-size:13px;font-weight:600;color:#1d2327;">{{insertionLocationsLabel}}</h4>
+			<div style="display:flex;align-items:center;gap:8px;">
+				<span class="aips-il-inline-count" style="font-size:11px;color:#666;"></span>
+				<span class="aips-il-inline-spinner spinner" style="float:none;margin:0;"></span>
+			</div>
+		</div>
+		<div class="aips-il-inline-locations-list"></div>
+	</div>
+</li>
+</script>
+
+<!-- Insert modal: target post link -->
+<script type="text/html" id="aips-tmpl-il-insert-target-link">
+<br><a href="{{url}}" target="_blank" rel="noopener noreferrer" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:300px;">{{url}}</a>
+</script>
+
+<!-- Insert location card -->
+<script type="text/html" id="aips-tmpl-il-location-card">
+<div class="aips-insert-location-card" style="border:1px solid #c3c4c7;border-radius:4px;padding:14px 16px;margin-bottom:10px;background:#fff;">
+	<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+		<div style="flex:1;min-width:0;">
+			<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#1d2327;">{{optionLabel}} {{num}}</p>
+			{{reasonHtml}}
+			<div style="margin-bottom:8px;">
+				<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">{{originalSnippetLabel}}</p>
+				<blockquote style="margin:0;padding:6px 10px;background:#f6f7f7;border-left:3px solid #c3c4c7;font-size:12px;color:#444;font-style:italic;">{{match}}</blockquote>
+			</div>
+			<div>
+				<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">{{withLinkLabel}}</p>
+				<blockquote style="margin:0;padding:6px 10px;background:#f0f6fc;border-left:3px solid #2271b1;font-size:12px;color:#444;font-style:italic;">{{replace}}</blockquote>
+			</div>
+		</div>
+		<div style="flex-shrink:0;">
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-apply-location-btn" data-suggestion-id="{{suggestionId}}" data-match="{{matchRaw}}" data-replace="{{replaceRaw}}">{{applyBtn}}</button>
+		</div>
+	</div>
+</div>
+</script>
+
+<!-- Insert location: optional reason line -->
+<script type="text/html" id="aips-tmpl-il-location-reason">
+<p style="margin:0 0 8px;font-size:12px;color:#555;"><strong>{{reasonLabel}}:</strong> {{reason}}</p>
+</script>
+
+<!-- No insertion locations found -->
+<script type="text/html" id="aips-tmpl-il-no-locations">
+<p style="color:#888;margin:0 0 4px;">{{zeroReturned}}</p>
+<p style="color:#888;margin:0;">{{noLocations}}</p>
+</script>
+
+<!-- Suggestions list wrapper -->
+<script type="text/html" id="aips-tmpl-il-suggestions-list">
+<ul style="margin:0;padding:0;list-style:none;">{{items}}</ul>
+</script>
+
+<!-- Button: Start Indexing (restored after AJAX) -->
+<script type="text/html" id="aips-tmpl-il-btn-start-indexing">
+<span class="dashicons dashicons-database-import" aria-hidden="true"></span> {{label}}
+</script>
+
+<!-- Button: Generate Suggestions (restored after AJAX) -->
+<script type="text/html" id="aips-tmpl-il-btn-generate">
+<span class="dashicons dashicons-search" aria-hidden="true"></span> {{label}}
+</script>
+
+<!-- Button: Re-index Post (restored after AJAX) -->
+<script type="text/html" id="aips-tmpl-il-btn-reindex">
+<span class="dashicons dashicons-update" aria-hidden="true"></span> {{label}}
+</script>
+
 <!-- Edit Anchor Text Modal -->
 <div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
 	<div class="aips-modal-content">

@@ -291,11 +291,9 @@
 			var self   = this;
 			var $tbody = $('#aips-suggestions-tbody');
 
-			$tbody.html(
-			'<tr class="aips-table-loading"><td colspan="6">' +
-			'<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>' +
-			aipsInternalLinksL10n.loading + '</td></tr>'
-			);
+			$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-loading', {
+				message: aipsInternalLinksL10n.loading,
+			}));
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:   'aips_internal_links_get_suggestions',
@@ -306,20 +304,18 @@
 				search:   self.currentSearch,
 			}, function (response) {
 				if (!response.success) {
-					$tbody.html(
-					'<tr><td colspan="6" class="aips-table-empty">' +
-					aipsInternalLinksL10n.errorLoading + '</td></tr>'
-					);
+					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
+						message: aipsInternalLinksL10n.errorLoading,
+					}));
 					return;
 				}
 
 				var data = response.data;
 
 				if (!data.items || data.items.length === 0) {
-					$tbody.html(
-					'<tr><td colspan="6" class="aips-table-empty">' +
-					aipsInternalLinksL10n.noSuggestions + '</td></tr>'
-					);
+					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
+						message: aipsInternalLinksL10n.noSuggestions,
+					}));
 					self.renderPagination(0, 0);
 					return;
 				}
@@ -331,10 +327,9 @@
 
 				self.renderPagination(data.total, data.total_pages);
 			}).fail(function () {
-				$tbody.html(
-				'<tr><td colspan="6" class="aips-table-empty">' +
-				aipsInternalLinksL10n.errorLoading + '</td></tr>'
-				);
+				$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
+					message: aipsInternalLinksL10n.errorLoading,
+				}));
 			});
 		},
 
@@ -350,58 +345,57 @@
 			var score       = Math.round(parseFloat(item.similarity_score) * 100) + '%';
 			var anchor      = AIPS.Templates.escape(item.anchor_text || '');
 
-			var sourceTitle = AIPS.Templates.escape(item.source_post_title || '(#' + item.source_post_id + ')');
-			var targetTitle = AIPS.Templates.escape(item.target_post_title || '(#' + item.target_post_id + ')');
+			var sourceTitle = item.source_post_title || '(#' + item.source_post_id + ')';
+			var targetTitle = item.target_post_title || '(#' + item.target_post_id + ')';
 
-			var sourceLink = item.source_edit_url
-			? '<a href="' + AIPS.Templates.escape(item.source_edit_url) + '" target="_blank" rel="noopener noreferrer">' + sourceTitle + '</a>'
-			: sourceTitle;
+			var source = item.source_edit_url
+				? AIPS.Templates.render('aips-tmpl-il-post-link', {
+					url:   item.source_edit_url,
+					title: sourceTitle,
+				})
+				: AIPS.Templates.escape(sourceTitle);
 
-			var targetLink = item.target_edit_url
-			? '<a href="' + AIPS.Templates.escape(item.target_edit_url) + '" target="_blank" rel="noopener noreferrer">' + targetTitle + '</a>'
-			: targetTitle;
+			var target = item.target_edit_url
+				? AIPS.Templates.render('aips-tmpl-il-post-link', {
+					url:   item.target_edit_url,
+					title: targetTitle,
+				})
+				: AIPS.Templates.escape(targetTitle);
 
 			var actions = '';
-			var acceptActionLabel = AIPS.Templates.escape(aipsInternalLinksL10n.acceptAction || 'Accept suggestion');
-			var rejectActionLabel = AIPS.Templates.escape(aipsInternalLinksL10n.rejectAction || 'Reject suggestion');
+
 			if (item.status === 'pending') {
-				actions +=
-				'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="' + item.id + '">' +
-				'<span class="dashicons dashicons-yes" aria-hidden="true"></span>' +
-				'<span class="screen-reader-text">' + acceptActionLabel + '</span>' +
-				'</button> ' +
-				'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="' + item.id + '">' +
-				'<span class="dashicons dashicons-no" aria-hidden="true"></span>' +
-				'<span class="screen-reader-text">' + rejectActionLabel + '</span>' +
-				'</button> ';
+				actions += AIPS.Templates.render('aips-tmpl-il-actions-pending', {
+					id:           item.id,
+					acceptLabel:  aipsInternalLinksL10n.acceptAction,
+					rejectLabel:  aipsInternalLinksL10n.rejectAction,
+				});
 			}
 
 			if (item.status === 'accepted') {
-				actions +=
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-insert-btn" data-id="' + item.id + '" title="' + (aipsInternalLinksL10n.insertLink || 'Insert Link') + '">' +
-					'<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span>' +
-					'<span class="screen-reader-text">' + (aipsInternalLinksL10n.insertLink || 'Insert Link') + '</span>' +
-					'</button> ';
+				actions += AIPS.Templates.render('aips-tmpl-il-actions-accepted', {
+					id:          item.id,
+					insertLabel: aipsInternalLinksL10n.insertLink,
+				});
 			}
 
-			actions +=
-			'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="' + item.id + '" data-anchor="' + anchor + '">' +
-			'<span class="dashicons dashicons-edit" aria-hidden="true"></span>' +
-			'<span class="screen-reader-text">Edit anchor text</span>' +
-			'</button> ' +
-			'<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="' + item.id + '">' +
-			'<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
-			'<span class="screen-reader-text">Delete suggestion</span>' +
-			'</button>';
+			actions += ' ' + AIPS.Templates.render('aips-tmpl-il-actions-edit-delete', {
+				id:          item.id,
+				anchor:      item.anchor_text || '',
+				editLabel:   aipsInternalLinksL10n.editAnchorText,
+				deleteLabel: aipsInternalLinksL10n.deleteSuggestion,
+			});
 
-			return '<tr data-id="' + item.id + '">' +
-			'<td class="cell-primary">' + sourceLink + '</td>' +
-			'<td>' + targetLink + '</td>' +
-			'<td>' + score + '</td>' +
-			'<td class="aips-il-anchor-cell">' + anchor + '</td>' +
-			'<td><span class="aips-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-			'<td class="cell-actions">' + actions + '</td>' +
-			'</tr>';
+			return AIPS.Templates.renderRaw('aips-tmpl-il-suggestion-row', {
+				id:          item.id,
+				source:      source,
+				target:      target,
+				score:       score,
+				anchor:      anchor,
+				statusClass: statusClass,
+				statusLabel: AIPS.Templates.escape(statusLabel),
+				actions:     actions,
+			});
 		},
 
 		/**
@@ -425,19 +419,31 @@
 			var html = '';
 
 			if (self.currentPage > 1) {
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-page-btn" data-page="' + (self.currentPage - 1) + '">&laquo;</button> ';
+				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+					page:    self.currentPage - 1,
+					classes: 'aips-btn-secondary',
+					label:   '\u00ab',
+				}) + ' ';
 			}
 
 			var start = Math.max(1, self.currentPage - 2);
 			var end   = Math.min(totalPages, self.currentPage + 2);
 
 			for (var p = start; p <= end; p++) {
-				var active = p === self.currentPage ? ' aips-btn-primary' : ' aips-btn-secondary';
-				html += '<button type="button" class="aips-btn aips-btn-sm' + active + ' aips-page-btn" data-page="' + p + '">' + p + '</button> ';
+				var classes = p === self.currentPage ? 'aips-btn-primary' : 'aips-btn-secondary';
+				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+					page:    p,
+					classes: classes,
+					label:   p,
+				}) + ' ';
 			}
 
 			if (self.currentPage < totalPages) {
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-page-btn" data-page="' + (self.currentPage + 1) + '">&raquo;</button>';
+				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+					page:    self.currentPage + 1,
+					classes: 'aips-btn-secondary',
+					label:   '\u00bb',
+				});
 			}
 
 			$wrap.html(html);
@@ -460,10 +466,9 @@
 				action: 'aips_internal_links_start_indexing',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalIndexText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
+					label: self.originalIndexText,
+				}));
 
 				if (response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
@@ -475,10 +480,9 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-database-import" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalIndexText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
+					label: self.originalIndexText,
+				}));
 			});
 		},
 
@@ -531,10 +535,9 @@
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
 			}, function (response) {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalGenerateText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
+					label: self.originalGenerateText,
+				}));
 
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
@@ -546,10 +549,9 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-search" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalGenerateText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
+					label: self.originalGenerateText,
+				}));
 				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
 		},
@@ -576,10 +578,9 @@
 				nonce:   aipsInternalLinksL10n.nonce,
 				post_id: postId,
 			}, function (response) {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalReindexText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
+					label: self.originalReindexText,
+				}));
 
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
@@ -592,10 +593,9 @@
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false).html(
-				'<span class="dashicons dashicons-update" aria-hidden="true"></span> ' +
-				$('<span>').text(self.originalReindexText).html()
-				);
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
+					label: self.originalReindexText,
+				}));
 			});
 		},
 
@@ -697,9 +697,10 @@
 				var counts = response.data.link_counts;
 
 				if (idx) {
-					$('#aips-stat-indexed').html(
-					idx.indexed + ' <span style="font-size:14px;color:#888;">/ ' + idx.total_posts + '</span>'
-					);
+					$('#aips-stat-indexed').html(AIPS.Templates.render('aips-tmpl-il-indexed-stat', {
+						indexed: idx.indexed,
+						total:   idx.total_posts,
+					}));
 					$('#aips-index-progress-bar').css('width', idx.percent + '%');
 				}
 
@@ -756,14 +757,11 @@
 		 */
 		openInsertModal: function (suggestionId) {
 			var self = this;
+			var spinnerHtml = AIPS.Templates.get('aips-tmpl-il-spinner');
 
 			// Reset modal state.
-			$('#aips-insert-suggestions-list').html(
-				'<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>'
-			);
-			$('#aips-insert-post-content').html(
-				'<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>'
-			);
+			$('#aips-insert-suggestions-list').html(spinnerHtml);
+			$('#aips-insert-post-content').html(spinnerHtml);
 			$('#aips-insert-post-title').text('');
 			$('#aips-insert-modal').show();
 
@@ -774,9 +772,9 @@
 			}, function (response) {
 				if (!response.success) {
 					$('#aips-insert-suggestions-list').html(
-						'<p class="aips-notice aips-notice-error">' +
-						AIPS.Templates.escape((response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed) +
-						'</p>'
+						AIPS.Templates.render('aips-tmpl-il-notice-error', {
+							message: (response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed,
+						})
 					);
 					$('#aips-insert-post-content').text('');
 					return;
@@ -795,8 +793,9 @@
 				$('#aips-insert-post-content').text(plainContent || aipsInternalLinksL10n.noContent);
 			}).fail(function () {
 				$('#aips-insert-suggestions-list').html(
-					'<p class="aips-notice aips-notice-error">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.loadingFailed) + '</p>'
+					AIPS.Templates.render('aips-tmpl-il-notice-error', {
+						message: aipsInternalLinksL10n.loadingFailed,
+					})
 				);
 				$('#aips-insert-post-content').text('');
 			});
@@ -811,50 +810,38 @@
 			var $list = $('#aips-insert-suggestions-list');
 
 			if (!suggestions || suggestions.length === 0) {
-				$list.html(
-					'<p style="color:#888;margin:0;">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.noInsertSuggestions) + '</p>'
-				);
+				$list.html(AIPS.Templates.render('aips-tmpl-il-notice-muted', {
+					message: aipsInternalLinksL10n.noInsertSuggestions,
+				}));
 				return;
 			}
 
-			var html = '<ul style="margin:0;padding:0;list-style:none;">';
+			var items = '';
 
 			$.each(suggestions, function (i, s) {
 				var suggestionId = parseInt(s.id, 10);
-				var score   = Math.round(parseFloat(s.similarity_score) * 100) + '%';
-				var title   = AIPS.Templates.escape(s.target_post_title || '#' + s.target_post_id);
-				var anchor  = AIPS.Templates.escape(s.anchor_text || s.target_post_title || '');
-				var target  = AIPS.Templates.escape(s.target_url || '');
+				var score        = Math.round(parseFloat(s.similarity_score) * 100) + '%';
+				var title        = s.target_post_title || '#' + s.target_post_id;
+				var anchor       = s.anchor_text || s.target_post_title || '';
+				var targetUrl    = s.target_url || '';
 
-				html +=
-					'<li class="aips-il-suggestion-item" data-suggestion-id="' + suggestionId + '" style="padding:10px 0 14px;border-bottom:1px solid #f0f0f0;">' +
-					'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
-					'<div style="flex:1;min-width:0;">' +
-					'<strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + title + '">' + title + '</strong>' +
-					'<span style="font-size:12px;color:#888;">Anchor: ' + anchor + ' &nbsp;|&nbsp; ' + score + '</span>' +
-					(target ? '<br><a href="' + target + '" target="_blank" rel="noopener noreferrer" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:300px;">' + target + '</a>' : '') +
-					'</div>' +
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-modal-insert-btn" data-id="' + suggestionId + '">' +
-					'<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.insertBtn) +
-					'</button>' +
-					'</div>' +
-					'<div class="aips-il-inline-locations" style="display:none;margin-top:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:4px;">' +
-					'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">' +
-					'<h4 style="margin:0;font-size:13px;font-weight:600;color:#1d2327;">' + AIPS.Templates.escape(aipsInternalLinksL10n.insertionLocationsLabel) + '</h4>' +
-					'<div style="display:flex;align-items:center;gap:8px;">' +
-					'<span class="aips-il-inline-count" style="font-size:11px;color:#666;"></span>' +
-					'<span class="aips-il-inline-spinner spinner" style="float:none;margin:0;"></span>' +
-					'</div>' +
-					'</div>' +
-					'<div class="aips-il-inline-locations-list"></div>' +
-					'</div>' +
-					'</li>';
+				var targetLinkHtml = targetUrl
+					? AIPS.Templates.render('aips-tmpl-il-insert-target-link', { url: targetUrl })
+					: '';
+
+				items += AIPS.Templates.renderRaw('aips-tmpl-il-insert-suggestion', {
+					suggestionId:            suggestionId,
+					title:                   AIPS.Templates.escape(title),
+					anchorLabel:             AIPS.Templates.escape(aipsInternalLinksL10n.anchorLabel),
+					anchor:                  AIPS.Templates.escape(anchor),
+					score:                   score,
+					targetLinkHtml:          targetLinkHtml,
+					insertBtn:               AIPS.Templates.escape(aipsInternalLinksL10n.insertBtn),
+					insertionLocationsLabel: AIPS.Templates.escape(aipsInternalLinksL10n.insertionLocationsLabel),
+				});
 			});
 
-			html += '</ul>';
-			$list.html(html);
+			$list.html(AIPS.Templates.renderRaw('aips-tmpl-il-suggestions-list', { items: items }));
 		},
 
 		/**
@@ -872,10 +859,9 @@
 			var $button = $item.find('.aips-il-modal-insert-btn');
 
 			$panel.show();
-			$list.html(
-				'<p style="color:#666;margin:0;">' +
-				AIPS.Templates.escape(aipsInternalLinksL10n.findingLocations) + '</p>'
-			);
+			$list.html(AIPS.Templates.render('aips-tmpl-il-notice-muted', {
+				message: aipsInternalLinksL10n.findingLocations,
+			}));
 			$count.text('');
 			$spinner.addClass('is-active');
 			$button.prop('disabled', true);
@@ -889,11 +875,9 @@
 				$button.prop('disabled', false);
 
 				if (!response.success) {
-					$list.html(
-						'<p class="aips-notice aips-notice-error">' +
-						AIPS.Templates.escape((response.data && response.data.message) || aipsInternalLinksL10n.locationsFailed) +
-						'</p>'
-					);
+					$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
+						message: (response.data && response.data.message) || aipsInternalLinksL10n.locationsFailed,
+					}));
 					$count.text('');
 					return;
 				}
@@ -910,10 +894,9 @@
 			}).fail(function () {
 				$spinner.removeClass('is-active');
 				$button.prop('disabled', false);
-				$list.html(
-					'<p class="aips-notice aips-notice-error">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.locationsFailed) + '</p>'
-				);
+				$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
+					message: aipsInternalLinksL10n.locationsFailed,
+				}));
 				$count.text('');
 			});
 		},
@@ -936,12 +919,10 @@
 			);
 
 			if (!locations || locations.length === 0) {
-				$list.html(
-					'<p style="color:#888;margin:0 0 4px;">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.zeroSuggestionsReturned) + '</p>' +
-					'<p style="color:#888;margin:0;">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.noLocations) + '</p>'
-				);
+				$list.html(AIPS.Templates.render('aips-tmpl-il-no-locations', {
+					zeroReturned: aipsInternalLinksL10n.zeroSuggestionsReturned,
+					noLocations:  aipsInternalLinksL10n.noLocations,
+				}));
 				return;
 			}
 
@@ -949,51 +930,30 @@
 
 			$.each(locations, function (i, loc) {
 				var num     = i + 1;
-				var reason  = AIPS.Templates.escape(loc.reason || '');
+				var reason  = loc.reason || '';
 				var match   = AIPS.Templates.escape(loc.match_snippet || '');
 				var replace = AIPS.InternalLinks.formatReplacementPreview(loc.replacement_snippet || '');
 
-				html +=
-					'<div class="aips-insert-location-card" style="' +
-					'border:1px solid #c3c4c7;border-radius:4px;padding:14px 16px;margin-bottom:10px;background:#fff;">' +
+				var reasonHtml = reason
+					? AIPS.Templates.render('aips-tmpl-il-location-reason', {
+						reasonLabel: aipsInternalLinksL10n.reasonLabel,
+						reason:      reason,
+					})
+					: '';
 
-					'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
-					'<div style="flex:1;min-width:0;">' +
-
-					'<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#1d2327;">Option ' + num + '</p>' +
-
-					(reason
-						? '<p style="margin:0 0 8px;font-size:12px;color:#555;">' +
-						  '<strong>' + AIPS.Templates.escape(aipsInternalLinksL10n.reasonLabel) + ':</strong> ' + reason + '</p>'
-						: '') +
-
-					'<div style="margin-bottom:8px;">' +
-					'<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.originalSnippetLabel) + '</p>' +
-					'<blockquote style="margin:0;padding:6px 10px;background:#f6f7f7;border-left:3px solid #c3c4c7;font-size:12px;color:#444;font-style:italic;">' +
-					match + '</blockquote>' +
-					'</div>' +
-
-					'<div>' +
-					'<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.withLinkLabel) + '</p>' +
-					'<blockquote style="margin:0;padding:6px 10px;background:#f0f6fc;border-left:3px solid #2271b1;font-size:12px;color:#444;font-style:italic;">' +
-					replace + '</blockquote>' +
-					'</div>' +
-
-					'</div>' + // flex inner
-
-					'<div style="flex-shrink:0;">' +
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-apply-location-btn"' +
-					' data-suggestion-id="' + parseInt(suggestionId, 10) + '"' +
-					' data-match="' + AIPS.Templates.escape(loc.match_snippet || '') + '"' +
-					' data-replace="' + AIPS.Templates.escape(loc.replacement_snippet || '') + '">' +
-					AIPS.Templates.escape(aipsInternalLinksL10n.applyBtn) +
-					'</button>' +
-					'</div>' +
-					'</div>' + // outer flex
-
-					'</div>'; // card
+				html += AIPS.Templates.renderRaw('aips-tmpl-il-location-card', {
+					optionLabel:          AIPS.Templates.escape(aipsInternalLinksL10n.optionLabel),
+					num:                  num,
+					reasonHtml:           reasonHtml,
+					originalSnippetLabel: AIPS.Templates.escape(aipsInternalLinksL10n.originalSnippetLabel),
+					match:                match,
+					withLinkLabel:        AIPS.Templates.escape(aipsInternalLinksL10n.withLinkLabel),
+					replace:              replace,
+					suggestionId:         parseInt(suggestionId, 10),
+					matchRaw:             AIPS.Templates.escape(loc.match_snippet || ''),
+					replaceRaw:           AIPS.Templates.escape(loc.replacement_snippet || ''),
+					applyBtn:             AIPS.Templates.escape(aipsInternalLinksL10n.applyBtn),
+				});
 			});
 
 			$list.html(html);
