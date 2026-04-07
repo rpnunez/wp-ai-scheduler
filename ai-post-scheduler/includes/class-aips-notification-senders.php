@@ -546,7 +546,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
 				'message' => $message_raw,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('seeder'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('aips-seeder'),
 				'level'   => 'info',
 				'meta'    => $payload,
 			)
