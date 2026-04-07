@@ -454,43 +454,51 @@ class AIPS_AI_Service {
     /**
      * Calculate the appropriate maxTokens for an AI request.
      *
-     * Determines the output token limit based on the type of request, applies a
-     * safety buffer, and caps the result at the configured aips_max_tokens_limit
-     * setting to prevent unexpectedly large or costly requests.
+     * Combines the estimated input (prompt) token cost with the expected output
+     * size for the given request type, applies a 25% safety buffer, and caps the
+     * result at the configured aips_max_tokens_limit setting to prevent
+     * unexpectedly large or costly requests.
      *
-     * @param string     $prompt The prompt that will be sent to the AI.
+     * Token estimation uses the standard approximation of 1 token ≈ 4 characters.
+     *
+     * @param string     $prompt The prompt that will be sent to the AI. Its length
+     *                           is used to estimate the input token cost.
      * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
-     *                           custom integer token count. Unknown string types fall
-     *                           back to 'content' sizing.
+     *                           custom integer expected-output token count. Unknown
+     *                           string types fall back to 'content' sizing.
      * @return int The calculated maxTokens value (always ≥ 1).
      */
     private function calculate_max_tokens($prompt, $type = 'content') {
-        // If a custom integer token count is provided, use it as the base.
+        // Estimate the number of tokens consumed by the prompt itself.
+        // Standard approximation: 1 token ≈ 4 characters.
+        $prompt_tokens = (int) ceil(strlen((string) $prompt) / 4);
+
+        // Determine the expected output token requirement for this request type.
         if (is_int($type) && $type > 0) {
-            $base_tokens = $type;
+            // Caller supplied a custom output token count as the base.
+            $output_tokens = $type;
         } else {
-            // Realistic expected output token counts per request type.
-            // Approximation: 1 token ≈ 4 characters.
             switch ($type) {
                 case 'title':
-                    // Short titles: ~10-20 words, generous ceiling.
-                    $base_tokens = 500;
+                    // Short titles: ~10-20 words.
+                    $output_tokens = 150;
                     break;
                 case 'excerpt':
                     // 2-3 sentence summary: ~50-75 words.
-                    $base_tokens = 2500;
+                    $output_tokens = 300;
                     break;
                 case 'content':
                 default:
                     // Full article body: up to ~3000-4000 words.
-                    $base_tokens = 10000;
+                    $output_tokens = 4000;
                     break;
             }
         }
 
-        // Apply a 25% safety buffer to avoid truncation near the boundary.
-        $buffer     = (int) ceil($base_tokens * 0.25);
-        $calculated = $base_tokens + $buffer;
+        // Sum prompt input cost and expected output size, then apply a 25% buffer.
+        $base_total = $prompt_tokens + $output_tokens;
+        $buffer     = (int) ceil($base_total * 0.25);
+        $calculated = $base_total + $buffer;
 
         // Respect the hard maximum configured in settings.
         $limit = (int) AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');

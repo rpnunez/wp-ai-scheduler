@@ -409,8 +409,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     /**
      * Test that maxTokens is dynamically calculated when no token option is supplied.
      *
-     * With no explicit maxTokens and no request_type, the 'content' type sizing is
-     * used: base 4000 tokens + 25% buffer = 5000, capped at aips_max_tokens_limit (16000).
+     * With no explicit maxTokens and no request_type, the 'content' type sizing is used.
+     * Calculation: (prompt_tokens + output_tokens) * 1.25, capped at aips_max_tokens_limit (16000).
+     * For a prompt of "Prompt" (6 chars → 2 tokens) + content base 4000:
+     * (2 + 4000) * 1.25 = 5002.5 → ceil buffer = 5003.
      */
     public function test_prepare_options_default_maxTokens_used_when_not_specified() {
         global $mwai;
@@ -428,10 +430,103 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
             $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
             $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
-            // With 'content' sizing: base 4000 + 25% buffer = 5000 (below default limit of 16000).
-            $this->assertSame(5000, $capture->params['maxTokens'], 'Dynamic maxTokens for content type should be 5000.');
+            // "Prompt" = 6 chars → 2 tokens; content base = 4000; total = 4002; +25% buffer = ceil(1000.5) = 1001; result = 5003.
+            $prompt_tokens = (int) ceil(strlen('Prompt') / 4); // 2
+            $output_tokens = 4000;
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Dynamic maxTokens should include prompt size in calculation.');
         } finally {
             $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that title request_type produces title-sized maxTokens.
+     */
+    public function test_calculate_max_tokens_title_type() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $prompt = 'Generate a title for this article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'title'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $output_tokens = 150;
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Title request_type should produce title-sized maxTokens.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that excerpt request_type produces excerpt-sized maxTokens.
+     */
+    public function test_calculate_max_tokens_excerpt_type() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $prompt = 'Write a short excerpt for this article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'excerpt'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $output_tokens = 300;
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Excerpt request_type should produce excerpt-sized maxTokens.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that the aips_max_tokens_limit cap is respected.
+     */
+    public function test_calculate_max_tokens_respects_limit() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        // Temporarily set a very small limit so the calculated value exceeds it.
+        $original_limit = get_option('aips_max_tokens_limit');
+        update_option('aips_max_tokens_limit', 100);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text('Some prompt', array('request_type' => 'content'));
+
+            $this->assertSame(100, $capture->params['maxTokens'], 'maxTokens should be capped at aips_max_tokens_limit.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original_limit === false) {
+                delete_option('aips_max_tokens_limit');
+            } else {
+                update_option('aips_max_tokens_limit', $original_limit);
+            }
         }
     }
 
