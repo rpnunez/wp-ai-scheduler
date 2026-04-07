@@ -44,19 +44,14 @@ class AIPS_Internal_Link_Inserter_Service {
 	const MAX_TOKENS_LIMIT = 10000;
 
 	/**
-	 * Character-to-token estimate used for dynamic max_tokens calculation.
-	 */
-	const CHARS_PER_TOKEN_ESTIMATE = 4;
-
-	/**
 	 * Base response-token buffer for JSON envelope + metadata text.
 	 */
-	const BASE_RESPONSE_TOKENS_BUFFER = 180;
+	const BASE_RESPONSE_TOKENS_BUFFER = 500;
 
 	/**
 	 * Additional response-token buffer per requested location object.
 	 */
-	const RESPONSE_TOKENS_PER_LOCATION = 220;
+	const RESPONSE_TOKENS_PER_LOCATION = 2000;
 
 	/**
 	 * @var AIPS_Internal_Links_Repository
@@ -106,7 +101,7 @@ class AIPS_Internal_Link_Inserter_Service {
 	 *     exact link words wrapped in [[double square brackets]].
 	 *
 	 * @param int $suggestion_id Internal link suggestion row ID.
-	 * @return array|WP_Error Array of location objects, or WP_Error on failure.
+	 * @return array|WP_Error Array with locations and counts, or WP_Error on failure.
 	 */
 	public function find_insertion_locations($suggestion_id) {
 		$suggestion = $this->links_repo->get_by_id(absint($suggestion_id));
@@ -183,6 +178,7 @@ class AIPS_Internal_Link_Inserter_Service {
 			return $ai_result;
 		}
 
+		$raw_count = is_array($ai_result) ? count($ai_result) : 0;
 		$locations = $this->validate_locations($ai_result);
 
 		$locations = array_slice($locations, 0, self::NUM_LOCATIONS_TO_REQUEST);
@@ -197,7 +193,11 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		return $locations;
+		return array(
+			'locations'   => $locations,
+			'raw_count'   => $raw_count,
+			'valid_count' => count($locations),
+		);
 	}
 
 	/**
@@ -244,10 +244,8 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		$anchor_text      = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : $target_post->post_title;
 		$target_url       = get_permalink($target_post->ID);
-		$link_html        = $this->build_anchor_html($target_url, $anchor_text);
-		$replacement_html = $this->build_replacement_html($replacement_snippet, $link_html, $anchor_text);
+		$replacement_html = $this->build_replacement_html($match_snippet, $replacement_snippet, $target_url);
 
 		if (is_wp_error($replacement_html)) {
 			return $replacement_html;
@@ -421,9 +419,18 @@ class AIPS_Internal_Link_Inserter_Service {
 			. "1) Return %d objects when possible. If not possible, return fewer. If none, return [].\n"
 			. "2) reason must be under 8 words.\n"
 			. "3) match_snippet must be an exact substring from the text.\n"
-			. "4) replacement_snippet must be the same excerpt as match_snippet, but with ONLY the link words wrapped as [[%s]].\n"
-			. "5) Do not change wording outside the wrapped link words.\n"
-			. "6) No HTML. No extra keys.\n\n"
+			. "4) replacement_snippet must be EXACTLY match_snippet, except that one existing phrase from match_snippet is wrapped in [[double square brackets]].\n"
+			. "5) The words inside [[...]] must already appear verbatim inside match_snippet. Do not invent new words.\n"
+			. "6) Do not use the target post title or anchor text unless those exact words already appear in match_snippet.\n"
+			. "7) Do not change, paraphrase, reorder, or replace any wording outside the wrapped phrase.\n"
+			. "8) Prefer wrapping a short, natural phrase that reads well as link text.\n"
+			. "9) No HTML. No extra keys.\n\n"
+			. "Valid example:\n"
+			. "match_snippet: explore crucial web server configuration adjustments, and solidify\n"
+			. "replacement_snippet: explore crucial [[web server configuration adjustments]], and solidify\n\n"
+			. "Invalid example:\n"
+			. "match_snippet: explore crucial web server configuration adjustments, and solidify\n"
+			. "replacement_snippet: explore crucial [[%s]], and solidify\n\n"
 			. "Target post title: %s\n"
 			. "Anchor text: %s\n"
 			. "URL: %s\n\n"
@@ -446,13 +453,17 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * @return int
 	 */
 	private function calculate_max_tokens($prompt, $num_locations) {
-		$prompt_chars  = strlen((string) $prompt);
-		$prompt_tokens = (int) ceil($prompt_chars / self::CHARS_PER_TOKEN_ESTIMATE);
 		$response_tokens = self::BASE_RESPONSE_TOKENS_BUFFER + (max(1, (int) $num_locations) * self::RESPONSE_TOKENS_PER_LOCATION);
 
-		$calculated = $prompt_tokens + $response_tokens;
-
-		return (int) min(max(256, $calculated), self::MAX_TOKENS_LIMIT);
+		return AIPS_Token_Budget::calculate(
+			$prompt,
+			$response_tokens,
+			array(
+				'minimum_tokens'       => 256,
+				'maximum_tokens'       => self::MAX_TOKENS_LIMIT,
+				'respect_config_limit' => true,
+			)
+		);
 	}
 
 	/**
@@ -491,6 +502,10 @@ class AIPS_Internal_Link_Inserter_Service {
 				continue;
 			}
 
+			if (!$this->replacement_preserves_match_snippet($match_snippet, $replacement_snippet)) {
+				continue;
+			}
+
 			$locations[] = array(
 				'reason'              => isset($item['reason']) ? sanitize_text_field($item['reason']) : '',
 				'match_snippet'       => $match_snippet,
@@ -518,6 +533,24 @@ class AIPS_Internal_Link_Inserter_Service {
 	}
 
 	/**
+	 * Check whether the replacement preserves the original snippet text once
+	 * the link marker is removed.
+	 *
+	 * @param string $match_snippet       Original text excerpt.
+	 * @param string $replacement_snippet Replacement snippet with [[marker]].
+	 * @return bool
+	 */
+	private function replacement_preserves_match_snippet($match_snippet, $replacement_snippet) {
+		$plain_replacement = preg_replace(self::LINK_MARKER_PATTERN, '$1', $replacement_snippet, 1);
+
+		if (!is_string($plain_replacement) || $plain_replacement === '') {
+			return false;
+		}
+
+		return $this->normalize_content($plain_replacement) === $this->normalize_content($match_snippet);
+	}
+
+	/**
 	 * Build the final anchor HTML for insertion.
 	 *
 	 * @param string $target_url  Target post permalink.
@@ -535,12 +568,16 @@ class AIPS_Internal_Link_Inserter_Service {
 	/**
 	 * Convert a plain-text replacement snippet into final HTML replacement.
 	 *
+	 * The marked phrase becomes the anchor text for the inserted link. The
+	 * replacement must preserve the original snippet text once the marker is
+	 * removed.
+	 *
+	 * @param string $match_snippet       Original text excerpt.
 	 * @param string $replacement_snippet AI plain-text replacement.
-	 * @param string $link_html           Final anchor HTML.
-	 * @param string $expected_anchor     Expected anchor text.
+	 * @param string $target_url          Target post permalink.
 	 * @return string|WP_Error
 	 */
-	private function build_replacement_html($replacement_snippet, $link_html, $expected_anchor) {
+	private function build_replacement_html($match_snippet, $replacement_snippet, $target_url) {
 		$marked_text = $this->extract_marked_anchor_text($replacement_snippet);
 
 		if ($marked_text === false) {
@@ -550,12 +587,14 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		if ($this->normalize_content($marked_text) !== $this->normalize_content($expected_anchor)) {
+		if (!$this->replacement_preserves_match_snippet($match_snippet, $replacement_snippet)) {
 			return new WP_Error(
-				'invalid_anchor_text',
-				__('The selected insertion did not preserve the expected anchor text.', 'ai-post-scheduler')
+				'invalid_replacement_snippet',
+				__('The selected insertion changed text outside the linked phrase.', 'ai-post-scheduler')
 			);
 		}
+
+		$link_html = $this->build_anchor_html($target_url, $marked_text);
 
 		return preg_replace(self::LINK_MARKER_PATTERN, $link_html, $replacement_snippet, 1);
 	}

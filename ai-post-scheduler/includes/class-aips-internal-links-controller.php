@@ -480,9 +480,10 @@ class AIPS_Internal_Links_Controller {
 		}
 
 		wp_send_json_success(array(
-			'locations'       => $result,
+			'locations'       => isset($result['locations']) ? $result['locations'] : array(),
 			'requested_count' => AIPS_Internal_Link_Inserter_Service::NUM_LOCATIONS_TO_REQUEST,
-			'returned_count'  => count($result),
+			'ai_returned_count' => isset($result['raw_count']) ? (int) $result['raw_count'] : 0,
+			'valid_count'       => isset($result['valid_count']) ? (int) $result['valid_count'] : 0,
 		));
 	}
 

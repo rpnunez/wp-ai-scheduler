@@ -1010,13 +1010,18 @@
 
 				var locations = response.data.locations || [];
 				var requestedCount = parseInt(response.data.requested_count, 10) || locations.length;
-				var returnedCount = parseInt(response.data.returned_count, 10);
+				var aiReturnedCount = parseInt(response.data.ai_returned_count, 10);
+				var validCount = parseInt(response.data.valid_count, 10);
 
-				if (isNaN(returnedCount)) {
-					returnedCount = locations.length;
+				if (isNaN(aiReturnedCount)) {
+					aiReturnedCount = locations.length;
 				}
 
-				self.renderInsertLocations(suggestionId, locations, requestedCount, returnedCount);
+				if (isNaN(validCount)) {
+					validCount = locations.length;
+				}
+
+				self.renderInsertLocations(suggestionId, locations, requestedCount, aiReturnedCount, validCount);
 			}).fail(function () {
 				$spinner.removeClass('is-active');
 				$button.prop('disabled', false);
@@ -1033,21 +1038,26 @@
 		 * @param {number} suggestionId    Suggestion row ID (passed through to apply).
 		 * @param {Array}  locations       Array of location objects {reason, match_snippet, replacement_snippet}.
 		 * @param {number} requestedCount  Number requested from the server.
-		 * @param {number} returnedCount   Number returned by the server.
+		 * @param {number} aiReturnedCount Number returned by the AI before validation.
+		 * @param {number} validCount      Number remaining after validation.
 		 */
-		renderInsertLocations: function (suggestionId, locations, requestedCount, returnedCount) {
+		renderInsertLocations: function (suggestionId, locations, requestedCount, aiReturnedCount, validCount) {
 			var $item = $('.aips-il-suggestion-item[data-suggestion-id="' + suggestionId + '"]');
 			var $list = $item.find('.aips-il-inline-locations-list');
 			var $count = $item.find('.aips-il-inline-count');
 
 			$count.text(
-				AIPS.InternalLinks.formatCountLabel(returnedCount, requestedCount)
+				AIPS.InternalLinks.formatCountLabel(validCount, aiReturnedCount)
 			);
 
 			if (!locations || locations.length === 0) {
+				var detailMessage = aiReturnedCount > 0
+					? AIPS.InternalLinks.formatAiReturnedLabel(aiReturnedCount)
+					: aipsInternalLinksL10n.zeroSuggestionsReturned;
+
 				$list.html(AIPS.Templates.render('aips-tmpl-il-no-locations', {
-					zeroReturned: aipsInternalLinksL10n.zeroSuggestionsReturned,
-					noLocations:  aipsInternalLinksL10n.noLocations,
+					zeroReturned: detailMessage,
+					noLocations:  aiReturnedCount > 0 ? aipsInternalLinksL10n.invalidLocationsHint : aipsInternalLinksL10n.noLocations,
 				}));
 				return;
 			}
@@ -1057,8 +1067,7 @@
 			$.each(locations, function (i, loc) {
 				var num     = i + 1;
 				var reason  = loc.reason || '';
-				var match   = AIPS.Templates.escape(loc.match_snippet || '');
-				var replace = AIPS.InternalLinks.formatReplacementPreview(loc.replacement_snippet || '');
+				var preview = AIPS.InternalLinks.formatReplacementPreview(loc.replacement_snippet || '');
 
 				var reasonHtml = reason
 					? AIPS.Templates.render('aips-tmpl-il-location-reason', {
@@ -1071,10 +1080,8 @@
 					optionLabel:          AIPS.Templates.escape(aipsInternalLinksL10n.optionLabel),
 					num:                  num,
 					reasonHtml:           reasonHtml,
-					originalSnippetLabel: AIPS.Templates.escape(aipsInternalLinksL10n.originalSnippetLabel),
-					match:                match,
 					withLinkLabel:        AIPS.Templates.escape(aipsInternalLinksL10n.withLinkLabel),
-					replace:              replace,
+					preview:              preview,
 					suggestionId:         parseInt(suggestionId, 10),
 					matchRaw:             AIPS.Templates.escape(loc.match_snippet || ''),
 					replaceRaw:           AIPS.Templates.escape(loc.replacement_snippet || ''),
@@ -1088,20 +1095,32 @@
 		/**
 		 * Format the debug label showing how many insertion suggestions were returned.
 		 *
-		 * @param {number} returnedCount  Number of valid suggestions returned.
-		 * @param {number} requestedCount Number of suggestions requested.
+		 * @param {number} validCount     Number of valid suggestions returned.
+		 * @param {number} aiReturnedCount Number of suggestions returned by the AI.
 		 * @return {string} Human-readable summary.
 		 */
-		formatCountLabel: function (returnedCount, requestedCount) {
-			var template = aipsInternalLinksL10n.returnedCountLabel || 'Returned %1$d of %2$d suggestions';
+		formatCountLabel: function (validCount, aiReturnedCount) {
+			var template = aipsInternalLinksL10n.returnedCountLabel || 'Showing %1$d valid of %2$d AI suggestions';
 
 			return template
-				.replace('%1$d', String(returnedCount))
-				.replace('%2$d', String(requestedCount));
+				.replace('%1$d', String(validCount))
+				.replace('%2$d', String(aiReturnedCount));
 		},
 
 		/**
-		 * Format a plain-text replacement snippet for safe preview in the modal.
+		 * Format the label showing how many suggestions the AI returned before validation.
+		 *
+		 * @param {number} aiReturnedCount Number of suggestions returned by the AI.
+		 * @return {string} Human-readable summary.
+		 */
+		formatAiReturnedLabel: function (aiReturnedCount) {
+			var template = aipsInternalLinksL10n.aiSuggestionsReturned || 'AI returned %d suggestion(s)';
+
+			return template.replace('%d', String(aiReturnedCount));
+		},
+
+		/**
+		 * Format a plain-text insertion preview for safe rendering in the modal.
 		 *
 		 * Highlights the [[anchor text]] marker without treating the snippet as
 		 * trusted HTML.

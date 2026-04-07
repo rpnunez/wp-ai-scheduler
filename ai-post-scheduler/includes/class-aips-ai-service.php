@@ -651,10 +651,6 @@ class AIPS_AI_Service {
      * @return int The calculated maxTokens value (always ≥ 1).
      */
     private function calculate_max_tokens($prompt, $type = 'content') {
-        // Estimate the number of tokens consumed by the prompt itself.
-        // Standard approximation: 1 token ≈ 4 characters.
-        $prompt_tokens = (int) ceil(strlen((string) $prompt) / 4);
-
         // Determine the expected output token requirement for this request type.
         if (is_int($type) && $type > 0) {
             // Caller supplied a custom output token count as the base.
@@ -677,18 +673,15 @@ class AIPS_AI_Service {
             }
         }
 
-        // Sum prompt input cost and expected output size, then apply a 25% buffer.
-        $base_total = $prompt_tokens + $output_tokens;
-        $buffer     = (int) ceil($base_total * 0.25);
-        $calculated = $base_total + $buffer;
-
-        // Respect the hard maximum configured in settings.
-        $limit = (int) AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
-        if ($limit > 0 && $calculated > $limit) {
-            $calculated = $limit;
-        }
-
-        return max(1, $calculated);
+        return AIPS_Token_Budget::calculate(
+            $prompt,
+            $output_tokens,
+            array(
+                'buffer_ratio' => 0.25,
+                'minimum_tokens' => 1,
+                'respect_config_limit' => true,
+            )
+        );
     }
 
     /**

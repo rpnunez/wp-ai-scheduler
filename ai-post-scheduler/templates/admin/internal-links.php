@@ -367,13 +367,9 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 		<div style="flex:1;min-width:0;">
 			<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#1d2327;">{{optionLabel}} {{num}}</p>
 			{{reasonHtml}}
-			<div style="margin-bottom:8px;">
-				<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">{{originalSnippetLabel}}</p>
-				<blockquote style="margin:0;padding:6px 10px;background:#f6f7f7;border-left:3px solid #c3c4c7;font-size:12px;color:#444;font-style:italic;">{{match}}</blockquote>
-			</div>
 			<div>
 				<p style="margin:0 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#888;">{{withLinkLabel}}</p>
-				<blockquote style="margin:0;padding:6px 10px;background:#f0f6fc;border-left:3px solid #2271b1;font-size:12px;color:#444;font-style:italic;">{{replace}}</blockquote>
+				<blockquote style="margin:0;padding:6px 10px;background:#f0f6fc;border-left:3px solid #2271b1;font-size:12px;color:#444;font-style:italic;">{{preview}}</blockquote>
 			</div>
 		</div>
 		<div style="flex-shrink:0;">
