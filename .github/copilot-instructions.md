@@ -583,6 +583,7 @@ The plugin ships `mcp-bridge.php` and `mcp-bridge-schema.json` for MCP/JSON-RPC 
 | `HOOKS.md` | `docs/` | `aips_*` action/filter reference |
 | `MIGRATIONS.md` | `docs/` | DB migration notes/history |
 | `SETUP.md` | `docs/` | Local setup guidance |
+| `DEVELOPMENT_GUIDELINES.md` | `docs/` | Project-specific coding and architectural guidelines |
 | `CHANGELOG.md` | `ai-post-scheduler/` | Plugin changelog |
 | `readme.txt` | `ai-post-scheduler/` | WordPress readme |
 
