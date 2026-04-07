@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$type_registry = AIPS_Notifications::get_notification_type_registry();
+$type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_notification_type_registry() : array();
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">

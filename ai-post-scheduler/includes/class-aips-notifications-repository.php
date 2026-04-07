@@ -325,7 +325,11 @@ class AIPS_Notifications_Repository {
 		$where_sql = implode(' AND ', $where);
 
 		$count_sql = "SELECT COUNT(*) FROM {$this->table} WHERE {$where_sql}";
-		$total     = (int) (empty($params) ? $this->wpdb->get_var($count_sql) : $this->wpdb->get_var($this->wpdb->prepare($count_sql, $params)));
+		if (empty($params)) {
+			$total = (int) $this->wpdb->get_var($count_sql);
+		} else {
+			$total = (int) $this->wpdb->get_var($this->wpdb->prepare($count_sql, $params));
+		}
 
 		$items_sql    = "SELECT * FROM {$this->table} WHERE {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
 		$items_params = array_merge($params, array($per_page, $offset));
