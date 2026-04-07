@@ -28,7 +28,9 @@ class AIPS_Settings_AJAX {
      * @return void
      */
     public function ajax_test_connection() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error(array('message' => __('Invalid security token.', 'ai-post-scheduler')));
+        }
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
@@ -38,7 +40,8 @@ class AIPS_Settings_AJAX {
         $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('maxTokens' => 10));
 
         if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+            error_log('AI Connection Test Failed: ' . $result->get_error_message());
+            wp_send_json_error(array('message' => __('Connection failed. Please check error logs for details.', 'ai-post-scheduler')));
         } else {
             // SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
             // Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
@@ -52,7 +55,9 @@ class AIPS_Settings_AJAX {
      * @return void
      */
     public function ajax_notifications_data_hygiene() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error(array('message' => __('Invalid security token.', 'ai-post-scheduler')));
+        }
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
