@@ -451,7 +451,7 @@ class AIPS_Notification_Senders {
 			isset($payload['errors'])       ? (int) $payload['errors']       : 0
 		);
 
-		$url = AIPS_Admin_Menu_Helper::get_page_url('history');
+		$url = AIPS_Admin_Menu_Helper::get_page_url('aips-history');
 
 		call_user_func(
 			$this->dispatcher,
