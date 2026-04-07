@@ -115,30 +115,39 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        $params = $this->prepare_options($options);
+        $params = $this->prepare_options($options, $prompt);
+
+        $this->logger->addSeparator('[AIPS_AI_Service->generate_text] New AI Text Generation Request');
+        $this->logger->log('Prepared AI generation options', 'debug', array(
+            'options' => $options,
+            'params' => $params,
+            'prompt' => $prompt,
+        ));
         
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state (record_failure / record_success) is managed by execute_safely — do NOT
+        // call those methods inside this closure.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
                 // Use simpleTextQuery API method
                 $result = $ai->simpleTextQuery($prompt, $params);
 
+                $this->logger->log('Received response from simpleTextQuery', 'debug', array(
+                    'response' => $result,
+                ));
+
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $options, null, $result);
-                    $this->resilience_service->record_success();
                     return $result;
                 }
-
-                $this->resilience_service->record_failure();
 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
 
             } catch (Exception $e) {
-                $this->resilience_service->record_failure();
-
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
             }
@@ -188,9 +197,15 @@ class AIPS_AI_Service {
             return $this->fallback_json_generation($prompt, $options);
         }
         
-        $params = $this->prepare_options($options);
+        $params = $this->prepare_options($options, $prompt);
         
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state is managed by execute_safely — do NOT call record_failure / record_success
+        // inside this closure.
+        // The closure must NOT invoke fallback_json_generation() because that method calls
+        // generate_text() → execute_safely(), creating a nested resilience context inside a
+        // retry iteration.  Instead, return WP_Error('json_query_unavailable', …) as a
+        // sentinel so the caller can invoke the fallback after execute_safely() returns.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
@@ -229,7 +244,6 @@ class AIPS_AI_Service {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
 
                     $this->log_call('json', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
@@ -239,22 +253,41 @@ class AIPS_AI_Service {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
 
                     $this->log_call('json', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
                 
                 $this->log_call('json', $prompt, $options, null, wp_json_encode($result));
-                $this->resilience_service->record_success();
 
                 return $result;
             } catch (Exception $e) {
-                // If simpleJsonQuery fails (e.g. unsupported params), try fallback
-                $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
+                // Extract the provider error code from the message.
+                // If a known provider code is found, propagate it so the retry loop can classify
+                // it (permanent codes abort immediately; others are retried normally).
+                // If the exception is not a recognisable provider error (e.g. the method itself
+                // rejected the params), return the 'json_query_unavailable' sentinel so the
+                // caller triggers the text-based fallback path outside this closure.
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
 
-                return $this->fallback_json_generation($prompt, $options);
+                if ($provider_code !== '') {
+                    $error = new WP_Error($provider_code, $e->getMessage());
+                    $this->log_call('json', $prompt, $options, $error);
+                    return $error;
+                }
+
+                $this->logger->log('simpleJsonQuery failed with non-provider error, will try fallback: ' . $e->getMessage(), 'warning');
+
+                return new WP_Error('json_query_unavailable', $e->getMessage());
             }
         }, 'json', $prompt, $options);
+
+        // If simpleJsonQuery failed with a non-provider error, fall back to text-based JSON
+        // generation.  The fallback calls generate_text() which runs its own execute_safely()
+        // pass — no nesting within the retry closure above.
+        if (is_wp_error($result) && $result->get_error_code() === 'json_query_unavailable') {
+            $this->logger->log('Falling back to text-based JSON generation after simpleJsonQuery failure', 'info');
+            return $this->fallback_json_generation($prompt, $options);
+        }
 
         // Log resilience failures (circuit breaker, rate limit)
         if (is_wp_error($result)) {
@@ -355,7 +388,9 @@ class AIPS_AI_Service {
             return $error;
         }
 
-        // Execute safely with retry, circuit breaker, and rate limiting
+        // Execute safely with retry, circuit breaker, and rate limiting.
+        // CB state is managed by execute_safely — do NOT call record_failure / record_success
+        // inside this closure.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
                 // Build params array for simpleImageQuery
@@ -373,7 +408,6 @@ class AIPS_AI_Service {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
 
                     $this->log_call('image', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
@@ -387,20 +421,18 @@ class AIPS_AI_Service {
                     $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
 
                     $this->log_call('image', $prompt, $options, $error);
-                    $this->resilience_service->record_failure();
 
                     return $error;
                 }
 
                 $this->log_call('image', $prompt, $options, null, $image_url);
-                $this->resilience_service->record_success();
 
                 return $image_url;
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
 
                 $this->log_call('image', $prompt, $options, $error);
-                $this->resilience_service->record_failure();
 
                 return $error;
             }
@@ -420,27 +452,89 @@ class AIPS_AI_Service {
     }
     
     /**
+     * Calculate the appropriate maxTokens for an AI request.
+     *
+     * Combines the estimated input (prompt) token cost with the expected output
+     * size for the given request type, applies a 25% safety buffer, and caps the
+     * result at the configured aips_max_tokens_limit setting to prevent
+     * unexpectedly large or costly requests.
+     *
+     * Token estimation uses the standard approximation of 1 token ≈ 4 characters.
+     *
+     * @param string     $prompt The prompt that will be sent to the AI. Its length
+     *                           is used to estimate the input token cost.
+     * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
+     *                           custom integer expected-output token count. Unknown
+     *                           string types fall back to 'content' sizing.
+     * @return int The calculated maxTokens value (always ≥ 1).
+     */
+    private function calculate_max_tokens($prompt, $type = 'content') {
+        // Estimate the number of tokens consumed by the prompt itself.
+        // Standard approximation: 1 token ≈ 4 characters.
+        $prompt_tokens = (int) ceil(strlen((string) $prompt) / 4);
+
+        // Determine the expected output token requirement for this request type.
+        if (is_int($type) && $type > 0) {
+            // Caller supplied a custom output token count as the base.
+            $output_tokens = $type;
+        } else {
+            $config = AIPS_Config::get_instance();
+            switch ($type) {
+                case 'title':
+                    // Short titles: ~10-20 words.
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_title');
+                    break;
+                case 'excerpt':
+                    // 2-3 sentence summary: ~50-75 words.
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_excerpt');
+                    break;
+                case 'content':
+                default:
+                    // Full article body: use the configured content output token budget.
+                    $output_tokens = (int) $config->get_option('aips_max_tokens_content');
+                    break;
+            }
+
+            // Option values can be empty or zero after sanitization/casting.
+            // Ensure a minimum non-zero output budget for calculation safety.
+            $output_tokens = max(1, $output_tokens);
+        }
+
+        // Sum prompt input cost and expected output size, then apply a 25% buffer.
+        $base_total = $prompt_tokens + $output_tokens;
+        $buffer     = (int) ceil($base_total * 0.25);
+        $calculated = $base_total + $buffer;
+
+        // Respect the hard maximum configured in settings.
+        $limit = (int) AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
+        if ($limit > 0 && $calculated > $limit) {
+            $calculated = $limit;
+        }
+
+        return max(1, $calculated);
+    }
+
+    /**
      * Prepare and normalize AI generation options.
      *
      * Merges user-provided options with defaults from plugin settings.
+     * When the caller has not explicitly set maxTokens, the value is calculated
+     * dynamically via calculate_max_tokens() based on the prompt and request type.
      *
-     * @param array $options User-provided options.
+     * @param array  $options User-provided options.
+     * @param string $prompt  The prompt that will be sent to the AI (used for dynamic token calculation).
      * @return array Normalized options array.
      */
-    private function prepare_options($options) {
-        $model = get_option('aips_ai_model', '');
-        $env_id = get_option('aips_ai_env_id', '');
+    private function prepare_options($options, $prompt = '') {
+        $config = AIPS_Config::get_instance();
+        $model = $config->get_option('aips_ai_model');
+        $env_id = $config->get_option('aips_ai_env_id');
         
         $default_options = array(
             'model' => $model,
             'envId' => $env_id,
-            'maxTokens' => 2000,
-            'temperature' => 0.7,
+            'temperature' => (float) $config->get_option('aips_temperature'),
         );
-
-        if (isset($options['max_tokens'])) {
-            $default_options['maxTokens'] = $options['max_tokens'];
-        }
 
         if (isset($options['env_id'])) {
             $default_options['envId'] = $options['env_id'];
@@ -459,11 +553,16 @@ class AIPS_AI_Service {
             $params['envId'] = $options['envId'];
         }
 
+        // Determine maxTokens: respect any explicit developer override; otherwise
+        // calculate dynamically based on the prompt and request type.
         if (isset($options['maxTokens'])) {
             $params['maxTokens'] = $options['maxTokens'];
         } elseif (isset($options['max_tokens'])) {
             // Backward compatibility for legacy callers.
             $params['maxTokens'] = $options['max_tokens'];
+        } else {
+            $type               = isset($options['request_type']) ? $options['request_type'] : 'content';
+            $params['maxTokens'] = $this->calculate_max_tokens($prompt, $type);
         }
 
         if (isset($options['temperature'])) {
@@ -557,7 +656,7 @@ class AIPS_AI_Service {
             'dedupe_key'     => 'integration_error_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
             'url'            => admin_url('admin.php?page=aips-settings'),
-            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+            'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }
 
@@ -577,7 +676,7 @@ class AIPS_AI_Service {
             'dedupe_key'     => 'quota_alert_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
             'url'            => admin_url('admin.php?page=aips-settings'),
-            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+            'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }
     
@@ -628,7 +727,11 @@ class AIPS_AI_Service {
         $this->logger->log($message, $level, array(
             'type' => $type,
             'prompt_length' => strlen($prompt_for_length),
+            'prompt' => $prompt,
             'response_length' => strlen($response_for_length),
+            'response' => $response,
+            'options' => $options,
+            'error_message' => $error_message,
         ));
     }
     

@@ -21,6 +21,7 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_taxonomy',
     );
 
     public function __construct() {
@@ -69,6 +70,7 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
 
         $sql = array();
 
@@ -152,6 +154,10 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             status varchar(20) DEFAULT 'active',
             schedule_history_id bigint(20) DEFAULT NULL,
+            schedule_type varchar(50) NOT NULL DEFAULT 'post_generation',
+            circuit_state varchar(20) NOT NULL DEFAULT 'closed',
+            run_state text DEFAULT NULL,
+            batch_progress longtext DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
@@ -159,7 +165,9 @@ class AIPS_DB_Manager {
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
             KEY status (status),
-            KEY schedule_history_id (schedule_history_id)
+            KEY schedule_history_id (schedule_history_id),
+            KEY schedule_type (schedule_type),
+            KEY circuit_state (circuit_state)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
@@ -357,6 +365,23 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_term (source_id, term_id),
             KEY source_id (source_id),
             KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_taxonomy (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            taxonomy_type varchar(50) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            base_post_ids text DEFAULT NULL,
+            generation_prompt text DEFAULT NULL,
+            term_id bigint(20) DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY taxonomy_type (taxonomy_type),
+            KEY status (status),
+            KEY term_id (term_id),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         return $sql;

@@ -140,6 +140,12 @@ class AIPS_Generator {
             );
         }
 
+        // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
+        // Only set it when the caller has not already provided an explicit token override.
+        if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
+            $options['request_type'] = $log_type;
+        }
+
         $result = $this->ai_service->generate_text($prompt, $options);
 
         // Normalize values for logging to avoid deprecation warnings when null.
@@ -242,8 +248,7 @@ class AIPS_Generator {
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
 
         // Call AI to resolve the variables.
-        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('maxTokens' => 200);
+        $options = array();
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
@@ -349,8 +354,17 @@ class AIPS_Generator {
         // Delegate prompt building to AIPS_Prompt_Builder_Post_Title
         $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
-        // Set token limit for title generation
-        $options['maxTokens'] = 100;
+        // Apply resolved AI variables so that any {{VariableName}} placeholders in the
+        // title instructions are substituted before the prompt is sent to the AI.
+        // Without this step, raw placeholder syntax reaches the model and causes it to
+        // respond with only the variable value (e.g. a single word) instead of a full title.
+        if (!empty($ai_variables)) {
+            $prompt = $this->template_processor->process_with_ai_variables(
+                $prompt,
+                $context->get_topic(),
+                $ai_variables
+            );
+        }
 
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
@@ -424,9 +438,6 @@ class AIPS_Generator {
 
         // Delegate prompt building to Prompt Builder
         $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str);
-
-        // Set token limit for excerpt generation
-        $options['maxTokens'] = 150;
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');

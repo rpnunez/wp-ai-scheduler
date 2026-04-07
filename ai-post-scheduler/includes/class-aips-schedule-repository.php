@@ -146,6 +146,10 @@ class AIPS_Schedule_Repository {
      *     @type string $next_run              Next run datetime in MySQL format.
      *     @type int    $is_active             Active status (1 or 0).
      *     @type string $topic                 Optional topic for generation.
+     *     @type string $schedule_type         Optional schedule type discriminator (default: post_generation).
+     *     @type string $circuit_state         Optional circuit-breaker state (open|half_open|closed). Defaults to 'closed'.
+     *     @type string $run_state             Optional JSON string capturing current run outcome. Defaults to NULL.
+     *     @type string $batch_progress        Optional JSON string for resumable batch cursor. Defaults to NULL.
      * }
      * @return int|false The inserted ID on success, false on failure.
      */
@@ -158,9 +162,10 @@ class AIPS_Schedule_Repository {
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s');
+        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -169,6 +174,23 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['rotation_pattern'])) {
             $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+            $format[] = '%s';
+        }
+
+        if (isset($data['circuit_state'])) {
+            $allowed_circuit_states = array('open', 'half_open', 'closed');
+            $state = sanitize_key($data['circuit_state']);
+            $insert_data['circuit_state'] = in_array($state, $allowed_circuit_states, true) ? $state : 'closed';
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('run_state', $data)) {
+            $insert_data['run_state'] = !empty($data['run_state']) ? wp_unslash($data['run_state']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('batch_progress', $data)) {
+            $insert_data['batch_progress'] = !empty($data['batch_progress']) ? wp_unslash($data['batch_progress']) : null;
             $format[] = '%s';
         }
         
@@ -245,6 +267,28 @@ class AIPS_Schedule_Repository {
         if (isset($data['schedule_history_id'])) {
             $update_data['schedule_history_id'] = !empty($data['schedule_history_id']) ? absint($data['schedule_history_id']) : null;
             $format[] = '%d';
+        }
+
+        if (isset($data['schedule_type'])) {
+            $update_data['schedule_type'] = sanitize_key($data['schedule_type']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['circuit_state'])) {
+            $allowed_circuit_states = array('open', 'half_open', 'closed');
+            $state = sanitize_key($data['circuit_state']);
+            $update_data['circuit_state'] = in_array($state, $allowed_circuit_states, true) ? $state : 'closed';
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('run_state', $data)) {
+            $update_data['run_state'] = !empty($data['run_state']) ? wp_unslash($data['run_state']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('batch_progress', $data)) {
+            $update_data['batch_progress'] = !empty($data['batch_progress']) ? wp_unslash($data['batch_progress']) : null;
+            $format[] = '%s';
         }
         
         if (empty($update_data)) {
@@ -333,6 +377,81 @@ class AIPS_Schedule_Repository {
      */
     public function set_active($id, $is_active) {
         return $this->update($id, array('is_active' => $is_active));
+    }
+
+    /**
+     * Persist batch progress for a schedule.
+     *
+     * Records how many posts in a multi-post batch have been generated so
+     * that an interrupted run can resume from the correct index on the next
+     * cron invocation.
+     *
+     * Storing the generated post IDs in the cursor makes resumption more
+     * robust: if the process crashes after a post is created but before this
+     * method runs, the next cron tick uses `count(post_ids)` as the
+     * authoritative completed count and pre-populates the post-ID list, so
+     * the batch resumes from the right position without creating duplicates.
+     *
+     * This method writes directly to the DB without invalidating the
+     * `aips_pending_schedule_stats` transient because it is called once per
+     * successfully generated post and the transient is not affected by
+     * in-flight progress data.
+     *
+     * @param int   $id        Schedule ID.
+     * @param int   $completed Number of posts successfully generated so far.
+     * @param int   $total     Total posts expected for this batch.
+     * @param int   $last_index Zero-based index of the last successfully generated post.
+     * @param array $post_ids  IDs of all posts generated so far (prior runs + current session).
+     * @return bool True on success, false on failure.
+     */
+    public function update_batch_progress($id, $completed, $total, $last_index, $post_ids = array()) {
+        $progress = wp_json_encode(array(
+            'completed'  => absint($completed),
+            'total'      => absint($total),
+            'last_index' => absint($last_index),
+            'post_ids'   => array_values(array_map('absint', $post_ids)),
+        ));
+        $result = $this->wpdb->update(
+            $this->schedule_table,
+            array('batch_progress' => $progress),
+            array('id' => absint($id)),
+            array('%s'),
+            array('%d')
+        );
+        return $result !== false;
+    }
+
+    /**
+     * Clear batch progress for a schedule once a batch finishes successfully.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function clear_batch_progress($id) {
+        return $this->update($id, array('batch_progress' => null));
+    }
+
+    /**
+     * Store the current run state for a schedule as a structured JSON object.
+     *
+     * Captures the outcome of the most recent run attempt including success/failure
+     * status, post counts, and any error details.  Replaces the single `last_error`
+     * text field so callers can store richer context (e.g. partial successes, error
+     * codes, timestamps) that can drive future circuit-breaker logic.
+     *
+     * @param int   $id    Schedule ID.
+     * @param array $state Associative array to serialise as JSON.
+     *                     Recommended keys:
+     *                       - 'status'      string  'success' | 'partial' | 'failed'
+     *                       - 'error_code'  string  WP_Error error code, if any
+     *                       - 'error_message' string Human-readable error text, if any
+     *                       - 'completed'   int     Posts successfully generated
+     *                       - 'total'       int     Posts requested for this run
+     *                       - 'timestamp'   string  ISO-8601 timestamp of this state capture
+     * @return bool True on success, false on failure.
+     */
+    public function update_run_state($id, array $state) {
+        return $this->update($id, array('run_state' => wp_json_encode($state)));
     }
 
     /**
@@ -522,8 +641,8 @@ class AIPS_Schedule_Repository {
         ");
         
         return array(
-            'total' => (int) $results->total,
-            'active' => (int) $results->active,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'active' => isset($results->active) ? (int) $results->active : 0,
         );
     }
 }

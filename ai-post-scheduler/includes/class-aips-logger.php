@@ -18,7 +18,7 @@ class AIPS_Logger {
         $secret = $this->get_log_secret();
 
         $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
-        $this->enabled = (bool) get_option('aips_enable_logging', true);
+        $this->enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_logging');
     }
 
     /**
@@ -89,7 +89,8 @@ class AIPS_Logger {
         );
         
         if (!empty($context)) {
-            $log_entry .= ' | Context: ' . json_encode($context);
+            $log_entry .= PHP_EOL;
+            $log_entry .= 'Context: ' . json_encode($context, JSON_PRETTY_PRINT);
         }
         
         $log_entry .= PHP_EOL;
@@ -108,31 +109,52 @@ class AIPS_Logger {
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
     }
+
+    public function addSeparator($text) {
+        $separator = str_repeat('-', 20);
+        if (!empty($text)) {
+            $separator .= ' ' . $text . ' ' . str_repeat('-', 20);
+        }
+        $this->log($separator, 'info'); // Use 'info' level for separators
+    }
     
+    /**
+     * Retrieves the most recent log entries.
+     *
+     * @param int $lines Number of lines to return.
+     * @return array Array of log entries.
+     */
     public function get_logs($lines = 100) {
-        if (!file_exists($this->log_file)) {
+        if (!file_exists($this->log_file) || !is_readable($this->log_file)) {
             return array();
         }
 
         // Performance Fix: Use fseek to read only the end of the file
         // instead of SplFileObject seeking which scans the whole file.
         $fp = fopen($this->log_file, 'r');
-        if (!$fp) {
+        if ($fp === false) {
             return array();
         }
 
         $chunk_size = 1024 * 100; // Read 100KB from end
-        fseek($fp, 0, SEEK_END);
+        if (fseek($fp, 0, SEEK_END) === -1) {
+            fclose($fp);
+            return array();
+        }
+
         $filesize = ftell($fp);
 
-        if ($filesize <= 0) {
+        if ($filesize === false || $filesize <= 0) {
             fclose($fp);
             return array();
         }
 
         // If file is smaller than chunk, read whole file
         $seek_offset = max(0, $filesize - $chunk_size);
-        fseek($fp, $seek_offset);
+        if (fseek($fp, $seek_offset) === -1) {
+            fclose($fp);
+            return array();
+        }
         
         $content = '';
         // If we sought to a non-zero position, discard the first partial line
@@ -188,22 +210,39 @@ class AIPS_Logger {
         return true;
     }
     
+    /**
+     * Gets a list of available log files.
+     *
+     * @return array List of log files with size and modified dates.
+     */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
         
-        if (!is_dir($log_dir)) {
+        if (!is_dir($log_dir) || !is_readable($log_dir)) {
             return array();
         }
         
         $files = glob($log_dir . '/aips-*.log');
+
+        if ($files === false) {
+            return array();
+        }
+
         $log_files = array();
         
         foreach ($files as $file) {
+            if (!is_readable($file)) {
+                continue;
+            }
+
+            $file_size = filesize($file);
+            $file_mtime = filemtime($file);
+
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
-                'modified' => date('Y-m-d H:i:s', filemtime($file)),
+                'size' => $file_size !== false ? size_format($file_size) : size_format(0),
+                'modified' => $file_mtime !== false ? date('Y-m-d H:i:s', $file_mtime) : 'Unknown',
             );
         }
         

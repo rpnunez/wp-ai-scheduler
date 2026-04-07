@@ -516,15 +516,15 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	}
 
 	public function test_settings_sanitize_notification_emails_accepts_multiple_addresses() {
-		$settings = new AIPS_Settings();
-		$sanitized = $settings->sanitize_notification_emails('one@example.com, invalid-email, two@example.com, one@example.com');
+		$settings_ui = new AIPS_Settings_UI();
+		$sanitized = $settings_ui->sanitize_notification_emails('one@example.com, invalid-email, two@example.com, one@example.com');
 
 		$this->assertSame('one@example.com, two@example.com', $sanitized);
 	}
 
 	public function test_settings_sanitize_notification_preferences_covers_full_registry() {
-		$settings = new AIPS_Settings();
-		$sanitized = $settings->sanitize_notification_preferences(array(
+		$settings_ui = new AIPS_Settings_UI();
+		$sanitized = $settings_ui->sanitize_notification_preferences(array(
 			'daily_digest' => 'db',
 			'generation_failed' => 'invalid-mode',
 		));
@@ -537,7 +537,42 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
-	// handle_partial_generation_completed_notification() — gate checks
+	// Resilience notification types
+	// -----------------------------------------------------------------------
+
+	public function test_notification_registry_includes_circuit_breaker_opened() {
+		$registry = AIPS_Notifications::get_notification_type_registry();
+		$this->assertArrayHasKey( 'circuit_breaker_opened', $registry );
+		$this->assertSame( 'error', $registry['circuit_breaker_opened']['level'] );
+	}
+
+	public function test_notification_registry_includes_rate_limit_reached() {
+		$registry = AIPS_Notifications::get_notification_type_registry();
+		$this->assertArrayHasKey( 'rate_limit_reached', $registry );
+		$this->assertSame( 'warning', $registry['rate_limit_reached']['level'] );
+	}
+
+	public function test_high_priority_types_include_circuit_breaker_opened() {
+		$high = AIPS_Notifications::get_high_priority_notification_types();
+		$this->assertArrayHasKey( 'circuit_breaker_opened', $high );
+	}
+
+	public function test_high_priority_types_include_rate_limit_reached() {
+		$high = AIPS_Notifications::get_high_priority_notification_types();
+		$this->assertArrayHasKey( 'rate_limit_reached', $high );
+	}
+
+	public function test_event_handler_bindings_include_circuit_breaker_hook() {
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
+		$hooks    = array_column( $bindings, 'hook' );
+		$this->assertContains( 'aips_circuit_breaker_opened', $hooks );
+	}
+
+	public function test_event_handler_bindings_include_rate_limit_hook() {
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
+		$hooks    = array_column( $bindings, 'hook' );
+		$this->assertContains( 'aips_rate_limit_reached', $hooks );
+	}
 	// -----------------------------------------------------------------------
 
 	public function test_handle_partial_generation_completed_notification_skips_zero_post_id() {

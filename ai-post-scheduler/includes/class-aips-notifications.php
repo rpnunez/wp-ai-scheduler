@@ -267,6 +267,20 @@ class AIPS_Notifications {
 				'level'         => 'info',
 				'dedupe_window' => 300,
 			),
+			'circuit_breaker_opened' => array(
+				'label'         => __('Circuit Breaker Opened', 'ai-post-scheduler'),
+				'description'   => __('The circuit breaker has tripped — AI requests are temporarily blocked after repeated failures.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 1800,
+			),
+			'rate_limit_reached' => array(
+				'label'         => __('Rate Limit Reached', 'ai-post-scheduler'),
+				'description'   => __('The internal AI request rate limit has been reached. Requests are being paused.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'warning',
+				'dedupe_window' => 900,
+      ),
 			'research_topics_ready' => array(
 				'label'         => __('Research Topics Ready', 'ai-post-scheduler'),
 				'description'   => __('Scheduled research completed and new trending topics are available.', 'ai-post-scheduler'),
@@ -298,6 +312,8 @@ class AIPS_Notifications {
 				'post_ready_for_review',
 				'post_rejected',
 				'partial_generation_completed',
+				'circuit_breaker_opened',
+				'rate_limit_reached',
 			))
 		);
 	}
@@ -805,6 +821,103 @@ class AIPS_Notifications {
 	}
 
 	/**
+	 * Send a circuit-breaker-opened notification.
+	 *
+	 * @param array $payload Event payload from the resilience service.
+	 * @return void
+	 */
+	public function circuit_breaker_opened(array $payload) {
+		$error_code  = !empty($payload['error_code'])  ? $payload['error_code']  : '';
+		$failures    = isset($payload['failures'])     ? (int) $payload['failures']  : 0;
+		$threshold   = isset($payload['threshold'])    ? (int) $payload['threshold'] : 0;
+		$reason_code = !empty($payload['reason_code']) ? $payload['reason_code'] : 'threshold_reached';
+
+		if ('immediate_open' === $reason_code) {
+			/* translators: %s: provider error code slug (e.g. "insufficient_quota") */
+			$reason = sprintf(__('immediate circuit open triggered by error code "%s"', 'ai-post-scheduler'), $error_code);
+		} elseif ($threshold > 0) {
+			/* translators: 1: number of failures recorded 2: failure threshold */
+			$reason = sprintf(__('failure threshold reached (%1$d/%2$d)', 'ai-post-scheduler'), $failures, $threshold);
+		} else {
+			$reason = __('failure threshold reached', 'ai-post-scheduler');
+		}
+
+		$title   = __('Circuit breaker opened', 'ai-post-scheduler');
+		$message = sprintf(
+			/* translators: 1: failure count 2: reason string */
+			__('The AI circuit breaker tripped after %1$d failure(s) (%2$s). All AI requests are temporarily blocked. Use the System Status page to reset it after resolving the underlying issue.', 'ai-post-scheduler'),
+			$failures,
+			$reason
+		);
+
+		$status_url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
+
+		$this->dispatch_notification('circuit_breaker_opened', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $status_url,
+			'level'         => 'error',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key'])    ? $payload['dedupe_key']          : 'circuit_breaker_opened',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 1800,
+			'vars'          => $this->build_standard_notification_vars(
+				$title,
+				$message,
+				array(
+					__('Error code', 'ai-post-scheduler')   => $error_code ?: __('N/A', 'ai-post-scheduler'),
+					__('Failures',   'ai-post-scheduler')   => (string) $failures,
+					__('Reason',     'ai-post-scheduler')   => $reason,
+				),
+				$status_url,
+				__('Open System Status', 'ai-post-scheduler')
+			),
+		));
+	}
+
+	/**
+	 * Send a rate-limit-reached notification.
+	 *
+	 * @param array $payload Event payload from the resilience service.
+	 * @return void
+	 */
+	public function rate_limit_reached(array $payload) {
+		$current  = isset($payload['current_requests']) ? (int) $payload['current_requests'] : 0;
+		$max      = isset($payload['max_requests'])     ? (int) $payload['max_requests']     : 0;
+		$period   = isset($payload['period_seconds'])   ? (int) $payload['period_seconds']   : 0;
+
+		$title   = __('AI rate limit reached', 'ai-post-scheduler');
+		$message = sprintf(
+			/* translators: 1: request count 2: max requests 3: period seconds */
+			__('The internal AI rate limiter has been hit: %1$d/%2$d requests in %3$d seconds. Requests will resume automatically when the window resets.', 'ai-post-scheduler'),
+			$current,
+			$max,
+			$period
+		);
+
+		$status_url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
+
+		$this->dispatch_notification('rate_limit_reached', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $status_url,
+			'level'         => 'warning',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key'])    ? $payload['dedupe_key']          : 'rate_limit_reached',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 900,
+			'vars'          => $this->build_standard_notification_vars(
+				$title,
+				$message,
+				array(
+					__('Requests',       'ai-post-scheduler') => "{$current}/{$max}",
+					__('Window (secs)',  'ai-post-scheduler') => (string) $period,
+				),
+				$status_url,
+				__('Open System Status', 'ai-post-scheduler')
+			),
+    ));
+	}
+  
+  /*
 	 * Send a research-topics-ready notification.
 	 *
 	 * @param array $payload Research payload.
@@ -991,7 +1104,7 @@ class AIPS_Notifications {
 		$mode = null;
 
 		if (isset($config['default_mode'])) {
-			$preferences = get_option('aips_notification_preferences', array());
+			$preferences = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
 			$mode = isset($preferences[$type]) ? $preferences[$type] : (isset($config['default_mode']) ? $config['default_mode'] : self::MODE_BOTH);
 		}
 

@@ -85,6 +85,14 @@ class AIPS_Admin_Assets {
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 
+        wp_enqueue_script(
+            'aips-admin-embeddings',
+            AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
+            array('jquery', 'aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
             'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
             'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
@@ -255,8 +263,14 @@ class AIPS_Admin_Assets {
             'dateGenerated' => __('Date Generated', 'ai-post-scheduler'),
             'datePublished' => __('Date Published', 'ai-post-scheduler'),
             'notPublished' => __('Not published', 'ai-post-scheduler'),
-            'editPost' => __('Edit', 'ai-post-scheduler'),
-            'viewPost' => __('View', 'ai-post-scheduler'),
+            'editPost' => __('Edit Post', 'ai-post-scheduler'),
+            'viewPost' => __('View Post', 'ai-post-scheduler'),
+            'publishPost' => __('Publish', 'ai-post-scheduler'),
+            'publishing' => __('Publishing...', 'ai-post-scheduler'),
+            'postPublished' => __('Post published successfully.', 'ai-post-scheduler'),
+            'errorPublishingPost' => __('Error publishing post.', 'ai-post-scheduler'),
+            'confirmPublishPost' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+            'noFeaturedImage' => __('No featured image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),
             'action' => __('Action', 'ai-post-scheduler'),
             'reason' => __('Reason', 'ai-post-scheduler'),
@@ -394,77 +408,66 @@ class AIPS_Admin_Assets {
             array('aips-admin-style'),
             AIPS_VERSION
           );
+
+          wp_enqueue_script(
+              'aips-admin-research',
+              AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
+              array('aips-admin-script', 'aips-templates-script'),
+              AIPS_VERSION,
+              true
+          );
+
+          wp_enqueue_script(
+              'aips-admin-planner',
+              AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
+              array('aips-admin-script'),
+              AIPS_VERSION,
+              true
+          );
+
+          wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
+              'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
+              'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
+              'noTopicsFound' => __('No topics match your search criteria.', 'ai-post-scheduler'),
+              'noTopicsFoundTitle' => __('No Topics Found', 'ai-post-scheduler'),
+              'clearFilters' => __('Clear Filters', 'ai-post-scheduler'),
+              'libraryEmpty' => __('Your research library is empty.', 'ai-post-scheduler'),
+              'startResearch' => __('Start Research', 'ai-post-scheduler'),
+              'clearSearch' => __('Clear Search', 'ai-post-scheduler'),
+              'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
+              'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
+              'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
+              'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
+              'delete' => __('Delete', 'ai-post-scheduler'),
+              'generateSelected' => __('Generate', 'ai-post-scheduler'),
+              'generateIdeas' => __('Generate Ideas', 'ai-post-scheduler'),
+              'generatingIdeas' => __('Generating...', 'ai-post-scheduler'),
+              'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
+              'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
+              'generateError' => __('Error generating selected topics.', 'ai-post-scheduler'),
+              'loadingPosts' => __('Loading posts...', 'ai-post-scheduler'),
+              'errorLoadingPosts' => __('Error loading posts.', 'ai-post-scheduler'),
+              'noPostsFound' => __('No posts found.', 'ai-post-scheduler'),
+              'postsGeneratedFrom' => __('Posts Generated from Topic', 'ai-post-scheduler'),
+              'editPost' => __('Edit Post', 'ai-post-scheduler'),
+              'viewPost' => __('View Post', 'ai-post-scheduler'),
+              'notPublished' => __('Not published', 'ai-post-scheduler'),
+              'postId' => __('Post ID', 'ai-post-scheduler'),
+              'postTitle' => __('Post Title', 'ai-post-scheduler'),
+              'dateGenerated' => __('Date Generated', 'ai-post-scheduler'),
+              'datePublished' => __('Date Published', 'ai-post-scheduler'),
+              'actions' => __('Actions', 'ai-post-scheduler'),
+              'statusNew' => __('New', 'ai-post-scheduler'),
+              'statusScheduled' => __('Scheduled', 'ai-post-scheduler'),
+              'statusGenerated' => __('Generated', 'ai-post-scheduler'),
+              'confirmGenerationTitle' => __('Confirm Generation', 'ai-post-scheduler'),
+              'confirmGenerationMessage' => __('Generate %d post(s) immediately from selected topics?', 'ai-post-scheduler'),
+              'cancelButton' => __('Cancel', 'ai-post-scheduler'),
+              'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
+              'generatingButton' => __('Generating...', 'ai-post-scheduler'),
+          ));
         }
 
-        wp_enqueue_script(
-            'aips-admin-research',
-            AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-            array('aips-admin-script', 'aips-templates-script'),
-            AIPS_VERSION,
-            true
-        );
-
-        wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
-            'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
-            'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
-            'noTopicsFound' => __('No topics match your search criteria.', 'ai-post-scheduler'),
-            'noTopicsFoundTitle' => __('No Topics Found', 'ai-post-scheduler'),
-            'clearFilters' => __('Clear Filters', 'ai-post-scheduler'),
-            'libraryEmpty' => __('Your research library is empty.', 'ai-post-scheduler'),
-            'startResearch' => __('Start Research', 'ai-post-scheduler'),
-            'clearSearch' => __('Clear Search', 'ai-post-scheduler'),
-            'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
-            'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
-            'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
-            'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
-            'delete' => __('Delete', 'ai-post-scheduler'),
-            'generateSelected' => __('Generate', 'ai-post-scheduler'),
-            'generateIdeas' => __('Generate Ideas', 'ai-post-scheduler'),
-            'generatingIdeas' => __('Generating...', 'ai-post-scheduler'),
-            'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
-            'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
-            'generateError' => __('Error generating selected topics.', 'ai-post-scheduler'),
-            'loadingPosts' => __('Loading posts...', 'ai-post-scheduler'),
-            'errorLoadingPosts' => __('Error loading posts.', 'ai-post-scheduler'),
-            'noPostsFound' => __('No posts found.', 'ai-post-scheduler'),
-            'postsGeneratedFrom' => __('Posts Generated from Topic', 'ai-post-scheduler'),
-            'editPost' => __('Edit Post', 'ai-post-scheduler'),
-            'viewPost' => __('View Post', 'ai-post-scheduler'),
-            'notPublished' => __('Not published', 'ai-post-scheduler'),
-            'postId' => __('Post ID', 'ai-post-scheduler'),
-            'postTitle' => __('Post Title', 'ai-post-scheduler'),
-            'dateGenerated' => __('Date Generated', 'ai-post-scheduler'),
-            'datePublished' => __('Date Published', 'ai-post-scheduler'),
-            'actions' => __('Actions', 'ai-post-scheduler'),
-            'statusNew' => __('New', 'ai-post-scheduler'),
-            'statusScheduled' => __('Scheduled', 'ai-post-scheduler'),
-            'statusGenerated' => __('Generated', 'ai-post-scheduler'),
-            'confirmGenerationTitle' => __('Confirm Generation', 'ai-post-scheduler'),
-            'confirmGenerationMessage' => __('Generate %d post(s) immediately from selected topics?', 'ai-post-scheduler'),
-            'cancelButton' => __('Cancel', 'ai-post-scheduler'),
-            'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
-            'generatingButton' => __('Generating...', 'ai-post-scheduler'),
-        ));
-
-        // Planner Page Scripts
-
-        wp_enqueue_script(
-            'aips-admin-planner',
-            AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
-
-        // Database Page Scripts
-
-        wp_enqueue_script(
-            'aips-admin-db',
-            AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
 
         // Generated Posts Page Scripts
         if (strpos($hook, 'aips-generated-posts') !== false) {
@@ -676,6 +679,54 @@ class AIPS_Admin_Assets {
             );
         }
 
+        // System Status Page Scripts
+        if (strpos($hook, 'aips-status') !== false) {
+            wp_enqueue_script(
+                'aips-admin-db',
+                AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
+        if (strpos($hook, 'aips-taxonomy') !== false) {
+            wp_enqueue_style(
+                'aips-authors-style',
+                AIPS_PLUGIN_URL . 'assets/css/authors.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-taxonomy',
+                AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-taxonomy', 'aipsTaxonomyL10n', array(
+                'nonce'                  => wp_create_nonce('aips_ajax_nonce'),
+                'selectTaxonomyType'     => __('Please select a taxonomy type.', 'ai-post-scheduler'),
+                'selectPost'             => __('Please select at least one post.', 'ai-post-scheduler'),
+                'selectAction'           => __('Please select an action.', 'ai-post-scheduler'),
+                'selectItem'             => __('Please select at least one item.', 'ai-post-scheduler'),
+                'confirmBulkAction'      => __('Are you sure you want to %s %d items?', 'ai-post-scheduler'),
+                'confirmDelete'          => __('Are you sure you want to delete this item?', 'ai-post-scheduler'),
+                'confirmCreateTerm'      => __('Create this term in WordPress?', 'ai-post-scheduler'),
+                'generating'             => __('Generating...', 'ai-post-scheduler'),
+                'generate'               => __('Generate', 'ai-post-scheduler'),
+                'actionFailed'           => __('Action failed.', 'ai-post-scheduler'),
+                'generationFailed'       => __('Generation failed.', 'ai-post-scheduler'),
+                'deleteFailed'           => __('Delete failed.', 'ai-post-scheduler'),
+                'termCreationFailed'     => __('Term creation failed.', 'ai-post-scheduler'),
+                'updateFailed'           => __('Update failed.', 'ai-post-scheduler'),
+                'item'                   => __('item', 'ai-post-scheduler'),
+                'items'                  => __('items', 'ai-post-scheduler'),
+            ));
+        }
+
         if (strpos($hook, 'aips-sources') !== false) {
             wp_enqueue_script(
                 'aips-admin-sources',
@@ -709,6 +760,25 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+        }
+
+        // System Status Page Scripts
+        if (strpos($hook, 'aips-status') !== false) {
+            wp_enqueue_script(
+                'aips-admin-system-status',
+                AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
+                'nonce'         => wp_create_nonce('aips_reset_circuit_breaker'),
+                'hideDetails'   => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'   => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'  => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'   => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
+            ));
         }
     }
 }

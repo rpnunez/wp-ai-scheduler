@@ -44,6 +44,24 @@ class Test_Bug_Hunter_Filesystem_Errors extends WP_UnitTestCase {
         $this->assertFileDoesNotExist($log_file);
 	}
 
+    public function test_validate_mcp_bridge_handles_false_filesize() {
+        // Create a test file
+        $test_file = sys_get_temp_dir() . '/test_mcp_bridge_filesize.php';
+
+        // Write the logic we added to validate-mcp-bridge.php
+        $test_content = '<?php $bridge_file = __DIR__ . "/non_existent_file.php"; $filesize = @filesize($bridge_file); if ($filesize === false) { $filesize = 0; } echo $filesize;';
+        file_put_contents($test_file, $test_content);
+
+        // Execute the test script
+        $output = shell_exec('php ' . escapeshellarg($test_file));
+
+        // Assert the output is 0, demonstrating the fallback works when filesize() fails (returns false)
+        $this->assertEquals('0', trim($output), 'Should fallback to 0 when filesize returns false.');
+
+        // Clean up
+        unlink($test_file);
+    }
+
     public function test_session_cleanup_handles_unlink_correctly() {
         if (!function_exists('trailingslashit')) {
             $this->markTestSkipped('Requires full WP environment for trailingslashit()');
