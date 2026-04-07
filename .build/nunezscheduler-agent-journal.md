@@ -227,3 +227,11 @@
 **Tests:** 64 new tests, 218 assertions — all pass. Zero regressions vs. baseline.
 **Branch:** `copilot/refactor-aips-notifications-class` (2 commits ahead of main)
 **Outcome:** AIPS_Notifications is no longer a God Object. Each class has a single, clear responsibility: Registry owns type definitions, Senders owns formatting/dispatch logic, Notifications orchestrates and maintains the backward-compatible public API. The autoloader picks up both new classes automatically via the existing `AIPS_Foo → class-aips-foo.php` convention.
+
+## 2026-04-07 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Merged the 'Basic Info' and 'Title & Excerpt' steps into a single unified step to reduce the number of clicks required to configure a new template, improving overall flow.
+**Files Modified:**
+- ai-post-scheduler/templates/admin/templates.php
+- ai-post-scheduler/assets/js/admin.js
+**Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
