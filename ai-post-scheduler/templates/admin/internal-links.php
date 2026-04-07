@@ -233,19 +233,27 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 			<!-- Post Content Preview Section -->
 			<div style="padding:20px 24px;">
 				<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#555;">
-					<?php esc_html_e('Post Content', 'ai-post-scheduler'); ?>
+					<?php esc_html_e('Post Content Preview', 'ai-post-scheduler'); ?>
 					<span id="aips-insert-post-title" style="font-weight:400;font-size:13px;color:#777;margin-left:6px;text-transform:none;letter-spacing:0;"></span>
 				</h3>
-				<div id="aips-insert-post-content-wrap" style="max-height:280px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:14px 16px;background:#fafafa;">
-					<div id="aips-insert-post-content" style="font-size:13px;line-height:1.7;color:#333;white-space:pre-wrap;word-break:break-word;">
+				<p style="margin:0 0 10px;font-size:12px;color:#777;"><?php esc_html_e('Applied links are highlighted in green. Hover over a highlighted link to edit or remove it.', 'ai-post-scheduler'); ?></p>
+				<div id="aips-insert-post-content-wrap" style="max-height:320px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:14px 16px;background:#fafafa;">
+					<div id="aips-insert-post-content" style="font-size:13px;line-height:1.9;color:#333;white-space:pre-wrap;word-break:break-word;">
 						<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
 					</div>
 				</div>
 			</div>
 
 		</div><!-- /.aips-modal-body -->
-		<div class="aips-modal-footer" style="padding:12px 20px;border-top:1px solid #ddd;display:flex;justify-content:flex-end;">
-			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+		<div class="aips-modal-footer" style="padding:12px 20px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center;">
+			<span id="aips-pending-count" style="font-size:12px;color:#555;"></span>
+			<div style="display:flex;gap:8px;">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+				<button type="button" id="aips-update-post-btn" class="aips-btn aips-btn-primary" disabled>
+					<span class="dashicons dashicons-saved" aria-hidden="true"></span>
+					<?php esc_html_e('Update Post with Inserted Links', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
 		</div>
 	</div>
 </div><!-- /#aips-insert-modal -->
@@ -406,6 +414,11 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 <span class="dashicons dashicons-update" aria-hidden="true"></span> {{label}}
 </script>
 
+<!-- Preview insertion: green-highlighted link with inline hover actions -->
+<script type="text/html" id="aips-tmpl-il-preview-insertion">
+<span class="aips-il-preview-insertion" data-suggestion-id="{{suggestionId}}" data-match="{{matchEsc}}" style="display:inline;position:relative;">{{before}}<mark class="aips-il-preview-link" style="background:rgba(0,163,42,0.12);color:#00a32a;font-weight:600;padding:1px 4px;border-radius:3px;border-bottom:2px solid #00a32a;cursor:default;">{{anchor}}</mark>{{after}}<span class="aips-il-preview-actions" style="display:none;white-space:nowrap;margin-left:4px;vertical-align:middle;"> <button type="button" class="aips-il-preview-edit-btn aips-btn aips-btn-sm aips-btn-secondary" data-suggestion-id="{{suggestionId}}" style="padding:2px 6px;vertical-align:middle;"><span class="dashicons dashicons-edit" aria-hidden="true" style="font-size:13px;width:13px;height:13px;line-height:13px;margin-top:1px;"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-il-preview-undo-btn aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger" data-suggestion-id="{{suggestionId}}" style="padding:2px 6px;vertical-align:middle;"><span class="dashicons dashicons-undo" aria-hidden="true" style="font-size:13px;width:13px;height:13px;line-height:13px;margin-top:1px;"></span><span class="screen-reader-text">{{undoLabel}}</span></button></span></span>
+</script>
+
 <!-- Edit Anchor Text Modal -->
 <div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
 	<div class="aips-modal-content">
@@ -417,6 +430,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 		</div>
 		<div class="aips-modal-body">
 			<input type="hidden" id="aips-anchor-modal-id">
+			<input type="hidden" id="aips-anchor-modal-context" value="table">
 			<label for="aips-anchor-modal-text"><?php esc_html_e('Anchor Text', 'ai-post-scheduler'); ?></label>
 			<input type="text" id="aips-anchor-modal-text" class="aips-form-input" style="width:100%;margin-top:6px;">
 		</div>

@@ -830,6 +830,16 @@ class AIPS_Admin_Assets {
                 'deleteSuggestion'         => __('Delete suggestion', 'ai-post-scheduler'),
                 'anchorLabel'              => __('Anchor', 'ai-post-scheduler'),
                 'optionLabel'              => __('Option', 'ai-post-scheduler'),
+                // Preview insertion flow strings
+                'updatePostBtn'            => __('Update Post with Inserted Links', 'ai-post-scheduler'),
+                'updating'                 => __('Updating…', 'ai-post-scheduler'),
+                'updateFailed'             => __('Failed to update post. Please try again.', 'ai-post-scheduler'),
+                'editInsertedLink'         => __('Edit anchor', 'ai-post-scheduler'),
+                'removeInsertedLink'       => __('Remove link', 'ai-post-scheduler'),
+                'alreadyApplied'           => __('This suggestion has already been applied to the preview.', 'ai-post-scheduler'),
+                'snippetNotFound'          => __('The selected text was not found in the content preview.', 'ai-post-scheduler'),
+                'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
+                'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
         }
     }

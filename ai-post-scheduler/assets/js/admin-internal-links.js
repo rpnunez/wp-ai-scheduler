@@ -35,6 +35,18 @@
 		/** Debounce timer handle for search input */
 		_searchTimer: null,
 
+		/** Plain-text copy of the post content in the Insert modal */
+		_previewPlainText: '',
+
+		/** Post ID currently loaded in the Insert modal */
+		_previewPostId: 0,
+
+		/** Pending insertions not yet saved: [{suggestionId, matchSnippet, replacementSnippet, anchorText}] */
+		_pendingInsertions: [],
+
+		/** Map of suggestionId → {anchorText, targetUrl, title} for the Insert modal */
+		_suggestionDataMap: {},
+
 		/**
 		 * Bootstrap the module.
 		 */
@@ -83,14 +95,25 @@
 				self.findInsertLocations(parseInt($(this).data('id'), 10));
 			});
 
-			// Insert modal: Apply button on a location result
+			// Insert modal: Apply button on a location result — preview only, no immediate save
 			$(document).on('click', '.aips-il-apply-location-btn', function () {
 				var $btn    = $(this);
 				var sid     = parseInt($btn.data('suggestion-id'), 10);
 				var match   = $btn.data('match');
 				var replace = $btn.data('replace');
-				self.applyInsertion(sid, match, replace, $btn);
+				self.applyInsertionPreview(sid, match, replace, $btn);
 			});
+
+			// Insert modal: Update Post button — commit all pending insertions to DB
+			$(document).on('click', '#aips-update-post-btn', this.onUpdatePostClick.bind(this));
+
+			// Preview insertion: hover to show actions
+			$(document).on('mouseenter', '.aips-il-preview-insertion', this.onPreviewHoverIn.bind(this));
+			$(document).on('mouseleave', '.aips-il-preview-insertion', this.onPreviewHoverOut.bind(this));
+
+			// Preview insertion: edit anchor / undo (remove) buttons
+			$(document).on('click', '.aips-il-preview-edit-btn', this.onPreviewEditClick.bind(this));
+			$(document).on('click', '.aips-il-preview-undo-btn', this.onPreviewUndoClick.bind(this));
 
 			// Anchor modal
 			$(document).on('click', '.aips-modal-close', this.onModalClose.bind(this));
@@ -238,12 +261,14 @@
 			var $btn = $(e.currentTarget);
 			$('#aips-anchor-modal-id').val($btn.data('id'));
 			$('#aips-anchor-modal-text').val($btn.data('anchor'));
+			$('#aips-anchor-modal-context').val('table');
 			$('#aips-anchor-modal').show();
 			$('#aips-anchor-modal-text').focus();
 		},
 
 		/**
 		 * Close the modal associated with the clicked close control.
+		 * Resets any pending preview insertions when the Insert modal is closed.
 		 *
 		 * @param {Event} e Click event from an `.aips-modal-close` element.
 		 */
@@ -251,6 +276,14 @@
 			var $modal = $(e.currentTarget).closest('.aips-modal');
 
 			if ($modal.length) {
+				// Reset pending insertions when the Insert modal is closed.
+				if ($modal.is('#aips-insert-modal')) {
+					this._pendingInsertions = [];
+					this._previewPlainText  = '';
+					this._previewPostId     = 0;
+					$('#aips-pending-count').text('');
+				}
+
 				$modal.hide();
 				return;
 			}
@@ -260,11 +293,21 @@
 
 		/**
 		 * Save the edited anchor text from the modal.
+		 * When the modal was opened from a preview insertion, update the local
+		 * state without making an AJAX call; otherwise, persist to the database.
 		 *
 		 * @param {Event} e Click event from `#aips-anchor-modal-save`.
 		 */
 		onAnchorModalSave: function (e) {
-			this.saveAnchorText();
+			var context = $('#aips-anchor-modal-context').val();
+			if (context === 'preview') {
+				var id         = parseInt($('#aips-anchor-modal-id').val(), 10);
+				var anchorText = $('#aips-anchor-modal-text').val().trim();
+				if (!id) { return; }
+				this.editPreviewAnchor(id, anchorText);
+			} else {
+				this.saveAnchorText();
+			}
 		},
 
 		/**
@@ -278,6 +321,68 @@
 				this.currentPage = page;
 				this.loadSuggestions();
 			}
+		},
+
+		/**
+		 * Commit all pending preview insertions to the post.
+		 *
+		 * @param {Event} e Click event from `#aips-update-post-btn`.
+		 */
+		onUpdatePostClick: function (e) {
+			this.saveAllInsertions();
+		},
+
+		/**
+		 * Show the hover action buttons when entering a preview insertion span.
+		 *
+		 * @param {Event} e Mouseenter event on an `.aips-il-preview-insertion` element.
+		 */
+		onPreviewHoverIn: function (e) {
+			$(e.currentTarget).find('.aips-il-preview-actions').stop(true).show();
+		},
+
+		/**
+		 * Hide the hover action buttons when leaving a preview insertion span.
+		 *
+		 * @param {Event} e Mouseleave event on an `.aips-il-preview-insertion` element.
+		 */
+		onPreviewHoverOut: function (e) {
+			$(e.currentTarget).find('.aips-il-preview-actions').stop(true).hide();
+		},
+
+		/**
+		 * Open the anchor edit modal for a preview insertion link.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-preview-edit-btn` element.
+		 */
+		onPreviewEditClick: function (e) {
+			e.stopPropagation();
+			var sid = parseInt($(e.currentTarget).data('suggestion-id'), 10);
+			var currentAnchor = '';
+
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				if (this._pendingInsertions[i].suggestionId === sid) {
+					currentAnchor = this._pendingInsertions[i].anchorText;
+					break;
+				}
+			}
+
+			$('#aips-anchor-modal-id').val(sid);
+			$('#aips-anchor-modal-text').val(currentAnchor);
+			$('#aips-anchor-modal-context').val('preview');
+			$('#aips-anchor-modal').show();
+			$('#aips-anchor-modal-text').focus();
+		},
+
+		/**
+		 * Remove a preview insertion and re-render the content preview.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-preview-undo-btn` element.
+		 */
+		onPreviewUndoClick: function (e) {
+			e.stopPropagation();
+			var sid = parseInt($(e.currentTarget).data('suggestion-id'), 10);
+			this.undoInsertionPreview(sid);
 		},
 
 		// -----------------------------------------------------------------------
@@ -760,9 +865,16 @@
 			var spinnerHtml = AIPS.Templates.get('aips-tmpl-il-spinner');
 
 			// Reset modal state.
+			this._previewPostId      = 0;
+			this._previewPlainText   = '';
+			this._pendingInsertions  = [];
+			this._suggestionDataMap  = {};
+
 			$('#aips-insert-suggestions-list').html(spinnerHtml);
 			$('#aips-insert-post-content').html(spinnerHtml);
 			$('#aips-insert-post-title').text('');
+			$('#aips-update-post-btn').prop('disabled', true);
+			$('#aips-pending-count').text('');
 			$('#aips-insert-modal').show();
 
 			$.post(aipsAjax.ajaxUrl, {
@@ -776,37 +888,43 @@
 							message: (response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed,
 						})
 					);
-					$('#aips-insert-post-content').text('');
+					$('#aips-insert-post-content').html('');
 					return;
 				}
 
 				var data = response.data;
 
+				self._previewPostId = data.post_id || 0;
+
+				// Store plain-text version for the preview renderer.
+				self._previewPlainText = $('<div>').html(data.post_content || '').text();
+
 				// Post title in sub-header.
 				$('#aips-insert-post-title').text(data.post_title || '');
 
-				// Render suggestions list.
+				// Render suggestions list (also populates _suggestionDataMap).
 				self.renderInsertSuggestions(data.suggestions || []);
 
-				// Render post content (plain-text, HTML stripped for readability).
-				var plainContent = $('<div>').html(data.post_content || '').text();
-				$('#aips-insert-post-content').text(plainContent || aipsInternalLinksL10n.noContent);
+				// Render initial post content preview.
+				self.renderPreviewContent();
 			}).fail(function () {
 				$('#aips-insert-suggestions-list').html(
 					AIPS.Templates.render('aips-tmpl-il-notice-error', {
 						message: aipsInternalLinksL10n.loadingFailed,
 					})
 				);
-				$('#aips-insert-post-content').text('');
+				$('#aips-insert-post-content').html('');
 			});
 		},
 
 		/**
-		 * Render the accepted suggestions list inside the Insert modal.
+		 * Render the accepted suggestions list inside the Insert modal and
+		 * populate the suggestion data map for use during preview insertion.
 		 *
 		 * @param {Array} suggestions Array of suggestion objects from the server.
 		 */
 		renderInsertSuggestions: function (suggestions) {
+			var self  = this;
 			var $list = $('#aips-insert-suggestions-list');
 
 			if (!suggestions || suggestions.length === 0) {
@@ -824,6 +942,14 @@
 				var title        = s.target_post_title || '#' + s.target_post_id;
 				var anchor       = s.anchor_text || s.target_post_title || '';
 				var targetUrl    = s.target_url || '';
+
+				// Populate the suggestion data map so applyInsertionPreview can
+				// retrieve anchor text and target URL without extra data attributes.
+				self._suggestionDataMap[suggestionId] = {
+					anchorText: anchor,
+					targetUrl:  targetUrl,
+					title:      title,
+				};
 
 				var targetLinkHtml = targetUrl
 					? AIPS.Templates.render('aips-tmpl-il-insert-target-link', { url: targetUrl })
@@ -990,41 +1116,257 @@
 		},
 
 		/**
-		 * Apply a chosen insertion location to the post content.
+		 * Apply a chosen location to the post content preview (local only).
+		 *
+		 * Validates that the match snippet exists in the current plain-text
+		 * preview and that this suggestion hasn't already been applied. Adds the
+		 * insertion to _pendingInsertions and re-renders the content preview.
+		 * No AJAX is made — use saveAllInsertions() to persist changes.
 		 *
 		 * @param {number} suggestionId      Suggestion row ID.
 		 * @param {string} matchSnippet      Exact text excerpt from the post.
 		 * @param {string} replacementSnippet Plain-text snippet with [[anchor marker]].
 		 * @param {jQuery} $btn              The Apply button element.
 		 */
-		applyInsertion: function (suggestionId, matchSnippet, replacementSnippet, $btn) {
+		applyInsertionPreview: function (suggestionId, matchSnippet, replacementSnippet, $btn) {
+			// Guard: duplicate application for the same suggestion.
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				if (this._pendingInsertions[i].suggestionId === suggestionId) {
+					AIPS.Utilities.showToast(
+						aipsInternalLinksL10n.alreadyApplied || 'Already applied.',
+						'info'
+					);
+					return;
+				}
+			}
+
+			// Guard: match snippet must be present in the plain-text preview.
+			if (this._previewPlainText.indexOf(matchSnippet) === -1) {
+				AIPS.Utilities.showToast(
+					aipsInternalLinksL10n.snippetNotFound || 'Text not found in content preview.',
+					'error'
+				);
+				return;
+			}
+
+			// Extract anchor text from [[anchor]] in the replacement snippet.
+			var markerMatch = replacementSnippet.match(/\[\[([\s\S]*?)\]\]/);
+			var anchorText  = markerMatch ? markerMatch[1] : '';
+
+			if (!anchorText && this._suggestionDataMap[suggestionId]) {
+				anchorText = this._suggestionDataMap[suggestionId].anchorText || '';
+			}
+
+			// Store the pending insertion.
+			this._pendingInsertions.push({
+				suggestionId:        suggestionId,
+				matchSnippet:        matchSnippet,
+				replacementSnippet:  replacementSnippet,
+				anchorText:          anchorText,
+			});
+
+			// Re-render the preview and update UI chrome.
+			this.renderPreviewContent();
+			this.updatePendingCount();
+
+			$('#aips-update-post-btn').prop('disabled', false);
+
+			// Mark this Apply button as applied.
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-yes" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
+				AIPS.Templates.escape(aipsInternalLinksL10n.applied || 'Applied')
+			);
+		},
+
+		/**
+		 * Render the post content preview div with all pending insertions highlighted.
+		 *
+		 * Starts from the stored plain-text copy, HTML-escapes it, then
+		 * substitutes each pending insertion's match snippet with a styled
+		 * <span> element that shows the anchor in green with hover action buttons.
+		 */
+		renderPreviewContent: function () {
+			var html = AIPS.Templates.escape(this._previewPlainText || '');
+
+			if (!html) {
+				$('#aips-insert-post-content').html(
+					AIPS.Templates.render('aips-tmpl-il-notice-muted', {
+						message: aipsInternalLinksL10n.noContent,
+					})
+				);
+				return;
+			}
+
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				var ins          = this._pendingInsertions[i];
+				var escapedMatch = AIPS.Templates.escape(ins.matchSnippet);
+				var idx          = html.indexOf(escapedMatch);
+
+				if (idx === -1) { continue; }
+
+				// Split replacement snippet into before / anchor / after parts.
+				var repSnippet  = ins.replacementSnippet || '';
+				var parts       = repSnippet.match(/^([\s\S]*?)\[\[([\s\S]*?)\]\]([\s\S]*)$/);
+				var before      = parts ? parts[1] : '';
+				var anchor      = parts ? parts[2] : (ins.anchorText || '');
+				var after       = parts ? parts[3] : '';
+
+				var insertionHtml = AIPS.Templates.render('aips-tmpl-il-preview-insertion', {
+					suggestionId: ins.suggestionId,
+					matchEsc:     ins.matchSnippet,
+					before:       before,
+					anchor:       anchor,
+					after:        after,
+					editLabel:    aipsInternalLinksL10n.editInsertedLink || 'Edit anchor',
+					undoLabel:    aipsInternalLinksL10n.removeInsertedLink || 'Remove link',
+				});
+
+				// Replace only the first occurrence (avoids regex/$ issues).
+				html = html.substring(0, idx) + insertionHtml + html.substring(idx + escapedMatch.length);
+			}
+
+			$('#aips-insert-post-content').html(html);
+		},
+
+		/**
+		 * Remove a pending preview insertion and re-render.
+		 *
+		 * Re-enables the Apply button(s) for the removed suggestion so the user
+		 * can re-apply a different location if desired.
+		 *
+		 * @param {number} suggestionId Suggestion row ID to remove.
+		 */
+		undoInsertionPreview: function (suggestionId) {
+			var idx = -1;
+
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				if (this._pendingInsertions[i].suggestionId === suggestionId) {
+					idx = i;
+					break;
+				}
+			}
+
+			if (idx === -1) { return; }
+
+			this._pendingInsertions.splice(idx, 1);
+			this.renderPreviewContent();
+			this.updatePendingCount();
+
+			// Re-enable Apply buttons that belong to this suggestion.
+			$('.aips-il-apply-location-btn[data-suggestion-id="' + suggestionId + '"]')
+				.prop('disabled', false)
+				.text(aipsInternalLinksL10n.applyBtn);
+
+			if (this._pendingInsertions.length === 0) {
+				$('#aips-update-post-btn').prop('disabled', true);
+			}
+		},
+
+		/**
+		 * Update the anchor text for an already-applied preview insertion.
+		 *
+		 * Updates both the display label and the replacement_snippet's [[marker]]
+		 * so that saveAllInsertions() sends the correct anchor to the server.
+		 *
+		 * @param {number} suggestionId Suggestion row ID.
+		 * @param {string} newAnchor    New anchor text.
+		 */
+		editPreviewAnchor: function (suggestionId, newAnchor) {
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				if (this._pendingInsertions[i].suggestionId === suggestionId) {
+					this._pendingInsertions[i].anchorText         = newAnchor;
+					this._pendingInsertions[i].replacementSnippet = this._pendingInsertions[i].replacementSnippet.replace(
+						/\[\[[\s\S]*?\]\]/,
+						'[[' + newAnchor + ']]'
+					);
+					break;
+				}
+			}
+
+			this.renderPreviewContent();
+			$('#aips-anchor-modal').hide();
+			AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
+		},
+
+		/**
+		 * Update the pending-insertions count label in the modal footer.
+		 */
+		updatePendingCount: function () {
+			var n = this._pendingInsertions.length;
+
+			if (n === 0) {
+				$('#aips-pending-count').text('');
+				return;
+			}
+
+			var template = n === 1
+				? (aipsInternalLinksL10n.pendingCountSingle || '%d pending insertion')
+				: (aipsInternalLinksL10n.pendingCountPlural || '%d pending insertions');
+
+			$('#aips-pending-count').text(template.replace('%d', String(n)));
+		},
+
+		/**
+		 * Commit all pending preview insertions to the post via a single AJAX call.
+		 *
+		 * On success the modal is closed, suggestions are reloaded, and status
+		 * counters are refreshed. On partial success (some errors), the success
+		 * toast is shown alongside a separate warning for the failed items.
+		 */
+		saveAllInsertions: function () {
 			var self = this;
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.applying);
+			if (this._pendingInsertions.length === 0) { return; }
+
+			var $btn            = $('#aips-update-post-btn');
+			var originalBtnHtml = $btn.html();
+
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-update" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
+				AIPS.Templates.escape(aipsInternalLinksL10n.updating || 'Updating…')
+			);
+
+			var insertions = [];
+
+			for (var i = 0; i < this._pendingInsertions.length; i++) {
+				var ins = this._pendingInsertions[i];
+				insertions.push({
+					suggestion_id:       ins.suggestionId,
+					match_snippet:       ins.matchSnippet,
+					replacement_snippet: ins.replacementSnippet,
+				});
+			}
 
 			$.post(aipsAjax.ajaxUrl, {
-				action:               'aips_internal_links_apply_insertion',
-				nonce:                aipsInternalLinksL10n.nonce,
-				suggestion_id:        suggestionId,
-				match_snippet:        matchSnippet,
-				replacement_snippet:  replacementSnippet,
+				action:     'aips_internal_links_apply_bulk_insertions',
+				nonce:      aipsInternalLinksL10n.nonce,
+				insertions: JSON.stringify(insertions),
 			}, function (response) {
-				$btn.prop('disabled', false).text(aipsInternalLinksL10n.applyBtn);
+				$btn.prop('disabled', false).html(originalBtnHtml);
 
 				if (response.success) {
+					self._pendingInsertions = [];
 					$('#aips-insert-modal').hide();
-					AIPS.Utilities.showToast(response.data.message || aipsInternalLinksL10n.applied, 'success');
+					AIPS.Utilities.showToast(
+						response.data.message || aipsInternalLinksL10n.applied,
+						'success'
+					);
+
+					if (response.data.errors && response.data.errors.length > 0) {
+						AIPS.Utilities.showToast(response.data.errors.join(' '), 'warning');
+					}
+
 					self.loadSuggestions();
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.applyFailed,
+						(response.data && response.data.message) || aipsInternalLinksL10n.updateFailed,
 						'error'
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false).text(aipsInternalLinksL10n.applyBtn);
-				AIPS.Utilities.showToast(aipsInternalLinksL10n.applyFailed, 'error');
+				$btn.prop('disabled', false).html(originalBtnHtml);
+				AIPS.Utilities.showToast(aipsInternalLinksL10n.updateFailed, 'error');
 			});
 		},
 	};

@@ -86,6 +86,7 @@ class AIPS_Internal_Links_Controller {
 		add_action('wp_ajax_aips_internal_links_get_post_for_insertion', array($this, 'ajax_get_post_for_insertion'));
 		add_action('wp_ajax_aips_internal_links_find_insert_locations', array($this, 'ajax_find_insert_locations'));
 		add_action('wp_ajax_aips_internal_links_apply_insertion', array($this, 'ajax_apply_insertion'));
+		add_action('wp_ajax_aips_internal_links_apply_bulk_insertions', array($this, 'ajax_apply_bulk_insertions'));
 	}
 
 	// -------------------------------------------------------------------------
@@ -527,6 +528,101 @@ class AIPS_Internal_Links_Controller {
 
 		wp_send_json_success(array(
 			'message' => __('Link inserted successfully.', 'ai-post-scheduler'),
+		));
+	}
+
+	/**
+	 * AJAX: Apply multiple insertions to the source post(s) in sequence.
+	 *
+	 * Accepts a JSON-encoded array of insertion objects, each with keys
+	 * suggestion_id, match_snippet, and replacement_snippet. Insertions are
+	 * applied one by one so that later insertions search the already-modified
+	 * post content. Partial success is returned when some insertions succeed
+	 * and others fail.
+	 *
+	 * @return void
+	 */
+	public function ajax_apply_bulk_insertions() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+		}
+
+		$insertions_raw = isset($_POST['insertions']) ? wp_unslash($_POST['insertions']) : '';
+
+		if (empty($insertions_raw)) {
+			wp_send_json_error(array('message' => __('No insertions provided.', 'ai-post-scheduler')));
+			return;
+		}
+
+		$insertions = json_decode($insertions_raw, true);
+
+		if (!is_array($insertions) || empty($insertions)) {
+			wp_send_json_error(array('message' => __('Invalid insertions data.', 'ai-post-scheduler')));
+			return;
+		}
+
+		$applied = 0;
+		$errors  = array();
+
+		foreach ($insertions as $ins) {
+			$suggestion_id       = absint(isset($ins['suggestion_id']) ? $ins['suggestion_id'] : 0);
+			$match_snippet       = isset($ins['match_snippet']) ? sanitize_text_field(wp_unslash($ins['match_snippet'])) : '';
+			$replacement_snippet = isset($ins['replacement_snippet']) ? sanitize_text_field(wp_unslash($ins['replacement_snippet'])) : '';
+
+			if (!$suggestion_id || empty($match_snippet) || empty($replacement_snippet)) {
+				$errors[] = __('Invalid insertion parameters.', 'ai-post-scheduler');
+				continue;
+			}
+
+			// Validate no HTML in snippets.
+			if (strpos($match_snippet, '<') !== false || strpos($match_snippet, '>') !== false) {
+				$errors[] = __('Invalid match snippet.', 'ai-post-scheduler');
+				continue;
+			}
+
+			if (strpos($replacement_snippet, '<') !== false || strpos($replacement_snippet, '>') !== false) {
+				$errors[] = __('Invalid replacement snippet.', 'ai-post-scheduler');
+				continue;
+			}
+
+			// Require exactly one [[...]] link marker.
+			if (!preg_match('/\[\[.*?\]\]/s', $replacement_snippet) || preg_match_all('/\[\[.*?\]\]/s', $replacement_snippet) !== 1) {
+				$errors[] = __('Replacement snippet must contain exactly one [[link marker]].', 'ai-post-scheduler');
+				continue;
+			}
+
+			$result = $this->inserter_service->apply_insertion($suggestion_id, $match_snippet, $replacement_snippet);
+
+			if (is_wp_error($result)) {
+				$errors[] = $result->get_error_message();
+			} else {
+				$applied++;
+			}
+		}
+
+		if ($applied === 0 && !empty($errors)) {
+			wp_send_json_error(array(
+				'message' => implode(' ', $errors),
+				'errors'  => $errors,
+			));
+			return;
+		}
+
+		wp_send_json_success(array(
+			'applied' => $applied,
+			'errors'  => $errors,
+			'message' => sprintf(
+				/* translators: %d: number of links inserted */
+				_n(
+					'%d link inserted successfully.',
+					'%d links inserted successfully.',
+					$applied,
+					'ai-post-scheduler'
+				),
+				$applied
+			),
 		));
 	}
 
