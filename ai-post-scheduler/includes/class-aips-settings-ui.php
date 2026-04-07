@@ -465,6 +465,21 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Sanitize a per-type token budget value.
+     *
+     * Ensures the saved value is a positive integer (≥ 1). An empty submission or
+     * a value of zero would silently remove the output token budget and cause the
+     * AI to receive an unexpectedly tiny maxTokens value, so we clamp to 1.
+     *
+     * @param mixed $value Raw input value.
+     * @return int Sanitized token budget (minimum 1).
+     */
+    public function sanitize_token_budget($value) {
+        $int = absint($value);
+        return max(1, $int);
+    }
+
+    /**
      * Render the topic similarity threshold field.
      *
      * Displays a number input for the semantic duplicate detection threshold.

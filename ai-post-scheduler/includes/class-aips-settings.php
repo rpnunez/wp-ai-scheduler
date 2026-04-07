@@ -111,15 +111,15 @@ class AIPS_Settings {
             'default'           => $defaults['aips_max_tokens_limit'],
         ));
         register_setting('aips_settings', 'aips_max_tokens_title', array(
-            'sanitize_callback' => 'absint',
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
             'default'           => $defaults['aips_max_tokens_title'],
         ));
         register_setting('aips_settings', 'aips_max_tokens_excerpt', array(
-            'sanitize_callback' => 'absint',
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
             'default'           => $defaults['aips_max_tokens_excerpt'],
         ));
         register_setting('aips_settings', 'aips_max_tokens_content', array(
-            'sanitize_callback' => 'absint',
+            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
             'default'           => $defaults['aips_max_tokens_content'],
         ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
