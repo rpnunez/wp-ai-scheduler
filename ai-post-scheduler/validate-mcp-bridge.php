@@ -30,6 +30,9 @@ echo "✅ mcp-bridge.php exists\n";
 
 // Check file size
 $filesize = filesize($bridge_file);
+if ($filesize === false) {
+	$filesize = 0;
+}
 echo "   File size: " . number_format($filesize) . " bytes\n";
 
 // Parse the PHP file

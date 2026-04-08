@@ -96,16 +96,7 @@
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
-                // Escape HTML for value attribute
-                var div = document.createElement('div');
-                div.textContent = topic;
-                var safeTopic = div.innerHTML.replace(/"/g, '&quot;');
-
-                html += '<div class="topic-item">';
-                html += '<input type="checkbox" class="topic-checkbox" checked>';
-                html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
-                html += '<button type="button" class="aips-remove-topic-btn" aria-label="Remove Topic" title="Remove Topic"><span class="dashicons dashicons-dismiss"></span></button>';
-                html += '</div>';
+                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
             });
 
             if (append) {
@@ -140,28 +131,6 @@
                     $('#planner-topic-search').val('');
                 }
             });
-        },
-
-        /**
-         * Show or hide `.topic-item` rows based on whether their text input
-         * value matches the current `#planner-topic-search` value.
-         *
-         * Only tests `.topic-item` elements that are currently visible.
-         * Calls `updateSelectionCount` after filtering to keep the count accurate.
-         *
-         * Bound to the first `keyup search` listener on `#planner-topic-search`.
-         */
-        filterTopics: function() {
-            var filter = $('#planner-topic-search').val().toLowerCase();
-            $('.topic-item').each(function() {
-                var text = $(this).find('.topic-text-input').val().toLowerCase();
-                if (text.indexOf(filter) > -1) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            });
-            window.AIPS.updateSelectionCount();
         },
 
         /**
@@ -245,8 +214,9 @@
          * whether the search field is non-empty. Shows an inline empty-state
          * message when no topics match the term. Removes the empty-state message
          * when the field is cleared or topics become visible again.
+         * Calls `updateSelectionCount` after filtering to keep the count accurate.
          *
-         * Bound to the second `keyup search` listener on `#planner-topic-search`.
+         * Bound to the `keyup search` event on `#planner-topic-search`.
          */
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
@@ -271,13 +241,15 @@
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    $topicsList.append('<div class="topics-empty-state" style="padding: 20px; text-align: center; color: #666;">No topics match your search.</div>');
+                    $topicsList.append(AIPS.Templates.render('aips-tmpl-planner-search-empty', {}));
                 }
             } else {
                 if ($emptyState.length) {
                     $emptyState.remove();
                 }
             }
+
+            window.AIPS.updateSelectionCount();
         },
 
         /**
@@ -545,8 +517,8 @@
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
-        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
+        $(document).on('click', '.aips-clear-topic-search-btn', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
     });
 

@@ -11,7 +11,7 @@
     // Each entry maps a 1-based step number to its required field selector and l10n message key.
     var WIZARD_REQUIRED_FIELDS = [
         { step: 1, selector: '#template_name',   messageKey: 'templateNameRequired' },
-        { step: 3, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
+        { step: 2, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
     ];
 
     // Required-field rules for the schedule wizard.
@@ -824,7 +824,7 @@
             e.preventDefault();
             
             // Validate at least prompt is there
-            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 3; })[0];
+            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 2; })[0];
             if (promptRule && !$(promptRule.selector).val().trim()) {
                 AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
                 $(promptRule.selector).focus();
@@ -2123,7 +2123,7 @@
          * Parse selected unified-schedule checkboxes and dispatch the chosen
          * bulk action.
          *
-         * Supported actions: `run_now`, `pause`, `resume`.
+         * Supported actions: `run_now`, `pause`, `resume`, `delete`.
          *
          * @param {Event} e - Click event from `#aips-unified-bulk-apply`.
          */
@@ -2138,9 +2138,16 @@
 
             var items = [];
             $('.aips-unified-checkbox:checked').each(function() {
+                var $checkbox = $(this);
+                var $row = $checkbox.closest('tr');
                 var parts = $(this).val().split(':');
                 if (parts.length === 2) {
-                    items.push({ type: parts[0], id: parseInt(parts[1], 10) });
+                    items.push({
+                        type: parts[0],
+                        id: parseInt(parts[1], 10),
+                        title: $row.data('title') || ('ID ' + parts[1]),
+                        canDelete: String($row.data('can-delete')) === '1'
+                    });
                 }
             });
 
@@ -2166,7 +2173,58 @@
                 AIPS.unifiedBulkToggle(items, 0);
             } else if (action === 'resume') {
                 AIPS.unifiedBulkToggle(items, 1);
+            } else if (action === 'delete') {
+                AIPS.confirmUnifiedBulkDelete(items);
             }
+        },
+
+        /**
+         * Confirm unified bulk delete and include a list of schedule names.
+         *
+         * @param {Array<{type: string, id: number, title: string, canDelete: boolean}>} items
+         */
+        confirmUnifiedBulkDelete: function(items) {
+            var deletableItems = items.filter(function(item) {
+                return item && item.canDelete;
+            });
+
+            if (deletableItems.length === 0) {
+                AIPS.Utilities.showToast(
+                    aipsAdminL10n.noDeletableSchedulesSelected || 'None of the selected schedules can be deleted.',
+                    'warning'
+                );
+                return;
+            }
+
+            var listLines = deletableItems.map(function(item, index) {
+                return (index + 1) + '. ' + item.title;
+            }).join('\n');
+
+            var message = (aipsAdminL10n.deleteSchedulesListIntro || 'The following schedules will be deleted:') +
+                '\n\n' + listLines;
+
+            var skippedCount = items.length - deletableItems.length;
+            if (skippedCount > 0) {
+                var skipTemplate = aipsAdminL10n.deleteSchedulesSkipNotice || '%d selected schedule(s) cannot be deleted and will be skipped.';
+                message += '\n\n' + skipTemplate.replace('%d', skippedCount);
+            }
+
+            message += '\n\n' + (aipsAdminL10n.deleteSchedulesFinalConfirm || 'This action cannot be undone. Continue?');
+
+            AIPS.Utilities.confirm(
+                message,
+                aipsAdminL10n.deleteSchedulesHeading || 'Delete Schedules',
+                [
+                    { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    {
+                        label: aipsAdminL10n.confirmDeleteButton || 'Delete',
+                        className: 'aips-btn aips-btn-danger-solid',
+                        action: function() {
+                            AIPS.unifiedBulkDelete(deletableItems);
+                        }
+                    }
+                ]
+            );
         },
 
         /**
@@ -2293,6 +2351,57 @@
                 },
                 complete: function() {
                     AIPS.Utilities.resetButton($applyBtn);
+                    AIPS.updateUnifiedBulkActions();
+                }
+            });
+        },
+
+        /**
+         * Bulk-delete template schedules selected from the unified table.
+         *
+         * @param {Array<{type: string, id: number}>} items
+         */
+        unifiedBulkDelete: function(items) {
+            var $applyBtn = $('#aips-unified-bulk-apply');
+            $applyBtn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_unified_bulk_delete',
+                    nonce: aipsAjax.nonce,
+                    items: items
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var data = response.data || {};
+                        var deletedItems = Array.isArray(data.deleted_items) ? data.deleted_items : [];
+
+                        $('#aips-unified-bulk-action').val('');
+
+                        deletedItems.forEach(function(item) {
+                            if (!item || !item.type || typeof item.id === 'undefined') {
+                                return;
+                            }
+
+                            var rowKey = item.type + ':' + item.id;
+                            $('tr[data-row-key="' + rowKey + '"]').fadeOut(250, function() {
+                                $(this).remove();
+                                AIPS.updateUnifiedBulkActions();
+                            });
+                        });
+
+                        AIPS.Utilities.showToast(data.message || 'Schedules deleted successfully.', 'success');
+                    } else {
+                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.failedToDeleteSchedules, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                },
+                complete: function() {
+                    $applyBtn.prop('disabled', false).text('Apply');
                     AIPS.updateUnifiedBulkActions();
                 }
             });
