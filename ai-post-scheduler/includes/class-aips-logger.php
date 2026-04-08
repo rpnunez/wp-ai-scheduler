@@ -26,7 +26,7 @@ class AIPS_Logger {
      * This ensures log filenames are not guessable.
      */
     private function get_log_secret() {
-        $secret = get_option('aips_log_secret');
+        $secret = AIPS_Config::get_instance()->get_option('aips_log_secret');
 
         if (empty($secret)) {
             // Generate a secure random string

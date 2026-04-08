@@ -281,13 +281,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('add_option')) {
         function add_option($option, $value) {
             $GLOBALS['aips_test_options'][$option] = $value;
+            do_action('added_option', $option, $value);
             return true;
         }
     }
 
     if (!function_exists('update_option')) {
         function update_option($option, $value) {
+            $old_value = isset($GLOBALS['aips_test_options'][$option]) ? $GLOBALS['aips_test_options'][$option] : false;
             $GLOBALS['aips_test_options'][$option] = $value;
+            do_action('updated_option', $option, $old_value, $value);
             return true;
         }
     }
@@ -296,6 +299,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         function delete_option($option) {
             if (isset($GLOBALS['aips_test_options'][$option])) {
                 unset($GLOBALS['aips_test_options'][$option]);
+                do_action('deleted_option', $option);
             }
             return true;
         }
@@ -642,6 +646,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             /**
              * Reset mocked WordPress hooks to avoid cross-test pollution.
              *
+             * Also flushes AIPS_Config's per-request option cache so that any
+             * update_option() calls made in a test are reflected correctly when
+             * the singleton is reused in the next test.
+             *
              * @return void
              */
             private function reset_hooks() {
@@ -649,6 +657,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     'actions' => array(),
                     'filters' => array(),
                 );
+
+                // Flush the AIPS_Config option cache so stale values don't leak
+                // across tests.  Re-register the cache-invalidation hooks on the
+                // (still-live) singleton so the next test works correctly.
+                if (class_exists('AIPS_Config')) {
+                    $config = AIPS_Config::get_instance();
+                    $config->flush_option_cache();
+                    $config->reregister_option_cache_hooks();
+                }
             }
         }
     }

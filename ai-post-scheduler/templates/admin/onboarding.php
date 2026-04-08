@@ -3,10 +3,11 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$wizard_url = AIPS_Admin_Menu_Helper::get_page_url(AIPS_Onboarding_Wizard::PAGE_SLUG);
-$completed = (bool) get_option('aips_onboarding_completed', false);
+$_aips_config     = AIPS_Config::get_instance();
+$wizard_url       = AIPS_Admin_Menu_Helper::get_page_url(AIPS_Onboarding_Wizard::PAGE_SLUG);
+$completed        = (bool) $_aips_config->get_option('aips_onboarding_completed');
 
-$strategy_complete = !empty(get_option('aips_site_niche', ''));
+$strategy_complete = !empty($_aips_config->get_option('aips_site_niche'));
 $author_complete = !empty($author) && !empty($author->id);
 $template_complete = !empty($template) && !empty($template->id);
 $topics_complete = !empty($state['topics_generated']);
@@ -86,26 +87,26 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						<tbody>
 							<tr>
 								<th scope="row"><label for="aips_site_niche"><?php esc_html_e('Site Niche / Primary Topic', 'ai-post-scheduler'); ?> *</label></th>
-								<td><input type="text" class="regular-text" id="aips_site_niche" name="strategy[aips_site_niche]" value="<?php echo esc_attr(get_option('aips_site_niche', '')); ?>" required></td>
+								<td><input type="text" class="regular-text" id="aips_site_niche" name="strategy[aips_site_niche]" value="<?php echo esc_attr($_aips_config->get_option('aips_site_niche')); ?>" required></td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_target_audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label></th>
-								<td><input type="text" class="regular-text" id="aips_site_target_audience" name="strategy[aips_site_target_audience]" value="<?php echo esc_attr(get_option('aips_site_target_audience', '')); ?>"></td>
+								<td><input type="text" class="regular-text" id="aips_site_target_audience" name="strategy[aips_site_target_audience]" value="<?php echo esc_attr($_aips_config->get_option('aips_site_target_audience')); ?>"></td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_content_goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label></th>
-								<td><textarea class="large-text" rows="3" id="aips_site_content_goals" name="strategy[aips_site_content_goals]"><?php echo esc_textarea(get_option('aips_site_content_goals', '')); ?></textarea></td>
+								<td><textarea class="large-text" rows="3" id="aips_site_content_goals" name="strategy[aips_site_content_goals]"><?php echo esc_textarea($_aips_config->get_option('aips_site_content_goals')); ?></textarea></td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_brand_voice"><?php esc_html_e('Brand Voice / Tone', 'ai-post-scheduler'); ?></label></th>
-								<td><input type="text" class="regular-text" id="aips_site_brand_voice" name="strategy[aips_site_brand_voice]" value="<?php echo esc_attr(get_option('aips_site_brand_voice', '')); ?>"></td>
+								<td><input type="text" class="regular-text" id="aips_site_brand_voice" name="strategy[aips_site_brand_voice]" value="<?php echo esc_attr($_aips_config->get_option('aips_site_brand_voice')); ?>"></td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_content_language"><?php esc_html_e('Content Language', 'ai-post-scheduler'); ?></label></th>
 								<td>
 									<select id="aips_site_content_language" name="strategy[aips_site_content_language]">
 										<?php
-										$lang_value = get_option('aips_site_content_language', 'en');
+										$lang_value = $_aips_config->get_option('aips_site_content_language');
 										$languages = array(
 											'en' => __('English', 'ai-post-scheduler'),
 											'es' => __('Spanish', 'ai-post-scheduler'),
@@ -124,11 +125,11 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_content_guidelines"><?php esc_html_e('Content Guidelines', 'ai-post-scheduler'); ?></label></th>
-								<td><textarea class="large-text" rows="3" id="aips_site_content_guidelines" name="strategy[aips_site_content_guidelines]"><?php echo esc_textarea(get_option('aips_site_content_guidelines', '')); ?></textarea></td>
+								<td><textarea class="large-text" rows="3" id="aips_site_content_guidelines" name="strategy[aips_site_content_guidelines]"><?php echo esc_textarea($_aips_config->get_option('aips_site_content_guidelines')); ?></textarea></td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="aips_site_excluded_topics"><?php esc_html_e('Excluded Topics (site-wide)', 'ai-post-scheduler'); ?></label></th>
-								<td><textarea class="large-text" rows="3" id="aips_site_excluded_topics" name="strategy[aips_site_excluded_topics]"><?php echo esc_textarea(get_option('aips_site_excluded_topics', '')); ?></textarea></td>
+								<td><textarea class="large-text" rows="3" id="aips_site_excluded_topics" name="strategy[aips_site_excluded_topics]"><?php echo esc_textarea($_aips_config->get_option('aips_site_excluded_topics')); ?></textarea></td>
 							</tr>
 						</tbody>
 					</table>
@@ -173,23 +174,23 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_niche"><?php esc_html_e('Field / Niche', 'ai-post-scheduler'); ?> *</label></th>
-									<td><input type="text" class="regular-text" id="aips_onboarding_author_niche" name="field_niche" value="<?php echo esc_attr(get_option('aips_site_niche', '')); ?>" <?php disabled(!$strategy_complete); ?> required></td>
+									<td><input type="text" class="regular-text" id="aips_onboarding_author_niche" name="field_niche" value="<?php echo esc_attr($_aips_config->get_option('aips_site_niche')); ?>" <?php disabled(!$strategy_complete); ?> required></td>
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_voice_tone"><?php esc_html_e('Voice Tone', 'ai-post-scheduler'); ?></label></th>
-									<td><input type="text" class="regular-text" id="aips_onboarding_author_voice_tone" name="voice_tone" value="<?php echo esc_attr(get_option('aips_site_brand_voice', '')); ?>" <?php disabled(!$strategy_complete); ?>></td>
+									<td><input type="text" class="regular-text" id="aips_onboarding_author_voice_tone" name="voice_tone" value="<?php echo esc_attr($_aips_config->get_option('aips_site_brand_voice')); ?>" <?php disabled(!$strategy_complete); ?>></td>
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_target_audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label></th>
-									<td><input type="text" class="regular-text" id="aips_onboarding_author_target_audience" name="target_audience" value="<?php echo esc_attr(get_option('aips_site_target_audience', '')); ?>" <?php disabled(!$strategy_complete); ?>></td>
+									<td><input type="text" class="regular-text" id="aips_onboarding_author_target_audience" name="target_audience" value="<?php echo esc_attr($_aips_config->get_option('aips_site_target_audience')); ?>" <?php disabled(!$strategy_complete); ?>></td>
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label></th>
-									<td><textarea class="large-text" rows="2" id="aips_onboarding_author_goals" name="content_goals" <?php disabled(!$strategy_complete); ?>><?php echo esc_textarea(get_option('aips_site_content_goals', '')); ?></textarea></td>
+									<td><textarea class="large-text" rows="2" id="aips_onboarding_author_goals" name="content_goals" <?php disabled(!$strategy_complete); ?>><?php echo esc_textarea($_aips_config->get_option('aips_site_content_goals')); ?></textarea></td>
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_language"><?php esc_html_e('Language', 'ai-post-scheduler'); ?></label></th>
-									<td><input type="text" class="small-text" id="aips_onboarding_author_language" name="language" value="<?php echo esc_attr(get_option('aips_site_content_language', 'en')); ?>" <?php disabled(!$strategy_complete); ?>></td>
+									<td><input type="text" class="small-text" id="aips_onboarding_author_language" name="language" value="<?php echo esc_attr($_aips_config->get_option('aips_site_content_language')); ?>" <?php disabled(!$strategy_complete); ?>></td>
 								</tr>
 								<tr>
 									<th scope="row"><label for="aips_onboarding_author_qty"><?php esc_html_e('Topics to Generate', 'ai-post-scheduler'); ?></label></th>

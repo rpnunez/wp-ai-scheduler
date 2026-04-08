@@ -34,14 +34,14 @@ class AIPS_Site_Context {
 	 */
 	public static function get() {
 		$result  = array();
+		$config  = AIPS_Config::get_instance();
 		$options = AIPS_Settings::get_content_strategy_options();
 
 		foreach ($options as $option_name => $meta) {
 			if (!isset($meta['key'])) {
 				continue;
 			}
-			$default            = isset($meta['default']) ? $meta['default'] : '';
-			$result[ $meta['key'] ] = get_option($option_name, $default);
+			$result[ $meta['key'] ] = $config->get_option($option_name);
 		}
 
 		return $result;
@@ -54,16 +54,25 @@ class AIPS_Site_Context {
 	 * @param mixed  $default Default value if the setting has not been configured.
 	 * @return mixed
 	 */
-	public static function get_setting($key, $default = '') {
+	/**
+	 * Return a single site-wide setting value.
+	 *
+	 * @param string     $key     Short key as defined in the settings registry (e.g. 'niche').
+	 * @param mixed|null $default Default value if the setting has not been configured.
+	 *                            When omitted (null) the AIPS_Config registered default is used.
+	 * @return mixed
+	 */
+	public static function get_setting($key, $default = null) {
 		$options = AIPS_Settings::get_content_strategy_options();
+		$config  = AIPS_Config::get_instance();
 
 		foreach ($options as $option_name => $meta) {
 			if ($meta['key'] === $key) {
-				return get_option($option_name, $default);
+				return $config->get_option($option_name, $default);
 			}
 		}
 
-		return $default;
+		return $default !== null ? $default : '';
 	}
 
 	/**

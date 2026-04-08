@@ -356,7 +356,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function review_notifications_email_field_callback() {
-        $value = get_option('aips_review_notifications_email', get_option('admin_email'));
+        $value = AIPS_Config::get_instance()->get_option('aips_review_notifications_email') ?: get_option('admin_email');
         ?>
         <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'); ?></p>
@@ -380,7 +380,7 @@ class AIPS_Settings_UI {
      */
     public function notification_preference_field_callback($args) {
         $type = isset($args['type']) ? sanitize_key($args['type']) : '';
-        $preferences_stored = get_option('aips_notification_preferences');
+        $preferences_stored = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $preferences = is_array($preferences_stored) ? $preferences_stored : array();
         $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $defaults = is_array($defaults) ? $defaults : array();
