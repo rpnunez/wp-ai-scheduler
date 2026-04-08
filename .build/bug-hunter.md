@@ -9,3 +9,7 @@
 ## 2024-04-06 - [Fix Silent Filesystem Errors in validate-mcp-bridge.php]
 **Learning:** `filesize()` can return `false` on failure, which causes issues when passed to functions like `number_format()`.
 **Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values.
+
+## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
+**Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
+**Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
