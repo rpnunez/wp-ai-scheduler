@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php
 
 # Default target
 .DEFAULT_GOAL := help
@@ -54,6 +54,11 @@ restart: ## Restart all services
 	@echo "$(YELLOW)Restarting services...$(NC)"
 	docker-compose restart
 	@echo "$(GREEN)Services restarted!$(NC)"
+
+reload-php: ## Reload Apache/PHP in web container (applies dev-php.ini changes)
+	@echo "$(BLUE)Reloading Apache in web container...$(NC)"
+	bash ./scripts/reload-php.sh
+	@echo "$(GREEN)Apache reloaded; PHP/Xdebug ini changes applied.$(NC)"
 
 rebuild: ## Rebuild and restart services
 	@echo "$(YELLOW)Rebuilding and restarting...$(NC)"
