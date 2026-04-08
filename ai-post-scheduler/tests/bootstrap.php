@@ -1123,6 +1123,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-notification-template.php',
         'class-aips-notification-templates.php',
         'class-aips-notifications-repository.php',
+        'class-aips-notification-registry.php',
+        'class-aips-notification-senders.php',
         'class-aips-notifications.php',
         'class-aips-admin-assets.php',
         'class-aips-admin-menu-helper.php',
