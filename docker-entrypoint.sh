@@ -170,6 +170,23 @@ else
 fi
 
 #============================================================
+# Xdebug log file setup
+#============================================================
+
+# Xdebug is configured to write to /tmp/xdebug.log in the image. Ensure the
+# file exists and is writable by the Apache/PHP runtime user so notices like
+# "File '/tmp/xdebug.log' could not be opened" do not appear in logs.
+XDEBUG_LOG_FILE="${XDEBUG_LOG:-/tmp/xdebug.log}"
+
+if php -m | grep -qi '^xdebug$' && [ -n "$XDEBUG_LOG_FILE" ]; then
+  XDEBUG_LOG_DIR="$(dirname "$XDEBUG_LOG_FILE")"
+  mkdir -p "$XDEBUG_LOG_DIR"
+  touch "$XDEBUG_LOG_FILE"
+  chown www-data:www-data "$XDEBUG_LOG_FILE"
+  chmod 664 "$XDEBUG_LOG_FILE"
+fi
+
+#============================================================
 # Debug environment
 #============================================================
 
