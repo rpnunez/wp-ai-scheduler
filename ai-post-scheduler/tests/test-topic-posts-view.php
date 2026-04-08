@@ -15,11 +15,11 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		
-		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
-		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
-		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
-		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-feedback-repository.php';
-		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-controller.php';
+		require_once AIPS_PLUGIN_DIR . 'includes/repositories/class-aips-authors-repository.php';
+		require_once AIPS_PLUGIN_DIR . 'includes/repositories/class-aips-author-topics-repository.php';
+		require_once AIPS_PLUGIN_DIR . 'includes/repositories/class-aips-author-topic-logs-repository.php';
+		require_once AIPS_PLUGIN_DIR . 'includes/repositories/class-aips-feedback-repository.php';
+		require_once AIPS_PLUGIN_DIR . 'includes/controllers/class-aips-authors-controller.php';
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-scheduler.php';
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
 		

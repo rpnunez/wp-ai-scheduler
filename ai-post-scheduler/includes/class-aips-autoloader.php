@@ -41,16 +41,23 @@ class AIPS_Autoloader {
         $base_name = self::convert_class_name_to_base($class_name);
         $interface_file = 'interface-' . $base_name . '.php';
 
-        $path = AIPS_PLUGIN_DIR . 'includes/';
+        $search_dirs = array(
+            AIPS_PLUGIN_DIR . 'includes/',
+            AIPS_PLUGIN_DIR . 'includes/controllers/',
+            AIPS_PLUGIN_DIR . 'includes/repositories/',
+            AIPS_PLUGIN_DIR . 'includes/services/',
+        );
 
-        if (file_exists($path . $class_file)) {
-            require_once $path . $class_file;
-            return;
-        }
+        foreach ($search_dirs as $path) {
+            if (file_exists($path . $class_file)) {
+                require_once $path . $class_file;
+                return;
+            }
 
-        if (file_exists($path . $interface_file)) {
-            require_once $path . $interface_file;
-            return;
+            if (file_exists($path . $interface_file)) {
+                require_once $path . $interface_file;
+                return;
+            }
         }
     }
 }
