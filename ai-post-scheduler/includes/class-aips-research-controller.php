@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
  * Manages the complete research workflow from discovery to scheduling.
  */
 class AIPS_Research_Controller {
+
+    /**
+     * @var bool Prevent duplicate hook registration when multiple instances are created.
+     */
+    private static $hooks_registered = false;
     
     /**
      * @var AIPS_Research_Service Research service instance
@@ -56,6 +61,10 @@ class AIPS_Research_Controller {
      * Initialize WordPress hooks.
      */
     private function init_hooks() {
+        if (self::$hooks_registered) {
+            return;
+        }
+
         // AJAX handlers
         add_action('wp_ajax_aips_research_topics', array($this, 'ajax_research_topics'));
         add_action('wp_ajax_aips_get_trending_topics', array($this, 'ajax_get_trending_topics'));
@@ -67,6 +76,7 @@ class AIPS_Research_Controller {
         
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
+        self::$hooks_registered = true;
     }
     
     /**
