@@ -109,16 +109,16 @@ class AIPS_AI_Service {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
+        $started_at = microtime(true);
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('text', $prompt, null, $options, $error->get_error_message());
+            $this->log_call('text', $prompt, null, $options, $error->get_error_message(), $started_at);
             return $error;
         }
         
         $options = $this->prepare_options($options);
-        $started_at = microtime(true);
         
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $started_at) {
@@ -193,12 +193,14 @@ class AIPS_AI_Service {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
+        $started_at = microtime(true);
+
         // Check if AI Engine is available using consistent availability check
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message(), $started_at);
             return $error;
         }
         
@@ -209,7 +211,6 @@ class AIPS_AI_Service {
         }
         
         $options = $this->prepare_options($options);
-        $started_at = microtime(true);
         
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $started_at) {
@@ -355,15 +356,14 @@ class AIPS_AI_Service {
      * @return string|WP_Error The image URL or WP_Error on failure.
      */
     public function generate_image($prompt, $options = array()) {
+        $started_at = microtime(true);
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+            $this->log_call('image', $prompt, null, $options, $error->get_error_message(), $started_at);
             return $error;
         }
-
-        $started_at = microtime(true);
 
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $started_at) {
@@ -435,11 +435,12 @@ class AIPS_AI_Service {
      * @return array|WP_Error Array with 'reply' and 'chatId' keys on success, or WP_Error on failure.
      */
     public function generate_with_chatbot($chatbot_id, $message, $options = array(), $log_type = 'chatbot') {
+        $started_at = microtime(true);
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message(), $started_at);
             return $error;
         }
         
@@ -454,12 +455,10 @@ class AIPS_AI_Service {
             
             $error = new WP_Error('chatbot_unavailable', sprintf(__('%s', 'ai-post-scheduler'), 'AI Engine chatbot feature is not available.'));
 
-            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message(), $started_at);
 
             return $error;
         }
-        
-        $started_at = microtime(true);
 
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $chatbot_id, $message, $options, $log_type, $started_at) {
