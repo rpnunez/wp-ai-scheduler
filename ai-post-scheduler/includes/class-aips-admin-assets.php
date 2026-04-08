@@ -51,16 +51,53 @@ class AIPS_Admin_Assets {
             true
         );
 
-        wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+        // Shared l10n payload available across all admin pages.
+        wp_localize_script('aips-utilities-script', 'aipsGlobalL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
-            // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
+            'loading'                  => __('Loading...', 'ai-post-scheduler'),
+            'saving'                   => __('Saving...', 'ai-post-scheduler'),
+            'generating'               => __('Generating...', 'ai-post-scheduler'),
+            'cancel'                   => __('Cancel', 'ai-post-scheduler'),
+            'save'                     => __('Save', 'ai-post-scheduler'),
+            'error'                    => __('Error', 'ai-post-scheduler'),
+            'errorOccurred'            => __('An error occurred.', 'ai-post-scheduler'),
+            'errorTryAgain'            => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            'view'                     => __('View', 'ai-post-scheduler'),
+            'edit'                     => __('Edit', 'ai-post-scheduler'),
+            'delete'                   => __('Delete', 'ai-post-scheduler'),
+            'today'                    => __('Today', 'ai-post-scheduler'),
+            'yesterday'                => __('Yesterday', 'ai-post-scheduler'),
+            'am'                       => _x('am', 'time of day', 'ai-post-scheduler'),
+            'pm'                       => _x('pm', 'time of day', 'ai-post-scheduler'),
+            'justNow'                  => __('Just now', 'ai-post-scheduler'),
+            'ago'                      => __('ago', 'ai-post-scheduler'),
+            'minute'                   => __('minute', 'ai-post-scheduler'),
+            'minutes'                  => __('minutes', 'ai-post-scheduler'),
+            'hour'                     => __('hour', 'ai-post-scheduler'),
+            'hours'                    => __('hours', 'ai-post-scheduler'),
+            'day'                      => __('day', 'ai-post-scheduler'),
+            'days'                     => __('days', 'ai-post-scheduler'),
+            'seconds'                  => __('seconds', 'ai-post-scheduler'),
+            'oneMinute'                => __('1 minute', 'ai-post-scheduler'),
+            'minutesTemplate'          => __('%d minutes', 'ai-post-scheduler'),
+            'minutesSecondsTemplate'   => __('%dm %ds', 'ai-post-scheduler'),
+            'monthNames'               => array(
+                __('January', 'ai-post-scheduler'),
+                __('February', 'ai-post-scheduler'),
+                __('March', 'ai-post-scheduler'),
+                __('April', 'ai-post-scheduler'),
+                __('May', 'ai-post-scheduler'),
+                __('June', 'ai-post-scheduler'),
+                __('July', 'ai-post-scheduler'),
+                __('August', 'ai-post-scheduler'),
+                __('September', 'ai-post-scheduler'),
+                __('October', 'ai-post-scheduler'),
+                __('November', 'ai-post-scheduler'),
+                __('December', 'ai-post-scheduler'),
+            ),
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
             'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
-            'seconds'                  => __('seconds', 'ai-post-scheduler'),
-            'minute'                   => __('1 minute', 'ai-post-scheduler'),
-            'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
-            'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
 
         wp_enqueue_script(
@@ -210,9 +247,6 @@ class AIPS_Admin_Assets {
             'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
             'editAuthor' => __('Edit Author', 'ai-post-scheduler'),
             'saveAuthor' => __('Save Author', 'ai-post-scheduler'),
-            'loading' => __('Loading...', 'ai-post-scheduler'),
-            'saving' => __('Saving...', 'ai-post-scheduler'),
-            'generating' => __('Generating...', 'ai-post-scheduler'),
             'confirmDelete' => __('Are you sure you want to delete this author? This will also delete all associated topics and logs.', 'ai-post-scheduler'),
             'confirmDeleteTopic' => __('Are you sure you want to delete this topic?', 'ai-post-scheduler'),
             'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
@@ -241,10 +275,6 @@ class AIPS_Admin_Assets {
             'actions' => __('Actions', 'ai-post-scheduler'),
             'approve' => __('Approve', 'ai-post-scheduler'),
             'reject' => __('Reject', 'ai-post-scheduler'),
-            'edit' => __('Edit', 'ai-post-scheduler'),
-            'delete' => __('Delete', 'ai-post-scheduler'),
-            'save' => __('Save', 'ai-post-scheduler'),
-            'cancel' => __('Cancel', 'ai-post-scheduler'),
             'topicTitleRequired' => __('Topic title is required.', 'ai-post-scheduler'),
             'viewPosts' => __('Click to view posts generated from this topic', 'ai-post-scheduler'),
             'loadingPosts' => __('Loading posts...', 'ai-post-scheduler'),
@@ -356,25 +386,6 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
-            // Date formatting strings used by formatTopicDate()
-            'dateToday'     => __('Today', 'ai-post-scheduler'),
-            'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),
-            'dateAM'        => _x('am', 'time of day', 'ai-post-scheduler'),
-            'datePM'        => _x('pm', 'time of day', 'ai-post-scheduler'),
-            'dateMonthNames' => array(
-                __('January', 'ai-post-scheduler'),
-                __('February', 'ai-post-scheduler'),
-                __('March', 'ai-post-scheduler'),
-                __('April', 'ai-post-scheduler'),
-                __('May', 'ai-post-scheduler'),
-                __('June', 'ai-post-scheduler'),
-                __('July', 'ai-post-scheduler'),
-                __('August', 'ai-post-scheduler'),
-                __('September', 'ai-post-scheduler'),
-                __('October', 'ai-post-scheduler'),
-                __('November', 'ai-post-scheduler'),
-                __('December', 'ai-post-scheduler'),
-            ),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
@@ -721,6 +732,13 @@ class AIPS_Admin_Assets {
         }
 
         if (strpos($hook, 'aips-notifications') !== false) {
+            wp_enqueue_style(
+                'aips-notifications-style',
+                AIPS_PLUGIN_URL . 'assets/css/notifications.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-notifications',
                 AIPS_PLUGIN_URL . 'assets/js/admin-notifications.js',
@@ -747,21 +765,20 @@ class AIPS_Admin_Assets {
                 'l10n'            => array(
                     'selectAction'     => __('Please select a bulk action.', 'ai-post-scheduler'),
                     'selectItems'      => __('Please select at least one notification.', 'ai-post-scheduler'),
-                    'error'            => __('An error occurred. Please try again.', 'ai-post-scheduler'),
                     'loadError'        => __('Failed to load notifications.', 'ai-post-scheduler'),
                     'noNotifications'  => __('No notifications found.', 'ai-post-scheduler'),
                     'read'             => __('Read', 'ai-post-scheduler'),
                     'unread'           => __('Unread', 'ai-post-scheduler'),
                     'markRead'         => __('Mark as Read', 'ai-post-scheduler'),
                     'markUnread'       => __('Mark as Unread', 'ai-post-scheduler'),
-                    'view'             => __('View', 'ai-post-scheduler'),
-                    'colTitle'         => __('Title', 'ai-post-scheduler'),
+                    'colTitle'         => __('Notification', 'ai-post-scheduler'),
                     'colType'          => __('Type', 'ai-post-scheduler'),
-                    'colLevel'         => __('Level', 'ai-post-scheduler'),
-                    'colMessage'       => __('Message', 'ai-post-scheduler'),
                     'colDate'          => __('Date', 'ai-post-scheduler'),
                     'colStatus'        => __('Status', 'ai-post-scheduler'),
                     'colActions'       => __('Actions', 'ai-post-scheduler'),
+                    'levelInfo'        => __('Info', 'ai-post-scheduler'),
+                    'levelWarning'     => __('Warning', 'ai-post-scheduler'),
+                    'levelError'       => __('Error', 'ai-post-scheduler'),
                     'totalLabel'       => __('Total', 'ai-post-scheduler'),
                     'unreadLabel'      => __('Unread', 'ai-post-scheduler'),
                     'errorsLabel'      => __('Errors', 'ai-post-scheduler'),

@@ -41,7 +41,7 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 				<div class="aips-filter-left aips-btn-group aips-btn-group-inline">
 					<input type="checkbox" id="aips-notifications-select-all" title="<?php esc_attr_e('Select all', 'ai-post-scheduler'); ?>">
 					<label class="screen-reader-text" for="aips-notifications-select-all"><?php esc_html_e('Select all notifications', 'ai-post-scheduler'); ?></label>
-					<select class="aips-bulk-action-select aips-form-select" id="aips-bulk-action-select" style="width: auto;">
+					<select class="aips-bulk-action-select aips-form-select" id="aips-bulk-action-select">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="mark_read"><?php esc_html_e('Mark as Read', 'ai-post-scheduler'); ?></option>
 						<option value="mark_unread"><?php esc_html_e('Mark as Unread', 'ai-post-scheduler'); ?></option>
@@ -49,10 +49,10 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 					</select>
 					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-bulk-action-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
 				</div>
-				<div class="aips-filter-right" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+				<div class="aips-filter-right aips-notifications-filter-right">
 					<!-- Level Filter -->
 					<label class="screen-reader-text" for="aips-level-filter"><?php esc_html_e('Filter by Level:', 'ai-post-scheduler'); ?></label>
-					<select class="aips-form-select" id="aips-level-filter" style="width: auto;">
+					<select class="aips-form-select" id="aips-level-filter">
 						<option value=""><?php esc_html_e('All Levels', 'ai-post-scheduler'); ?></option>
 						<option value="info"><?php esc_html_e('Info', 'ai-post-scheduler'); ?></option>
 						<option value="warning"><?php esc_html_e('Warning', 'ai-post-scheduler'); ?></option>
@@ -60,7 +60,7 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 					</select>
 					<!-- Type Filter -->
 					<label class="screen-reader-text" for="aips-type-filter"><?php esc_html_e('Filter by Type:', 'ai-post-scheduler'); ?></label>
-					<select class="aips-form-select" id="aips-type-filter" style="width: auto;">
+					<select class="aips-form-select" id="aips-type-filter">
 						<option value=""><?php esc_html_e('All Types', 'ai-post-scheduler'); ?></option>
 						<?php foreach ($type_registry as $type_key => $type_def) : ?>
 							<option value="<?php echo esc_attr($type_key); ?>"><?php echo esc_html($type_def['label']); ?></option>
@@ -68,22 +68,22 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 					</select>
 					<!-- Read Status Filter -->
 					<label class="screen-reader-text" for="aips-read-filter"><?php esc_html_e('Filter by Read Status:', 'ai-post-scheduler'); ?></label>
-					<select class="aips-form-select" id="aips-read-filter" style="width: auto;">
+					<select class="aips-form-select" id="aips-read-filter">
 						<option value="-1"><?php esc_html_e('All', 'ai-post-scheduler'); ?></option>
 						<option value="0"><?php esc_html_e('Unread', 'ai-post-scheduler'); ?></option>
 						<option value="1"><?php esc_html_e('Read', 'ai-post-scheduler'); ?></option>
 					</select>
 					<!-- Search -->
 					<label class="screen-reader-text" for="aips-notifications-search"><?php esc_html_e('Search Notifications:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-notifications-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search notifications...', 'ai-post-scheduler'); ?>" style="width: 200px;">
+					<input type="search" id="aips-notifications-search" class="aips-form-input aips-notifications-search" placeholder="<?php esc_attr_e('Search notifications...', 'ai-post-scheduler'); ?>">
 				</div>
 			</div>
 
 			<!-- Panel Body -->
 			<div class="aips-panel-body no-padding">
 				<!-- Loading Spinner -->
-				<div id="aips-notifications-loading" style="display: none; text-align: center; padding: 40px;">
-					<span class="dashicons dashicons-update aips-spin" style="font-size: 32px; width: 32px; height: 32px;" aria-hidden="true"></span>
+				<div id="aips-notifications-loading" class="aips-notifications-loading">
+					<span class="dashicons dashicons-update aips-spin aips-notifications-loading-icon" aria-hidden="true"></span>
 					<p><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
 				</div>
 
@@ -98,13 +98,13 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 </div>
 
 <!-- View Notification Modal -->
-<div id="aips-view-notification-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-notification-modal-title">
+<div id="aips-view-notification-modal" class="aips-modal" role="dialog" aria-modal="true" aria-labelledby="aips-notification-modal-title">
 	<div class="aips-modal-content aips-modal-large">
 		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		<div id="aips-view-notification-modal-body">
 			<!-- Populated via JS -->
 		</div>
-		<div class="aips-modal-footer" style="padding: 16px 24px; border-top: 1px solid #eee; display: flex; gap: 8px;">
+		<div class="aips-modal-footer aips-notification-modal-footer">
 			<button type="button" id="aips-notification-toggle-read-btn" class="aips-btn aips-btn-secondary"></button>
 			<button type="button" class="aips-btn aips-btn-ghost aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
 		</div>
@@ -113,17 +113,17 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 
 <!-- JS Templates -->
 <script type="text/html" id="aips-tmpl-notifications-stats">
-<div class="aips-notifications-stats" style="display: flex; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #eee; flex-wrap: wrap;">
-	<span class="aips-stat-item" style="display: flex; align-items: center; gap: 6px;">
+<div class="aips-notifications-stats">
+	<span class="aips-stat-item">
 		<strong id="aips-stat-total">0</strong> {{totalLabel}}
 	</span>
-	<span class="aips-stat-item" style="display: flex; align-items: center; gap: 6px; color: #2271b1;">
+	<span class="aips-stat-item aips-stat-item-unread">
 		<strong id="aips-stat-unread">0</strong> {{unreadLabel}}
 	</span>
-	<span class="aips-stat-item" style="display: flex; align-items: center; gap: 6px; color: #d63638;">
+	<span class="aips-stat-item aips-stat-item-errors">
 		<strong id="aips-stat-errors">0</strong> {{errorsLabel}}
 	</span>
-	<span class="aips-stat-item" style="display: flex; align-items: center; gap: 6px; color: #d97706;">
+	<span class="aips-stat-item aips-stat-item-warnings">
 		<strong id="aips-stat-warnings">0</strong> {{warningsLabel}}
 	</span>
 </div>
@@ -133,14 +133,11 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 <table class="aips-table aips-notifications-table wp-list-table widefat fixed striped">
 	<thead>
 		<tr>
-			<th class="check-column" style="width: 30px;"></th>
+			<th class="check-column"></th>
 			<th class="column-title">{{titleLabel}}</th>
-			<th class="column-type" style="width: 160px;">{{typeLabel}}</th>
-			<th class="column-level" style="width: 80px;">{{levelLabel}}</th>
-			<th class="column-message">{{messageLabel}}</th>
-			<th class="column-date" style="width: 140px;">{{dateLabel}}</th>
-			<th class="column-status" style="width: 80px;">{{statusLabel}}</th>
-			<th class="column-actions" style="width: 80px;">{{actionsLabel}}</th>
+			<th class="column-date">{{dateLabel}}</th>
+			<th class="column-status">{{statusLabel}}</th>
+			<th class="column-actions">{{actionsLabel}}</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -152,10 +149,14 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 <script type="text/html" id="aips-tmpl-notification-row">
 <tr data-id="{{id}}" class="{{rowClass}}">
 	<td class="check-column"><input type="checkbox" class="aips-notification-checkbox" value="{{id}}"></td>
-	<td class="column-title"><strong>{{title}}</strong></td>
-	<td class="column-type"><span class="aips-notification-type-label">{{typeLabel}}</span></td>
-	<td class="column-level"><span class="aips-status aips-status-{{level}}">{{level}}</span></td>
-	<td class="column-message"><span class="aips-notification-message-preview">{{messagePreview}}</span></td>
+	<td class="column-title">
+		<h2 class="aips-notification-type-heading">{{typeLabel}}</h2>
+		<div class="aips-notification-title">{{title}}</div>
+		<div class="aips-notification-title-meta">
+			<span class="aips-notification-level-badge aips-notification-level-{{level}}">{{levelLabel}}</span>
+			<span class="aips-notification-message-preview">{{messagePreview}}</span>
+		</div>
+	</td>
 	<td class="column-date">{{date}}</td>
 	<td class="column-status">{{readBadge}}</td>
 	<td class="column-actions">
@@ -165,15 +166,15 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 </script>
 
 <script type="text/html" id="aips-tmpl-notification-modal-body">
-<div style="padding: 0 24px 8px;">
-	<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eee;">
-		<h2 id="aips-notification-modal-title" style="margin: 0; flex: 1;">{{title}}</h2>
+<div class="aips-notification-modal-body">
+	<div class="aips-notification-modal-header">
+		<h2 id="aips-notification-modal-title" class="aips-notification-modal-title">{{title}}</h2>
 		<span class="aips-status aips-status-{{level}}">{{level}}</span>
 	</div>
-	<div style="margin-bottom: 16px;">
-		<p style="font-size: 14px; line-height: 1.6; color: #333;">{{message}}</p>
+	<div class="aips-notification-modal-message-wrap">
+		<p class="aips-notification-modal-message">{{message}}</p>
 	</div>
-	<div class="aips-notification-meta-grid" style="display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; font-size: 13px; margin-bottom: 16px;">
+	<div class="aips-notification-meta-grid">
 		<strong>{{typeLabel}}:</strong> <span>{{typeValue}}</span>
 		<strong>{{dateLabel}}:</strong> <span>{{date}}</span>
 		<strong>{{statusLabel}}:</strong> <span>{{readBadge}}</span>
@@ -183,13 +184,13 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 </script>
 
 <script type="text/html" id="aips-tmpl-notification-smart-links">
-<div class="aips-notification-smart-links" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-top: 1px solid #f0f0f0;">
+<div class="aips-notification-smart-links">
 	{{buttons}}
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-notifications-pagination">
-<div class="tablenav" style="padding: 8px 16px;">
+<div class="tablenav aips-notifications-tablenav">
 	<span class="displaying-num">{{countLabel}}</span>
 	<span class="pagination-links">
 		{{links}}
@@ -198,8 +199,8 @@ $type_registry = class_exists('AIPS_Notifications') ? AIPS_Notifications::get_no
 </script>
 
 <script type="text/html" id="aips-tmpl-notifications-empty">
-<div style="padding: 40px; text-align: center; color: #666;">
-	<span class="dashicons dashicons-bell" style="font-size: 40px; width: 40px; height: 40px; color: #ccc;" aria-hidden="true"></span>
-	<p style="margin-top: 12px; font-size: 15px;">{{emptyMessage}}</p>
+<div class="aips-notifications-empty">
+	<span class="dashicons dashicons-bell aips-notifications-empty-icon" aria-hidden="true"></span>
+	<p class="aips-notifications-empty-message">{{emptyMessage}}</p>
 </div>
 </script>

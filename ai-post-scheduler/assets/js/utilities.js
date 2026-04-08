@@ -65,7 +65,7 @@
                 AIPS.Utilities._positionToastContainer($container);
             }
 
-            var closeLabel = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.closeLabel) ? aipsUtilitiesL10n.closeLabel : 'Close notification';
+            var closeLabel = aipsGlobalL10n.closeLabel;
             var safeMessage = isHtml ? message : $('<div>').text(message).html();
 
             var $toast = $('<div class="aips-toast ' + type + '">')
@@ -282,9 +282,8 @@
         showProgressBar: function(options) {
             options = options || {};
 
-            // Use caller-supplied strings → aipsUtilitiesL10n (always available on every
-            // AIPS admin page) → bare English fallbacks.  Never couple to aipsAuthorsL10n.
-            var l10n = options.l10n || window.aipsUtilitiesL10n || {};
+            // Shared global localization object for all utilities strings.
+            var l10n = aipsGlobalL10n;
 
             var title        = options.title        || 'Processing…';
             var message      = options.message      || '';
@@ -361,18 +360,18 @@
             function formatTime(secs) {
                 secs = Math.max(0, Math.round(secs));
                 if (secs < 60) {
-                    return secs + ' ' + (l10n.seconds || 'seconds');
+                    return secs + ' ' + l10n.seconds;
                 }
                 var m = Math.floor(secs / 60);
                 var s = secs % 60;
                 if (s === 0) {
                     if (m === 1) {
-                        return l10n.minute || '1 minute';
+                        return l10n.oneMinute;
                     }
-                    var mTpl = l10n.minutes || '%d minutes';
+                    var mTpl = l10n.minutesTemplate;
                     return mTpl.replace('%d', m);
                 }
-                var msTpl = l10n.minutesSeconds || '%dm %ds';
+                var msTpl = l10n.minutesSecondsTemplate;
                 // Replace each %d placeholder in order (minutes first, seconds second).
                 var msParts = [m, s];
                 var msIdx   = 0;
@@ -393,7 +392,7 @@
                             .css('width', '100%')
                             .attr('aria-valuenow', '100')
                             .addClass('aips-progress-bar-fill--indeterminate');
-                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected…';
+                        var overdueMsg = l10n.takingLonger;
                         $statusLine.text(overdueMsg);
                         $liveRegion.text(overdueMsg); // Announce to screen readers.
                     }
@@ -405,7 +404,7 @@
 
                 $barFill.css('width', pct + '%').attr('aria-valuenow', Math.round(progress));
 
-                var tpl      = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
+                var tpl      = l10n.estimatedTimeRemaining;
                 var timeText = tpl.replace('%s', formatTime(remaining));
 
                 // Update the visible countdown on every tick.
@@ -438,7 +437,7 @@
                     .css('width', '100%')
                     .attr('aria-valuenow', '100');
 
-                var msg = completionMessage || l10n.generationComplete || 'Generation complete!';
+                var msg = completionMessage || l10n.generationComplete;
                 $statusLine.text(msg);
                 $liveRegion.text(msg); // Announce completion immediately.
 

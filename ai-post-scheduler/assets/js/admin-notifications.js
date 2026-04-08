@@ -196,7 +196,7 @@
 					$('#aips-notifications-select-all').prop('checked', false);
 					self.loadNotifications();
 				} else {
-					alert(response.data && response.data.message ? response.data.message : aipsNotificationsData.l10n.error);
+					alert(response.data && response.data.message ? response.data.message : aipsGlobalL10n.errorTryAgain);
 				}
 			});
 		},
@@ -216,7 +216,7 @@
 				if (response.success) {
 					self.loadNotifications();
 				} else {
-					alert(response.data && response.data.message ? response.data.message : aipsNotificationsData.l10n.error);
+					alert(response.data && response.data.message ? response.data.message : aipsGlobalL10n.errorTryAgain);
 				}
 			});
 		},
@@ -269,7 +269,7 @@
 				} else {
 					var msg = (response.data && response.data.message)
 						? response.data.message
-						: aipsNotificationsData.l10n.error;
+						: aipsGlobalL10n.errorTryAgain;
 					if (AIPS.Utilities && AIPS.Utilities.showToast) {
 						AIPS.Utilities.showToast(msg, 'error');
 					}
@@ -277,7 +277,7 @@
 			})
 			.fail(function () {
 				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(aipsNotificationsData.l10n.error, 'error');
+					AIPS.Utilities.showToast(aipsGlobalL10n.errorTryAgain, 'error');
 				}
 			});
 		},
@@ -347,7 +347,7 @@
 					self._cachedItems = response.data.items;
 					self.renderNotifications(response.data);
 				} else {
-					$('#aips-notifications-content').html('<p style="padding:20px;color:#d63638;">' + aipsNotificationsData.l10n.loadError + '</p>');
+					$('#aips-notifications-content').html('<p class="aips-notifications-load-error">' + aipsNotificationsData.l10n.loadError + '</p>');
 				}
 			});
 		},
@@ -365,15 +365,6 @@
 		renderNotifications: function (data) {
 			var html = '';
 
-			// Stats bar
-			var statsTmpl = $('#aips-tmpl-notifications-stats').html() || '';
-			statsTmpl = statsTmpl
-				.replace('{{totalLabel}}',    aipsNotificationsData.l10n.totalLabel)
-				.replace('{{unreadLabel}}',   aipsNotificationsData.l10n.unreadLabel)
-				.replace('{{errorsLabel}}',   aipsNotificationsData.l10n.errorsLabel)
-				.replace('{{warningsLabel}}', aipsNotificationsData.l10n.warningsLabel);
-			html += statsTmpl;
-
 			var items = data.items || [];
 
 			if (items.length === 0) {
@@ -389,15 +380,21 @@
 				var tableTmpl = $('#aips-tmpl-notifications-table').html() || '';
 				tableTmpl = tableTmpl
 					.replace('{{titleLabel}}',   aipsNotificationsData.l10n.colTitle)
-					.replace('{{typeLabel}}',    aipsNotificationsData.l10n.colType)
-					.replace('{{levelLabel}}',   aipsNotificationsData.l10n.colLevel)
-					.replace('{{messageLabel}}', aipsNotificationsData.l10n.colMessage)
 					.replace('{{dateLabel}}',    aipsNotificationsData.l10n.colDate)
 					.replace('{{statusLabel}}',  aipsNotificationsData.l10n.colStatus)
 					.replace('{{actionsLabel}}', aipsNotificationsData.l10n.colActions)
 					.replace('{{rows}}',         rows);
 				html += tableTmpl;
 			}
+
+			// Keep this below the table so filter controls sit directly above table headers.
+			var statsTmpl = $('#aips-tmpl-notifications-stats').html() || '';
+			statsTmpl = statsTmpl
+				.replace('{{totalLabel}}',    aipsNotificationsData.l10n.totalLabel)
+				.replace('{{unreadLabel}}',   aipsNotificationsData.l10n.unreadLabel)
+				.replace('{{errorsLabel}}',   aipsNotificationsData.l10n.errorsLabel)
+				.replace('{{warningsLabel}}', aipsNotificationsData.l10n.warningsLabel);
+			html += statsTmpl;
 
 			$('#aips-notifications-content').html(html);
 
@@ -435,7 +432,10 @@
 			var isRead     = parseInt(item.is_read, 10) === 1;
 			var rowClass   = isRead ? 'aips-notification-read' : 'aips-notification-unread';
 			var typeLabel  = this._getTypeLabel(item.type);
+			var levelLabel = this._getLevelLabel(item.level || 'info');
+			var titleText  = this._stripTypePrefix(item.title || item.type, typeLabel);
 			var msgPreview = item.message ? item.message.substring(0, AIPS.Notifications.MESSAGE_PREVIEW_LENGTH) + (item.message.length > AIPS.Notifications.MESSAGE_PREVIEW_LENGTH ? '\u2026' : '') : '';
+			var friendlyDate = this._formatFriendlyDate(item.created_at || '');
 			var readBadge  = isRead
 				? '<span class="aips-status aips-status-approved">' + aipsNotificationsData.l10n.read + '</span>'
 				: '<span class="aips-status aips-status-pending">' + aipsNotificationsData.l10n.unread + '</span>';
@@ -443,13 +443,14 @@
 			return tmpl
 				.replace(/\{\{id\}\}/g,       item.id)
 				.replace('{{rowClass}}',       rowClass)
-				.replace('{{title}}',          this._esc(item.title || item.type))
+				.replace('{{title}}',          this._esc(titleText))
 				.replace('{{typeLabel}}',      this._esc(typeLabel))
 				.replace(/\{\{level\}\}/g,     this._esc(item.level || 'info'))
+				.replace('{{levelLabel}}',     this._esc(levelLabel))
 				.replace('{{messagePreview}}', this._esc(msgPreview))
-				.replace('{{date}}',           this._esc(item.created_at || ''))
+				.replace('{{date}}',           this._esc(friendlyDate))
 				.replace('{{readBadge}}',      readBadge)
-				.replace('{{viewLabel}}',      aipsNotificationsData.l10n.view);
+				.replace('{{viewLabel}}',      aipsGlobalL10n.view);
 		},
 
 		/**
@@ -476,7 +477,7 @@
 			var end   = Math.min(data.pages, currentPage + 2);
 			for (var p = start; p <= end; p++) {
 				if (p === currentPage) {
-					links += '<span class="aips-btn aips-btn-sm aips-btn-primary" style="cursor:default;">' + p + '</span> ';
+					links += '<span class="aips-btn aips-btn-sm aips-btn-primary aips-notifications-page-current">' + p + '</span> ';
 				} else {
 					links += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-notifications-page-btn" data-page="' + p + '">' + p + '</button> ';
 				}
@@ -515,7 +516,7 @@
 				.replace('{{typeLabel}}',   aipsNotificationsData.l10n.colType)
 				.replace('{{typeValue}}',   this._esc(typeLabel))
 				.replace('{{dateLabel}}',   aipsNotificationsData.l10n.colDate)
-				.replace('{{date}}',        this._esc(notification.created_at || ''))
+				.replace('{{date}}',        this._esc(this._formatFriendlyDate(notification.created_at || '')))
 				.replace('{{statusLabel}}', aipsNotificationsData.l10n.colStatus)
 				.replace('{{readBadge}}',   readBadge)
 				.replace('{{smartLinks}}',  this.buildSmartLinks(notification.meta));
@@ -529,7 +530,7 @@
 				toggleBtn.text(aipsNotificationsData.l10n.markRead);
 			}
 
-			$('#aips-view-notification-modal').show();
+			$('#aips-view-notification-modal').css('display', 'flex');
 		},
 
 		/**
@@ -600,6 +601,201 @@
 		_getTypeLabel: function (type) {
 			var types = aipsNotificationsData.types || {};
 			return types[type] ? types[type] : type;
+		},
+
+		/**
+		 * Remove a repeated type prefix from a notification title.
+		 *
+		 * @param {string} title Full title text.
+		 * @param {string} typeLabel Rendered notification type label.
+		 * @return {string} Title without duplicated type prefix.
+		 */
+		_stripTypePrefix: function (title, typeLabel) {
+			if (!title || !typeLabel) {
+				return title || '';
+			}
+
+			var escapedType = typeLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			var prefixRegex = new RegExp('^' + escapedType + '(?:\\s*[:\\-\\u2013\\u2014]\\s*|\\s+)', 'i');
+
+			return title.replace(prefixRegex, '').trim();
+		},
+
+		/**
+		 * Get the display label for a level slug.
+		 *
+		 * @param {string} level Notification level slug.
+		 * @return {string}
+		 */
+		_getLevelLabel: function (level) {
+			var l10n = aipsNotificationsData.l10n || {};
+			var labels = {
+				info: l10n.levelInfo || 'Info',
+				warning: l10n.levelWarning || 'Warning',
+				error: l10n.levelError || 'Error',
+			};
+
+			return labels[level] || level;
+		},
+
+		/**
+		 * Format datetime for table and modal display.
+		 *
+		 * Relative output is used up to 3 days. Older entries use
+		 * long date format such as "April 7th, 2026 4:20PM".
+		 *
+		 * @param {string} rawDate Datetime string.
+		 * @return {string}
+		 */
+		_formatFriendlyDate: function (rawDate) {
+			var parsedDate = this._parseDateTime(rawDate);
+			if (!parsedDate) {
+				return rawDate;
+			}
+
+			var now = new Date();
+			var diffMs = now.getTime() - parsedDate.getTime();
+			var threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
+			if (diffMs >= 0 && diffMs <= threeDaysMs) {
+				return this._formatRelativeDate(diffMs);
+			}
+
+			return this._formatAbsoluteDate(parsedDate);
+		},
+
+		/**
+		 * Format elapsed time as relative text.
+		 *
+		 * @param {number} diffMs Milliseconds elapsed.
+		 * @return {string}
+		 */
+		_formatRelativeDate: function (diffMs) {
+			var l10n = aipsGlobalL10n;
+			var seconds = Math.floor(diffMs / 1000);
+
+			if (seconds < 60) {
+				return l10n.justNow;
+			}
+
+			var minutes = Math.floor(seconds / 60);
+			if (minutes < 60) {
+				return this._pluralize(minutes, l10n.minute, l10n.minutes) + ' ' + l10n.ago;
+			}
+
+			var hours = Math.floor(minutes / 60);
+			if (hours < 24) {
+				return this._pluralize(hours, l10n.hour, l10n.hours) + ' ' + l10n.ago;
+			}
+
+			var days = Math.floor(hours / 24);
+			return this._pluralize(days, l10n.day, l10n.days) + ' ' + l10n.ago;
+		},
+
+		/**
+		 * Format an absolute datetime string.
+		 *
+		 * @param {Date} dateObj Date object.
+		 * @return {string}
+		 */
+		_formatAbsoluteDate: function (dateObj) {
+			var monthNames = aipsGlobalL10n.monthNames;
+
+			var month = monthNames[dateObj.getMonth()] || monthNames[0];
+			var day = dateObj.getDate();
+			var year = dateObj.getFullYear();
+
+			var hours = dateObj.getHours();
+			var minutes = dateObj.getMinutes();
+			var meridiem = hours >= 12 ? 'PM' : 'AM';
+			var hour12 = hours % 12;
+			if (hour12 === 0) {
+				hour12 = 12;
+			}
+
+			return month + ' ' + day + this._getOrdinalSuffix(day) + ', ' + year + ' ' + hour12 + ':' + this._padNumber(minutes) + meridiem;
+		},
+
+		/**
+		 * Parse a MySQL datetime string as local time.
+		 *
+		 * @param {string} rawDate Datetime string.
+		 * @return {Date|null}
+		 */
+		_parseDateTime: function (rawDate) {
+			if (!rawDate) {
+				return null;
+			}
+
+			if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+				return rawDate;
+			}
+
+			var dateStr = String(rawDate).trim();
+			var mysqlMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2}):(\d{2})$/);
+			if (mysqlMatch) {
+				return new Date(
+					parseInt(mysqlMatch[1], 10),
+					parseInt(mysqlMatch[2], 10) - 1,
+					parseInt(mysqlMatch[3], 10),
+					parseInt(mysqlMatch[4], 10),
+					parseInt(mysqlMatch[5], 10),
+					parseInt(mysqlMatch[6], 10)
+				);
+			}
+
+			var parsed = new Date(dateStr.replace(' ', 'T'));
+			if (isNaN(parsed.getTime())) {
+				return null;
+			}
+
+			return parsed;
+		},
+
+		/**
+		 * Get day-of-month suffix (st, nd, rd, th).
+		 *
+		 * @param {number} day Day of month.
+		 * @return {string}
+		 */
+		_getOrdinalSuffix: function (day) {
+			if (day % 10 === 1 && day % 100 !== 11) {
+				return 'st';
+			}
+			if (day % 10 === 2 && day % 100 !== 12) {
+				return 'nd';
+			}
+			if (day % 10 === 3 && day % 100 !== 13) {
+				return 'rd';
+			}
+
+			return 'th';
+		},
+
+		/**
+		 * Build singular/plural unit text for a count.
+		 *
+		 * @param {number} count Numeric value.
+		 * @param {string} singular Singular unit label.
+		 * @param {string} plural Plural unit label.
+		 * @return {string}
+		 */
+		_pluralize: function (count, singular, plural) {
+			if (count === 1) {
+				return '1 ' + (singular || 'item');
+			}
+
+			return count + ' ' + (plural || 'items');
+		},
+
+		/**
+		 * Pad single-digit numbers with a leading zero.
+		 *
+		 * @param {number} value Number to pad.
+		 * @return {string}
+		 */
+		_padNumber: function (value) {
+			return value < 10 ? '0' + value : String(value);
 		},
 
 		/**

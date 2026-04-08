@@ -295,6 +295,9 @@ class AIPS_Notifications_Repository {
 		$allowed_orderby = array('id', 'type', 'level', 'title', 'created_at', 'is_read');
 		$orderby = in_array($args['orderby'], $allowed_orderby, true) ? $args['orderby'] : 'created_at';
 		$order   = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
+		$order_by_sql = $orderby === 'id'
+			? "id {$order}"
+			: "{$orderby} {$order}, id {$order}";
 
 		$where  = array('1=1');
 		$params = array();
@@ -331,7 +334,7 @@ class AIPS_Notifications_Repository {
 			$total = (int) $this->wpdb->get_var($this->wpdb->prepare($count_sql, $params));
 		}
 
-		$items_sql    = "SELECT * FROM {$this->table} WHERE {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
+		$items_sql    = "SELECT * FROM {$this->table} WHERE {$where_sql} ORDER BY {$order_by_sql} LIMIT %d OFFSET %d";
 		$items_params = array_merge($params, array($per_page, $offset));
 		$items        = $this->wpdb->get_results($this->wpdb->prepare($items_sql, $items_params));
 
