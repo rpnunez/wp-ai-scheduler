@@ -190,9 +190,18 @@ class AIPS_Config {
             return $this->option_cache[$option_name];
         }
 
-        $value = get_option($option_name);
+        // Use a sentinel to distinguish "option not in database" from a stored
+        // boolean false — WordPress returns false for both cases with a plain
+        // get_option() call, which would silently override legitimate false values.
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
 
-        if ($value === false) {
+        $value = get_option($option_name, $not_set);
+
+        if ($value === $not_set) {
+            // Option is not stored in the database.
             if ($default === null) {
                 $defaults = $this->get_default_options();
                 $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
@@ -203,6 +212,7 @@ class AIPS_Config {
                 $value = $default;
             }
         } else {
+            // Option exists in the database — always cache the live value.
             $this->option_cache[$option_name] = $value;
         }
 
