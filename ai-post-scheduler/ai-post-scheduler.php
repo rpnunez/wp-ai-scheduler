@@ -111,7 +111,15 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Register autoloader
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $vendor_autoload ) ) {
+            require_once $vendor_autoload;
+        }
+
+        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
+        // Composer classmap does not resolve (e.g. on installs without a vendor/
+        // directory or after adding a new class before re-running composer dump-autoload).
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
