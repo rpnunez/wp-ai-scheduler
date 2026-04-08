@@ -89,4 +89,42 @@ class Test_Session_To_JSON extends WP_UnitTestCase {
 		chmod($file_path, 0666);
 	}
 
+	/**
+	 * Test that create_htaccess_protection uses the correct directory variable
+	 */
+	public function test_create_htaccess_protection_uses_correct_dir_variable() {
+		if (!function_exists('trailingslashit')) {
+			$this->markTestSkipped('Requires full WP environment for trailingslashit()');
+		}
+
+		$converter = new AIPS_Session_To_JSON();
+
+		if (!$this->upload_dir || !isset($this->upload_dir['basedir'])) {
+			$basedir = sys_get_temp_dir() . '/wp-uploads';
+		} else {
+			$basedir = $this->upload_dir['basedir'];
+		}
+
+		$base_dir = rtrim($basedir, '/\\') . '/aips-exports-test-dir';
+		if (!file_exists($base_dir)) {
+			mkdir($base_dir, 0777, true);
+		}
+
+		// Access the private method
+		$reflection = new ReflectionClass($converter);
+		$method = $reflection->getMethod('create_htaccess_protection');
+		$method->setAccessible(true);
+
+		// This should not throw any PHP warnings (like undefined variable $base_dir)
+		$method->invokeArgs($converter, array($base_dir));
+
+		$this->assertFileExists($base_dir . '/.htaccess');
+		$this->assertFileExists($base_dir . '/index.php');
+
+		// Cleanup
+		unlink($base_dir . '/.htaccess');
+		unlink($base_dir . '/index.php');
+		rmdir($base_dir);
+	}
+
 }
