@@ -363,6 +363,17 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
+            // Posts Generated tab column labels
+            'dates'         => __('Dates', 'ai-post-scheduler'),
+            'postStatus'    => __('Post Status', 'ai-post-scheduler'),
+            'postDateLabel' => __('Post', 'ai-post-scheduler'),
+            // WordPress post status labels
+            'statusPublish' => __('Published', 'ai-post-scheduler'),
+            'statusDraft'   => __('Draft', 'ai-post-scheduler'),
+            'statusPrivate' => __('Private', 'ai-post-scheduler'),
+            'statusPending' => __('Pending Review', 'ai-post-scheduler'),
+            'statusFuture'  => __('Scheduled', 'ai-post-scheduler'),
+            'statusTrash'   => __('Trashed', 'ai-post-scheduler'),
             // Date formatting strings used by formatTopicDate()
             'dateToday'     => __('Today', 'ai-post-scheduler'),
             'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),

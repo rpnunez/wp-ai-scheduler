@@ -658,10 +658,15 @@
 						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
 						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
 					});
-				} else if (status === 'approved' || status === 'posts_generated') {
+				} else if (status === 'approved') {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
 						id: topic.id,
 						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
+				} else if (status === 'posts_generated') {
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-posts-generated', {
+						id: topic.id,
 						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
 					});
 				} else {
@@ -674,25 +679,61 @@
 				var rawGeneratedAt = topic.generated_at || '';
 				var formattedGeneratedAt = this.formatTopicDate(rawGeneratedAt) || rawGeneratedAt;
 
-				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
-					id: topic.id,
-					topicTitle: AIPS.Templates.escape(topic.topic_title),
-					expandBtn: expandBtnHtml,
-					postCountBadge: postCountBadgeHtml,
-					duplicateBadge: duplicateBadgeHtml,
-					feedbackBadge: feedbackBadgeHtml,
-					detailContent: detailSectionHtml,
-					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
-					actions: actionsHtml
-				});
+				if (status === 'posts_generated') {
+					var datesContent = '<div class="aips-dates-row"><strong>' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.topic || 'Topic') + ':</strong> ' + AIPS.Utilities.escapeHtml(formattedGeneratedAt) + '</div>';
+					var postStatusContent = '';
+					var generatedPosts = topic.generated_posts || [];
+					var multiPost = generatedPosts.length > 1;
+
+					generatedPosts.forEach((post) => {
+						var postFormattedDate = this.formatTopicDate(post.date_generated || '') || (post.date_generated || '');
+						var statusBadgeHtml = this.renderPostStatusBadge(post.post_status);
+						var postLineLabel = multiPost
+							? (aipsAuthorsL10n.postDateLabel || 'Post') + ' (ID: ' + post.post_id + ')'
+							: (aipsAuthorsL10n.postDateLabel || 'Post');
+
+						postStatusContent += '<div class="aips-post-status-item">' + statusBadgeHtml + '</div>';
+						datesContent += '<div class="aips-dates-row"><strong>' + AIPS.Utilities.escapeHtml(postLineLabel) + ':</strong> ' + AIPS.Utilities.escapeHtml(postFormattedDate) + '</div>';
+					});
+
+					rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row-posts-generated', {
+						id: topic.id,
+						topicTitle: AIPS.Templates.escape(topic.topic_title),
+						postCountBadge: postCountBadgeHtml,
+						duplicateBadge: duplicateBadgeHtml,
+						postStatusContent: postStatusContent || '<span class="aips-text-muted">&mdash;</span>',
+						datesContent: datesContent,
+						actions: actionsHtml
+					});
+				} else {
+					rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
+						id: topic.id,
+						topicTitle: AIPS.Templates.escape(topic.topic_title),
+						expandBtn: expandBtnHtml,
+						postCountBadge: postCountBadgeHtml,
+						duplicateBadge: duplicateBadgeHtml,
+						feedbackBadge: feedbackBadgeHtml,
+						detailContent: detailSectionHtml,
+						generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
+						actions: actionsHtml
+					});
+				}
 			});
 
-			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
-				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
-				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
-				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
-				rows: rowsHtml
-			});
+			const tableHtml = status === 'posts_generated'
+				? AIPS.Templates.renderRaw('aips-tmpl-topics-table-posts-generated', {
+					detailsLabel: AIPS.Templates.escape(aipsAuthorsL10n.logDetails || 'Details'),
+					postStatusLabel: AIPS.Templates.escape(aipsAuthorsL10n.postStatus || 'Post Status'),
+					datesLabel: AIPS.Templates.escape(aipsAuthorsL10n.dates || 'Dates'),
+					actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+					rows: rowsHtml
+				})
+				: AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
+					topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
+					generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
+					actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+					rows: rowsHtml
+				});
 
 			$('#aips-topics-content').html(tableHtml);
 
@@ -1073,6 +1114,44 @@
 		},
 
 		/**
+		 * Return a human-readable label for a WordPress post status.
+		 *
+		 * @param {string} postStatus - WordPress post status slug.
+		 * @returns {string} Human-readable label.
+		 */
+		getPostStatusLabel: function (postStatus) {
+			var statusMap = {
+				publish : aipsAuthorsL10n.statusPublish  || 'Published',
+				draft   : aipsAuthorsL10n.statusDraft    || 'Draft',
+				private : aipsAuthorsL10n.statusPrivate  || 'Private',
+				pending : aipsAuthorsL10n.statusPending  || 'Pending Review',
+				future  : aipsAuthorsL10n.statusFuture   || 'Scheduled',
+				trash   : aipsAuthorsL10n.statusTrash    || 'Trashed'
+			};
+			return statusMap[postStatus] || postStatus;
+		},
+
+		/**
+		 * Build a badge HTML string for a WordPress post status.
+		 *
+		 * @param {string} postStatus - WordPress post status slug.
+		 * @returns {string} Badge HTML string.
+		 */
+		renderPostStatusBadge: function (postStatus) {
+			var label = this.getPostStatusLabel(postStatus);
+			var classMap = {
+				publish : 'aips-badge-success',
+				draft   : 'aips-badge-neutral',
+				private : 'aips-badge-warning',
+				pending : 'aips-badge-info',
+				future  : 'aips-badge-info',
+				trash   : 'aips-badge-error'
+			};
+			var badgeClass = 'aips-badge ' + (classMap[postStatus] || 'aips-badge-neutral');
+			return '<span class="' + badgeClass + '">' + AIPS.Utilities.escapeHtml(label) + '</span>';
+		},
+
+		/**
 		 * Handle clicks anywhere in the Topic Details column.
 		 *
 		 * Expands/collapses the topic details in the same way as clicking the
@@ -1094,6 +1173,15 @@
 			const topicId = $row.data('topic-id');
 
 			if (!topicId) {
+				return;
+			}
+
+			// For posts_generated rows, open the topic posts modal instead of expanding details.
+			if ($row.data('status') === 'posts_generated') {
+				this.currentTopicPostsTopicId = topicId;
+				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
+				$('#aips-topic-posts-modal').fadeIn();
+				this.loadTopicPosts(topicId);
 				return;
 			}
 

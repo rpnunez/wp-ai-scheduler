@@ -342,6 +342,50 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 </div>
 </script>
 
+<!-- Posts Generated Tab Templates -->
+<script type="text/html" id="aips-tmpl-topics-table-posts-generated">
+<table class="aips-table aips-topics-table">
+	<thead>
+		<tr>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="column-topic">{{detailsLabel}}</th>
+			<th class="column-post-status">{{postStatusLabel}}</th>
+			<th class="column-dates">{{datesLabel}}</th>
+			<th class="column-actions">{{actionsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-row-posts-generated">
+<tr data-topic-id="{{id}}" data-status="posts_generated">
+	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+	<td class="topic-title-cell column-topic">
+		<div class="aips-topic-row">
+			<span class="topic-title">{{topicTitle}}</span>
+			<span class="aips-topic-similarity-slot" data-topic-id="{{id}}"></span>
+			{{postCountBadge}}
+			{{duplicateBadge}}
+			<input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+		</div>
+	</td>
+	<td class="column-post-status">{{postStatusContent}}</td>
+	<td class="column-dates">{{datesContent}}</td>
+	<td class="topic-actions column-actions">
+		{{actions}}
+	</td>
+</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-posts-generated">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+</script>
+
 <!-- Feedback Tab Templates -->
 <script type="text/html" id="aips-tmpl-feedback-table">
 <table class="aips-table aips-feedback-table">
