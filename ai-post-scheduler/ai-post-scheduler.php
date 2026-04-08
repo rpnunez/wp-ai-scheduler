@@ -31,6 +31,11 @@ final class AI_Post_Scheduler {
      */
     private static $instance = null;
 
+	/**
+	 * @var array<string,object> Admin bootstrap instances keyed by class name.
+	 */
+	private $admin_instances = array();
+
     /**
      * Get plugin cron definitions.
      *
@@ -259,6 +264,329 @@ final class AI_Post_Scheduler {
         }
     }
 
+  /**
+   * Bootstrap admin-only services.
+   *
+   * Keeps globally-used admin services eager while lazy-loading page and AJAX
+   * controllers only when the current request needs them.
+   *
+   * @return void
+   */
+  private function init_admin_runtime() {
+    $current_page        = $this->get_current_admin_page();
+    $current_ajax_action = $this->get_current_admin_ajax_action();
+
+    foreach ($this->get_global_admin_classes() as $class_name) {
+      $this->boot_admin_class($class_name);
+    }
+
+    if ($this->should_boot_onboarding_wizard($current_page, $current_ajax_action)) {
+      $this->boot_admin_class('AIPS_Onboarding_Wizard');
+    }
+
+    foreach ($this->get_request_admin_classes($current_page, $current_ajax_action) as $class_name) {
+      $this->boot_admin_class($class_name);
+    }
+  }
+
+  /**
+   * Get admin services that should be available on every admin request.
+   *
+   * @return array<int,string>
+   */
+  private function get_global_admin_classes() {
+    return array(
+      'AIPS_DB_Manager',
+      'AIPS_Admin_Menu',
+      'AIPS_Settings',
+      'AIPS_Admin_Assets',
+    );
+  }
+
+  /**
+   * Determine whether the onboarding wizard should be bootstrapped.
+   *
+   * @param string $current_page Current admin page slug.
+   * @param string $current_ajax_action Current AJAX action.
+   * @return bool
+   */
+  private function should_boot_onboarding_wizard($current_page, $current_ajax_action) {
+    if ($current_page === AIPS_Onboarding_Wizard::PAGE_SLUG) {
+      return true;
+    }
+
+    if (strpos($current_ajax_action, 'aips_onboarding_') === 0) {
+      return true;
+    }
+
+    return !(bool) get_option('aips_onboarding_completed', false)
+      || (bool) get_transient('aips_onboarding_redirect');
+  }
+
+  /**
+   * Resolve lazy-loaded admin classes for the current page or AJAX request.
+   *
+   * @param string $current_page Current admin page slug.
+   * @param string $current_ajax_action Current AJAX action.
+   * @return array<int,string>
+   */
+  private function get_request_admin_classes($current_page, $current_ajax_action) {
+    $classes = array();
+
+    $page_map = array(
+      'aips-voices'           => array('AIPS_Voices'),
+      'aips-templates'        => array('AIPS_Templates_Controller'),
+      'aips-structures'       => array('AIPS_Structures_Controller', 'AIPS_Prompt_Sections_Controller'),
+      'aips-authors'          => array('AIPS_Authors_Controller'),
+      'aips-author-topics'    => array('AIPS_Author_Topics_Controller'),
+      'aips-research'         => array('AIPS_Planner'),
+      'aips-schedule'         => array('AIPS_Schedule_Controller'),
+      'aips-schedule-calendar'=> array('AIPS_Calendar_Controller'),
+      'aips-generated-posts'  => array('AIPS_Generated_Posts_Controller', 'AIPS_Post_Review', 'AIPS_AI_Edit_Controller'),
+      'aips-history'          => array('AIPS_History'),
+      'aips-sources'          => array('AIPS_Sources_Controller'),
+      'aips-taxonomy'         => array('AIPS_Taxonomy_Controller'),
+      'aips-status'           => array('AIPS_Data_Management'),
+      'aips-seeder'           => array('AIPS_Seeder_Admin'),
+    );
+
+    if (get_option('aips_developer_mode')) {
+      $page_map['aips-dev-tools'] = array('AIPS_Dev_Tools');
+    }
+
+    if (isset($page_map[$current_page])) {
+      $classes = array_merge($classes, $page_map[$current_page]);
+    }
+
+    $ajax_map = array(
+      'AIPS_Voices' => array(
+        'aips_save_voice',
+        'aips_delete_voice',
+        'aips_get_voice',
+        'aips_search_voices',
+      ),
+      'AIPS_Templates_Controller' => array(
+        'aips_save_template',
+        'aips_delete_template',
+        'aips_get_template',
+        'aips_test_template',
+        'aips_clone_template',
+        'aips_preview_template_prompts',
+      ),
+      'AIPS_History' => array(
+        'aips_bulk_delete_history',
+        'aips_clear_history',
+        'aips_export_history',
+        'aips_get_history_details',
+        'aips_get_history_logs',
+        'aips_reload_history',
+        'aips_retry_generation',
+      ),
+      'AIPS_Post_Review' => array(
+        'aips_get_draft_posts',
+        'aips_publish_post',
+        'aips_bulk_publish_posts',
+        'aips_regenerate_post',
+        'aips_delete_draft_post',
+        'aips_bulk_delete_draft_posts',
+        'aips_bulk_regenerate_posts',
+        'aips_get_draft_post_preview',
+      ),
+      'AIPS_Planner' => array(
+        'aips_generate_topics',
+        'aips_bulk_schedule',
+        'aips_bulk_generate_now',
+      ),
+      'AIPS_Schedule_Controller' => array(
+        'aips_save_schedule',
+        'aips_delete_schedule',
+        'aips_toggle_schedule',
+        'aips_run_now',
+        'aips_bulk_delete_schedules',
+        'aips_bulk_toggle_schedules',
+        'aips_bulk_run_now_schedules',
+        'aips_get_schedules_post_count',
+        'aips_get_schedule_history',
+        'aips_unified_run_now',
+        'aips_unified_toggle',
+        'aips_unified_bulk_toggle',
+        'aips_unified_bulk_run_now',
+        'aips_unified_bulk_delete',
+        'aips_get_unified_schedule_history',
+      ),
+      'AIPS_Generated_Posts_Controller' => array(
+        'aips_get_post_session',
+        'aips_get_session_json',
+        'aips_download_session_json',
+      ),
+      'AIPS_Research_Controller' => array(
+        'aips_research_topics',
+        'aips_get_trending_topics',
+        'aips_delete_trending_topic',
+        'aips_delete_trending_topic_bulk',
+        'aips_schedule_trending_topics',
+        'aips_generate_trending_topics_bulk',
+        'aips_get_trending_topic_posts',
+        'aips_perform_gap_analysis',
+        'aips_generate_topics_from_gap',
+      ),
+      'AIPS_Seeder_Admin' => array(
+        'aips_process_seeder',
+      ),
+      'AIPS_Data_Management' => array(
+        'aips_export_data',
+        'aips_import_data',
+      ),
+      'AIPS_Structures_Controller' => array(
+        'aips_get_structures',
+        'aips_get_structure',
+        'aips_save_structure',
+        'aips_delete_structure',
+        'aips_set_structure_default',
+        'aips_toggle_structure_active',
+      ),
+      'AIPS_Prompt_Sections_Controller' => array(
+        'aips_get_prompt_sections',
+        'aips_get_prompt_section',
+        'aips_save_prompt_section',
+        'aips_delete_prompt_section',
+        'aips_toggle_prompt_section_active',
+      ),
+      'AIPS_Authors_Controller' => array(
+        'aips_save_author',
+        'aips_delete_author',
+        'aips_get_author',
+        'aips_get_author_topics',
+        'aips_get_author_posts',
+        'aips_get_author_feedback',
+        'aips_generate_topics_now',
+        'aips_get_topic_posts',
+        'aips_suggest_authors',
+      ),
+      'AIPS_Author_Topics_Controller' => array(
+        'aips_approve_topic',
+        'aips_reject_topic',
+        'aips_edit_topic',
+        'aips_delete_topic',
+        'aips_generate_post_from_topic',
+        'aips_get_topic_logs',
+        'aips_get_topic_feedback',
+        'aips_bulk_approve_topics',
+        'aips_bulk_reject_topics',
+        'aips_bulk_delete_topics',
+        'aips_bulk_generate_topics',
+        'aips_bulk_delete_feedback',
+        'aips_delete_generated_post',
+        'aips_get_similar_topics',
+        'aips_suggest_related_topics',
+        'aips_compute_topic_embeddings',
+        'aips_get_generation_queue',
+        'aips_bulk_generate_from_queue',
+        'aips_get_bulk_generate_estimate',
+      ),
+      'AIPS_Taxonomy_Controller' => array(
+        'aips_get_taxonomy_items',
+        'aips_generate_taxonomy',
+        'aips_approve_taxonomy',
+        'aips_reject_taxonomy',
+        'aips_delete_taxonomy',
+        'aips_bulk_approve_taxonomy',
+        'aips_bulk_reject_taxonomy',
+        'aips_bulk_delete_taxonomy',
+        'aips_bulk_create_taxonomy_terms',
+        'aips_create_taxonomy_term',
+        'aips_search_posts',
+      ),
+      'AIPS_AI_Edit_Controller' => array(
+        'aips_get_post_components',
+        'aips_regenerate_component',
+        'aips_regenerate_all_components',
+        'aips_save_post_components',
+        'aips_get_component_revisions',
+        'aips_restore_component_revision',
+      ),
+      'AIPS_Calendar_Controller' => array(
+        'aips_get_calendar_events',
+      ),
+      'AIPS_Sources_Controller' => array(
+        'aips_get_sources',
+        'aips_save_source',
+        'aips_delete_source',
+        'aips_toggle_source_active',
+        'aips_get_source_groups',
+        'aips_save_source_group',
+        'aips_delete_source_group',
+      ),
+    );
+
+    if (get_option('aips_developer_mode')) {
+      $ajax_map['AIPS_Dev_Tools'] = array(
+        'aips_generate_scaffold',
+      );
+    }
+
+    foreach ($ajax_map as $class_name => $actions) {
+      if (in_array($current_ajax_action, $actions, true)) {
+        $classes[] = $class_name;
+      }
+    }
+
+    return array_values(array_unique($classes));
+  }
+
+  /**
+   * Instantiate an admin class once per request.
+   *
+   * @param string $class_name Fully-qualified class name.
+   * @return object
+   */
+  private function boot_admin_class($class_name) {
+    if (isset($this->admin_instances[$class_name])) {
+      return $this->admin_instances[$class_name];
+    }
+
+    $this->admin_instances[$class_name] = new $class_name();
+
+    if ('AIPS_Post_Review' === $class_name) {
+      global $aips_post_review_handler;
+      $aips_post_review_handler = $this->admin_instances[$class_name];
+    }
+
+    return $this->admin_instances[$class_name];
+  }
+
+  /**
+   * Get the current admin page slug.
+   *
+   * @return string
+   */
+  private function get_current_admin_page() {
+    return isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+  }
+
+  /**
+   * Get the current admin AJAX action.
+   *
+   * @return string
+   */
+  private function get_current_admin_ajax_action() {
+    if (!wp_doing_ajax()) {
+      return '';
+    }
+
+    return isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
+  }
+
+    /**
+     * Run scheduled research through a lazily-instantiated controller.
+     *
+     * @return void
+     */
+    public function handle_scheduled_research() {
+        $controller = new AIPS_Research_Controller();
+        $controller->run_scheduled_research();
+    }
+
     /**
      * Initialize plugin runtime.
      *
@@ -294,53 +622,14 @@ final class AI_Post_Scheduler {
         );
         
         if (is_admin()) {
-            new AIPS_DB_Manager();
-            new AIPS_Admin_Menu();
-            new AIPS_Settings();
-            new AIPS_Onboarding_Wizard();
-            new AIPS_Admin_Assets();
-            new AIPS_Voices();
-            new AIPS_Templates();
-            new AIPS_Templates_Controller();
-            new AIPS_History();
-            
-            // Initialize Post Review handler globally to avoid duplicate AJAX registration
-            global $aips_post_review_handler;
-            $aips_post_review_handler = new AIPS_Post_Review();
-            
-            new AIPS_Planner();
-            new AIPS_Schedule_Controller();
-            new AIPS_Generated_Posts_Controller();
-            new AIPS_Research_Controller();
-            new AIPS_Seeder_Admin();
-            new AIPS_Data_Management();
-            // Structures admin controller (CRUD endpoints for Article Structures UI)
-            new AIPS_Structures_Controller();
-            // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
-
-            // Authors feature controllers
-            new AIPS_Authors_Controller();
-            new AIPS_Author_Topics_Controller();
-
-            // Taxonomy controller (AJAX endpoints for taxonomy generation management)
-            new AIPS_Taxonomy_Controller();
-
-            // AI Edit + Calendar controllers (AJAX endpoints)
-            new AIPS_AI_Edit_Controller();
-            new AIPS_Calendar_Controller();
-            // Sources controller (AJAX endpoints for trusted sources management)
-            new AIPS_Sources_Controller();
-            // Dev Tools
-            if (get_option('aips_developer_mode')) {
-                new AIPS_Dev_Tools();
-            }
+			$this->init_admin_runtime();
         }
         
         // Initialize schedulers (both admin and frontend)
         $aips_scheduler = new AIPS_Scheduler();
         add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
         add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+        add_action('aips_scheduled_research', array($this, 'handle_scheduled_research'));
 
         $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
         add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
