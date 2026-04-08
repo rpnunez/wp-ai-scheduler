@@ -679,6 +679,17 @@ class AIPS_Admin_Assets {
             );
         }
 
+        // Seeder Page Scripts
+        if (strpos($hook, 'aips-seeder') !== false) {
+            wp_enqueue_script(
+                'aips-admin-seeder',
+                AIPS_PLUGIN_URL . 'assets/js/admin-seeder.js',
+                array('jquery', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // System Status Page Scripts
         if (strpos($hook, 'aips-status') !== false) {
             wp_enqueue_script(

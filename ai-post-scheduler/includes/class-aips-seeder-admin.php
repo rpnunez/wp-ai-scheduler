@@ -8,25 +8,11 @@ class AIPS_Seeder_Admin {
     private $service;
 
     public function __construct() {
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('wp_ajax_aips_process_seeder', array($this, 'ajax_process_seeder'));
 
         $this->service = new AIPS_Seeder_Service();
     }
 
-    public function enqueue_assets($hook) {
-        if (strpos($hook, 'aips-seeder') === false) {
-            return;
-        }
-
-        wp_enqueue_script(
-            'aips-admin-seeder',
-            AIPS_PLUGIN_URL . 'assets/js/admin-seeder.js',
-            array('jquery', 'aips-admin-script'), // Depends on core admin script
-            AIPS_VERSION,
-            true
-        );
-    }
 
     public function ajax_process_seeder() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');

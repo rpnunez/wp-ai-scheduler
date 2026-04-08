@@ -333,26 +333,10 @@ final class AI_Post_Scheduler {
   private function get_request_admin_classes($current_page, $current_ajax_action) {
     $classes = array();
 
-    $page_map = array(
-      'aips-voices'           => array('AIPS_Voices'),
-      'aips-templates'        => array('AIPS_Templates_Controller'),
-      'aips-structures'       => array('AIPS_Structures_Controller', 'AIPS_Prompt_Sections_Controller'),
-      'aips-authors'          => array('AIPS_Authors_Controller'),
-      'aips-author-topics'    => array('AIPS_Author_Topics_Controller'),
-      'aips-research'         => array('AIPS_Planner'),
-      'aips-schedule'         => array('AIPS_Schedule_Controller'),
-      'aips-schedule-calendar'=> array('AIPS_Calendar_Controller'),
-      'aips-generated-posts'  => array('AIPS_Generated_Posts_Controller', 'AIPS_Post_Review', 'AIPS_AI_Edit_Controller'),
-      'aips-history'          => array('AIPS_History'),
-      'aips-sources'          => array('AIPS_Sources_Controller'),
-      'aips-taxonomy'         => array('AIPS_Taxonomy_Controller'),
-      'aips-status'           => array('AIPS_Data_Management'),
-      'aips-seeder'           => array('AIPS_Seeder_Admin'),
-    );
-
-    if (get_option('aips_developer_mode')) {
-      $page_map['aips-dev-tools'] = array('AIPS_Dev_Tools');
-    }
+    // Page-map: only controllers that register page-load-time hooks (e.g., admin_enqueue_scripts).
+    // Most other controllers only register AJAX hooks and are loaded on-demand when AJAX fires.
+    // Note: Asset loading for all pages is now centralized in AIPS_Admin_Assets.
+    $page_map = array();
 
     if (isset($page_map[$current_page])) {
       $classes = array_merge($classes, $page_map[$current_page]);
