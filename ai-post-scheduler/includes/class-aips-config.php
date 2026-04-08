@@ -110,6 +110,10 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            // Generation queue settings.
+            'aips_queue_batch_size'   => 5,
+            'aips_queue_max_attempts' => 3,
+            'aips_queue_lock_timeout' => 300,
         );
     }
     

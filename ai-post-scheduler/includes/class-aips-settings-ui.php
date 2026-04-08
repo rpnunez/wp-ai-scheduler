@@ -211,6 +211,54 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the description for the Scheduler settings section.
+     *
+     * @return void
+     */
+    public function scheduler_section_callback() {
+        echo '<p>' . esc_html__('Configure the queue-backed scheduler behaviour. These settings take effect when the queue_backed_scheduler feature flag is enabled.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the queue batch size setting field.
+     *
+     * @return void
+     */
+    public function queue_batch_size_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option( 'aips_queue_batch_size' );
+        ?>
+        <input type="number" name="aips_queue_batch_size" value="<?php echo esc_attr( $value ); ?>" min="1" max="100" class="small-text">
+        <p class="description"><?php esc_html_e( 'Number of queued generation jobs to process per cron tick.', 'ai-post-scheduler' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the queue max attempts setting field.
+     *
+     * @return void
+     */
+    public function queue_max_attempts_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option( 'aips_queue_max_attempts' );
+        ?>
+        <input type="number" name="aips_queue_max_attempts" value="<?php echo esc_attr( $value ); ?>" min="1" max="20" class="small-text">
+        <p class="description"><?php esc_html_e( 'Maximum number of attempts before a queued job is dead-lettered.', 'ai-post-scheduler' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the queue lock timeout setting field.
+     *
+     * @return void
+     */
+    public function queue_lock_timeout_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option( 'aips_queue_lock_timeout' );
+        ?>
+        <input type="number" name="aips_queue_lock_timeout" value="<?php echo esc_attr( $value ); ?>" min="30" class="small-text">
+        <p class="description"><?php esc_html_e( 'Seconds after which a processing lock is considered stale and may be released by another worker.', 'ai-post-scheduler' ); ?></p>
+        <?php
+    }
+
+    /**
      * Render the enable retry setting field.
      */
     public function enable_retry_field_callback() {

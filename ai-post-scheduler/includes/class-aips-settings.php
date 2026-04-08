@@ -138,6 +138,18 @@ class AIPS_Settings {
             'sanitize_callback' => array($this->ui, 'sanitize_similarity_threshold'),
             'default'           => $defaults['aips_topic_similarity_threshold'],
         ));
+        register_setting('aips_settings', 'aips_queue_batch_size', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_queue_batch_size'],
+        ));
+        register_setting('aips_settings', 'aips_queue_max_attempts', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_queue_max_attempts'],
+        ));
+        register_setting('aips_settings', 'aips_queue_lock_timeout', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_queue_lock_timeout'],
+        ));
         
         // -----------------------------------------------------------------------
         // General section: Default Post Status, Default Category
@@ -394,6 +406,40 @@ class AIPS_Settings {
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
             'aips_resilience_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Scheduler section: queue batch size, max attempts, lock timeout
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_scheduler_section',
+            __('Scheduler', 'ai-post-scheduler'),
+            array($this->ui, 'scheduler_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_queue_batch_size',
+            __('Queue Batch Size', 'ai-post-scheduler'),
+            array($this->ui, 'queue_batch_size_field_callback'),
+            'aips-settings',
+            'aips_scheduler_section'
+        );
+
+        add_settings_field(
+            'aips_queue_max_attempts',
+            __('Queue Max Attempts', 'ai-post-scheduler'),
+            array($this->ui, 'queue_max_attempts_field_callback'),
+            'aips-settings',
+            'aips_scheduler_section'
+        );
+
+        add_settings_field(
+            'aips_queue_lock_timeout',
+            __('Queue Lock Timeout (Seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'queue_lock_timeout_field_callback'),
+            'aips-settings',
+            'aips_scheduler_section'
         );
 
         // -----------------------------------------------------------------------

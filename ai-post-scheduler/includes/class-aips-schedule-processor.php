@@ -132,6 +132,93 @@ class AIPS_Schedule_Processor {
     }
 
     /**
+     * Enqueue all due schedules as generation queue jobs without executing them.
+     *
+     * Each due schedule is represented as a queue job whose idempotency key is
+     * derived from the schedule ID and the specific occurrence (next_run value).
+     * Concurrent cron invocations therefore cannot create duplicate active jobs
+     * for the same schedule occurrence.
+     *
+     * This method is the first half of the queue-backed execution path.  It
+     * should be followed by a call to AIPS_Generation_Queue_Worker::process_batch()
+     * to actually execute a bounded set of claimed jobs.
+     *
+     * @param AIPS_Generation_Queue_Repository $queue_repository Queue repository to enqueue into.
+     * @param int                              $due_limit        Max due schedules to fetch. Default 50.
+     * @return int Number of new jobs enqueued (0 when all occurrences were already active).
+     */
+    public function enqueue_due_schedules( $queue_repository, $due_limit = 50 ) {
+        $due_schedules = $this->repository->get_due_schedules( current_time('mysql'), $due_limit );
+
+        if ( empty( $due_schedules ) ) {
+            return 0;
+        }
+
+        $enqueued = 0;
+
+        foreach ( $due_schedules as $schedule ) {
+            // The idempotency key encodes both WHICH schedule and WHICH occurrence.
+            // Two overlapping cron workers that fetch the same due schedule will
+            // attempt to enqueue the same key; the second will be silently ignored.
+            $idempotency_key = sprintf(
+                'template_schedule:%d:%s',
+                absint( $schedule->schedule_id ),
+                $schedule->next_run
+            );
+
+            $result = $queue_repository->enqueue(
+                $idempotency_key,
+                'template_schedule',
+                array(
+                    'schedule_id'     => (int) $schedule->schedule_id,
+                    'template_id'     => (int) $schedule->template_id,
+                    'occurrence_time' => $schedule->next_run,
+                )
+            );
+
+            if ( $result !== false ) {
+                ++$enqueued;
+            }
+        }
+
+        return $enqueued;
+    }
+
+    /**
+     * Execute a schedule job that was fetched from the generation queue.
+     *
+     * This is the queue-aware counterpart of process_single_schedule().  It
+     * loads the schedule and its template, then runs the full claim-first lock +
+     * generation pipeline (execute_schedule_with_lock).  The queue worker calls
+     * this method and handles queue bookkeeping (mark_done / mark_failed).
+     *
+     * @param int $schedule_id The schedule ID from the queue job payload.
+     * @return array|WP_Error Array of generated post IDs on success, or WP_Error on failure
+     *                        (including schedule/template not found, lock acquisition failure,
+     *                        and generation errors).
+     */
+    public function process_queued_schedule( $schedule_id ) {
+        $schedule = $this->repository->get_by_id( $schedule_id );
+
+        if ( ! $schedule ) {
+            return new WP_Error( 'schedule_not_found', __( 'Schedule not found.', 'ai-post-scheduler' ) );
+        }
+
+        $template_data = $this->template_repository->get_by_id( $schedule->template_id );
+
+        if ( ! $template_data ) {
+            return new WP_Error( 'template_not_found', __( 'Template not found.', 'ai-post-scheduler' ) );
+        }
+
+        // Merge template + schedule data exactly as get_due_schedules() JOIN does.
+        $schedule_with_template = (object) array_merge( (array) $template_data, (array) $schedule );
+        $schedule_with_template->schedule_id = $schedule->id;
+        $schedule_with_template->name        = $template_data->name;
+
+        return $this->execute_schedule_with_lock( $schedule_with_template );
+    }
+
+    /**
      * Run a specific schedule immediately.
      *
      * @param int      $schedule_id      The schedule ID.
@@ -187,9 +274,11 @@ class AIPS_Schedule_Processor {
      * strategy used by the coarser per-author schedule.
      *
      * @param object $schedule Schedule object (merged with template data).
+     * @return mixed Array of post IDs on success, WP_Error on failure, or null
+     *               when an early-return condition (e.g. lock failure) occurs.
      */
     private function execute_schedule_with_lock($schedule) {
-        $this->runner->run(
+        return $this->runner->run(
             function() use ($schedule) {
                 $original_next_run = $schedule->next_run;
 
@@ -227,7 +316,7 @@ class AIPS_Schedule_Processor {
                     return;
                 }
 
-                $this->execute_schedule_logic($schedule, false);
+                return $this->execute_schedule_logic($schedule, false);
             },
             'schedule_execution',
             array('schedule_id' => $schedule->schedule_id),
