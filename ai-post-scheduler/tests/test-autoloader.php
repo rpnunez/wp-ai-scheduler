@@ -77,23 +77,24 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	 */
 	public function test_autoloader_converts_class_names_correctly() {
 		$test_cases = array(
-			'AIPS_History_Repository' => 'class-aips-history-repository.php',
+			'AIPS_History_Repository' => 'repositories/class-aips-history-repository.php',
 			'AIPS_Template_Processor' => 'class-aips-template-processor.php',
-			'AIPS_AI_Service' => 'class-aips-ai-service.php',
+			'AIPS_AI_Service' => 'services/class-aips-ai-service.php',
 			'AIPS_Config' => 'class-aips-config.php',
 		);
 		
 		foreach ($test_cases as $class_name => $expected_file) {
-			// Use the autoloader's helper method
+			// Use the autoloader's helper method to get just the filename
 			$actual_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
-			
+			$base_file = basename($expected_file);
+
 			$this->assertEquals(
-				$expected_file,
+				$base_file,
 				$actual_file,
-				"Class {$class_name} should convert to {$expected_file}"
+				"Class {$class_name} should convert to {$base_file}"
 			);
 			
-			// Verify the file exists
+			// Verify the file exists (may be in a subdirectory)
 			$this->assertTrue(
 				file_exists($this->includes_dir . $expected_file),
 				"File {$expected_file} should exist for class {$class_name}"
@@ -181,12 +182,12 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 				"Repository class {$class_name} should be loaded"
 			);
 			
-			// Verify the file exists using the autoloader's helper method
+			// Verify the file exists in the repositories subdirectory
 			$expected_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
 			
 			$this->assertTrue(
-				file_exists($this->includes_dir . $expected_file),
-				"Repository file {$expected_file} should exist"
+				file_exists($this->includes_dir . 'repositories/' . $expected_file),
+				"Repository file {$expected_file} should exist in repositories/"
 			);
 		}
 	}
