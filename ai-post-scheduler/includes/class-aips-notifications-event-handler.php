@@ -445,7 +445,7 @@ class AIPS_Notifications_Event_Handler {
 
 		if ($daily_sent_key !== $today_key) {
 			$this->notifications->daily_digest($this->build_rollup_payload(86400, 'daily_digest_' . $today_key));
-			$config->set_option('aips_notif_daily_digest_last_sent', $today_key);
+			$config->set_option('aips_notif_daily_digest_last_sent', $today_key, false);
 		}
 
 		$current_timestamp = current_time('timestamp', true);
@@ -456,7 +456,7 @@ class AIPS_Notifications_Event_Handler {
 
 		if ($weekly_last_sent !== $weekly_key) {
 			$this->notifications->weekly_summary($this->build_rollup_payload(7 * DAY_IN_SECONDS, 'weekly_summary_' . $weekly_key));
-			$config->set_option('aips_notif_weekly_summary_last_sent', $weekly_key);
+			$config->set_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
 		}
 
 		// Monthly report: send once per calendar month when the month key changes.
@@ -465,7 +465,7 @@ class AIPS_Notifications_Event_Handler {
 
 		if ($monthly_last_sent !== $monthly_key) {
 			$this->notifications->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
-			$config->set_option('aips_notif_monthly_report_last_sent', $monthly_key);
+			$config->set_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
 		}
 	}
 

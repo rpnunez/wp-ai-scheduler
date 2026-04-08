@@ -212,13 +212,16 @@ class AIPS_Config {
     /**
      * Set an option value and invalidate the per-request cache for that key.
      *
-     * @param string $option_name Option name.
-     * @param mixed  $value       Option value.
+     * @param string    $option_name Option name.
+     * @param mixed     $value       Option value.
+     * @param bool|null $autoload    Optional. Whether to load the option when WordPress starts up.
+     *                               Accepts 'yes'|true to enable autoloading, 'no'|false to disable,
+     *                               or null to leave the existing setting unchanged (WordPress default).
      * @return bool True on success, false on failure.
      */
-    public function set_option($option_name, $value) {
+    public function set_option($option_name, $value, $autoload = null) {
         unset($this->option_cache[$option_name]);
-        return update_option($option_name, $value);
+        return update_option($option_name, $value, $autoload);
     }
 
     /**

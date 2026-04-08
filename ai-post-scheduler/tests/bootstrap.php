@@ -287,7 +287,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     }
 
     if (!function_exists('update_option')) {
-        function update_option($option, $value) {
+        function update_option($option, $value, $autoload = null) {
             $old_value = isset($GLOBALS['aips_test_options'][$option]) ? $GLOBALS['aips_test_options'][$option] : false;
             $GLOBALS['aips_test_options'][$option] = $value;
             do_action('updated_option', $option, $old_value, $value);
