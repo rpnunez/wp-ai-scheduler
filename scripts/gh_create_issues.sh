@@ -296,6 +296,10 @@ while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
     row_milestone="${CSV_FIELDS[4]:-$GLOBAL_MILESTONE}"
     row_project="${CSV_FIELDS[5]:-$GLOBAL_PROJECT}"
 
+    # Allow \n escapes in CSV body text so multiline Markdown can be stored
+    # while keeping one physical CSV line per issue row.
+    row_body="${row_body//\\n/$'\n'}"
+
     if [[ -z "$row_title" ]]; then
         warn "Line $line_number: empty title — skipping."
         (( ++SKIPPED ))
