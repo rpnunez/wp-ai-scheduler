@@ -9,3 +9,6 @@
 ## 2024-04-06 - [Fix Silent Filesystem Errors in validate-mcp-bridge.php]
 **Learning:** `filesize()` can return `false` on failure, which causes issues when passed to functions like `number_format()`.
 **Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values.
+## 2024-05-18 - [Fix wp_unslash and filesize false return issues]
+**Learning:** `filesize()` and `filemtime()` can return false, triggering TypeError in PHP 8+. Applying `wp_unslash` recursively to variables triggers a double unslash that causes valid text to be corrupted.
+**Action:** Applied strict checks on `filesize()` and `filemtime()` by assigning 0 or "Unknown". Removed repeated `wp_unslash` across nested structures.
