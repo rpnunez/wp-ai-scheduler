@@ -3,10 +3,10 @@
 
 set -euo pipefail
 
-if command -v docker-compose >/dev/null 2>&1; then
-  COMPOSE_CMD=(docker-compose)
-else
+if command -v docker compose >/dev/null 2>&1; then
   COMPOSE_CMD=(docker compose)
+else
+  COMPOSE_CMD=(docker-compose)
 fi
 
 echo "[reload-php] Reloading Apache in web container..."
