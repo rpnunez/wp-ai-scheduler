@@ -54,7 +54,8 @@ class AIPS_Internal_Links_Service {
 	/**
 	 * Default maximum number of link suggestions per source post.
 	 *
-	 * Capped at 5 to keep the suggestions actionable without overwhelming editors.
+	 * This is the default value; the caller may override it (up to 20 via the admin UI).
+	 * A small default keeps suggestions actionable without overwhelming editors.
 	 *
 	 * @var int
 	 */
@@ -184,7 +185,8 @@ class AIPS_Internal_Links_Service {
 	 * Generate internal link suggestions for a single post.
 	 *
 	 * Finds the most similar already-indexed posts and persists new suggestions.
-	 * Existing suggestions for the source post are replaced.
+	 * Existing pending suggestions for the source post are replaced, while
+	 * non-pending suggestions (accepted, rejected, or inserted) are preserved.
 	 *
 	 * @param int   $source_post_id     WordPress post ID.
 	 * @param int   $max_suggestions    Maximum suggestions to create.

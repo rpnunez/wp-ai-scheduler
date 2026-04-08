@@ -6,7 +6,7 @@
  * into a post's content, and applies the chosen insertion.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.0
+ * @since 2.3.0
  */
 
 if (!defined('ABSPATH')) {
