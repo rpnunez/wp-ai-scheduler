@@ -50,3 +50,6 @@ Use this file for PHP changes in `includes/*.php`.
 - Target PHP 8.2+ and WordPress 5.8+ (per plugin header and `composer.json`).
 - Prefer small, focused changes and avoid broad refactors unless requested.
 - Add or update PHPUnit tests in `ai-post-scheduler/tests/` when behavior changes.
+
+> **Note:** Only read `docs/DEVELOPMENT_GUIDELINES.md` if you have not already read it in this session.
+> **Also read:** [`docs/DEVELOPMENT_GUIDELINES.md`](../../docs/DEVELOPMENT_GUIDELINES.md) for project-specific coding and architectural guidelines (SQL ownership, settings registration, HTML templating, and versioning rules).

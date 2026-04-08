@@ -65,10 +65,10 @@ class AIPS_Voices {
         
         $data = array(
             'id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
-            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
-            'title_prompt' => isset($_POST['title_prompt']) ? wp_kses_post($_POST['title_prompt']) : '',
-            'content_instructions' => isset($_POST['content_instructions']) ? wp_kses_post($_POST['content_instructions']) : '',
-            'excerpt_instructions' => isset($_POST['excerpt_instructions']) ? wp_kses_post($_POST['excerpt_instructions']) : '',
+            'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? wp_kses_post(wp_unslash($_POST['title_prompt'])) : '',
+            'content_instructions' => isset($_POST['content_instructions']) ? wp_kses_post(wp_unslash($_POST['content_instructions'])) : '',
+            'excerpt_instructions' => isset($_POST['excerpt_instructions']) ? wp_kses_post(wp_unslash($_POST['excerpt_instructions'])) : '',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
         
@@ -137,7 +137,7 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $voices = $this->repository->search($search);
         
         wp_send_json_success(array('voices' => $voices));

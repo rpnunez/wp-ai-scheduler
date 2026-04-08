@@ -93,6 +93,14 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('HOUR_IN_SECONDS')) {
         define('HOUR_IN_SECONDS', 3600);
     }
+
+    if (!defined('MINUTE_IN_SECONDS')) {
+        define('MINUTE_IN_SECONDS', 60);
+    }
+
+    if (!defined('DAY_IN_SECONDS')) {
+        define('DAY_IN_SECONDS', 86400);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -130,6 +138,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+
+    if (!function_exists('esc_url_raw')) {
+        function esc_url_raw($url) {
+            return $url;
+        }
+    }
+    if (!function_exists("esc_js")) {
+        function esc_js($text) {
+            return addslashes($text);
+        }
+    }
+
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -235,6 +255,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('remove_all_actions')) {
+        function remove_all_actions($hook_name, $priority = false) {
+            if (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name])) {
+                if ($priority === false) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name]);
+                } elseif (isset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority])) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority]);
+                }
+            }
+            return true;
+        }
+    }
+
     if (!isset($GLOBALS['aips_test_options'])) {
         $GLOBALS['aips_test_options'] = array();
     }
@@ -283,6 +316,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('delete_transient')) {
         function delete_transient($transient) {
             return delete_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('wp_using_ext_object_cache')) {
+        function wp_using_ext_object_cache() {
+            return false;
         }
     }
     
@@ -394,6 +433,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_unslash')) {
+        function wp_unslash($value) {
+            return is_array($value) ? array_map('wp_unslash', $value) : stripslashes($value);
+        }
+    }
+
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
@@ -436,6 +481,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+	if (!function_exists('wp_delete_post')) {
+		function wp_delete_post($postid = 0, $force_delete = false) {
+			return true;
+		}
+	}
+
     if (!function_exists('get_post')) {
         function get_post($post_id = null) {
             global $test_posts;
@@ -454,6 +505,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('get_edit_post_link')) {
         function get_edit_post_link($id = 0, $context = 'display') {
             return 'http://example.com/wp-admin/post.php?post=' . $id . '&action=edit';
+        }
+    }
+
+    if (!function_exists('get_the_title')) {
+        function get_the_title($post = 0) {
+            $post_obj = get_post($post);
+            return $post_obj ? $post_obj->post_title : '';
+        }
+    }
+
+    if (!function_exists('get_post_field')) {
+        function get_post_field($field, $post_id = null, $context = 'edit') {
+            $post_obj = get_post($post_id);
+            if (!$post_obj) {
+                return '';
+            }
+            return isset($post_obj->$field) ? $post_obj->$field : '';
         }
     }
 
@@ -585,6 +653,27 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_schedule_single_event')) {
+        function wp_schedule_single_event($timestamp, $hook, $args = array()) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_safe_remote_head')) {
+        function wp_safe_remote_head($url, $args = array()) {
+            if (strpos($url, 'non-existent') !== false) {
+                return new WP_Error('http_request_failed', 'cURL error 6: Could not resolve host');
+            }
+            return array('response' => array('code' => 200));
+        }
+    }
+
+    if (!function_exists('wp_update_post')) {
+        function wp_update_post($postarr, $wp_error = false) {
+            return isset($postarr['ID']) ? $postarr['ID'] : 1;
+        }
+    }
+
     // Mock AJAX functions
     if (!function_exists('check_ajax_referer')) {
         function check_ajax_referer($action = -1, $query_arg = '_wpnonce', $die = true) {
@@ -672,6 +761,46 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return strip_tags($str);
         }
     }
+
+    if (!function_exists('sanitize_key')) {
+        function sanitize_key($key) {
+            $key = is_scalar($key) ? (string) $key : '';
+            $key = strtolower($key);
+            return preg_replace('/[^a-z0-9_\-]/', '', $key);
+        }
+    }
+
+    if (!function_exists('sanitize_email')) {
+        function sanitize_email($email) {
+            $email = is_scalar($email) ? (string) $email : '';
+            return trim(filter_var($email, FILTER_SANITIZE_EMAIL));
+        }
+    }
+
+    if (!function_exists('is_email')) {
+        function is_email($email) {
+            $email = sanitize_email($email);
+            return (false !== filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : false;
+        }
+    }
+
+    if (!function_exists('wp_mail')) {
+        function wp_mail($to, $subject, $message, $headers = '', $attachments = array()) {
+            if (!isset($GLOBALS['aips_wp_mail_log']) || !is_array($GLOBALS['aips_wp_mail_log'])) {
+                $GLOBALS['aips_wp_mail_log'] = array();
+            }
+
+            $GLOBALS['aips_wp_mail_log'][] = array(
+                'to'          => $to,
+                'subject'     => $subject,
+                'message'     => $message,
+                'headers'     => $headers,
+                'attachments' => $attachments,
+            );
+
+            return true;
+        }
+    }
     
     if (!function_exists('wp_kses_post')) {
         function wp_kses_post($data) {
@@ -689,6 +818,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('_n')) {
+        function _n($single, $plural, $number, $domain = 'default') {
+            return $number === 1 ? $single : $plural;
+        }
+    }
+
+    if (!function_exists('_doing_it_wrong')) {
+        function _doing_it_wrong($function_name, $message, $version) {
+            // No-op stub: in real WordPress this triggers a developer notice.
         }
     }
 
@@ -811,6 +952,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $postmeta = 'wp_postmeta';
+            public $posts = 'wp_posts';
+            public $get_col_return_val = null;
+            public $get_results_return_val = null;
+            public $get_var_return_val = null;
+            public $get_row_return_val = null;
             private $data = array();
             
             public function esc_like($text) {
@@ -843,10 +990,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_results($query, $output = OBJECT) {
+                if (isset($this->get_results_return_val)) {
+                    return $this->get_results_return_val;
+                }
+
                 return array();
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
+                if (isset($this->get_row_return_val)) {
+                    return $this->get_row_return_val;
+                }
+
                 // Return a default object with common properties to prevent null reference errors
                 $obj = new stdClass();
                 $obj->id = 1; // Default ID
@@ -864,6 +1019,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                if (isset($this->get_var_return_val)) {
+                    return $this->get_var_return_val;
+                }
                 return null;
             }
             
@@ -890,6 +1048,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
 
             public function get_col($query = null, $x = 0) {
+                if (isset($this->get_col_return_val)) {
+                    return $this->get_col_return_val;
+                }
                 return array();
             }
         };
@@ -913,8 +1074,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-repository.php',
         'class-aips-article-structure-repository.php',
         'class-aips-prompt-section-repository.php',
+        'class-aips-sources-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
+        'class-aips-prompt-builder-post-content.php',
+        'class-aips-prompt-builder-post-title.php',
+        'class-aips-prompt-builder-post-excerpt.php',
+        'class-aips-prompt-builder-post-featured-image.php',
+        'class-aips-prompt-builder-article-structure-section.php',
+        'class-aips-prompt-builder-topic.php',
+        'class-aips-prompt-builder-authors.php',
+        'class-aips-prompt-builder-taxonomy.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
@@ -923,6 +1093,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-image-service.php',
         'class-aips-research-service.php',
         'interface-aips-generation-context.php',
+        'interface-aips-cron-generation-handler.php',
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
@@ -936,14 +1107,25 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-ai-edit-controller.php',
         // History service layer
         'class-aips-history-type.php',
+        'class-aips-utilities.php',
+        'class-aips-correlation-id.php',
         'class-aips-history-container.php',
         'class-aips-history-service.php',
+        'class-aips-generation-execution-runner.php',
         'class-aips-schedule-processor.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
+        'class-aips-settings-ui.php',
+        'class-aips-settings-ajax.php',
+        'class-aips-notification-template.php',
+        'class-aips-notification-templates.php',
+        'class-aips-notifications-repository.php',
+        'class-aips-notification-registry.php',
+        'class-aips-notification-senders.php',
+        'class-aips-notifications.php',
         'class-aips-admin-assets.php',
         'class-aips-admin-menu-helper.php',
         'class-aips-calendar-controller.php',
@@ -951,13 +1133,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-templates.php',
         'class-aips-upgrades.php',
         'class-aips-post-review-repository.php',
-        'class-aips-post-review-notifications.php',
-        'class-aips-partial-generation-notifications.php',
         'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-sources-controller.php',
         // Author-related classes
         'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',
@@ -966,11 +1147,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-penalty-service.php',
         'class-aips-embeddings-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-site-context.php',
         'class-aips-author-topics-generator.php',
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
+        'class-aips-bulk-generator-service.php',
         'class-aips-author-topics-controller.php',
+        'class-aips-author-suggestions-service.php',
+        'class-aips-metrics-repository.php',
     ];
     
     foreach ($files as $file) {

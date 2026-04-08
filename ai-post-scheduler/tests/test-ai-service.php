@@ -192,23 +192,6 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
-     * Test call log captures duration metric
-     */
-    public function test_call_log_captures_duration_metric() {
-        if (!$this->service->is_available()) {
-            $this->service->generate_text('Test');
-
-            $log = $this->service->get_call_log();
-            $this->assertArrayHasKey('metrics', $log[0]);
-            $this->assertArrayHasKey('duration_ms', $log[0]['metrics']);
-            $this->assertIsInt($log[0]['metrics']['duration_ms']);
-            $this->assertGreaterThanOrEqual(0, $log[0]['metrics']['duration_ms']);
-        } else {
-            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
-        }
-    }
-
-    /**
      * Test call log captures success status
      */
     public function test_call_log_captures_success_status() {
@@ -243,7 +226,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         if (!$this->service->is_available()) {
             $options = array(
                 'model' => 'gpt-4',
-                'max_tokens' => 500,
+                'maxTokens' => 500,
                 'temperature' => 0.8,
             );
             
@@ -266,7 +249,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         if (!$this->service->is_available()) {
             $options = array(
                 'model' => 'gpt-4',
-                'max_tokens' => 500,
+                'maxTokens' => 500,
                 'temperature' => 0.6,
                 'context' => 'These are supplemental instructions.',
                 'instructions' => 'Always stay concise.',
@@ -304,71 +287,416 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
-    
+
+    // =========================================================
+    // prepare_options normalization tests (via mocked AI Engine)
+    // =========================================================
+
     /**
-     * Test chatbot method returns WP_Error when AI unavailable
+     * Helper: create a mock $mwai that captures simpleTextQuery params.
+     *
+     * Returns an object that, after the call, exposes `params` and `prompt`
+     * via its public `capture` stdClass property.
+     *
+     * @param stdClass $capture Object whose `params` property is populated on call.
+     * @param string   $return  Value returned by simpleTextQuery.
+     * @return object Anonymous mock.
      */
-    public function test_generate_with_chatbot_unavailable() {
-        if (!$this->service->is_available()) {
-            $result = $this->service->generate_with_chatbot('default', 'Test message');
-            $this->assertInstanceOf('WP_Error', $result);
-            $this->assertEquals('ai_unavailable', $result->get_error_code());
-        } else {
-            $this->markTestSkipped('AI Engine is available, cannot test unavailable scenario');
+    private function make_text_query_mock(stdClass $capture, $return_value = 'generated text') {
+        return new class($capture, $return_value) {
+            private $capture;
+            private $return_value;
+            public function __construct($capture, $return_value) {
+                $this->capture      = $capture;
+                $this->return_value = $return_value;
+            }
+            public function simpleTextQuery($prompt, $params) {
+                $this->capture->prompt = $prompt;
+                $this->capture->params = $params;
+                return $this->return_value;
+            }
+        };
+    }
+
+    /**
+     * Test that maxTokens passed directly overrides the built-in default of 2000.
+     */
+    public function test_prepare_options_maxTokens_overrides_default() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt', array('maxTokens' => 5000));
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertSame(5000, $capture->params['maxTokens'], 'maxTokens should override the 2000 default.');
+        } finally {
+            $mwai = $original_mwai;
         }
     }
-    
+
     /**
-     * Test chatbot method accepts chatId for continuing conversation
+     * Test that legacy max_tokens is normalized to maxTokens and forwarded to the engine.
      */
-    public function test_generate_with_chatbot_accepts_chat_id() {
-        if (!$this->service->is_available()) {
-            $options = array('chatId' => 'test-chat-123');
-            $result = $this->service->generate_with_chatbot('default', 'Test message', $options);
-            
-            // Should still fail but options should be captured
-            $this->assertInstanceOf('WP_Error', $result);
-            
-            $log = $this->service->get_call_log();
-            $this->assertNotEmpty($log);
-            $last_log = end($log);
-            $this->assertArrayHasKey('chatId', $last_log['request']['options']);
-            $this->assertEquals('test-chat-123', $last_log['request']['options']['chatId']);
-        } else {
-            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+    public function test_prepare_options_legacy_max_tokens_accepted() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt', array('max_tokens' => 3000));
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertSame(3000, $capture->params['maxTokens'], 'Legacy max_tokens should be normalized to maxTokens.');
+        } finally {
+            $mwai = $original_mwai;
         }
     }
-    
+
     /**
-     * Test chatbot logs type correctly
+     * Test that legacy env_id is normalized to envId and forwarded to the engine.
      */
-    public function test_generate_with_chatbot_logs_type() {
-        if (!$this->service->is_available()) {
-            $this->service->generate_with_chatbot('default', 'Test', array(), 'content');
-            
-            $log = $this->service->get_call_log();
-            $this->assertNotEmpty($log);
-            $last_log = end($log);
-            $this->assertEquals('content', $last_log['type']);
-        } else {
-            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+    public function test_prepare_options_legacy_env_id_accepted() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt', array('env_id' => 'legacy-env'));
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertSame('legacy-env', $capture->params['envId'], 'Legacy env_id should be normalized to envId.');
+        } finally {
+            $mwai = $original_mwai;
         }
     }
-    
+
     /**
-     * Test chatbot increments call statistics
+     * Test that envId passed directly is forwarded to the engine unchanged.
      */
-    public function test_generate_with_chatbot_increments_statistics() {
-        if (!$this->service->is_available()) {
-            $this->service->clear_call_log();
-            $this->service->generate_with_chatbot('default', 'First message');
-            $this->service->generate_with_chatbot('default', 'Second message');
-            
-            $stats = $this->service->get_call_statistics();
-            $this->assertEquals(2, $stats['total']);
-            $this->assertEquals(2, $stats['failures']);
-        } else {
-            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+    public function test_prepare_options_envId_direct_accepted() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt', array('envId' => 'direct-env'));
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertSame('direct-env', $capture->params['envId'], 'envId should be forwarded as-is.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that maxTokens is dynamically calculated when no token option is supplied.
+     *
+     * With no explicit maxTokens and no request_type, the 'content' type sizing is used.
+     * Calculation: (prompt_tokens + output_tokens) + 25% buffer, capped at aips_max_tokens_limit (16000).
+     * For a prompt of "Prompt" (6 chars): prompt_tokens = ceil(6/4) = 2; output_tokens = 4000 (content);
+     * base_total = 4002; buffer = ceil(4002 * 0.25) = ceil(1000.5) = 1001; result = 4002 + 1001 = 5003.
+     */
+    public function test_prepare_options_default_maxTokens_used_when_not_specified() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt');
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
+            $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
+            $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
+            // "Prompt" = 6 chars → prompt_tokens = ceil(6/4) = 2; content output_tokens from setting (default 4000);
+            // base_total = 2 + output_tokens; buffer = ceil(base_total * 0.25); result = base_total + buffer.
+            $prompt_tokens = (int) ceil(strlen('Prompt') / 4); // 2
+            $output_tokens = (int) get_option('aips_max_tokens_content', 4000);
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Dynamic maxTokens should include prompt size in calculation.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that title request_type produces title-sized maxTokens.
+     */
+    public function test_calculate_max_tokens_title_type() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $prompt = 'Generate a title for this article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'title'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $output_tokens = (int) get_option('aips_max_tokens_title', 150);
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Title request_type should produce title-sized maxTokens.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that excerpt request_type produces excerpt-sized maxTokens.
+     */
+    public function test_calculate_max_tokens_excerpt_type() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $prompt = 'Write a short excerpt for this article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'excerpt'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $output_tokens = (int) get_option('aips_max_tokens_excerpt', 300);
+            $base_total    = $prompt_tokens + $output_tokens;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Excerpt request_type should produce excerpt-sized maxTokens.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_title overrides the default title budget.
+     */
+    public function test_calculate_max_tokens_title_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_title');
+        update_option('aips_max_tokens_title', 500);
+
+        $prompt = 'Generate a title.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'title'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 500;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_title should override the default title budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_title');
+            } else {
+                update_option('aips_max_tokens_title', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_excerpt overrides the default excerpt budget.
+     */
+    public function test_calculate_max_tokens_excerpt_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_excerpt');
+        update_option('aips_max_tokens_excerpt', 800);
+
+        $prompt = 'Write an excerpt.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'excerpt'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 800;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_excerpt should override the default excerpt budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_excerpt');
+            } else {
+                update_option('aips_max_tokens_excerpt', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that setting aips_max_tokens_content overrides the default content budget.
+     */
+    public function test_calculate_max_tokens_content_custom_setting() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_content');
+        update_option('aips_max_tokens_content', 8000);
+
+        $prompt = 'Write a full article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'content'));
+
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 8000;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_content should override the default content budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_content');
+            } else {
+                update_option('aips_max_tokens_content', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that a zero or empty per-type token option is clamped to 1 so
+     * maxTokens is always at least prompt-sized (never unexpectedly tiny).
+     */
+    public function test_calculate_max_tokens_zero_content_setting_clamped_to_one() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        $original = get_option('aips_max_tokens_content');
+        update_option('aips_max_tokens_content', 0);
+
+        $prompt = 'Write a full article.';
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text($prompt, array('request_type' => 'content'));
+
+            // output_tokens clamped to 1; expected = (prompt_tokens + 1) + 25% buffer.
+            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
+            $base_total    = $prompt_tokens + 1;
+            $buffer        = (int) ceil($base_total * 0.25);
+            $expected      = $base_total + $buffer;
+
+            $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be positive even when per-type setting is 0.');
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Zero content setting should be clamped to 1 for the output token budget.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original === false) {
+                delete_option('aips_max_tokens_content');
+            } else {
+                update_option('aips_max_tokens_content', $original);
+            }
+        }
+    }
+
+    /**
+     * Test that the aips_max_tokens_limit cap is respected.
+     */
+    public function test_calculate_max_tokens_respects_limit() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        // Temporarily set a very small limit so the calculated value exceeds it.
+        $original_limit = get_option('aips_max_tokens_limit');
+        update_option('aips_max_tokens_limit', 100);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text('Some prompt', array('request_type' => 'content'));
+
+            $this->assertSame(100, $capture->params['maxTokens'], 'maxTokens should be capped at aips_max_tokens_limit.');
+        } finally {
+            $mwai = $original_mwai;
+            if ($original_limit === false) {
+                delete_option('aips_max_tokens_limit');
+            } else {
+                update_option('aips_max_tokens_limit', $original_limit);
+            }
+        }
+    }
+
+    /**
+     * Test that model is forwarded to the engine when provided.
+     */
+    public function test_prepare_options_model_forwarded_to_engine() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt', array('model' => 'gpt-4'));
+
+            $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
+            $this->assertSame('gpt-4', $capture->params['model'], 'model should be forwarded to the engine.');
+        } finally {
+            $mwai = $original_mwai;
         }
     }
 

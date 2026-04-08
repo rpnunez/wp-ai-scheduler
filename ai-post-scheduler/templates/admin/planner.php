@@ -109,6 +109,10 @@ $default_planner_frequency = 'daily';
                         <span class="dashicons dashicons-calendar-alt" ></span>
                         <?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?>
                     </button>
+                    <button type="button" id="btn-bulk-generate-now" class="aips-btn aips-btn-secondary aips-btn-lg">
+                        <span class="dashicons dashicons-media-text" ></span>
+                        <?php echo esc_html__('Generate Now', 'ai-post-scheduler'); ?>
+                    </button>
                     <span class="spinner"></span>
                 </div>
             </div>
@@ -116,4 +120,23 @@ $default_planner_frequency = 'daily';
     </div>
 </div>
 
+<script type="text/html" id="aips-tmpl-planner-topic-item">
+<div class="topic-item">
+    <input type="checkbox" class="topic-checkbox" checked>
+    <input type="text" class="topic-text-input" value="{{topic}}" aria-label="<?php esc_attr_e('Edit topic title', 'ai-post-scheduler'); ?>">
+    <button type="button" class="aips-remove-topic-btn" aria-label="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss"></span></button>
+</div>
+</script>
 
+<script type="text/html" id="aips-tmpl-planner-search-empty">
+<div class="topics-empty-state aips-empty-state">
+    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+    <h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Found', 'ai-post-scheduler'); ?></h3>
+    <p class="aips-empty-state-description"><?php esc_html_e('No topics match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
+    <div class="aips-empty-state-actions">
+        <button type="button" class="aips-btn aips-btn-primary aips-clear-topic-search-btn">
+            <span class="dashicons dashicons-dismiss" aria-hidden="true"></span> <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+        </button>
+    </div>
+</div>
+</script>

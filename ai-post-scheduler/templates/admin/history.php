@@ -6,16 +6,30 @@ if (!defined('ABSPATH')) {
 // This template is included by AIPS_History::render_page() which passes
 // $history_handler, $history, and $stats. Ensure default variables are set.
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
-$status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
-$search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+$status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
+$search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
 if (isset($history_handler)) {
-    $history = $history_handler->get_history(array(
-        'page'   => $current_page,
-        'status' => $status_filter,
-        'search' => $search_query,
-        'fields' => 'list',
-    ));
+    if (!isset($history) || !is_array($history)) {
+        $history = $history_handler->get_history(array(
+            'page'   => $current_page,
+            'status' => $status_filter,
+            'search' => $search_query,
+            'fields' => 'list',
+        ));
+    }
+    if (!isset($stats)) {
+        $stats = $history_handler->get_stats();
+    }
+}
+
+if (!isset($stats) || !is_array($stats)) {
+    $stats = array(
+        'total' => 0,
+        'completed' => 0,
+        'failed' => 0,
+        'success_rate' => 0,
+    );
 }
 
 $items       = isset($history['items']) ? $history['items'] : array();
@@ -102,7 +116,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
-                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-secondary" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
 
@@ -224,3 +238,104 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 </div>
 
 <?php include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php'; ?>
+
+<!-- =====================================================================
+     AIPS.Templates HTML blocks for admin-history.js
+     These <script type="text/html"> elements are read by AIPS.Templates.render()
+     and AIPS.Templates.renderRaw(). They are never executed as JavaScript.
+     ===================================================================== -->
+
+<!-- Template: generic loading message inside the logs modal -->
+<script type="text/html" id="aips-tmpl-history-loading-msg">
+	<p>{{text}}</p>
+</script>
+
+<!-- Template: error notice shown when the AJAX request fails -->
+<script type="text/html" id="aips-tmpl-history-error-msg">
+	<p class="notice notice-error">{{message}}</p>
+</script>
+
+<!-- Template: tbody loading placeholder row (shown while reloading the table) -->
+<script type="text/html" id="aips-tmpl-history-tbody-loading">
+	<tr><td colspan="6" style="text-align:center;padding:20px;">{{text}}</td></tr>
+</script>
+
+<!-- Template: tbody empty-state row (no containers match current filters) -->
+<script type="text/html" id="aips-tmpl-history-tbody-empty">
+	<tr>
+		<td colspan="6" style="text-align:center;padding:40px;">
+			<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
+			{{message}}
+		</td>
+	</tr>
+</script>
+
+<!-- Template: container summary section wrapper; {{rows}} is injected raw -->
+<script type="text/html" id="aips-tmpl-history-modal-summary">
+	<div class="aips-history-modal-summary">
+		<table class="aips-table" style="width:100%;margin-bottom:20px;"><tbody>{{rows}}</tbody></table>
+	</div>
+</script>
+
+<!-- Template: a plain label/value summary row (values are auto-escaped by render()) -->
+<script type="text/html" id="aips-tmpl-history-summary-row">
+	<tr><th>{{label}}</th><td>{{value}}</td></tr>
+</script>
+
+<!-- Template: summary row that shows the status badge; use renderRaw() with pre-escaped values -->
+<script type="text/html" id="aips-tmpl-history-summary-status-row">
+	<tr><th>{{label}}</th><td><span class="aips-badge {{statusClass}}">{{status}}</span></td></tr>
+</script>
+
+<!-- Template: summary row for an error message with error colouring -->
+<script type="text/html" id="aips-tmpl-history-summary-error-row">
+	<tr><th>{{label}}</th><td style="color:#d63638;">{{message}}</td></tr>
+</script>
+
+<!-- Template: log-entries section heading with item count badge; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-logs-heading">
+	<h3>{{heading}} <span class="aips-badge aips-badge-neutral">{{count}}</span></h3>
+</script>
+
+<!-- Template: "no log entries" paragraph shown when the container has no logs -->
+<script type="text/html" id="aips-tmpl-history-no-logs">
+	<p>{{message}}</p>
+</script>
+
+<!-- Template: logs table shell; {{colTimestamp}} etc. are pre-escaped, {{rows}} is raw HTML -->
+<script type="text/html" id="aips-tmpl-history-logs-table">
+	<table class="aips-table aips-history-logs-table" style="width:100%;">
+		<thead>
+			<tr>
+				<th style="width:150px;">{{colTimestamp}}</th>
+				<th style="width:130px;">{{colType}}</th>
+				<th style="width:150px;">{{colLogType}}</th>
+				<th>{{colDetails}}</th>
+			</tr>
+		</thead>
+		<tbody>{{rows}}</tbody>
+	</table>
+</script>
+
+<!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
+<script type="text/html" id="aips-tmpl-history-log-row">
+	<tr>
+		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
+		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
+		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>
+		<td>{{detailsHtml}}</td>
+	</tr>
+</script>
+
+<!-- Template: the main message paragraph inside a log-row details cell -->
+<script type="text/html" id="aips-tmpl-history-log-message">
+	<p style="margin:0 0 6px;">{{message}}</p>
+</script>
+
+<!-- Template: collapsible extra-details block inside a log row; use render() for auto-escaping -->
+<script type="text/html" id="aips-tmpl-history-log-detail-block">
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#{{rowId}}" style="font-size:11px;">{{showLabel}}</button>
+	<div id="{{rowId}}" style="display:none;margin-top:8px;">
+		<pre style="max-height:200px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;">{{details}}</pre>
+	</div>
+</script>

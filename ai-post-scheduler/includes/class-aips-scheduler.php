@@ -3,7 +3,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Scheduler {
+/**
+ * Class AIPS_Scheduler
+ *
+ * Top-level orchestrator for the template-schedule generation pipeline.
+ *
+ * Implements AIPS_Cron_Generation_Handler so it participates in the standard
+ * cron handler contract alongside other generation handlers.
+ */
+class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     
     private $schedule_table;
     private $templates_table;
@@ -64,8 +72,6 @@ class AIPS_Scheduler {
             $this->template_type_selector
         );
 
-        add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
-        add_filter('cron_schedules', array($this, 'add_cron_intervals'));
     }
 
     /**
@@ -177,7 +183,7 @@ class AIPS_Scheduler {
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
             'next_run' => $next_run,
-            'is_active' => isset($data['is_active']) ? 1 : 0,
+            'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
@@ -316,14 +322,6 @@ class AIPS_Scheduler {
         return $container;
     }
 
-    public function save_schedule_bulk($schedules) {
-        return $this->repository->create_bulk($schedules);
-    }
-    
-    public function delete_schedule($id) {
-        return $this->repository->delete($id);
-    }
-
     public function toggle_active($id, $is_active) {
         $existing = $this->repository->get_by_id($id);
         $result = $this->repository->set_active($id, $is_active);
@@ -386,9 +384,10 @@ class AIPS_Scheduler {
     /**
      * Process scheduled posts that are due.
      *
-     * Delegates to the Schedule Processor.
+     * Called by WordPress cron on the aips_generate_scheduled_posts hook.
+     * Implements AIPS_Cron_Generation_Handler::process().
      */
-    public function process_scheduled_posts() {
+    public function process(): void {
         $this->processor->process_due_schedules();
     }
 }

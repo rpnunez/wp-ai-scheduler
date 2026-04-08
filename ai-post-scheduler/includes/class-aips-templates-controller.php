@@ -29,26 +29,34 @@ class AIPS_Templates_Controller {
 
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
-            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
-            'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
-            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
-            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '',
+            'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
-            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
-            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
-            'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
-            'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
-            'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+            'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
+            'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
+            'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
-            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
+            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
+                ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
+                : wp_json_encode(array()),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
-        if (empty($data['name']) || empty($data['prompt_template'])) {
+        if (empty(trim($data['name'])) || empty(trim($data['prompt_template']))) {
             wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
+        }
+
+        if (mb_strlen($data['name']) > 255) {
+            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
         }
 
         if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
@@ -58,6 +66,13 @@ class AIPS_Templates_Controller {
         $id = $this->templates->save($data);
 
         if ($id) {
+            do_action('aips_template_changed', array(
+                'action'        => $data['id'] ? 'updated' : 'created',
+                'template_id'   => absint($id),
+                'template_name' => $data['name'],
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array(
                 'message' => __('Template saved successfully.', 'ai-post-scheduler'),
                 'template_id' => $id
@@ -76,11 +91,20 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
+        $template = $this->templates->get($id);
+
         if ($this->templates->delete($id)) {
+            do_action('aips_template_changed', array(
+                'action'        => 'deleted',
+                'template_id'   => $id,
+                'template_name' => ($template && !empty($template->name)) ? $template->name : __('Template', 'ai-post-scheduler'),
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
@@ -96,7 +120,7 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
@@ -118,7 +142,7 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
@@ -144,12 +168,21 @@ class AIPS_Templates_Controller {
             'post_category' => $template->post_category,
             'post_tags' => $template->post_tags,
             'post_author' => $template->post_author,
+            'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
+            'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
             'is_active' => $template->is_active,
         );
 
         $new_id = $this->templates->save($new_data);
 
         if ($new_id) {
+            do_action('aips_template_changed', array(
+                'action'        => 'cloned',
+                'template_id'   => absint($new_id),
+                'template_name' => $new_data['name'],
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array(
                 'message' => __('Template cloned successfully.', 'ai-post-scheduler'),
                 'template_id' => $new_id
@@ -171,26 +204,30 @@ class AIPS_Templates_Controller {
         // Collect template data from POST
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
-            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : 'Test Template',
-            'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
-            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
-            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : 'Test Template',
+            'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'post_quantity' => 1,
-            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
-            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
-            'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
-            'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
-            'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+            'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
+            'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
+            'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
-            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
+            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
         );
 
-        if (empty($data['prompt_template'])) {
+        if (empty(trim($data['prompt_template']))) {
             wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
+        }
+
+        if (mb_strlen($data['name']) > 255) {
+            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
         }
 
         // Convert to object for context
@@ -240,16 +277,20 @@ class AIPS_Templates_Controller {
 
         // Collect template data from POST
         $template_data = (object) array(
-            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
-            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
-            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
-            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
+                ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
+                : wp_json_encode(array()),
         );
 
-        if (empty($template_data->prompt_template)) {
+        if (empty(trim($template_data->prompt_template))) {
             wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
         }
 

@@ -18,13 +18,17 @@ class AIPS_DB_Manager {
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
-        'aips_notifications'
+        'aips_notifications',
+        'aips_sources',
+        'aips_source_group_terms',
+        'aips_taxonomy',
     );
 
     public function __construct() {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
         add_action('wp_ajax_aips_wipe_db', array($this, 'ajax_wipe_db'));
+        add_action('wp_ajax_aips_flush_cron_events', array($this, 'ajax_flush_cron_events'));
     }
 
     /**
@@ -63,13 +67,17 @@ class AIPS_DB_Manager {
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
-        $table_notifications  = $tables['aips_notifications'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
 
         $sql = array();
 
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
+            correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
@@ -92,7 +100,8 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at)
+            KEY template_created (template_id, created_at),
+            KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -124,6 +133,8 @@ class AIPS_DB_Manager {
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -143,6 +154,10 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             status varchar(20) DEFAULT 'active',
             schedule_history_id bigint(20) DEFAULT NULL,
+            schedule_type varchar(50) NOT NULL DEFAULT 'post_generation',
+            circuit_state varchar(20) NOT NULL DEFAULT 'closed',
+            run_state text DEFAULT NULL,
+            batch_progress longtext DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
@@ -150,7 +165,9 @@ class AIPS_DB_Manager {
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
             KEY status (status),
-            KEY schedule_history_id (schedule_history_id)
+            KEY schedule_history_id (schedule_history_id),
+            KEY schedule_type (schedule_type),
+            KEY circuit_state (circuit_state)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
@@ -199,10 +216,12 @@ class AIPS_DB_Manager {
             score int(11) NOT NULL DEFAULT 50,
             reason text DEFAULT NULL,
             keywords text DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'new',
             researched_at datetime NOT NULL,
             PRIMARY KEY  (id),
             KEY niche_idx (niche),
             KEY score_idx (score),
+            KEY status_idx (status),
             KEY researched_at_idx (researched_at)
         ) $charset_collate;";
 
@@ -219,9 +238,11 @@ class AIPS_DB_Manager {
             topic_generation_quantity int DEFAULT 5,
             topic_generation_next_run datetime DEFAULT NULL,
             topic_generation_last_run datetime DEFAULT NULL,
+            topic_generation_is_active tinyint(1) DEFAULT 1,
             post_generation_frequency varchar(50) DEFAULT 'daily',
             post_generation_next_run datetime DEFAULT NULL,
             post_generation_last_run datetime DEFAULT NULL,
+            post_generation_is_active tinyint(1) DEFAULT 1,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -230,6 +251,15 @@ class AIPS_DB_Manager {
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             voice_tone varchar(100) DEFAULT NULL,
             writing_style varchar(100) DEFAULT NULL,
+            target_audience varchar(500) DEFAULT NULL,
+            expertise_level varchar(50) DEFAULT NULL,
+            content_goals text DEFAULT NULL,
+            excluded_topics text DEFAULT NULL,
+            preferred_content_length varchar(50) DEFAULT NULL,
+            language varchar(10) DEFAULT 'en',
+            max_posts_per_topic int DEFAULT 1,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -297,13 +327,60 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_notifications (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(100) NOT NULL,
+            title varchar(255) DEFAULT NULL,
             message text NOT NULL,
             url varchar(500) DEFAULT NULL,
+            level varchar(20) NOT NULL DEFAULT 'info',
+            meta longtext DEFAULT NULL,
+            dedupe_key varchar(191) DEFAULT NULL,
             is_read tinyint(1) NOT NULL DEFAULT 0,
+            read_at datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY type (type),
+            KEY level (level),
+            KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_sources (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            url varchar(2083) NOT NULL,
+            label varchar(255) DEFAULT NULL,
+            description text DEFAULT NULL,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_source_group_terms (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) NOT NULL,
+            term_id bigint(20) NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_term (source_id, term_id),
+            KEY source_id (source_id),
+            KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_taxonomy (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            taxonomy_type varchar(50) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            base_post_ids text DEFAULT NULL,
+            generation_prompt text DEFAULT NULL,
+            term_id bigint(20) DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY taxonomy_type (taxonomy_type),
+            KEY status (status),
+            KEY term_id (term_id),
             KEY created_at (created_at)
         ) $charset_collate;";
 
@@ -314,12 +391,24 @@ class AIPS_DB_Manager {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();
         $schema = $instance->get_schema();
+        global $wpdb;
+
         foreach ($schema as $sql) {
+            $pre_error = $wpdb->last_error;
             dbDelta($sql);
+
+            if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
+                return new WP_Error('db_install_failed', $wpdb->last_error);
+            }
         }
-        
+
         // Seed default data for new installations or upgrades
         self::seed_default_data();
+
+        // Record that the DB schema is now at the current plugin version
+        update_option('aips_db_version', AIPS_VERSION);
+
+        return true;
     }
 
     public function drop_tables() {
@@ -327,7 +416,8 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
-            $wpdb->query("DROP TABLE IF EXISTS $table");
+            $table_escaped = '`' . esc_sql($table) . '`';
+            $wpdb->query("DROP TABLE IF EXISTS {$table_escaped}"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         }
     }
 
@@ -336,7 +426,8 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
-            $wpdb->query("TRUNCATE TABLE $table");
+            $table_escaped = '`' . esc_sql($table) . '`';
+            $wpdb->query("TRUNCATE TABLE {$table_escaped}"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         }
     }
 
@@ -346,8 +437,9 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $key => $table_name) {
-            if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name) {
-                $data[$key] = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
+            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name) {
+                $table_escaped = '`' . esc_sql($table_name) . '`';
+                $data[$key] = $wpdb->get_results("SELECT * FROM {$table_escaped}", ARRAY_A); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             } else {
                 $data[$key] = array();
             }
@@ -418,51 +510,123 @@ class AIPS_DB_Manager {
     }
 
     /**
+     * AJAX handler: flush all plugin WP-Cron events and re-register each exactly once.
+     *
+     * Removes every scheduled instance of every plugin cron hook (handles
+     * cases where duplicate/stacked events have accumulated), then schedules
+     * each hook once with its configured recurrence.
+     *
+     * @return void
+     */
+    public function ajax_flush_cron_events() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'ai-post-scheduler')));
+        }
+
+        $cron_events    = AI_Post_Scheduler::get_cron_events();
+        $unscheduled    = array();
+        $rescheduled    = array();
+        $failed         = array();
+
+        foreach ($cron_events as $hook => $config) {
+            $schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
+            $label    = isset($config['label']) ? $config['label'] : $hook;
+
+            // Remove all existing instances of this hook from the cron table.
+            wp_unschedule_hook($hook);
+            $unscheduled[] = $label;
+
+            // Re-register exactly once. Use a 60-second offset to avoid an
+            // immediate burst of AI calls right after flushing.
+            $scheduled = wp_schedule_event(time() + 60, $schedule, $hook);
+            if ($scheduled !== false) {
+                $rescheduled[] = $label;
+            } else {
+                $failed[] = $label;
+            }
+        }
+
+        if (!empty($failed)) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: %s: comma-separated hook labels that failed to reschedule */
+                    __('Cron events flushed but some hooks could not be rescheduled: %s', 'ai-post-scheduler'),
+                    implode(', ', $failed)
+                ),
+                'details' => array(
+                    'unscheduled' => $unscheduled,
+                    'rescheduled' => $rescheduled,
+                    'failed'      => $failed,
+                ),
+            ));
+            return;
+        }
+
+        wp_send_json_success(array(
+            'message' => sprintf(
+                /* translators: %d: number of cron hooks flushed and rescheduled */
+                _n(
+                    '%d WP-Cron event flushed and rescheduled successfully.',
+                    '%d WP-Cron events flushed and rescheduled successfully.',
+                    count($rescheduled),
+                    'ai-post-scheduler'
+                ),
+                count($rescheduled)
+            ),
+            'details' => array(
+                'unscheduled' => $unscheduled,
+                'rescheduled' => $rescheduled,
+            ),
+        ));
+    }
+
+    /**
      * Parse column names from CREATE TABLE SQL statement
-     * 
+     *
      * @param string $sql CREATE TABLE SQL statement
      * @return array Column names
      */
     public static function parse_columns_from_sql($sql) {
         $columns = array();
-        
+
         // Extract content between CREATE TABLE ... ( and the closing )
         if (preg_match('/CREATE TABLE[^(]+\((.+)\)/s', $sql, $matches)) {
             $table_def = $matches[1];
-            
+
             // Split by lines and process each
             $lines = explode("\n", $table_def);
             foreach ($lines as $line) {
                 $line = trim($line);
-                
+
                 // Skip empty lines, PRIMARY KEY, KEY, UNIQUE KEY lines
-                if (empty($line) || 
-                    stripos($line, 'PRIMARY KEY') !== false || 
+                if (empty($line) ||
+                    stripos($line, 'PRIMARY KEY') !== false ||
                     preg_match('/^KEY\s+/i', $line) ||
                     stripos($line, 'UNIQUE KEY') !== false) {
                     continue;
                 }
-                
+
                 // Extract column name (first word after trimming)
                 if (preg_match('/^`?(\w+)`?\s+/', $line, $col_matches)) {
                     $columns[] = $col_matches[1];
                 }
             }
         }
-        
+
         return $columns;
     }
 
     /**
      * Get expected columns for each table by parsing the schema
-     * 
+     *
      * @return array Associative array of table_name => array of column names
      */
     public static function get_expected_columns() {
         $instance = new self();
         $schema = $instance->get_schema();
         $expected = array();
-        
+
         foreach ($schema as $sql) {
             // Extract table name
             if (preg_match('/CREATE TABLE\s+(\S+)\s*\(/i', $sql, $matches)) {
@@ -470,11 +634,11 @@ class AIPS_DB_Manager {
                 // Remove $wpdb->prefix to get just the table name
                 global $wpdb;
                 $table_name = str_replace($wpdb->prefix, '', $full_table_name);
-                
+
                 $expected[$table_name] = self::parse_columns_from_sql($sql);
             }
         }
-        
+
         return $expected;
     }
 
@@ -487,7 +651,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
         $table_sections = $tables['aips_prompt_sections'];
         $table_structures = $tables['aips_article_structures'];
-        
+
         // Seed default prompt sections
         $default_sections = array(
             array(
@@ -539,18 +703,18 @@ class AIPS_DB_Manager {
                 'content' => 'Provide links to documentation, further reading, or related resources.',
             ),
         );
-        
+
         foreach ($default_sections as $section) {
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_sections WHERE section_key = %s",
                 $section['section_key']
             ));
-            
+
             if (!$exists) {
                 $wpdb->insert($table_sections, $section);
             }
         }
-        
+
         // Seed default article structures
         $default_structures = array(
             array(
@@ -603,13 +767,13 @@ class AIPS_DB_Manager {
                 )),
             ),
         );
-        
+
         foreach ($default_structures as $structure) {
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_structures WHERE name = %s",
                 $structure['name']
             ));
-            
+
             if (!$exists) {
                 $wpdb->insert($table_structures, $structure);
             }

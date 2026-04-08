@@ -12,6 +12,13 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+		if (!class_exists('WP_Error')) {
+			$this->markTestSkipped('Database tests cannot run in limited mode without WP Test Lib.');
+		}
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
 		$this->selector = new AIPS_Template_Type_Selector();
 		$this->structure_repo = new AIPS_Article_Structure_Repository();
 		
@@ -58,6 +65,14 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 	}
 	
 	public function test_select_specific_structure() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$wpdb->get_results_return_val = array(
+				(object) array('id' => 1, 'name' => 'Test Selector Structure 1'),
+				(object) array('id' => 2, 'name' => 'Test Selector Structure 2'),
+			);
+		}
+
 		$structures = $this->structure_repo->get_all(true);
 		$test_structure = null;
 		foreach ($structures as $s) {
@@ -76,6 +91,11 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		);
 		
 		$selected_id = $this->selector->select_structure($schedule);
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$wpdb->get_results_return_val = null;
+		}
+
 		$this->assertEquals($test_structure->id, $selected_id);
 	}
 	

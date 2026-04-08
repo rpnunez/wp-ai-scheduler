@@ -66,13 +66,34 @@ class AIPS_Config {
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
             'aips_ai_model' => '',
-            'aips_max_tokens' => 2000,
+            'aips_ai_env_id' => '',
+            'aips_max_tokens_limit' => 16000,
+            'aips_max_tokens_title' => 150,
+            'aips_max_tokens_excerpt' => 300,
+            'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
             'aips_default_post_status' => 'draft',
+            'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
+            'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_enable_retry' => true,
+            'aips_review_notifications_email' => '',
+            'aips_notification_preferences' => array(
+                'generation_failed' => 'both',
+                'quota_alert' => 'both',
+                'integration_error' => 'both',
+                'scheduler_error' => 'both',
+                'system_error' => 'both',
+				'template_generated' => 'db',
+				'manual_generation_completed' => 'db',
+				'post_ready_for_review' => 'db',
+				'post_rejected' => 'db',
+				'partial_generation_completed' => 'db',
+            ),
+            'aips_topic_similarity_threshold' => 0.8,
+            'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
             'aips_enable_rate_limiting' => false,
@@ -81,6 +102,14 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
+            'aips_site_niche' => '',
+            'aips_site_target_audience' => '',
+            'aips_site_content_goals' => '',
+            'aips_site_brand_voice' => '',
+            'aips_site_content_language' => 'en',
+            'aips_site_content_guidelines' => '',
+            'aips_site_excluded_topics' => '',
         );
     }
     
@@ -160,9 +189,9 @@ class AIPS_Config {
      */
     public function get_ai_config() {
         return array(
-            'model' => $this->get_option('aips_ai_model', ''),
-            'max_tokens' => (int) $this->get_option('aips_max_tokens', 2000),
-            'temperature' => (float) $this->get_option('aips_temperature', 0.7),
+            'model' => $this->get_option('aips_ai_model'),
+            'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
+            'temperature' => (float) $this->get_option('aips_temperature'),
         );
     }
     
@@ -173,10 +202,9 @@ class AIPS_Config {
      */
     public function get_retry_config() {
         return array(
-            //@TODO: Intentionally disabled due to making too many requests to the AI Engine
-            'enabled' => false,//(bool) $this->get_option('aips_enable_retry', true),
-            'max_attempts' => (int) $this->get_option('aips_retry_max_attempts', 3),
-            'initial_delay' => (int) $this->get_option('aips_retry_initial_delay', 1),
+            'enabled' => (bool) $this->get_option('aips_enable_retry'),
+            'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
+            'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
             'exponential' => true,
             'jitter' => true,
         );
@@ -189,9 +217,9 @@ class AIPS_Config {
      */
     public function get_rate_limit_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_rate_limiting', false),
-            'requests' => (int) $this->get_option('aips_rate_limit_requests', 10),
-            'period' => (int) $this->get_option('aips_rate_limit_period', 60),
+            'enabled' => (bool) $this->get_option('aips_enable_rate_limiting'),
+            'requests' => (int) $this->get_option('aips_rate_limit_requests'),
+            'period' => (int) $this->get_option('aips_rate_limit_period'),
         );
     }
     
@@ -202,9 +230,9 @@ class AIPS_Config {
      */
     public function get_circuit_breaker_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_circuit_breaker', false),
-            'failure_threshold' => (int) $this->get_option('aips_circuit_breaker_threshold', 5),
-            'timeout' => (int) $this->get_option('aips_circuit_breaker_timeout', 300),
+            'enabled' => (bool) $this->get_option('aips_enable_circuit_breaker'),
+            'failure_threshold' => (int) $this->get_option('aips_circuit_breaker_threshold'),
+            'timeout' => (int) $this->get_option('aips_circuit_breaker_timeout'),
         );
     }
     
@@ -215,8 +243,8 @@ class AIPS_Config {
      */
     public function get_logging_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_logging', true),
-            'retention_days' => (int) $this->get_option('aips_log_retention_days', 30),
+            'enabled' => (bool) $this->get_option('aips_enable_logging'),
+            'retention_days' => (int) $this->get_option('aips_log_retention_days'),
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
         );
     }

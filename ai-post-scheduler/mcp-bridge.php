@@ -157,7 +157,7 @@ class AIPS_MCP_Bridge {
 				'parameters' => array(
 					'hook' => array(
 						'type' => 'string',
-						'description' => 'Cron hook name: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_send_review_notifications, aips_cleanup_export_files',
+						'description' => 'Cron hook name: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_notification_rollups, aips_send_review_notifications (legacy), aips_cleanup_export_files',
 						'required' => true
 					)
 				),
@@ -497,7 +497,7 @@ class AIPS_MCP_Bridge {
 			return $result;
 		} catch (Exception $e) {
 			$this->logger->log("MCP Bridge: Tool '$tool_name' failed: " . $e->getMessage(), 'error');
-			return new WP_Error('tool_execution_error', 'Tool execution failed: ' . $e->getMessage());
+			return new WP_Error('tool_execution_error', 'Tool execution failed.');
 		}
 	}
 	
@@ -734,6 +734,7 @@ class AIPS_MCP_Bridge {
 			'aips_generate_author_topics',
 			'aips_generate_author_posts',
 			'aips_scheduled_research',
+			'aips_notification_rollups',
 			'aips_send_review_notifications',
 			'aips_cleanup_export_files'
 		);
@@ -766,6 +767,7 @@ class AIPS_MCP_Bridge {
 			'aips_generate_author_topics',
 			'aips_generate_author_posts',
 			'aips_scheduled_research',
+			'aips_notification_rollups',
 			'aips_send_review_notifications',
 			'aips_cleanup_export_files'
 		);
@@ -956,8 +958,8 @@ class AIPS_MCP_Bridge {
 				'id' => $post_id,
 				'title' => $post->post_title,
 				'status' => $post->post_status,
-				'url' => get_permalink($post_id),
-				'edit_url' => get_edit_post_link($post_id, 'raw')
+				'url' => esc_url_raw(get_permalink($post_id)),
+				'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw'))
 			)
 		);
 	}
@@ -1043,8 +1045,8 @@ class AIPS_MCP_Bridge {
 				'error_message' => $item->error_message,
 				'created_at' => $item->created_at,
 				'completed_at' => $item->completed_at,
-				'post_url' => $item->post_id ? get_permalink($item->post_id) : null,
-				'edit_url' => $item->post_id ? get_edit_post_link($item->post_id, 'raw') : null
+				'post_url' => $item->post_id ? esc_url_raw(get_permalink($item->post_id)) : null,
+				'edit_url' => $item->post_id ? esc_url_raw(get_edit_post_link($item->post_id, 'raw')) : null
 			);
 		}
 		
@@ -1100,8 +1102,8 @@ class AIPS_MCP_Bridge {
 				'creation_method' => isset($history->creation_method) ? $history->creation_method : null,
 				'created_at' => $history->created_at,
 				'completed_at' => $history->completed_at,
-				'post_url' => $history->post_id ? get_permalink($history->post_id) : null,
-				'edit_url' => $history->post_id ? get_edit_post_link($history->post_id, 'raw') : null
+				'post_url' => $history->post_id ? esc_url_raw(get_permalink($history->post_id)) : null,
+				'edit_url' => $history->post_id ? esc_url_raw(get_edit_post_link($history->post_id, 'raw')) : null
 			)
 		);
 		
@@ -1326,7 +1328,8 @@ class AIPS_MCP_Bridge {
 					break;
 			}
 		} catch (Exception $e) {
-			return new WP_Error('regeneration_failed', 'Component regeneration failed: ' . $e->getMessage());
+			$this->logger->log('Component regeneration failed: ' . $e->getMessage(), 'error');
+			return new WP_Error('regeneration_failed', 'Component regeneration failed.');
 		}
 		
 		if (is_wp_error($result)) {
@@ -1515,8 +1518,8 @@ class AIPS_MCP_Bridge {
 			'tokens_used' => $tokens_used ? (int) $tokens_used : null,
 			'generation_time' => $generation_time ? (float) $generation_time : null,
 			'has_prompt' => !empty($ai_prompt),
-			'post_url' => get_permalink($post_id),
-			'edit_url' => get_edit_post_link($post_id, 'raw')
+			'post_url' => esc_url_raw(get_permalink($post_id)),
+			'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw'))
 		);
 		
 		return array(
@@ -1537,7 +1540,7 @@ class AIPS_MCP_Bridge {
 		}
 		
 		// Get the current configured model
-		$current_model = get_option('aips_ai_model', '');
+		$current_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
 		
 		// Try to get available models from AI Engine
 		global $mwai;
@@ -1598,7 +1601,7 @@ class AIPS_MCP_Bridge {
 		
 		try {
 			$result = $ai_service->generate_text($test_prompt, array(
-				'max_tokens' => 50,
+				'maxTokens' => 50,
 				'temperature' => 0.7
 			));
 			
@@ -1620,17 +1623,19 @@ class AIPS_MCP_Bridge {
 				'test_prompt' => $test_prompt,
 				'response' => substr($result, 0, 200), // Limit response length
 				'response_time_ms' => $elapsed_time,
-				'model' => get_option('aips_ai_model', 'default'),
+				'model' => AIPS_Config::get_instance()->get_option('aips_ai_model'),
 				'message' => 'AI Engine connection successful'
 			);
 			
 		} catch (Exception $e) {
 			$elapsed_time = round((microtime(true) - $start_time) * 1000, 2);
 			
+			$this->logger->log('AI connection test failed: ' . $e->getMessage(), 'error');
+
 			return array(
 				'success' => false,
 				'connected' => false,
-				'error' => $e->getMessage(),
+				'error' => 'An error occurred during the AI connection test.',
 				'response_time_ms' => $elapsed_time
 			);
 		}
@@ -1648,43 +1653,43 @@ class AIPS_MCP_Bridge {
 		// AI Settings
 		if ($category === 'all' || $category === 'ai') {
 			$settings['ai'] = array(
-				'model' => get_option('aips_ai_model', ''),
-				'max_tokens' => (int) get_option('aips_max_tokens', 2000),
-				'temperature' => (float) get_option('aips_temperature', 0.7),
-				'default_post_status' => get_option('aips_default_post_status', 'draft'),
-				'default_post_author' => (int) get_option('aips_default_post_author', 1)
+				'model' => $config->get_option('aips_ai_model'),
+				'max_tokens_limit' => (int) $config->get_option('aips_max_tokens_limit'),
+				'temperature' => (float) $config->get_option('aips_temperature'),
+				'default_post_status' => $config->get_option('aips_default_post_status'),
+				'default_post_author' => (int) $config->get_option('aips_default_post_author'),
 			);
 		}
 		
 		// Resilience Settings
 		if ($category === 'all' || $category === 'resilience') {
 			$settings['resilience'] = array(
-				'enable_retry' => (bool) get_option('aips_enable_retry', true),
-				'retry_max_attempts' => (int) get_option('aips_retry_max_attempts', 3),
-				'retry_initial_delay' => (int) get_option('aips_retry_initial_delay', 1),
-				'enable_rate_limiting' => (bool) get_option('aips_enable_rate_limiting', false),
-				'rate_limit_requests' => (int) get_option('aips_rate_limit_requests', 10),
-				'rate_limit_period' => (int) get_option('aips_rate_limit_period', 60),
-				'enable_circuit_breaker' => (bool) get_option('aips_enable_circuit_breaker', false),
-				'circuit_breaker_threshold' => (int) get_option('aips_circuit_breaker_threshold', 5),
-				'circuit_breaker_timeout' => (int) get_option('aips_circuit_breaker_timeout', 300)
+				'enable_retry' => (bool) $config->get_option('aips_enable_retry'),
+				'retry_max_attempts' => (int) $config->get_option('aips_retry_max_attempts'),
+				'retry_initial_delay' => (int) $config->get_option('aips_retry_initial_delay'),
+				'enable_rate_limiting' => (bool) $config->get_option('aips_enable_rate_limiting'),
+				'rate_limit_requests' => (int) $config->get_option('aips_rate_limit_requests'),
+				'rate_limit_period' => (int) $config->get_option('aips_rate_limit_period'),
+				'enable_circuit_breaker' => (bool) $config->get_option('aips_enable_circuit_breaker'),
+				'circuit_breaker_threshold' => (int) $config->get_option('aips_circuit_breaker_threshold'),
+				'circuit_breaker_timeout' => (int) $config->get_option('aips_circuit_breaker_timeout'),
 			);
 		}
 		
 		// Logging Settings
 		if ($category === 'all' || $category === 'logging') {
 			$settings['logging'] = array(
-				'enable_logging' => (bool) get_option('aips_enable_logging', true),
-				'log_retention_days' => (int) get_option('aips_log_retention_days', 30)
+				'enable_logging' => (bool) $config->get_option('aips_enable_logging'),
+				'log_retention_days' => (int) $config->get_option('aips_log_retention_days'),
 			);
 		}
 		
 		// Export Thresholds
 		if ($category === 'all') {
 			$settings['thresholds'] = array(
-				'generated_posts_log_threshold_tmpfile' => (int) get_option('generated_posts_log_threshold_tmpfile', 200),
-				'generated_posts_log_threshold_client' => (int) get_option('generated_posts_log_threshold_client', 20),
-				'history_export_max_records' => (int) get_option('history_export_max_records', 10000)
+				'generated_posts_log_threshold_tmpfile' => (int) $config->get_option('generated_posts_log_threshold_tmpfile'),
+				'generated_posts_log_threshold_client' => (int) $config->get_option('generated_posts_log_threshold_client'),
+				'history_export_max_records' => (int) $config->get_option('history_export_max_records'),
 			);
 		}
 		

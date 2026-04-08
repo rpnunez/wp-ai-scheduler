@@ -40,9 +40,10 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	public function test_ajax_actions_registered() {
 		$this->assertTrue(has_action('wp_ajax_aips_get_post_components'));
 		$this->assertTrue(has_action('wp_ajax_aips_regenerate_component'));
+		$this->assertTrue(has_action('wp_ajax_aips_regenerate_all_components'));
 		$this->assertTrue(has_action('wp_ajax_aips_save_post_components'));
 	}
-	
+
 	/**
 	 * Test get_post_components requires proper nonce
 	 */
@@ -426,5 +427,55 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertEquals('Manual Draft Title', $revisions[0]['value']);
 		$this->assertEquals('manual_edit', $revisions[0]['source']);
 		$this->assertEquals('pre_restore_manual', $revisions[0]['reason']);
+	}
+
+	// -----------------------------------------------------------------------
+	// Delegation tests: constructor injection boundary
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Constructor accepts an injected AIPS_Component_Regeneration_Service so
+	 * the real service is never instantiated in tests that mock it.
+	 */
+	public function test_constructor_accepts_injected_service() {
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service );
+
+		$this->assertInstanceOf( 'AIPS_AI_Edit_Controller', $controller );
+	}
+
+	/**
+	 * Constructor accepts an injected AIPS_History_Repository so the real
+	 * repository is never instantiated in tests that mock it.
+	 */
+	public function test_constructor_accepts_injected_history_repository() {
+		$mock_history_repo = $this->getMockBuilder( 'AIPS_History_Repository' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$controller = new AIPS_AI_Edit_Controller( null, $mock_history_repo );
+
+		$this->assertInstanceOf( 'AIPS_AI_Edit_Controller', $controller );
+	}
+
+	/**
+	 * Both dependencies can be injected simultaneously; controller remains
+	 * functional after construction with fully mocked collaborators.
+	 */
+	public function test_constructor_accepts_both_injected_dependencies() {
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$mock_history_repo = $this->getMockBuilder( 'AIPS_History_Repository' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service, $mock_history_repo );
+
+		$this->assertInstanceOf( 'AIPS_AI_Edit_Controller', $controller );
 	}
 }

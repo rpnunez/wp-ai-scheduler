@@ -88,6 +88,10 @@ class Test_AIPS_Duplicate_Ajax_Registration extends WP_UnitTestCase {
     }
 
     public function test_research_controller_does_not_register_duplicate_hooks() {
+        if (!class_exists('AIPS_Bulk_Generator_Service')) {
+            require_once AIPS_PLUGIN_DIR . 'includes/class-aips-bulk-generator-service.php';
+        }
+
         new AIPS_Research_Controller();
         $before = array(
             'research_topics' => $this->count_action_callbacks('wp_ajax_aips_research_topics'),

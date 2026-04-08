@@ -11,6 +11,8 @@
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
+		currentTopicPostsTopicId: null,
+		hasImportedSuggestedAuthor: false,
 
 		/**
 		 * Initialise the Authors module by binding all event listeners.
@@ -43,6 +45,9 @@
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
 
+			// Toggle Source Groups panel when Include Sources? checkbox changes.
+			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
+
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
@@ -65,10 +70,12 @@
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
 			
 			// View topic posts
-			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
+			$(document).on('click', '.aips-post-count-badge[data-context="author-topic"]', this.viewTopicPosts.bind(this));
+			$(document).on('click', '.aips-publish-topic-post', this.publishTopicPost.bind(this));
 			
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+			$(document).on('click', '.topic-title-cell', this.onTopicTitleCellClick.bind(this));
 
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
@@ -77,6 +84,11 @@
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
 			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
+
+			// Author Suggestions
+			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
+			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
+			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
 		},
 
 		/**
@@ -221,7 +233,20 @@
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
+			// Reset source group fields.
+			$('#author_include_sources').prop('checked', false);
+			$('.aips-author-source-group-cb').prop('checked', false);
+			$('#author-source-groups-selector').hide();
 			$('#aips-author-modal').fadeIn();
+		},
+
+		/**
+		 * Show or hide the Author Source Groups selector.
+		 *
+		 * @param {Event} e - Change event from `#author_include_sources`.
+		 */
+		toggleAuthorSourceGroups: function (e) {
+			$('#author-source-groups-selector').toggle($(e.currentTarget).is(':checked'));
 		},
 
 		/**
@@ -266,10 +291,33 @@
 						$('#article_structure_id').val(author.article_structure_id || '');
 						$('#voice_tone').val(author.voice_tone || '');
 						$('#writing_style').val(author.writing_style || '');
+						// Extended profile fields
+						$('#author_target_audience').val(author.target_audience || '');
+						$('#author_expertise_level').val(author.expertise_level || '');
+						$('#author_content_goals').val(author.content_goals || '');
+						$('#author_excluded_topics').val(author.excluded_topics || '');
+						$('#author_preferred_content_length').val(author.preferred_content_length || '');
+						$('#author_language').val(author.language || 'en');
+						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
+
+						// Restore source group settings.
+						var includeSources = author.include_sources == 1;
+						$('#author_include_sources').prop('checked', includeSources);
+						$('#author-source-groups-selector').toggle(includeSources);
+						$('.aips-author-source-group-cb').prop('checked', false);
+						var authorSgIds = [];
+						try {
+							authorSgIds = JSON.parse(author.source_group_ids || '[]');
+						} catch (parseErr) {
+							authorSgIds = [];
+						}
+						authorSgIds.forEach(function(tid) {
+							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
+						});
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
@@ -301,7 +349,7 @@
 			const formData = $form.serialize();
 
 			// Disable submit button
-			$submitBtn.prop('disabled', true).text(aipsAuthorsL10n.saving);
+			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
 
 			$.ajax({
 				url: ajaxurl,
@@ -320,7 +368,7 @@
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
-					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
+					AIPS.Utilities.resetButton($submitBtn);
 				}
 			});
 		},
@@ -393,7 +441,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -418,7 +466,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
 							},
 							complete: () => {
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -437,6 +485,9 @@
 		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
 		 */
 		loadTopics: function (status) {
+			// Immediately show a loading skeleton while the AJAX request is in flight.
+			this.showTopicsLoading();
+
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
@@ -453,14 +504,43 @@
 						if (status === 'pending') {
 							this.renderInlineSimilarityIndicators();
 						}
+						// After rendering new content, hide the loading skeleton and
+						// reveal the topics table for the requested tab.
+						this.hideTopicsLoading();
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
+						this.hideTopicsLoading();
 					}
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.errorLoadingTopics + '</p>');
+					this.hideTopicsLoading();
 				}
 			});
+		},
+
+		/**
+		 * Show the topics loading section.
+		 *
+		 * Hides the current topics table body to indicate that the selected
+		 * tab is being loaded.
+		 */
+		showTopicsLoading: function () {
+			var $loading = $('#aips-topics-loading');
+			var $content = $('#aips-topics-content');
+
+			$content.hide();
+			$loading.show();
+			$('#aips-author-topics-panel').addClass('aips-topics-loading-active');
+		},
+
+		/**
+		 * Hide the topics loading section and reveal the topics content area.
+		 */
+		hideTopicsLoading: function () {
+			$('#aips-topics-loading').hide();
+			$('#aips-topics-content').show();
+			$('#aips-author-topics-panel').removeClass('aips-topics-loading-active');
 		},
 
 		/**
@@ -481,135 +561,140 @@
 				return;
 			}
 
-			let html = '<table class="aips-table aips-topics-table"><thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th class="column-topic">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
-			html += '<th class="column-generated">' + aipsAuthorsL10n.generatedAt + '</th>';
-			html += '<th class="column-actions">' + aipsAuthorsL10n.actions + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			topics.forEach(topic => {
 				let detailContentHtml = '';
 				if (topic.topic_description) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.description || 'Description',
+						value: topic.topic_description
+					});
 				}
 				if (topic.topic_rationale) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.rationale || 'Rationale',
+						value: topic.topic_rationale
+					});
 				}
 				if (topic.reviewed_at && topic.reviewed_by) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.reviewed || 'Reviewed',
+						value: String(topic.reviewed_at) + ' by User ID ' + String(topic.reviewed_by)
+					});
 				}
 				if (topic.last_feedback) {
 					const feedbackAction = topic.last_feedback.action;
 					const feedbackLabel = feedbackAction === 'rejected'
 						? (aipsAuthorsL10n.reject || 'Rejected')
 						: (aipsAuthorsL10n.approve || 'Approved');
-					detailContentHtml += '<div class="aips-detail-section aips-detail-feedback">';
-					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
-					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
+
+					let categoryBadgeHtml = '';
 					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+						categoryBadgeHtml = this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
 					}
-					if (topic.last_feedback.reason) {
-						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
-					}
-					if (topic.last_feedback.created_at) {
-						detailContentHtml += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
-					}
-					detailContentHtml += '</div>';
+
+					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + AIPS.Utilities.escapeHtml(topic.last_feedback.reason) : '';
+					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + AIPS.Utilities.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
+
+					detailContentHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-detail-feedback', {
+						label: AIPS.Templates.escape(aipsAuthorsL10n.lastFeedback || 'Last Feedback'),
+						action: AIPS.Templates.escape(feedbackAction),
+						actionLabel: AIPS.Templates.escape(feedbackLabel),
+						categoryBadge: categoryBadgeHtml,
+						reason: reasonHtml,
+						date: dateHtml
+					});
 				}
 				if (topic.potential_duplicate && topic.duplicate_match) {
-					detailContentHtml += '<div class="aips-detail-section aips-detail-duplicate">';
-					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
-					detailContentHtml += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
-					detailContentHtml += '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-duplicate', {
+						label: aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate',
+						match: topic.duplicate_match
+					});
 				}
 
-				const hasDetailContent = detailContentHtml !== '';
-
-				html += '<tr data-topic-id="' + topic.id + '">';
-				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell column-topic">';
-				html += '<div class="aips-topic-row">';
-
-				// Expand button is only shown when detail content exists.
-				if (hasDetailContent) {
-					html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
-					html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
-					html += '</button>';
+				let expandBtnHtml = '';
+				let detailSectionHtml = '';
+				if (detailContentHtml !== '') {
+					const viewDetailsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewDetails || 'View Details');
+					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
+					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
+						id: topic.id,
+						content: detailContentHtml
+					});
 				}
 
-				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
-				html += '<span class="aips-topic-similarity-slot" data-topic-id="' + topic.id + '"></span>';
-				
-				// Add post count badge if there are any posts
+				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
-					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
-					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
-					html += '</span>';
+					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
+					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-context="author-topic" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
-				// Potential duplicate warning badge
+				let duplicateBadgeHtml = '';
 				if (topic.potential_duplicate) {
 					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
-					const safeDupLabel = this.escapeHtml(dupLabel);
-					const dupTitle = topic.duplicate_match
-						? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
-						: safeDupLabel;
-					html += ' <span class="aips-duplicate-badge" title="' + dupTitle + '">';
-					html += '<span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
+					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
+					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
+					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
+					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
 				}
 
-				// Last feedback badge — shows prior approval/rejection history for context
+				let feedbackBadgeHtml = '';
 				if (topic.last_feedback) {
 					const fbAction = topic.last_feedback.action;
-					const fbLabel = fbAction === 'rejected'
-						? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected')
-						: (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
-					const fbTitle = topic.last_feedback.reason
-						? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason)
-						: this.escapeHtml(fbLabel);
-					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
-					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
-				}
-				
-				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
-				html += '</div>';
-
-				if (hasDetailContent) {
-					html += '<div class="aips-topic-detail-content" id="aips-topic-details-' + topic.id + '" style="display:none;">' + detailContentHtml + '</div>';
+					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
+					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeAttribute(fbLabel) + ': ' + AIPS.Utilities.escapeAttribute(topic.last_feedback.reason) : AIPS.Utilities.escapeAttribute(fbLabel);
+					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + AIPS.Utilities.escapeHtml(fbLabel) + '</span>';
+					if (topic.last_feedback.reason_category) {
+						feedbackBadgeHtml += ' ' + this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
+					}
 				}
 
-				html += '</td>';
-				html += '<td class="column-generated">' + topic.generated_at + '</td>';
-				html += '<td class="topic-actions column-actions">';
-
-				// Actions based on status
+				let actionsHtml = '';
 				if (status === 'pending') {
-					// Pending actions: feedback actions and edit
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
-					html += '<div class="cell-actions" style="margin-top: 6px;">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
-					html += '</div>';
-				} else if (status === 'approved') {
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
+						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
+					});
+				} else if (status === 'approved' || status === 'posts_generated') {
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
+						id: topic.id,
+						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
 				} else {
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
 				}
 
-				html += '</td></tr>';
+				var rawGeneratedAt = topic.generated_at || '';
+				var formattedGeneratedAt = this.formatTopicDate(rawGeneratedAt) || rawGeneratedAt;
+
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
+					id: topic.id,
+					topicTitle: AIPS.Templates.escape(topic.topic_title),
+					expandBtn: expandBtnHtml,
+					postCountBadge: postCountBadgeHtml,
+					duplicateBadge: duplicateBadgeHtml,
+					feedbackBadge: feedbackBadgeHtml,
+					detailContent: detailSectionHtml,
+					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
+					actions: actionsHtml
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topics-content').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
+				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
+				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
+				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+				rows: rowsHtml
+			});
+
+			$('#aips-topics-content').html(tableHtml);
 
 			// Update the filter bar result count
 			var total = topics.length;
@@ -656,7 +741,7 @@
 						}
 
 						const badgeClass = this.getSimilarityBadgeClass(score);
-						const label = this.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
+						const label = AIPS.Utilities.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
 						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
 
 						if ($slot.length) {
@@ -687,23 +772,192 @@
 		},
 
 		/**
+		 * Return the human-readable label for a feedback reason category.
+		 *
+		 * Looks up the category value in `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories` depending on the feedback action.
+		 * Falls back to the raw category slug when no match is found or the action
+		 * is not one of the known values (`'approved'` / `'rejected'`).
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Translated/human-readable label.
+		 */
+		getCategoryLabel: function (action, category) {
+			var list;
+			if (action === 'approved') {
+				list = aipsAuthorsL10n.approvalCategories || [];
+			} else if (action === 'rejected') {
+				list = aipsAuthorsL10n.rejectionCategories || [];
+			} else {
+				// Unknown action — return the raw slug so the badge still renders meaningfully.
+				return category;
+			}
+			const match = list.find(function (c) { return c.value === category; });
+			return match ? match.label : category;
+		},
+
+		/**
+		 * Build the HTML for a reason category chip/badge.
+		 *
+		 * Returns an empty string when category is falsy or `'other'`.
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Badge HTML string.
+		 */
+		renderCategoryBadge: function (action, category) {
+			if (!category || category === 'other') {
+				return '';
+			}
+
+			const rawLabel = this.getCategoryLabel(action, category);
+			const label = AIPS.Utilities.toTitleCase(rawLabel);
+			const isPositive = action === 'approved';
+			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
+			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
+			let iconClass = '';
+			switch (category) {
+				case 'timely':
+					iconClass = 'dashicons-clock';
+					break;
+				case 'relevant':
+					iconClass = 'dashicons-location-alt';
+					break;
+				case 'well_researched':
+					iconClass = 'dashicons-search';
+					break;
+				case 'engaging':
+					iconClass = 'dashicons-megaphone';
+					break;
+				case 'original':
+					iconClass = 'dashicons-lightbulb';
+					break;
+				case 'duplicate':
+					iconClass = 'dashicons-admin-page';
+					break;
+				case 'tone':
+					iconClass = 'dashicons-admin-customizer';
+					break;
+				case 'irrelevant':
+					iconClass = 'dashicons-dismiss';
+					break;
+				case 'policy':
+					iconClass = 'dashicons-warning';
+					break;
+				default:
+					iconClass = '';
+			}
+
+			const iconHtml = iconClass ? '<span class="dashicons ' + iconClass + '"></span>' : '';
+
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + AIPS.Utilities.escapeAttribute(label) + '">' +
+				iconHtml + AIPS.Utilities.escapeHtml(label) +
+			'</span>';
+		},
+
+		/**
+		 * Format a topic generated_at timestamp into a friendly string.
+		 *
+		 * - Today:     "Today, 2:32pm"
+		 * - Yesterday: "Yesterday, 2:32pm"
+		 * - Otherwise: "March 26, 2026 2:32pm"
+		 *
+		 * Month names, "Today", "Yesterday", and am/pm labels are pulled from
+		 * the server-side aipsAuthorsL10n object so non-English sites are
+		 * supported without hard-coding English strings.
+		 *
+		 * @param {string} raw - Datetime string (YYYY-MM-DD HH:MM:SS).
+		 * @returns {string} Formatted date string.
+		 */
+		formatTopicDate: function (raw) {
+			if (!raw || typeof raw !== 'string') {
+				return raw;
+			}
+
+			// Parse "YYYY-MM-DD HH:MM:SS" into a local Date.
+			var parts = raw.split(' ');
+			if (parts.length < 2) {
+				return raw;
+			}
+			var dateParts = parts[0].split('-');
+			var timeParts = parts[1].split(':');
+			if (dateParts.length < 3 || timeParts.length < 2) {
+				return raw;
+			}
+
+			var year = parseInt(dateParts[0], 10);
+			var monthIndex = parseInt(dateParts[1], 10) - 1; // 0-based
+			var day = parseInt(dateParts[2], 10);
+			var hour = parseInt(timeParts[0], 10);
+			var minute = parseInt(timeParts[1], 10);
+
+			if (isNaN(year) || isNaN(monthIndex) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+				return raw;
+			}
+
+			var d = new Date(year, monthIndex, day, hour, minute, 0);
+			var now = new Date();
+			var isToday = d.getFullYear() === now.getFullYear() &&
+				d.getMonth() === now.getMonth() &&
+				d.getDate() === now.getDate();
+
+			var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+			var isYesterday = d.getFullYear() === yesterday.getFullYear() &&
+				d.getMonth() === yesterday.getMonth() &&
+				d.getDate() === yesterday.getDate();
+
+			// Use localized strings from aipsAuthorsL10n when available.
+			var l10n        = (typeof aipsAuthorsL10n !== 'undefined') ? aipsAuthorsL10n : {};
+			var labelToday  = l10n.dateToday     || 'Today';
+			var labelYday   = l10n.dateYesterday || 'Yesterday';
+			var labelAM     = l10n.dateAM        || 'am';
+			var labelPM     = l10n.datePM        || 'pm';
+			var monthNames  = (l10n.dateMonthNames && l10n.dateMonthNames.length === 12)
+				? l10n.dateMonthNames
+				: [
+					'January', 'February', 'March', 'April', 'May', 'June',
+					'July', 'August', 'September', 'October', 'November', 'December'
+				];
+
+			var hours12    = d.getHours() % 12 || 12;
+			var minutesStr = minute < 10 ? '0' + minute : String(minute);
+			var ampm       = d.getHours() >= 12 ? labelPM : labelAM;
+			var timeStr    = hours12 + ':' + minutesStr + ampm;
+
+			if (isToday) {
+				return labelToday + ', ' + timeStr;
+			}
+
+			if (isYesterday) {
+				return labelYday + ', ' + timeStr;
+			}
+
+			var monthName = monthNames[monthIndex] || (monthIndex + 1);
+			return monthName + ' ' + day + ', ' + year + ' ' + timeStr;
+		},
+
+		/**
 		 * Update the per-status topic count badges in the tab bar and the Stats Cards.
 		 *
-		 * @param {Object} counts           - Map of status string → count number.
-		 * @param {number} [counts.pending] - Number of pending topics.
-		 * @param {number} [counts.approved] - Number of approved topics.
-		 * @param {number} [counts.rejected] - Number of rejected topics.
+		 * @param {Object} counts                    - Map of status string → count number.
+		 * @param {number} [counts.pending]          - Number of pending topics.
+		 * @param {number} [counts.approved]         - Number of approved topics without generated posts.
+		 * @param {number} [counts.rejected]         - Number of rejected topics.
+		 * @param {number} [counts.posts_generated]  - Number of approved topics that have produced a post.
 		 */
 		updateTopicCounts: function (counts) {
-			const pending  = counts.pending  || 0;
-			const approved = counts.approved || 0;
-			const rejected = counts.rejected || 0;
-			const total    = pending + approved + rejected;
+			const pending        = counts.pending         || 0;
+			const approved       = counts.approved        || 0;
+			const rejected       = counts.rejected        || 0;
+			const postsGenerated = counts.posts_generated || 0;
+			const total          = pending + approved + rejected + postsGenerated;
 
 			// Tab count badges
 			$('#pending-count').text(pending);
 			$('#approved-count').text(approved);
 			$('#rejected-count').text(rejected);
+			$('#posts-generated-count').text(postsGenerated);
 
 			// Stats Cards
 			$('#stat-total-count').text(total);
@@ -727,16 +981,15 @@
 			// Reset topic search when switching tabs
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-
-			// Add fade transition and reload content for the selected tab
-			$('#aips-topics-content').fadeOut(200, () => {
-				if (status === 'feedback') {
-					this.loadFeedback();
-				} else {
-					this.loadTopics(status);
-				}
-				$('#aips-topics-content').fadeIn(200);
-			});
+			
+			// Immediately switch to the loading skeleton, then fetch the
+			// appropriate content for the selected tab.
+			if (status === 'feedback') {
+				this.showTopicsLoading();
+				this.loadFeedback();
+			} else {
+				this.loadTopics(status);
+			}
 
 			// Update bulk action dropdown options based on tab
 			this.updateBulkActionDropdown(status);
@@ -805,7 +1058,7 @@
 					$dropdown.append('<option value="approve">' + (aipsAuthorsL10n.approve || 'Approve') + '</option>');
 					$dropdown.append('<option value="reject">' + (aipsAuthorsL10n.reject || 'Reject') + '</option>');
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
-				} else if (status === 'approved') {
+				} else if (status === 'approved' || status === 'posts_generated') {
 					// Approved tab: Generate Now, Delete (no Approve)
 					$dropdown.append('<option value="generate_now">' + (aipsAuthorsL10n.generateNow || 'Generate Now') + '</option>');
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
@@ -817,6 +1070,38 @@
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
 				}
 			});
+		},
+
+		/**
+		 * Handle clicks anywhere in the Topic Details column.
+		 *
+		 * Expands/collapses the topic details in the same way as clicking the
+		 * small arrow button, but ignores clicks on interactive controls inside
+		 * the cell (buttons, links, inputs, etc.).
+		 *
+		 * @param {Event} e - Click event from `.topic-title-cell`.
+		 */
+		onTopicTitleCellClick: function (e) {
+			// Do not toggle when clicking on interactive elements inside the cell.
+			if (
+				$(e.target).closest('button, a, input, textarea, select, label').length ||
+				$(e.target).closest('.aips-topic-expand-btn').length
+			) {
+				return;
+			}
+
+			const $row = $(e.currentTarget).closest('tr[data-topic-id]');
+			const topicId = $row.data('topic-id');
+
+			if (!topicId) {
+				return;
+			}
+
+			const $button = $('.aips-topic-expand-btn[data-topic-id="' + topicId + '"]');
+
+			if ($button.length) {
+				$button.trigger('click');
+			}
 		},
 
 		/**
@@ -852,11 +1137,47 @@
 		},
 
 		/**
+		 * Populate the feedback category dropdown with options appropriate for the given action.
+		 *
+		 * Replaces all `<option>` elements in `#feedback_reason_category` with the
+		 * action-specific set supplied via `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories`, then resets the selection to the
+		 * first option ("other").  Also updates the visible label and description
+		 * text next to the dropdown.
+		 *
+		 * @param {string} action - Either `'approve'` or `'reject'`.
+		 */
+		populateCategoryOptions: function (action) {
+			const isApprove = action === 'approve';
+			const categories = isApprove
+				? (aipsAuthorsL10n.approvalCategories || [])
+				: (aipsAuthorsL10n.rejectionCategories || []);
+
+			const $select = $('#feedback_reason_category');
+			$select.empty();
+			$.each(categories, function (i, cat) {
+				$select.append($('<option>').val(cat.value).text(cat.label));
+			});
+
+			// Update the label and helper description to match the action.
+			$('#feedback_reason_category_label').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryLabel || 'Approval Reason')
+					: (aipsAuthorsL10n.rejectionCategoryLabel || 'Rejection Reason')
+			);
+			$('#feedback_reason_category_description').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryDescription || 'Select a positive reason to help train future topic generation.')
+					: (aipsAuthorsL10n.rejectionCategoryDescription || 'Select a structured reason to improve future topic quality.')
+			);
+		},
+
+		/**
 		 * Open the feedback modal pre-configured for approving a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-approve-topic` element.
 		 */
@@ -870,6 +1191,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
+			this.populateCategoryOptions('approve');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -877,8 +1199,8 @@
 		 * Open the feedback modal pre-configured for rejecting a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-reject-topic` element.
 		 */
@@ -892,6 +1214,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
+			this.populateCategoryOptions('reject');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -952,7 +1275,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+				this.hideTopicsLoading();
 				return;
 			}
 
@@ -972,9 +1295,11 @@
 					} else {
 						$('#aips-topics-content').html('<p>No feedback found.</p>');
 					}
+					this.hideTopicsLoading();
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>Error loading feedback.</p>');
+					this.hideTopicsLoading();
 				}
 			});
 		},
@@ -990,32 +1315,33 @@
 		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
-				$('#aips-topics-content').html('<p>No feedback yet.</p>');
+				$('#aips-topics-content').html('<p>' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>');
 				return;
 			}
 
-			let html = '<table class="aips-table aips-feedback-table"><thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>';
-			html += '<th class="column-topic">' + aipsAuthorsL10n.topic + '</th>';
-			html += '<th class="column-action">' + aipsAuthorsL10n.action + '</th>';
-			html += '<th class="column-reason">' + aipsAuthorsL10n.reason + '</th>';
-			html += '<th class="column-user">' + aipsAuthorsL10n.user + '</th>';
-			html += '<th class="column-date">' + aipsAuthorsL10n.date + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			feedback.forEach(item => {
-				html += '<tr>';
-				html += '<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="' + item.id + '"></th>';
-				html += '<td>' + this.escapeHtml(item.topic_title || 'N/A') + '</td>';
-				html += '<td><span class="aips-status aips-status-' + item.action + '">' + item.action + '</span></td>';
-				html += '<td>' + this.escapeHtml(item.reason || '-') + '</td>';
-				html += '<td>' + this.escapeHtml(item.user_name || 'Unknown') + '</td>';
-				html += '<td>' + item.created_at + '</td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-feedback-row', {
+					id: item.id,
+					topicTitle: AIPS.Templates.escape(item.topic_title || 'N/A'),
+					action: AIPS.Templates.escape(item.action),
+					reason: AIPS.Templates.escape(item.reason || '-'),
+					userName: AIPS.Templates.escape(item.user_name || 'Unknown'),
+					date: AIPS.Templates.escape(item.created_at)
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topics-content').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-feedback-table', {
+				topicLabel: AIPS.Templates.escape(aipsAuthorsL10n.topic),
+				actionLabel: AIPS.Templates.escape(aipsAuthorsL10n.action),
+				reasonLabel: AIPS.Templates.escape(aipsAuthorsL10n.reason),
+				userLabel: AIPS.Templates.escape(aipsAuthorsL10n.user),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.date),
+				rows: rowsHtml
+			});
+
+			$('#aips-topics-content').html(tableHtml);
 		},
 
 		/**
@@ -1175,7 +1501,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -1195,12 +1521,12 @@
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
 										'error'
 									);
-									$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+									AIPS.Utilities.resetButton($btn);
 								}
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
-								$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
+								AIPS.Utilities.resetButton($btn);
 							}
 						});
 					}
@@ -1273,24 +1599,26 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
-			html += '<th>' + aipsAuthorsL10n.logAction + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logUser + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logDate + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logDetails + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			logs.forEach(log => {
-				html += '<tr>';
-				html += '<td><span class="aips-status aips-status-' + log.action + '">' + log.action + '</span></td>';
-				html += '<td>' + this.escapeHtml(log.user_name || 'System') + '</td>';
-				html += '<td>' + log.created_at + '</td>';
-				html += '<td>' + this.escapeHtml(log.notes || '-') + '</td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-log-row', {
+					action: AIPS.Templates.escape(log.action),
+					userName: AIPS.Templates.escape(log.user_name || 'System'),
+					date: AIPS.Templates.escape(log.created_at),
+					notes: AIPS.Templates.escape(log.notes || '-')
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topic-logs-content').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-logs-table', {
+				actionLabel: AIPS.Templates.escape(aipsAuthorsL10n.logAction),
+				userLabel: AIPS.Templates.escape(aipsAuthorsL10n.logUser),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.logDate),
+				detailsLabel: AIPS.Templates.escape(aipsAuthorsL10n.logDetails),
+				rows: rowsHtml
+			});
+
+			$('#aips-topic-logs-content').html(tableHtml);
 		},
 		
 		/**
@@ -1307,6 +1635,7 @@
 			e.stopPropagation();
 			
 			const topicId = $(e.currentTarget).data('topic-id');
+			this.currentTopicPostsTopicId = topicId;
 			
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
@@ -1337,7 +1666,7 @@
 						const posts = response.data.posts;
 						
 						$('#aips-topic-posts-modal-title').text(
-							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
+							aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
 						);
 						
 						this.renderTopicPosts(posts);
@@ -1354,11 +1683,10 @@
 		},
 		
 		/**
-		 * Build and inject the topic-posts HTML table into `#aips-topic-posts-content`.
+		 * Build and inject the topic-post list into `#aips-topic-posts-content`.
 		 *
-		 * Renders a WordPress-style table with post ID, title, generated date,
-		 * published date, and action links (Edit Post / View Post). Shows a
-		 * "no posts found" message when the array is empty.
+		 * Renders each post as a card-style list item with title, excerpt,
+		 * featured image, and action buttons.
 		 *
 		 * @param {Array<Object>} posts - Array of post objects from the server.
 		 */
@@ -1367,34 +1695,119 @@
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
-			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
-			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
-			html += '<th>' + aipsAuthorsL10n.dateGenerated + '</th>';
-			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
-			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
-			html += '</tr></thead><tbody>';
-			
-			posts.forEach(post => {
-				html += '<tr>';
-				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
-				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
-				html += '<td>' + this.escapeHtml(post.date_generated || '') + '</td>';
-				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
-				html += '<td>';
+
+			let itemsHtml = '';
+
+			posts.forEach((post) => {
+				let actionsHtml = '';
+				let featuredImageMarkup = AIPS.Templates.render('aips-tmpl-topic-post-image-placeholder', {
+					placeholderText: aipsAuthorsL10n.noFeaturedImage || 'No featured image'
+				});
+
+				if (post.featured_image_url) {
+					featuredImageMarkup = AIPS.Templates.render('aips-tmpl-topic-post-image', {
+						imageUrl: AIPS.Utilities.sanitizeUrl(post.featured_image_url),
+						imageAlt: post.post_title || ''
+					});
+				}
+
+				if (post.post_url) {
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-link', {
+						url: AIPS.Utilities.sanitizeUrl(post.post_url),
+						label: aipsAuthorsL10n.viewPost
+					});
+				}
+
 				if (post.edit_url) {
-					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-link', {
+						url: AIPS.Utilities.sanitizeUrl(post.edit_url),
+						label: aipsAuthorsL10n.editPost
+					});
 				}
-				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+
+				if (post.post_status !== 'publish') {
+					actionsHtml += AIPS.Templates.render('aips-tmpl-topic-post-action-publish', {
+						postId: post.post_id,
+						label: aipsAuthorsL10n.publishPost
+					});
 				}
-				html += '</td>';
-				html += '</tr>';
+
+				itemsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-post-item', {
+					postId: AIPS.Templates.escape(post.post_id),
+					postTitle: AIPS.Templates.escape(post.post_title || ''),
+					postExcerpt: AIPS.Templates.escape(post.post_excerpt || ''),
+					dateGenerated: AIPS.Templates.escape(post.date_generated || ''),
+					datePublished: AIPS.Templates.escape(post.date_published || aipsAuthorsL10n.notPublished),
+					generatedLabel: AIPS.Templates.escape(aipsAuthorsL10n.dateGenerated),
+					publishedLabel: AIPS.Templates.escape(aipsAuthorsL10n.datePublished),
+					actions: actionsHtml,
+					featuredImageMarkup: featuredImageMarkup
+				});
 			});
-			
-			html += '</tbody></table>';
-			$('#aips-topic-posts-content').html(html);
+
+			$('#aips-topic-posts-content').html(AIPS.Templates.renderRaw('aips-tmpl-topic-posts-list', {
+				items: itemsHtml
+			}));
+		},
+
+		/**
+		 * Publish a draft post from the topic-post modal.
+		 *
+		 * Uses the existing post-review publish endpoint, then reloads the current
+		 * topic-post list to keep modal content in sync without a full page reload.
+		 *
+		 * @param {Event} e - Click event from `.aips-publish-topic-post`.
+		 */
+		publishTopicPost: function (e) {
+			e.preventDefault();
+
+			const postId = parseInt($(e.currentTarget).data('post-id'), 10);
+			const $button = $(e.currentTarget);
+
+			if (!Number.isInteger(postId) || postId <= 0) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
+				return;
+			}
+
+			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmPublishPost || 'Are you sure you want to publish this post?', 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, publish',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.publishing || 'Publishing...');
+
+						$.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {
+								action: 'aips_publish_post',
+								nonce: aipsAuthorsL10n.nonce,
+								post_id: postId
+							},
+							success: (response) => {
+								if (response.success) {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.postPublished || 'Post published successfully.', 'success');
+									if (this.currentTopicPostsTopicId) {
+										this.loadTopicPosts(this.currentTopicPostsTopicId);
+									}
+									return;
+								}
+
+								AIPS.Utilities.resetButton($button);
+								AIPS.Utilities.showToast(
+									response.data && response.data.message ? response.data.message : (aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.'),
+									'error'
+								);
+							},
+							error: () => {
+								AIPS.Utilities.resetButton($button);
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
+							}
+						});
+					}
+				}
+			]);
 		},
 
 		/**
@@ -1473,7 +1886,7 @@
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
 						// Disable button while processing
-						$button.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
 
 						// Determine the AJAX action and data
 						let ajaxAction, data;
@@ -1487,7 +1900,7 @@
 								};
 							} else {
 								AIPS.Utilities.showToast('Invalid bulk action for feedback.', 'error');
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								return;
 							}
 						} else {
@@ -1506,7 +1919,7 @@
 									break;
 								default:
 									AIPS.Utilities.showToast('Invalid bulk action.', 'error');
-									$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+									AIPS.Utilities.resetButton($button);
 									return;
 							}
 							data = {
@@ -1550,7 +1963,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 								// Reset dropdowns
 								$('.aips-bulk-action-select').val('');
 								// Uncheck all checkboxes
@@ -1657,7 +2070,7 @@
 
 			// Reset helper called when the request finishes.
 			const resetUI = () => {
-				$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+				AIPS.Utilities.resetButton($button);
 				$('.aips-bulk-action-select').val('');
 				$('.aips-select-all-topics').prop('checked', false);
 				$('.aips-topic-checkbox').prop('checked', false);
@@ -1703,100 +2116,214 @@
 		 */
 		closeModals: function (e) {
 			e.preventDefault();
-			$('.aips-modal').fadeOut();
-		},
+			const shouldReloadAfterClose = $('#aips-suggest-authors-modal').is(':visible') && this.hasImportedSuggestedAuthor;
+			const $visibleModals = $('.aips-modal:visible');
 
-		/**
-		 * Escape a value for safe insertion as HTML text content.
-		 *
-		 * Converts the input to a string and replaces the five characters that
-		 * are significant in HTML (`&`, `<`, `>`, `"`, `'`) with their entity
-		 * equivalents. Returns an empty string for `null`, `undefined`, or on
-		 * any unexpected error.
-		 *
-		 * @param  {*}      text - Value to escape (coerced to string if needed).
-		 * @return {string} HTML-safe string.
-		 */
-		escapeHtml: function (text) {
-			try {
-				// Handle null, undefined, or non-string values
-				if (text === null || text === undefined) {
-					return '';
-				}
-				
-				// Convert to string if not already
-				const str = String(text);
-				
-				const map = {
-					'&': '&amp;',
-					'<': '&lt;',
-					'>': '&gt;',
-					'"': '&quot;',
-					"'": '&#039;'
-				};
-				return str.replace(/[&<>"']/g, m => map[m]);
-			} catch (error) {
-				console.error('Error in escapeHtml:', error);
-				// Return empty string as a safe fallback
-				return '';
+			$visibleModals.fadeOut();
+
+			if (shouldReloadAfterClose) {
+				$visibleModals.promise().done(function () {
+					window.location.reload();
+				});
 			}
 		},
 
 		/**
-		 * Sanitize and validate URLs for use in href attributes
-		 * Validates URL protocol and format without HTML-escaping (browsers handle href encoding)
-		 * @param {string} url - The URL to sanitize
-		 * @returns {string} - Validated URL or empty string if invalid
+		 * Open the Author Suggestions modal.
+		 *
+		 * @param {Event} e - Click event from `#aips-suggest-authors-btn`.
 		 */
-		sanitizeUrl: function (url) {
-			try {
-				// Handle null, undefined, or empty values
-				if (!url) {
-					return '';
-				}
-				
-				// Convert to string and trim whitespace
-				const urlStr = String(url).trim();
-				
-				if (!urlStr) {
-					return '';
-				}
-				
-				// Check for dangerous protocols (case-insensitive)
-				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
-				const lowerUrl = urlStr.toLowerCase();
-				
-				for (const protocol of dangerousProtocols) {
-					if (lowerUrl.startsWith(protocol)) {
-						console.warn('Dangerous URL protocol detected:', protocol);
-						return '';
-					}
-				}
-				
-				// For absolute URLs, validate with URL constructor
-				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-					try {
-						const urlObj = new URL(urlStr);
-						// Return the normalized URL (URL constructor already handles encoding)
-						return urlObj.href;
-					} catch (e) {
-						console.warn('Invalid URL format:', urlStr);
-						return '';
-					}
-				}
-				
-				// For relative URLs (WordPress admin paths), return as-is after validation
-				if (urlStr.startsWith('/')) {
-					return urlStr;
-				}
-				
-				// Reject anything else
-				console.warn('URL does not match allowed patterns:', urlStr);
-				return '';
-			} catch (error) {
-				console.error('Error in sanitizeUrl:', error);
-				return '';
+		openSuggestModal: function (e) {
+			e.preventDefault();
+			this.hasImportedSuggestedAuthor = false;
+			$('#aips-suggest-authors-results').hide();
+			$('#aips-suggest-authors-cards').html('');
+			$('#aips-suggest-authors-modal').fadeIn();
+		},
+
+		/**
+		 * Submit the Author Suggestions form and display results.
+		 *
+		 * Sends `aips_suggest_authors` with the form inputs and renders suggestion
+		 * cards in `#aips-suggest-authors-cards` on success.
+		 *
+		 * @param {Event} e - Submit event from `#aips-suggest-authors-form`.
+		 */
+		suggestAuthors: function (e) {
+			e.preventDefault();
+
+			const siteNiche = $('#aips-suggest-site-niche').val().trim();
+			if (!siteNiche) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.siteNicheRequired || 'Site niche is required.', 'warning');
+				return;
 			}
+
+			const $btn = $('#aips-suggest-authors-submit');
+			AIPS.Utilities.setButtonLoading($btn,
+				'<span class="dashicons dashicons-update aips-spin"></span> ' +
+				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...'),
+				{ isHtml: true }
+			);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_suggest_authors',
+					nonce: aipsAuthorsL10n.nonce,
+					site_niche: siteNiche,
+					target_audience: $('#aips-suggest-target-audience').val().trim(),
+					content_goals: $('#aips-suggest-content-goals').val().trim(),
+					count: $('#aips-suggest-count').val()
+				},
+				success: (response) => {
+					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
+						this.renderSuggestedAuthors(response.data.suggestions);
+						$('#aips-suggest-authors-results').show();
+					} else {
+						const msg = (response.data && response.data.message)
+							? response.data.message
+							: (aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.');
+						AIPS.Utilities.showToast(msg, 'error');
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
+				},
+				complete: () => {
+					AIPS.Utilities.resetButton($btn);
+				}
+			});
+		},
+
+		/**
+		 * Render the suggested author cards into `#aips-suggest-authors-cards`.
+		 *
+		 * Uses the `#aips-tmpl-suggestion-card` and `#aips-tmpl-suggestion-meta-row`
+		 * HTML templates (defined in authors.php) so the markup lives in one place
+		 * and is not duplicated in JavaScript.
+		 *
+		 * @param {Array<Object>} suggestions - Array of suggestion objects from the server.
+		 */
+		renderSuggestedAuthors: function (suggestions) {
+			var html = '';
+
+			suggestions.forEach(function (suggestion, index) {
+				// Build the meta rows from optional fields using the meta-row template.
+				// render() auto-escapes tokens so values are safe to insert.
+				var metaRows = '';
+				var metaFields = [
+					{ key: 'keywords',                label: aipsAuthorsL10n.keywordsLabel        || 'Keywords' },
+					{ key: 'voice_tone',               label: aipsAuthorsL10n.voiceToneLabel       || 'Voice/Tone' },
+					{ key: 'writing_style',            label: aipsAuthorsL10n.writingStyleLabel    || 'Writing Style' },
+					{ key: 'topic_generation_prompt',  label: aipsAuthorsL10n.topicPromptLabel     || 'Topic Generation Prompt' },
+				];
+				metaFields.forEach(function (field) {
+					if (suggestion[field.key]) {
+						metaRows += AIPS.Templates.render('aips-tmpl-suggestion-meta-row', {
+							label: field.label,
+							value: suggestion[field.key],
+						});
+					}
+				});
+
+				var importLabel = aipsAuthorsL10n.importAuthor || 'Import Author';
+				var ariaLabel  = importLabel + ': ' + (suggestion.name || '');
+
+				// render() handles escaping of all string tokens; only `meta` and `index`
+				// are safe to insert as-is (meta is already rendered HTML, index is a number).
+				html += AIPS.Templates.renderRaw('aips-tmpl-suggestion-card', {
+					index:           index,
+					name:            AIPS.Templates.escape(suggestion.name || ''),
+					field_niche:     AIPS.Templates.escape(suggestion.field_niche || ''),
+					description:     AIPS.Templates.escape(suggestion.description || ''),
+					meta:            metaRows,
+					importLabel:     AIPS.Templates.escape(importLabel),
+					importAriaLabel: AIPS.Templates.escape(ariaLabel),
+				});
+			});
+
+			// Store suggestions data on the container for later retrieval on import
+			var $cards = $('#aips-suggest-authors-cards');
+			$cards.html(html);
+			$cards.data('suggestions', suggestions);
+		},
+
+		/**
+		 * Import a suggested author profile by saving it via `aips_save_author`.
+		 *
+		 * Reads the suggestion data stored on `#aips-suggest-authors-cards` by
+		 * index, sends the AJAX request, and shows a success toast on completion.
+		 * Disables the import button while the request is in flight.
+		 *
+		 * @param {Event} e - Click event from an `.aips-import-suggested-author` element.
+		 */
+		importSuggestedAuthor: function (e) {
+			e.preventDefault();
+
+			const $btn = $(e.currentTarget);
+			const index = parseInt($btn.data('index'), 10);
+			const suggestions = $('#aips-suggest-authors-cards').data('suggestions');
+
+			if (!suggestions || !suggestions[index]) {
+				return;
+			}
+
+			const suggestion = suggestions[index];
+			AIPS.Utilities.setButtonLoading($btn,
+				'<span class="dashicons dashicons-update aips-spin"></span> ' +
+				(aipsAuthorsL10n.importingAuthor || 'Importing...'),
+				{ isHtml: true }
+			);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_save_author',
+					nonce: aipsAuthorsL10n.nonce,
+					name: suggestion.name,
+					field_niche: suggestion.field_niche,
+					description: suggestion.description || '',
+					details: suggestion.details || '',
+					keywords: suggestion.keywords || '',
+					voice_tone: suggestion.voice_tone || '',
+					writing_style: suggestion.writing_style || '',
+					topic_generation_prompt: suggestion.topic_generation_prompt || '',
+					target_audience: suggestion.target_audience || '',
+					expertise_level: suggestion.expertise_level || '',
+					content_goals: suggestion.content_goals || '',
+					excluded_topics: suggestion.excluded_topics || '',
+					preferred_content_length: suggestion.preferred_content_length || '',
+					language: suggestion.language || 'en',
+					max_posts_per_topic: suggestion.max_posts_per_topic || 1,
+					topic_generation_frequency: 'weekly',
+					topic_generation_quantity: 5,
+					post_generation_frequency: 'daily',
+					post_status: 'draft',
+					is_active: 1
+				},
+				success: (response) => {
+					if (response.success) {
+						this.hasImportedSuggestedAuthor = true;
+						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
+						$btn.prop('disabled', true).html(
+							'<span class="dashicons dashicons-yes"></span> ' +
+							(aipsAuthorsL10n.importedAuthor || 'Imported Author')
+						);
+					} else {
+						const msg = (response.data && response.data.message)
+							? response.data.message
+							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
+						AIPS.Utilities.showToast(msg, 'error');
+						AIPS.Utilities.resetButton($btn);
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
+					AIPS.Utilities.resetButton($btn);
+				}
+			});
 		}
 	};
 	
@@ -1915,11 +2442,11 @@
 			$fieldFilter.find('option:not(:first)').remove();
 
 			authors.forEach(author => {
-				$authorFilter.append('<option value="' + AuthorsModule.escapeHtml(author) + '">' + AuthorsModule.escapeHtml(author) + '</option>');
+				$authorFilter.append($('<option>').val(author).text(author));
 			});
 
 			fields.forEach(field => {
-				$fieldFilter.append('<option value="' + AuthorsModule.escapeHtml(field) + '">' + AuthorsModule.escapeHtml(field) + '</option>');
+				$fieldFilter.append($('<option>').val(field).text(field));
 			});
 
 			$authorFilter.val(authorValue);
@@ -1998,27 +2525,27 @@
 			const start = (this.queueCurrentPage - 1) * this.queuePerPage;
 			const pageItems = topics.slice(start, start + this.queuePerPage);
 
-			let html = '<table class="aips-table aips-queue-table">';
-			html += '<thead><tr>';
-			html += '<th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.author || 'Author') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			pageItems.forEach(topic => {
-				html += '<tr>';
-				html += '<td><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></td>';
-				html += '<td><span class="cell-primary">' + AuthorsModule.escapeHtml(topic.topic_title) + '</span></td>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.author_name) + '</td>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.field_niche) + '</td>';
-				html += '<td><div class="cell-meta">' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</div></td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-queue-row', {
+					id: topic.id,
+					title: AIPS.Templates.escape(topic.topic_title),
+					author: AIPS.Templates.escape(topic.author_name),
+					field: AIPS.Templates.escape(topic.field_niche),
+					date: AIPS.Templates.escape(topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A')
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-queue-topics-list').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-queue-table', {
+				titleLabel: AIPS.Templates.escape(aipsAuthorsL10n.topicTitle || 'Topic Title'),
+				authorLabel: AIPS.Templates.escape(aipsAuthorsL10n.author || 'Author'),
+				fieldLabel: AIPS.Templates.escape(aipsAuthorsL10n.fieldNiche || 'Field/Niche'),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.approvedDate || 'Approved Date'),
+				rows: rowsHtml
+			});
+
+			$('#aips-queue-topics-list').html(tableHtml);
 
 			const topicLabel = totalItems === 1 ? (aipsAuthorsL10n.topic || 'topic') : (aipsAuthorsL10n.topics || 'topics');
 			$('#aips-queue-table-footer-count').text(totalItems + ' ' + topicLabel);
@@ -2033,45 +2560,47 @@
 		 */
 		renderQueuePagination: function (totalPages) {
 			const current = this.queueCurrentPage;
-			let html = '';
 
 			if (totalPages <= 1) {
 				$('#aips-queue-pagination-links').html('');
 				return;
 			}
 
-			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current - 1) + '" ' + (current <= 1 ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-left-alt2"></span></button>';
-			html += '<span class="aips-history-page-numbers">';
-
+			let pagesHtml = '';
 			const start = Math.max(1, current - 3);
 			const end = Math.min(totalPages, current + 3);
 
 			if (start > 1) {
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
+				pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
 				if (start > 2) {
-					html += '<span class="aips-history-page-ellipsis">…</span>';
+					pagesHtml += '<span class="aips-history-page-ellipsis">…</span>';
 				}
 			}
 
 			for (let p = start; p <= end; p++) {
 				if (p === current) {
-					html += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
+					pagesHtml += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
 				} else {
-					html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
+					pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
 				}
 			}
 
 			if (end < totalPages) {
 				if (end < totalPages - 1) {
-					html += '<span class="aips-history-page-ellipsis">…</span>';
+					pagesHtml += '<span class="aips-history-page-ellipsis">…</span>';
 				}
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
+				pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
 			}
 
-			html += '</span>';
-			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current + 1) + '" ' + (current >= totalPages ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-right-alt2"></span></button>';
+			const paginationHtml = AIPS.Templates.renderRaw('aips-tmpl-queue-pagination', {
+				prevPage: current - 1,
+				prevDisabled: current <= 1 ? 'disabled' : '',
+				nextPage: current + 1,
+				nextDisabled: current >= totalPages ? 'disabled' : '',
+				pages: pagesHtml
+			});
 
-			$('#aips-queue-pagination-links').html(html);
+			$('#aips-queue-pagination-links').html(paginationHtml);
 		},
 
 		/**
@@ -2160,7 +2689,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$button.prop('disabled', true).text(aipsAuthorsL10n.generating || 'Generating...');
+						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
 
 						$.ajax({
 							url: ajaxurl,
@@ -2191,7 +2720,7 @@
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 							},
 							complete: () => {
-								$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+								AIPS.Utilities.resetButton($button);
 							}
 						});
 					}

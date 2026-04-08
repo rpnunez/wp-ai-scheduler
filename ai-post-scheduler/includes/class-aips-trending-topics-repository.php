@@ -67,6 +67,7 @@ class AIPS_Trending_Topics_Repository {
             'offset' => 0,
             'date_from' => '',
             'fresh_only' => false,
+            'status' => '',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -95,6 +96,15 @@ class AIPS_Trending_Topics_Repository {
         // Filter fresh topics only (researched within last 7 days)
         if ($args['fresh_only']) {
             $where[] = 'researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+        }
+        
+        // Filter by status
+        if (!empty($args['status'])) {
+            $sanitized_status = sanitize_key($args['status']);
+            if ($sanitized_status !== '') {
+                $where[] = 'status = %s';
+                $prepare_values[] = $sanitized_status;
+            }
         }
         
         $where_clause = implode(' AND ', $where);
@@ -130,6 +140,85 @@ class AIPS_Trending_Topics_Repository {
         );
         
         return $this->wpdb->get_row($query, ARRAY_A);
+    }
+
+    /**
+     * Get generated post counts keyed by trending topic ID.
+     *
+     * Counts posts linked through `_aips_trending_topic_id` post meta.
+     *
+     * @param array $topic_ids Topic IDs.
+     * @return array Map of topic_id => count.
+     */
+    public function get_generated_post_counts($topic_ids) {
+        if (empty($topic_ids) || !is_array($topic_ids)) {
+            return array();
+        }
+
+        $topic_ids = array_map('absint', $topic_ids);
+        $topic_ids = array_values(array_filter($topic_ids, function($id) {
+            return $id > 0;
+        }));
+
+        if (empty($topic_ids)) {
+            return array();
+        }
+
+        $post_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+        $placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+
+        $query = "SELECT CAST(pm.meta_value AS UNSIGNED) AS topic_id, COUNT(DISTINCT p.ID) AS post_count
+            FROM {$postmeta_table} pm
+            INNER JOIN {$post_table} p ON p.ID = pm.post_id
+            WHERE pm.meta_key = %s
+            AND CAST(pm.meta_value AS UNSIGNED) IN ({$placeholders})
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('auto-draft', 'trash')
+            GROUP BY topic_id";
+
+        $prepare_values = array_merge(array('_aips_trending_topic_id'), $topic_ids, array('post'));
+        $rows = $this->wpdb->get_results($this->wpdb->prepare($query, $prepare_values), ARRAY_A);
+
+        $counts = array();
+        foreach ($rows as $row) {
+            $counts[(int) $row['topic_id']] = (int) $row['post_count'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Get generated posts linked to a specific trending topic.
+     *
+     * @param int $topic_id Trending topic ID.
+     * @return array List of generated posts.
+     */
+    public function get_generated_posts_by_topic_id($topic_id) {
+        $topic_id = absint($topic_id);
+
+        if ($topic_id <= 0) {
+            return array();
+        }
+
+        $post_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+
+        $query = $this->wpdb->prepare(
+            "SELECT DISTINCT p.ID AS post_id, p.post_title, p.post_status, p.post_date
+            FROM {$postmeta_table} pm
+            INNER JOIN {$post_table} p ON p.ID = pm.post_id
+            WHERE pm.meta_key = %s
+            AND CAST(pm.meta_value AS UNSIGNED) = %d
+            AND p.post_type = %s
+            AND p.post_status NOT IN ('auto-draft', 'trash')
+            ORDER BY p.post_date DESC",
+            '_aips_trending_topic_id',
+            $topic_id,
+            'post'
+        );
+
+        return $this->wpdb->get_results($query, ARRAY_A);
     }
     
     /**
@@ -202,44 +291,68 @@ class AIPS_Trending_Topics_Repository {
     /**
      * Save researched topics to database.
      *
-     * @param array $topics Array of topic data to save.
-     * @param string $niche Niche these topics belong to.
-     * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
+     * Prefetches existing topic titles in a single query to avoid N+1 DB calls.
+     * Within-batch duplicates are filtered via an in-memory map.
+     *
+     * @param array  $topics Array of topic data to save.
+     * @param string $niche  Niche these topics belong to.
+     * @return int|false Number of topics inserted (may be less than input count if some are skipped
+     *                   due to validation or duplicates), or false on database error or empty input.
      */
     public function save_research_batch($topics, $niche) {
         if (empty($topics) || !is_array($topics)) {
             return false;
         }
-        
-        // Extract topic titles for duplicate checking
-        $topic_titles = array_column($topics, 'topic');
-        if (empty($topic_titles)) {
+
+        // Collect candidate titles, filtering obviously invalid entries up-front.
+        $candidate_titles = array();
+        foreach ($topics as $topic) {
+            if (!empty($topic['topic'])) {
+                $candidate_titles[] = $topic['topic'];
+            }
+        }
+
+        if (empty($candidate_titles)) {
             return 0;
         }
 
-        // Check for existing topics in this niche within last 7 days to prevent duplicates
-        $placeholders = implode(',', array_fill(0, count($topic_titles), '%s'));
-        $query = $this->wpdb->prepare(
-            "SELECT topic FROM {$this->table_name}
-            WHERE niche = %s
-            AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            AND topic IN ($placeholders)",
-            array_merge(array($niche), $topic_titles)
+        // Prefetch all existing topics for this niche within the dedup window in one query.
+        $placeholders = implode(',', array_fill(0, count($candidate_titles), '%s'));
+        $existing_rows = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT topic FROM {$this->table_name}
+                WHERE niche = %s
+                AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND topic IN ({$placeholders})",
+                array_merge(array($niche), $candidate_titles)
+            )
         );
-
-        $existing_topics = $this->wpdb->get_col($query);
-        $existing_topics = $existing_topics ? array_map('strtolower', $existing_topics) : array();
+        $existing_lower = $existing_rows
+            ? array_flip(array_map('strtolower', $existing_rows))
+            : array();
 
         $batch_data = array();
-        
+        // Track titles added in this batch to prevent within-batch duplicates.
+        $seen_in_batch = array();
+
         foreach ($topics as $topic) {
-            // Skip duplicates
-            if (in_array(strtolower($topic['topic']), $existing_topics)) {
+            if (empty($topic['topic'])) {
                 continue;
             }
 
-            // Add to existing list to prevent duplicates within the batch itself
-            $existing_topics[] = strtolower($topic['topic']);
+            $topic_lower = strtolower($topic['topic']);
+
+            // Skip within-batch duplicates.
+            if (isset($seen_in_batch[$topic_lower])) {
+                continue;
+            }
+
+            // Skip topics that already exist in the database for this niche.
+            if (isset($existing_lower[$topic_lower])) {
+                continue;
+            }
+
+            $seen_in_batch[$topic_lower] = true;
 
             $batch_data[] = array(
                 'niche' => $niche,
@@ -247,10 +360,11 @@ class AIPS_Trending_Topics_Repository {
                 'score' => $topic['score'],
                 'reason' => isset($topic['reason']) ? $topic['reason'] : '',
                 'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
+                'status' => isset($topic['status']) ? $topic['status'] : 'new',
                 'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
             );
         }
-        
+
         if (empty($batch_data)) {
             return 0;
         }
@@ -273,7 +387,7 @@ class AIPS_Trending_Topics_Repository {
 
         $values = array();
         $placeholders = array();
-        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, status, researched_at) VALUES ";
 
         foreach ($topics as $data) {
             // Validate required fields.
@@ -297,6 +411,13 @@ class AIPS_Trending_Topics_Repository {
                 $keywords_json = '[]';
             }
 
+            $status = 'new';
+            if (isset($data['status'])) {
+                $sanitized_status = sanitize_key($data['status']);
+                if ($sanitized_status !== '') {
+                    $status = $sanitized_status;
+                }
+            }
             $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
 
             array_push(
@@ -306,9 +427,10 @@ class AIPS_Trending_Topics_Repository {
                 $score,
                 $reason,
                 $keywords_json,
+                $status,
                 $researched_at
             );
-            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s, %s)";
         }
 
         if (empty($placeholders)) {
@@ -344,6 +466,7 @@ class AIPS_Trending_Topics_Repository {
             'score' => 50,
             'reason' => '',
             'keywords' => array(),
+            'status' => 'new',
             'researched_at' => current_time('mysql'),
         );
         
@@ -358,6 +481,12 @@ class AIPS_Trending_Topics_Repository {
         $keywords_json = is_array($data['keywords']) 
             ? wp_json_encode($data['keywords']) 
             : '[]';
+
+        // Normalize status: fall back to 'new' when sanitize_key yields an empty string.
+        $status_value = sanitize_key($data['status']);
+        if ($status_value === '') {
+            $status_value = 'new';
+        }
         
         $result = $this->wpdb->insert(
             $this->table_name,
@@ -367,9 +496,10 @@ class AIPS_Trending_Topics_Repository {
                 'score' => absint($data['score']),
                 'reason' => sanitize_text_field($data['reason']),
                 'keywords' => $keywords_json,
+                'status' => $status_value,
                 'researched_at' => $data['researched_at'],
             ),
-            array('%s', '%s', '%d', '%s', '%s', '%s')
+            array('%s', '%s', '%d', '%s', '%s', '%s', '%s')
         );
         
         if ($result === false) {
@@ -387,7 +517,7 @@ class AIPS_Trending_Topics_Repository {
      * @return bool True on success, false on failure.
      */
     public function update($id, $data) {
-        $allowed_fields = array('topic', 'score', 'reason', 'keywords', 'niche');
+        $allowed_fields = array('topic', 'score', 'reason', 'keywords', 'niche', 'status');
         $update_data = array();
         $format = array();
         
@@ -401,6 +531,14 @@ class AIPS_Trending_Topics_Repository {
                 } elseif ($field === 'score') {
                     $update_data[$field] = absint($data[$field]);
                     $format[] = '%d';
+                } elseif ($field === 'status') {
+                    $sanitized_status = sanitize_key($data[$field]);
+                    if ($sanitized_status === '') {
+                        // Skip empty/invalid status values; do not overwrite existing status.
+                        continue;
+                    }
+                    $update_data[$field] = $sanitized_status;
+                    $format[] = '%s';
                 } else {
                     $update_data[$field] = sanitize_text_field($data[$field]);
                     $format[] = '%s';
@@ -421,6 +559,41 @@ class AIPS_Trending_Topics_Repository {
         );
         
         return $result !== false;
+    }
+
+    /**
+     * Update status for multiple trending topics.
+     *
+     * @param array  $ids    Topic IDs.
+     * @param string $status New status value.
+     * @return int|false Number of updated rows, 0 for no valid IDs, or false on error.
+     */
+    public function update_status_bulk($ids, $status) {
+        if (empty($ids) || !is_array($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_values(array_filter($ids, function($id) {
+            return $id > 0;
+        }));
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $sanitized_status = sanitize_key($status);
+        if ($sanitized_status === '') {
+            return false;
+        }
+
+        $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $query = "UPDATE {$this->table_name} SET status = %s WHERE id IN ({$id_placeholders})";
+        $prepare_values = array_merge(array($sanitized_status), $ids);
+
+        $prepared_query = $this->wpdb->prepare($query, $prepare_values);
+
+        return $this->wpdb->query($prepared_query);
     }
     
     /**
@@ -485,22 +658,6 @@ class AIPS_Trending_Topics_Repository {
 
         return $this->wpdb->query($query);
     }
-
-    /**
-     * Delete old research data.
-     *
-     * @param int $days Delete topics older than N days.
-     * @return int|false Number of deleted records, or false on failure.
-     */
-    public function delete_old_topics($days = 30) {
-        $query = $this->wpdb->prepare(
-            "DELETE FROM {$this->table_name} 
-            WHERE researched_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
-            $days
-        );
-        
-        return $this->wpdb->query($query);
-    }
     
     /**
      * Get statistics about researched topics.
@@ -541,22 +698,6 @@ class AIPS_Trending_Topics_Repository {
      * Get statistics for a specific niche.
      *
      * @param string $niche Niche name.
-     * @return array Niche-specific statistics.
-     */
-    public function get_niche_stats($niche) {
-        $stats = array(
-            'topic_count' => 0,
-            'avg_score' => 0,
-            'highest_score' => 0,
-            'latest_research' => null,
-        );
-        
-        $query = $this->wpdb->prepare(
-            "SELECT 
-                COUNT(*) as topic_count,
-                AVG(score) as avg_score,
-                MAX(score) as highest_score,
-                MAX(researched_at) as latest_research
             FROM {$this->table_name}
             WHERE niche = %s",
             $niche

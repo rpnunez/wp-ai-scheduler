@@ -122,10 +122,43 @@
 #aips-topics-content > p {
 	padding: 20px;
 	margin: 0;
+	text-align: center;
+}
+
+/* Topics Loading State */
+#aips-topics-loading {
+	min-height: 200px;
+	padding: 20px;
+	text-align: center;
+}
+
+.aips-topics-loading-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.aips-topics-loading-icon-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 8px;
+}
+
+.aips-topics-loading-text {
+	margin: 0;
+}
+
+/* Dim the topics panel slightly while loading */
+#aips-author-topics-panel.aips-topics-loading-active {
+	opacity: 0.85;
+	transition: opacity var(--aips-transition-base);
 }
 
 .topic-title-cell {
 	position: relative;
+	cursor: pointer;
 }
 
 .topic-title-edit {
@@ -330,6 +363,47 @@
 	cursor: pointer;
 }
 
+.aips-taxonomy-table thead .check-column {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
+	text-align: center;
+	vertical-align: middle;
+	border-bottom: 2px solid var(--aips-gray-200);
+	background: var(--aips-gray-50);
+}
+
+.aips-taxonomy-table tbody .check-column {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
+	text-align: center;
+	vertical-align: middle;
+	border-bottom: 1px solid var(--aips-gray-100);
+	background: var(--aips-white);
+}
+
+.aips-taxonomy-table thead .check-column input[type="checkbox"],
+.aips-taxonomy-table tbody .check-column input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.aips-taxonomy-table tbody tr:last-child .check-column {
+	border-bottom: none;
+}
+
+.aips-taxonomy-table .taxonomy-actions .cell-actions {
+	justify-content: flex-start;
+}
+
+.aips-taxonomy-term-created {
+	font-size: 12px;
+	font-weight: 600;
+	color: #2271b1;
+	white-space: nowrap;
+}
+
 .aips-select-all-topics {
 	cursor: pointer;
 }
@@ -447,12 +521,91 @@
 }
 
 /* Topic Posts Modal */
-#aips-topic-posts-content table {
-	margin-top: 10px;
+.aips-topic-posts-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 12px;
 }
 
-#aips-topic-posts-content .button {
-	margin-right: 5px;
+.aips-topic-post-item {
+	display: grid;
+	grid-template-columns: 1fr 220px;
+	gap: 18px;
+	padding: 18px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.aips-topic-post-title {
+	margin: 0 0 10px;
+	font-size: 24px;
+	line-height: 1.25;
+	color: #1d2327;
+}
+
+.aips-topic-post-excerpt {
+	margin: 0 0 12px;
+	color: #3c434a;
+	font-size: 14px;
+	line-height: 1.65;
+}
+
+.aips-topic-post-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 20px;
+	margin-bottom: 12px;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.aips-topic-post-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.aips-topic-post-media {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+}
+
+.aips-topic-post-image {
+	width: 220px;
+	height: 150px;
+	object-fit: cover;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	display: block;
+}
+
+.aips-topic-post-image-placeholder {
+	width: 220px;
+	height: 150px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 6px;
+	background: #f6f7f7;
+	color: #646970;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 12px;
+}
+
+@media (max-width: 782px) {
+	.aips-topic-post-item {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-topic-post-media {
+		justify-content: flex-start;
+	}
 }
 
 /* Generation Queue Styles */
@@ -636,8 +789,9 @@
 
 /* Inline similarity indicator for pending topic rows */
 .aips-topic-similarity-slot {
-	display: inline-flex;
-	margin-left: 8px;
+	display: block;
+	margin-left: 0;
+	margin-top: 4px;
 	vertical-align: middle;
 }
 
@@ -879,4 +1033,85 @@
 	font-size: 11px;
 	color: #646970;
 	margin-left: 6px;
+}
+
+/* -----------------------------------------------
+   Reason category chips (positive & negative)
+   ----------------------------------------------- */
+.aips-reason-category-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 6px;
+	margin-left: 4px;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+	vertical-align: middle;
+	cursor: default;
+}
+
+.aips-reason-category-badge .dashicons {
+	font-size: 12px;
+	width: 12px;
+	height: 12px;
+	margin-right: 4px;
+}
+
+/* -- Positive approval categories -- */
+.aips-reason-category-badge-positive {
+	background-color: #d1ecf1;
+	color: #0c5460;
+	border: 1px solid #bee5eb;
+}
+
+.aips-reason-category-badge-timely {
+	background-color: #cce5ff;
+	color: #004085;
+	border: 1px solid #b8daff;
+}
+
+.aips-reason-category-badge-original {
+	background-color: #e2d9f3;
+	color: #4a235a;
+	border: 1px solid #c3a9e0;
+}
+
+.aips-reason-category-badge-engaging,
+.aips-reason-category-badge-relevant {
+	background-color: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.aips-reason-category-badge-well-researched {
+	background-color: #e8f4f8;
+	color: #1a5276;
+	border: 1px solid #a9cce3;
+}
+
+/* -- Negative rejection categories -- */
+.aips-reason-category-badge-negative {
+	background-color: #fff3cd;
+	color: #856404;
+	border: 1px solid #ffc107;
+}
+
+.aips-reason-category-badge-duplicate {
+	background-color: #fff3cd;
+	color: #856404;
+	border: 1px solid #ffc107;
+}
+
+.aips-reason-category-badge-tone,
+.aips-reason-category-badge-irrelevant {
+	background-color: #fde3c8;
+	color: #7d3c00;
+	border: 1px solid #f0a95a;
+}
+
+.aips-reason-category-badge-policy {
+	background-color: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
 }

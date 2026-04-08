@@ -145,3 +145,93 @@
 **Improvement:** Enabled clickable progress indicator steps in the Template Wizard to allow non-linear navigation.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `ai-post-scheduler/assets/css/admin.css`
 **Outcome:** Reduces friction for users, allowing them to jump directly to previous steps or skip ahead (if intermediate steps are valid) without needing to click "Next" or "Back" multiple times, significantly improving the edit flow.
+
+## 2024-03-24 - Dashboard Optimization
+**Target Feature:** Dashboard
+**Improvement:** Replaced hardcoded admin URLs with `AIPS_Admin_Menu_Helper::get_page_url()` in dashboard templates and related notification classes.
+**Files Modified:** `ai-post-scheduler/templates/admin/dashboard.php`, `ai-post-scheduler/includes/class-aips-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-post-review-notifications.php`
+**Outcome:** Improved routing maintainability and eliminated hardcoded URLs.
+
+## 2026-03-24 - Multiple Posts Per Run Optimization
+**Target Feature:** Scheduler
+**Improvement:** Implemented "Multiple Posts Per Run" allowing a single schedule execution to generate a configurable number of posts. Previously, schedules would only generate a single post, ignoring the `post_quantity` configuration on the parent Template. The `AIPS_Schedule_Processor::execute_schedule_logic` was updated to explicitly retrieve the template, respect its `post_quantity`, and loop the `generate_post` call. The resulting array of IDs was then gracefully propagated back through cleanup functions, logging utilities, and the controller's AJAX responses, maintaining backward compatibility while drastically improving throughput for high-volume publishing workflows.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-schedule-processor.php`
+- `ai-post-scheduler/includes/class-aips-schedule-controller.php`
+- `ai-post-scheduler/tests/test-manual-schedule-execution.php`
+**Outcome:** Enhances scheduling efficiency for users managing high-volume blogs by allowing batch generation through a single scheduled task rather than forcing them to configure multiple identical schedules.
+  
+## 2026-03-24 - Planner Optimization
+**Target Feature:** Planner
+**Improvement:** Optimized the Planner UI flow by adding an inline remove button (an X icon) directly to each generated topic row (`.topic-item`). This allows users to quickly delete individual topics without needing to manually clear the input field or use bulk actions. Added `removeTopic` logic to `admin-planner.js` which fades out the item, updates the selection count, and gracefully hides the panel if it was the last topic.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/admin-planner.js`
+- `ai-post-scheduler/assets/css/planner.css`
+**Outcome:** Greatly enhances the speed and fluidity of curating brainstormed topic lists by allowing one-click removal of unwanted suggestions.
+## 2026-03-22 - Planner "Generate Now" Optimization
+**Target Feature:** Planner
+**Improvement:** Optimized the workflow for generating content from brainstormed topics by adding a "Generate Now" button next to "Schedule Selected Topics". Previously, users who wanted to immediately generate a post for a brainstormed topic had to navigate away to another tool, or manually schedule it for "now". Now, clicking "Generate Now" bypasses the schedule and immediately generates posts for the selected topics within the same request flow.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/planner.php`
+- `ai-post-scheduler/assets/js/admin-planner.js`
+- `ai-post-scheduler/includes/class-aips-planner.php`
+**Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution, fulfilling the "from research to schedule in one flow" shortcut.
+
+## 2026-03-25 - Planner Optimization
+**Target Feature:** Planner (Topic Brainstorming and Bulk Scheduling/Generation)
+**Improvement:** Optimized the flow by not clearing the entire list of topics upon bulk generation or scheduling. Instead, the UI now removes only the successfully processed topics. The results panel is only hidden when all selected topics are consumed. This allows users to generate or schedule partial batches without losing their work.
+**Files Modified:** ai-post-scheduler/assets/js/admin-planner.js
+**Outcome:** Users can now incrementally process brainstormed topics (e.g., generating some immediately and scheduling others) without their remaining topics disappearing unexpectedly, preserving their workflow.
+
+## 2026-03-26 - Templates Controller Optimization
+**Target Feature:** Templates Controller
+**Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
+**Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
+
+## 2026-03-31 - Post Review Optimization
+**Target Feature:** Post Review
+**Improvement:** Added Bulk Regenerate functionality to handle multiple poor generations efficiently.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Users can now select multiple draft posts and regenerate them all at once, streamlining the workflow and reducing manual effort.
+
+## 2026-03-30 - Author Topics Bulk Generation Flow Optimization
+**Target Feature:** Author Topics Controller
+**Improvement:** Optimized the workflow for generating content from brainstormed topics by enforcing a bulk limit for synchronous generation. Prevents PHP timeouts and silent failures when generating many posts at once from the Author Topics grid. Limit is configurable via the `aips_bulk_run_now_limit` filter.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-author-topics-controller.php`
+**Outcome:** Enhances stability and user experience by preventing fatal server timeouts during bulk generation, providing clear error messages when limits are exceeded, rather than leaving the user with a broken interface or incomplete generation sessions.
+
+## 2026-03-31 - Article Structures Flow Optimization
+**Target Feature:** Article Structures
+**Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
+
+## 2026-04-07 - Notifications God Object Refactoring
+**Target Feature:** Notifications System
+**Improvement:** Refactored the 1,263-line `AIPS_Notifications` "God Object" by extracting responsibilities into two focused classes, eliminating the Single Responsibility Principle violation while guaranteeing 100% backward compatibility.
+
+**Architecture changes:**
+1. **`AIPS_Notification_Registry`** (new, 239 lines) — Pure static class holding all type definitions and channel-mode constants. Provides `get_type_registry()`, `get_high_priority_types()`, and `get_channel_mode_options()`. No constructor, no state.
+2. **`AIPS_Notification_Senders`** (new, 736 lines) — Holds all 21 named sender/formatter methods (`author_topics_generated`, `generation_failed`, `quota_alert`, `integration_error`, `scheduler_error`, `system_error`, `template_generated`, `manual_generation_completed`, `post_ready_for_review`, `post_rejected`, `partial_generation_completed`, `daily_digest`, `weekly_summary`, `monthly_report`, `history_cleanup`, `seeder_complete`, `template_change`, `author_suggestions`, `circuit_breaker_opened`, `rate_limit_reached`, `research_topics_ready`). Constructor accepts `$dispatcher` and `$vars_builder` callables (dependency injection), keeping it decoupled from the core dispatch mechanism.
+3. **`AIPS_Notifications`** (refactored, 723 lines) — Reduced from 1,263 lines. Creates `$this->senders` internally. All 21 public sender methods now proxy to `$this->senders`. Static registry methods proxy to `AIPS_Notification_Registry`. All constants, `send()`, and internal dispatch logic unchanged.
+
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-notifications.php` — Reduced from 1,263 to 723 lines; added senders proxy layer; registry methods delegate to AIPS_Notification_Registry
+- `ai-post-scheduler/includes/class-aips-notification-registry.php` — New file (239 lines)
+- `ai-post-scheduler/includes/class-aips-notification-senders.php` — New file (736 lines)
+- `ai-post-scheduler/tests/test-notification-registry.php` — New test file (registry tests)
+- `ai-post-scheduler/tests/test-notification-senders.php` — New test file (senders tests)
+
+**Tests:** 64 new tests, 218 assertions — all pass. Zero regressions vs. baseline.
+**Branch:** `copilot/refactor-aips-notifications-class` (2 commits ahead of main)
+**Outcome:** AIPS_Notifications is no longer a God Object. Each class has a single, clear responsibility: Registry owns type definitions, Senders owns formatting/dispatch logic, Notifications orchestrates and maintains the backward-compatible public API. The autoloader picks up both new classes automatically via the existing `AIPS_Foo → class-aips-foo.php` convention.
+
+## 2026-04-07 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Merged the 'Basic Info' and 'Title & Excerpt' steps into a single unified step to reduce the number of clicks required to configure a new template, improving overall flow.
+**Files Modified:**
+- ai-post-scheduler/templates/admin/templates.php
+- ai-post-scheduler/assets/js/admin.js
+**Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.

@@ -12,6 +12,14 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     
     public function setUp(): void {
         parent::setUp();
+        if (!class_exists('WP_Error')) {
+            $this->markTestSkipped('Database tests cannot run in limited mode without WP Test Lib.');
+        }
+        global $wpdb;
+        if (property_exists($wpdb, 'get_col_return_val')) {
+            $this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+        }
+
         $this->repository = new AIPS_Trending_Topics_Repository();
         
         // Ensure table exists
@@ -27,10 +35,12 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
             score int(11) NOT NULL DEFAULT 50,
             reason text DEFAULT NULL,
             keywords text DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'new',
             researched_at datetime NOT NULL,
             PRIMARY KEY  (id),
             KEY niche_idx (niche),
             KEY score_idx (score),
+            KEY status_idx (status),
             KEY researched_at_idx (researched_at)
         ) {$charset_collate};";
         
@@ -637,5 +647,200 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     public function test_delete_bulk_all_invalid_ids() {
         $result = $this->repository->delete_bulk(array(0, -1, 'invalid'));
         $this->assertEquals(0, $result);
+    }
+
+    /**
+     * Test create stores the status field correctly.
+     */
+    public function test_create_stores_status() {
+        $topic_id = $this->repository->create(array(
+            'niche'   => 'StatusTest',
+            'topic'   => 'Status Topic',
+            'score'   => 80,
+            'status'  => 'used',
+        ));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('used', $topic['status']);
+    }
+
+    /**
+     * Test create defaults status to 'new'.
+     */
+    public function test_create_defaults_status_to_new() {
+        $topic_id = $this->repository->create(array(
+            'niche'  => 'StatusTest',
+            'topic'  => 'Default Status Topic',
+            'score'  => 80,
+        ));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('new', $topic['status']);
+    }
+
+    /**
+     * Test update can change the status field.
+     */
+    public function test_update_status_field() {
+        $topic_id = $this->repository->create(array(
+            'niche'  => 'StatusTest',
+            'topic'  => 'Update Status Topic',
+            'score'  => 80,
+        ));
+
+        $this->repository->update($topic_id, array('status' => 'scheduled'));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('scheduled', $topic['status']);
+    }
+
+    /**
+     * Test update_status_bulk updates status for multiple topics.
+     */
+    public function test_update_status_bulk_updates_multiple_topics() {
+        $id1 = $this->repository->create(array(
+            'niche'  => 'StatusBulk',
+            'topic'  => 'Bulk Topic 1',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+        $id2 = $this->repository->create(array(
+            'niche'  => 'StatusBulk',
+            'topic'  => 'Bulk Topic 2',
+            'score'  => 85,
+            'status' => 'new',
+        ));
+
+        $updated = $this->repository->update_status_bulk(array($id1, $id2), 'generated');
+
+        $this->assertEquals(2, $updated);
+        $topic1 = $this->repository->get_by_id($id1);
+        $topic2 = $this->repository->get_by_id($id2);
+        $this->assertEquals('generated', $topic1['status']);
+        $this->assertEquals('generated', $topic2['status']);
+    }
+
+    /**
+     * Test update_status_bulk returns false for invalid status values.
+     */
+    public function test_update_status_bulk_rejects_invalid_status() {
+        $id = $this->repository->create(array(
+            'niche'  => 'StatusBulkInvalid',
+            'topic'  => 'Bulk Invalid Topic',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+
+        $updated = $this->repository->update_status_bulk(array($id), '');
+
+        $this->assertFalse($updated);
+
+        $topic = $this->repository->get_by_id($id);
+        $this->assertEquals('new', $topic['status']);
+    }
+
+    /**
+     * Test get_all filters by status.
+     */
+    public function test_get_all_filters_by_status() {
+        $this->repository->create(array(
+            'niche'  => 'StatusFilter',
+            'topic'  => 'New Topic',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+        $this->repository->create(array(
+            'niche'  => 'StatusFilter',
+            'topic'  => 'Used Topic',
+            'score'  => 85,
+            'status' => 'used',
+        ));
+
+        $new_topics = $this->repository->get_all(array('niche' => 'StatusFilter', 'status' => 'new'));
+        $this->assertCount(1, $new_topics);
+        $this->assertEquals('new', $new_topics[0]['status']);
+
+        $used_topics = $this->repository->get_all(array('niche' => 'StatusFilter', 'status' => 'used'));
+        $this->assertCount(1, $used_topics);
+        $this->assertEquals('used', $used_topics[0]['status']);
+    }
+
+    /**
+     * Test save_research_batch deduplication skips pre-existing topics via prefetch.
+     */
+    public function test_save_research_batch_dedup_via_prefetch() {
+        // Pre-insert a topic that should be skipped.
+        $this->repository->create(array(
+            'niche'         => 'DedupeNiche',
+            'topic'         => 'Pre-existing Topic',
+            'score'         => 80,
+            'researched_at' => current_time('mysql'),
+        ));
+
+        $topics = array(
+            array('topic' => 'Pre-existing Topic', 'score' => 90, 'reason' => 'dup'),
+            array('topic' => 'Brand New Topic',    'score' => 85, 'reason' => 'new'),
+        );
+
+        $saved = $this->repository->save_research_batch($topics, 'DedupeNiche');
+
+        // Only the truly new topic should be inserted.
+        $this->assertEquals(1, $saved);
+        $all = $this->repository->get_by_niche('DedupeNiche', 20, 30);
+        $titles = array_column($all, 'topic');
+        $this->assertContains('Brand New Topic', $titles);
+        $this->assertCount(2, $all); // 1 pre-existing + 1 new
+    }
+
+    /**
+     * Test generated post counts are grouped by trending topic ID.
+     */
+    public function test_get_generated_post_counts_returns_grouped_counts() {
+        $topic_id_one = $this->repository->create(array(
+            'niche' => 'CountNiche',
+            'topic' => 'Count Topic 1',
+            'score' => 80,
+        ));
+        $topic_id_two = $this->repository->create(array(
+            'niche' => 'CountNiche',
+            'topic' => 'Count Topic 2',
+            'score' => 85,
+        ));
+
+        $post_id_one = self::factory()->post->create(array('post_status' => 'draft'));
+        $post_id_two = self::factory()->post->create(array('post_status' => 'publish'));
+
+        add_post_meta($post_id_one, '_aips_trending_topic_id', $topic_id_one);
+        add_post_meta($post_id_two, '_aips_trending_topic_id', $topic_id_one);
+
+        $counts = $this->repository->get_generated_post_counts(array($topic_id_one, $topic_id_two));
+
+        $this->assertArrayHasKey($topic_id_one, $counts);
+        $this->assertEquals(2, $counts[$topic_id_one]);
+        $this->assertArrayNotHasKey($topic_id_two, $counts);
+    }
+
+    /**
+     * Test generated posts lookup returns linked posts for a topic.
+     */
+    public function test_get_generated_posts_by_topic_id_returns_linked_posts() {
+        $topic_id = $this->repository->create(array(
+            'niche' => 'PostListNiche',
+            'topic' => 'Post List Topic',
+            'score' => 80,
+        ));
+
+        $post_id = self::factory()->post->create(array(
+            'post_title' => 'Linked Trending Topic Post',
+            'post_status' => 'draft',
+        ));
+
+        add_post_meta($post_id, '_aips_trending_topic_id', $topic_id);
+
+        $posts = $this->repository->get_generated_posts_by_topic_id($topic_id);
+
+        $this->assertNotEmpty($posts);
+        $this->assertEquals($post_id, (int) $posts[0]['post_id']);
+        $this->assertEquals('Linked Trending Topic Post', $posts[0]['post_title']);
     }
 }

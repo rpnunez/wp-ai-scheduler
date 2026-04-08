@@ -41,16 +41,55 @@ class AIPS_Notifications_Repository {
 	 * @return int|false Inserted row ID or false on failure.
 	 */
 	public function create($type, $message, $url = '') {
+		return $this->create_notification(array(
+			'type'    => $type,
+			'message' => $message,
+			'url'     => $url,
+		));
+	}
+
+	/**
+	 * Create a rich notification record.
+	 *
+	 * @param array $data Notification record fields.
+	 * @return int|false Inserted row ID or false on failure.
+	 */
+	public function create_notification(array $data) {
+		$defaults = array(
+			'type'       => '',
+			'title'      => '',
+			'message'    => '',
+			'url'        => '',
+			'level'      => 'info',
+			'meta'       => null,
+			'dedupe_key' => '',
+			'is_read'    => 0,
+			'read_at'    => null,
+			'created_at' => current_time('mysql', true),
+		);
+
+		$data = wp_parse_args($data, $defaults);
+
+		$meta_json = null;
+		if (null !== $data['meta']) {
+			$meta_json = is_string($data['meta']) ? $data['meta'] : wp_json_encode($data['meta']);
+		}
+
 		$result = $this->wpdb->insert(
 			$this->table,
 			array(
-				'type'       => sanitize_text_field($type),
-				'message'    => sanitize_textarea_field($message),
-				'url'        => esc_url_raw($url),
-				'is_read'    => 0,
-				'created_at' => current_time('mysql', true),
+				'type'       => sanitize_text_field($data['type']),
+				'title'      => sanitize_text_field($data['title']),
+				'message'    => sanitize_textarea_field($data['message']),
+				'url'        => esc_url_raw($data['url']),
+				'level'      => sanitize_key($data['level']),
+				'meta'       => $meta_json,
+				'dedupe_key' => sanitize_text_field($data['dedupe_key']),
+				'is_read'    => absint($data['is_read']) ? 1 : 0,
+				'read_at'    => !empty($data['read_at']) ? $data['read_at'] : null,
+				'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql', true),
 			),
-			array('%s', '%s', '%s', '%d', '%s')
+			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s')
 		);
 
 		if ($result === false) {
@@ -58,6 +97,32 @@ class AIPS_Notifications_Repository {
 		}
 
 		return (int) $this->wpdb->insert_id;
+	}
+
+	/**
+	 * Check whether a dedupe key was sent recently.
+	 *
+	 * @param string $dedupe_key     Dedupe key.
+	 * @param int    $window_seconds Time window in seconds.
+	 * @return bool
+	 */
+	public function was_recently_sent($dedupe_key, $window_seconds = 3600) {
+		$dedupe_key = sanitize_text_field($dedupe_key);
+		$window_seconds = absint($window_seconds);
+
+		if ('' === $dedupe_key || $window_seconds < 1) {
+			return false;
+		}
+
+		$count = $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table} WHERE dedupe_key = %s AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d SECOND)",
+				$dedupe_key,
+				$window_seconds
+			)
+		);
+
+		return ((int) $count) > 0;
 	}
 
 	/**
@@ -100,9 +165,12 @@ class AIPS_Notifications_Repository {
 	public function mark_as_read($id) {
 		$result = $this->wpdb->update(
 			$this->table,
-			array('is_read' => 1),
+			array(
+				'is_read' => 1,
+				'read_at' => current_time('mysql', true),
+			),
 			array('id' => absint($id)),
-			array('%d'),
+			array('%d', '%s'),
 			array('%d')
 		);
 
@@ -117,9 +185,12 @@ class AIPS_Notifications_Repository {
 	public function mark_all_as_read() {
 		$result = $this->wpdb->update(
 			$this->table,
-			array('is_read' => 1),
+			array(
+				'is_read' => 1,
+				'read_at' => current_time('mysql', true),
+			),
 			array('is_read' => 0),
-			array('%d'),
+			array('%d', '%s'),
 			array('%d')
 		);
 
@@ -144,5 +215,47 @@ class AIPS_Notifications_Repository {
 				$days
 			)
 		);
+	}
+
+	/**
+	 * Return notification counts grouped by type over a recent time window.
+	 *
+	 * @param int   $seconds Time window in seconds.
+	 * @param array $types   Optional list of type slugs to include.
+	 * @return array<string, int>
+	 */
+	public function get_type_counts_for_window($seconds, array $types = array()) {
+		$seconds = absint($seconds);
+
+		if ($seconds < 1) {
+			return array();
+		}
+
+		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d SECOND)";
+		$params = array($seconds);
+
+		if (!empty($types)) {
+			$types = array_values(array_filter(array_map('sanitize_key', $types)));
+			if (!empty($types)) {
+				$placeholders = implode(',', array_fill(0, count($types), '%s'));
+				$sql .= " AND type IN ({$placeholders})";
+				$params = array_merge($params, $types);
+			}
+		}
+
+		$sql .= ' GROUP BY type';
+
+		$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $params));
+		$counts = array();
+
+		if (empty($rows)) {
+			return $counts;
+		}
+
+		foreach ($rows as $row) {
+			$counts[sanitize_key($row->type)] = (int) $row->count;
+		}
+
+		return $counts;
 	}
 }

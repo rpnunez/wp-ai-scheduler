@@ -25,15 +25,18 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $page_slugs = array(
-		'dashboard'       => 'ai-post-scheduler',
-		'templates'       => 'aips-templates',
-		'authors'         => 'aips-authors',
-		'schedule'        => 'aips-schedule',
-		'generated_posts' => 'aips-generated-posts',
-		'author_topics'   => 'aips-author-topics',
-		'post_review'     => 'aips-post-review',
-		'system_status'   => 'aips-system-status',
-		'settings'        => 'aips-settings',
+		'dashboard'            => 'ai-post-scheduler',
+		'templates'            => 'aips-templates',
+		'authors'              => 'aips-authors',
+		'schedule'             => 'aips-schedule',
+		'generated_posts'      => 'aips-generated-posts',
+		'author_topics'        => 'aips-author-topics',
+		'system_status'        => 'aips-status',
+		'settings'             => 'aips-settings',
+		'onboarding'           => 'aips-onboarding',
+		'history'              => 'aips-history',
+		'seeder'               => 'aips-seeder',
+		'research'             => 'aips-research',
 	);
 
 	/**

@@ -12,8 +12,7 @@ coverage/
 
 # IDE
 .idea/
-.vscode/*
-!.vscode/launch.json
+.vscode/
 *.swp
 *.swo
 *~

@@ -41,6 +41,7 @@
 			$(document).on('click', '.aips-ai-edit-btn', window.AIPS.openAIEditModal);
 			$(document).on('click', '#aips-ai-edit-cancel, #aips-ai-edit-close', window.AIPS.closeAIEditModal);
 			$(document).on('click', '.aips-regenerate-btn', window.AIPS.regenerateComponent);
+			$(document).on('click', '#aips-ai-edit-regenerate-all', window.AIPS.regenerateAllComponents);
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
 			
@@ -191,6 +192,103 @@
 					window.AIPS.onRegenerateError($btn, component);
 				}
 			});
+		},
+
+		/**
+		 * Build a map of manually edited component values that should be snapshotted.
+		 */
+		getAIEditManualSnapshots: function(components) {
+			var snapshots = {};
+
+			components.forEach(function(component) {
+				if (window.AIPS.shouldCaptureManualRevision(component)) {
+					snapshots[component] = window.AIPS.getAIEditCurrentComponentValue(component);
+				}
+			});
+
+			return snapshots;
+		},
+
+		/**
+		 * Regenerate all supported components in one request.
+		 */
+		regenerateAllComponents: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
+
+			window.AIPS.Utilities.setButtonLoading($button, aipsAIEditL10n.regeneratingAll);
+			$('.aips-regenerate-btn').prop('disabled', true);
+
+			$.ajax({
+				url: aipsAIEditL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_regenerate_all_components',
+					post_id: aiEditState.postId,
+					history_id: aiEditState.historyId,
+					manual_snapshots: manualSnapshots,
+					nonce: aipsAIEditL10n.nonce
+				},
+				success: function(response) {
+					window.AIPS.onRegenerateAllSuccess($button, response);
+				},
+				error: function() {
+					window.AIPS.onRegenerateAllError($button);
+				}
+			});
+		},
+
+		/**
+		 * Handle Regenerate All success/error payload.
+		 */
+		onRegenerateAllSuccess: function($button, response) {
+			window.AIPS.Utilities.resetButton($button);
+			$('.aips-regenerate-btn').prop('disabled', false);
+
+			if (!response.success) {
+				window.AIPS.showAIEditNotice(response.data && response.data.message ? response.data.message : aipsAIEditL10n.regenerateAllError, 'error');
+				return;
+			}
+
+			var regenerated = response.data.regenerated || {};
+			var skipped = response.data.skipped || {};
+			var errors = response.data.errors || {};
+			var regeneratedCount = 0;
+
+			Object.keys(regenerated).forEach(function(component) {
+				window.AIPS.updateAIEditComponentValue(component, regenerated[component], 'ai_generated');
+				aiEditState.changedComponents.add(component);
+				$('.aips-component-section[data-component="' + component + '"]').addClass('changed');
+				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.refreshComponentRevisions(component);
+				regeneratedCount += 1;
+			});
+
+			Object.keys(skipped).forEach(function(component) {
+				window.AIPS.showComponentStatus(component, 'success', skipped[component]);
+			});
+
+			Object.keys(errors).forEach(function(component) {
+				window.AIPS.showComponentStatus(component, 'error', errors[component]);
+			});
+
+			if (regeneratedCount > 0) {
+				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
+				return;
+			}
+
+			window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllError, 'error');
+		},
+
+		/**
+		 * Handle Regenerate All network error.
+		 */
+		onRegenerateAllError: function($button) {
+			window.AIPS.Utilities.resetButton($button);
+			$('.aips-regenerate-btn').prop('disabled', false);
+			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
 		},
 		
 		/**
@@ -435,7 +533,7 @@
 			});
 			
 			// Disable save button
-			$('#aips-ai-edit-save').prop('disabled', true).text(aipsAIEditL10n.saving);
+			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
 			
 			$.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
@@ -455,7 +553,7 @@
 		 * Handle successful save
 		 */
 		onAIEditSaveSuccess: function(response) {
-			$('#aips-ai-edit-save').prop('disabled', false).text(aipsAIEditL10n.save);
+			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
 			
 			if (response.success) {
 				window.AIPS.showAIEditNotice(response.data.message, 'success');
@@ -476,7 +574,7 @@
 		 * Handle save error
 		 */
 		onAIEditSaveError: function() {
-			$('#aips-ai-edit-save').prop('disabled', false).text(aipsAIEditL10n.save);
+			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
 			window.AIPS.showAIEditNotice(aipsAIEditL10n.saveError, 'error');
 		},
 		
@@ -550,8 +648,9 @@
 		 */
 		showAIEditNotice: function(message, type) {
 			type = type || 'info';
-			
-			var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
+
+			var $p = $('<p>').text(message);
+			var $notice = $('<div class="notice notice-' + type + ' is-dismissible">').append($p);
 			$('.wrap').first().prepend($notice);
 			
 			// Auto-dismiss after 5 seconds
@@ -683,8 +782,8 @@
 			// Meta information
 			var $meta = $('<div class="aips-revision-meta"></div>');
 			$meta.append('<span class="dashicons dashicons-backup"></span>');
-			$meta.append('<span class="aips-revision-source">' + window.AIPS.escapeHtml(revisionLabel) + '</span>');
-			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(timestamp) + '</span>');
+			$meta.append('<span class="aips-revision-source">' + window.AIPS.Utilities.escapeHtml(revisionLabel) + '</span>');
+			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.Utilities.escapeHtml(timestamp) + '</span>');
 			$content.append($meta);
 			
 			// Value preview
@@ -692,7 +791,19 @@
 			
 			if (componentType === 'featured_image') {
 				if (revision.value && revision.value.url) {
-					$value.html('<img src="' + window.AIPS.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+					var sanitizedImageUrl = window.AIPS.Utilities.sanitizeUrl(revision.value.url);
+					
+					if (sanitizedImageUrl) {
+						$value.empty().append(
+							$('<img>', {
+								src: sanitizedImageUrl,
+								alt: 'Revision',
+								'class': 'aips-revision-value-image'
+							})
+						);
+					} else {
+						$value.text('No image');
+					}
 				} else {
 					$value.text('No image');
 				}
@@ -819,20 +930,6 @@
 				$input.trigger('input');
 			}
 		},
-		
-		/**
-		 * Escape HTML for safe rendering
-		 */
-		escapeHtml: function(text) {
-			var map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
-		}
 		
 	});
 	

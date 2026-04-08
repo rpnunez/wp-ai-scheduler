@@ -56,14 +56,20 @@ class AIPS_Schedule_Processor {
     private $logger;
 
     /**
+     * @var AIPS_Generation_Execution_Runner
+     */
+    private $runner;
+
+    /**
      * Constructor.
      *
-     * @param AIPS_Schedule_Repository|null    $repository
-     * @param AIPS_Template_Repository|null    $template_repository
-     * @param AIPS_Generator|null              $generator
-     * @param AIPS_History_Service|null        $history_service
-     * @param AIPS_Template_Type_Selector|null $template_type_selector
-     * @param AIPS_Logger|null                 $logger
+     * @param AIPS_Schedule_Repository|null         $repository
+     * @param AIPS_Template_Repository|null         $template_repository
+     * @param AIPS_Generator|null                   $generator
+     * @param AIPS_History_Service|null             $history_service
+     * @param AIPS_Template_Type_Selector|null      $template_type_selector
+     * @param AIPS_Logger|null                      $logger
+     * @param AIPS_Generation_Execution_Runner|null $runner
      */
     public function __construct(
         $repository = null,
@@ -71,7 +77,8 @@ class AIPS_Schedule_Processor {
         $generator = null,
         $history_service = null,
         $template_type_selector = null,
-        $logger = null
+        $logger = null,
+        $runner = null
     ) {
         $this->repository = $repository ?: new AIPS_Schedule_Repository();
         $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
@@ -81,6 +88,7 @@ class AIPS_Schedule_Processor {
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
         $this->logger = $logger ?: new AIPS_Logger();
+        $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
     }
 
     /**
@@ -96,6 +104,10 @@ class AIPS_Schedule_Processor {
 
     public function set_template_repository($repository) {
         $this->template_repository = $repository;
+    }
+
+    public function set_runner($runner) {
+        $this->runner = $runner;
     }
 
     /**
@@ -147,52 +159,96 @@ class AIPS_Schedule_Processor {
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
 
-        return $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        // Generate a correlation ID for this manual run and reset it when done.
+        AIPS_Correlation_ID::generate();
+
+        try {
+            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        } finally {
+            AIPS_Correlation_ID::reset();
+        }
+        return $result;
     }
 
     /**
-     * Execute a schedule with locking mechanism.
+     * Execute a schedule with claim-first locking.
      *
-     * @param object $schedule Schedule object (merged with template).
+     * LOCKING STRATEGY — claim-first (load-shedding):
+     * `next_run` is advanced to the next interval *before* the generation
+     * work begins.  This ensures that a second cron worker that overlaps
+     * with this one will see a future `next_run` and skip the schedule,
+     * preventing duplicate post generation.  The trade-off is intentional:
+     * if the process crashes mid-execution the schedule will not retry until
+     * the next calculated interval.  For template schedules (which run
+     * frequently) missing one run is safer than producing duplicate posts.
+     *
+     * This asymmetry is deliberate — see generate_post_for_author() in
+     * AIPS_Author_Post_Generator for the contrasting "advance-after"
+     * strategy used by the coarser per-author schedule.
+     *
+     * @param object $schedule Schedule object (merged with template data).
      */
     private function execute_schedule_with_lock($schedule) {
-        try {
-            // Claim-First Locking Strategy (Hunter)
-            // Immediately calculate and update next_run to lock this schedule from concurrent processes.
+        $this->runner->run(
+            function() use ($schedule) {
+                $original_next_run = $schedule->next_run;
 
-            $original_next_run = $schedule->next_run;
-            $new_next_run = null;
+                if ($schedule->frequency === 'once') {
+                    // For one-time schedules, "claim" it by pushing next_run forward.
+                    // If the process crashes it will be retried in 1 hour.
+                    // On success it will be deleted by handle_post_execution_cleanup().
+                    $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
+                } else {
+                    // Calculate next run using original next_run to preserve phase.
+                    $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);
+                }
 
-            if ($schedule->frequency === 'once') {
-                // For one-time schedules, "claim" it by pushing next_run forward (e.g., 1 hour)
-                // If the process crashes, it will be retried in 1 hour.
-                // If it succeeds, it will be deleted.
-                $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
-            } else {
-                 // Calculate next run using original next_run to preserve phase
-                 $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);
+                // Update next_run immediately to lock this schedule from concurrent runs.
+                $lock_result = $this->repository->update($schedule->schedule_id, array(
+                    'next_run' => $new_next_run
+                ));
+
+                if ($lock_result === false) {
+                    $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                    do_action('aips_scheduler_error', array(
+                        'schedule_id'     => $schedule->schedule_id,
+                        'template_id'     => $schedule->template_id,
+                        'schedule_name'   => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                        'error_code'      => 'lock_acquisition_failed',
+                        'error_message'   => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
+                        'frequency'       => $schedule->frequency,
+                        'creation_method' => 'scheduled',
+                        'correlation_id'  => AIPS_Correlation_ID::get(),
+                        'url'             => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                        'dedupe_key'      => 'scheduler_lock_' . absint($schedule->schedule_id),
+                        'dedupe_window'   => 900,
+                    ));
+                    // Early return; the runner's finally block will reset the correlation ID.
+                    return;
+                }
+
+                $this->execute_schedule_logic($schedule, false);
+            },
+            'schedule_execution',
+            array('schedule_id' => $schedule->schedule_id),
+            function(\Throwable $e, $correlation_id) use ($schedule) {
+                // Catch-all for unexpected exceptions. The runner has already recorded
+                // this to the history service; fire the site-level system error action
+                // so operators are notified via the admin bar / notification system.
+                do_action('aips_system_error', array(
+                    'title'          => __('Schedule processing exception', 'ai-post-scheduler'),
+                    'error_code'     => 'schedule_processing_exception',
+                    'error_message'  => $e->getMessage(),
+                    'schedule_id'    => $schedule->schedule_id,
+                    'template_id'    => isset($schedule->template_id) ? $schedule->template_id : 0,
+                    'schedule_name'  => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                    'correlation_id' => $correlation_id,
+                    'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                    'dedupe_key'     => 'system_schedule_exception_' . absint($schedule->schedule_id),
+                    'dedupe_window'  => 1800,
+                ));
             }
-
-            // Update next_run immediately to lock this schedule from concurrent runs
-            $lock_result = $this->repository->update($schedule->schedule_id, array(
-                'next_run' => $new_next_run
-            ));
-
-            if ($lock_result === false) {
-                $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                return; // Skip generation if we couldn't lock
-            }
-
-            // Execute the core logic
-            $this->execute_schedule_logic($schedule, false);
-
-        } catch (Throwable $e) {
-            // Catch any unexpected exceptions to prevent the cron job from crashing,
-            // allowing subsequent schedules in the batch to be processed.
-            $this->logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error', array(
-                'trace' => $e->getTraceAsString()
-            ));
-        }
+        );
     }
 
     /**
@@ -215,8 +271,12 @@ class AIPS_Schedule_Processor {
             ));
         }
 
+        // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
+        $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
+        $template_post_quantity = ($actual_template_model && isset($actual_template_model->post_quantity)) ? $actual_template_model->post_quantity : 1;
+
         // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
-        $raw_quantity = $quantity_override ?? ($schedule->post_quantity ?? 1);
+        $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
         $post_quantity = max(1, absint($raw_quantity));
 
         // Select article structure for this execution
@@ -293,37 +353,216 @@ class AIPS_Schedule_Processor {
         
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
-        $result = $this->generator->generate_post($context);
+
+        $successful_post_ids = array();
+        $errors = array();
+
+        // ── Resumable batch progress ────────────────────────────────────────
+        // Determine where to start the loop.  When a previous automated run
+        // was interrupted mid-batch, batch_progress holds the last completed
+        // state.  We resume from last_index+1 so we never re-generate posts
+        // that already exist, and we count previously completed posts toward
+        // the total so the batch finishes at the right size.
+        //
+        // Manual runs always start from index 0 and clear any stale progress
+        // cursor left by a previous automated run so the next cron run is
+        // not affected by the manual execution.
+        $start_index       = 0;
+        $prior_completed   = 0;
+
+        if ($is_manual) {
+            // Clear any stale progress left by a previous interrupted automated run
+            // so the next scheduled execution starts a fresh batch.
+            $this->repository->clear_batch_progress($schedule->schedule_id);
+        } elseif (!empty($schedule->batch_progress)) {
+            $saved = json_decode($schedule->batch_progress, true);
+            if (
+                is_array($saved) &&
+                isset($saved['completed'], $saved['total'], $saved['last_index'])
+            ) {
+                $saved_completed = (int) $saved['completed'];
+                $saved_total     = (int) $saved['total'];
+                $saved_last_index = (int) $saved['last_index'];
+                $is_valid_cursor = (
+                    $saved_total === $post_quantity &&
+                    $saved_completed >= 0 &&
+                    $saved_completed < $post_quantity &&
+                    $saved_last_index >= 0 &&
+                    $saved_last_index < $post_quantity &&
+                    $saved_last_index >= ($saved_completed - 1) &&
+                    $saved_last_index <= $saved_completed
+                );
+
+                if ($is_valid_cursor) {
+                    // When the cursor includes the IDs of already-generated posts,
+                    // use count(post_ids) as the authoritative completed count.
+                    // This prevents re-generating the last post if the process
+                    // crashed after creation but before the cursor was updated.
+                    $saved_post_ids = isset($saved['post_ids']) && is_array($saved['post_ids'])
+                        ? array_map('absint', $saved['post_ids'])
+                        : array();
+
+                    if (!empty($saved_post_ids)) {
+                        // New cursor format: post_ids is the authoritative source.
+                        // Even if $saved_completed disagrees (e.g. a crash wrote the
+                        // post but not the cursor), count(post_ids) reflects the true
+                        // number of already-created posts.
+                        $successful_post_ids = $saved_post_ids;
+                        $prior_completed     = count($saved_post_ids);
+                        $start_index         = count($saved_post_ids);
+                    } else {
+                        // Legacy cursor (no post_ids): resume from the recorded index.
+                        $prior_completed = $saved_completed;
+                        $start_index     = $saved_last_index + 1;
+                    }
+                } else {
+                    // Ignore and clear inconsistent saved progress so the
+                    // schedule can restart instead of getting stuck on an
+                    // impossible resume cursor.
+                    $this->repository->clear_batch_progress($schedule->schedule_id);
+                }
+            } else {
+                // Malformed progress payloads should not block future runs.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
+            }
+        }
+
+        for ($i = $start_index; $i < $post_quantity; $i++) {
+            $result = $this->generator->generate_post($context);
+            if (is_wp_error($result)) {
+                $errors[] = $result;
+                // Persist the current run state so operators and future
+                // circuit-breaker logic can inspect what happened.
+                if (!$is_manual) {
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_run_state($schedule->schedule_id, array(
+                        'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
+                        'error_code'    => $result->get_error_code(),
+                        'error_message' => $result->get_error_message(),
+                        'completed'     => $completed_so_far,
+                        'total'         => $post_quantity,
+                        'timestamp'     => gmdate('c'),
+                    ));
+                }
+                // Stop the batch so batch_progress is preserved for resumption.
+                break;
+            } else {
+                $successful_post_ids[] = $result;
+                // Persist progress after every successful generation so that a
+                // mid-batch crash still records how far we got.  Storing the
+                // accumulated post IDs makes the cursor atomic with creation:
+                // if a crash occurs after the post is created but before this
+                // write lands, the next run uses count(post_ids) as the start
+                // index instead of last_index+1, preventing duplicate posts.
+                if (!$is_manual && $post_quantity > 1) {
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_batch_progress(
+                        $schedule->schedule_id,
+                        $completed_so_far,
+                        $post_quantity,
+                        $i,
+                        $successful_post_ids
+                    );
+                }
+            }
+        }
+
+        // Determine whether the full batch finished without any errors.
+        $total_completed = $prior_completed + count($successful_post_ids);
+        $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
+
+        if (!$is_manual) {
+            if ($batch_finished) {
+                // All posts generated — clear batch progress and persist a
+                // success run_state to indicate a clean completion.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
+                $this->repository->update_run_state($schedule->schedule_id, array(
+                    'status'    => 'success',
+                    'completed' => $total_completed,
+                    'total'     => $post_quantity,
+                    'timestamp' => gmdate('c'),
+                ));
+            }
+        }
+
+        // ── Build the overall result ─────────────────────────────────────────
+        // A partial batch (some posts generated, then one failed) is treated as
+        // incomplete — NOT as a success.  This prevents one-time schedules from
+        // being deleted and recurring schedules from being logged as successful
+        // when only a subset of the requested posts were produced.
+        $manual_success = $is_manual && !empty($successful_post_ids) && empty($errors);
+
+        if ($batch_finished || $manual_success) {
+            // Full success (all posts generated) or manual run with no errors.
+            $overall_result = $successful_post_ids;
+        } elseif (!empty($errors)) {
+            // Batch failed or was partially interrupted — surface the error.
+            // Previously generated $successful_post_ids are preserved in the DB;
+            // batch_progress holds the resumption cursor for the next run.
+            if (!empty($successful_post_ids)) {
+                // Partial: some posts were created before the error.
+                // Return a WP_Error that carries context about the partial success
+                // so handle_execution_failure can log it properly.
+                $overall_result = new WP_Error(
+                    'batch_partially_failed',
+                    sprintf(
+                        /* translators: 1: completed count, 2: total requested, 3: original error */
+                        __('%1$d of %2$d posts generated before error: %3$s', 'ai-post-scheduler'),
+                        $total_completed,
+                        $post_quantity,
+                        $errors[0]->get_error_message()
+                    )
+                );
+            } else {
+                // Nothing generated — return the original error verbatim.
+                $overall_result = $errors[0];
+            }
+        } else {
+            $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
+        }
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
-            $this->handle_post_execution_cleanup($schedule, $result);
+            $this->handle_post_execution_cleanup($schedule, $overall_result);
         } else {
-             // For manual runs, we invalidate cache but don't delete one-time schedules automatically?
-             // The original code for run_schedule_now didn't delete one-time schedules or update next_run.
-             // It just invalidated the cache.
-             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+
+            // For successful manual runs, record last_run so the Schedules page
+            // reflects the execution instead of staying frozen on "Past due".
+            // For once-schedules, also deactivate: next_run is still in the past
+            // so the cron would otherwise fire it again on the next trigger.
+            if (!is_wp_error($overall_result)) {
+                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                if ($schedule->frequency === 'once') {
+                    $this->repository->update($schedule->schedule_id, array(
+                        'is_active' => 0,
+                        'status'    => 'completed',
+                    ));
+                }
+            }
         }
 
         // Handle Logging and Events based on Result
-        if (is_wp_error($result)) {
-            $this->handle_execution_failure($schedule, $result, $history, $is_manual);
+        if (is_wp_error($overall_result)) {
+            $this->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
         } else {
-            $this->handle_execution_success($schedule, $result, $history, $is_manual);
+            $this->handle_execution_success($schedule, $overall_result, $history, $is_manual);
         }
 
-        return $result;
+        return $overall_result;
     }
 
     /**
      * Handle cleanup after automated execution (delete one-time, update recurring).
      *
      * @param object $schedule
-     * @param mixed  $result
+     * @param mixed  $result Array of post IDs on success, WP_Error on failure.
      */
     private function handle_post_execution_cleanup($schedule, $result) {
+        $is_success = !is_wp_error($result);
+
         if ($schedule->frequency === 'once') {
-            if (!is_wp_error($result)) {
+            if ($is_success) {
                 // If it's a one-time schedule and successful, delete it
                 $this->repository->delete($schedule->schedule_id);
                 $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
@@ -353,7 +592,7 @@ class AIPS_Schedule_Processor {
                         array(
                             'schedule_id' => $schedule->schedule_id,
                             'template_id' => $schedule->template_id,
-                            'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
+                            'error' => $result->get_error_message(),
                             'frequency' => $schedule->frequency,
                         )
                     );
@@ -371,6 +610,7 @@ class AIPS_Schedule_Processor {
      */
     private function handle_execution_failure($schedule, $result, $history, $is_manual) {
         $error_msg = $result->get_error_message();
+        $history_id = (is_object($history) && method_exists($history, 'get_id')) ? $history->get_id() : 0;
 
         $this->logger->log('Schedule failed: ' . $error_msg, 'error', array(
             'schedule_id' => $schedule->schedule_id
@@ -398,6 +638,21 @@ class AIPS_Schedule_Processor {
         );
 
         if (!$is_manual) {
+            do_action('aips_scheduler_error', array(
+                'schedule_id'    => $schedule->schedule_id,
+                'template_id'    => $schedule->template_id,
+                'schedule_name'  => $schedule->name,
+                'error_code'     => $result->get_error_code(),
+                'error_message'  => $error_msg,
+                'frequency'      => $schedule->frequency,
+                'history_id'     => $history_id,
+                'correlation_id' => AIPS_Correlation_ID::get(),
+                'creation_method'=> 'scheduled',
+                'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                'dedupe_key'     => 'scheduler_failure_' . absint($schedule->schedule_id) . '_' . sanitize_key($result->get_error_code()),
+                'dedupe_window'  => 900,
+            ));
+
             // Dispatch schedule execution failed event
             do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
         }
@@ -407,13 +662,18 @@ class AIPS_Schedule_Processor {
      * Handle success logging.
      */
     private function handle_execution_success($schedule, $result, $history, $is_manual) {
+        // Handle $result as an array of post IDs (or a single ID for safety/legacy callers)
+        $post_ids = is_array($result) ? $result : array($result);
+
         $this->logger->log('Schedule completed successfully', 'info', array(
             'schedule_id' => $schedule->schedule_id,
-            'post_id' => $result
+            'post_ids' => $post_ids
         ));
 
-        // Get the post to check its status
-        $post = get_post($result);
+        // For logging, we'll base the status on the first post generated, or summarize
+        $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
+        $post = get_post($first_post_id);
+
         if ($post) {
             $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
             $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
@@ -423,14 +683,19 @@ class AIPS_Schedule_Processor {
                 $event_status = 'success';
             }
 
+            $post_title_summary = $post->post_title;
+            if (count($post_ids) > 1) {
+                $post_title_summary .= ' ' . sprintf(__('(and %d more)', 'ai-post-scheduler'), count($post_ids) - 1);
+            }
+
             // Update the history record
             $history->record(
                 'activity',
                 sprintf(
                     __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
-                    ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
+                    (count($post_ids) > 1) ? __('Posts', 'ai-post-scheduler') : (($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler')),
                     $schedule->name,
-                    $post->post_title
+                    $post_title_summary
                 ),
                 array(
                     'event_type' => $event_type,
@@ -449,7 +714,7 @@ class AIPS_Schedule_Processor {
 
         if (!$is_manual) {
             // Dispatch schedule execution completed event
-            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
+            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result, $schedule);
 
             // Invalidate the schedule execution count cache (Bolt)
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);

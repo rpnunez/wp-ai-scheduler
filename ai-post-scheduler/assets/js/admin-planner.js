@@ -96,15 +96,7 @@
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
-                // Escape HTML for value attribute
-                var div = document.createElement('div');
-                div.textContent = topic;
-                var safeTopic = div.innerHTML.replace(/"/g, '&quot;');
-
-                html += '<div class="topic-item">';
-                html += '<input type="checkbox" class="topic-checkbox" checked>';
-                html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
-                html += '</div>';
+                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
             });
 
             if (append) {
@@ -117,25 +109,28 @@
         },
 
         /**
-         * Show or hide `.topic-item` rows based on whether their text input
-         * value matches the current `#planner-topic-search` value.
+         * Remove a single topic row from the list.
          *
-         * Only tests `.topic-item` elements that are currently visible.
-         * Calls `updateSelectionCount` after filtering to keep the count accurate.
+         * Bound to the `click` event on `.aips-remove-topic-btn`.
+         * Removes the row, updates the selection count, and hides the panel if no topics remain.
          *
-         * Bound to the first `keyup search` listener on `#planner-topic-search`.
+         * @param {Event} e - Click event from `.aips-remove-topic-btn`.
          */
-        filterTopics: function() {
-            var filter = $('#planner-topic-search').val().toLowerCase();
-            $('.topic-item').each(function() {
-                var text = $(this).find('.topic-text-input').val().toLowerCase();
-                if (text.indexOf(filter) > -1) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
+        removeTopic: function(e) {
+            e.preventDefault();
+            var $item = $(this).closest('.topic-item');
+
+            $item.fadeOut(200, function() {
+                $(this).remove();
+                window.AIPS.updateSelectionCount();
+
+                // Hide panel if list is completely empty
+                if ($('#topics-list .topic-item').length === 0) {
+                    $('#planner-results').slideUp();
+                    $('#planner-niche').val('');
+                    $('#planner-topic-search').val('');
                 }
             });
-            window.AIPS.updateSelectionCount();
         },
 
         /**
@@ -219,8 +214,9 @@
          * whether the search field is non-empty. Shows an inline empty-state
          * message when no topics match the term. Removes the empty-state message
          * when the field is cleared or topics become visible again.
+         * Calls `updateSelectionCount` after filtering to keep the count accurate.
          *
-         * Bound to the second `keyup search` listener on `#planner-topic-search`.
+         * Bound to the `keyup search` event on `#planner-topic-search`.
          */
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
@@ -245,13 +241,15 @@
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    $topicsList.append('<div class="topics-empty-state" style="padding: 20px; text-align: center; color: #666;">No topics match your search.</div>');
+                    $topicsList.append(AIPS.Templates.render('aips-tmpl-planner-search-empty', {}));
                 }
             } else {
                 if ($emptyState.length) {
                     $emptyState.remove();
                 }
             }
+
+            window.AIPS.updateSelectionCount();
         },
 
         /**
@@ -337,6 +335,94 @@
         },
 
         /**
+         * Generate all checked topics immediately via the `aips_bulk_generate_now` AJAX
+         * action.
+         *
+         * Validates that at least one topic is selected and a template is chosen
+         * before sending. Clears the topic list and hides the results panel on success.
+         *
+         * @param {Event} e - Click event from `#btn-bulk-generate-now`.
+         */
+        bulkGenerateNow: function(e) {
+            e.preventDefault();
+            var topics = [];
+
+            // Iterate over checked checkboxes and get the value from the sibling text input
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                AIPS.Utilities.showToast('Please select at least one topic.', 'warning');
+                return;
+            }
+
+            var templateId = $('#bulk-template').val();
+
+            if (!templateId) {
+                AIPS.Utilities.showToast('Please select a template.', 'warning');
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.nextAll('.spinner').first().addClass('is-active');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_generate_now',
+                    nonce: aipsAjax.nonce,
+                    topics: topics,
+                    template_id: templateId
+                },
+                success: function(response) {
+                    if (response && response.success) {
+                        var data = response.data || {};
+                        var failedTopics = data.failed_topics || data.errors || [];
+                        var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
+
+                        if (hasFailedTopics) {
+                            // Partial success: keep topics so user can review/retry failed ones.
+                            var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
+                            AIPS.Utilities.showToast(partialMsg, 'warning');
+                        } else {
+                            // Full success: remove processed topics and reset if empty.
+                            var successMsg = data.message || 'Posts generated successfully.';
+                            AIPS.Utilities.showToast(successMsg, 'success');
+
+                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                                $(this).remove();
+                                window.AIPS.updateSelectionCount();
+
+                                if ($('#topics-list .topic-item').length === 0) {
+                                    $('#planner-results').slideUp();
+                                    $('#planner-niche').val('');
+                                    $('#planner-manual-topics').val('');
+                                    $('#planner-topic-search').val('');
+                                }
+                            });
+                        }
+                    } else {
+                        var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'An error occurred. Please try again.';
+                        AIPS.Utilities.showToast(errorMsg, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $btn.nextAll('.spinner').first().removeClass('is-active');
+                }
+            });
+        },
+
+        /**
          * Schedule all checked topics in bulk via the `aips_bulk_schedule` AJAX
          * action.
          *
@@ -377,7 +463,7 @@
 
             var $btn = $(this);
             $btn.prop('disabled', true);
-            $btn.next('.spinner').addClass('is-active');
+            $btn.nextAll('.spinner').first().addClass('is-active');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -393,10 +479,18 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
-                        // Clear list after successful scheduling
-                         $('#topics-list').html('');
-                         $('#planner-results').slideUp();
-                         $('#planner-niche').val('');
+
+                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $(this).remove();
+                            window.AIPS.updateSelectionCount();
+
+                            if ($('#topics-list .topic-item').length === 0) {
+                                $('#planner-results').slideUp();
+                                $('#planner-niche').val('');
+                                $('#planner-manual-topics').val('');
+                                $('#planner-topic-search').val('');
+                            }
+                        });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -406,7 +500,7 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
-                    $btn.next('.spinner').removeClass('is-active');
+                    $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
             });
         }
@@ -417,13 +511,15 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-bulk-generate-now', window.AIPS.bulkGenerateNow);
         $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
-        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
+        $(document).on('click', '.aips-clear-topic-search-btn', window.AIPS.clearTopicSearch);
+        $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
     });
 
 })(jQuery);

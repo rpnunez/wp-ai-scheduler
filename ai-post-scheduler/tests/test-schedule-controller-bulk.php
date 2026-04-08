@@ -39,7 +39,7 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 
 		// Mock the Scheduler to isolate controller from AI generation
 		$this->scheduler = $this->getMockBuilder( 'AIPS_Scheduler' )
-			->onlyMethods( array( 'run_schedule_now', 'save_schedule', 'delete_schedule', 'toggle_active' ) )
+			->onlyMethods( array( 'run_schedule_now', 'save_schedule', 'toggle_active' ) )
 			->getMock();
 
 		$this->controller = new AIPS_Schedule_Controller( $this->scheduler );
@@ -107,6 +107,8 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 	 * @return array Decoded JSON response.
 	 */
 	private function call_ajax( callable $callable ) {
+		// WordPress nonce validation reads from $_REQUEST, not $_POST; keep them in sync.
+		$_REQUEST = array_merge( $_REQUEST, $_POST );
 		ob_start();
 		try {
 			$callable();
@@ -411,5 +413,136 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 
 		$this->assertFalse( $response['success'] );
 		$this->assertEquals( 'Permission denied.', $response['data']['message'] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Delegation tests: controller -> repository boundary
+	// -----------------------------------------------------------------------
+
+	/**
+	 * ajax_bulk_delete_schedules must delegate to $schedule_repository->delete_bulk(),
+	 * not perform direct DB operations.
+	 */
+	public function test_bulk_delete_delegates_to_repository() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$mock_repo = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'delete_bulk' ) )
+			->getMock();
+
+		$mock_repo->expects( $this->once() )
+			->method( 'delete_bulk' )
+			->with( array( 10, 20 ) )
+			->willReturn( 2 );
+
+		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_repo );
+
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['ids']   = array( 10, 20 );
+
+		$response = $this->call_ajax( array( $controller, 'ajax_bulk_delete_schedules' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertEquals( 2, $response['data']['deleted'] );
+	}
+
+	/**
+	 * ajax_bulk_toggle_schedules must delegate to $schedule_repository->set_active_bulk(),
+	 * not perform direct DB operations.
+	 */
+	public function test_bulk_toggle_delegates_to_repository() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$mock_repo = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'set_active_bulk' ) )
+			->getMock();
+
+		$mock_repo->expects( $this->once() )
+			->method( 'set_active_bulk' )
+			->with( array( 5, 6 ), 1 )
+			->willReturn( 2 );
+
+		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_repo );
+
+		$_POST['nonce']     = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['ids']       = array( 5, 6 );
+		$_POST['is_active'] = 1;
+
+		$response = $this->call_ajax( array( $controller, 'ajax_bulk_toggle_schedules' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertEquals( 1, $response['data']['is_active'] );
+	}
+
+	/**
+	 * ajax_get_schedules_post_count must delegate to
+	 * $schedule_repository->get_post_count_for_schedules(), not perform direct DB operations.
+	 */
+	public function test_get_schedules_post_count_delegates_to_repository() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$mock_repo = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_post_count_for_schedules' ) )
+			->getMock();
+
+		$mock_repo->expects( $this->once() )
+			->method( 'get_post_count_for_schedules' )
+			->with( array( 1, 2, 3 ) )
+			->willReturn( 9 );
+
+		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_repo );
+
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['ids']   = array( 1, 2, 3 );
+
+		$response = $this->call_ajax( array( $controller, 'ajax_get_schedules_post_count' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertEquals( 9, $response['data']['count'] );
+	}
+
+	/**
+	 * ajax_get_schedule_history must delegate to $schedule_repository->get_by_id() and
+	 * $history_repository->get_logs_by_history_id(), not instantiate repositories inline.
+	 */
+	public function test_get_schedule_history_delegates_to_repositories() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$fake_schedule                      = new stdClass();
+		$fake_schedule->id                  = 42;
+		$fake_schedule->schedule_history_id = 0; // No history yet — returns empty entries.
+
+		$mock_schedule_repo = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_by_id' ) )
+			->getMock();
+
+		$mock_schedule_repo->expects( $this->once() )
+			->method( 'get_by_id' )
+			->with( 42 )
+			->willReturn( $fake_schedule );
+
+		$mock_history_repo = $this->getMockBuilder( 'AIPS_History_Repository' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_logs_by_history_id' ) )
+			->getMock();
+
+		// get_logs_by_history_id should NOT be called when schedule_history_id is empty.
+		$mock_history_repo->expects( $this->never() )
+			->method( 'get_logs_by_history_id' );
+
+		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_schedule_repo, $mock_history_repo );
+
+		$_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['schedule_id'] = 42;
+
+		$response = $this->call_ajax( array( $controller, 'ajax_get_schedule_history' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertIsArray( $response['data']['entries'] );
+		$this->assertEmpty( $response['data']['entries'] );
 	}
 }

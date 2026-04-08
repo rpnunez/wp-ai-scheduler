@@ -25,12 +25,18 @@ class AIPS_Session_To_JSON {
 	 * @var AIPS_History_Repository Repository for database operations
 	 */
 	private $history_repository;
-	
+
+	/**
+	 * @var AIPS_Logger Logger instance
+	 */
+	private $logger;
+
 	/**
 	 * Initialize the converter
 	 */
 	public function __construct() {
 		$this->history_repository = new AIPS_History_Repository();
+		$this->logger = new AIPS_Logger();
 	}
 	
 	/**
@@ -135,19 +141,19 @@ class AIPS_Session_To_JSON {
 		if ($thumbnail_id) {
 			$post_data['featured_image'] = array(
 				'id' => $thumbnail_id,
-				'url' => get_the_post_thumbnail_url($post_id, 'full'),
+				'url' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
 				'sizes' => array(
-					'thumbnail' => get_the_post_thumbnail_url($post_id, 'thumbnail'),
-					'medium' => get_the_post_thumbnail_url($post_id, 'medium'),
-					'large' => get_the_post_thumbnail_url($post_id, 'large'),
-					'full' => get_the_post_thumbnail_url($post_id, 'full'),
+					'thumbnail' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'thumbnail')),
+					'medium' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'medium')),
+					'large' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'large')),
+					'full' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
 				),
 			);
 		}
 		
 		// Add permalink
-		$post_data['permalink'] = get_permalink($post_id);
-		$post_data['edit_link'] = get_edit_post_link($post_id, 'raw');
+		$post_data['permalink'] = esc_url_raw(get_permalink($post_id));
+		$post_data['edit_link'] = esc_url_raw(get_edit_post_link($post_id, 'raw'));
 		
 		return $post_data;
 	}
@@ -296,6 +302,7 @@ class AIPS_Session_To_JSON {
 	 *
 	 * This is useful for very large sessions where returning the JSON string directly may
 	 * be impractical. The file will be created under wp_upload_dir()/aips-exports.
+	 * Logs an error if file permission changes fail.
 	 *
 	 * @param int  $history_id   The history item ID
 	 * @param bool $pretty_print Whether to format JSON with indentation
@@ -337,13 +344,19 @@ class AIPS_Session_To_JSON {
 		$filepath = trailingslashit($base_dir) . $filename;
 		$fileurl = trailingslashit($base_url) . $filename;
 		
+		if (!is_writable($base_dir)) {
+			return new WP_Error('dir_not_writable', __('Export directory is not writable.', 'ai-post-scheduler'));
+		}
+
 		$bytes = file_put_contents($filepath, $json_string, LOCK_EX);
 		if ($bytes === false) {
 			return new WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
 		}
 		
 		// Try to set restrictive permissions
-		@chmod($filepath, 0644);
+		if (!chmod($filepath, 0644)) {
+			$this->logger->log('Failed to set permissions on export file: ' . $filepath, 'warning');
+		}
 		
 		return array(
 			'path' => $filepath,
@@ -353,9 +366,14 @@ class AIPS_Session_To_JSON {
 	}
 	
 	/**
-	 * Create .htaccess file to protect export directory
+	 * Create .htaccess file to protect export directory.
+	 * Explicitly checks file creation success and logs errors instead of silencing them.
+	 *
+	 * Creates an .htaccess and index.php file to prevent direct directory listing
+	 * and access to the JSON export files. Logs errors on write failures.
 	 *
 	 * @param string $dir Directory path
+	 * @return void
 	 */
 	private function create_htaccess_protection($dir) {
 		$htaccess_file = trailingslashit($dir) . '.htaccess';
@@ -369,19 +387,23 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			@file_put_contents($htaccess_file, $content);
+			if (is_writable($dir) && file_put_contents($htaccess_file, $content) === false) {
+				$this->logger->log('Failed to create .htaccess file in export directory: ' . $htaccess_file, 'warning');
+			}
 		}
 		
 		if (!file_exists($index_file)) {
-			@file_put_contents($index_file, '<?php // Silence is golden');
+			if (is_writable($dir) && file_put_contents($index_file, '<?php // Silence is golden') === false) {
+				$this->logger->log('Failed to create index.php file in export directory: ' . $index_file, 'warning');
+			}
 		}
 	}
 	
 	/**
-	 * Clean up old export files
+	 * Clean up old export files.
 	 *
 	 * Removes files older than the specified age in seconds.
-	 * Should be called regularly via WP-Cron.
+	 * Should be called regularly via WP-Cron. Explicitly checks unlink success.
 	 *
 	 * @param int $max_age Maximum age in seconds (default: 1 hour)
 	 * @return array Array with 'deleted' count and 'errors' array
@@ -406,7 +428,8 @@ class AIPS_Session_To_JSON {
 			$result['errors'][] = 'Failed to read export directory';
 			return $result;
 		}
-		
+
+		$logger = new AIPS_Logger();
 		foreach ($files as $file) {
 			if (!is_file($file)) {
 				continue;
@@ -420,10 +443,16 @@ class AIPS_Session_To_JSON {
 			
 			// Delete if older than max age
 			if (($current_time - $file_time) > $max_age) {
-				if (@unlink($file)) {
+				if (!is_writable($file)) {
+					$result['errors'][] = 'File is not writable: ' . basename($file);
+					continue;
+				}
+
+				if (unlink($file)) {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);
+					$logger->log('Failed to delete old export file: ' . $file, 'warning');
 				}
 			}
 		}

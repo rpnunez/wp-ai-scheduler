@@ -1329,3 +1329,46 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
 **Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
+
+## 2024-03-18 - [Extract Bulk Generate Estimate Database Query to Repository]
+**Context:** `AIPS_Author_Topics_Controller::ajax_get_bulk_generate_estimate` contained a hardcoded, direct database query using `global $wpdb` to select the recent `_aips_post_generation_total_time` postmeta entries. This violated the Separation of Concerns principle, bypassing repository layers that should handle database operations.
+**Decision:** Extracted the data retrieval and time estimate calculation logic into `AIPS_History_Repository::get_estimated_generation_time()`. The controller now instantiates this repository and delegates the query to it, maintaining encapsulation.
+**Consequence:** The controller is strictly limited to handling the request payload and responding with JSON. The `AIPS_History_Repository` now manages this historical post metadata lookup, resulting in better testability, compliance with domain architecture boundaries, and no raw `$wpdb` querying in the controller space.
+**Tests:** Existing tests for generation timings function unchanged, and the `get_estimated_generation_time` abstraction handles database fetching robustly.
+
+## 2024-05-28 - [Expose Resilience Options to UI]
+**Context:** `AIPS_Config` defined resilience options (Retry, Rate Limiting, Circuit Breaker) and used hard-coded default overrides instead of allowing user configuration via the UI, violating the separation of concern between configuration declaration and user options.
+**Decision:** Updated `AIPS_Settings` to register new `aips_resilience_section` and corresponding option fields via the WordPress Settings API. Reverted hardcoded fallbacks in `AIPS_Config`.
+**Consequence:**
+- **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
+- **Negative:** Added slightly more UI complexity to the settings page.
+**Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
+
+## 2025-02-12 - [Extract Admin Menu from Settings]
+**Context:** The `AIPS_Settings` class handled registering settings options via the WordPress Settings API and also managed rendering the admin UI and the admin menu registration via `add_menu_page`/`add_submenu_page`. This violated the Single Responsibility Principle, making `AIPS_Settings` overloaded and tightly coupling admin routing with options management.
+**Decision:** Created a new `AIPS_Admin_Menu` class to handle admin menu registration and page rendering logic. The `AIPS_Settings` class now solely focuses on settings initialization via the `admin_init` hook and some relevant AJAX actions.
+**Consequence:**
+- **Positive:** Improved class cohesion by decoupling the UI rendering layer from the options/settings logic. Each class now has a distinct, single responsibility.
+- **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
+**Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
+
+## 2026-03-08 - Extract Notifications Event Handler
+
+**Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
+**Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
+**Consequence:**
+* Reduced `AIPS_Notifications` by ~570 lines (33% reduction).
+* `AIPS_Notifications` is strictly focused on rendering templates, checking settings, and delivering payloads.
+* `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
+* Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
+**Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
+
+## 2026-03-08 - Extract Settings Callbacks and UI rendering
+
+**Context:** The `AIPS_Settings` class had grown to over 1100 lines and acted as a "God Object", handling settings registration (`register_setting`), rendering sections and fields callbacks, sanitizing inputs, and processing AJAX endpoints (`ajax_test_connection`, `ajax_notifications_data_hygiene`). This violated the Single Responsibility Principle, tightly coupling data structure initialization with UI rendering and request handling.
+**Decision:** Applied "Separation of Concerns". Created `AIPS_Settings_UI` (to house all `_callback` methods and `sanitize_` routines) and `AIPS_Settings_AJAX` (to house the `wp_ajax_` handlers). The `AIPS_Settings` class now cleanly instantiates these helper classes inside its constructor and focuses purely on `register_settings` and schema definitions.
+**Consequence:**
+* `AIPS_Settings` is reduced to roughly half its size, delegating UI generation and AJAX to their respective classes.
+* Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
+* Maintains 100% backward compatibility for existing settings data and hooks.
+**Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.

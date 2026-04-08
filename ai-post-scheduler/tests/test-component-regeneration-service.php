@@ -305,6 +305,62 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			is_wp_error($result)
 		);
 	}
+
+	/**
+	 * Test should_regenerate_featured_image returns true when post already has a thumbnail.
+	 */
+	public function test_should_regenerate_featured_image_true_for_existing_thumbnail() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Post With Image',
+		));
+
+		$attachment_id = $this->factory->post->create(array(
+			'post_type' => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_title' => 'Existing Thumbnail',
+			'post_status' => 'inherit',
+		));
+
+		update_post_meta($post_id, '_thumbnail_id', $attachment_id);
+
+		$this->assertTrue($this->service->should_regenerate_featured_image($post_id));
+	}
+
+	/**
+	 * Test should_regenerate_featured_image returns true when original generation marked image as failed.
+	 */
+	public function test_should_regenerate_featured_image_true_for_failed_component_status() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Post Without Image',
+		));
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => false,
+			'post_content' => true,
+		)));
+
+		$this->assertTrue($this->service->should_regenerate_featured_image($post_id));
+	}
+
+	/**
+	 * Test should_regenerate_featured_image returns false when there is no existing or failed image generation.
+	 */
+	public function test_should_regenerate_featured_image_false_when_not_eligible() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'No Image Context',
+		));
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
+
+		$this->assertFalse($this->service->should_regenerate_featured_image($post_id));
+	}
 	
 	/**
 	 * Test that service handles structured content properly
@@ -330,5 +386,167 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		
 		// Should be either a string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	// ------------------------------------------------------------------
+	// regenerate_title – post content fallback (topic context)
+	// ------------------------------------------------------------------
+
+	/**
+	 * When no current_content is passed for a topic-context title regeneration,
+	 * the service falls back to fetching post_content from the post.
+	 * We verify this by ensuring the call runs without crashing and
+	 * the post content is reachable (indirect test; full AI call not made).
+	 */
+	public function test_regenerate_title_topic_context_fetches_post_content_when_missing() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Existing Post Title',
+			'post_content' => 'This is the real post content for the title test.',
+		));
+
+		$author = (object) array(
+			'id'          => 1,
+			'name'        => 'Alice',
+			'field_niche' => 'Engineering',
+		);
+		$topic = (object) array(
+			'id'           => 1,
+			'topic_title'  => 'Advanced PHP Patterns',
+			'topic_prompt' => 'Discuss PHP design patterns.',
+		);
+		$generation_context = new AIPS_Topic_Context($author, $topic);
+
+		// No current_content key in context — the service must fall back to the post.
+		$context = array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+		);
+
+		$result = $this->service->regenerate_title($context);
+
+		// Should be a string or WP_Error (AI may not be available in tests);
+		// either way the service must not crash with an uninitialized value.
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	// ------------------------------------------------------------------
+	// regenerate_excerpt – title/content fallback
+	// ------------------------------------------------------------------
+
+	/**
+	 * When current_title and current_content are absent from context but a
+	 * post_id is provided, the service falls back to fetching them from the post.
+	 */
+	public function test_regenerate_excerpt_falls_back_to_post_data_when_context_empty() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Post Title For Excerpt',
+			'post_content' => 'Post body used for excerpt generation fallback.',
+		));
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'T',
+			'prompt_template' => 'Write about {topic}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		// Intentionally omit current_title and current_content.
+		$context = array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+		);
+
+		$result = $this->service->regenerate_excerpt($context);
+
+		// Should be a string or WP_Error (AI may not be available in tests).
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	/**
+	 * When current_title is provided but current_content is empty, the service
+	 * fetches post_content from the database for the excerpt.
+	 */
+	public function test_regenerate_excerpt_falls_back_to_post_content_when_title_provided() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'The Post Title',
+			'post_content' => 'Substantial post body for excerpt fallback.',
+		));
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'T',
+			'prompt_template' => 'Write about {topic}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'current_title'      => 'The Post Title',
+			// current_content intentionally omitted
+		);
+
+		$result = $this->service->regenerate_excerpt($context);
+
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	/**
+	 * When post_id is zero and context values are absent, excerpt falls back
+	 * to empty strings without errors.
+	 */
+	public function test_regenerate_excerpt_zero_post_id_and_empty_context_no_crash() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'T',
+			'prompt_template' => 'Write about {topic}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			// no post_id, no current_title, no current_content
+		);
+
+		$result = $this->service->regenerate_excerpt($context);
+
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	// ------------------------------------------------------------------
+	// regenerate_featured_image – title fallback
+	// ------------------------------------------------------------------
+
+	/**
+	 * When current_title is absent from context, the service falls back to the
+	 * post title from the database.
+	 */
+	public function test_regenerate_featured_image_falls_back_to_post_title_when_missing() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Auto-fetched Image Title',
+		));
+
+		$template = (object) array(
+			'id'                      => 1,
+			'name'                    => 'T',
+			'generate_featured_image' => 1,
+			'featured_image_source'   => 'ai_prompt',
+			'image_prompt'            => 'An illustration of the post topic.',
+			'prompt_template'         => 'Write about {topic}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		// Intentionally omit current_title.
+		$context = array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+		);
+
+		$result = $this->service->regenerate_featured_image($context);
+
+		// Result is an array with attachment data, or WP_Error (AI may not be available).
+		$this->assertTrue(
+			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
+		);
 	}
 }

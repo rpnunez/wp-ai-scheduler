@@ -48,7 +48,7 @@ class AIPS_Dev_Tools {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
         }
 
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
         $include_voice = isset($_POST['include_voice']) && $_POST['include_voice'] === 'true';
         $include_structure = isset($_POST['include_structure']) && $_POST['include_structure'] === 'true';
         $include_title_prompt = isset($_POST['include_title_prompt']) && $_POST['include_title_prompt'] === 'true';
@@ -89,7 +89,7 @@ class AIPS_Dev_Tools {
 
         // Call AI Service
         $ai_service = new AIPS_AI_Service();
-        $response = $ai_service->generate_text($prompt, array('max_tokens' => 2500, 'temperature' => 0.7));
+        $response = $ai_service->generate_text($prompt, array('temperature' => 0.7));
 
         if (is_wp_error($response)) {
             wp_send_json_error(array('message' => $response->get_error_message()));

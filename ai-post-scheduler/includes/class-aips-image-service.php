@@ -118,7 +118,7 @@ class AIPS_Image_Service {
      * @return string|WP_Error Image URL on success, WP_Error on failure.
      */
     private function fetch_unsplash_image_url($keywords) {
-        $access_key = trim(get_option('aips_unsplash_access_key', ''));
+        $access_key = trim(AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'));
 
         if (empty($access_key)) {
             return new WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));
@@ -177,7 +177,8 @@ class AIPS_Image_Service {
      * Upload an image from a URL to WordPress media library.
      *
      * Downloads an image from a given URL and creates a WordPress attachment.
-     * Performs security validation on the response.
+     * Performs security validation on the response. Explicitly logs failures
+     * when cleaning up temporary files.
      *
      * @param string $image_url  The URL of the image to download.
      * @param string $post_title The post title to use for the image filename.
@@ -289,7 +290,9 @@ class AIPS_Image_Service {
         if (is_wp_error($attachment_id)) {
             // Clean up the file if attachment creation failed
             if (file_exists($file_path)) {
-                unlink($file_path);
+                if (!unlink($file_path)) {
+                    $this->logger->log(sprintf('Failed to delete temporary image file after attachment creation failed: %s', $file_path), 'warning');
+                }
             }
             return $attachment_id;
         }

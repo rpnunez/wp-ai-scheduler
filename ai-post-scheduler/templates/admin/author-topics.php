@@ -55,7 +55,7 @@ if (!$author) {
 $topics_repository  = new AIPS_Author_Topics_Repository();
 $logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
-$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
 <div class="wrap aips-wrap">
@@ -100,10 +100,6 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
-			<div class="aips-stat-card">
-				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
-			</div>
 			<div class="aips-stat-card aips-stat-pending">
 				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
@@ -119,6 +115,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<div class="aips-stat-card aips-stat-generated">
 				<span class="aips-stat-value"><?php echo esc_html($posts_count); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-stat-card">
+				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
+				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
 			</div>
 		</div>
 
@@ -137,6 +137,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<button class="aips-tab-link" data-tab="rejected">
 					<?php esc_html_e('Rejected', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
+				</button>
+				<button class="aips-tab-link" data-tab="posts_generated">
+					<?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?>
+					<span class="aips-tab-count" id="posts-generated-count"><?php echo esc_html($status_counts['posts_generated']); ?></span>
 				</button>
 				<button class="aips-tab-link" data-tab="feedback">
 					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>
@@ -157,15 +161,22 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
 			<!-- Topics Content -->
 			<div class="aips-panel-body no-padding">
-				<div id="aips-topics-content">
-					<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
+				<div id="aips-topics-loading" class="aips-topics-loading">
+					<div class="aips-topics-loading-inner">
+						<div class="aips-topics-loading-icon-wrapper">
+							<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
+						</div>
+						<p class="aips-topics-loading-text"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
+						<ul class="aips-topics-loading-list" id="aips-topics-loading-list"></ul>
+					</div>
 				</div>
+				<div id="aips-topics-content" style="display: none;"></div>
 			</div>
 		</div>
 		<!-- Table footer -->
@@ -221,15 +232,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
 			<div class="form-group">
-				<label for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
+				<label id="feedback_reason_category_label" for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
 				<select id="feedback_reason_category" name="reason_category">
 					<option value="other"><?php esc_html_e('Other', 'ai-post-scheduler'); ?></option>
-					<option value="duplicate"><?php esc_html_e('Duplicate', 'ai-post-scheduler'); ?></option>
-					<option value="tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></option>
-					<option value="irrelevant"><?php esc_html_e('Irrelevant', 'ai-post-scheduler'); ?></option>
-					<option value="policy"><?php esc_html_e('Policy', 'ai-post-scheduler'); ?></option>
 				</select>
-				<p class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
+				<p id="feedback_reason_category_description" class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="form-group">
@@ -245,5 +252,192 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</form>
 	</div>
 </div>
+
+<?php /* ------------------------------------------------------------------ */
+/* HTML templates used by AIPS.Templates.renderRaw() in authors.js          */
+/* (unescaped HTML; required for tokens like {{rows}} and {{actions}}).     */ ?>
+
+<!-- Topics List Templates -->
+<script type="text/html" id="aips-tmpl-topics-table">
+<table class="aips-table aips-topics-table">
+	<thead>
+		<tr>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="column-topic">{{topicDetails}}</th>
+			<th class="column-generated">{{generatedAtLabel}}</th>
+			<th class="column-actions">{{actionsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-row">
+<tr data-topic-id="{{id}}">
+	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+	<td class="topic-title-cell column-topic">
+		<div class="aips-topic-row">
+			{{expandBtn}}
+			<span class="topic-title">{{topicTitle}}</span>
+			<span class="aips-topic-similarity-slot" data-topic-id="{{id}}"></span>
+			{{postCountBadge}}
+			{{duplicateBadge}}
+			{{feedbackBadge}}
+			<input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+		</div>
+		{{detailContent}}
+	</td>
+	<td class="column-generated">{{generatedAt}}</td>
+	<td class="topic-actions column-actions">
+		{{actions}}
+	</td>
+</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-section">
+<div class="aips-topic-detail-content" id="aips-topic-details-{{id}}" style="display:none;">
+	{{content}}
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-item">
+<div class="aips-detail-section"><strong>{{label}}:</strong> {{value}}</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-feedback">
+<div class="aips-detail-section aips-detail-feedback">
+	<strong>{{label}}:</strong> <span class="aips-feedback-badge aips-feedback-badge-{{action}}">{{actionLabel}}</span>
+	{{categoryBadge}} {{reason}} {{date}}
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-duplicate">
+<div class="aips-detail-section aips-detail-duplicate">
+	<strong>{{label}}:</strong> <em>{{match}}</em>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-pending">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+<div class="cell-actions" style="margin-top: 6px;">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-approved">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-rejected">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+</script>
+
+<!-- Feedback Tab Templates -->
+<script type="text/html" id="aips-tmpl-feedback-table">
+<table class="aips-table aips-feedback-table">
+	<thead>
+		<tr>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+			<th class="column-topic">{{topicLabel}}</th>
+			<th class="column-action">{{actionLabel}}</th>
+			<th class="column-reason">{{reasonLabel}}</th>
+			<th class="column-user">{{userLabel}}</th>
+			<th class="column-date">{{dateLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-feedback-row">
+<tr>
+	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+	<td>{{topicTitle}}</td>
+	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
+	<td>{{reason}}</td>
+	<td>{{userName}}</td>
+	<td>{{date}}</td>
+</tr>
+</script>
+
+<!-- Topic Logs Modal Templates -->
+<script type="text/html" id="aips-tmpl-topic-logs-table">
+<table class="wp-list-table widefat fixed striped">
+	<thead>
+		<tr>
+			<th>{{actionLabel}}</th>
+			<th>{{userLabel}}</th>
+			<th>{{dateLabel}}</th>
+			<th>{{detailsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-log-row">
+<tr>
+	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
+	<td>{{userName}}</td>
+	<td>{{date}}</td>
+	<td>{{notes}}</td>
+</tr>
+</script>
+
+<!-- Topic Posts Modal Templates -->
+<script type="text/html" id="aips-tmpl-topic-posts-list">
+<div class="aips-topic-posts-list">
+	{{items}}
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-item">
+<article class="aips-topic-post-item" data-post-id="{{postId}}">
+	<div class="aips-topic-post-main">
+		<h1 class="aips-topic-post-title">{{postTitle}}</h1>
+		<p class="aips-topic-post-excerpt">{{postExcerpt}}</p>
+		<div class="aips-topic-post-meta">
+			<span class="aips-topic-post-meta-item"><strong>{{generatedLabel}}:</strong> {{dateGenerated}}</span>
+			<span class="aips-topic-post-meta-item"><strong>{{publishedLabel}}:</strong> {{datePublished}}</span>
+		</div>
+		<div class="aips-topic-post-actions">
+			{{actions}}
+		</div>
+	</div>
+	<div class="aips-topic-post-media">
+		{{featuredImageMarkup}}
+	</div>
+</article>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-image">
+<img src="{{imageUrl}}" alt="{{imageAlt}}" class="aips-topic-post-image">
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-image-placeholder">
+<div class="aips-topic-post-image-placeholder">{{placeholderText}}</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-action-link">
+<a href="{{url}}" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer">{{label}}</a>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-action-publish">
+<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
+</script>
 
 

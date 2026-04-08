@@ -65,19 +65,6 @@ class AIPS_Template_Repository {
     }
     
     /**
-     * Get templates by voice ID.
-     *
-     * @param int $voice_id Voice ID.
-     * @return array Array of template objects using this voice.
-     */
-    public function get_by_voice($voice_id) {
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE voice_id = %d ORDER BY name ASC",
-            $voice_id
-        ));
-    }
-    
-    /**
      * Search templates by name.
      *
      * @param string $search_term Search term.
@@ -133,10 +120,12 @@ class AIPS_Template_Repository {
             'post_category' => absint($data['post_category']),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
+            'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
+            'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -225,6 +214,16 @@ class AIPS_Template_Repository {
             $update_data['post_author'] = absint($data['post_author']);
             $format[] = '%d';
         }
+
+        if (isset($data['include_sources'])) {
+            $update_data['include_sources'] = (int) $data['include_sources'];
+            $format[] = '%d';
+        }
+
+        if (isset($data['source_group_ids'])) {
+            $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
+            $format[] = '%s';
+        }
         
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
@@ -282,8 +281,8 @@ class AIPS_Template_Repository {
         ");
         
         return array(
-            'total' => (int) $results->total,
-            'active' => (int) $results->active,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'active' => isset($results->active) ? (int) $results->active : 0,
         );
     }
     
