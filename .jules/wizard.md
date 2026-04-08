@@ -66,3 +66,7 @@ Action: Implemented conditional empty states that check `!empty($search_query)` 
 ## 2026-04-06 - Planner Empty State UX Enhancement
 Learning: Improved empty state components significantly enhance UX without modifying core flows.
 Action: Implemented an interactive empty state with an actionable 'Clear Search' button for the Planner topic search.
+
+## 2024-04-08 - Consistent Styling for Clear Filter Buttons
+Learning: Search clear buttons were using primary/secondary classes (`aips-btn-secondary`) instead of the established ghost class (`aips-btn-ghost`) used in other search UI components.
+Action: Updated the clear buttons in `tab-generated-posts.php`, `tab-pending-review.php`, and `tab-partial-generations.php` to use the `aips-btn-ghost` class, maintaining consistency with existing conventions and reducing visual clutter.
