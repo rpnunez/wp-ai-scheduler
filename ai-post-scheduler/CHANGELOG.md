@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-04-07
+### Added
+- **Custom AI API Provider Support**: Plugin now supports custom OpenAI-compatible AI APIs in addition to Meow Apps AI Engine
+  - New provider abstraction layer with `AIPS_AI_Provider` interface for pluggable AI backends
+  - `AIPS_AI_Engine_Provider` — wraps existing Meow Apps AI Engine integration (legacy provider)
+  - `AIPS_Custom_AI_Provider` — supports OpenAI-compatible APIs via `wp_remote_post()`
+  - `AIPS_AI_Provider_Factory` — factory pattern for provider instantiation based on settings
+  - New settings for custom AI provider:
+    - **AI Provider** selection (AI Engine vs Custom API)
+    - **Custom AI URL** (base URL for custom API, e.g., `https://api.openai.com`)
+    - **Custom AI Key** (Bearer token for API authentication)
+    - **Custom AI Model** (model name, e.g., `gpt-4`, `claude-3-sonnet`)
+  - Provider abstraction extended to embeddings service for semantic similarity features
+  - Backward compatible — existing AI Engine configurations continue to work unchanged
+
+### Changed
+- **BREAKING (for tests)**: `AIPS_AI_Service` constructor now accepts optional `$provider` parameter for dependency injection
+- `AIPS_AI_Service` refactored to delegate text/JSON/image generation to provider interface
+- `AIPS_Embeddings_Service` refactored to use provider abstraction instead of direct `mwai` access
+- Settings UI reorganized with clearer provider-specific sections
+
+### Technical Details
+- Custom provider implements OpenAI-compatible endpoints:
+  - `/v1/chat/completions` for text and JSON generation
+  - `/v1/images/generations` for image generation
+  - `/v1/embeddings` for semantic embeddings
+- Provider selection controlled via `aips_ai_provider` option (defaults to `ai-engine`)
+- All resilience features (retry, circuit breaker, rate limiting) work with both providers
+- Comprehensive error handling and logging for custom API calls
+
 ## [2.0.1] - 2026-03-28
 ### Added
 - **Observability baseline metrics**: scheduler and generation reliability metrics reviewable from System Status.

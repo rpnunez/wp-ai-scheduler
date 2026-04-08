@@ -2,7 +2,7 @@
 /**
  * Embeddings Service
  *
- * Handles embedding generation and similarity calculations using Meow AI Engine.
+ * Handles embedding generation and similarity calculations using AI providers.
  * Provides semantic similarity features for topic expansion and recommendation.
  *
  * @package AI_Post_Scheduler
@@ -19,33 +19,44 @@ if (!defined('ABSPATH')) {
  * Service for generating and working with text embeddings.
  */
 class AIPS_Embeddings_Service {
-	
+
 	/**
-	 * @var AIPS_AI_Service AI Service instance
+	 * @var AIPS_AI_Provider AI Provider instance
 	 */
-	private $ai_service;
-	
+	private $provider;
+
 	/**
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
-	
+
 	/**
 	 * @var array Cache for embeddings to avoid redundant API calls
 	 */
 	private $embedding_cache;
-	
+
 	/**
 	 * Initialize the embeddings service.
+	 *
+	 * @param AIPS_AI_Provider $provider Optional. AI provider (auto-created if not provided).
+	 * @param AIPS_Logger      $logger   Optional. Logger instance.
 	 */
-	public function __construct($ai_service = null, $logger = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
+	public function __construct($provider = null, $logger = null) {
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->embedding_cache = array();
+
+		// Initialize provider via factory if not provided
+		if ($provider !== null) {
+			$this->provider = $provider;
+		} else {
+			$config = AIPS_Config::get_instance();
+			$factory = new AIPS_AI_Provider_Factory($config, $this->logger);
+			$this->provider = $factory->create_provider();
+		}
 	}
-	
+
 	/**
-	 * Generate an embedding for a text string using Meow AI.
+	 * Generate an embedding for a text string using the AI provider.
 	 *
 	 * @param string $text The text to generate an embedding for.
 	 * @param array  $options Optional. Additional options for embedding generation.
@@ -55,57 +66,35 @@ class AIPS_Embeddings_Service {
 		if (empty($text)) {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
-		
+
 		// Check cache
 		$cache_key = md5($text);
 		if (isset($this->embedding_cache[$cache_key])) {
 			return $this->embedding_cache[$cache_key];
 		}
-		
-		if (!$this->ai_service->is_available()) {
-			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+
+		if (!$this->provider->is_available()) {
+			return new WP_Error('ai_unavailable', __('AI provider is not available.', 'ai-post-scheduler'));
 		}
-		
-		// Get AI engine through global
-		$ai = null;
-		if (class_exists('Meow_MWAI_Core')) {
-			global $mwai_core;
-			$ai = $mwai_core;
-		}
-		
-		if (!$ai) {
-			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-		}
-		
+
 		try {
-			// Use Meow AI's embeddings functionality
-			// Note: This assumes Meow AI supports embeddings through a Query_Embed or similar class
-			if (class_exists('Meow_MWAI_Query_Embed')) {
-				$query = new Meow_MWAI_Query_Embed($text);
-				
-				// Set embeddings environment if specified
-				if (!empty($options['embeddings_env_id'])) {
-					if (method_exists($query, 'set_embeddings_env_id')) {
-						$query->set_embeddings_env_id($options['embeddings_env_id']);
-					}
-				}
-				
-				$response = $ai->run_query($query);
-				
-				if ($response && !empty($response->result)) {
-					$embedding = $response->result;
-					
-					// Cache the result
-					$this->embedding_cache[$cache_key] = $embedding;
-					
-					$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
-					return $embedding;
-				}
+			$embedding = $this->provider->generate_embedding($text, $options);
+
+			if (is_wp_error($embedding)) {
+				$this->logger->log('Embedding generation failed: ' . $embedding->get_error_message(), 'error');
+				return $embedding;
 			}
-			
-			// Fallback: If Meow AI doesn't support embeddings directly, return an error
-			return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
-			
+
+			if (empty($embedding) || !is_array($embedding)) {
+				return new WP_Error('invalid_embedding', __('Provider returned invalid embedding.', 'ai-post-scheduler'));
+			}
+
+			// Cache the result
+			$this->embedding_cache[$cache_key] = $embedding;
+
+			$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
+			return $embedding;
+
 		} catch (Exception $e) {
 			$this->logger->log('Embedding generation failed: ' . $e->getMessage(), 'error');
 			return new WP_Error('embedding_failed', $e->getMessage());

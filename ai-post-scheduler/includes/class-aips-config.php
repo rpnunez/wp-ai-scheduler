@@ -65,6 +65,12 @@ class AIPS_Config {
 			'generated_posts_log_threshold_tmpfile' => 200,
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
+            // AI Provider settings
+            'aips_ai_provider' => 'ai-engine',
+            'aips_custom_ai_url' => '',
+            'aips_custom_ai_key' => '',
+            'aips_custom_ai_model' => '',
+            // AI Engine settings (legacy provider)
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,

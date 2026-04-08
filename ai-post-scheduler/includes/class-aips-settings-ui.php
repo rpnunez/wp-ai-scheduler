@@ -28,7 +28,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function ai_section_callback() {
-        echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure the AI provider and model used for content generation.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
@@ -94,6 +94,69 @@ class AIPS_Settings_UI {
             'hide_empty' => false,
         ));
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the AI provider selection field.
+     *
+     * Displays a dropdown to select between AI Engine and Custom AI providers.
+     *
+     * @return void
+     */
+    public function ai_provider_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_ai_provider');
+        ?>
+        <select name="aips_ai_provider" id="aips_ai_provider">
+            <option value="ai-engine" <?php selected($value, 'ai-engine'); ?>><?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?></option>
+            <option value="custom" <?php selected($value, 'custom'); ?>><?php esc_html_e('Custom AI API', 'ai-post-scheduler'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Select which AI provider to use for content generation.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the custom AI URL setting field.
+     *
+     * Displays a text input for the custom AI API base URL.
+     *
+     * @return void
+     */
+    public function custom_ai_url_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_custom_ai_url');
+        ?>
+        <input type="url" name="aips_custom_ai_url" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="https://api.example.com">
+        <p class="description"><?php esc_html_e('Base URL for your custom OpenAI-compatible API (e.g., https://api.openai.com).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the custom AI key setting field.
+     *
+     * Displays a password input for the custom AI API key.
+     *
+     * @return void
+     */
+    public function custom_ai_key_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_custom_ai_key');
+        ?>
+        <input type="password" name="aips_custom_ai_key" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="sk-...">
+        <p class="description"><?php esc_html_e('API key for authentication with your custom AI API.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the custom AI model setting field.
+     *
+     * Displays a text input for the custom AI model name.
+     *
+     * @return void
+     */
+    public function custom_ai_model_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_custom_ai_model');
+        ?>
+        <input type="text" name="aips_custom_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="gpt-4">
+        <p class="description"><?php esc_html_e('Model name to use with your custom AI API (e.g., gpt-4, claude-3-sonnet).', 'ai-post-scheduler'); ?></p>
+        <?php
     }
 
     /**

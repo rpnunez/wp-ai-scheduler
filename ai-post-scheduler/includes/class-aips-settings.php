@@ -98,6 +98,24 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_circuit_breaker_timeout'],
         ));
+        // AI Provider settings
+        register_setting('aips_settings', 'aips_ai_provider', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_ai_provider'],
+        ));
+        register_setting('aips_settings', 'aips_custom_ai_url', array(
+            'sanitize_callback' => 'esc_url_raw',
+            'default'           => $defaults['aips_custom_ai_url'],
+        ));
+        register_setting('aips_settings', 'aips_custom_ai_key', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_custom_ai_key'],
+        ));
+        register_setting('aips_settings', 'aips_custom_ai_model', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_custom_ai_model'],
+        ));
+        // AI Engine settings (legacy provider)
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_ai_model'],
@@ -166,7 +184,7 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // AI section: AI Model, Environment ID
+        // AI section: Provider Selection, Custom API, AI Engine
         // -----------------------------------------------------------------------
         add_settings_section(
             'aips_ai_section',
@@ -176,8 +194,40 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_provider',
+            __('AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_custom_ai_url',
+            __('Custom AI URL', 'ai-post-scheduler'),
+            array($this->ui, 'custom_ai_url_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_custom_ai_key',
+            __('Custom AI Key', 'ai-post-scheduler'),
+            array($this->ui, 'custom_ai_key_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_custom_ai_model',
+            __('Custom AI Model', 'ai-post-scheduler'),
+            array($this->ui, 'custom_ai_model_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
             'aips_ai_model',
-            __('AI Model', 'ai-post-scheduler'),
+            __('AI Engine Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
             'aips-settings',
             'aips_ai_section'
@@ -185,7 +235,7 @@ class AIPS_Settings {
 
         add_settings_field(
             'aips_ai_env_id',
-            __('Environment ID', 'ai-post-scheduler'),
+            __('AI Engine Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
             'aips-settings',
             'aips_ai_section'
