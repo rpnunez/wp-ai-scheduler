@@ -79,6 +79,10 @@ class AIPS_Config {
      * @return void
      */
     public function reregister_option_cache_hooks() {
+        // The callbacks only need $option (the first argument). WordPress passes
+        // additional arguments for some hooks (e.g. $old_value, $value for
+        // updated_option) but PHP silently ignores surplus arguments when the
+        // closure declares fewer parameters, so this is intentional.
         $invalidate = function($option) {
             unset($this->option_cache[$option]);
         };

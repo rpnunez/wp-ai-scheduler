@@ -112,6 +112,8 @@ class AIPS_System_Status {
     private function check_notifications() {
         $repository = class_exists('AIPS_Notifications_Repository') ? new AIPS_Notifications_Repository() : null;
         $config     = AIPS_Config::get_instance();
+        // Fall back to the WP-native admin_email when no plugin email has been configured.
+        // admin_email is a core WordPress option and is not managed by AIPS_Config.
         $recipient_list = $config->get_option('aips_review_notifications_email') ?: (string) get_option('admin_email');
         $recipient_count = 0;
         if (!empty($recipient_list)) {

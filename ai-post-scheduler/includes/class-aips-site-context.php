@@ -58,9 +58,11 @@ class AIPS_Site_Context {
 	 * Return a single site-wide setting value.
 	 *
 	 * @param string     $key     Short key as defined in the settings registry (e.g. 'niche').
-	 * @param mixed|null $default Default value if the setting has not been configured.
-	 *                            When omitted (null) the AIPS_Config registered default is used.
-	 * @return mixed
+	 * @param mixed|null $default Optional. Explicit fallback value when the option is not set.
+	 *                            When omitted (null) the AIPS_Config registered default is used,
+	 *                            which is an empty string for all site content strategy keys.
+	 *                            Passing null is therefore equivalent to omitting the argument.
+	 * @return mixed Stored option value, the caller's $default, or '' when $default is null.
 	 */
 	public static function get_setting($key, $default = null) {
 		$options = AIPS_Settings::get_content_strategy_options();
