@@ -145,20 +145,40 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 			return false;
 		}
 
-		return (bool) $this->redis->del( $this->prefix_key( $key, $group ) );
+		// del() returns the number of keys removed (0 when the key doesn't exist)
+		// or false on error. Deleting a non-existent key is a successful no-op, so
+		// we return true for any non-false result to match other driver semantics.
+		$result = $this->redis->del( $this->prefix_key( $key, $group ) );
+		return false !== $result;
 	}
 
 	/**
 	 * {@inheritdoc}
 	 *
-	 * Flushes the currently selected Redis database.
+	 * When a key prefix is configured, only keys belonging to this driver's
+	 * prefix are deleted, so unrelated data in the same Redis DB is preserved.
+	 * When no prefix is configured the full database is flushed via FLUSHDB.
 	 */
 	public function flush() {
 		if (!$this->connected) {
 			return false;
 		}
 
-		return (bool) $this->redis->flushDb();
+		if (empty( $this->prefix )) {
+			// No prefix — full DB flush (intentional; caller configured no prefix).
+			return (bool) $this->redis->flushDb();
+		}
+
+		// Prefix-scoped flush: find and delete only keys belonging to this driver.
+		// KEYS is O(N) but acceptable in a plugin context without millions of keys.
+		$pattern = $this->prefix . ':*';
+		$keys    = $this->redis->keys( $pattern );
+
+		if (empty( $keys )) {
+			return true;
+		}
+
+		return false !== $this->redis->del( $keys );
 	}
 
 	/**

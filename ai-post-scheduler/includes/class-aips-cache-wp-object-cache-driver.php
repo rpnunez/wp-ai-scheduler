@@ -20,6 +20,10 @@ if (!defined('ABSPATH')) {
  * Group names are prefixed with 'aips' (or the configured default group) to
  * avoid collisions with other plugins using the same WP object cache.
  *
+ * flush() uses a generation counter instead of calling wp_cache_flush(), so
+ * only entries written by this driver instance become unreachable — all other
+ * plugin or WordPress cache data is left untouched.
+ *
  * @package AI_Post_Scheduler
  * @since   2.3.0
  */
@@ -33,12 +37,37 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 	private $base_group;
 
 	/**
+	 * Current flush generation counter.
+	 *
+	 * Incremented on each flush() call. Included as a suffix in every group
+	 * name so "flushed" entries become unreachable without touching unrelated
+	 * cache data. Loaded from the object cache at construction time.
+	 *
+	 * @var int
+	 */
+	private $generation;
+
+	/**
+	 * WP object cache group used to store the generation counter.
+	 *
+	 * Intentionally separate from all content groups so it is never affected
+	 * by a generation bump.
+	 *
+	 * @var string
+	 */
+	private $meta_group = 'aips__flush_meta';
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $base_group Base group name. Default 'aips'.
 	 */
 	public function __construct( $base_group = 'aips' ) {
 		$this->base_group = !empty( $base_group ) ? (string) $base_group : 'aips';
+		// Load the persisted generation so persistent-cache drop-ins carry the
+		// generation across requests correctly.
+		$stored           = wp_cache_get( $this->base_group, $this->meta_group );
+		$this->generation = ( false !== $stored && is_int( $stored ) ) ? $stored : 0;
 	}
 
 	// -----------------------------------------------------------------------
@@ -72,11 +101,15 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 *
-	 * Calls wp_cache_flush() which flushes the entire WP object cache —
-	 * not just entries written by this plugin. Use with caution.
+	 * Increments the internal generation counter and persists it in the
+	 * object cache. All previously stored entries become unreachable because
+	 * their group names no longer match the new generation suffix. This avoids
+	 * calling wp_cache_flush() which would wipe unrelated plugin/WP data.
 	 */
 	public function flush() {
-		return wp_cache_flush();
+		$this->generation++;
+		wp_cache_set( $this->base_group, $this->generation, $this->meta_group );
+		return true;
 	}
 
 	/**
@@ -93,19 +126,22 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Build the WP object cache group name.
+	 * Build the WP object cache group name, incorporating the current flush
+	 * generation so that entries from before the last flush() call are
+	 * automatically shadowed by a new (empty) group name.
 	 *
 	 * Groups that are already 'default' or empty are mapped to the base
 	 * group; otherwise the group is appended as `{base}_{group}`.
+	 * A non-zero generation appends `_g{N}` to the group name.
 	 *
 	 * @param string $group Logical group name.
 	 * @return string WP object cache group name.
 	 */
 	private function resolve_group( $group ) {
-		if (empty( $group ) || $group === 'default') {
-			return $this->base_group;
-		}
+		$base = ( empty( $group ) || $group === 'default' )
+			? $this->base_group
+			: $this->base_group . '_' . $group;
 
-		return $this->base_group . '_' . $group;
+		return $this->generation > 0 ? $base . '_g' . $this->generation : $base;
 	}
 }

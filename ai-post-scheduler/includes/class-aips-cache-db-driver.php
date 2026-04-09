@@ -70,21 +70,40 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
 		global $wpdb;
 
-		$table      = $wpdb->prefix . 'aips_cache';
-		$expires_at = ( $ttl > 0 ) ? gmdate( 'Y-m-d H:i:s', time() + (int) $ttl ) : null;
+		$table       = $wpdb->prefix . 'aips_cache';
+		$cache_key   = $this->namespace_key( $key );
+		$cache_group = (string) $group;
+		$cache_value = maybe_serialize( $value );
 
-		$wpdb->replace( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$table,
-			array(
-				'cache_key'   => $this->namespace_key( $key ),
-				'cache_group' => (string) $group,
-				'value'       => maybe_serialize( $value ),
-				'expires_at'  => $expires_at,
-			),
-			array( '%s', '%s', '%s', '%s' )
-		);
+		if ($ttl > 0) {
+			$expires_at = gmdate( 'Y-m-d H:i:s', time() + (int) $ttl );
 
-		return true;
+			$result = $wpdb->replace( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$table,
+				array(
+					'cache_key'   => $cache_key,
+					'cache_group' => $cache_group,
+					'value'       => $cache_value,
+					'expires_at'  => $expires_at,
+				),
+				array( '%s', '%s', '%s', '%s' )
+			);
+		} else {
+			// TTL = 0 means "never expire". We cannot pass null through $wpdb->replace()
+			// with a '%s' format (it would be coerced to an empty string and treated as
+			// expired on read). Use a raw REPLACE INTO with a literal NULL instead.
+			$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"REPLACE INTO `{$table}` (`cache_key`, `cache_group`, `value`, `expires_at`) VALUES (%s, %s, %s, NULL)",
+					$cache_key,
+					$cache_group,
+					$cache_value
+				)
+			);
+		}
+
+		return false !== $result && '' === $wpdb->last_error;
 	}
 
 	/**
@@ -145,7 +164,7 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 		return $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
 				"DELETE FROM `{$table}` WHERE expires_at IS NOT NULL AND expires_at < %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				current_time( 'mysql' )
+				current_time( 'mysql', true )
 			)
 		);
 	}

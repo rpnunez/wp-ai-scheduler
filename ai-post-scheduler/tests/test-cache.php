@@ -70,11 +70,17 @@ class Test_AIPS_Cache_Array_Driver extends WP_UnitTestCase {
 	// ------------------------------------------------------------------
 
 	public function test_expired_entry_returns_null() {
-		// Set with a TTL in the past by using the past time directly.
-		// We can't mock time(), so we'll just set it with TTL=1 and assert
-		// that a get before expiry succeeds (normal flow).
 		$this->driver->set( 'ttl_key', 'live', 3600 );
-		$this->assertSame( 'live', $this->driver->get( 'ttl_key' ) );
+
+		// Force the expiry timestamp into the past via reflection so we can
+		// verify the expiration path without sleeping.
+		$prop = new ReflectionProperty( 'AIPS_Cache_Array_Driver', 'expiries' );
+		$prop->setAccessible( true );
+		$expiries                  = $prop->getValue( $this->driver );
+		$expiries['default:ttl_key'] = time() - 1;
+		$prop->setValue( $this->driver, $expiries );
+
+		$this->assertNull( $this->driver->get( 'ttl_key' ) );
 	}
 
 	public function test_zero_ttl_does_not_expire() {
@@ -181,6 +187,25 @@ class Test_AIPS_Cache_Wp_Object_Cache_Driver extends WP_UnitTestCase {
 		$this->driver->set( 'a', 1 );
 		$this->driver->flush();
 		$this->assertNull( $this->driver->get( 'a' ) );
+	}
+
+	public function test_flush_does_not_purge_unrelated_wp_cache_entries() {
+		$this->driver->set( 'plugin_key', 'plugin_val' );
+
+		// Store something directly in wp_cache outside our driver's namespace.
+		wp_cache_set( 'external_key', 'external_val', 'some_other_plugin' );
+
+		$this->driver->flush();
+
+		// Driver's own entry becomes unreachable.
+		$this->assertNull( $this->driver->get( 'plugin_key' ) );
+
+		// The unrelated WP object cache entry is untouched.
+		$this->assertSame( 'external_val', wp_cache_get( 'external_key', 'some_other_plugin' ) );
+	}
+
+	public function test_flush_returns_true() {
+		$this->assertTrue( $this->driver->flush() );
 	}
 
 	public function test_groups_are_namespaced_under_base() {
@@ -719,5 +744,284 @@ $second = AIPS_Cache_Factory::named( 'guarded', 'wp_object_cache' );
 
 $this->assertSame( $first, $second, 'named() must return existing instance, ignoring driver arg.' );
 $this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $second->get_driver() );
+}
+}
+
+// ============================================================================
+// AIPS_Cache_Db_Driver tests
+// ============================================================================
+
+/**
+ * @covers AIPS_Cache_Db_Driver
+ */
+class Test_AIPS_Cache_Db_Driver extends WP_UnitTestCase {
+
+/** @var AIPS_Cache_Db_Driver */
+private $driver;
+
+public function setUp(): void {
+parent::setUp();
+global $wpdb;
+// Default: simulate a cache miss (false is recognised by the driver's
+// `if (!$row)` guard; null would bypass the isset() check in the stub
+// and return the default stub object, causing false positives).
+$wpdb->get_row_return_val = false;
+$wpdb->last_error         = '';
+$this->driver = new AIPS_Cache_Db_Driver();
+}
+
+public function tearDown(): void {
+global $wpdb;
+// Restore stub defaults for other test classes.
+$wpdb->get_row_return_val = null;
+$wpdb->last_error         = '';
+parent::tearDown();
+}
+
+// ------------------------------------------------------------------
+// set()
+// ------------------------------------------------------------------
+
+public function test_set_with_ttl_returns_true() {
+$this->assertTrue( $this->driver->set( 'key', 'value', 3600 ) );
+}
+
+public function test_set_without_ttl_returns_true() {
+// TTL=0 uses the REPLACE INTO ... NULL path.
+$this->assertTrue( $this->driver->set( 'key', 'value', 0 ) );
+}
+
+public function test_set_returns_false_when_db_has_error() {
+// Inject a DB error; set() checks $wpdb->last_error after the query.
+global $wpdb;
+$wpdb->last_error = 'Simulated DB error';
+
+$this->assertFalse( $this->driver->set( 'key', 'value' ) );
+
+$wpdb->last_error = ''; // Reset for subsequent tests.
+}
+
+// ------------------------------------------------------------------
+// get()
+// ------------------------------------------------------------------
+
+public function test_get_returns_null_on_miss() {
+// get_row_return_val = false → driver returns null.
+$this->assertNull( $this->driver->get( 'missing' ) );
+}
+
+public function test_get_returns_value_on_hit_no_expiry() {
+global $wpdb;
+$row             = new stdClass();
+$row->value      = maybe_serialize( 'cached_value' );
+$row->expires_at = null; // Never expires.
+$wpdb->get_row_return_val = $row;
+
+$this->assertSame( 'cached_value', $this->driver->get( 'my_key' ) );
+}
+
+public function test_get_returns_value_for_non_expired_row() {
+global $wpdb;
+$row             = new stdClass();
+$row->value      = maybe_serialize( 42 );
+$row->expires_at = gmdate( 'Y-m-d H:i:s', time() + 3600 ); // Future.
+$wpdb->get_row_return_val = $row;
+
+$this->assertSame( 42, $this->driver->get( 'live_key' ) );
+}
+
+public function test_get_returns_null_for_expired_row() {
+global $wpdb;
+$row             = new stdClass();
+$row->value      = maybe_serialize( 'stale' );
+$row->expires_at = gmdate( 'Y-m-d H:i:s', time() - 1 ); // Past.
+$wpdb->get_row_return_val = $row;
+
+$this->assertNull( $this->driver->get( 'expired_key' ) );
+}
+
+public function test_get_unserializes_array_value() {
+global $wpdb;
+$data            = array( 'foo' => 'bar', 'num' => 7 );
+$row             = new stdClass();
+$row->value      = maybe_serialize( $data );
+$row->expires_at = null;
+$wpdb->get_row_return_val = $row;
+
+$this->assertSame( $data, $this->driver->get( 'arr_key' ) );
+}
+
+// ------------------------------------------------------------------
+// delete() / has()
+// ------------------------------------------------------------------
+
+public function test_delete_returns_true() {
+$this->assertTrue( $this->driver->delete( 'any_key' ) );
+}
+
+public function test_has_returns_false_on_miss() {
+$this->assertFalse( $this->driver->has( 'nope' ) );
+}
+
+public function test_has_returns_true_on_hit() {
+global $wpdb;
+$row             = new stdClass();
+$row->value      = maybe_serialize( 'present' );
+$row->expires_at = null;
+$wpdb->get_row_return_val = $row;
+
+$this->assertTrue( $this->driver->has( 'present_key' ) );
+}
+
+// ------------------------------------------------------------------
+// purge_expired()
+// ------------------------------------------------------------------
+
+public function test_purge_expired_returns_truthy() {
+// The wpdb stub's query() always returns true; verify no fatal errors.
+$result = $this->driver->purge_expired();
+$this->assertTrue( (bool) $result );
+}
+
+// ------------------------------------------------------------------
+// Key prefix / namespace
+// ------------------------------------------------------------------
+
+public function test_namespace_key_with_prefix() {
+$driver = new AIPS_Cache_Db_Driver( 'myprefix' );
+$method = new ReflectionMethod( 'AIPS_Cache_Db_Driver', 'namespace_key' );
+$method->setAccessible( true );
+
+$this->assertSame( 'myprefix:testkey', $method->invoke( $driver, 'testkey' ) );
+}
+
+public function test_namespace_key_without_prefix() {
+$method = new ReflectionMethod( 'AIPS_Cache_Db_Driver', 'namespace_key' );
+$method->setAccessible( true );
+
+$this->assertSame( 'testkey', $method->invoke( $this->driver, 'testkey' ) );
+}
+}
+
+// ============================================================================
+// AIPS_Cache_Redis_Driver tests
+// ============================================================================
+
+/**
+ * @covers AIPS_Cache_Redis_Driver
+ *
+ * These tests cover behaviour that can be exercised without a live Redis
+ * server — namely disconnected no-ops and internal key-prefix formatting.
+ * Tests that require the redis extension to actually be absent are skipped
+ * when the extension is loaded and a server happens to be reachable.
+ */
+class Test_AIPS_Cache_Redis_Driver extends WP_UnitTestCase {
+
+/** @var AIPS_Cache_Redis_Driver */
+private $driver;
+
+public function setUp(): void {
+parent::setUp();
+// The driver will fail to connect in environments without a Redis
+// server (or the extension), making connected = false.
+$this->driver = new AIPS_Cache_Redis_Driver();
+}
+
+// ------------------------------------------------------------------
+// Disconnected / no-op behaviour
+// ------------------------------------------------------------------
+
+private function skip_if_connected() {
+if ($this->driver->is_connected()) {
+$this->markTestSkipped(
+'Redis is connected; disconnected no-op tests require an unreachable server.'
+);
+}
+}
+
+public function test_is_not_connected_without_available_server() {
+$this->skip_if_connected();
+$this->assertFalse( $this->driver->is_connected() );
+}
+
+public function test_get_returns_null_when_not_connected() {
+$this->skip_if_connected();
+$this->assertNull( $this->driver->get( 'key' ) );
+}
+
+public function test_set_returns_false_when_not_connected() {
+$this->skip_if_connected();
+$this->assertFalse( $this->driver->set( 'key', 'val' ) );
+}
+
+public function test_delete_returns_false_when_not_connected() {
+$this->skip_if_connected();
+$this->assertFalse( $this->driver->delete( 'key' ) );
+}
+
+public function test_has_returns_false_when_not_connected() {
+$this->skip_if_connected();
+$this->assertFalse( $this->driver->has( 'key' ) );
+}
+
+public function test_flush_returns_false_when_not_connected() {
+$this->skip_if_connected();
+$this->assertFalse( $this->driver->flush() );
+}
+
+public function test_get_last_error_is_empty_when_extension_missing() {
+if (extension_loaded( 'redis' )) {
+$this->markTestSkipped( 'redis extension loaded.' );
+}
+// When extension is absent, connect() returns early without an error.
+$this->assertSame( '', $this->driver->get_last_error() );
+}
+
+// ------------------------------------------------------------------
+// prefix_key() — does not require a connection
+// ------------------------------------------------------------------
+
+public function test_prefix_key_with_default_prefix() {
+// Default prefix is 'aips'. Format: {prefix}:{group}:{key}
+$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
+$method->setAccessible( true );
+
+$this->assertSame(
+'aips:default:mykey',
+$method->invoke( $this->driver, 'mykey', 'default' )
+);
+}
+
+public function test_prefix_key_with_custom_group() {
+$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
+$method->setAccessible( true );
+
+$this->assertSame(
+'aips:posts:post_1',
+$method->invoke( $this->driver, 'post_1', 'posts' )
+);
+}
+
+public function test_prefix_key_with_empty_prefix() {
+$driver = new AIPS_Cache_Redis_Driver( '127.0.0.1', 6379, '', 0, '', 2.0 );
+$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
+$method->setAccessible( true );
+
+// No prefix: {group}:{key}
+$this->assertSame(
+'default:mykey',
+$method->invoke( $driver, 'mykey', 'default' )
+);
+}
+
+public function test_prefix_key_with_custom_prefix() {
+$driver = new AIPS_Cache_Redis_Driver( '127.0.0.1', 6379, '', 0, 'myplugin', 2.0 );
+$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
+$method->setAccessible( true );
+
+$this->assertSame(
+'myplugin:items:item_42',
+$method->invoke( $driver, 'item_42', 'items' )
+);
 }
 }

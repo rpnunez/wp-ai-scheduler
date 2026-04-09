@@ -131,7 +131,7 @@ Redis-specific fields are only shown when the Redis driver is selected. DB-speci
 
 ## Usage
 
-The cache framework is introduced in v2.3.0 but is **not yet used by existing plugin features**. It is available for future integration.
+The cache framework is available in the plugin but is **not yet used by existing plugin features**. It is available for future integration.
 
 ### Basic Usage
 

@@ -88,6 +88,7 @@ class AIPS_Cache_Factory {
 				return new AIPS_Cache_Session_Driver();
 
 			case 'redis':
+				$notice = '';
 				$driver = self::try_make_redis_driver( $notice );
 				if ($driver !== null) {
 					return $driver;
