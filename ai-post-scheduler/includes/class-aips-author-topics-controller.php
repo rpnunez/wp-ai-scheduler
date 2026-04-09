@@ -45,7 +45,7 @@ class AIPS_Author_Topics_Controller {
 	private $penalty_service;
 
 	/**
-	 * @var AIPS_History_Service Service for history logging
+	 * @var AIPS_History_Service_Interface Service for history logging
 	 */
 	private $history_service;
 
@@ -55,7 +55,7 @@ class AIPS_Author_Topics_Controller {
 	private $expansion_service;
 
 	/**
-	 * @var AIPS_History_Repository Repository for history data
+	 * @var AIPS_History_Repository_Interface Repository for history data
 	 */
 	private $history_repository;
 
@@ -68,18 +68,19 @@ class AIPS_Author_Topics_Controller {
 	 * Initialize the controller.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
-	 * @param AIPS_History_Repository|null       $history_repository     History repository.
+	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 */
-	public function __construct($expansion_service = null, $history_repository = null, $bulk_generator_service = null) {
+	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null) {
+		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository    = new AIPS_Feedback_Repository();
 		$this->post_generator         = new AIPS_Author_Post_Generator();
 		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = new AIPS_History_Service();
+		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
 		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->history_repository     = $history_repository ?: new AIPS_History_Repository();
+		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 
 		// Register AJAX endpoints
@@ -782,7 +783,7 @@ class AIPS_Author_Topics_Controller {
 
 		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
 		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
+			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
 		} else {
 			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
 		}

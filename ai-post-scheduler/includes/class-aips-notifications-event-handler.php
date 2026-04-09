@@ -23,7 +23,7 @@ class AIPS_Notifications_Event_Handler {
 	private $notifications;
 
 	/**
- * @var AIPS_Notifications_Repository
+ * @var AIPS_Notifications_Repository_Interface
  */
 	private $repository;
 
@@ -38,12 +38,13 @@ class AIPS_Notifications_Event_Handler {
 	/**
  * Constructor.
  *
- * @param AIPS_Notifications $notifications The dispatcher.
- * @param AIPS_Notifications_Repository|null $repository DB notifications repository.
+ * @param AIPS_Notifications                        $notifications The dispatcher.
+ * @param AIPS_Notifications_Repository_Interface|null $repository DB notifications repository.
  */
-	public function __construct($notifications, $repository = null) {
+	public function __construct($notifications, ?AIPS_Notifications_Repository_Interface $repository = null) {
+	$container = AIPS_Container::get_instance();
 	$this->notifications = $notifications;
-	$this->repository = $repository instanceof AIPS_Notifications_Repository ? $repository : new AIPS_Notifications_Repository();
+	$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : new AIPS_Notifications_Repository());
 	$this->register_hooks();
 	}
 

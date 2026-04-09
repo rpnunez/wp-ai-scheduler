@@ -291,14 +291,50 @@ final class AI_Post_Scheduler {
             return AIPS_History_Repository::instance();
         });
 
+		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Repository::class);
+		});
+
         // Register AIPS_History_Service
         $container->singleton(AIPS_History_Service::class, function( $container ) {
             return AIPS_History_Service::instance();
         });
 
+		$container->singleton(AIPS_History_Service_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Service::class);
+		});
+
         // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
         $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
             return new AIPS_Notifications_Repository();
+        });
+
+        $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Notifications_Repository::class);
+        });
+
+        $container->singleton(AIPS_Logger::class, function( $container ) {
+            return AIPS_Logger::instance();
+        });
+
+        $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
+            return $container->make(AIPS_Logger::class);
+        });
+
+        $container->singleton(AIPS_AI_Service::class, function( $container ) {
+            return AIPS_AI_Service::instance();
+        });
+
+        $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
+            return $container->make(AIPS_AI_Service::class);
+        });
+
+        $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
+            return new AIPS_Schedule_Repository();
+        });
+
+        $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Schedule_Repository::class);
         });
     }
 

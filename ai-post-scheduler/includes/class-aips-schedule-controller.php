@@ -8,19 +8,20 @@ class AIPS_Schedule_Controller {
     private $scheduler;
 
     /**
-     * @var AIPS_Schedule_Repository
+     * @var AIPS_Schedule_Repository_Interface
      */
     private $schedule_repository;
 
     /**
-     * @var AIPS_History_Repository
+     * @var AIPS_History_Repository_Interface
      */
     private $history_repository;
 
-    public function __construct($scheduler = null, $schedule_repository = null, $history_repository = null) {
+    public function __construct($scheduler = null, ?AIPS_Schedule_Repository_Interface $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+        $container = AIPS_Container::get_instance();
         $this->scheduler           = $scheduler ?: new AIPS_Scheduler();
-        $this->schedule_repository = $schedule_repository ?: new AIPS_Schedule_Repository();
-        $this->history_repository  = $history_repository ?: new AIPS_History_Repository();
+        $this->schedule_repository = $schedule_repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
+        $this->history_repository  = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -195,7 +196,7 @@ class AIPS_Schedule_Controller {
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
 
-            if (is_wp_error($result)) {
+            if ($result instanceof WP_Error) {
                 $errors[] = $result->get_error_message();
             } else {
                 $post_ids[] = $result;

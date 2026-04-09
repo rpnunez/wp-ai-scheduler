@@ -25,7 +25,7 @@ class AIPS_Taxonomy_Controller {
 	private $repository;
 
 	/**
-	 * @var AIPS_History_Service Service for history logging
+	 * @var AIPS_History_Service_Interface Service for history logging
 	 */
 	private $history_service;
 
@@ -35,7 +35,7 @@ class AIPS_Taxonomy_Controller {
 	private $prompt_builder;
 
 	/**
-	 * @var AIPS_AI_Service AI service for text generation.
+	 * @var AIPS_AI_Service_Interface AI service for text generation.
 	 */
 	private $ai_service;
 
@@ -43,15 +43,16 @@ class AIPS_Taxonomy_Controller {
 	 * Initialize the controller.
 	 *
 	 * @param AIPS_Taxonomy_Repository|null     $repository Repository for taxonomy items.
-	 * @param AIPS_History_Service|null         $history_service History service.
+	 * @param AIPS_History_Service_Interface|null $history_service History service.
 	 * @param AIPS_Prompt_Builder_Taxonomy|null $prompt_builder Prompt builder for taxonomy suggestions.
-	 * @param AIPS_AI_Service|null              $ai_service AI service.
+	 * @param AIPS_AI_Service_Interface|null      $ai_service AI service.
 	 */
-	public function __construct($repository = null, $history_service = null, $prompt_builder = null, $ai_service = null) {
+	public function __construct($repository = null, ?AIPS_History_Service_Interface $history_service = null, $prompt_builder = null, ?AIPS_AI_Service_Interface $ai_service = null) {
+		$container = AIPS_Container::get_instance();
 		$this->repository      = $repository ?: new AIPS_Taxonomy_Repository();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Taxonomy();
-		$this->ai_service      = $ai_service ?: new AIPS_AI_Service();
+		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_taxonomy_items', array($this, 'ajax_get_taxonomy_items'));

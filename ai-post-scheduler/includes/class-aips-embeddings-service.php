@@ -21,12 +21,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Embeddings_Service {
 	
 	/**
-	 * @var AIPS_AI_Service AI Service instance
+	 * @var AIPS_AI_Service_Interface AI Service instance
 	 */
 	private $ai_service;
 	
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 	
@@ -38,9 +38,10 @@ class AIPS_Embeddings_Service {
 	/**
 	 * Initialize the embeddings service.
 	 */
-	public function __construct($ai_service = null, $logger = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
+		$container = AIPS_Container::get_instance();
+		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->embedding_cache = array();
 	}
 	
