@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow sync-wp-core
 
 # Default target
 .DEFAULT_GOAL := help
@@ -179,3 +179,8 @@ urls: ## Display all service URLs
 	@echo "User:     wordpress"
 	@echo "Password: wordpress"
 	@echo "Database: wordpress"
+
+sync-wp-core: ## Sync /var/www/html from web container into ./.docker/wp-html for IDE path mappings
+	@echo "$(BLUE)Syncing WordPress files from container...$(NC)"
+	bash ./scripts/sync-wp-core.sh
+	@echo "$(GREEN)Sync complete.$(NC)"
