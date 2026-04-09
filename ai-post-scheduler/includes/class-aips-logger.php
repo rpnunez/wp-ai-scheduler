@@ -4,7 +4,24 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Logger {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     private $log_file;
     private $enabled;
     private $dir_checked = false;
