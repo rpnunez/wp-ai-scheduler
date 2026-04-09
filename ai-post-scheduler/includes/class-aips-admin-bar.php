@@ -75,7 +75,7 @@ class AIPS_Admin_Bar {
 		$unread_count = wp_cache_get($cache_key, 'aips_admin_bar');
 		if (false === $unread_count) {
 			$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
-			wp_cache_set($cache_key, $unread_count, 'aips_admin_bar');
+			wp_cache_set($cache_key, $unread_count, 'aips_admin_bar', 60);
 		}
 
 		// ---------- Root node (icon + badge) ----------
@@ -223,8 +223,11 @@ class AIPS_Admin_Bar {
 		if (!$updated) {
 			wp_send_json_error(array('message' => __('Notification could not be updated or was already read.', 'ai-post-scheduler')));
 		}
+
+		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
+		wp_cache_set('aips_unread_count_' . get_current_user_id(), $unread_count, 'aips_admin_bar', 60);
 		wp_send_json_success(array(
-			'unread_count' => AIPS_Notifications_Repository::instance()->count_unread(),
+			'unread_count' => $unread_count,
 		));
 	}
 
@@ -250,6 +253,8 @@ class AIPS_Admin_Bar {
 				)
 			);
 		}
+
+		wp_cache_set('aips_unread_count_' . get_current_user_id(), $unread_count, 'aips_admin_bar', 60);
 
 		wp_send_json_success(
 			array(
