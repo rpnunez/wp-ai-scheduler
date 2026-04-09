@@ -1,14 +1,18 @@
 # Composer
-ai-post-scheduler/vendor/
 ai-post-scheduler/composer.lock
 vendor/
 composer.lock
+
+# Allow the generated autoloader inside ai-post-scheduler/vendor
+!ai-post-scheduler/vendor/
+!ai-post-scheduler/vendor/autoload.php
+!ai-post-scheduler/vendor/composer/
+!ai-post-scheduler/vendor/composer/**
 
 # PHPUnit
 ai-post-scheduler/coverage/
 ai-post-scheduler/.phpunit.result.cache
 coverage/
-.phpunit.result.cache
 
 # IDE
 .idea/
@@ -30,10 +34,8 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
-/vendor/
 node_modules/
 scripts/__pycache__/
-.phpunit.result.cache
 
 # Docker
 .env

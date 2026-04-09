@@ -30,6 +30,11 @@ class AIPS_Config {
      * @var array Feature flags cache
      */
     private $feature_flags = array();
+
+    /**
+     * @var array Per-request resolved-values cache for get_option() calls.
+     */
+    private $option_cache = array();
     
     /**
      * Get singleton instance.
@@ -48,6 +53,42 @@ class AIPS_Config {
      */
     private function __construct() {
         $this->load_feature_flags();
+        $this->register_option_cache_hooks();
+    }
+
+    /**
+     * Register WordPress hooks that invalidate specific cache entries
+     * whenever an option is changed outside of set_option().
+     *
+     * This ensures external update_option() / delete_option() calls
+     * (including those in tests) are always reflected on the next read.
+     *
+     * @return void
+     */
+    private function register_option_cache_hooks() {
+        $this->reregister_option_cache_hooks();
+    }
+
+    /**
+     * (Re-)register the option-cache invalidation action callbacks.
+     *
+     * Called once from the constructor and again by the test bootstrap after
+     * each test tears down and resets all hooks, so that the singleton's cache
+     * invalidation keeps working across test methods.
+     *
+     * @return void
+     */
+    public function reregister_option_cache_hooks() {
+        // The callbacks only need $option (the first argument). WordPress passes
+        // additional arguments for some hooks (e.g. $old_value, $value for
+        // updated_option) but PHP silently ignores surplus arguments when the
+        // closure declares fewer parameters, so this is intentional.
+        $invalidate = function($option) {
+            unset($this->option_cache[$option]);
+        };
+        add_action('updated_option', $invalidate);
+        add_action('added_option',   $invalidate);
+        add_action('deleted_option', $invalidate);
     }
     
     // ========================================
@@ -65,6 +106,11 @@ class AIPS_Config {
 			'generated_posts_log_threshold_tmpfile' => 200,
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
+            // Plugin state / versioning
+            'aips_db_version' => '0',
+            'aips_onboarding_completed' => false,
+            'aips_log_secret' => '',
+            // AI model
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
@@ -72,13 +118,17 @@ class AIPS_Config {
             'aips_max_tokens_excerpt' => 300,
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
+            // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // General
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
+            'aips_topic_similarity_threshold' => 0.8,
+            // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
                 'generation_failed' => 'both',
@@ -92,7 +142,11 @@ class AIPS_Config {
 				'post_rejected' => 'db',
 				'partial_generation_completed' => 'db',
             ),
-            'aips_topic_similarity_threshold' => 0.8,
+            // Notification digest state (runtime markers, not user-configurable)
+            'aips_notif_daily_digest_last_sent' => '',
+            'aips_notif_weekly_summary_last_sent' => '',
+            'aips_notif_monthly_report_last_sent' => '',
+            // Resilience
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
@@ -110,36 +164,86 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            // Research
+            'aips_research_niches' => array(),
         );
     }
     
     /**
      * Get a specific option value with fallback to default.
      *
+     * Resolved values are stored in a per-request in-memory cache so that
+     * repeated reads of the same key within a single request do not trigger
+     * additional get_option() calls.
+     *
+     * When an explicit $default is supplied by the caller the result is NOT
+     * cached (to avoid polluting the cache with ad-hoc fallback values that
+     * differ from the authoritative AIPS_Config defaults).
+     *
      * @param string $option_name Option name.
      * @param mixed  $default     Optional. Default value if option not found.
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
-        $value = get_option($option_name);
-        
-        if ($value === false && $default === null) {
-            $defaults = $this->get_default_options();
-            return isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+        // Use cached value only when no caller-supplied default is in play.
+        if ($default === null && array_key_exists($option_name, $this->option_cache)) {
+            return $this->option_cache[$option_name];
         }
-        
-        return $value !== false ? $value : $default;
+
+        // Use a sentinel to distinguish "option not in database" from a stored
+        // boolean false — WordPress returns false for both cases with a plain
+        // get_option() call, which would silently override legitimate false values.
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
+
+        $value = get_option($option_name, $not_set);
+
+        if ($value === $not_set) {
+            // Option is not stored in the database.
+            if ($default === null) {
+                $defaults = $this->get_default_options();
+                $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+                // Cache only authoritative defaults.
+                $this->option_cache[$option_name] = $value;
+            } else {
+                // Caller supplied a fallback — honour it but do NOT cache.
+                $value = $default;
+            }
+        } else {
+            // Option exists in the database — always cache the live value.
+            $this->option_cache[$option_name] = $value;
+        }
+
+        return $value;
     }
-    
+
     /**
-     * Set an option value.
+     * Set an option value and invalidate the per-request cache for that key.
      *
-     * @param string $option_name Option name.
-     * @param mixed  $value       Option value.
+     * @param string    $option_name Option name.
+     * @param mixed     $value       Option value.
+     * @param bool|null $autoload    Optional. Whether to load the option when WordPress starts up.
+     *                               Accepts 'yes'|true to enable autoloading, 'no'|false to disable,
+     *                               or null to leave the existing setting unchanged (WordPress default).
      * @return bool True on success, false on failure.
      */
-    public function set_option($option_name, $value) {
-        return update_option($option_name, $value);
+    public function set_option($option_name, $value, $autoload = null) {
+        unset($this->option_cache[$option_name]);
+        return update_option($option_name, $value, $autoload);
+    }
+
+    /**
+     * Flush the entire per-request option cache.
+     *
+     * Useful in tests or after a batch of update_option() calls made outside
+     * of set_option() that need to be reflected on the next read.
+     *
+     * @return void
+     */
+    public function flush_option_cache() {
+        $this->option_cache = array();
     }
     
     // ========================================
@@ -246,6 +350,76 @@ class AIPS_Config {
             'enabled' => (bool) $this->get_option('aips_enable_logging'),
             'retention_days' => (int) $this->get_option('aips_log_retention_days'),
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
+        );
+    }
+
+    /**
+     * Get token limits configuration for AI content generation.
+     *
+     * @return array Token limits configuration.
+     */
+    public function get_token_config() {
+        return array(
+            'max_tokens_limit'   => (int) $this->get_option('aips_max_tokens_limit'),
+            'max_tokens_title'   => (int) $this->get_option('aips_max_tokens_title'),
+            'max_tokens_excerpt' => (int) $this->get_option('aips_max_tokens_excerpt'),
+            'max_tokens_content' => (int) $this->get_option('aips_max_tokens_content'),
+        );
+    }
+
+    /**
+     * Get post creation defaults configuration.
+     *
+     * @return array Post defaults configuration.
+     */
+    public function get_post_defaults_config() {
+        return array(
+            'post_status' => (string) $this->get_option('aips_default_post_status'),
+            'category'    => (int) $this->get_option('aips_default_category'),
+            'post_author' => (int) $this->get_option('aips_default_post_author'),
+        );
+    }
+
+    /**
+     * Get notification configuration.
+     *
+     * @return array Notification configuration.
+     */
+    public function get_notification_config() {
+        $preferences = $this->get_option('aips_notification_preferences');
+        return array(
+            'review_email'  => (string) $this->get_option('aips_review_notifications_email'),
+            'preferences'   => is_array($preferences) ? $preferences : array(),
+        );
+    }
+
+    /**
+     * Get site content strategy configuration.
+     *
+     * @return array Site content strategy configuration.
+     */
+    public function get_site_content_config() {
+        return array(
+            'niche'               => (string) $this->get_option('aips_site_niche'),
+            'target_audience'     => (string) $this->get_option('aips_site_target_audience'),
+            'content_goals'       => (string) $this->get_option('aips_site_content_goals'),
+            'brand_voice'         => (string) $this->get_option('aips_site_brand_voice'),
+            'content_language'    => (string) $this->get_option('aips_site_content_language'),
+            'content_guidelines'  => (string) $this->get_option('aips_site_content_guidelines'),
+            'excluded_topics'     => (string) $this->get_option('aips_site_excluded_topics'),
+        );
+    }
+
+    /**
+     * Get general plugin configuration.
+     *
+     * @return array General configuration.
+     */
+    public function get_general_config() {
+        return array(
+            'developer_mode'           => (bool) $this->get_option('aips_developer_mode'),
+            'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
+            'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
     }
     

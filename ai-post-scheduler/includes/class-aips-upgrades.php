@@ -12,7 +12,7 @@ class AIPS_Upgrades {
     }
     
     public static function check_and_run() {
-        $current_version = get_option('aips_db_version', '0');
+        $current_version = AIPS_Config::get_instance()->get_option('aips_db_version');
         
         if (version_compare($current_version, AIPS_VERSION, '<')) {
             $instance = new self();
