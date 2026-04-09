@@ -44,6 +44,13 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	private $prefix;
 
 	/**
+	 * Redis connection error message from the last failed attempt, or empty.
+	 *
+	 * @var string
+	 */
+	private $last_error = '';
+
+	/**
 	 * Constructor.
 	 *
 	 * Attempts to open a Redis connection. If the `redis` PHP extension is not
@@ -70,7 +77,7 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	}
 
 	// -----------------------------------------------------------------------
-	// Public status helper
+	// Public status helpers
 	// -----------------------------------------------------------------------
 
 	/**
@@ -80,6 +87,15 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	 */
 	public function is_connected() {
 		return $this->connected;
+	}
+
+	/**
+	 * Return the last connection error message, or an empty string when healthy.
+	 *
+	 * @return string
+	 */
+	public function get_last_error() {
+		return $this->last_error;
 	}
 
 	// -----------------------------------------------------------------------
@@ -190,8 +206,11 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 
 			$this->connected = true;
 		} catch ( Exception $e ) {
-			$this->redis     = null;
-			$this->connected = false;
+			$this->redis      = null;
+			$this->connected  = false;
+			$this->last_error = $e->getMessage();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'AIPS Redis cache driver connection failed: ' . $e->getMessage() );
 		}
 	}
 

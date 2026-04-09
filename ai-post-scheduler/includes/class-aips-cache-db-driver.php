@@ -115,7 +115,10 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'aips_cache';
-		$wpdb->query( "TRUNCATE TABLE `{$table}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// TRUNCATE is a DDL statement and cannot be used with $wpdb->prepare().
+		// $table is constructed from $wpdb->prefix which is set and sanitized by WordPress core.
+		$wpdb->query( "TRUNCATE TABLE `{$table}`" );
 
 		return true;
 	}
