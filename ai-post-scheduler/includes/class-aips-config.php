@@ -32,9 +32,9 @@ class AIPS_Config {
     private $feature_flags = array();
 
     /**
-     * @var array Per-request resolved-values cache for get_option() calls.
+     * @var AIPS_Cache Per-request cache for get_option() calls.
      */
-    private $option_cache = array();
+    private $cache = null;
     
     /**
      * Get singleton instance.
@@ -52,6 +52,7 @@ class AIPS_Config {
      * Private constructor to enforce singleton pattern.
      */
     private function __construct() {
+        $this->cache = AIPS_Cache_Factory::named('aips_config', 'array');
         $this->load_feature_flags();
         $this->register_option_cache_hooks();
     }
@@ -84,7 +85,9 @@ class AIPS_Config {
         // updated_option) but PHP silently ignores surplus arguments when the
         // closure declares fewer parameters, so this is intentional.
         $invalidate = function($option) {
-            unset($this->option_cache[$option]);
+            if ($this->cache !== null) {
+                $this->cache->delete($option);
+            }
         };
         add_action('updated_option', $invalidate);
         add_action('added_option',   $invalidate);
@@ -196,8 +199,8 @@ class AIPS_Config {
      */
     public function get_option($option_name, $default = null) {
         // Use cached value only when no caller-supplied default is in play.
-        if ($default === null && array_key_exists($option_name, $this->option_cache)) {
-            return $this->option_cache[$option_name];
+        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+            return $this->cache->get($option_name);
         }
 
         // Use a sentinel to distinguish "option not in database" from a stored
@@ -216,14 +219,18 @@ class AIPS_Config {
                 $defaults = $this->get_default_options();
                 $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
                 // Cache only authoritative defaults.
-                $this->option_cache[$option_name] = $value;
+                if ($this->cache !== null) {
+                    $this->cache->set($option_name, $value);
+                }
             } else {
                 // Caller supplied a fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {
             // Option exists in the database — always cache the live value.
-            $this->option_cache[$option_name] = $value;
+            if ($this->cache !== null) {
+                $this->cache->set($option_name, $value);
+            }
         }
 
         return $value;
@@ -240,7 +247,9 @@ class AIPS_Config {
      * @return bool True on success, false on failure.
      */
     public function set_option($option_name, $value, $autoload = null) {
-        unset($this->option_cache[$option_name]);
+        if ($this->cache !== null) {
+            $this->cache->delete($option_name);
+        }
         return update_option($option_name, $value, $autoload);
     }
 
@@ -253,7 +262,9 @@ class AIPS_Config {
      * @return void
      */
     public function flush_option_cache() {
-        $this->option_cache = array();
+        if ($this->cache !== null) {
+            $this->cache->flush();
+        }
     }
     
     // ========================================
