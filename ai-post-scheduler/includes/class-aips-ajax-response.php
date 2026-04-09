@@ -62,7 +62,7 @@ class AIPS_Ajax_Response {
 		// Backward compatibility: accept array('message' => '...', ...) format
 		if (is_array($message)) {
 			$array_data = $message;
-			$message = isset($array_data['message']) ? $array_data['message'] : 'An error occurred.';
+			$message = isset($array_data['message']) ? $array_data['message'] : __('An error occurred.', 'ai-post-scheduler');
 			unset($array_data['message']);
 
 			// Extract code if provided in array
