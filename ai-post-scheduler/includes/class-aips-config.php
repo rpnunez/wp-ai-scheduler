@@ -164,6 +164,16 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            // Cache framework settings.
+            'aips_cache_driver'         => 'array',
+            'aips_cache_db_prefix'      => '',
+            'aips_cache_default_ttl'    => 3600,
+            'aips_cache_redis_host'     => '127.0.0.1',
+            'aips_cache_redis_port'     => 6379,
+            'aips_cache_redis_password' => '',
+            'aips_cache_redis_db'       => 0,
+            'aips_cache_redis_prefix'   => 'aips',
+            'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
         );
