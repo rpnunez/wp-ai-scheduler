@@ -82,9 +82,8 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	 * reconcile_generation_status_meta_from_post() or firing the hook.
 	 */
 	public function test_fast_path_skips_when_primary_meta_absent() {
-		global $aips_test_meta, $aips_reconcile_calls;
-		$aips_test_meta    = array(); // no AIPS meta on this post
-		$aips_reconcile_calls = array();
+		global $aips_test_meta;
+		$aips_test_meta = array(); // no AIPS meta on this post
 
 		$actions_fired = array();
 		add_action('aips_partial_generation_state_reconciled', function() use (&$actions_fired) {
@@ -94,7 +93,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$this->reconciler->on_save_post(42, $this->make_post(), true);
 
 		$this->assertEmpty($actions_fired, 'Hook must not fire when primary meta key is absent.');
-		$this->assertEmpty($aips_reconcile_calls, 'reconcile_generation_status_meta_from_post must not be called when primary meta key is absent.');
+		$this->assertEmpty($aips_test_meta, 'No meta must be written (no side effects) when the fast-path short-circuits.');
 	}
 
 	/**
@@ -128,7 +127,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	 * hook is only fired when reconcile returns an array.
 	 */
 	public function test_no_hook_when_reconcile_returns_null() {
-		global $aips_test_meta, $aips_reconcile_calls;
+		global $aips_test_meta;
 		// metadata_exists returns true because the key is set (even to empty string)
 		$aips_test_meta = array(
 			42 => array(
@@ -137,7 +136,6 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 				'aips_post_generation_had_partial'        => '',
 			),
 		);
-		$aips_reconcile_calls = array();
 
 		$actions_fired = array();
 		add_action('aips_partial_generation_state_reconciled', function() use (&$actions_fired) {
