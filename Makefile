@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow
 
 # Default target
 .DEFAULT_GOAL := help
@@ -158,6 +158,10 @@ db-restore: ## Restore database from backup.sql
 xdebug-log: ## View Xdebug log
 	@echo "$(BLUE)Xdebug Log:$(NC)"
 	@docker compose exec web cat /tmp/xdebug.log 2>/dev/null || echo "No Xdebug log found"
+
+xdebug-log-follow: ## Follow Xdebug log (Git Bash-safe wrapper)
+	@echo "$(BLUE)Following Xdebug log...$(NC)"
+	bash ./scripts/xdebug-log.sh
 
 xdebug-status: ## Check Xdebug configuration
 	@echo "$(BLUE)Xdebug Configuration:$(NC)"
