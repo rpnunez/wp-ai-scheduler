@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
 class AIPS_AI_Service {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * @var mixed AI Engine instance
      */
@@ -63,7 +80,7 @@ class AIPS_AI_Service {
      * Initialize the AI Service.
      */
     public function __construct($logger = null, $config = null, $resilience_service = null) {
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: AIPS_Logger::instance();
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
 
