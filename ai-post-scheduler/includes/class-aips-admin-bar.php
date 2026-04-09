@@ -265,6 +265,8 @@ class AIPS_Admin_Bar {
 			);
 		}
 
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
+
 		wp_send_json_success(
 			array(
 				'unread_count' => $unread_count,
