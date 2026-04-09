@@ -2,12 +2,7 @@
 ai-post-scheduler/composer.lock
 vendor/
 composer.lock
-
-# Allow the generated autoloader inside ai-post-scheduler/vendor
-!ai-post-scheduler/vendor/
-!ai-post-scheduler/vendor/autoload.php
-!ai-post-scheduler/vendor/composer/
-!ai-post-scheduler/vendor/composer/**
+ai-post-scheduler/vendor/
 
 # PHPUnit
 ai-post-scheduler/coverage/
