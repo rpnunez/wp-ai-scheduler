@@ -304,9 +304,9 @@ final class AI_Post_Scheduler {
 			return $container->make(AIPS_History_Service::class);
 		});
 
-        // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
+        // Register AIPS_Notifications_Repository
         $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
-            return new AIPS_Notifications_Repository();
+            return AIPS_Notifications_Repository::instance();
         });
 
         $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {

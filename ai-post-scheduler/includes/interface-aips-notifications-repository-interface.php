@@ -5,7 +5,7 @@
  * Defines the contract for notification persistence operations.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.0
+ * @since 2.3.1
  */
 
 if (!defined('ABSPATH')) {

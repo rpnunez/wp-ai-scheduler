@@ -18,34 +18,34 @@ if (!defined('ABSPATH')) {
 class AIPS_Notifications_Event_Handler {
 
 	/**
- * @var AIPS_Notifications
- */
+	 * @var AIPS_Notifications
+	 */
 	private $notifications;
 
 	/**
- * @var AIPS_Notifications_Repository_Interface
- */
+	 * @var AIPS_Notifications_Repository_Interface
+	 */
 	private $repository;
 
 	/**
- * Tracks whether the WordPress action hooks have been registered by any
- * instance so that multiple instantiations do not register duplicate handlers.
- *
- * @var bool
- */
+	 * Tracks whether the WordPress action hooks have been registered by any
+	 * instance so that multiple instantiations do not register duplicate handlers.
+	 *
+	 * @var bool
+	 */
 	private static $hooks_registered = false;
 
 	/**
- * Constructor.
- *
- * @param AIPS_Notifications                        $notifications The dispatcher.
- * @param AIPS_Notifications_Repository_Interface|null $repository DB notifications repository.
- */
+	 * Constructor.
+	 *
+	 * @param AIPS_Notifications                          $notifications The dispatcher.
+	 * @param AIPS_Notifications_Repository_Interface|null $repository   DB notifications repository.
+	 */
 	public function __construct($notifications, ?AIPS_Notifications_Repository_Interface $repository = null) {
-	$container = AIPS_Container::get_instance();
-	$this->notifications = $notifications;
-	$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : new AIPS_Notifications_Repository());
-	$this->register_hooks();
+		$container = AIPS_Container::get_instance();
+		$this->notifications = $notifications;
+		$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : AIPS_Notifications_Repository::instance());
+		$this->register_hooks();
 	}
 
 	public static function get_hook_bindings() {
