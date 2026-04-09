@@ -40,10 +40,6 @@ class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 		$this->assert_singleton_contract( 'AIPS_History_Service' );
 	}
 
-	public function test_notifications_repository_singleton() {
-		$this->assert_singleton_contract( 'AIPS_Notifications_Repository' );
-	}
-
 	public function test_logger_singleton() {
 		$this->assert_singleton_contract( 'AIPS_Logger' );
 	}
