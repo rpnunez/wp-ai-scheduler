@@ -155,3 +155,7 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+
+## [unreleased] - Extract Bulk Topic Actions
+### Changed
+- **Architecture**: Extracted bulk author topic actions (`ajax_bulk_approve_topics`, `ajax_bulk_reject_topics`, `ajax_bulk_delete_topics`, `ajax_bulk_generate_topics`, `ajax_bulk_generate_from_queue`, `ajax_bulk_delete_feedback`) from `AIPS_Author_Topics_Controller` into a new, dedicated `AIPS_Author_Topics_Bulk_Controller` class to enforce the Single Responsibility Principle. The new controller is instantiated transparently within the original constructor to maintain 100% backward compatibility for hook registration and dependencies.

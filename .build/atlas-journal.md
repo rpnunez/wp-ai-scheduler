@@ -1372,3 +1372,14 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+
+## 2026-03-29 - Extract Author Topics Bulk Controller
+
+**Context:** The `AIPS_Author_Topics_Controller` class had grown to over 1000 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for both standard topic management (`approve`, `reject`, `edit`, `delete`) and bulk topic operations (`bulk_approve`, `bulk_reject`, `bulk_delete`, `bulk_generate`, etc.). This created a "God Object" responsible for too many distinct AJAX workflows.
+**Decision:** Applied "Separation of Concerns". Extracted all bulk-related AJAX endpoint logic into a dedicated `AIPS_Author_Topics_Bulk_Controller` class. The `AIPS_Author_Topics_Controller` constructor was updated to instantiate this bulk controller internally, maintaining existing instantiation and hook registration behavior.
+**Consequence:**
+* Reduced `AIPS_Author_Topics_Controller` size and complexity by extracting six bulk operation methods.
+* `AIPS_Author_Topics_Controller` is strictly focused on standard topic management workflows.
+* `AIPS_Author_Topics_Bulk_Controller` is strictly focused on handling array-based bulk actions and orchestrating mass updates/deletions.
+* Trade-off: Introduces slightly more coupling during construction (passing multiple dependencies to the bulk controller), but maintains 100% backward compatibility for the public API and AJAX hooks.
+**Tests:** The autoloader test suite was updated to cover the new class (`AIPS_Author_Topics_Bulk_Controller`). Verified syntax with `php -l` and ran `composer test -- --filter=test_autoloader`, which successfully resolved and instantiated the new file.
