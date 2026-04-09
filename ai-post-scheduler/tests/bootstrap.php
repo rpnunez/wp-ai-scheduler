@@ -631,7 +631,11 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return false;
             }
 
-            return isset($aips_test_meta[$object_id][$meta_key]);
+            if (!isset($aips_test_meta[$object_id]) || !is_array($aips_test_meta[$object_id])) {
+                return false;
+            }
+
+            return array_key_exists($meta_key, $aips_test_meta[$object_id]);
         }
     }
 
