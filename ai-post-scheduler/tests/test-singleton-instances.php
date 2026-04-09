@@ -56,6 +56,10 @@ class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 		$this->assert_singleton_contract( 'AIPS_AI_Service' );
 	}
 
+	public function test_notifications_repository_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Notifications_Repository' );
+	}
+
 	/**
 	 * Verify that new ClassName() still produces an independent instance
 	 * (constructors are not private).

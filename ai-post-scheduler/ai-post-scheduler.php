@@ -270,6 +270,39 @@ final class AI_Post_Scheduler {
     }
 
     /**
+     * Register initial container bindings for core singletons.
+     *
+     * Phase 1 registration as described in the container architecture plan:
+     * Registers the most-duplicated singletons to validate the container works
+     * correctly before more complex refactors.
+     *
+     * @return void
+     */
+    private function register_container_bindings() {
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        $container->singleton(AIPS_Config::class, function( $container ) {
+            return AIPS_Config::get_instance();
+        });
+
+        // Register AIPS_History_Repository
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
+            return AIPS_History_Repository::instance();
+        });
+
+        // Register AIPS_History_Service
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
+            return AIPS_History_Service::instance();
+        });
+
+        // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+            return new AIPS_Notifications_Repository();
+        });
+    }
+
+    /**
      * Initialize plugin runtime.
      *
      * Loads translations, registers taxonomy, instantiates admin controllers,
@@ -279,6 +312,9 @@ final class AI_Post_Scheduler {
      */
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+      
+        // Register initial container bindings for core singletons
+        $this->register_container_bindings();
 
         // Register the Source Group taxonomy (not attached to any post type).
         // Only needed in admin and cron contexts; skip on frontend page loads.
@@ -366,7 +402,7 @@ final class AI_Post_Scheduler {
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
 
         new AIPS_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
+		    new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
