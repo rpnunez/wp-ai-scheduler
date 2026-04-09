@@ -963,7 +963,7 @@
                     if (response.success) {
                         var $select = $('#voice_id');
                         var currentVal = $select.val();
-                        $select.html('<option value="0">' + __( 'No', 'ai-post-scheduler' )VoiceDefault + '</option>');
+                        $select.html('<option value="0">' + __( 'No Voice (Use Default)', 'ai-post-scheduler' ) + '</option>');
                         $.each(response.data.voices, function(i, voice) {
                             $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
                         });
@@ -1840,7 +1840,7 @@
                             __( 'Run Schedules Now', 'ai-post-scheduler' ),
                             [
                                 { label: __( 'Cancel', 'ai-post-scheduler' ), className: 'aips-btn aips-btn-secondary' },
-                                { label: __( 'Yes', 'ai-post-scheduler' )RunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: __( 'Yes, run now', 'ai-post-scheduler' ), className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     },
@@ -1853,7 +1853,7 @@
                             __( 'Run Schedules Now', 'ai-post-scheduler' ),
                             [
                                 { label: __( 'Cancel', 'ai-post-scheduler' ), className: 'aips-btn aips-btn-secondary' },
-                                { label: __( 'Yes', 'ai-post-scheduler' )RunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: __( 'Yes, run now', 'ai-post-scheduler' ), className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     }
@@ -3862,7 +3862,7 @@
             $modal.find('#summary_content_prompt').text(contentPrompt || '-');
 
             var voiceText = $('#voice_id option:selected').text();
-            $modal.find('#summary_voice').text(voiceText || __( 'No', 'ai-post-scheduler' )neOption);
+            $modal.find('#summary_voice').text(voiceText || __( 'None', 'ai-post-scheduler' ));
 
             $modal.find('#summary_quantity').text($('#post_quantity').val() || '1');
 
@@ -3902,7 +3902,7 @@
             $modal.find('#sw_summary_start_time').text(startTime || __( 'Now', 'ai-post-scheduler' ));
             $modal.find('#sw_summary_structure').text(structureText || __( 'Use Default', 'ai-post-scheduler' ));
             $modal.find('#sw_summary_rotation').text(rotationText || __( 'None', 'ai-post-scheduler' ));
-            $modal.find('#sw_summary_active').text(isActive ? (__( 'Yes', 'ai-post-scheduler' ) || 'Yes') : (__( 'No', 'ai-post-scheduler' ) || 'No'));
+            $modal.find('#sw_summary_active').text(isActive ? __( 'Yes', 'ai-post-scheduler' ) : __( 'No', 'ai-post-scheduler' ));
         },
 
         // AI Variables feature methods
