@@ -90,7 +90,7 @@ public function flush_option_cache() {
 
 ### 5. Test Infrastructure Support
 
-The test bootstrap's `tearDown()` method (bootstrap.php:664-668) continues to work unchanged:
+The test bootstrap's cleanup/reset logic continues to work unchanged:
 ```php
 if (class_exists('AIPS_Config')) {
     $config = AIPS_Config::get_instance();
