@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * managing sessions, and updating history records.
  */
 class AIPS_History_Service {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_History_Repository Repository for database operations
 	 */
@@ -32,7 +49,7 @@ class AIPS_History_Service {
 	 * @param AIPS_History_Repository|null $repository Optional repository instance
 	 */
 	public function __construct($repository = null) {
-		$this->repository = $repository ?: new AIPS_History_Repository();
+		$this->repository = $repository ?: AIPS_History_Repository::instance();
 	}
 	
 	/**
