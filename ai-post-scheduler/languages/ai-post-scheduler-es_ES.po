@@ -1,0 +1,330 @@
+# Spanish (Spain) translation for AI Post Scheduler
+# Copyright (C) 2024 Raymond Nunez
+# This file is distributed under the GPL v2 or later license.
+# Translators:
+# TRANSLATOR <translator@example.com>, 2024
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: AI Post Scheduler\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/plugins/ai-post-scheduler\n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: TRANSLATOR <translator@example.com>\n"
+"Language-Team: Spanish (Spain) <es@li.org>\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#. strings from assets/js/admin.js (via wp.i18n.__)
+#: assets/js/admin.js
+msgid "Template Name is required."
+msgstr "El nombre de la plantilla es obligatorio."
+
+#: assets/js/admin.js
+msgid "Content Prompt is required."
+msgstr "El indicador de contenido es obligatorio."
+
+#: assets/js/admin.js
+msgid "Please select a Template to continue."
+msgstr "Selecciona una plantilla para continuar."
+
+#: assets/js/admin.js
+msgid "Are you sure you want to delete this structure?"
+msgstr "¿Estás seguro de que quieres eliminar esta estructura?"
+
+#: assets/js/admin.js
+msgid "Failed to save structure."
+msgstr "Error al guardar la estructura."
+
+#: assets/js/admin.js
+msgid "Failed to load structure."
+msgstr "Error al cargar la estructura."
+
+#: assets/js/admin.js
+msgid "Failed to delete structure."
+msgstr "Error al eliminar la estructura."
+
+#: assets/js/admin.js
+msgid "Are you sure you want to delete this prompt section?"
+msgstr "¿Estás seguro de que quieres eliminar esta sección de indicación?"
+
+#: assets/js/admin.js
+msgid "Failed to save prompt section."
+msgstr "Error al guardar la sección de indicación."
+
+#: assets/js/admin.js
+msgid "Failed to load prompt section."
+msgstr "Error al cargar la sección de indicación."
+
+#: assets/js/admin.js
+msgid "Failed to delete prompt section."
+msgstr "Error al eliminar la sección de indicación."
+
+#: assets/js/admin.js
+msgid "Active"
+msgstr "Activo"
+
+#: assets/js/admin.js
+msgid "Inactive"
+msgstr "Inactivo"
+
+#: assets/js/admin.js
+msgid "Default"
+msgstr "Predeterminado"
+
+#: assets/js/admin.js
+msgid "An error occurred."
+msgstr "Se ha producido un error."
+
+#: assets/js/admin.js
+msgid "An error occurred. Please try again."
+msgstr "Se ha producido un error. Por favor, inténtalo de nuevo."
+
+#: assets/js/admin.js
+msgid "Add New Schedule"
+msgstr "Añadir nueva programación"
+
+#: assets/js/admin.js
+msgid "Edit Schedule"
+msgstr "Editar programación"
+
+#: assets/js/admin.js
+msgid "Clone Schedule"
+msgstr "Clonar programación"
+
+#: assets/js/admin.js
+msgid "Save Schedule"
+msgstr "Guardar programación"
+
+#: assets/js/admin.js
+msgid "Schedule saved successfully."
+msgstr "Programación guardada correctamente."
+
+#: assets/js/admin.js
+msgid "Now"
+msgstr "Ahora"
+
+#: assets/js/admin.js
+msgid "Use Default"
+msgstr "Usar predeterminado"
+
+#: assets/js/admin.js
+msgid "No title"
+msgstr "Sin título"
+
+#: assets/js/admin.js
+msgid "Yes"
+msgstr "Sí"
+
+#: assets/js/admin.js
+msgid "No"
+msgstr "No"
+
+#: assets/js/admin.js
+msgid "Saving..."
+msgstr "Guardando..."
+
+#: assets/js/admin.js
+msgid "Generating..."
+msgstr "Generando..."
+
+#: assets/js/admin.js
+msgid "Generation failed."
+msgstr "Error en la generación."
+
+#: assets/js/admin.js
+msgid "Run Now"
+msgstr "Ejecutar ahora"
+
+#: assets/js/admin.js
+msgid "Draft saved successfully."
+msgstr "Borrador guardado correctamente."
+
+#: assets/js/admin.js
+msgid "Save Draft"
+msgstr "Guardar borrador"
+
+#: assets/js/admin.js
+msgid "No Voice (Use Default)"
+msgstr "Sin voz (usar predeterminada)"
+
+#: assets/js/admin.js
+msgid "Add New Voice"
+msgstr "Añadir nueva voz"
+
+#: assets/js/admin.js
+msgid "Edit Voice"
+msgstr "Editar voz"
+
+#: assets/js/admin.js
+msgid "Save Voice"
+msgstr "Guardar voz"
+
+#: assets/js/admin.js
+msgid "Are you sure you want to delete this voice?"
+msgstr "¿Estás seguro de que quieres eliminar esta voz?"
+
+#: assets/js/admin.js
+msgid "No, cancel"
+msgstr "No, cancelar"
+
+#: assets/js/admin.js
+msgid "Yes, delete"
+msgstr "Sí, eliminar"
+
+#: assets/js/admin.js
+msgid "Are you sure you want to delete this schedule?"
+msgstr "¿Estás seguro de que quieres eliminar esta programación?"
+
+#: assets/js/admin.js
+msgid "Please select at least one schedule."
+msgstr "Selecciona al menos una programación."
+
+#: assets/js/admin.js
+msgid "Are you sure you want to delete 1 schedule?"
+msgstr "¿Estás seguro de que quieres eliminar 1 programación?"
+
+#. translators: %d: number of schedules to delete
+#: assets/js/admin.js
+msgid "Are you sure you want to delete %d schedules?"
+msgstr "¿Estás seguro de que quieres eliminar %d programaciones?"
+
+#: assets/js/admin.js
+msgid "Failed to load history."
+msgstr "Error al cargar el historial."
+
+#: assets/js/admin.js
+msgid "Failed to delete schedules."
+msgstr "Error al eliminar las programaciones."
+
+#: assets/js/admin.js
+msgid "Bulk run failed."
+msgstr "Error en la ejecución masiva."
+
+#: assets/js/admin.js
+msgid "Run Schedules Now"
+msgstr "Ejecutar programaciones ahora"
+
+#: assets/js/admin.js
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: assets/js/admin.js
+msgid "Yes, run now"
+msgstr "Sí, ejecutar ahora"
+
+#: assets/js/admin.js
+msgid "This will generate an estimated 1 post. Are you sure?"
+msgstr "Esto generará un post aproximadamente. ¿Estás seguro?"
+
+#. translators: %d: estimated number of posts to generate
+#: assets/js/admin.js
+msgid "This will generate an estimated %d posts. Are you sure?"
+msgstr "Esto generará aproximadamente %d posts. ¿Estás seguro?"
+
+#: assets/js/admin.js
+msgid "This will run 1 schedule. Are you sure?"
+msgstr "Esto ejecutará 1 programación. ¿Estás seguro?"
+
+#. translators: %d: number of schedules to run
+#: assets/js/admin.js
+msgid "This will run %d schedules. Are you sure?"
+msgstr "Esto ejecutará %d programaciones. ¿Estás seguro?"
+
+#: assets/js/admin.js
+msgid "Delete Schedules"
+msgstr "Eliminar programaciones"
+
+#: assets/js/admin.js
+msgid "None of the selected schedules can be deleted."
+msgstr "Ninguna de las programaciones seleccionadas se puede eliminar."
+
+#: assets/js/admin.js
+msgid "The following schedules will be deleted:"
+msgstr "Se eliminarán las siguientes programaciones:"
+
+#: assets/js/admin.js
+msgid "This action cannot be undone. Continue?"
+msgstr "Esta acción no se puede deshacer. ¿Continuar?"
+
+#. translators: %d: number of selected schedules that cannot be deleted
+#: assets/js/admin.js
+msgid "%d selected schedule(s) cannot be deleted and will be skipped."
+msgstr "%d programación(es) seleccionada(s) no se puede(n) eliminar y se omitirá(n)."
+
+#: assets/js/admin.js
+msgid "Auto-generate from content"
+msgstr "Generar automáticamente desde el contenido"
+
+#: assets/js/admin.js
+msgid "None"
+msgstr "Ninguno"
+
+#. translators: %s: featured image source name
+#: assets/js/admin.js
+msgid "Yes (%s)"
+msgstr "Sí (%s)"
+
+#: assets/js/admin.js
+msgid "Click to copy"
+msgstr "Haz clic para copiar"
+
+#: assets/js/admin.js
+msgid "Example Topic"
+msgstr "Tema de ejemplo"
+
+#: assets/js/admin.js
+msgid "Failed to generate preview. Please check that all required fields are filled."
+msgstr "Error al generar la vista previa. Comprueba que todos los campos obligatorios estén rellenos."
+
+#: assets/js/admin.js
+msgid "An error occurred while generating the preview. Please check your network connection and try again."
+msgstr "Se ha producido un error al generar la vista previa. Comprueba tu conexión de red e inténtalo de nuevo."
+
+#: assets/js/admin.js
+msgid "Skip the Onboarding Wizard? You can restart it later from System Status."
+msgstr "¿Omitir el asistente de incorporación? Puedes reiniciarlo más tarde desde Estado del sistema."
+
+#: assets/js/admin.js
+msgid "Please select a bulk action."
+msgstr "Selecciona una acción masiva."
+
+#. strings kept in aipsUtilitiesL10n (passed via wp_localize_script for formatting)
+#: includes/class-aips-admin-assets.php
+msgid "Close notification"
+msgstr "Cerrar notificación"
+
+#. translators: %s: formatted time string
+#: includes/class-aips-admin-assets.php
+msgid "Estimated time remaining: %s"
+msgstr "Tiempo estimado restante: %s"
+
+#: includes/class-aips-admin-assets.php
+msgid "Generation complete!"
+msgstr "¡Generación completada!"
+
+#: includes/class-aips-admin-assets.php
+msgid "Taking a little bit longer than expected…"
+msgstr "Tarda un poco más de lo esperado…"
+
+#: includes/class-aips-admin-assets.php
+msgid "seconds"
+msgstr "segundos"
+
+#: includes/class-aips-admin-assets.php
+msgid "1 minute"
+msgstr "1 minuto"
+
+#. translators: %d: number of minutes
+#: includes/class-aips-admin-assets.php
+msgid "%d minutes"
+msgstr "%d minutos"
+
+#. translators: %d: minutes, %d: seconds
+#: includes/class-aips-admin-assets.php
+msgid "%dm %ds"
+msgstr "%dm %ds"
