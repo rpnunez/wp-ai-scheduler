@@ -107,9 +107,35 @@
 
 	});
 
+	// -----------------------------------------------------------------------
+	// Cache settings — show/hide driver-specific rows
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Toggle visibility of driver-specific cache setting rows.
+	 *
+	 * Redis-specific rows (wrapped in .aips-cache-redis-fields) are only shown
+	 * when the redis driver is selected. DB-specific rows (.aips-cache-db-fields)
+	 * are only shown when the db driver is selected.
+	 *
+	 * @return {void}
+	 */
+	function updateCacheDriverFields() {
+		var driver = $('#aips_cache_driver').val();
+
+		$('.aips-cache-redis-fields').closest('tr').toggle(driver === 'redis');
+		$('.aips-cache-db-fields').closest('tr').toggle(driver === 'db');
+	}
+
 	$(document).ready(function() {
 		if ($('#aips-settings-tab-nav').length) {
 			AIPS.initSettingsPage();
+		}
+
+		// Cache driver field may be present on the settings page.
+		if ($('#aips_cache_driver').length) {
+			updateCacheDriverFields();
+			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
 		}
 	});
 
