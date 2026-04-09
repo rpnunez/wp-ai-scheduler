@@ -4,7 +4,24 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Logger {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     private $log_file;
     private $enabled;
     private $dir_checked = false;
@@ -26,7 +43,7 @@ class AIPS_Logger {
      * This ensures log filenames are not guessable.
      */
     private function get_log_secret() {
-        $secret = get_option('aips_log_secret');
+        $secret = AIPS_Config::get_instance()->get_option('aips_log_secret');
 
         if (empty($secret)) {
             // Generate a secure random string

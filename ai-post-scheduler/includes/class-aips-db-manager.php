@@ -22,6 +22,7 @@ class AIPS_DB_Manager {
         'aips_sources',
         'aips_source_group_terms',
         'aips_taxonomy',
+        'aips_cache',
     );
 
     public function __construct() {
@@ -71,6 +72,7 @@ class AIPS_DB_Manager {
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_cache                = $tables['aips_cache'];
 
         $sql = array();
 
@@ -341,7 +343,9 @@ class AIPS_DB_Manager {
             KEY level (level),
             KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY is_read_created_at (is_read, created_at),
+            KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sources (
@@ -382,6 +386,18 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY term_id (term_id),
             KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            cache_key varchar(191) NOT NULL,
+            cache_group varchar(100) NOT NULL DEFAULT 'default',
+            value longtext NOT NULL,
+            expires_at datetime DEFAULT NULL,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY cache_key_group (cache_key, cache_group),
+            KEY expires_at (expires_at)
         ) $charset_collate;";
 
         return $sql;

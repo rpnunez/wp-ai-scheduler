@@ -192,7 +192,7 @@ class AIPS_Admin_Menu {
             array($this, 'render_seeder_page')
         );
 
-        if (get_option('aips_developer_mode')) {
+        if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 'ai-post-scheduler',
                 __('Dev Tools', 'ai-post-scheduler'),

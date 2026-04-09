@@ -7,6 +7,13 @@
  * @package AI_Post_Scheduler
  */
 
+// Start the PHP session before any output so that AIPS_Cache_Session_Driver
+// tests work correctly. session_start() must be called before any output
+// is sent, because even a single echo makes session_start() fail in PHP CLI.
+if (PHP_SESSION_NONE === session_status()) {
+    session_start();
+}
+
 // Composer autoloader
 if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
     require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -123,6 +130,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     if (!function_exists('esc_attr')) {
         function esc_attr($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_attr__')) {
+        function esc_attr__($text, $domain = 'default') {
             return $text;
         }
     }
@@ -281,13 +294,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('add_option')) {
         function add_option($option, $value) {
             $GLOBALS['aips_test_options'][$option] = $value;
+            do_action('added_option', $option, $value);
             return true;
         }
     }
 
     if (!function_exists('update_option')) {
-        function update_option($option, $value) {
+        function update_option($option, $value, $autoload = null) {
+            $old_value = isset($GLOBALS['aips_test_options'][$option]) ? $GLOBALS['aips_test_options'][$option] : false;
             $GLOBALS['aips_test_options'][$option] = $value;
+            do_action('updated_option', $option, $old_value, $value);
             return true;
         }
     }
@@ -296,6 +312,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         function delete_option($option) {
             if (isset($GLOBALS['aips_test_options'][$option])) {
                 unset($GLOBALS['aips_test_options'][$option]);
+                do_action('deleted_option', $option);
             }
             return true;
         }
@@ -324,7 +341,58 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
-    
+
+    if (!function_exists('wp_cache_get')) {
+        function wp_cache_get($key, $group = '', $force = false, &$found = null) {
+            global $wp_object_cache_storage;
+            if (!isset($wp_object_cache_storage)) {
+                $wp_object_cache_storage = array();
+            }
+            $cache_key = $group . ':' . $key;
+            if (isset($wp_object_cache_storage[$cache_key])) {
+                $found = true;
+                return $wp_object_cache_storage[$cache_key];
+            }
+            $found = false;
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_cache_set')) {
+        function wp_cache_set($key, $value, $group = '', $expire = 0) {
+            global $wp_object_cache_storage;
+            if (!isset($wp_object_cache_storage)) {
+                $wp_object_cache_storage = array();
+            }
+            $cache_key = $group . ':' . $key;
+            $wp_object_cache_storage[$cache_key] = $value;
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_cache_delete')) {
+        function wp_cache_delete($key, $group = '') {
+            global $wp_object_cache_storage;
+            if (!isset($wp_object_cache_storage)) {
+                $wp_object_cache_storage = array();
+            }
+            $cache_key = $group . ':' . $key;
+            if (isset($wp_object_cache_storage[$cache_key])) {
+                unset($wp_object_cache_storage[$cache_key]);
+                return true;
+            }
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_cache_flush')) {
+        function wp_cache_flush() {
+            global $wp_object_cache_storage;
+            $wp_object_cache_storage = array();
+            return true;
+        }
+    }
+
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
             $timestamp = $gmt ? time() : time(); // Simplified time handling
@@ -413,7 +481,30 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
         }
     }
-    
+
+    if (!class_exists('WP_Admin_Bar')) {
+        class WP_Admin_Bar {
+            private $nodes = array();
+            private $groups = array();
+
+            public function add_node($args) {
+                $this->nodes[] = $args;
+            }
+
+            public function add_group($args) {
+                $this->groups[] = $args;
+            }
+
+            public function get_nodes() {
+                return $this->nodes;
+            }
+
+            public function get_groups() {
+                return $this->groups;
+            }
+        }
+    }
+
     if (!function_exists('is_wp_error')) {
         function is_wp_error($thing) {
             return ($thing instanceof WP_Error);
@@ -642,6 +733,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             /**
              * Reset mocked WordPress hooks to avoid cross-test pollution.
              *
+             * Also flushes AIPS_Config's per-request option cache so that any
+             * update_option() calls made in a test are reflected correctly when
+             * the singleton is reused in the next test.
+             *
              * @return void
              */
             private function reset_hooks() {
@@ -649,6 +744,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     'actions' => array(),
                     'filters' => array(),
                 );
+
+                // Flush the AIPS_Config option cache so stale values don't leak
+                // across tests.  Re-register the cache-invalidation hooks on the
+                // (still-live) singleton so the next test works correctly.
+                if (class_exists('AIPS_Config')) {
+                    $config = AIPS_Config::get_instance();
+                    $config->flush_option_cache();
+                    $config->reregister_option_cache_hooks();
+                }
             }
         }
     }
@@ -952,6 +1056,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $last_error = '';
             public $postmeta = 'wp_postmeta';
             public $posts = 'wp_posts';
             public $get_col_return_val = null;
@@ -1043,6 +1148,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return true;
             }
 
+            public function replace($table, $data, $format = null) {
+                static $next_replace_id = 1;
+                $this->insert_id = $next_replace_id++;
+                return true;
+            }
+
             public function get_charset_collate() {
                 return "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci";
             }
@@ -1060,11 +1171,78 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!isset($GLOBALS['wp_filter'])) {
         $GLOBALS['wp_filter'] = array();
     }
-    
+
+    // ----------------------------------------------------------------
+    // Serialization helpers (used by cache drivers)
+    // ----------------------------------------------------------------
+    if (!function_exists('maybe_serialize')) {
+        function maybe_serialize($data) {
+            if (is_array($data) || is_object($data)) {
+                return serialize($data);
+            }
+            return $data;
+        }
+    }
+
+    if (!function_exists('maybe_unserialize')) {
+        function maybe_unserialize($data) {
+            if (is_string($data) && strlen($data) > 0) {
+                $unserialized = @unserialize($data);
+                if ($unserialized !== false || $data === serialize(false)) {
+                    return $unserialized;
+                }
+            }
+            return $data;
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // WP Object Cache stubs (used by AIPS_Cache_Wp_Object_Cache_Driver)
+    // ----------------------------------------------------------------
+    if (!isset($GLOBALS['_aips_test_wp_cache'])) {
+        $GLOBALS['_aips_test_wp_cache'] = array();
+    }
+
+    if (!function_exists('wp_cache_get')) {
+        function wp_cache_get($key, $group = '', $force = false, &$found = null) {
+            $store_key = $group . ':' . $key;
+            if (array_key_exists($store_key, $GLOBALS['_aips_test_wp_cache'])) {
+                $found = true;
+                return $GLOBALS['_aips_test_wp_cache'][ $store_key ];
+            }
+            $found = false;
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_cache_set')) {
+        function wp_cache_set($key, $data, $group = '', $expire = 0) {
+            $store_key = $group . ':' . $key;
+            $GLOBALS['_aips_test_wp_cache'][ $store_key ] = $data;
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_cache_delete')) {
+        function wp_cache_delete($key, $group = '') {
+            $store_key = $group . ':' . $key;
+            unset($GLOBALS['_aips_test_wp_cache'][ $store_key ]);
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_cache_flush')) {
+        function wp_cache_flush() {
+            $GLOBALS['_aips_test_wp_cache'] = array();
+            return true;
+        }
+    }
+
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
         'class-aips-autoloader.php',
+        'class-aips-container.php',
         'class-aips-logger.php',
         'class-aips-config.php',
         'class-aips-db-manager.php',
@@ -1152,16 +1330,42 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
-        'class-aips-bulk-generator-service.php',
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
         'class-aips-metrics-repository.php',
+        // Cache framework
+        'interface-aips-cache-driver.php',
+        'class-aips-cache-array-driver.php',
+        'class-aips-cache-db-driver.php',
+        'class-aips-cache-redis-driver.php',
+        'class-aips-cache-session-driver.php',
+        'class-aips-cache-wp-object-cache-driver.php',
+        'class-aips-cache.php',
+        'class-aips-cache-factory.php',
     ];
     
     foreach ($files as $file) {
         if (file_exists($includes_dir . $file)) {
             require_once $includes_dir . $file;
         }
+    }
+
+    // Add stubs for WordPress activation/deactivation hooks
+    if (!function_exists('register_activation_hook')) {
+        function register_activation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    if (!function_exists('register_deactivation_hook')) {
+        function register_deactivation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    // Load the main plugin file to get AI_Post_Scheduler class
+    if (!class_exists('AI_Post_Scheduler')) {
+        require_once dirname(__DIR__) . '/ai-post-scheduler.php';
     }
 
     if (!function_exists('has_action')) {

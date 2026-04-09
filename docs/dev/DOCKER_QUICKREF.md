@@ -21,6 +21,7 @@ make up                           # Start environment
 make up                           # Start all services
 make down                         # Stop all services
 make restart                      # Restart all services
+make reload-php                   # Reload Apache/PHP after dev-php.ini edits
 
 # View Logs
 make logs                         # All logs (live)
@@ -50,7 +51,8 @@ make info                         # WordPress & plugin info
 # Troubleshoot
 make xdebug-status                # Check Xdebug config
 make xdebug-log                   # View Xdebug log
-docker-compose restart web        # Restart web server
+make reload-php                   # Apply dev-php.ini changes quickly
+docker-compose restart web        # Full web restart (fallback)
 ```
 
 ## 🔧 Plugin Development
@@ -114,7 +116,7 @@ make install                      # Fresh WordPress install
 ```bash
 # Resource Usage
 docker stats                      # Real-time stats
-docker-compose ps                 # Container status
+docker compose ps                 # Container status
 
 # URLs
 make urls                         # Show all access URLs
@@ -137,11 +139,12 @@ make xdebug-log                   # Check Xdebug log
 # Xdebug causes slowdown - normal in debug mode
 
 # Changes not showing
-docker-compose restart web        # Restart web server
+make reload-php                   # Reload Apache/PHP config changes
+# If still needed: docker compose restart web
 # Or clear cache in browser
 
 # Database connection error
-docker-compose restart db         # Restart database
+docker compose restart db         # Restart database
 make logs-db                      # Check database logs
 ```
 
@@ -159,6 +162,7 @@ In Container                      → On Host
 
 ```bash
 .env                              # Environment variables (create from .env.example)
+dev-php.ini                       # Editable PHP/Xdebug overrides (reload with make reload-php)
 docker-compose.yml                # Service configuration
 Dockerfile                        # Image configuration
 .vscode/launch.json               # Xdebug configuration
@@ -207,6 +211,7 @@ git status                        # Check what changed
 | **Test** | `make test` |
 | **Debug** | Press `F5` in VS Code |
 | **Restart** | `make restart` |
+| **Reload PHP ini** | `make reload-php` |
 | **Clean** | `make clean` (⚠️ deletes data) |
 | **Help** | `make help` |
 

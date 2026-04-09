@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.2.0
+ * Version: 2.3.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '2.2.0');
+define('AIPS_VERSION', '2.3.1');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -111,7 +111,15 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Register autoloader
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $vendor_autoload ) ) {
+            require_once $vendor_autoload;
+        }
+
+        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
+        // Composer classmap does not resolve (e.g. on installs without a vendor/
+        // directory or after adding a new class before re-running composer dump-autoload).
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
@@ -148,8 +156,10 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
+        // Use the raw WP function here intentionally: we need to distinguish
+        // "option does not exist" (false) from any stored value including '0'.
         $previously_installed = get_option('aips_db_version') !== false;
-        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
 
@@ -260,6 +270,39 @@ final class AI_Post_Scheduler {
     }
 
     /**
+     * Register initial container bindings for core singletons.
+     *
+     * Phase 1 registration as described in the container architecture plan:
+     * Registers the most-duplicated singletons to validate the container works
+     * correctly before more complex refactors.
+     *
+     * @return void
+     */
+    private function register_container_bindings() {
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        $container->singleton(AIPS_Config::class, function( $container ) {
+            return AIPS_Config::get_instance();
+        });
+
+        // Register AIPS_History_Repository
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
+            return AIPS_History_Repository::instance();
+        });
+
+        // Register AIPS_History_Service
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
+            return AIPS_History_Service::instance();
+        });
+
+        // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+            return new AIPS_Notifications_Repository();
+        });
+    }
+
+    /**
      * Initialize plugin runtime.
      *
      * Loads translations, registers taxonomy, instantiates admin controllers,
@@ -269,29 +312,35 @@ final class AI_Post_Scheduler {
      */
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+      
+        // Register initial container bindings for core singletons
+        $this->register_container_bindings();
 
         // Register the Source Group taxonomy (not attached to any post type).
-        register_taxonomy(
-            'aips_source_group',
-            array(),
-            array(
-                'labels'            => array(
-                    'name'              => __('Source Groups', 'ai-post-scheduler'),
-                    'singular_name'     => __('Source Group', 'ai-post-scheduler'),
-                    'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
-                    'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
-                    'new_item'          => __('New Source Group', 'ai-post-scheduler'),
-                    'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
-                ),
-                'hierarchical'      => false,
-                'show_ui'           => false,
-                'show_in_nav_menus' => false,
-                'show_in_rest'      => false,
-                'public'            => false,
-                'rewrite'           => false,
-                'query_var'         => false,
-            )
-        );
+        // Only needed in admin and cron contexts; skip on frontend page loads.
+        if (is_admin() || wp_doing_cron()) {
+            register_taxonomy(
+                'aips_source_group',
+                array(),
+                array(
+                    'labels'            => array(
+                        'name'              => __('Source Groups', 'ai-post-scheduler'),
+                        'singular_name'     => __('Source Group', 'ai-post-scheduler'),
+                        'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
+                        'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
+                        'new_item'          => __('New Source Group', 'ai-post-scheduler'),
+                        'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
+                    ),
+                    'hierarchical'      => false,
+                    'show_ui'           => false,
+                    'show_in_nav_menus' => false,
+                    'show_in_rest'      => false,
+                    'public'            => false,
+                    'rewrite'           => false,
+                    'query_var'         => false,
+                )
+            );
+        }
         
         if (is_admin()) {
             new AIPS_DB_Manager();
@@ -332,7 +381,7 @@ final class AI_Post_Scheduler {
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
             // Dev Tools
-            if (get_option('aips_developer_mode')) {
+            if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
             }
         }
@@ -353,7 +402,7 @@ final class AI_Post_Scheduler {
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
 
         new AIPS_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
+		    new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
