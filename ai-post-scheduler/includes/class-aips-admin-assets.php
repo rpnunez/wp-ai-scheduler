@@ -661,6 +661,7 @@ class AIPS_Admin_Assets {
         }
 
         // Register script translations so wp.i18n.__() calls in JS are translated.
+        // wp_set_script_translations() is available since WordPress 5.0.
         // Wrapped in function_exists() for backward compatibility with older WP versions.
         if ( function_exists( 'wp_set_script_translations' ) ) {
             $i18n_handles = array(

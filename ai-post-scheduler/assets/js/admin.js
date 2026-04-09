@@ -10,7 +10,8 @@
     var SYSTEM_VARIABLES = ['date', 'year', 'month', 'day', 'time', 'site_name', 'site_description', 'random_number', 'topic', 'title'];
 
     // Required-field rules for the template wizard, shared by validateWizardStep and getFirstInvalidStep.
-    // Each entry maps a 1-based step number to its required field selector and l10n message key.
+    // Each entry maps a 1-based step number to its required field selector and translated message.
+    // Translation strings are evaluated at parse time; wp.i18n is synchronously available by this point.
     var WIZARD_REQUIRED_FIELDS = [
         { step: 1, selector: '#template_name',   message: __( 'Template Name is required.', 'ai-post-scheduler' ) },
         { step: 2, selector: '#prompt_template', message: __( 'Content Prompt is required.', 'ai-post-scheduler' ) }
