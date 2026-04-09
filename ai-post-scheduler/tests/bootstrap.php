@@ -1162,6 +1162,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
         'class-aips-autoloader.php',
+        'class-aips-container.php',
         'class-aips-logger.php',
         'class-aips-config.php',
         'class-aips-db-manager.php',
@@ -1267,6 +1268,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         if (file_exists($includes_dir . $file)) {
             require_once $includes_dir . $file;
         }
+    }
+
+    // Add stubs for WordPress activation/deactivation hooks
+    if (!function_exists('register_activation_hook')) {
+        function register_activation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    if (!function_exists('register_deactivation_hook')) {
+        function register_deactivation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    // Load the main plugin file to get AI_Post_Scheduler class
+    if (!class_exists('AI_Post_Scheduler')) {
+        require_once dirname(__DIR__) . '/ai-post-scheduler.php';
     }
 
     if (!function_exists('has_action')) {
