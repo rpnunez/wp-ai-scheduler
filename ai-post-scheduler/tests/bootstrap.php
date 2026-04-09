@@ -7,6 +7,13 @@
  * @package AI_Post_Scheduler
  */
 
+// Start the PHP session before any output so that AIPS_Cache_Session_Driver
+// tests work correctly. session_start() must be called before any output
+// is sent, because even a single echo makes session_start() fail in PHP CLI.
+if (PHP_SESSION_NONE === session_status()) {
+    session_start();
+}
+
 // Composer autoloader
 if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
     require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -969,6 +976,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $last_error = '';
             public $postmeta = 'wp_postmeta';
             public $posts = 'wp_posts';
             public $get_col_return_val = null;
@@ -1060,6 +1068,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return true;
             }
 
+            public function replace($table, $data, $format = null) {
+                static $next_replace_id = 1;
+                $this->insert_id = $next_replace_id++;
+                return true;
+            }
+
             public function get_charset_collate() {
                 return "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci";
             }
@@ -1077,7 +1091,73 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!isset($GLOBALS['wp_filter'])) {
         $GLOBALS['wp_filter'] = array();
     }
-    
+
+    // ----------------------------------------------------------------
+    // Serialization helpers (used by cache drivers)
+    // ----------------------------------------------------------------
+    if (!function_exists('maybe_serialize')) {
+        function maybe_serialize($data) {
+            if (is_array($data) || is_object($data)) {
+                return serialize($data);
+            }
+            return $data;
+        }
+    }
+
+    if (!function_exists('maybe_unserialize')) {
+        function maybe_unserialize($data) {
+            if (is_string($data) && strlen($data) > 0) {
+                $unserialized = @unserialize($data);
+                if ($unserialized !== false || $data === serialize(false)) {
+                    return $unserialized;
+                }
+            }
+            return $data;
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // WP Object Cache stubs (used by AIPS_Cache_Wp_Object_Cache_Driver)
+    // ----------------------------------------------------------------
+    if (!isset($GLOBALS['_aips_test_wp_cache'])) {
+        $GLOBALS['_aips_test_wp_cache'] = array();
+    }
+
+    if (!function_exists('wp_cache_get')) {
+        function wp_cache_get($key, $group = '', $force = false, &$found = null) {
+            $store_key = $group . ':' . $key;
+            if (array_key_exists($store_key, $GLOBALS['_aips_test_wp_cache'])) {
+                $found = true;
+                return $GLOBALS['_aips_test_wp_cache'][ $store_key ];
+            }
+            $found = false;
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_cache_set')) {
+        function wp_cache_set($key, $data, $group = '', $expire = 0) {
+            $store_key = $group . ':' . $key;
+            $GLOBALS['_aips_test_wp_cache'][ $store_key ] = $data;
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_cache_delete')) {
+        function wp_cache_delete($key, $group = '') {
+            $store_key = $group . ':' . $key;
+            unset($GLOBALS['_aips_test_wp_cache'][ $store_key ]);
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_cache_flush')) {
+        function wp_cache_flush() {
+            $GLOBALS['_aips_test_wp_cache'] = array();
+            return true;
+        }
+    }
+
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
@@ -1172,6 +1252,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
         'class-aips-metrics-repository.php',
+        // Cache framework
+        'interface-aips-cache-driver.php',
+        'class-aips-cache-array-driver.php',
+        'class-aips-cache-db-driver.php',
+        'class-aips-cache-redis-driver.php',
+        'class-aips-cache-session-driver.php',
+        'class-aips-cache-wp-object-cache-driver.php',
+        'class-aips-cache.php',
+        'class-aips-cache-factory.php',
     ];
     
     foreach ($files as $file) {
