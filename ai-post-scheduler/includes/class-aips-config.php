@@ -35,6 +35,15 @@ class AIPS_Config {
      * @var AIPS_Cache Per-request cache for get_option() calls.
      */
     private $cache = null;
+
+    /**
+     * @var object|null Sentinel stored in the cache when the resolved option
+     *                  value is null. Required because AIPS_Cache::has() uses
+     *                  get() !== null internally, so storing a plain null would
+     *                  always look like a cache miss. The sentinel lets has()
+     *                  return true for genuinely cached null values.
+     */
+    private $null_sentinel = null;
     
     /**
      * Get singleton instance.
@@ -52,7 +61,8 @@ class AIPS_Config {
      * Private constructor to enforce singleton pattern.
      */
     private function __construct() {
-        $this->cache = AIPS_Cache_Factory::named('aips_config', 'array');
+        $this->cache         = AIPS_Cache_Factory::named('aips_config', 'array');
+        $this->null_sentinel = new stdClass();
         $this->load_feature_flags();
         $this->register_option_cache_hooks();
     }
@@ -200,7 +210,9 @@ class AIPS_Config {
     public function get_option($option_name, $default = null) {
         // Use cached value only when no caller-supplied default is in play.
         if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
-            return $this->cache->get($option_name);
+            $cached = $this->cache->get($option_name);
+            // A stored null_sentinel means the resolved value is null.
+            return ($cached === $this->null_sentinel) ? null : $cached;
         }
 
         // Use a sentinel to distinguish "option not in database" from a stored
@@ -218,18 +230,20 @@ class AIPS_Config {
             if ($default === null) {
                 $defaults = $this->get_default_options();
                 $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
-                // Cache only authoritative defaults.
+                // Cache only authoritative defaults; use the null_sentinel when
+                // the resolved value is null so that has() returns true next time.
                 if ($this->cache !== null) {
-                    $this->cache->set($option_name, $value);
+                    $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
                 }
             } else {
                 // Caller supplied a fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {
-            // Option exists in the database — always cache the live value.
+            // Option exists in the database — always cache the live value;
+            // use the null_sentinel when the DB value is null.
             if ($this->cache !== null) {
-                $this->cache->set($option_name, $value);
+                $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
             }
         }
 
