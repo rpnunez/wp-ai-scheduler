@@ -7,6 +7,13 @@
  * @package AI_Post_Scheduler
  */
 
+// Start the PHP session before any output so that AIPS_Cache_Session_Driver
+// tests work correctly. session_start() must be called before any output
+// is sent, because even a single echo makes session_start() fail in PHP CLI.
+if (PHP_SESSION_NONE === session_status()) {
+    session_start();
+}
+
 // Composer autoloader
 if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
     require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -1250,6 +1257,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-cache-array-driver.php',
         'class-aips-cache-db-driver.php',
         'class-aips-cache-redis-driver.php',
+        'class-aips-cache-session-driver.php',
         'class-aips-cache-wp-object-cache-driver.php',
         'class-aips-cache.php',
         'class-aips-cache-factory.php',

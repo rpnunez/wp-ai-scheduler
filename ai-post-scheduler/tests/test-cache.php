@@ -379,4 +379,311 @@ class Test_AIPS_Cache_Factory extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'AIPS_Cache_Driver', $driver );
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
 	}
+
+	public function test_make_session_driver_returns_session_driver() {
+		$cache  = AIPS_Cache_Factory::make( 'session' );
+		$driver = $cache->get_driver();
+		$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $driver );
+	}
+}
+
+// ============================================================================
+// AIPS_Cache_Session_Driver tests
+// ============================================================================
+
+/**
+ * @covers AIPS_Cache_Session_Driver
+ */
+class Test_AIPS_Cache_Session_Driver extends WP_UnitTestCase {
+
+/** @var AIPS_Cache_Session_Driver */
+private $driver;
+
+/** @var string Unique namespace per run to prevent cross-test pollution. */
+private $ns;
+
+public function setUp(): void {
+parent::setUp();
+// Each test uses a unique namespace so leftover keys can't bleed through.
+$this->ns     = 'aips_test_' . uniqid();
+$this->driver = new AIPS_Cache_Session_Driver( $this->ns );
+// Flush this namespace before each test for a clean slate.
+$this->driver->flush();
+}
+
+public function tearDown(): void {
+// Flush after test so subsequent tests start clean.
+if ($this->driver) {
+$this->driver->flush();
+}
+parent::tearDown();
+}
+
+// ------------------------------------------------------------------
+// Session availability
+// ------------------------------------------------------------------
+
+public function test_session_is_available_in_cli() {
+// In PHP CLI mode session_start() works; the driver should be available.
+$this->assertTrue( $this->driver->is_session_available() );
+}
+
+// ------------------------------------------------------------------
+// get / set
+// ------------------------------------------------------------------
+
+public function test_set_and_get_string() {
+$this->driver->set( 'key1', 'hello' );
+$this->assertSame( 'hello', $this->driver->get( 'key1' ) );
+}
+
+public function test_get_returns_null_on_miss() {
+$this->assertNull( $this->driver->get( 'no_such_key' ) );
+}
+
+public function test_set_and_get_array_value() {
+$data = array( 'x' => 1, 'y' => 2 );
+$this->driver->set( 'arr', $data );
+$this->assertSame( $data, $this->driver->get( 'arr' ) );
+}
+
+public function test_set_and_get_with_group() {
+$this->driver->set( 'key', 'grp_value', 0, 'mygroup' );
+$this->assertSame( 'grp_value', $this->driver->get( 'key', 'mygroup' ) );
+}
+
+public function test_different_groups_are_isolated() {
+$this->driver->set( 'key', 'val_a', 0, 'ga' );
+$this->driver->set( 'key', 'val_b', 0, 'gb' );
+
+$this->assertSame( 'val_a', $this->driver->get( 'key', 'ga' ) );
+$this->assertSame( 'val_b', $this->driver->get( 'key', 'gb' ) );
+}
+
+public function test_set_returns_true_when_session_available() {
+$this->assertTrue( $this->driver->set( 'k', 'v' ) );
+}
+
+// ------------------------------------------------------------------
+// TTL / expiration
+// ------------------------------------------------------------------
+
+public function test_zero_ttl_does_not_expire() {
+$this->driver->set( 'perm', 'forever', 0 );
+$this->assertSame( 'forever', $this->driver->get( 'perm' ) );
+}
+
+public function test_live_ttl_entry_is_readable() {
+$this->driver->set( 'live', 'alive', 3600 );
+$this->assertSame( 'alive', $this->driver->get( 'live' ) );
+}
+
+public function test_expired_entry_returns_null_and_is_removed() {
+// Manually write an already-expired entry directly into $_SESSION.
+$session_key              = $this->ns . '::default:expired_key';
+$_SESSION[ $session_key ] = array(
+'value'   => maybe_serialize( 'stale' ),
+'expires' => time() - 1, // 1 second in the past
+);
+
+$this->assertNull( $this->driver->get( 'expired_key' ) );
+$this->assertFalse( isset( $_SESSION[ $session_key ] ), 'Stale entry should be removed on read.' );
+}
+
+// ------------------------------------------------------------------
+// delete
+// ------------------------------------------------------------------
+
+public function test_delete_removes_entry() {
+$this->driver->set( 'del', 'bye' );
+$this->driver->delete( 'del' );
+$this->assertNull( $this->driver->get( 'del' ) );
+}
+
+public function test_delete_returns_true() {
+$this->assertTrue( $this->driver->delete( 'nonexistent' ) );
+}
+
+public function test_delete_only_removes_matching_group() {
+$this->driver->set( 'k', 'a', 0, 'g1' );
+$this->driver->set( 'k', 'b', 0, 'g2' );
+$this->driver->delete( 'k', 'g1' );
+
+$this->assertNull( $this->driver->get( 'k', 'g1' ) );
+$this->assertSame( 'b', $this->driver->get( 'k', 'g2' ) );
+}
+
+// ------------------------------------------------------------------
+// has
+// ------------------------------------------------------------------
+
+public function test_has_returns_true_for_existing_key() {
+$this->driver->set( 'exist', 'yes' );
+$this->assertTrue( $this->driver->has( 'exist' ) );
+}
+
+public function test_has_returns_false_for_missing_key() {
+$this->assertFalse( $this->driver->has( 'nope' ) );
+}
+
+// ------------------------------------------------------------------
+// flush
+// ------------------------------------------------------------------
+
+public function test_flush_clears_namespace_entries() {
+$this->driver->set( 'a', 1 );
+$this->driver->set( 'b', 2 );
+$this->driver->flush();
+
+$this->assertNull( $this->driver->get( 'a' ) );
+$this->assertNull( $this->driver->get( 'b' ) );
+}
+
+public function test_flush_returns_true() {
+$this->assertTrue( $this->driver->flush() );
+}
+
+public function test_flush_only_removes_own_namespace() {
+// Write an entry under a different namespace.
+$other_ns        = 'other_ns_' . uniqid();
+$other_key       = $other_ns . '::default:other_key';
+$_SESSION[ $other_key ] = array( 'value' => 'intact', 'expires' => 0 );
+
+$this->driver->flush();
+
+// The other-namespace key must survive.
+$this->assertTrue( isset( $_SESSION[ $other_key ] ) );
+// Clean up.
+unset( $_SESSION[ $other_key ] );
+}
+
+// ------------------------------------------------------------------
+// Cross-request persistence simulation
+// ------------------------------------------------------------------
+
+public function test_values_persist_across_driver_instantiations() {
+// Write via first driver instance.
+$this->driver->set( 'persisted', 'cross_page_value' );
+
+// Simulate a new page load by creating a fresh driver with the same
+// namespace — the session is still active in the same PHP process.
+$driver2 = new AIPS_Cache_Session_Driver( $this->ns );
+$this->assertSame( 'cross_page_value', $driver2->get( 'persisted' ) );
+}
+
+// ------------------------------------------------------------------
+// Namespace isolation between driver instances
+// ------------------------------------------------------------------
+
+public function test_different_namespaces_are_isolated() {
+$ns_b   = 'aips_test_b_' . uniqid();
+$driver_b = new AIPS_Cache_Session_Driver( $ns_b );
+$driver_b->flush();
+
+$this->driver->set( 'key', 'from_a' );
+$driver_b->set( 'key', 'from_b' );
+
+$this->assertSame( 'from_a', $this->driver->get( 'key' ) );
+$this->assertSame( 'from_b', $driver_b->get( 'key' ) );
+
+$driver_b->flush();
+}
+}
+
+// ============================================================================
+// AIPS_Cache_Factory — named instance tests
+// ============================================================================
+
+/**
+ * @covers AIPS_Cache_Factory
+ */
+class Test_AIPS_Cache_Factory_Named extends WP_UnitTestCase {
+
+public function setUp(): void {
+parent::setUp();
+AIPS_Cache_Factory::reset();
+}
+
+public function tearDown(): void {
+AIPS_Cache_Factory::reset();
+parent::tearDown();
+}
+
+// ------------------------------------------------------------------
+// named()
+// ------------------------------------------------------------------
+
+public function test_named_returns_cache_instance() {
+$cache = AIPS_Cache_Factory::named( 'my_cache' );
+$this->assertInstanceOf( 'AIPS_Cache', $cache );
+}
+
+public function test_named_with_explicit_driver() {
+$cache  = AIPS_Cache_Factory::named( 'tmpl', 'array' );
+$driver = $cache->get_driver();
+$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
+}
+
+public function test_named_same_name_returns_same_instance() {
+$a = AIPS_Cache_Factory::named( 'shared' );
+$b = AIPS_Cache_Factory::named( 'shared' );
+$this->assertSame( $a, $b );
+}
+
+public function test_named_different_names_return_different_instances() {
+$a = AIPS_Cache_Factory::named( 'cache_a' );
+$b = AIPS_Cache_Factory::named( 'cache_b' );
+$this->assertNotSame( $a, $b );
+}
+
+public function test_named_instances_have_independent_state() {
+$a = AIPS_Cache_Factory::named( 'ns_a', 'array' );
+$b = AIPS_Cache_Factory::named( 'ns_b', 'array' );
+
+$a->set( 'x', 'from_a' );
+$b->set( 'x', 'from_b' );
+
+$this->assertSame( 'from_a', $a->get( 'x' ) );
+$this->assertSame( 'from_b', $b->get( 'x' ) );
+}
+
+public function test_named_session_driver() {
+$cache  = AIPS_Cache_Factory::named( 'sess_cache', 'session' );
+$driver = $cache->get_driver();
+$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $driver );
+}
+
+// ------------------------------------------------------------------
+// register()
+// ------------------------------------------------------------------
+
+public function test_register_pre_wires_named_instance() {
+$my_cache = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+AIPS_Cache_Factory::register( 'custom', $my_cache );
+
+$this->assertSame( $my_cache, AIPS_Cache_Factory::named( 'custom' ) );
+}
+
+public function test_register_replaces_existing_instance() {
+$old = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+AIPS_Cache_Factory::register( 'replaceable', $old );
+
+$new = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+AIPS_Cache_Factory::register( 'replaceable', $new );
+
+$this->assertSame( $new, AIPS_Cache_Factory::named( 'replaceable' ) );
+$this->assertNotSame( $old, AIPS_Cache_Factory::named( 'replaceable' ) );
+}
+
+// ------------------------------------------------------------------
+// reset() clears named instances
+// ------------------------------------------------------------------
+
+public function test_reset_clears_named_instances() {
+$a = AIPS_Cache_Factory::named( 'will_be_cleared', 'array' );
+AIPS_Cache_Factory::reset();
+$b = AIPS_Cache_Factory::named( 'will_be_cleared', 'array' );
+
+$this->assertNotSame( $a, $b, 'After reset, named() should return a fresh instance.' );
+}
 }

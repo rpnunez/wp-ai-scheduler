@@ -656,9 +656,10 @@ class AIPS_Settings_UI {
     public function cache_driver_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_cache_driver');
         $drivers = array(
-            'array'          => __('Array (in-memory, request-scoped)', 'ai-post-scheduler'),
-            'db'             => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
-            'redis'          => __('Redis (persistent, requires PHP redis extension)', 'ai-post-scheduler'),
+            'array'           => __('Array (in-memory, request-scoped)', 'ai-post-scheduler'),
+            'session'         => __('Session (PHP session, user-scoped across pages)', 'ai-post-scheduler'),
+            'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
+            'redis'           => __('Redis (persistent, requires PHP redis extension)', 'ai-post-scheduler'),
             'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
         );
         ?>
@@ -667,7 +668,7 @@ class AIPS_Settings_UI {
                 <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
             <?php endforeach; ?>
         </select>
-        <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. DB is persistent. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. Session persists across page loads for the current user. DB is persistent for all users. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -796,7 +797,7 @@ class AIPS_Settings_UI {
      * @return string Sanitized driver name, or 'array' as safe fallback.
      */
     public function sanitize_cache_driver( $value ) {
-        $allowed = array('array', 'db', 'redis', 'wp_object_cache');
+        $allowed = array('array', 'session', 'db', 'redis', 'wp_object_cache');
         $value   = sanitize_text_field( (string) $value );
         return in_array($value, $allowed, true) ? $value : 'array';
     }

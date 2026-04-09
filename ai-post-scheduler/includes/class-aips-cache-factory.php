@@ -26,6 +26,18 @@ class AIPS_Cache_Factory {
 	 */
 	private static $instance = null;
 
+	/**
+	 * Registry of named AIPS_Cache instances.
+	 *
+	 * Named instances let different plugin subsystems each use a different
+	 * driver independently. For example, one subsystem can use the Array
+	 * driver for request-scoped caching while another uses the Session driver
+	 * for cross-request persistence.
+	 *
+	 * @var array<string, AIPS_Cache>
+	 */
+	private static $named = array();
+
 	// -----------------------------------------------------------------------
 	// Public factory methods
 	// -----------------------------------------------------------------------
@@ -72,6 +84,9 @@ class AIPS_Cache_Factory {
 				$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
 				return new AIPS_Cache_Db_Driver( $prefix );
 
+			case 'session':
+				return new AIPS_Cache_Session_Driver();
+
 			case 'redis':
 				$driver = self::try_make_redis_driver( $notice );
 				if ($driver !== null) {
@@ -91,12 +106,71 @@ class AIPS_Cache_Factory {
 	}
 
 	/**
-	 * Reset the shared singleton (useful for testing or forced re-init).
+	 * Reset the shared singleton and all named instances (useful for testing
+	 * or forced re-init).
 	 *
 	 * @return void
 	 */
 	public static function reset() {
 		self::$instance = null;
+		self::$named    = array();
+	}
+
+	// -----------------------------------------------------------------------
+	// Named instance API
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Get (or lazily create) a named AIPS_Cache instance.
+	 *
+	 * Named instances allow different parts of the plugin to use separate
+	 * cache drivers independently. For example:
+	 *
+	 *   // Request-scoped caching for compiled templates.
+	 *   $templates     = AIPS_Cache_Factory::named( 'templates', 'array' );
+	 *
+	 *   // Cross-request caching for notifications (5-minute TTL).
+	 *   $notifications = AIPS_Cache_Factory::named( 'notifications', 'session' );
+	 *
+	 * If a named instance already exists it is returned as-is, regardless of
+	 * the $driver_name parameter. To force a new driver, call register() first.
+	 *
+	 * @param string      $name        Identifier for this named cache instance.
+	 * @param string|null $driver_name Driver to use when creating the instance.
+	 *                                 Null = read from admin settings (same default
+	 *                                 as instance()).
+	 * @return AIPS_Cache
+	 */
+	public static function named( $name, $driver_name = null ) {
+		if (!isset( self::$named[ $name ] )) {
+			self::$named[ $name ] = self::make( $driver_name );
+		}
+		return self::$named[ $name ];
+	}
+
+	/**
+	 * Pre-register a named AIPS_Cache instance.
+	 *
+	 * Typically called during plugin bootstrap to pre-wire a specific driver
+	 * for a named cache channel. If an instance with the same name already
+	 * exists it is replaced.
+	 *
+	 * Example:
+	 *   AIPS_Cache_Factory::register(
+	 *       'templates',
+	 *       new AIPS_Cache( new AIPS_Cache_Array_Driver() )
+	 *   );
+	 *   AIPS_Cache_Factory::register(
+	 *       'notifications',
+	 *       new AIPS_Cache( new AIPS_Cache_Session_Driver() )
+	 *   );
+	 *
+	 * @param string     $name  Instance name.
+	 * @param AIPS_Cache $cache Ready-to-use AIPS_Cache instance.
+	 * @return void
+	 */
+	public static function register( $name, AIPS_Cache $cache ) {
+		self::$named[ $name ] = $cache;
 	}
 
 	// -----------------------------------------------------------------------

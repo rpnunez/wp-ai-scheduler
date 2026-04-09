@@ -17,6 +17,7 @@ AIPS_Cache_Factory::instance()
         ▼
 AIPS_Cache_Driver (interface)
     ├── AIPS_Cache_Array_Driver
+    ├── AIPS_Cache_Session_Driver
     ├── AIPS_Cache_Db_Driver
     ├── AIPS_Cache_Redis_Driver
     └── AIPS_Cache_Wp_Object_Cache_Driver
@@ -30,6 +31,7 @@ AIPS_Cache_Driver (interface)
 | `includes/class-aips-cache.php` | `AIPS_Cache` | High-level cache API |
 | `includes/class-aips-cache-factory.php` | `AIPS_Cache_Factory` | Driver instantiation + singleton |
 | `includes/class-aips-cache-array-driver.php` | `AIPS_Cache_Array_Driver` | In-memory (request-scoped) |
+| `includes/class-aips-cache-session-driver.php` | `AIPS_Cache_Session_Driver` | PHP session (user-scoped, cross-request) |
 | `includes/class-aips-cache-db-driver.php` | `AIPS_Cache_Db_Driver` | Persistent DB-backed |
 | `includes/class-aips-cache-redis-driver.php` | `AIPS_Cache_Redis_Driver` | Persistent Redis-backed |
 | `includes/class-aips-cache-wp-object-cache-driver.php` | `AIPS_Cache_Wp_Object_Cache_Driver` | WordPress Object Cache API |
@@ -43,6 +45,21 @@ AIPS_Cache_Driver (interface)
 - No configuration required.
 - Always available — used as the hard fallback when other drivers fail.
 - Ideal for unit tests and environments where persistence is not needed.
+
+### Session Driver (`session`)
+
+Stores values in the PHP session (`$_SESSION`) so they survive across page loads for the **current user's browser session**.
+
+- No extra configuration required.
+- Values are user-scoped: each logged-in user (or browser session) maintains their own cache.
+- TTL support: stale entries are purged on read.
+- `flush()` only removes entries that belong to this driver's namespace — other `$_SESSION` data is never touched.
+- Best for short-lived, per-user cross-request caching (e.g., notification counts, recent search results).
+- **Requires `session_start()` to be called before any output is sent.** If the session cannot be started, all cache methods become no-ops that return null/false instead of raising errors.
+
+**Limitations:**
+- Data is not shared between users.
+- Requires a PHP session to be active; incompatible with the WordPress REST API or WP-CLI unless you start the session yourself.
 
 ### Database Driver (`db`)
 
@@ -101,7 +118,7 @@ Settings are in **Settings → AI Post Scheduler → Cache** tab.
 
 | Setting | Option name | Description |
 |---------|-------------|-------------|
-| Cache Driver | `aips_cache_driver` | `array`, `db`, `redis`, or `wp_object_cache` |
+| Cache Driver | `aips_cache_driver` | `array`, `session`, `db`, `redis`, or `wp_object_cache` |
 | Default TTL | `aips_cache_default_ttl` | Default time-to-live in seconds (0 = no expiration) |
 | DB Cache Key Prefix | `aips_cache_db_prefix` | Optional prefix for DB driver keys |
 | Redis Host | `aips_cache_redis_host` | Redis hostname |
@@ -172,6 +189,45 @@ For code that requires a specific driver (e.g., tests), inject a driver directly
 $cache = new AIPS_Cache(new AIPS_Cache_Array_Driver());
 ```
 
+### Using Multiple Drivers Simultaneously (Named Instances)
+
+`AIPS_Cache_Factory::named()` and `AIPS_Cache_Factory::register()` let different parts of the plugin each use their own driver independently, without interfering with each other.
+
+**Lazy creation (driver resolved on first call):**
+
+```php
+// Request-scoped caching for compiled templates — fast ArrayDriver.
+$templates = AIPS_Cache_Factory::named('templates', 'array');
+$templates->set('tpl_header', $compiled_html, 0);
+
+// Cross-request notification counter — persisted in the user's session for 5 minutes.
+$notifications = AIPS_Cache_Factory::named('notifications', 'session');
+$count = $notifications->remember('unread_count', 300, function() {
+    return AIPS_Notifications_Repository::count_unread();
+});
+```
+
+**Pre-registered during bootstrap (explicit wiring):**
+
+```php
+// Wire up specific drivers for named channels at bootstrap time.
+AIPS_Cache_Factory::register(
+    'templates',
+    new AIPS_Cache( new AIPS_Cache_Array_Driver() )
+);
+AIPS_Cache_Factory::register(
+    'notifications',
+    new AIPS_Cache( new AIPS_Cache_Session_Driver() )
+);
+
+// Later — anywhere in the codebase — retrieve by name.
+$cache = AIPS_Cache_Factory::named('notifications');
+```
+
+- The first call to `named($name)` lazily creates the instance; repeated calls return the **same** object.
+- `register()` replaces an existing named instance if one already exists.
+- `AIPS_Cache_Factory::reset()` clears both the default singleton **and** all named instances (useful in tests).
+
 ## Implementing a Custom Driver
 
 Implement the `AIPS_Cache_Driver` interface:
@@ -197,3 +253,5 @@ $cache = new AIPS_Cache(new My_Custom_Driver());
 | Redis connection fails | Silently falls back to ArrayDriver + admin notice |
 | Unknown driver name in settings | Falls back to ArrayDriver |
 | DB driver selected | Uses DB table (always available when plugin is active) |
+| Session driver — headers already sent | Driver methods become silent no-ops (returns null/false) |
+| Session driver — REST API / WP-CLI | Session unavailable; methods return null/false |
