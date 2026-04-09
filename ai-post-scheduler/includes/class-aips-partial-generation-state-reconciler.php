@@ -49,6 +49,14 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
+		$has_generation_meta_keys = metadata_exists('post', $post_id, 'aips_post_generation_component_statuses')
+			|| metadata_exists('post', $post_id, 'aips_post_generation_incomplete')
+			|| metadata_exists('post', $post_id, 'aips_post_generation_had_partial');
+
+		if (!$has_generation_meta_keys) {
+			return;
+		}
+
 		$has_generation_meta = '' !== (string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true)
 			|| '' !== (string) get_post_meta($post_id, 'aips_post_generation_incomplete', true)
 			|| '' !== (string) get_post_meta($post_id, 'aips_post_generation_had_partial', true);
