@@ -103,6 +103,8 @@ class AIPS_Admin_Assets {
             'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
             'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
             'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
+            // Generic "None" option label used in multiple page wizards (templates, schedule).
+            'noneOption'          => __('None', 'ai-post-scheduler'),
         );
 
         // Templates page strings (template wizard, voice search, AI variables, preview).
@@ -113,7 +115,6 @@ class AIPS_Admin_Assets {
                 'draftSaved'              => __('Draft saved successfully.', 'ai-post-scheduler'),
                 'noVoiceDefault'          => __('No Voice (Use Default)', 'ai-post-scheduler'),
                 'autoGenerateFromContent' => __('Auto-generate from content', 'ai-post-scheduler'),
-                'noneOption'              => __('None', 'ai-post-scheduler'),
                 'featuredImageNo'         => __('No', 'ai-post-scheduler'),
                 /* translators: %s: featured image source name */
                 'featuredImageYes'        => __('Yes (%s)', 'ai-post-scheduler'),
@@ -163,7 +164,6 @@ class AIPS_Admin_Assets {
                 'noTitle'                        => __('No title', 'ai-post-scheduler'),
                 'yes'                            => __('Yes', 'ai-post-scheduler'),
                 'no'                             => __('No', 'ai-post-scheduler'),
-                'noneOption'                     => __('None', 'ai-post-scheduler'),
                 'deleteScheduleConfirm'          => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
                 'selectAtLeastOneSchedule'       => __('Please select at least one schedule.', 'ai-post-scheduler'),
                 'deleteOneScheduleConfirm'       => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
