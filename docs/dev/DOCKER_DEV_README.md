@@ -27,10 +27,10 @@ This Docker setup provides a complete WordPress development environment optimize
 
 ```bash
 # Build and start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs (optional)
-docker-compose logs -f web
+docker compose logs -f web
 ```
 
 The first startup will take a few minutes as it:
@@ -61,6 +61,22 @@ Once started, you can access:
 5. Refresh your WordPress page
 
 The debugger will pause at your breakpoints automatically!
+
+### 4. Update PHP/Xdebug Settings Quickly
+
+Edit `dev-php.ini`, then reload Apache in the running container:
+
+```bash
+make reload-php
+```
+
+Fallbacks:
+
+```bash
+docker compose exec web apache2ctl -k graceful
+# If graceful reload fails:
+docker compose restart web
+```
 
 ## Configuration
 
@@ -109,30 +125,30 @@ Xdebug is pre-configured and should work out of the box. If you need to adjust s
 
 ```bash
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Stop services (keeps data)
-docker-compose stop
+docker compose stop
 
 # Stop and remove containers (keeps data in volumes)
-docker-compose down
+docker compose down
 
 # Stop and remove everything including volumes (DELETES ALL DATA)
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Viewing Logs
 
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f web
-docker-compose logs -f db
+docker compose logs -f web
+docker compose logs -f db
 
 # Last 100 lines
-docker-compose logs --tail=100 web
+docker compose logs --tail=100 web
 ```
 
 ### Rebuilding
@@ -141,12 +157,22 @@ If you modify the Dockerfile or need to rebuild:
 
 ```bash
 # Rebuild and restart
-docker-compose up -d --build
+docker compose up -d --build
 
 # Force rebuild from scratch
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 ```
+
+### Applying `dev-php.ini` Changes
+
+For PHP/Xdebug setting changes in `dev-php.ini`, you usually do not need a rebuild:
+
+```bash
+make reload-php
+```
+
+Use a full rebuild only when changing image-level setup (for example, installing extensions or editing `Dockerfile`).
 
 ### WordPress Management
 
@@ -154,7 +180,7 @@ Use WP-CLI inside the container:
 
 ```bash
 # Enter the WordPress container
-docker-compose exec web bash
+docker compose exec web bash
 
 # Run WP-CLI commands (inside container)
 wp plugin list --allow-root
@@ -163,7 +189,7 @@ wp user list --allow-root
 wp db export /tmp/backup.sql --allow-root
 
 # Or run commands directly
-docker-compose exec web wp plugin list --allow-root
+docker compose exec web wp plugin list --allow-root
 ```
 
 ### Database Management
@@ -174,13 +200,13 @@ Access http://localhost:8082
 **Via command line:**
 ```bash
 # Enter MySQL shell
-docker-compose exec db mysql -u wordpress -pwordpress wordpress
+docker compose exec db mysql -u wordpress -pwordpress wordpress
 
 # Backup database
-docker-compose exec db mysqldump -u wordpress -pwordpress wordpress > backup.sql
+docker compose exec db mysqldump -u wordpress -pwordpress wordpress > backup.sql
 
 # Restore database
-docker-compose exec -T db mysql -u wordpress -pwordpress wordpress < backup.sql
+docker compose exec -T db mysql -u wordpress -pwordpress wordpress < backup.sql
 ```
 
 **Via external tools:**
@@ -207,7 +233,7 @@ Simply edit files in your local `ai-post-scheduler` directory and refresh your b
 
 ```bash
 # Enter the container
-docker-compose exec web bash
+docker compose exec web bash
 
 # Navigate to plugin directory
 cd /var/www/html/wp-content/plugins/ai-post-scheduler
@@ -223,7 +249,7 @@ composer test
 
 **Via WP-CLI:**
 ```bash
-docker-compose exec web wp plugin install plugin-name --activate --allow-root
+docker compose exec web wp plugin install plugin-name --activate --allow-root
 ```
 
 **Via WordPress Admin:**
@@ -244,17 +270,17 @@ The AI Post Scheduler plugin requires Meow Apps AI Engine. You need to install i
 
 1. **Check Xdebug is enabled:**
    ```bash
-   docker-compose exec web php -v | grep Xdebug
+   docker compose exec web php -v | grep Xdebug
    ```
 
 2. **View Xdebug log:**
    ```bash
-   docker-compose exec web cat /tmp/xdebug.log
+   docker compose exec web cat /tmp/xdebug.log
    ```
 
 3. **Verify Xdebug configuration:**
    ```bash
-   docker-compose exec web php -i | grep xdebug
+   docker compose exec web php -i | grep xdebug
    ```
 
 4. **Check firewall:** Ensure port 9003 is not blocked by your firewall
@@ -275,12 +301,14 @@ Xdebug can slow down your site. To disable temporarily:
 
 ```bash
 # Disable Xdebug
-docker-compose exec web rm /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-docker-compose restart web
+docker compose exec web rm /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+docker compose restart web
 
 # Re-enable Xdebug (rebuild container)
-docker-compose up -d --build web
+docker compose up -d --build web
 ```
+
+If you only changed Xdebug ini values in `dev-php.ini`, use `make reload-php` instead of rebuilding.
 
 ## Advanced Usage
 
@@ -288,18 +316,20 @@ docker-compose up -d --build web
 
 ```bash
 # Web container (WordPress/Apache)
-docker-compose exec web bash
+docker compose exec web bash
 
 # Database container
-docker-compose exec db bash
+docker compose exec db bash
 ```
 
 ### Custom PHP Configuration
 
-PHP settings are configured in the Dockerfile. To modify:
+PHP/Xdebug settings are managed in `dev-php.ini`. To modify:
 
-1. Edit `Dockerfile` (look for php.ini settings)
-2. Rebuild: `docker-compose up -d --build`
+1. Edit `dev-php.ini`
+2. Apply changes: `make reload-php`
+
+Only rebuild (`docker compose up -d --build`) when you change the image itself (`Dockerfile`, installed extensions, etc.).
 
 ### Adding Other Plugins for Development
 
@@ -316,13 +346,13 @@ To completely reset your development environment:
 
 ```bash
 # Stop and remove all containers, networks, and volumes
-docker-compose down -v
+docker compose down -v
 
 # Remove all WordPress files
 docker volume rm wp-ai-scheduler_wordpress_data_v2 wp-ai-scheduler_db_data_v2 wp-ai-scheduler_uploads_data
 
 # Start fresh
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Project Structure
@@ -335,6 +365,7 @@ docker-compose up -d
 ├── .vscode/                   # VS Code configuration
 │   └── launch.json           # Xdebug debugging config
 ├── Dockerfile                 # WordPress + Xdebug image
+├── dev-php.ini                # Editable PHP/Xdebug overrides (reload with make reload-php)
 ├── docker-compose.yml         # Service orchestration
 ├── docker-entrypoint.sh       # Container initialization script
 ├── healthcheck.sh            # Container health check
@@ -351,7 +382,7 @@ Data is stored in Docker named volumes:
 - `wordpress_data_v2`: WordPress core files
 - `uploads_data`: WordPress media uploads
 
-These volumes persist even when containers are stopped or removed (unless you use `docker-compose down -v`).
+These volumes persist even when containers are stopped or removed (unless you use `docker compose down -v`).
 
 ## Performance Tips
 
@@ -387,7 +418,7 @@ If you encounter permission issues:
 
 ```bash
 # Fix ownership of plugin files
-docker-compose exec web chown -R www-data:www-data /var/www/html/wp-content/plugins/ai-post-scheduler
+docker compose exec web chown -R www-data:www-data /var/www/html/wp-content/plugins/ai-post-scheduler
 ```
 
 ### Database Connection Errors
@@ -396,15 +427,15 @@ If WordPress can't connect to the database:
 
 1. Wait for the database to be ready (check logs: `docker-compose logs db`)
 2. Verify database credentials in `docker-compose.yml`
-3. Try restarting: `docker-compose restart`
+3. Try restarting: `docker compose restart`
 
 ### Container Won't Start
 
 Check logs for detailed error messages:
 
 ```bash
-docker-compose logs web
-docker-compose logs db
+docker compose logs web
+docker compose logs db
 ```
 
 ## Getting Help
@@ -420,7 +451,7 @@ When you're done with development and want to free up disk space:
 
 ```bash
 # Remove all containers and volumes for this project
-docker-compose down -v
+docker compose down -v
 
 # Clean up unused Docker resources (careful - affects all Docker projects)
 docker system prune -a --volumes

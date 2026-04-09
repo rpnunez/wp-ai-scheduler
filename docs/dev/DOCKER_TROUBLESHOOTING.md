@@ -213,21 +213,26 @@ docker-compose exec web cat /var/www/html/.htaccess
    docker-compose exec web php -i | grep xdebug
    ```
 
-3. **Verify Xdebug is trying to connect:**
+3. **If you changed Xdebug settings, apply `dev-php.ini` updates:**
+   ```bash
+   make reload-php
+   ```
+
+4. **Verify Xdebug is trying to connect:**
    ```bash
    docker-compose exec web cat /tmp/xdebug.log
    ```
 
-4. **Check firewall settings:**
+5. **Check firewall settings:**
    - Ensure port 9003 is not blocked
    - On Mac/Windows: Docker Desktop should handle this automatically
    - On Linux: Check UFW/iptables rules
 
-5. **Verify IDE configuration:**
+6. **Verify IDE configuration:**
    - VS Code: Check `.vscode/launch.json` path mappings
    - PhpStorm: Check PHP → Servers → Path mappings
 
-6. **Test with xdebug_break():**
+7. **Test with xdebug_break():**
    Add this line in your PHP code:
    ```php
    xdebug_break();
@@ -261,18 +266,25 @@ docker-compose exec web cat /var/www/html/.htaccess
 
 1. **Temporary disable Xdebug:**
    ```bash
-   docker-compose exec web mv /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini /tmp/
-   docker-compose restart web
+   # Edit dev-php.ini and set:
+   # xdebug.mode = off
+
+   make reload-php
    ```
 
 2. **Re-enable when needed:**
    ```bash
-   docker-compose exec web mv /tmp/docker-php-ext-xdebug.ini /usr/local/etc/php/conf.d/
-   docker-compose restart web
+   # Edit dev-php.ini and restore:
+   # xdebug.mode = develop,debug
+
+   make reload-php
    ```
 
 3. **Or configure Xdebug to only start when needed:**
-   Change `xdebug.start_with_request=yes` to `xdebug.start_with_request=trigger`
+   In `dev-php.ini`, change `xdebug.start_with_request=yes` to `xdebug.start_with_request=trigger`, then run:
+   ```bash
+   make reload-php
+   ```
 
 ### Xdebug log shows "Connection refused"
 
@@ -287,14 +299,16 @@ docker-compose exec web cat /var/www/html/.htaccess
      - "host.docker.internal:host-gateway"
    ```
 
-2. **For Linux:**
-   Find your host IP and update `XDEBUG_CLIENT_HOST` in `.env`:
+2. **For Linux (if `host.docker.internal` does not resolve):**
+   Find your host IP and update `xdebug.client_host` in `dev-php.ini`:
    ```bash
    # Get your host IP
    ip addr show docker0 | grep -Po 'inet \K[\d.]+'
    
-   # Update .env
-   XDEBUG_CLIENT_HOST=172.17.0.1  # Use your actual IP
+   # Then edit dev-php.ini:
+   # xdebug.client_host = 172.17.0.1  # Use your actual IP
+   # Apply config changes:
+   make reload-php
    ```
 
 ---
@@ -331,7 +345,7 @@ docker network inspect wp-ai-scheduler_wp-network
 docker-compose exec db mysql -u wordpress -pwordpress -e "USE wordpress; SHOW TABLES;"
 
 # Reinstall WordPress (creates tables)
-docker-compose exec web wp core install --url=http://localhost:8080 --title="WP Site" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --allow-root
+docker compose exec web wp core install --url=http://localhost:8080 --title="WP Site" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --allow-root
 
 # Or start completely fresh
 make install
@@ -423,7 +437,7 @@ docker-compose exec web wp db optimize --allow-root
 docker stats
 
 # Check for infinite loops in logs
-docker-compose logs --tail=100 web
+docker compose logs --tail=100 web
 
 # Restart services
 make restart
@@ -474,11 +488,11 @@ make restart
 docker network inspect wp-ai-scheduler_wp-network
 
 # Verify service names resolve
-docker-compose exec web ping -c 3 db
+docker compose exec web ping -c 3 db
 
 # Restart with network recreation
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ---
@@ -491,13 +505,13 @@ If you're still experiencing problems:
    ```bash
    # System info
    docker version
-   docker-compose version
+   docker compose version
    
    # Container status
-   docker-compose ps
+   docker compose ps
    
    # Logs
-   docker-compose logs > docker-logs.txt
+   docker compose logs > docker-logs.txt
    
    # Resource usage
    docker stats --no-stream
@@ -506,14 +520,14 @@ If you're still experiencing problems:
 2. **Try a clean restart:**
    ```bash
    # Stop everything
-   docker-compose down
+   docker compose down
    
    # Start fresh (keeps data)
-   docker-compose up -d --build
+   docker compose up -d --build
    
    # Or completely reset (DELETES DATA)
-   docker-compose down -v
-   docker-compose up -d --build
+   docker compose down -v
+   docker compose up -d --build
    ```
 
 3. **Check Docker Desktop settings:**
