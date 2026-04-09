@@ -78,12 +78,16 @@ class AIPS_Admin_Bar {
 			return;
 		}
 
-		$cache_key   = 'aips_unread_count_' . get_current_user_id();
-		$unread_count = wp_cache_get($cache_key, 'aips_admin_bar');
-		if (false === $unread_count) {
-			$unread_count = $this->repository->count_unread();
-			wp_cache_set($cache_key, $unread_count, 'aips_admin_bar');
-		}
+		$cache        = AIPS_Cache_Factory::instance();
+		$cache_key    = 'aips_unread_count_' . get_current_user_id();
+		$unread_count = $cache->remember(
+			$cache_key,
+			MINUTE_IN_SECONDS,
+			function() {
+				return $this->repository->count_unread();
+			},
+			'aips_admin_bar'
+		);
 
 		// ---------- Root node (icon + badge) ----------
 		$badge = '';
@@ -140,7 +144,7 @@ class AIPS_Admin_Bar {
 		}
 
 		// ---------- Notifications group ----------
-		$notifications = $this->repository->get_unread(20);
+		$notifications = ($unread_count > 0) ? $this->repository->get_unread(20) : array();
 
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-notifications',
@@ -230,8 +234,13 @@ class AIPS_Admin_Bar {
 		if (!$updated) {
 			wp_send_json_error(array('message' => __('Notification could not be updated or was already read.', 'ai-post-scheduler')));
 		}
+
+		$cache_key    = 'aips_unread_count_' . get_current_user_id();
+		$unread_count = $this->repository->count_unread();
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
+
 		wp_send_json_success(array(
-			'unread_count' => $this->repository->count_unread(),
+			'unread_count' => $unread_count,
 		));
 	}
 
@@ -246,7 +255,10 @@ class AIPS_Admin_Bar {
 		}
 
 		$result       = $this->repository->mark_all_as_read();
+
+		$cache_key    = 'aips_unread_count_' . get_current_user_id();
 		$unread_count = $this->repository->count_unread();
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
 		// If the repository reported a failure and there are still unread notifications, return an error.
 		if (false === $result && $unread_count > 0) {
