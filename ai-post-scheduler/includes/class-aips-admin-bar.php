@@ -20,16 +20,9 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Bar {
 
 	/**
-	 * @var AIPS_Notifications_Repository
-	 */
-	private $repository;
-
-	/**
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Notifications_Repository();
-
 		add_action('admin_bar_menu', array($this, 'add_toolbar_node'), 100);
 		add_action('wp_ajax_aips_mark_notification_read', array($this, 'ajax_mark_read'));
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
@@ -81,7 +74,7 @@ class AIPS_Admin_Bar {
 		$cache_key   = 'aips_unread_count_' . get_current_user_id();
 		$unread_count = wp_cache_get($cache_key, 'aips_admin_bar');
 		if (false === $unread_count) {
-			$unread_count = $this->repository->count_unread();
+			$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
 			wp_cache_set($cache_key, $unread_count, 'aips_admin_bar');
 		}
 
@@ -140,7 +133,7 @@ class AIPS_Admin_Bar {
 		}
 
 		// ---------- Notifications group ----------
-		$notifications = $this->repository->get_unread(20);
+		$notifications = AIPS_Notifications_Repository::instance()->get_unread(20);
 
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-notifications',
@@ -225,13 +218,13 @@ class AIPS_Admin_Bar {
 			wp_send_json_error(array('message' => __('Invalid notification ID.', 'ai-post-scheduler')));
 		}
 
-		$updated = $this->repository->mark_as_read($id);
+		$updated = AIPS_Notifications_Repository::instance()->mark_as_read($id);
 
 		if (!$updated) {
 			wp_send_json_error(array('message' => __('Notification could not be updated or was already read.', 'ai-post-scheduler')));
 		}
 		wp_send_json_success(array(
-			'unread_count' => $this->repository->count_unread(),
+			'unread_count' => AIPS_Notifications_Repository::instance()->count_unread(),
 		));
 	}
 
@@ -245,8 +238,8 @@ class AIPS_Admin_Bar {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$result       = $this->repository->mark_all_as_read();
-		$unread_count = $this->repository->count_unread();
+		$result       = AIPS_Notifications_Repository::instance()->mark_all_as_read();
+		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
 
 		// If the repository reported a failure and there are still unread notifications, return an error.
 		if (false === $result && $unread_count > 0) {
