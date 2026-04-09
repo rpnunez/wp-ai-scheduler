@@ -1,5 +1,24 @@
 # NunezScheduler Agent Journal
 
+## 2026-04-07 - Notifications Admin Page Implementation
+**Target Feature:** Notifications
+**Improvement:** Implemented a full Notifications admin page providing complete visibility and control over all system notifications stored in the `aips_notifications` DB table. Previously, notifications were only surfaced via the admin bar dropdown (limited to a few recent unread items) with no way to browse history, filter by type/level/read-status, or perform bulk operations. The new page delivers:
+- **Paginated list** with live filtering by level (info/warning/error), notification type, read status, and free-text search
+- **Bulk actions**: Mark as Read, Mark as Unread, Archive (Delete)
+- **Summary stats bar**: total, unread, error, and warning counts always visible
+- **Per-row View button** opening a modal with full message, type/date/status metadata, and a **Smart Linker** — contextual buttons auto-rendered from the notification `meta` JSON (View Post, View Author Topics, View History, View Template, View Schedule, View Topic)
+- **Mark All as Read** one-click header action
+- **Repository enhancements**: `get_paginated()`, `get_summary_counts()`, `mark_as_unread()`, `delete_notification()`, `bulk_mark_as_read()`, `bulk_mark_as_unread()`, `bulk_delete()` — all SQL contained in the repository layer
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-notifications-repository.php` — Added 7 new repository methods
+- `ai-post-scheduler/includes/class-aips-notifications-controller.php` *(new)* — 6 AJAX endpoints following the established controller pattern
+- `ai-post-scheduler/includes/class-aips-admin-menu.php` — Registered `aips-notifications` submenu + render method
+- `ai-post-scheduler/templates/admin/notifications.php` *(new)* — Full admin page template with filter bar, table, modal, and JS templates
+- `ai-post-scheduler/assets/js/admin-notifications.js` *(new)* — `AIPS.Notifications` module with all handlers, smart linker, debounced search
+- `ai-post-scheduler/includes/class-aips-admin-assets.php` — Enqueues notifications JS with full `aipsNotificationsData` localised object
+- `ai-post-scheduler/ai-post-scheduler.php` — Instantiates `AIPS_Notifications_Controller` in admin bootstrap
+**Outcome:** Admins can now browse the full notification history in a familiar WP list-table layout, instantly filter to error-level notifications, bulk-archive read items, and jump directly from any notification to the relevant entity (post, author, history entry, template, or schedule) via smart context buttons — reducing diagnostic time and improving operational visibility.
+
 ## 2026-02-20 - Template-to-Schedule Flow Optimization
 **Target Feature:** Template Wizard / Scheduling Bridge
 **Improvement:** Eliminated the context-breaking page reload after template save and added a seamless bridge to the Scheduling feature. Previously, saving a template triggered `location.reload()`, forcing users to manually navigate to the Schedules page, locate their template in a dropdown, and create a schedule — a 4+ step detour. Now, saving a template presents a "Next Steps" panel offering one-click Schedule, Run Now, or Done actions. A direct "Schedule" button was also added to each template row in the listing. Additionally, the schedule page detects a `?schedule_template=` query param to auto-open the modal pre-filled.

@@ -1,0 +1,270 @@
+/**
+ * Notifications admin page styles.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+#aips-notifications-panel .aips-filter-left,
+#aips-notifications-panel .aips-filter-right {
+	align-items: center;
+}
+
+#aips-notifications-panel #aips-notifications-select-all,
+.aips-notifications-table .check-column input[type="checkbox"] {
+	margin: 0;
+	vertical-align: middle;
+}
+
+#aips-notifications-panel .aips-bulk-action-select,
+#aips-notifications-panel #aips-level-filter,
+#aips-notifications-panel #aips-type-filter,
+#aips-notifications-panel #aips-read-filter {
+	width: auto;
+	min-width: 110px;
+}
+
+#aips-notifications-panel .aips-notifications-search {
+	width: 220px;
+}
+
+#aips-notifications-panel .aips-notifications-filter-right {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.aips-notifications-loading {
+	display: none;
+	text-align: center;
+	padding: 40px;
+}
+
+#aips-view-notification-modal {
+	display: none;
+}
+
+.aips-notifications-loading-icon {
+	font-size: 32px;
+	width: 32px;
+	height: 32px;
+}
+
+.aips-notifications-table thead .check-column,
+.aips-notifications-table tbody .check-column {
+	width: 36px;
+	padding-left: 12px;
+	padding-right: 8px;
+}
+
+.aips-notifications-table thead .column-date,
+.aips-notifications-table tbody .column-date {
+	width: 190px;
+}
+
+.aips-notifications-table thead .column-status,
+.aips-notifications-table tbody .column-status {
+	width: 90px;
+}
+
+.aips-notifications-table thead .column-actions,
+.aips-notifications-table tbody .column-actions {
+	width: 90px;
+}
+
+.aips-notifications-table .column-title {
+	min-width: 320px;
+}
+
+.aips-notification-type-heading {
+	margin: 0 0 4px;
+	font-size: 14px;
+	line-height: 1.35;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.aips-notification-title {
+	display: block;
+	line-height: 1.35;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.aips-notification-title-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.aips-notification-level-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.aips-notification-level-info {
+	background: rgba(34, 113, 177, 0.12);
+	color: #2271b1;
+}
+
+.aips-notification-level-warning {
+	background: rgba(219, 166, 23, 0.14);
+	color: #8a5f00;
+}
+
+.aips-notification-level-error {
+	background: rgba(214, 54, 56, 0.14);
+	color: #b32d2e;
+}
+
+.aips-notification-message-preview {
+	font-size: 12px;
+	color: #646970;
+}
+
+.aips-notifications-table tbody tr.aips-notification-unread td {
+	background: #f5f9ff;
+}
+
+.aips-notifications-table tbody tr.aips-notification-unread td:first-child {
+	box-shadow: inset 4px 0 0 #2271b1;
+}
+
+.aips-notification-unread .aips-notification-type-heading,
+.aips-notification-unread .aips-notification-title {
+	color: #1d2327;
+}
+
+.aips-notification-unread .aips-notification-message-preview {
+	color: #3c434a;
+}
+
+.aips-notifications-stats {
+	display: flex;
+	gap: 16px;
+	padding: 14px 20px;
+	border-top: 1px solid #eee;
+	flex-wrap: wrap;
+	background: #fafafa;
+}
+
+.aips-notifications-stats .aips-stat-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.aips-notifications-stats .aips-stat-item-unread {
+	color: #2271b1;
+}
+
+.aips-notifications-stats .aips-stat-item-errors {
+	color: #d63638;
+}
+
+.aips-notifications-stats .aips-stat-item-warnings {
+	color: #d97706;
+}
+
+.aips-notifications-load-error {
+	padding: 20px;
+	color: #d63638;
+	margin: 0;
+}
+
+.aips-notifications-page-current {
+	cursor: default;
+}
+
+.aips-notification-modal-body {
+	padding: 0 24px 8px;
+}
+
+.aips-notification-modal-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid #eee;
+}
+
+.aips-notification-modal-title {
+	margin: 0;
+	flex: 1;
+}
+
+.aips-notification-modal-message-wrap {
+	margin-bottom: 16px;
+}
+
+.aips-notification-modal-message {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #333;
+	margin: 0;
+}
+
+.aips-notification-meta-grid {
+	display: grid;
+	grid-template-columns: 120px 1fr;
+	gap: 8px 12px;
+	font-size: 13px;
+	margin-bottom: 16px;
+}
+
+.aips-notification-smart-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 12px 0;
+	border-top: 1px solid #f0f0f0;
+}
+
+.aips-notification-modal-footer {
+	padding: 16px 24px;
+	border-top: 1px solid #eee;
+	display: flex;
+	gap: 8px;
+}
+
+.aips-notifications-empty {
+	padding: 40px;
+	text-align: center;
+	color: #666;
+}
+
+.aips-notifications-empty-icon {
+	font-size: 40px;
+	width: 40px;
+	height: 40px;
+	color: #ccc;
+}
+
+.aips-notifications-empty-message {
+	margin-top: 12px;
+	font-size: 15px;
+}
+
+.aips-notifications-tablenav {
+	padding: 8px 16px;
+}
+
+@media screen and (max-width: 900px) {
+	#aips-notifications-panel .aips-notifications-search {
+		width: 100%;
+		min-width: 0;
+	}
+
+	#aips-notifications-panel .aips-notifications-filter-right {
+		width: 100%;
+		margin-left: 0;
+	}
+}

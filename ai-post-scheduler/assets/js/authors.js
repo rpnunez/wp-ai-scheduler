@@ -265,7 +265,7 @@
 			this.currentAuthorId = authorId;
 
 			// Show loading
-			$('#aips-author-modal-title').text(aipsAuthorsL10n.loading);
+			$('#aips-author-modal-title').text(aipsGlobalL10n.loading);
 			$('#aips-author-modal').fadeIn();
 
 			// Load author data
@@ -349,7 +349,7 @@
 			const formData = $form.serialize();
 
 			// Disable submit button
-			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
+			AIPS.Utilities.setButtonLoading($submitBtn, aipsGlobalL10n.saving);
 
 			$.ajax({
 				url: ajaxurl,
@@ -441,7 +441,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsGlobalL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -654,7 +654,7 @@
 				if (status === 'pending') {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
 						id: topic.id,
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						editLabel: AIPS.Templates.escape(aipsGlobalL10n.edit),
 						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
 						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
 					});
@@ -662,12 +662,12 @@
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
 						id: topic.id,
 						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+						editLabel: AIPS.Templates.escape(aipsGlobalL10n.edit)
 					});
 				} else {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
 						id: topic.id,
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+						editLabel: AIPS.Templates.escape(aipsGlobalL10n.edit)
 					});
 				}
 
@@ -907,18 +907,11 @@
 				d.getMonth() === yesterday.getMonth() &&
 				d.getDate() === yesterday.getDate();
 
-			// Use localized strings from aipsAuthorsL10n when available.
-			var l10n        = (typeof aipsAuthorsL10n !== 'undefined') ? aipsAuthorsL10n : {};
-			var labelToday  = l10n.dateToday     || 'Today';
-			var labelYday   = l10n.dateYesterday || 'Yesterday';
-			var labelAM     = l10n.dateAM        || 'am';
-			var labelPM     = l10n.datePM        || 'pm';
-			var monthNames  = (l10n.dateMonthNames && l10n.dateMonthNames.length === 12)
-				? l10n.dateMonthNames
-				: [
-					'January', 'February', 'March', 'April', 'May', 'June',
-					'July', 'August', 'September', 'October', 'November', 'December'
-				];
+			var labelToday  = aipsGlobalL10n.today;
+			var labelYday   = aipsGlobalL10n.yesterday;
+			var labelAM     = aipsGlobalL10n.am;
+			var labelPM     = aipsGlobalL10n.pm;
+			var monthNames  = aipsGlobalL10n.monthNames;
 
 			var hours12    = d.getHours() % 12 || 12;
 			var minutesStr = minute < 10 ? '0' + minute : String(minute);
@@ -1057,17 +1050,17 @@
 					// Pending Review tab: Approve, Reject, Delete
 					$dropdown.append('<option value="approve">' + (aipsAuthorsL10n.approve || 'Approve') + '</option>');
 					$dropdown.append('<option value="reject">' + (aipsAuthorsL10n.reject || 'Reject') + '</option>');
-					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+					$dropdown.append('<option value="delete">' + aipsGlobalL10n.delete + '</option>');
 				} else if (status === 'approved' || status === 'posts_generated') {
 					// Approved tab: Generate Now, Delete (no Approve)
 					$dropdown.append('<option value="generate_now">' + (aipsAuthorsL10n.generateNow || 'Generate Now') + '</option>');
-					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+					$dropdown.append('<option value="delete">' + aipsGlobalL10n.delete + '</option>');
 				} else if (status === 'rejected') {
 					// Rejected tab: Delete only (no Reject, no Generate Now)
-					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+					$dropdown.append('<option value="delete">' + aipsGlobalL10n.delete + '</option>');
 				} else if (status === 'feedback') {
 					// Feedback tab: Delete only (no Approve, Generate Now, or Reject)
-					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+					$dropdown.append('<option value="delete">' + aipsGlobalL10n.delete + '</option>');
 				}
 			});
 		},
@@ -1279,7 +1272,7 @@
 				return;
 			}
 
-			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loading + '</p>');
+			$('#aips-topics-content').html('<p>' + aipsGlobalL10n.loading + '</p>');
 
 			$.ajax({
 				url: ajaxurl,
@@ -1414,8 +1407,8 @@
 
 			$btn.hide();
 			$row.find('.topic-actions').append(
-				'<button class="button aips-save-topic">' + aipsAuthorsL10n.save + '</button> ' +
-				'<button class="button aips-cancel-edit-topic">' + aipsAuthorsL10n.cancel + '</button>'
+				'<button class="button aips-save-topic">' + aipsGlobalL10n.save + '</button> ' +
+				'<button class="button aips-cancel-edit-topic">' + aipsGlobalL10n.cancel + '</button>'
 			);
 		},
 
@@ -1501,7 +1494,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
+						AIPS.Utilities.setButtonLoading($btn, aipsGlobalL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
@@ -2689,7 +2682,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
+						AIPS.Utilities.setButtonLoading($button, aipsGlobalL10n.generating);
 
 						$.ajax({
 							url: ajaxurl,
