@@ -67,7 +67,7 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_delete_topics'         => 'AIPS_Author_Topics_Controller',
 		'aips_bulk_generate_topics'       => 'AIPS_Author_Topics_Controller',
 		'aips_bulk_delete_feedback'       => 'AIPS_Author_Topics_Controller',
-		'aips_regenerate_post'            => 'AIPS_Author_Topics_Controller',
+		'aips_regenerate_post'            => 'AIPS_Post_Review',
 		'aips_delete_generated_post'      => 'AIPS_Author_Topics_Controller',
 		'aips_get_similar_topics'         => 'AIPS_Author_Topics_Controller',
 		'aips_suggest_related_topics'     => 'AIPS_Author_Topics_Controller',

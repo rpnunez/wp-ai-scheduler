@@ -188,10 +188,10 @@ class AIPS_Onboarding_Wizard {
 
 	private function ajax_guard() {
 		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
-			AIPS_Ajax_Response::error( array( 'message' => __( 'Permission denied.', 'ai-post-scheduler' ) ), 403 );
+			AIPS_Ajax_Response::permission_denied();
 		}
 		if ( ! current_user_can( 'manage_options' ) ) {
-			AIPS_Ajax_Response::error( array( 'message' => __( 'Permission denied.', 'ai-post-scheduler' ) ), 403 );
+			AIPS_Ajax_Response::permission_denied();
 		}
 	}
 
@@ -257,7 +257,7 @@ class AIPS_Onboarding_Wizard {
 		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field(wp_unslash($_POST['field_niche'])) : '';
 
 		if ($name === '' || $field_niche === '') {
-			AIPS_Ajax_Response::error(array('message' => __('Name and Field/Niche are required.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('Name and Field/Niche are required.', 'ai-post-scheduler'));
 		}
 
 		$now = current_time('mysql');
@@ -286,7 +286,7 @@ class AIPS_Onboarding_Wizard {
 		$author_id = $repo->create($data);
 
 		if (!$author_id) {
-			AIPS_Ajax_Response::error(array('message' => __('Failed to create author.', 'ai-post-scheduler')), 500);
+			AIPS_Ajax_Response::error(array('message' => __('Failed to create author.', 'ai-post-scheduler')), 'error', 500);
 		}
 
 		$this->update_state(array('author_id' => (int) $author_id));
@@ -314,7 +314,7 @@ class AIPS_Onboarding_Wizard {
 		$prompt_template = isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '';
 
 		if ($name === '' || $prompt_template === '') {
-			AIPS_Ajax_Response::error(array('message' => __('Template name and Content Prompt are required.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('Template name and Content Prompt are required.', 'ai-post-scheduler'));
 		}
 
 		$data = array(
@@ -334,7 +334,7 @@ class AIPS_Onboarding_Wizard {
 		$template_id = $repo->create($data);
 
 		if (!$template_id) {
-			AIPS_Ajax_Response::error(array('message' => __('Failed to create template.', 'ai-post-scheduler')), 500);
+			AIPS_Ajax_Response::error(array('message' => __('Failed to create template.', 'ai-post-scheduler')), 'error', 500);
 		}
 
 		$this->update_state(array('template_id' => (int) $template_id));
@@ -351,26 +351,26 @@ class AIPS_Onboarding_Wizard {
 		$this->ajax_guard();
 
 		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::error(array('message' => __('AI Engine is not active. Install/activate it before generating topics.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating topics.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();
 		$author_id = !empty($state['author_id']) ? (int) $state['author_id'] : 0;
 		if (!$author_id) {
-			AIPS_Ajax_Response::error(array('message' => __('Create an Author first.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('Create an Author first.', 'ai-post-scheduler'));
 		}
 
 		$authors_repo = new AIPS_Authors_Repository();
 		$author = $authors_repo->get_by_id($author_id);
 		if (!$author) {
-			AIPS_Ajax_Response::error(array('message' => __('Author not found. Please restart the wizard.', 'ai-post-scheduler')), 404);
+			AIPS_Ajax_Response::error(__('Author not found. Please restart the wizard.', 'ai-post-scheduler'), 'not_found', 404);
 		}
 
 		$generator = new AIPS_Author_Topics_Generator();
 		$result = $generator->generate_topics($author);
 
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()), 500);
+			AIPS_Ajax_Response::error($result->get_error_message(), 'error', 500);
 		}
 
 		$first_topic = '';
@@ -410,13 +410,13 @@ class AIPS_Onboarding_Wizard {
 		$this->ajax_guard();
 
 		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::error(array('message' => __('AI Engine is not active. Install/activate it before generating a post.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating a post.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();
 		$template_id = !empty($state['template_id']) ? (int) $state['template_id'] : 0;
 		if (!$template_id) {
-			AIPS_Ajax_Response::error(array('message' => __('Create a Template first.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('Create a Template first.', 'ai-post-scheduler'));
 		}
 
 		$topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
@@ -425,20 +425,20 @@ class AIPS_Onboarding_Wizard {
 		}
 
 		if ($topic === '') {
-			AIPS_Ajax_Response::error(array('message' => __('Generate topics (or enter a topic) first.', 'ai-post-scheduler')), 400);
+			AIPS_Ajax_Response::invalid_request(__('Generate topics (or enter a topic) first.', 'ai-post-scheduler'));
 		}
 
 		$templates_repo = new AIPS_Template_Repository();
 		$template = $templates_repo->get_by_id($template_id);
 		if (!$template) {
-			AIPS_Ajax_Response::error(array('message' => __('Template not found. Please restart the wizard.', 'ai-post-scheduler')), 404);
+			AIPS_Ajax_Response::error(__('Template not found. Please restart the wizard.', 'ai-post-scheduler'), 'not_found', 404);
 		}
 
 		$generator = new AIPS_Generator();
 		$post_id = $generator->generate_post($template, null, $topic);
 
 		if (is_wp_error($post_id)) {
-			AIPS_Ajax_Response::error(array('message' => $post_id->get_error_message()), 500);
+			AIPS_Ajax_Response::error($post_id->get_error_message(), 'error', 500);
 		}
 
 		$post_id = (int) $post_id;
