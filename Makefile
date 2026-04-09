@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow sync-wp-core
 
 # Default target
 .DEFAULT_GOAL := help
@@ -26,7 +26,7 @@ help: ## Show this help message
 
 up: ## Start all services
 	@echo "$(GREEN)Starting Docker services...$(NC)"
-	docker-compose up -d
+	docker compose up -d
 	@echo "$(GREEN)Services started!$(NC)"
 	@echo "WordPress: $(BLUE)http://localhost:8080$(NC)"
 	@echo "phpMyAdmin: $(BLUE)http://localhost:8082$(NC)"
@@ -34,77 +34,82 @@ up: ## Start all services
 
 build: ## Build Docker images
 	@echo "$(YELLOW)Building Docker images...$(NC)"
-	docker-compose build
+	docker compose build
 
 down: ## Stop and remove containers (keeps volumes)
 	@echo "$(YELLOW)Stopping services...$(NC)"
-	docker-compose down
+	docker compose down
 	@echo "$(GREEN)Services stopped. Data volumes preserved.$(NC)"
 
 stop: ## Stop services without removing containers
 	@echo "$(YELLOW)Stopping services...$(NC)"
-	docker-compose stop
+	docker compose stop
 	@echo "$(GREEN)Services stopped.$(NC)"
 
 start: ## Start existing containers
 	@echo "$(GREEN)Starting services...$(NC)"
-	docker-compose start
+	docker compose start
 
 restart: ## Restart all services
 	@echo "$(YELLOW)Restarting services...$(NC)"
-	docker-compose restart
+	docker compose restart
 	@echo "$(GREEN)Services restarted!$(NC)"
+
+reload-php: ## Reload Apache/PHP in web container (applies dev-php.ini changes)
+	@echo "$(BLUE)Reloading Apache in web container...$(NC)"
+	bash ./scripts/reload-php.sh
+	@echo "$(GREEN)Apache reloaded; PHP/Xdebug ini changes applied.$(NC)"
 
 rebuild: ## Rebuild and restart services
 	@echo "$(YELLOW)Rebuilding and restarting...$(NC)"
-	docker-compose up -d --build
+	docker compose up -d --build
 	@echo "$(GREEN)Rebuild complete!$(NC)"
 
 logs: ## View logs from all services
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-web: ## View WordPress logs only
-	docker-compose logs -f web
+	docker compose logs -f web
 
 logs-db: ## View database logs only
-	docker-compose logs -f db
+	docker compose logs -f db
 
 shell: ## Open bash shell in WordPress container
 	@echo "$(BLUE)Opening WordPress container shell...$(NC)"
-	docker-compose exec web bash
+	docker compose exec web bash
 
 wp-shell: ## Open WP-CLI shell
 	@echo "$(BLUE)Opening WP-CLI shell...$(NC)"
-	docker-compose exec web wp shell --allow-root
+	docker compose exec web wp shell --allow-root
 
 db-shell: ## Open MySQL shell
 	@echo "$(BLUE)Opening MySQL shell...$(NC)"
-	docker-compose exec db mysql -u wordpress -pwordpress wordpress
+	docker compose exec db mysql -u wordpress -pwordpress wordpress
 
 status: ## Show status of all services
 	@echo "$(BLUE)Docker Services Status:$(NC)"
-	docker-compose ps
+	docker compose ps
 
 info: ## Show WordPress and plugin info
 	@echo "$(BLUE)WordPress Information:$(NC)"
-	@docker-compose exec web wp core version --allow-root 2>/dev/null || echo "WordPress not ready"
+	@docker compose exec web wp core version --allow-root 2>/dev/null || echo "WordPress not ready"
 	@echo ""
 	@echo "$(BLUE)Installed Plugins:$(NC)"
-	@docker-compose exec web wp plugin list --allow-root 2>/dev/null || echo "WordPress not ready"
+	@docker compose exec web wp plugin list --allow-root 2>/dev/null || echo "WordPress not ready"
 	@echo ""
 	@echo "$(BLUE)Xdebug Status:$(NC)"
-	@docker-compose exec web php -v | grep -i xdebug || echo "Xdebug not detected"
+	@docker compose exec web php -v | grep -i xdebug || echo "Xdebug not detected"
 
 install: ## Install/reinstall WordPress
 	@echo "$(YELLOW)Reinstalling WordPress...$(NC)"
-	docker-compose down -v
-	docker-compose up -d
+	docker compose down -v
+	docker compose up -d
 	@echo "$(GREEN)WordPress reinstalled!$(NC)"
 
 clean: ## Remove all containers and volumes (DELETES ALL DATA)
 	@echo "$(RED)WARNING: This will delete all data!$(NC)"
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	docker-compose down -v
+	docker compose down -v
 	@echo "$(GREEN)Cleanup complete!$(NC)"
 
 prune: ## Clean up unused Docker resources
@@ -114,49 +119,53 @@ prune: ## Clean up unused Docker resources
 
 plugin-activate: ## Activate the AI Post Scheduler plugin
 	@echo "$(GREEN)Activating plugin...$(NC)"
-	docker-compose exec web wp plugin activate ai-post-scheduler --allow-root
+	docker compose exec web wp plugin activate ai-post-scheduler --allow-root
 
 plugin-deactivate: ## Deactivate the AI Post Scheduler plugin
 	@echo "$(YELLOW)Deactivating plugin...$(NC)"
-	docker-compose exec web wp plugin deactivate ai-post-scheduler --allow-root
+	docker compose exec web wp plugin deactivate ai-post-scheduler --allow-root
 
 plugin-list: ## List all installed plugins
 	@echo "$(BLUE)Installed Plugins:$(NC)"
-	docker-compose exec web wp plugin list --allow-root
+	docker compose exec web wp plugin list --allow-root
 
 test: ## Run plugin tests
 	@echo "$(BLUE)Running tests...$(NC)"
-	docker-compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test"
+	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test"
 
 test-verbose: ## Run plugin tests with verbose output
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"
-	docker-compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test:verbose"
+	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test:verbose"
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"
-	docker-compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer install"
+	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer install"
 
 composer-update: ## Update Composer dependencies in plugin
 	@echo "$(YELLOW)Updating Composer dependencies...$(NC)"
-	docker-compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer update"
+	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer update"
 
 db-backup: ## Backup database to backup.sql
 	@echo "$(BLUE)Backing up database...$(NC)"
-	docker-compose exec db mysqldump -u wordpress -pwordpress wordpress > backup.sql
+	docker compose exec db mysqldump -u wordpress -pwordpress wordpress > backup.sql
 	@echo "$(GREEN)Database backed up to backup.sql$(NC)"
 
 db-restore: ## Restore database from backup.sql
 	@echo "$(YELLOW)Restoring database...$(NC)"
-	docker-compose exec -T db mysql -u wordpress -pwordpress wordpress < backup.sql
+	docker compose exec -T db mysql -u wordpress -pwordpress wordpress < backup.sql
 	@echo "$(GREEN)Database restored!$(NC)"
 
 xdebug-log: ## View Xdebug log
 	@echo "$(BLUE)Xdebug Log:$(NC)"
-	@docker-compose exec web cat /tmp/xdebug.log 2>/dev/null || echo "No Xdebug log found"
+	@docker compose exec web cat /tmp/xdebug.log 2>/dev/null || echo "No Xdebug log found"
+
+xdebug-log-follow: ## Follow Xdebug log (Git Bash-safe wrapper)
+	@echo "$(BLUE)Following Xdebug log...$(NC)"
+	bash ./scripts/xdebug-log.sh
 
 xdebug-status: ## Check Xdebug configuration
 	@echo "$(BLUE)Xdebug Configuration:$(NC)"
-	@docker-compose exec web php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request"
+	@docker compose exec web php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request"
 
 urls: ## Display all service URLs
 	@echo "$(BLUE)Service URLs:$(NC)"
@@ -170,3 +179,8 @@ urls: ## Display all service URLs
 	@echo "User:     wordpress"
 	@echo "Password: wordpress"
 	@echo "Database: wordpress"
+
+sync-wp-core: ## Sync /var/www/html from web container into ./.docker/wp-html for IDE path mappings
+	@echo "$(BLUE)Syncing WordPress files from container...$(NC)"
+	bash ./scripts/sync-wp-core.sh
+	@echo "$(GREEN)Sync complete.$(NC)"

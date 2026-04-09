@@ -43,3 +43,7 @@ backup.sql
 # Data directories
 data/
 wordpress/
+
+# IDE path-mapping mirror — populated by `make sync-wp-core`, never committed
+.docker/wp-html/*
+!.docker/wp-html/.gitkeep
