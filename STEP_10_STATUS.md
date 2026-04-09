@@ -1,7 +1,15 @@
 # Step 10 — Per-Request Config Cache Status
 
 ## Issue Summary
-The issue requested adding a per-request config cache to `AIPS_Config::get_option()` to avoid repeated `get_option()` + `unserialize` calls for the same key within a single request.
+
+The issue requested adding a per-request config cache to `AIPS_Config::get_option()` to reduce
+redundant wrapper overhead (sentinel/default resolution, WordPress filter traversal) for repeated
+reads of the same key within a single request.
+
+**This step involved two changes:**
+1. **Behavior-preserving refactor** — migrated the per-request cache from a plain PHP array to the
+   native `AIPS_Cache` framework (PR #1259), using a named Array-driver instance.
+2. **Documentation** — this status file describing the implementation and design rationale.
 
 ## Current Status: ✅ COMPLETE — Using Native Cache Framework
 
