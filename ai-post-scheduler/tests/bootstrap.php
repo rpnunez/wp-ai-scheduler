@@ -500,6 +500,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             $post = new stdClass();
             $post->ID = $post_id ? $post_id : 1;
             $post->post_title = 'Test Post';
+            $post->post_excerpt = '';
+            $post->post_content = '';
             $post->post_status = 'draft';
             $post->post_type = 'post';
             return clone $post;
@@ -532,6 +534,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('get_permalink')) {
         function get_permalink($post = 0, $leavename = false) {
             return 'http://example.com/?p=' . $post;
+        }
+    }
+
+    if (!function_exists('get_post_thumbnail_id')) {
+        function get_post_thumbnail_id($post = null) {
+            global $aips_test_meta;
+            $post_id = is_object($post) ? $post->ID : absint($post);
+            if (isset($aips_test_meta[$post_id]['_thumbnail_id'])) {
+                return $aips_test_meta[$post_id]['_thumbnail_id'];
+            }
+            return 0;
         }
     }
 
@@ -584,6 +597,60 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
             $aips_test_meta[$post_id][$meta_key] = $meta_value;
             return true;
+        }
+    }
+
+    if (!function_exists('get_post_meta')) {
+        function get_post_meta($post_id, $key = '', $single = false) {
+            global $aips_test_meta;
+
+            if ('' === $key) {
+                return isset($aips_test_meta[$post_id]) ? $aips_test_meta[$post_id] : array();
+            }
+
+            if (!isset($aips_test_meta[$post_id][$key])) {
+                return $single ? '' : array();
+            }
+
+            return $single ? $aips_test_meta[$post_id][$key] : array($aips_test_meta[$post_id][$key]);
+        }
+    }
+
+    if (!function_exists('metadata_exists')) {
+        function metadata_exists($meta_type, $object_id, $meta_key) {
+            global $aips_test_meta;
+
+            if ('post' !== $meta_type) {
+                return false;
+            }
+
+            return isset($aips_test_meta[$object_id][$meta_key]);
+        }
+    }
+
+    if (!function_exists('wp_is_post_revision')) {
+        /**
+         * Stub for wp_is_post_revision().
+         *
+         * Always returns false in the limited test environment. Tests that need
+         * to exercise the revision early-return guard should use the full
+         * WordPress test library instead of this fallback stub.
+         */
+        function wp_is_post_revision($post) {
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_is_post_autosave')) {
+        /**
+         * Stub for wp_is_post_autosave().
+         *
+         * Always returns false in the limited test environment. Tests that need
+         * to exercise the autosave early-return guard should use the full
+         * WordPress test library instead of this fallback stub.
+         */
+        function wp_is_post_autosave($post) {
+            return false;
         }
     }
     
@@ -657,6 +724,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     'actions' => array(),
                     'filters' => array(),
                 );
+
+                // Clear test post meta to avoid cross-test pollution.
+                $GLOBALS['aips_test_meta'] = array();
 
                 // Flush the AIPS_Config option cache so stale values don't leak
                 // across tests.  Re-register the cache-invalidation hooks on the
