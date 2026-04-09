@@ -74,14 +74,14 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$taxonomy_type = isset($_POST['taxonomy_type']) ? sanitize_text_field(wp_unslash($_POST['taxonomy_type'])) : '';
 		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
 
 		if (empty($taxonomy_type)) {
-			wp_send_json_error(array('message' => __('Taxonomy type is required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Taxonomy type is required.', 'ai-post-scheduler'));
 		}
 
 		if (!empty($status)) {
@@ -90,7 +90,7 @@ class AIPS_Taxonomy_Controller {
 			$items = $this->repository->get_by_type($taxonomy_type);
 		}
 
-		wp_send_json_success($this->build_items_response($items));
+		AIPS_Ajax_Response::success($this->build_items_response($items));
 	}
 
 	/**
@@ -100,7 +100,7 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$taxonomy_type     = isset($_POST['taxonomy_type']) ? sanitize_key(wp_unslash($_POST['taxonomy_type'])) : '';
@@ -110,15 +110,15 @@ class AIPS_Taxonomy_Controller {
 		$allowed_taxonomies = array('category', 'post_tag');
 
 		if (empty($taxonomy_type)) {
-			wp_send_json_error(array('message' => __('Taxonomy type is required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Taxonomy type is required.', 'ai-post-scheduler'));
 		}
 
 		if (!in_array($taxonomy_type, $allowed_taxonomies, true)) {
-			wp_send_json_error(array('message' => __('Invalid taxonomy type. Allowed values: category, post_tag.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid taxonomy type. Allowed values: category, post_tag.', 'ai-post-scheduler'));
 		}
 
 		if (empty($base_post_ids)) {
-			wp_send_json_error(array('message' => __('At least one base post is required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('At least one base post is required.', 'ai-post-scheduler'));
 		}
 
 		// Create history container for taxonomy generation
@@ -146,7 +146,7 @@ class AIPS_Taxonomy_Controller {
 				$result
 			);
 			$history->complete_failure($result->get_error_message(), array('taxonomy_type' => $taxonomy_type));
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
 		$history->record('activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(
@@ -155,7 +155,7 @@ class AIPS_Taxonomy_Controller {
 		));
 		$history->complete_success(array('taxonomy_type' => $taxonomy_type, 'generated_count' => count($result)));
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('%d taxonomy items generated successfully.', 'ai-post-scheduler'), count($result)),
 			'items' => $result,
 			'stats' => $this->get_stats_payload(),
@@ -329,13 +329,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_id = isset($_POST['item_id']) ? absint($_POST['item_id']) : 0;
 
 		if (!$item_id) {
-			wp_send_json_error(array('message' => __('Invalid item ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid item ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->repository->update_status($item_id, 'approved');
@@ -357,9 +357,9 @@ class AIPS_Taxonomy_Controller {
 				);
 			}
 
-			wp_send_json_success(array('message' => __('Item approved successfully.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::success(array(), __('Item approved successfully.', 'ai-post-scheduler'));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to approve item.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to approve item.', 'ai-post-scheduler'));
 		}
 	}
 
@@ -370,13 +370,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_id = isset($_POST['item_id']) ? absint($_POST['item_id']) : 0;
 
 		if (!$item_id) {
-			wp_send_json_error(array('message' => __('Invalid item ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid item ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->repository->update_status($item_id, 'rejected');
@@ -398,9 +398,9 @@ class AIPS_Taxonomy_Controller {
 				);
 			}
 
-			wp_send_json_success(array('message' => __('Item rejected successfully.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::success(array(), __('Item rejected successfully.', 'ai-post-scheduler'));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to reject item.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to reject item.', 'ai-post-scheduler'));
 		}
 	}
 
@@ -411,21 +411,21 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_id = isset($_POST['item_id']) ? absint($_POST['item_id']) : 0;
 
 		if (!$item_id) {
-			wp_send_json_error(array('message' => __('Invalid item ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid item ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->repository->delete($item_id);
 
 		if ($result) {
-			wp_send_json_success(array('message' => __('Item deleted successfully.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::success(array(), __('Item deleted successfully.', 'ai-post-scheduler'));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to delete item.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to delete item.', 'ai-post-scheduler'));
 		}
 	}
 
@@ -436,13 +436,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
 
 		if (empty($item_ids)) {
-			wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
 		}
 
 		$success_count = 0;
@@ -461,7 +461,7 @@ class AIPS_Taxonomy_Controller {
 			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message'       => $message,
 			'success_count' => $success_count,
 			'failed_count'  => $failed_count,
@@ -475,13 +475,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
 
 		if (empty($item_ids)) {
-			wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
 		}
 
 		$success_count = 0;
@@ -500,7 +500,7 @@ class AIPS_Taxonomy_Controller {
 			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message'       => $message,
 			'success_count' => $success_count,
 			'failed_count'  => $failed_count,
@@ -514,13 +514,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
 
 		if (empty($item_ids)) {
-			wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
 		}
 
 		$success_count = 0;
@@ -539,7 +539,7 @@ class AIPS_Taxonomy_Controller {
 			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message'       => $message,
 			'success_count' => $success_count,
 			'failed_count'  => $failed_count,
@@ -554,13 +554,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
 
 		if (empty($item_ids)) {
-			wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
 		}
 
 		$success_count = 0;
@@ -581,7 +581,7 @@ class AIPS_Taxonomy_Controller {
 			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message'       => $message,
 			'success_count' => $success_count,
 			'failed_count'  => $failed_count,
@@ -596,22 +596,22 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$item_id = isset($_POST['item_id']) ? absint($_POST['item_id']) : 0;
 
 		if (!$item_id) {
-			wp_send_json_error(array('message' => __('Invalid item ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid item ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->create_taxonomy_term_for_item($item_id);
 
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => $result['success_message'],
 			'term_id' => $result['term_id'],
 			'item'    => $result['item'],
@@ -626,13 +626,13 @@ class AIPS_Taxonomy_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$search_term = isset($_POST['search_term']) ? sanitize_text_field(wp_unslash($_POST['search_term'])) : '';
 
 		if (empty($search_term)) {
-			wp_send_json_success(array('posts' => array()));
+			AIPS_Ajax_Response::success(array('posts' => array()));
 		}
 
 		$posts = get_posts(array(
@@ -651,6 +651,6 @@ class AIPS_Taxonomy_Controller {
 			);
 		}
 
-		wp_send_json_success(array('posts' => $results));
+		AIPS_Ajax_Response::success(array('posts' => $results));
 	}
 }
