@@ -618,7 +618,7 @@ class AIPS_Notifications {
 	 */
 	private function parse_notification_emails($emails) {
 		if (empty($emails)) {
-			$stored = get_option('aips_review_notifications_email', '');
+			$stored = AIPS_Config::get_instance()->get_option('aips_review_notifications_email');
 			if (is_string($stored)) {
 				$stored = trim($stored);
 			}

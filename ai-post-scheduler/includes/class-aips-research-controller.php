@@ -675,7 +675,7 @@ class AIPS_Research_Controller {
         $this->logger->log("Starting scheduled research execution", 'info');
         
         // Get configured research niches from settings
-        $niches = get_option('aips_research_niches', array());
+        $niches = AIPS_Config::get_instance()->get_option('aips_research_niches');
         
         if (empty($niches)) {
             $this->logger->log("No research niches configured. Skipping scheduled research.", 'info');

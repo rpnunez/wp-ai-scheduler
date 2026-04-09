@@ -111,7 +111,15 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Register autoloader
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $vendor_autoload ) ) {
+            require_once $vendor_autoload;
+        }
+
+        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
+        // Composer classmap does not resolve (e.g. on installs without a vendor/
+        // directory or after adding a new class before re-running composer dump-autoload).
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
@@ -148,8 +156,10 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
+        // Use the raw WP function here intentionally: we need to distinguish
+        // "option does not exist" (false) from any stored value including '0'.
         $previously_installed = get_option('aips_db_version') !== false;
-        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
 
@@ -332,7 +342,7 @@ final class AI_Post_Scheduler {
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
             // Dev Tools
-            if (get_option('aips_developer_mode')) {
+            if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
             }
         }
