@@ -203,6 +203,7 @@ class AIPS_Calendar_Controller {
 		
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+			return;
 		}
 		
 		$year = isset($_POST['year']) ? absint($_POST['year']) : date('Y');
@@ -211,6 +212,7 @@ class AIPS_Calendar_Controller {
 		// Validate month
 		if ($month < 1 || $month > 12) {
 			wp_send_json_error(array('message' => __('Invalid month.', 'ai-post-scheduler')));
+			return;
 		}
 		
 		$events = $this->get_month_events($year, $month);
