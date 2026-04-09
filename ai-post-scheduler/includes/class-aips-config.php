@@ -32,9 +32,18 @@ class AIPS_Config {
     private $feature_flags = array();
 
     /**
-     * @var array Per-request resolved-values cache for get_option() calls.
+     * @var AIPS_Cache Per-request cache for get_option() calls.
      */
-    private $option_cache = array();
+    private $cache = null;
+
+    /**
+     * @var object Sentinel stored in the cache when the resolved option
+     *             value is null. Required because AIPS_Cache::has() uses
+     *             get() !== null internally, so storing a plain null would
+     *             always look like a cache miss. The sentinel lets has()
+     *             return true for genuinely cached null values.
+     */
+    private $null_sentinel = null;
     
     /**
      * Get singleton instance.
@@ -52,6 +61,8 @@ class AIPS_Config {
      * Private constructor to enforce singleton pattern.
      */
     private function __construct() {
+        $this->cache         = AIPS_Cache_Factory::named('aips_config', 'array');
+        $this->null_sentinel = new stdClass();
         $this->load_feature_flags();
         $this->register_option_cache_hooks();
     }
@@ -79,12 +90,14 @@ class AIPS_Config {
      * @return void
      */
     public function reregister_option_cache_hooks() {
-        // The callbacks only need $option (the first argument). WordPress passes
-        // additional arguments for some hooks (e.g. $old_value, $value for
-        // updated_option) but PHP silently ignores surplus arguments when the
-        // closure declares fewer parameters, so this is intentional.
+        // Registered with the default accepted-args count of 1, so WordPress
+        // passes only $option (the option name) to the callback. The extra
+        // arguments some hooks carry (e.g. $old_value / $value for
+        // updated_option) are never delivered and are not needed here.
         $invalidate = function($option) {
-            unset($this->option_cache[$option]);
+            if ($this->cache !== null) {
+                $this->cache->delete($option);
+            }
         };
         add_action('updated_option', $invalidate);
         add_action('added_option',   $invalidate);
@@ -196,8 +209,10 @@ class AIPS_Config {
      */
     public function get_option($option_name, $default = null) {
         // Use cached value only when no caller-supplied default is in play.
-        if ($default === null && array_key_exists($option_name, $this->option_cache)) {
-            return $this->option_cache[$option_name];
+        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+            $cached = $this->cache->get($option_name);
+            // A stored null sentinel means the resolved value is null.
+            return ($cached === $this->null_sentinel) ? null : $cached;
         }
 
         // Use a sentinel to distinguish "option not in database" from a stored
@@ -215,15 +230,21 @@ class AIPS_Config {
             if ($default === null) {
                 $defaults = $this->get_default_options();
                 $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
-                // Cache only authoritative defaults.
-                $this->option_cache[$option_name] = $value;
+                // Cache only authoritative defaults; use the null sentinel when
+                // the resolved value is null so that has() returns true next time.
+                if ($this->cache !== null) {
+                    $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
+                }
             } else {
                 // Caller supplied a fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {
-            // Option exists in the database — always cache the live value.
-            $this->option_cache[$option_name] = $value;
+            // Option exists in the database — always cache the live value;
+            // use the null sentinel when the DB value is null.
+            if ($this->cache !== null) {
+                $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
+            }
         }
 
         return $value;
@@ -240,7 +261,9 @@ class AIPS_Config {
      * @return bool True on success, false on failure.
      */
     public function set_option($option_name, $value, $autoload = null) {
-        unset($this->option_cache[$option_name]);
+        if ($this->cache !== null) {
+            $this->cache->delete($option_name);
+        }
         return update_option($option_name, $value, $autoload);
     }
 
@@ -253,7 +276,9 @@ class AIPS_Config {
      * @return void
      */
     public function flush_option_cache() {
-        $this->option_cache = array();
+        if ($this->cache !== null) {
+            $this->cache->flush();
+        }
     }
     
     // ========================================
