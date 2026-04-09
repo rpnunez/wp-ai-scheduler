@@ -282,22 +282,22 @@ final class AI_Post_Scheduler {
         $container = AIPS_Container::get_instance();
 
         // Register AIPS_Config (uses get_instance() instead of instance())
-        $container->singleton(AIPS_Config::class, function() {
+        $container->singleton(AIPS_Config::class, function( $container ) {
             return AIPS_Config::get_instance();
         });
 
         // Register AIPS_History_Repository
-        $container->singleton(AIPS_History_Repository::class, function() {
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
             return AIPS_History_Repository::instance();
         });
 
         // Register AIPS_History_Service
-        $container->singleton(AIPS_History_Service::class, function() {
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
             return AIPS_History_Service::instance();
         });
 
         // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
-        $container->singleton(AIPS_Notifications_Repository::class, function() {
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
             return new AIPS_Notifications_Repository();
         });
     }
