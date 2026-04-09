@@ -281,27 +281,30 @@ final class AI_Post_Scheduler {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
 
         // Register the Source Group taxonomy (not attached to any post type).
-        register_taxonomy(
-            'aips_source_group',
-            array(),
-            array(
-                'labels'            => array(
-                    'name'              => __('Source Groups', 'ai-post-scheduler'),
-                    'singular_name'     => __('Source Group', 'ai-post-scheduler'),
-                    'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
-                    'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
-                    'new_item'          => __('New Source Group', 'ai-post-scheduler'),
-                    'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
-                ),
-                'hierarchical'      => false,
-                'show_ui'           => false,
-                'show_in_nav_menus' => false,
-                'show_in_rest'      => false,
-                'public'            => false,
-                'rewrite'           => false,
-                'query_var'         => false,
-            )
-        );
+        // Only needed in admin and cron contexts; skip on frontend page loads.
+        if (is_admin() || wp_doing_cron()) {
+            register_taxonomy(
+                'aips_source_group',
+                array(),
+                array(
+                    'labels'            => array(
+                        'name'              => __('Source Groups', 'ai-post-scheduler'),
+                        'singular_name'     => __('Source Group', 'ai-post-scheduler'),
+                        'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
+                        'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
+                        'new_item'          => __('New Source Group', 'ai-post-scheduler'),
+                        'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
+                    ),
+                    'hierarchical'      => false,
+                    'show_ui'           => false,
+                    'show_in_nav_menus' => false,
+                    'show_in_rest'      => false,
+                    'public'            => false,
+                    'rewrite'           => false,
+                    'query_var'         => false,
+                )
+            );
+        }
         
         if (is_admin()) {
             new AIPS_DB_Manager();
