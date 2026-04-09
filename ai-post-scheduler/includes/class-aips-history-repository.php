@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to generation history.
  */
 class AIPS_History_Repository {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * @var string The history table name (with prefix)
      */

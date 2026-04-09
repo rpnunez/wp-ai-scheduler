@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * for the AI Post Scheduler plugin.
  */
 class AIPS_Interval_Calculator {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * Get all available scheduling intervals.
      *

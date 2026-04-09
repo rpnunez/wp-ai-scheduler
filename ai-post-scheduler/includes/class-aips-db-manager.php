@@ -343,7 +343,9 @@ class AIPS_DB_Manager {
             KEY level (level),
             KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY is_read_created_at (is_read, created_at),
+            KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sources (
