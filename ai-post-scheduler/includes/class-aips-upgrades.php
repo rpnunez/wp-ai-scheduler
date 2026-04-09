@@ -22,8 +22,8 @@ class AIPS_Upgrades {
     
     private function run_upgrade($from_version) {
         // Version-specific migrations — run before dbDelta so schema is consistent.
-        if (version_compare($from_version, '2.3.0', '<')) {
-            $this->migrate_to_2_3_0();
+        if (version_compare($from_version, '2.3.1', '<')) {
+            $this->migrate_to_2_3_1();
         }
 
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
@@ -55,7 +55,7 @@ class AIPS_Upgrades {
     }
 
     /**
-     * Migration for version 2.3.0.
+     * Migration for version 2.3.1.
      *
      * Adds composite indexes to aips_notifications that were missing in older schema versions:
      *   - is_read_created_at (is_read, created_at) — speeds up get_unread() / count_unread()
@@ -64,7 +64,7 @@ class AIPS_Upgrades {
      * Both checks are guarded with SHOW INDEX so the ALTER is a no-op on fresh installs
      * where dbDelta has already created the indexes from get_schema().
      */
-    private function migrate_to_2_3_0() {
+    private function migrate_to_2_3_1() {
         global $wpdb;
         $table = $wpdb->prefix . 'aips_notifications';
 

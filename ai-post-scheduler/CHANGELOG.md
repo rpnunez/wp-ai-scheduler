@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.3.0] - 2026-04-09
+## [2.3.1] - 2026-04-09
 ### Performance
-- **Composite DB indexes on `aips_notifications`**: Added `KEY is_read_created_at (is_read, created_at)` and `KEY dedupe_key_created_at (dedupe_key, created_at)` to eliminate filesorts on the two hottest queries (`get_unread()` / `count_unread()` and `was_recently_sent()`). Schema updated in `AIPS_DB_Manager::get_schema()` and applied via a versioned `AIPS_Upgrades` migration (`migrate_to_2_3_0`).
+- **Composite DB indexes on `aips_notifications`**: Added `KEY is_read_created_at (is_read, created_at)` and `KEY dedupe_key_created_at (dedupe_key, created_at)` to eliminate filesorts on the two hottest queries (`get_unread()` / `count_unread()` and `was_recently_sent()`). Schema updated in `AIPS_DB_Manager::get_schema()` and applied via a versioned `AIPS_Upgrades` migration (`migrate_to_2_3_1`).
 
 ## [2.0.1] - 2026-03-28
 ### Added
