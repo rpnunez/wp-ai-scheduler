@@ -211,7 +211,7 @@ The migration was straightforward:
 | Old Implementation | New Implementation |
 |--------------------|-------------------|
 | `private $option_cache = array();` | `private $cache = null;` |
-| `$this->option_cache = AIPS_Cache_Factory::named('aips_config', 'array');` | Constructor initialization |
+| Array-backed constructor state | `$this->cache = AIPS_Cache_Factory::named('aips_config', 'array');` |
 | `array_key_exists($key, $this->option_cache)` | `$this->cache->has($key)` |
 | `return $this->option_cache[$key];` | `return $this->cache->get($key);` |
 | `$this->option_cache[$key] = $value;` | `$this->cache->set($key, $value);` |
