@@ -121,8 +121,9 @@ class AIPS_Cache_Factory {
 		$password = (string) get_option( 'aips_cache_redis_password', '' );
 		$db       = (int) get_option( 'aips_cache_redis_db', 0 );
 		$prefix   = (string) get_option( 'aips_cache_redis_prefix', 'aips' );
+		$timeout  = (float) get_option( 'aips_cache_redis_timeout', 2.0 );
 
-		$driver = new AIPS_Cache_Redis_Driver( $host, $port, $password, $db, $prefix );
+		$driver = new AIPS_Cache_Redis_Driver( $host, $port, $password, $db, $prefix, $timeout );
 
 		if (!$driver->is_connected()) {
 			return null;
@@ -134,6 +135,9 @@ class AIPS_Cache_Factory {
 	/**
 	 * Register a one-time admin notice for a failed driver initialisation.
 	 *
+	 * Uses a static flag so the notice is registered at most once per request,
+	 * regardless of how many times the factory is called.
+	 *
 	 * @param string $message HTML-safe notice message.
 	 * @return void
 	 */
@@ -141,6 +145,12 @@ class AIPS_Cache_Factory {
 		if (!is_admin()) {
 			return;
 		}
+
+		static $registered = false;
+		if ($registered) {
+			return;
+		}
+		$registered = true;
 
 		add_action( 'admin_notices', static function() use ( $message ) {
 			echo '<div class="notice notice-warning is-dismissible"><p>' . wp_kses_post( $message ) . '</p></div>';

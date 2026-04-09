@@ -119,6 +119,7 @@ class AIPS_Config {
             'aips_cache_redis_password' => '',
             'aips_cache_redis_db'       => 0,
             'aips_cache_redis_prefix'   => 'aips',
+            'aips_cache_redis_timeout'  => 2,
         );
     }
     

@@ -55,16 +55,18 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	 * @param string $password Optional authentication password. Default ''.
 	 * @param int    $db       Redis database index to select. Default 0.
 	 * @param string $prefix   Key prefix. Default 'aips'.
+	 * @param float  $timeout  Connection timeout in seconds. Default 2.0.
 	 */
 	public function __construct(
 		$host     = '127.0.0.1',
 		$port     = 6379,
 		$password = '',
 		$db       = 0,
-		$prefix   = 'aips'
+		$prefix   = 'aips',
+		$timeout  = 2.0
 	) {
 		$this->prefix = (string) $prefix;
-		$this->connect( $host, (int) $port, $password, (int) $db );
+		$this->connect( $host, (int) $port, $password, (int) $db, (float) $timeout );
 	}
 
 	// -----------------------------------------------------------------------
@@ -165,9 +167,10 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	 * @param int    $port     Redis port.
 	 * @param string $password Authentication password (empty = none).
 	 * @param int    $db       Database index.
+	 * @param float  $timeout  Connection timeout in seconds.
 	 * @return void
 	 */
-	private function connect( $host, $port, $password, $db ) {
+	private function connect( $host, $port, $password, $db, $timeout = 2.0 ) {
 		if (!extension_loaded( 'redis' )) {
 			return;
 		}
@@ -175,7 +178,7 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 		try {
 			$this->redis = new Redis();
 			// connect( host, port, timeout )
-			$this->redis->connect( $host, $port, 2.0 );
+			$this->redis->connect( $host, $port, $timeout );
 
 			if (!empty( $password )) {
 				$this->redis->auth( $password );

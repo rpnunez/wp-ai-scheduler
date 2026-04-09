@@ -131,7 +131,7 @@ class AIPS_Cache {
 	 * Increment a numeric value in the cache.
 	 *
 	 * If the key does not exist, it is initialised to 0 before incrementing.
-	 * TTL is not modified when the key already exists.
+	 * Note: counters are always stored with TTL=0 (no expiration).
 	 *
 	 * @param string $key   Cache key.
 	 * @param int    $step  Amount to add. Default 1.
@@ -149,7 +149,7 @@ class AIPS_Cache {
 	 * Decrement a numeric value in the cache.
 	 *
 	 * If the key does not exist, it is initialised to 0 before decrementing.
-	 * TTL is not modified when the key already exists.
+	 * Note: counters are always stored with TTL=0 (no expiration).
 	 *
 	 * @param string $key   Cache key.
 	 * @param int    $step  Amount to subtract. Default 1.

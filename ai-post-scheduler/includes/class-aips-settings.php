@@ -511,6 +511,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_cache_redis_prefix'],
         ));
+        register_setting('aips_settings', 'aips_cache_redis_timeout', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_redis_timeout'],
+        ));
 
         add_settings_section(
             'aips_cache_section',
@@ -579,6 +583,14 @@ class AIPS_Settings {
             'aips_cache_redis_prefix',
             __('Redis Key Prefix', 'ai-post-scheduler'),
             array($this->ui, 'cache_redis_prefix_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_timeout',
+            __('Redis Connection Timeout (seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_timeout_field_callback'),
             'aips-settings',
             'aips_cache_section'
         );

@@ -80,9 +80,8 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 				'cache_group' => (string) $group,
 				'value'       => maybe_serialize( $value ),
 				'expires_at'  => $expires_at,
-				'updated_at'  => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s' )
 		);
 
 		return true;

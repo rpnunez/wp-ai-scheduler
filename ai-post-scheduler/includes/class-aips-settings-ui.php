@@ -775,6 +775,21 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the Redis Connection Timeout field.
+     *
+     * @return void
+     */
+    public function cache_redis_timeout_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_timeout');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="number" name="aips_cache_redis_timeout" value="<?php echo esc_attr($value); ?>" min="1" max="30" class="small-text">
+            <p class="description"><?php esc_html_e('Maximum time in seconds to wait for a Redis connection to be established. Default: 2.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
      * Sanitize and validate the selected cache driver value.
      *
      * @param mixed $value Raw input value.
