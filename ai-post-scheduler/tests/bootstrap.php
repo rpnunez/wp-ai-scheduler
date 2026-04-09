@@ -1181,6 +1181,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    // Add stubs for WordPress activation/deactivation hooks
+    if (!function_exists('register_activation_hook')) {
+        function register_activation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    if (!function_exists('register_deactivation_hook')) {
+        function register_deactivation_hook($file, $callback) {
+            // No-op stub for testing
+        }
+    }
+
+    // Load the main plugin file to get AI_Post_Scheduler class
+    if (!class_exists('AI_Post_Scheduler')) {
+        require_once dirname(__DIR__) . '/ai-post-scheduler.php';
+    }
+
     if (!function_exists('has_action')) {
         function has_action($hook_name, $callback = false) {
             if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook_name])) {

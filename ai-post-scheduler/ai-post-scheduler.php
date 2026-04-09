@@ -270,6 +270,39 @@ final class AI_Post_Scheduler {
     }
 
     /**
+     * Register initial container bindings for core singletons.
+     *
+     * Phase 1 registration as described in the container architecture plan:
+     * Registers the most-duplicated singletons to validate the container works
+     * correctly before more complex refactors.
+     *
+     * @return void
+     */
+    private function register_container_bindings() {
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        $container->singleton(AIPS_Config::class, function() {
+            return AIPS_Config::get_instance();
+        });
+
+        // Register AIPS_History_Repository
+        $container->singleton(AIPS_History_Repository::class, function() {
+            return AIPS_History_Repository::instance();
+        });
+
+        // Register AIPS_History_Service
+        $container->singleton(AIPS_History_Service::class, function() {
+            return AIPS_History_Service::instance();
+        });
+
+        // Register AIPS_Notifications_Repository (no singleton method, so create new instance)
+        $container->singleton(AIPS_Notifications_Repository::class, function() {
+            return new AIPS_Notifications_Repository();
+        });
+    }
+
+    /**
      * Initialize plugin runtime.
      *
      * Loads translations, registers taxonomy, instantiates admin controllers,
@@ -302,7 +335,10 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
-        
+
+        // Register initial container bindings for core singletons
+        $this->register_container_bindings();
+
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Admin_Menu();
