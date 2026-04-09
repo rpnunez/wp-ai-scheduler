@@ -156,8 +156,10 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
+        // Use the raw WP function here intentionally: we need to distinguish
+        // "option does not exist" (false) from any stored value including '0'.
         $previously_installed = get_option('aips_db_version') !== false;
-        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
 
@@ -340,7 +342,7 @@ final class AI_Post_Scheduler {
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
             // Dev Tools
-            if (get_option('aips_developer_mode')) {
+            if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
             }
         }

@@ -79,7 +79,7 @@ class AIPS_Post_Manager {
 
         if (!empty($post_category)) {
             $post_data['post_category'] = array($post_category);
-        } elseif ($default_cat = get_option('aips_default_category')) {
+        } elseif ($default_cat = AIPS_Config::get_instance()->get_option('aips_default_category')) {
             $post_data['post_category'] = array($default_cat);
         }
 
