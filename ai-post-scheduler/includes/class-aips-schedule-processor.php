@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Schedule_Processor {
 
     /**
-     * @var AIPS_Schedule_Repository
+     * @var AIPS_Schedule_Repository_Interface
      */
     private $repository;
 
@@ -31,12 +31,12 @@ class AIPS_Schedule_Processor {
     private $generator;
 
     /**
-     * @var AIPS_History_Service
+     * @var AIPS_History_Service_Interface
      */
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository
+     * @var AIPS_History_Repository_Interface
      */
     private $history_repository;
 
@@ -51,7 +51,7 @@ class AIPS_Schedule_Processor {
     private $template_type_selector;
 
     /**
-     * @var AIPS_Logger
+     * @var AIPS_Logger_Interface
      */
     private $logger;
 
@@ -63,31 +63,32 @@ class AIPS_Schedule_Processor {
     /**
      * Constructor.
      *
-     * @param AIPS_Schedule_Repository|null         $repository
+     * @param AIPS_Schedule_Repository_Interface|null $repository
      * @param AIPS_Template_Repository|null         $template_repository
      * @param AIPS_Generator|null                   $generator
-     * @param AIPS_History_Service|null             $history_service
+     * @param AIPS_History_Service_Interface|null   $history_service
      * @param AIPS_Template_Type_Selector|null      $template_type_selector
-     * @param AIPS_Logger|null                      $logger
+     * @param AIPS_Logger_Interface|null            $logger
      * @param AIPS_Generation_Execution_Runner|null $runner
      */
     public function __construct(
-        $repository = null,
+        ?AIPS_Schedule_Repository_Interface $repository = null,
         $template_repository = null,
         $generator = null,
-        $history_service = null,
+        ?AIPS_History_Service_Interface $history_service = null,
         $template_type_selector = null,
-        $logger = null,
+        ?AIPS_Logger_Interface $logger = null,
         $runner = null
     ) {
-        $this->repository = $repository ?: new AIPS_Schedule_Repository();
+        $container = AIPS_Container::get_instance();
+        $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
         $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
         $this->generator = $generator ?: new AIPS_Generator();
-        $this->history_repository = new AIPS_History_Repository();
-        $this->history_service = $history_service ?: new AIPS_History_Service($this->history_repository);
+        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
+        $this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service($this->history_repository));
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
     }
 
@@ -98,7 +99,7 @@ class AIPS_Schedule_Processor {
         $this->generator = $generator;
     }
 
-    public function set_repository($repository) {
+    public function set_repository(AIPS_Schedule_Repository_Interface $repository) {
         $this->repository = $repository;
     }
 

@@ -36,24 +36,31 @@ class AIPS_Topic_Expansion_Service {
 	private $authors_repository;
 	
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
 	/**
-	 * @var AIPS_History_Service History service for logging
+	 * @var AIPS_History_Service_Interface History service for logging
 	 */
 	private $history_service;
 
 	/**
 	 * Initialize the topic expansion service.
+	 *
+	 * @param AIPS_Embeddings_Service|null        $embeddings_service Embeddings service.
+	 * @param AIPS_Author_Topics_Repository|null  $topics_repository Topics repository.
+	 * @param AIPS_Logger_Interface|null          $logger Logger instance.
+	 * @param AIPS_Authors_Repository|null        $authors_repository Authors repository.
+	 * @param AIPS_History_Service_Interface|null $history_service History service.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null, $history_service = null) {
+	public function __construct($embeddings_service = null, $topics_repository = null, ?AIPS_Logger_Interface $logger = null, $authors_repository = null, ?AIPS_History_Service_Interface $history_service = null) {
+		$container = AIPS_Container::get_instance();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 	}
 	
 	/**

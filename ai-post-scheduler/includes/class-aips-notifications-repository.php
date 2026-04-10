@@ -11,7 +11,24 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
-class AIPS_Notifications_Repository {
+class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Interface {
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
 
 	/**
 	 * @var wpdb WordPress database object.

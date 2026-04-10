@@ -19,11 +19,12 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if docker-compose is available
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${YELLOW}docker-compose not found, trying 'docker compose' (Docker Compose V2)${NC}"
+# Use 'docker compose' (Compose V2, built into Docker CLI)
+# This is the modern, recommended approach
+if command -v docker compose >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 else
+    # Fall back to legacy docker-compose if docker compose not available
     DOCKER_COMPOSE="docker-compose"
 fi
 

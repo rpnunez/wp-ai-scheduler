@@ -43,38 +43,38 @@ class AIPS_Prompt_Sections_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$sections = $this->repo->get_all(false);
-		wp_send_json_success(array('sections' => $sections));
+		AIPS_Ajax_Response::success(array('sections' => $sections));
 	}
 
 	public function ajax_get_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid section ID.', 'ai-post-scheduler'));
 		}
 
 		$section = $this->repo->get_by_id($id);
 		if (!$section) {
-			wp_send_json_error(array('message' => __('Section not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Section not found.', 'ai-post-scheduler'));
 		}
 
-		wp_send_json_success(array('section' => $section));
+		AIPS_Ajax_Response::success(array('section' => $section));
 	}
 
 	public function ajax_save_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
@@ -85,11 +85,11 @@ class AIPS_Prompt_Sections_Controller {
 		$is_active = isset($_POST['is_active']) ? 1 : 0;
 
 		if (empty($name) || empty($section_key) || empty($content)) {
-			wp_send_json_error(array('message' => __('Name, key, and content are required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Name, key, and content are required.', 'ai-post-scheduler'));
 		}
 
 		if ($this->repo->key_exists($section_key, $id)) {
-			wp_send_json_error(array('message' => __('Section key already exists.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Section key already exists.', 'ai-post-scheduler'));
 		}
 
 		$data = array(
@@ -103,60 +103,60 @@ class AIPS_Prompt_Sections_Controller {
 		if ($id) {
 			$result = $this->repo->update($id, $data);
 			if (!$result) {
-				wp_send_json_error(array('message' => __('Failed to update prompt section.', 'ai-post-scheduler')));
+				AIPS_Ajax_Response::error(__('Failed to update prompt section.', 'ai-post-scheduler'));
 			}
 			$section = $this->repo->get_by_id($id);
-			wp_send_json_success(array('message' => __('Section updated.', 'ai-post-scheduler'), 'section_id' => $id, 'section' => $section));
+			AIPS_Ajax_Response::success(array('message' => __('Section updated.', 'ai-post-scheduler'), 'section_id' => $id, 'section' => $section));
 		}
 
 		$new_id = $this->repo->create($data);
 		if (!$new_id) {
-			wp_send_json_error(array('message' => __('Failed to create prompt section.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to create prompt section.', 'ai-post-scheduler'));
 		}
 		$section = $this->repo->get_by_id($new_id);
-		wp_send_json_success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id, 'section' => $section));
+		AIPS_Ajax_Response::success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id, 'section' => $section));
 	}
 
 	public function ajax_delete_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid section ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->repo->delete($id);
 		if (!$result) {
-			wp_send_json_error(array('message' => __('Failed to delete prompt section.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to delete prompt section.', 'ai-post-scheduler'));
 		}
 
-		wp_send_json_success(array('message' => __('Section deleted.', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array(), __('Section deleted.', 'ai-post-scheduler'));
 	}
 
 	public function ajax_toggle_section_active() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
 		$is_active = isset($_POST['is_active']) ? 1 : 0;
 
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid section ID.', 'ai-post-scheduler'));
 		}
 
 		$result = $this->repo->set_active($id, $is_active);
 		if (!$result) {
-			wp_send_json_error(array('message' => __('Failed to update active status.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to update active status.', 'ai-post-scheduler'));
 		}
 
-		wp_send_json_success(array('message' => __('Section status updated.', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array(), __('Section status updated.', 'ai-post-scheduler'));
 	}
 }
 

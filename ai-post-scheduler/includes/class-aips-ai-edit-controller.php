@@ -27,7 +27,7 @@ class AIPS_AI_Edit_Controller {
 	private $service;
 
 	/**
-	 * @var AIPS_History_Repository
+	 * @var AIPS_History_Repository_Interface
 	 */
 	private $history_repository;
 	
@@ -35,11 +35,12 @@ class AIPS_AI_Edit_Controller {
 	 * Constructor
 	 *
 	 * @param AIPS_Component_Regeneration_Service|null $service            Regeneration service.
-	 * @param AIPS_History_Repository|null             $history_repository History repository.
+	 * @param AIPS_History_Repository_Interface|null   $history_repository History repository.
 	 */
-	public function __construct($service = null, $history_repository = null) {
+	public function __construct($service = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+		$container = AIPS_Container::get_instance();
 		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
-		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -59,36 +60,36 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$post_id || !$history_id) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
 		}
 		
 		// Get the post
 		$post = get_post($post_id);
 		if (!$post) {
-			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'));
 		}
 		
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			wp_send_json_error(array('message' => $context->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 
 		// Ensure the history context belongs to the requested post
 		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
-			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history context for this post.', 'ai-post-scheduler'));
 		}
 		
 		// Get featured image
@@ -136,7 +137,7 @@ class AIPS_AI_Edit_Controller {
 			),
 		);
 		
-		wp_send_json_success($response);
+		AIPS_Ajax_Response::success($response);
 	}
 	
 	/**
@@ -148,7 +149,7 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -159,35 +160,35 @@ class AIPS_AI_Edit_Controller {
 		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
 		
 		if (!$post_id || !$history_id || !$component) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
 		// Validate component type
 		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
-			wp_send_json_error(array('message' => __('Invalid component type.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
 		}
 		
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			wp_send_json_error(array('message' => $context->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 		
 		// Ensure the history context belongs to the requested post
 		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
-			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history context for this post.', 'ai-post-scheduler'));
 		}
 		
 		// Get current post data for context
 		$post = get_post($post_id);
 		if (!$post) {
-			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'));
 		}
 		
 		// Add current post data to context
@@ -208,7 +209,7 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 		
@@ -230,10 +231,10 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
-		wp_send_json_success(array('new_value' => $result));
+		AIPS_Ajax_Response::success(array('new_value' => $result));
 	}
 
 	/**
@@ -247,7 +248,7 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -257,25 +258,25 @@ class AIPS_AI_Edit_Controller {
 			: array();
 
 		if (!$post_id || !$history_id) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
 		}
 
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			wp_send_json_error(array('message' => $context->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 
 		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
-			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history context for this post.', 'ai-post-scheduler'));
 		}
 
 		$post = get_post($post_id);
 		if (!$post) {
-			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'));
 		}
 
 		$context['post_id'] = $post_id;
@@ -301,20 +302,20 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 
 		$result = $this->service->regenerate_all_components($context);
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
 		$regenerated_count = count($result['regenerated']);
 		$error_count = count($result['errors']);
 
 		if ($regenerated_count === 0) {
-			wp_send_json_error(array(
+			AIPS_Ajax_Response::error(array(
 				'message' => __('No components were regenerated.', 'ai-post-scheduler'),
 				'regenerated' => $result['regenerated'],
 				'skipped' => $result['skipped'],
@@ -327,7 +328,7 @@ class AIPS_AI_Edit_Controller {
 			$message = __('Some components were regenerated, but others failed.', 'ai-post-scheduler');
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => $message,
 			'regenerated' => $result['regenerated'],
 			'skipped' => $result['skipped'],
@@ -344,19 +345,19 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$components = isset($_POST['components']) ? wp_unslash($_POST['components']) : array();
 		
 		if (!$post_id || empty($components)) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
 		}
 		
 		// Build update array
@@ -382,7 +383,7 @@ class AIPS_AI_Edit_Controller {
 		$result = wp_update_post($post_data, true);
 		
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
 		// Update featured image
@@ -413,7 +414,7 @@ class AIPS_AI_Edit_Controller {
 
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
 			'updated_components' => $updated_components,
 		));
@@ -428,7 +429,7 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -438,24 +439,24 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (!$post_id || !$component) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
 		// Validate component type
 		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
-			wp_send_json_error(array('message' => __('Invalid component type.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to access this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to access this post.', 'ai-post-scheduler'));
 		}
 		
 		// Get revisions
 		$revisions = $this->history_repository->get_component_revisions($post_id, $component, 20);
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'revisions' => $revisions,
 			'total' => count($revisions),
 		));
@@ -470,7 +471,7 @@ class AIPS_AI_Edit_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -484,18 +485,18 @@ class AIPS_AI_Edit_Controller {
 		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
 		
 		if (!$post_id || !$component || !$revision_id) {
-			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
 		// Validate component type
 		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
-			wp_send_json_error(array('message' => __('Invalid component type.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
-			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
 		}
 
 		$history_record = $this->history_repository->get_by_post_id($post_id);
@@ -510,7 +511,7 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 		
@@ -525,7 +526,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (!$revision_to_restore) {
-			wp_send_json_error(array('message' => __('Revision not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Revision not found.', 'ai-post-scheduler'));
 		}
 		
 		// Restore the value to the post
@@ -564,11 +565,11 @@ class AIPS_AI_Edit_Controller {
 			$result = wp_update_post($post_data, true);
 			
 			if (is_wp_error($result)) {
-				wp_send_json_error(array('message' => $result->get_error_message()));
+				AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 			}
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
 			'component' => $component,
 			'value' => $restored_value,
