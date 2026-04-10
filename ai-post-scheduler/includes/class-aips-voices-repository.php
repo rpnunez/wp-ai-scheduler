@@ -192,10 +192,10 @@ class AIPS_Voices_Repository {
      */
     public function delete($id) {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
-        if ( $result ) {
+        if ( $result !== false ) {
             $this->cache->flush();
         }
-        return $result;
+        return $result !== false;
     }
 
     /**
