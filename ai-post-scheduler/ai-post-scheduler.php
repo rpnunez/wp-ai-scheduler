@@ -503,7 +503,7 @@ final class AI_Post_Scheduler {
     /**
      * Boot subsystems required for admin (non-AJAX) page views.
      *
-     * Registers the admin menu, enqueues assets, initialises settings and
+     * Registers the admin menu, enqueues assets, initializes settings and
      * onboarding, adds the admin toolbar node, and binds the notification event
      * handler and partial-generation reconciler. All page-specific AJAX
      * controllers are intentionally omitted here; they are resolved on demand

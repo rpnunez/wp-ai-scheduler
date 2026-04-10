@@ -76,7 +76,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	/**
 	 * The plugin class must have a public init() method.
 	 */
-	public function test_init_method_exists() {
+	public function test_plugin_class_has_init_method() {
 		$this->assertTrue(
 			method_exists( 'AI_Post_Scheduler', 'init' ),
 			'AI_Post_Scheduler must have an init() method'
@@ -88,7 +88,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	 *
 	 * They are private but PHP Reflection can confirm their presence.
 	 */
-	public function test_boot_methods_exist() {
+	public function test_plugin_class_has_all_five_boot_methods() {
 		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
 
 		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
@@ -102,7 +102,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	/**
 	 * All five boot methods must be declared private.
 	 */
-	public function test_boot_methods_are_private() {
+	public function test_all_boot_methods_have_private_visibility() {
 		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
 
 		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
