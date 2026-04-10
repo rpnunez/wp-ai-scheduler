@@ -18,12 +18,12 @@ class AIPS_Generator {
     private $logger;
 
     /**
-     * @var AIPS_History_Service History service for unified logging
+     * @var AIPS_History_Service_Interface History service for unified logging
      */
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository History repository for logger
+     * @var AIPS_History_Repository_Interface History repository for logger
      */
     private $history_repository;
 
@@ -58,35 +58,36 @@ class AIPS_Generator {
      * Accepts dependencies for easier testing; falls back to concrete
      * implementations when not provided.
      *
-     * @param object|null $logger
-     * @param object|null $ai_service
+    * @param AIPS_Logger_Interface|null $logger
+    * @param AIPS_AI_Service_Interface|null $ai_service
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
      * @param object|null $post_manager
-     * @param object|null $history_service
+    * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
      */
     public function __construct(
-        $logger = null,
-        $ai_service = null,
+        ?AIPS_Logger_Interface $logger = null,
+        ?AIPS_AI_Service_Interface $ai_service = null,
         $template_processor = null,
         $image_service = null,
         $structure_manager = null,
         $post_manager = null,
-        $history_service = null,
+        ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
         $markdown_parser = null
     ) {
-        $this->logger             = $logger ?: new AIPS_Logger();
-        $this->ai_service         = $ai_service ?: new AIPS_AI_Service();
+        $container = AIPS_Container::get_instance();
+        $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
-        $this->history_service    = $history_service ?: new AIPS_History_Service();
-        $this->history_repository = new AIPS_History_Repository();
+        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();

@@ -21,14 +21,14 @@ class AIPS_Planner {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
 
         if (empty($niche)) {
-            wp_send_json_error(array('message' => __('Please provide a niche or topic.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Please provide a niche or topic.', 'ai-post-scheduler'));
         }
 
         if ($count < 1 || $count > 50) {
@@ -37,7 +37,7 @@ class AIPS_Planner {
 
         $generator = new AIPS_Generator();
         if (!$generator->is_available()) {
-            wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
 
         $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'. \n";
@@ -47,7 +47,7 @@ class AIPS_Planner {
         $result = $generator->generate_content($prompt, array('temperature' => 0.7), 'planner_topics');
 
         if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }
 
         // Normalize the raw AI response and guard against empty output. Coerce to
@@ -55,7 +55,7 @@ class AIPS_Planner {
         $raw_result = (string) $result;
 
         if ('' === trim($raw_result)) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => __('AI did not return any topics. Please try again.', 'ai-post-scheduler'),
             ));
         }
@@ -93,7 +93,7 @@ class AIPS_Planner {
             // But if the AI followed instructions, it should be JSON.
             // If it failed JSON, let's just log it and return error or try best effort.
             if (empty($topics)) {
-                wp_send_json_error(array(
+                AIPS_Ajax_Response::error(array(
                     'message' => __('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr($json_str, 0, 100) . '...'
                 ));
             }
@@ -101,14 +101,14 @@ class AIPS_Planner {
 
         do_action('aips_planner_topics_generated', $topics, $niche);
 
-        wp_send_json_success(array('topics' => $topics));
+        AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
     public function ajax_bulk_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $topics = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
@@ -117,7 +117,7 @@ class AIPS_Planner {
         $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
 
         if (empty($topics) || empty($template_id) || empty($start_date)) {
-            wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
         }
 
         // Sanitize topics
@@ -145,12 +145,12 @@ class AIPS_Planner {
         $count = $schedule_repository->create_bulk($schedules);
 
         if ($count === false || $count === 0) {
-            wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to schedule topics.', 'ai-post-scheduler'));
         }
 
         do_action('aips_planner_bulk_scheduled', $count, $template_id);
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => sprintf(__('%d topics scheduled successfully.', 'ai-post-scheduler'), $count),
             'count' => $count
         ));
@@ -160,7 +160,7 @@ class AIPS_Planner {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $raw_topics  = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
@@ -168,7 +168,7 @@ class AIPS_Planner {
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (empty($topics) || empty($template_id)) {
-            wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
         }
 
         // Enforce the bulk limit BEFORE the expensive template lookup so the
@@ -179,7 +179,7 @@ class AIPS_Planner {
             $max_bulk = 5;
         }
         if (count($topics) > $max_bulk) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
                     /* translators: 1: selected count, 2: max allowed */
                     __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
@@ -193,13 +193,13 @@ class AIPS_Planner {
         $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
-            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
         }
 
         $generator = $this->make_generator();
 
         if (!$generator->is_available()) {
-            wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
 
         // Pass a matching limit so the service never rejects (pre-check already done above).
@@ -226,7 +226,7 @@ class AIPS_Planner {
         );
 
         if (empty($result->post_ids) && !empty($result->errors)) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => __('All topic generations failed.', 'ai-post-scheduler'),
                 'errors'  => $result->errors,
             ));
@@ -247,7 +247,7 @@ class AIPS_Planner {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message'  => $message,
             'post_ids' => $result->post_ids,
             'errors'   => $result->errors,

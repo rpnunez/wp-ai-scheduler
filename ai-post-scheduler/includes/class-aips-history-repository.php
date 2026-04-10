@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for history data access.
  * Encapsulates all database operations related to generation history.
  */
-class AIPS_History_Repository {
+class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
     /**
      * @var self|null Singleton instance.

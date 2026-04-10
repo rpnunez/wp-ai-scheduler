@@ -214,26 +214,26 @@ class AIPS_Admin_Bar {
 		check_ajax_referer('aips_admin_bar_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = isset($_POST['id']) ? absint($_POST['id']) : 0;
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid notification ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::invalid_request(__('Invalid notification ID.', 'ai-post-scheduler'));
 		}
 
 		$updated = AIPS_Notifications_Repository::instance()->mark_as_read($id);
 
 		if (!$updated) {
-			wp_send_json_error(array('message' => __('Notification could not be updated or was already read.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Notification could not be updated or was already read.', 'ai-post-scheduler'));
 		}
 
 		$cache_key    = 'aips_unread_count_' . get_current_user_id();
 		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
-    
+
 		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
 		));
 	}
@@ -245,33 +245,31 @@ class AIPS_Admin_Bar {
 		check_ajax_referer('aips_admin_bar_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$result       = AIPS_Notifications_Repository::instance()->mark_all_as_read();
 
 		$cache_key    = 'aips_unread_count_' . get_current_user_id();
 		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
-    
+
 		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
 		// If the repository reported a failure and there are still unread notifications, return an error.
 		if (false === $result && $unread_count > 0) {
-			wp_send_json_error(
-				array(
-					'message'      => __('Failed to mark notifications as read. Please try again.', 'ai-post-scheduler'),
-					'unread_count' => $unread_count,
-				)
+			AIPS_Ajax_Response::error(
+				__('Failed to mark notifications as read. Please try again.', 'ai-post-scheduler'),
+				'mark_all_read_failed',
+				200,
+				array('unread_count' => $unread_count)
 			);
 		}
 
 		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
-		wp_send_json_success(
-			array(
-				'unread_count' => $unread_count,
-			)
-		);
+		AIPS_Ajax_Response::success(array(
+			'unread_count' => $unread_count,
+		));
 	}
 
 }

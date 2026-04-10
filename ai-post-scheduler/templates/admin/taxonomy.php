@@ -87,7 +87,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-taxonomy-search"><?php esc_html_e('Search Taxonomy:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-taxonomy-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-taxonomy-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-taxonomy-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
