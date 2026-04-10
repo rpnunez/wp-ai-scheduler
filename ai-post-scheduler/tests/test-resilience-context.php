@@ -377,9 +377,7 @@ class Test_AIPS_Resilience_Context extends WP_UnitTestCase {
 		$ctx     = array( 'type' => 'schedule', 'id' => 7 );
 
 		$service->execute_safely(
-			function() {
-				return new WP_Error( 'generation_failed', 'Error' );
-			},
+			function() { return new WP_Error( 'generation_failed', 'Error' ); },
 			'text',
 			'prompt',
 			array(),
@@ -415,7 +413,7 @@ class Test_AIPS_Resilience_Context extends WP_UnitTestCase {
 
 		// Success via execute_safely for the named context.
 		$service->execute_safely(
-			function() { return 'ok'; },
+			function() { return 'success_result'; },
 			'text',
 			'prompt',
 			array(),

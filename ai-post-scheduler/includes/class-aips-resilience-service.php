@@ -322,11 +322,7 @@ class AIPS_Resilience_Service {
         }
 
         // Remove null values so they don't affect hashing.
-        foreach ($context as $k => $v) {
-            if ($v === null) {
-                unset($context[$k]);
-            }
-        }
+        $context = array_filter($context, function($v) { return $v !== null; });
 
         // Deterministic ordering for stable hashing.
         ksort($context);
@@ -346,8 +342,8 @@ class AIPS_Resilience_Service {
         // wp_json_encode provides consistent encoding in WP environments.
         $json = wp_json_encode($normalized);
 
-        // sha1 is sufficient for keying; can be upgraded to sha256 if desired.
-        return sha1((string) $json);
+        // sha256 provides modern collision resistance for transient key scoping.
+        return hash('sha256', (string) $json);
     }
 
     /**
