@@ -479,8 +479,15 @@ final class AI_Post_Scheduler {
      * Boot subsystems required only during an admin AJAX request.
      *
      * Resolves and instantiates only the single controller class mapped to the
-     * current AJAX action in the registry. Falls back to registering lazy hooks
-     * for all registry actions when the action is not found in the registry.
+     * current AJAX action in the registry.
+     *
+     * For plugin-owned actions (those starting with "aips_") that are not yet
+     * registered in the registry, a lazy-resolving fallback is used so that
+     * newly added controllers are still dispatched correctly.
+     *
+     * Non-plugin actions (from other plugins or WordPress core) are ignored
+     * entirely — registering 100+ wp_ajax_* hooks for an action this plugin does
+     * not own would be a performance regression rather than an improvement.
      *
      * @return void
      */
@@ -495,9 +502,12 @@ final class AI_Post_Scheduler {
             return;
         }
 
-        // Fallback: register lazy-resolving hooks for all registry actions so that
-        // any action not yet in the registry still resolves its controller correctly.
-        $this->register_lazy_ajax_hooks();
+        // Only fall back to lazy-hook registration for plugin-owned actions that
+        // are not yet in the registry (e.g. a newly added controller). Actions
+        // from other plugins or WordPress core are ignored.
+        if (strncmp($action, 'aips_', 5) === 0) {
+            $this->register_lazy_ajax_hooks();
+        }
     }
 
     /**

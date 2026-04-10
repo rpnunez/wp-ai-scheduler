@@ -1499,7 +1499,22 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     if (!function_exists('remove_action')) {
         function remove_action($hook_name, $callback, $priority = 10) {
-            return true;
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority])) {
+                return false;
+            }
+
+            foreach ($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority] as $idx => $entry) {
+                if ($entry['callback'] === $callback) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority][$idx]);
+                    // Re-index the array so numeric indices stay contiguous.
+                    $GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority] = array_values(
+                        $GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority]
+                    );
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

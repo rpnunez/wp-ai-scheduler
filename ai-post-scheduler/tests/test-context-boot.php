@@ -14,7 +14,7 @@
 class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 	/**
-	 * Reset the singleton and all context globals before each test.
+	 * Reset context globals before each test.
 	 */
 	public function setUp(): void {
 		parent::setUp();
