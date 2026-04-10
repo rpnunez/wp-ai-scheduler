@@ -20,9 +20,16 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Bar {
 
 	/**
+	 * @var AIPS_Notifications_Repository
+	 */
+	private $repository;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
+		$this->repository = AIPS_Notifications_Repository::instance();
+
 		add_action('admin_bar_menu', array($this, 'add_toolbar_node'), 100);
 		add_action('wp_ajax_aips_mark_notification_read', array($this, 'ajax_mark_read'));
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
