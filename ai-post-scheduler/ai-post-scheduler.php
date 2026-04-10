@@ -133,6 +133,7 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function init_hooks() {
+        add_action('plugins_loaded', array($this, 'load_textdomain'));
         add_action('plugins_loaded', array($this, 'check_upgrades'));
         add_action('init', array($this, 'init'));
     }
@@ -220,6 +221,17 @@ final class AI_Post_Scheduler {
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
+    }
+
+    /**
+     * Load the plugin text domain for translations.
+     *
+     * Hooked to plugins_loaded so translations are available as early as possible.
+     *
+     * @return void
+     */
+    public function load_textdomain() {
+        load_plugin_textdomain( 'ai-post-scheduler', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
     }
 
     /**
@@ -386,8 +398,6 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function init() {
-        load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
-      
         // Register initial container bindings for core singletons
         $this->register_container_bindings();
 

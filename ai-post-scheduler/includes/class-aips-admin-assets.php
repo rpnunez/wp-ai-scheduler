@@ -93,97 +93,6 @@ class AIPS_Admin_Assets {
             true
         );
 
-        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
-            'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
-            'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
-            'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),
-            'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
-            'deleteSectionConfirm' => __('Are you sure you want to delete this prompt section?', 'ai-post-scheduler'),
-            'saveSectionFailed' => __('Failed to save prompt section.', 'ai-post-scheduler'),
-            'loadSectionFailed' => __('Failed to load prompt section.', 'ai-post-scheduler'),
-            'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
-            'activeLabel'  => __('Active', 'ai-post-scheduler'),
-            'inactiveLabel' => __('Inactive', 'ai-post-scheduler'),
-            'defaultLabel'  => __('Default', 'ai-post-scheduler'),
-            'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
-            'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
-            // Template Wizard strings
-            'templateNameRequired' => __('Template Name is required.', 'ai-post-scheduler'),
-            'contentPromptRequired' => __('Content Prompt is required.', 'ai-post-scheduler'),
-            // Schedule strings
-            'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
-            'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
-            // Schedule Wizard strings
-            'scheduleTemplateRequired' => __('Please select a Template to continue.', 'ai-post-scheduler'),
-            'addNewSchedule'           => __('Add New Schedule', 'ai-post-scheduler'),
-            'editSchedule'             => __('Edit Schedule', 'ai-post-scheduler'),
-            'cloneSchedule'            => __('Clone Schedule', 'ai-post-scheduler'),
-            'saveSchedule'             => __('Save Schedule', 'ai-post-scheduler'),
-            'scheduleSavedSuccess'     => __('Schedule saved successfully.', 'ai-post-scheduler'),
-            'startNow'                 => __('Now', 'ai-post-scheduler'),
-            'useDefault'               => __('Use Default', 'ai-post-scheduler'),
-            'noTitle'                  => __('No title', 'ai-post-scheduler'),
-            'yes'                      => __('Yes', 'ai-post-scheduler'),
-            'no'                       => __('No', 'ai-post-scheduler'),
-            // Status/button strings
-            'saving'              => __('Saving...', 'ai-post-scheduler'),
-            'generating'          => __('Generating...', 'ai-post-scheduler'),
-            'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
-            'runNow'              => __('Run Now', 'ai-post-scheduler'),
-            'draftSaved'          => __('Draft saved successfully.', 'ai-post-scheduler'),
-            'saveDraft'           => __('Save Draft', 'ai-post-scheduler'),
-            // Voice strings
-            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
-            'addNewVoice'         => __('Add New Voice', 'ai-post-scheduler'),
-            'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
-            'saveVoice'           => __('Save Voice', 'ai-post-scheduler'),
-            'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
-            // Confirm dialog button labels
-            'confirmCancelButton'              => __('No, cancel', 'ai-post-scheduler'),
-            'confirmDeleteButton'              => __('Yes, delete', 'ai-post-scheduler'),
-            // Schedule delete confirm strings
-            'deleteScheduleConfirm'            => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
-            'selectAtLeastOneSchedule'         => __('Please select at least one schedule.', 'ai-post-scheduler'),
-            'deleteOneScheduleConfirm'         => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
-            /* translators: %d: number of schedules to delete */
-            'deleteMultipleSchedulesConfirm'   => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
-            // Schedule error toasts
-            'failedToLoadHistory'              => __('Failed to load history.', 'ai-post-scheduler'),
-            'failedToDeleteSchedules'          => __('Failed to delete schedules.', 'ai-post-scheduler'),
-            'bulkRunFailed'                    => __('Bulk run failed.', 'ai-post-scheduler'),
-            // Bulk run-now confirm dialog
-            'runSchedulesNow'                  => __('Run Schedules Now', 'ai-post-scheduler'),
-            'cancel'                           => __('Cancel', 'ai-post-scheduler'),
-            'yesRunNow'                        => __('Yes, run now', 'ai-post-scheduler'),
-            'runPostsConfirmSingular'          => __('This will generate an estimated 1 post. Are you sure?', 'ai-post-scheduler'),
-            /* translators: %d: estimated number of posts to generate */
-            'runPostsConfirmPlural'            => __('This will generate an estimated %d posts. Are you sure?', 'ai-post-scheduler'),
-            'runOneScheduleConfirm'            => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
-            /* translators: %d: number of schedules to run */
-            'runMultipleSchedulesConfirm'      => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
-            // Unified schedule bulk delete
-            'deleteSchedulesHeading'           => __('Delete Schedules', 'ai-post-scheduler'),
-            'noDeletableSchedulesSelected'     => __('None of the selected schedules can be deleted.', 'ai-post-scheduler'),
-            'deleteSchedulesListIntro'         => __('The following schedules will be deleted:', 'ai-post-scheduler'),
-            'deleteSchedulesFinalConfirm'      => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
-            /* translators: %d: number of selected schedules that are not deletable */
-            'deleteSchedulesSkipNotice'        => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
-            // Template summary panel
-            'autoGenerateFromContent'          => __('Auto-generate from content', 'ai-post-scheduler'),
-            'noneOption'                       => __('None', 'ai-post-scheduler'),
-            'featuredImageNo'                  => __('No', 'ai-post-scheduler'),
-            /* translators: %s: featured image source name */
-            'featuredImageYes'                 => __('Yes (%s)', 'ai-post-scheduler'),
-            // AI variable tag tooltip
-            'clickToCopy'                      => __('Click to copy', 'ai-post-scheduler'),
-            // Template preview
-            'exampleTopic'                     => __('Example Topic', 'ai-post-scheduler'),
-            'failedToGeneratePreview'          => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
-            'previewNetworkError'              => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
-            // Onboarding wizard
-            'confirmSkipOnboarding'            => __('Skip the Onboarding Wizard? You can restart it later from System Status.', 'ai-post-scheduler'),
-        ));
-
         // Enqueue Authors-specific assets
         if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
           wp_enqueue_style(
@@ -749,6 +658,29 @@ class AIPS_Admin_Assets {
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
+        }
+
+        // Register script translations so wp.i18n.__() calls in JS are translated.
+        // wp_set_script_translations() is available since WordPress 5.0.
+        // Wrapped in function_exists() for backward compatibility with older WP versions.
+        if ( function_exists( 'wp_set_script_translations' ) ) {
+            $i18n_handles = array(
+                'aips-admin-script',
+                'aips-utilities-script',
+                'aips-templates-script',
+                'aips-admin-generated-posts',
+                'aips-admin-post-review',
+                'aips-admin-ai-edit',
+                'aips-admin-history',
+                'aips-admin-taxonomy',
+                'aips-admin-sources',
+                'aips-admin-research',
+                'aips-admin-planner',
+                'aips-admin-view-session',
+            );
+            foreach ( $i18n_handles as $handle ) {
+                wp_set_script_translations( $handle, 'ai-post-scheduler', AIPS_PLUGIN_DIR . 'languages' );
+            }
         }
 
         // Settings Page Scripts
