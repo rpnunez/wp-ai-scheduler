@@ -26,12 +26,12 @@ class AIPS_Embeddings_Cron {
 	private $expansion_service;
 
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
 	/**
-	 * @var AIPS_History_Service History service for logging
+	 * @var AIPS_History_Service_Interface History service for logging
 	 */
 	private $history_service;
 
@@ -39,13 +39,14 @@ class AIPS_Embeddings_Cron {
 	 * Initialize the cron handler.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Topic expansion service.
-	 * @param AIPS_Logger|null                  $logger            Logger instance.
-	 * @param AIPS_History_Service|null         $history_service   History service.
+	 * @param AIPS_Logger_Interface|null          $logger            Logger instance.
+	 * @param AIPS_History_Service_Interface|null $history_service   History service.
 	 */
-	public function __construct($expansion_service = null, $logger = null, $history_service = null) {
+	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
+		$container = AIPS_Container::get_instance();
 		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 	}
 
 	/**
@@ -257,7 +258,7 @@ class AIPS_Embeddings_Cron {
 
 		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
 		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
+			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
 		} else {
 			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
 		}

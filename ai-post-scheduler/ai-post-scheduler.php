@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.2.0
+ * Version: 2.3.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AIPS_VERSION', '2.2.0');
+define('AIPS_VERSION', '2.3.1');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -111,7 +111,15 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Register autoloader
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $vendor_autoload ) ) {
+            require_once $vendor_autoload;
+        }
+
+        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
+        // Composer classmap does not resolve (e.g. on installs without a vendor/
+        // directory or after adding a new class before re-running composer dump-autoload).
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
@@ -148,8 +156,10 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
+        // Use the raw WP function here intentionally: we need to distinguish
+        // "option does not exist" (false) from any stored value including '0'.
         $previously_installed = get_option('aips_db_version') !== false;
-        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
 
@@ -260,6 +270,114 @@ final class AI_Post_Scheduler {
     }
 
     /**
+     * Register initial container bindings for core singletons.
+     *
+     * Phase 1 registration as described in the container architecture plan:
+     * Registers the most-duplicated singletons to validate the container works
+     * correctly before more complex refactors.
+     *
+     * @return void
+     */
+    private function register_container_bindings() {
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        $container->singleton(AIPS_Config::class, function( $container ) {
+            return AIPS_Config::get_instance();
+        });
+
+        // Register AIPS_History_Repository
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
+            return AIPS_History_Repository::instance();
+        });
+
+		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Repository::class);
+		});
+
+        // Register AIPS_History_Service
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
+            return AIPS_History_Service::instance();
+        });
+
+		$container->singleton(AIPS_History_Service_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Service::class);
+		});
+
+        // Register AIPS_Notifications_Repository
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+            return AIPS_Notifications_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Notifications_Repository::class);
+        });
+
+        $container->singleton(AIPS_Logger::class, function( $container ) {
+            return AIPS_Logger::instance();
+        });
+
+        $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
+            return $container->make(AIPS_Logger::class);
+        });
+
+        $container->singleton(AIPS_AI_Service::class, function( $container ) {
+            return AIPS_AI_Service::instance();
+        });
+
+        $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
+            return $container->make(AIPS_AI_Service::class);
+        });
+
+        $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
+            return new AIPS_Schedule_Repository();
+        });
+
+        $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Schedule_Repository::class);
+        });
+    }
+
+    /**
+     * Register thin lazy-resolving wp_ajax_* hooks for all actions in the registry.
+     *
+     * Each closure registered at priority 5 removes itself and then constructs the
+     * correct controller (which registers its own handler at the default priority 10).
+     * WordPress continues iterating priorities after priority 5 completes, so the
+     * controller's handler at priority 10 fires automatically on the same request.
+     *
+     * This satisfies WordPress's requirement that wp_ajax_* hooks are added during
+     * the init phase while deferring controller construction to request time, so
+     * only one controller is constructed per AJAX request.
+     *
+     * @return void
+     */
+    private function register_lazy_ajax_hooks() {
+        foreach (AIPS_Ajax_Registry::all_actions() as $action) {
+            // $resolver is set to null first so the closure can capture it by reference
+            // and call remove_action() on itself — PHP requires the variable to exist
+            // before the closure is assigned.
+            $resolver = null;
+            $resolver = function() use ($action, &$resolver) {
+                // Remove this resolver before constructing the controller so that
+                // if do_action('wp_ajax_' . $action) is re-entered (e.g. via a
+                // recursive call or test scaffolding) the closure does not fire twice.
+                remove_action('wp_ajax_' . $action, $resolver, 5);
+
+                $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
+                if ($controller_class && class_exists($controller_class)) {
+                    // Intentionally not capturing the return value: each controller
+                    // registers its own wp_ajax_{$action} handler at priority 10 as
+                    // a constructor side-effect.  WordPress will invoke that handler
+                    // as the next hook priority in this same wp_ajax_{$action} cycle.
+                    new $controller_class();
+                }
+            };
+            add_action('wp_ajax_' . $action, $resolver, 5);
+        }
+    }
+
+    /**
      * Initialize plugin runtime.
      *
      * Loads translations, registers taxonomy, instantiates admin controllers,
@@ -269,71 +387,84 @@ final class AI_Post_Scheduler {
      */
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+      
+        // Register initial container bindings for core singletons
+        $this->register_container_bindings();
 
         // Register the Source Group taxonomy (not attached to any post type).
-        register_taxonomy(
-            'aips_source_group',
-            array(),
-            array(
-                'labels'            => array(
-                    'name'              => __('Source Groups', 'ai-post-scheduler'),
-                    'singular_name'     => __('Source Group', 'ai-post-scheduler'),
-                    'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
-                    'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
-                    'new_item'          => __('New Source Group', 'ai-post-scheduler'),
-                    'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
-                ),
-                'hierarchical'      => false,
-                'show_ui'           => false,
-                'show_in_nav_menus' => false,
-                'show_in_rest'      => false,
-                'public'            => false,
-                'rewrite'           => false,
-                'query_var'         => false,
-            )
-        );
+        // Only needed in admin and cron contexts; skip on frontend page loads.
+        if (is_admin() || wp_doing_cron()) {
+            register_taxonomy(
+                'aips_source_group',
+                array(),
+                array(
+                    'labels'            => array(
+                        'name'              => __('Source Groups', 'ai-post-scheduler'),
+                        'singular_name'     => __('Source Group', 'ai-post-scheduler'),
+                        'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
+                        'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
+                        'new_item'          => __('New Source Group', 'ai-post-scheduler'),
+                        'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
+                    ),
+                    'hierarchical'      => false,
+                    'show_ui'           => false,
+                    'show_in_nav_menus' => false,
+                    'show_in_rest'      => false,
+                    'public'            => false,
+                    'rewrite'           => false,
+                    'query_var'         => false,
+                )
+            );
+        }
         
         if (is_admin()) {
-            new AIPS_DB_Manager();
-            new AIPS_Admin_Menu();
-            new AIPS_Settings();
-            new AIPS_Onboarding_Wizard();
-            new AIPS_Admin_Assets();
-            new AIPS_Voices();
-            new AIPS_Templates();
-            new AIPS_Templates_Controller();
-            new AIPS_History();
-            
-            // Initialize Post Review handler globally to avoid duplicate AJAX registration
-            global $aips_post_review_handler;
-            $aips_post_review_handler = new AIPS_Post_Review();
-            
-            new AIPS_Planner();
-            new AIPS_Schedule_Controller();
-            new AIPS_Generated_Posts_Controller();
-            new AIPS_Research_Controller();
-            new AIPS_Seeder_Admin();
-            new AIPS_Data_Management();
-            // Structures admin controller (CRUD endpoints for Article Structures UI)
-            new AIPS_Structures_Controller();
-            // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
+            if (!wp_doing_ajax()) {
+                // Admin page rendering: instantiate all admin classes up front.
+                new AIPS_DB_Manager();
+                new AIPS_Admin_Menu();
+                new AIPS_Settings();
+                new AIPS_Onboarding_Wizard();
+                new AIPS_Admin_Assets();
+                new AIPS_Voices();
+                new AIPS_Templates();
+                new AIPS_Templates_Controller();
+                new AIPS_History();
 
-            // Authors feature controllers
-            new AIPS_Authors_Controller();
-            new AIPS_Author_Topics_Controller();
+                // Initialize Post Review handler globally to avoid duplicate AJAX registration
+                global $aips_post_review_handler;
+                $aips_post_review_handler = new AIPS_Post_Review();
 
-            // Taxonomy controller (AJAX endpoints for taxonomy generation management)
-            new AIPS_Taxonomy_Controller();
+                new AIPS_Planner();
+                new AIPS_Schedule_Controller();
+                new AIPS_Generated_Posts_Controller();
+                new AIPS_Research_Controller();
+                new AIPS_Seeder_Admin();
+                new AIPS_Data_Management();
+                // Structures admin controller (CRUD endpoints for Article Structures UI)
+                new AIPS_Structures_Controller();
+                // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
+                new AIPS_Prompt_Sections_Controller();
 
-            // AI Edit + Calendar controllers (AJAX endpoints)
-            new AIPS_AI_Edit_Controller();
-            new AIPS_Calendar_Controller();
-            // Sources controller (AJAX endpoints for trusted sources management)
-            new AIPS_Sources_Controller();
-            // Dev Tools
-            if (get_option('aips_developer_mode')) {
-                new AIPS_Dev_Tools();
+                // Authors feature controllers
+                new AIPS_Authors_Controller();
+                new AIPS_Author_Topics_Controller();
+
+                // Taxonomy controller (AJAX endpoints for taxonomy generation management)
+                new AIPS_Taxonomy_Controller();
+
+                // AI Edit + Calendar controllers (AJAX endpoints)
+                new AIPS_AI_Edit_Controller();
+                new AIPS_Calendar_Controller();
+                // Sources controller (AJAX endpoints for trusted sources management)
+                new AIPS_Sources_Controller();
+                // Dev Tools
+                if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
+                    new AIPS_Dev_Tools();
+                }
+            } else {
+                // AJAX request: use the registry to lazily resolve only the controller
+                // needed for this action, rather than constructing all ~20 controllers.
+                $this->register_lazy_ajax_hooks();
             }
         }
         
@@ -353,7 +484,7 @@ final class AI_Post_Scheduler {
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
 
         new AIPS_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
+		    new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

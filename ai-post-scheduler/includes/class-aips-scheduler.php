@@ -24,7 +24,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     private $generator;
 
     /**
-     * @var AIPS_Schedule_Repository Repository for database operations
+     * @var AIPS_Schedule_Repository_Interface Repository for database operations
      */
     private $repository;
 
@@ -89,9 +89,9 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     /**
      * Set a custom repository instance (dependency injection).
      *
-     * @param AIPS_Schedule_Repository $repository
+     * @param AIPS_Schedule_Repository_Interface $repository
      */
-    public function set_repository($repository) {
+    public function set_repository(AIPS_Schedule_Repository_Interface $repository) {
         $this->repository = $repository;
         if ($this->processor) {
             $this->processor->set_repository($repository);

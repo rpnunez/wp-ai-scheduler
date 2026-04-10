@@ -237,20 +237,20 @@ class AIPS_Generated_Posts_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$history_id) {
-			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
 		}
 		
 		// Get history item with all logs
 		$history_item = $this->history_repository->get_by_id($history_id);
 		
 		if (!$history_item) {
-			wp_send_json_error(array('message' => __('History item not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('History item not found.', 'ai-post-scheduler'));
 		}
 		
 		// Organize logs by type
@@ -321,7 +321,7 @@ class AIPS_Generated_Posts_Controller {
 			}
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'history' => array(
 				'id' => $history_item->id,
 				'status' => $history_item->status,
@@ -347,19 +347,19 @@ class AIPS_Generated_Posts_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$history_id) {
-			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
 		}
 		
 		// Get history item to inspect size/complexity
 		$history_item = $this->history_repository->get_by_id($history_id);
 		if (!$history_item) {
-			wp_send_json_error(array('message' => __('History item not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('History item not found.', 'ai-post-scheduler'));
 		}
 		
 		// Heuristic: if there are many log entries, write to tempfile instead of echoing directly
@@ -373,7 +373,7 @@ class AIPS_Generated_Posts_Controller {
 		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
 			$temp = $converter->generate_json_to_tempfile($history_id, true);
 			if (is_wp_error($temp)) {
-				wp_send_json_error(array('message' => $temp->get_error_message()));
+				AIPS_Ajax_Response::error(array('message' => $temp->get_error_message()));
 			}
 			
 			// Read the file and send it directly instead of redirecting
@@ -382,12 +382,12 @@ class AIPS_Generated_Posts_Controller {
 			$filename = basename($filepath);
 			
 			if (!file_exists($filepath)) {
-				wp_send_json_error(array('message' => __('Export file not found.', 'ai-post-scheduler')));
+				AIPS_Ajax_Response::error(__('Export file not found.', 'ai-post-scheduler'));
 			}
 			
 			$json_string = file_get_contents($filepath);
 			if ($json_string === false) {
-				wp_send_json_error(array('message' => __('Failed to read export file.', 'ai-post-scheduler')));
+				AIPS_Ajax_Response::error(__('Failed to read export file.', 'ai-post-scheduler'));
 			}
 			
 			// Send download headers and the JSON payload
@@ -410,7 +410,7 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			wp_send_json_error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
 		}
 		
 		// Build a safe filename including history id and timestamp
@@ -441,13 +441,13 @@ class AIPS_Generated_Posts_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$history_id) {
-			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
 		}
 		
 		// Use the Session To JSON converter
@@ -455,10 +455,10 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			wp_send_json_error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'json' => $json_string,
 		));
 	}

@@ -34,24 +34,25 @@ if (!defined('ABSPATH')) {
 class AIPS_Generation_Execution_Runner {
 
 	/**
-	 * @var AIPS_History_Service
+	 * @var AIPS_History_Service_Interface
 	 */
 	private $history_service;
 
 	/**
-	 * @var AIPS_Logger
+	 * @var AIPS_Logger_Interface
 	 */
 	private $logger;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_History_Service|null $history_service History service instance.
-	 * @param AIPS_Logger|null          $logger          Logger instance.
+	 * @param AIPS_History_Service_Interface|null $history_service History service instance.
+	 * @param AIPS_Logger_Interface|null          $logger          Logger instance.
 	 */
-	public function __construct($history_service = null, $logger = null) {
-		$this->history_service = $history_service ?: new AIPS_History_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
+	public function __construct(?AIPS_History_Service_Interface $history_service = null, ?AIPS_Logger_Interface $logger = null) {
+		$container = AIPS_Container::get_instance();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 	}
 
 	/**

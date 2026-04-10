@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for schedule data access.
  * Encapsulates all database operations related to scheduling.
  */
-class AIPS_Schedule_Repository {
+class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     
     /**
      * @var string The schedule table name (with prefix)

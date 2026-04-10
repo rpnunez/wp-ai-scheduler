@@ -22,7 +22,7 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
@@ -52,11 +52,11 @@ class AIPS_Templates_Controller {
         );
 
         if (empty(trim($data['name'])) || empty(trim($data['prompt_template']))) {
-            wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Name and prompt template are required.', 'ai-post-scheduler'));
         }
 
         if (mb_strlen($data['name']) > 255) {
-            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
         }
 
         if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
@@ -73,12 +73,12 @@ class AIPS_Templates_Controller {
                 'user_id'       => get_current_user_id(),
             ));
 
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => __('Template saved successfully.', 'ai-post-scheduler'),
                 'template_id' => $id
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to save template.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to save template.', 'ai-post-scheduler'));
         }
     }
 
@@ -86,13 +86,13 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if ($id <= 0) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid template ID.', 'ai-post-scheduler'));
         }
 
         $template = $this->templates->get($id);
@@ -105,9 +105,9 @@ class AIPS_Templates_Controller {
                 'user_id'       => get_current_user_id(),
             ));
 
-            wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Template deleted successfully.', 'ai-post-scheduler'));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete template.', 'ai-post-scheduler'));
         }
     }
 
@@ -115,21 +115,21 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if ($id <= 0) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid template ID.', 'ai-post-scheduler'));
         }
 
         $template = $this->templates->get($id);
 
         if ($template) {
-            wp_send_json_success(array('template' => $template));
+            AIPS_Ajax_Response::success(array('template' => $template));
         } else {
-            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
         }
     }
 
@@ -137,19 +137,19 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if ($id <= 0) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid template ID.', 'ai-post-scheduler'));
         }
 
         $template = $this->templates->get($id);
 
         if (!$template) {
-            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
         }
 
         $new_data = array(
@@ -183,12 +183,12 @@ class AIPS_Templates_Controller {
                 'user_id'       => get_current_user_id(),
             ));
 
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => __('Template cloned successfully.', 'ai-post-scheduler'),
                 'template_id' => $new_id
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to clone template.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to clone template.', 'ai-post-scheduler'));
         }
     }
 
@@ -196,7 +196,7 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
@@ -223,11 +223,11 @@ class AIPS_Templates_Controller {
         );
 
         if (empty(trim($data['prompt_template']))) {
-            wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Prompt template is required.', 'ai-post-scheduler'));
         }
 
         if (mb_strlen($data['name']) > 255) {
-            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
         }
 
         // Convert to object for context
@@ -247,10 +247,10 @@ class AIPS_Templates_Controller {
         $result = $generator->generate_preview($context);
 
         if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'result' => $result,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
         ));
@@ -270,7 +270,7 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
@@ -291,7 +291,7 @@ class AIPS_Templates_Controller {
         );
 
         if (empty(trim($template_data->prompt_template))) {
-            wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Please enter a content prompt to generate the preview.', 'ai-post-scheduler'));
         }
 
         // Use Prompt Builder to build all prompts
@@ -303,7 +303,7 @@ class AIPS_Templates_Controller {
         // Build prompts using the centralized method
         $result = $prompt_builder->build_prompts($template_data, null, $voice);
 
-        wp_send_json_success($result);
+        AIPS_Ajax_Response::success($result);
     }
 
     /**

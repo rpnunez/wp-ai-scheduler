@@ -202,7 +202,7 @@ class AIPS_Calendar_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
 		}
 		
 		$year = isset($_POST['year']) ? absint($_POST['year']) : date('Y');
@@ -210,12 +210,12 @@ class AIPS_Calendar_Controller {
 		
 		// Validate month
 		if ($month < 1 || $month > 12) {
-			wp_send_json_error(array('message' => __('Invalid month.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid month.', 'ai-post-scheduler'));
 		}
 		
 		$events = $this->get_month_events($year, $month);
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'events' => $events,
 			'year' => $year,
 			'month' => $month,

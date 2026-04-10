@@ -79,7 +79,7 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		// Sanitize and validate input
@@ -88,7 +88,7 @@ class AIPS_Authors_Controller {
 		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field(wp_unslash($_POST['field_niche'])) : '';
 		
 		if (empty($name) || empty($field_niche)) {
-			wp_send_json_error(array('message' => __('Name and Field/Niche are required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Name and Field/Niche are required.', 'ai-post-scheduler'));
 		}
 		
 		// Build author data
@@ -144,12 +144,12 @@ class AIPS_Authors_Controller {
 		}
 		
 		if ($result) {
-			wp_send_json_success(array(
+			AIPS_Ajax_Response::success(array(
 				'message' => __('Author saved successfully.', 'ai-post-scheduler'),
 				'author_id' => $id
 			));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to save author.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to save author.', 'ai-post-scheduler'));
 		}
 	}
 	
@@ -160,13 +160,13 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		// Delete child records first to avoid orphaned records
@@ -187,9 +187,9 @@ class AIPS_Authors_Controller {
 		$result = $this->repository->delete($author_id);
 		
 		if ($result) {
-			wp_send_json_success(array('message' => __('Author deleted successfully.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::success(array(), __('Author deleted successfully.', 'ai-post-scheduler'));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to delete author.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to delete author.', 'ai-post-scheduler'));
 		}
 	}
 	
@@ -200,21 +200,21 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		$author = $this->repository->get_by_id($author_id);
 		
 		if ($author) {
-			wp_send_json_success(array('author' => $author));
+			AIPS_Ajax_Response::success(array('author' => $author));
 		} else {
-			wp_send_json_error(array('message' => __('Author not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Author not found.', 'ai-post-scheduler'));
 		}
 	}
 	
@@ -225,14 +225,14 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : null;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		// For the special "posts_generated" tab, we need to consider all topics
@@ -322,7 +322,7 @@ class AIPS_Authors_Controller {
 			}));
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'topics' => $topics,
 			'status_counts' => $status_counts
 		));
@@ -335,13 +335,13 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		$posts = $this->logs_repository->get_generated_posts_by_author($author_id);
@@ -359,7 +359,7 @@ class AIPS_Authors_Controller {
 			}
 		}
 		
-		wp_send_json_success(array('posts' => $posts));
+		AIPS_Ajax_Response::success(array('posts' => $posts));
 	}
 	
 	/**
@@ -369,19 +369,19 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		$result = $this->topics_scheduler->generate_now($author_id);
 
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
 		// Create admin bar notification for manual topic generation
@@ -390,7 +390,7 @@ class AIPS_Authors_Controller {
 			$this->notifications->author_topics_generated($author->name, count($result), $author_id);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
 			'topics' => $result
 		));
@@ -403,13 +403,13 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
 		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
 		$feedback = $this->feedback_repository->get_by_author($author_id);
@@ -424,7 +424,7 @@ class AIPS_Authors_Controller {
 			}
 		}
 		
-		wp_send_json_success(array('feedback' => $feedback));
+		AIPS_Ajax_Response::success(array('feedback' => $feedback));
 	}
 	
 	/**
@@ -434,20 +434,20 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 		
 		if (!$topic_id) {
-			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
 		}
 		
 		// Get the topic details
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
-			wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
 		}
 		
 		// Get all logs for this topic
@@ -478,7 +478,7 @@ class AIPS_Authors_Controller {
 			}
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'topic' => $topic,
 			'posts' => $posts
 		));
@@ -494,7 +494,7 @@ class AIPS_Authors_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$site_niche      = isset($_POST['site_niche']) ? sanitize_text_field(wp_unslash($_POST['site_niche'])) : '';
@@ -504,7 +504,7 @@ class AIPS_Authors_Controller {
 		$count           = isset($_POST['count']) ? absint($_POST['count']) : 3;
 
 		if (empty($site_niche)) {
-			wp_send_json_error(array('message' => __('Site niche is required.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Site niche is required.', 'ai-post-scheduler'));
 		}
 
 		$service = new AIPS_Author_Suggestions_Service();
@@ -516,7 +516,7 @@ class AIPS_Authors_Controller {
 		), $count);
 
 		if (is_wp_error($suggestions)) {
-			wp_send_json_error(array('message' => $suggestions->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $suggestions->get_error_message()));
 		}
 
 		do_action('aips_author_suggestions_generated', array(
@@ -525,7 +525,7 @@ class AIPS_Authors_Controller {
 			'user_id'     => get_current_user_id(),
 		));
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'suggestions' => $suggestions,
 			'message'     => sprintf(
 				/* translators: %d: number of author suggestions generated */

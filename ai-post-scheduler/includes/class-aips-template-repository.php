@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to templates.
  */
 class AIPS_Template_Repository {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * @var string The templates table name (with prefix)
      */

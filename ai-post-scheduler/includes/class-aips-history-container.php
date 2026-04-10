@@ -46,7 +46,7 @@ class AIPS_History_Container {
 	private $metadata;
 	
 	/**
-	 * @var AIPS_History_Repository Repository for database operations
+	 * @var AIPS_History_Repository_Interface Repository for database operations
 	 */
 	private $repository;
 	
@@ -63,12 +63,12 @@ class AIPS_History_Container {
 	/**
 	 * Initialize a new History container
 	 *
-	 * @param AIPS_History_Repository $repository Repository instance
+	 * @param AIPS_History_Repository_Interface $repository Repository instance
 	 * @param string $type Type of history container
 	 * @param array $metadata Optional metadata
 	 * @param int|null $existing_history_id Optional. Load existing container by ID
 	 */
-	public function __construct($repository, $type, $metadata = array(), $existing_history_id = null) {
+	public function __construct(AIPS_History_Repository_Interface $repository, $type, $metadata = array(), $existing_history_id = null) {
 		$this->repository = $repository;
 		$this->session = null;
 		
@@ -106,11 +106,11 @@ class AIPS_History_Container {
 	/**
 	 * Load an existing History Container by ID
 	 *
-	 * @param AIPS_History_Repository $repository Repository instance
+	 * @param AIPS_History_Repository_Interface $repository Repository instance
 	 * @param int $history_id History ID to load
 	 * @return AIPS_History_Container|null Container instance or null if not found
 	 */
-	public static function load_existing($repository, $history_id) {
+	public static function load_existing(AIPS_History_Repository_Interface $repository, $history_id) {
 		$history = $repository->get_by_id($history_id);
 		if (!$history) {
 			return null;
@@ -145,12 +145,12 @@ class AIPS_History_Container {
 	 * the given post, and otherwise falls back to the most recent history record
 	 * for the post.
 	 *
-	 * @param AIPS_History_Repository $repository Repository instance.
+	 * @param AIPS_History_Repository_Interface $repository Repository instance.
 	 * @param int                     $post_id Post ID.
 	 * @param int                     $history_id Optional history ID from the active session.
 	 * @return AIPS_History_Container|WP_Error
 	 */
-	public static function resolve_existing($repository, $post_id = 0, $history_id = 0) {
+	public static function resolve_existing(AIPS_History_Repository_Interface $repository, $post_id = 0, $history_id = 0) {
 		$post_id = absint($post_id);
 		$history_id = absint($history_id);
 		$history_record = null;

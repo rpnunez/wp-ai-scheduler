@@ -18,33 +18,34 @@ if (!defined('ABSPATH')) {
 class AIPS_Notifications_Event_Handler {
 
 	/**
- * @var AIPS_Notifications
- */
+	 * @var AIPS_Notifications
+	 */
 	private $notifications;
 
 	/**
- * @var AIPS_Notifications_Repository
- */
+	 * @var AIPS_Notifications_Repository_Interface
+	 */
 	private $repository;
 
 	/**
- * Tracks whether the WordPress action hooks have been registered by any
- * instance so that multiple instantiations do not register duplicate handlers.
- *
- * @var bool
- */
+	 * Tracks whether the WordPress action hooks have been registered by any
+	 * instance so that multiple instantiations do not register duplicate handlers.
+	 *
+	 * @var bool
+	 */
 	private static $hooks_registered = false;
 
 	/**
- * Constructor.
- *
- * @param AIPS_Notifications $notifications The dispatcher.
- * @param AIPS_Notifications_Repository|null $repository DB notifications repository.
- */
-	public function __construct($notifications, $repository = null) {
-	$this->notifications = $notifications;
-	$this->repository = $repository instanceof AIPS_Notifications_Repository ? $repository : new AIPS_Notifications_Repository();
-	$this->register_hooks();
+	 * Constructor.
+	 *
+	 * @param AIPS_Notifications                          $notifications The dispatcher.
+	 * @param AIPS_Notifications_Repository_Interface|null $repository   DB notifications repository.
+	 */
+	public function __construct($notifications, ?AIPS_Notifications_Repository_Interface $repository = null) {
+		$container = AIPS_Container::get_instance();
+		$this->notifications = $notifications;
+		$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : AIPS_Notifications_Repository::instance());
+		$this->register_hooks();
 	}
 
 	public static function get_hook_bindings() {
@@ -439,32 +440,33 @@ class AIPS_Notifications_Event_Handler {
 	 * @return void
 	 */
 	public function handle_summary_rollups_cron() {
-		$today_key = gmdate('Y-m-d', current_time('timestamp', true));
-		$daily_sent_key = get_option('aips_notif_daily_digest_last_sent', '');
+		$config        = AIPS_Config::get_instance();
+		$today_key     = gmdate('Y-m-d', current_time('timestamp', true));
+		$daily_sent_key = $config->get_option('aips_notif_daily_digest_last_sent');
 
 		if ($daily_sent_key !== $today_key) {
 			$this->notifications->daily_digest($this->build_rollup_payload(86400, 'daily_digest_' . $today_key));
-			update_option('aips_notif_daily_digest_last_sent', $today_key, false);
+			$config->set_option('aips_notif_daily_digest_last_sent', $today_key, false);
 		}
 
 		$current_timestamp = current_time('timestamp', true);
 
 		// Weekly summary: send once per ISO week when the week key changes.
 		$weekly_key       = gmdate('o-W', $current_timestamp);
-		$weekly_last_sent = get_option('aips_notif_weekly_summary_last_sent', '');
+		$weekly_last_sent = $config->get_option('aips_notif_weekly_summary_last_sent');
 
 		if ($weekly_last_sent !== $weekly_key) {
 			$this->notifications->weekly_summary($this->build_rollup_payload(7 * DAY_IN_SECONDS, 'weekly_summary_' . $weekly_key));
-			update_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
+			$config->set_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
 		}
 
 		// Monthly report: send once per calendar month when the month key changes.
 		$monthly_key       = gmdate('Y-m', $current_timestamp);
-		$monthly_last_sent = get_option('aips_notif_monthly_report_last_sent', '');
+		$monthly_last_sent = $config->get_option('aips_notif_monthly_report_last_sent');
 
 		if ($monthly_last_sent !== $monthly_key) {
 			$this->notifications->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
-			update_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
+			$config->set_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
 		}
 	}
 
