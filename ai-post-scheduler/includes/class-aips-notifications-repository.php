@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
-class AIPS_Notifications_Repository {
+class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Interface {
 
 	/**
 	 * @var self|null Singleton instance.

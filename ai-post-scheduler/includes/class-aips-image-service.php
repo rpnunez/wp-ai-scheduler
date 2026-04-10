@@ -22,23 +22,24 @@ if (!defined('ABSPATH')) {
 class AIPS_Image_Service {
     
     /**
-     * @var AIPS_AI_Service AI Service instance for image generation
+     * @var AIPS_AI_Service_Interface AI Service instance for image generation
      */
     private $ai_service;
     
     /**
-     * @var AIPS_Logger Logger instance
+     * @var AIPS_Logger_Interface Logger instance
      */
     private $logger;
     
     /**
      * Initialize the Image Service.
      *
-     * @param AIPS_AI_Service|null $ai_service Optional AI Service instance. Creates new if not provided.
+     * @param AIPS_AI_Service_Interface|null $ai_service Optional AI Service instance. Creates new if not provided.
      */
-    public function __construct($ai_service = null) {
-        $this->ai_service = $ai_service ? $ai_service : new AIPS_AI_Service();
-        $this->logger = new AIPS_Logger();
+    public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
+        $container = AIPS_Container::get_instance();
+        $this->ai_service = $ai_service ? $ai_service : ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+        $this->logger = $container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger();
     }
     
     /**
