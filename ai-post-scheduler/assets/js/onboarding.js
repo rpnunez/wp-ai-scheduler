@@ -145,7 +145,7 @@ jQuery(document).ready(function ($) {
 	});
 
 	$('#aips-onboarding-skip').on('click', function () {
-		if (!window.confirm(aipsAdminL10n.confirmSkipOnboarding || 'Skip the Onboarding Wizard? You can restart it later from System Status.')) {
+		if (!window.confirm(aipsOnboardingL10n.confirmSkipOnboarding || 'Skip the Onboarding Wizard? You can restart it later from System Status.')) {
 			return;
 		}
 		ajax('aips_onboarding_skip', {}, function (err, out) {
