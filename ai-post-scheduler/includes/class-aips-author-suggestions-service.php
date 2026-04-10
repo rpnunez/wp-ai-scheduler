@@ -26,17 +26,17 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Suggestions_Service {
 
 	/**
-	 * @var AIPS_AI_Service AI service for making API calls.
+	 * @var AIPS_AI_Service_Interface AI service for making API calls.
 	 */
 	private $ai_service;
 
 	/**
-	 * @var AIPS_Logger Logger instance.
+	 * @var AIPS_Logger_Interface Logger instance.
 	 */
 	private $logger;
 
 	/**
-	 * @var AIPS_History_Service History service for recording activity.
+	 * @var AIPS_History_Service_Interface History service for recording activity.
 	 */
 	private $history_service;
 
@@ -48,15 +48,16 @@ class AIPS_Author_Suggestions_Service {
 	/**
 	 * Initialize the service.
 	 *
-	 * @param AIPS_AI_Service|null             $ai_service      AI service instance (optional for testing).
-	 * @param AIPS_Logger|null                 $logger          Logger instance (optional for testing).
-	 * @param AIPS_History_Service|null        $history_service History service (optional for testing).
+	 * @param AIPS_AI_Service_Interface|null      $ai_service      AI service instance (optional for testing).
+	 * @param AIPS_Logger_Interface|null          $logger          Logger instance (optional for testing).
+	 * @param AIPS_History_Service_Interface|null $history_service History service (optional for testing).
 	 * @param AIPS_Prompt_Builder_Authors|null $prompt_builder  Prompt builder (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $history_service = null, $prompt_builder = null) {
-		$this->ai_service      = $ai_service ?: new AIPS_AI_Service();
-		$this->logger          = $logger ?: new AIPS_Logger();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, $prompt_builder = null) {
+		$container = AIPS_Container::get_instance();
+		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger          = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Authors();
 	}
 

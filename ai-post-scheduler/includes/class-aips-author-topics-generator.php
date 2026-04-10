@@ -21,12 +21,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Topics_Generator {
 	
 	/**
-	 * @var AIPS_AI_Service AI service for making API calls
+	 * @var AIPS_AI_Service_Interface AI service for making API calls
 	 */
 	private $ai_service;
 	
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 	
@@ -58,17 +58,18 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Initialize the generator.
 	 *
-	 * @param object|null $ai_service AI service instance (optional for testing).
-	 * @param object|null $logger Logger instance (optional for testing).
+	 * @param AIPS_AI_Service_Interface|null $ai_service AI service instance (optional for testing).
+	 * @param AIPS_Logger_Interface|null $logger Logger instance (optional for testing).
 	 * @param object|null $topics_repository Topics repository (optional for testing).
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null) {
+		$container = AIPS_Container::get_instance();
+		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);

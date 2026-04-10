@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Logger {
+class AIPS_Logger implements AIPS_Logger_Interface {
 
     /**
      * @var self|null Singleton instance.

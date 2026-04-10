@@ -78,14 +78,14 @@ class AIPS_Data_Management {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Unauthorized', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
 			return;
 		}
 		
 		$format = isset($_POST['format']) ? sanitize_text_field(wp_unslash($_POST['format'])) : 'mysql';
 		
 		if (!isset($this->export_formats[$format])) {
-			wp_send_json_error(array('message' => __('Invalid export format', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid export format', 'ai-post-scheduler'));
 			return;
 		}
 		
@@ -95,7 +95,7 @@ class AIPS_Data_Management {
 			// Script will exit after sending download
 		} catch (Exception $e) {
 			error_log('AIPS Export Error: ' . $e->getMessage());
-			wp_send_json_error(array('message' => __('An error occurred during export. Please check server logs.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('An error occurred during export. Please check server logs.', 'ai-post-scheduler'));
 		}
 	}
 	
@@ -106,20 +106,20 @@ class AIPS_Data_Management {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Unauthorized', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
 			return;
 		}
 		
 		$format = isset($_POST['format']) ? sanitize_text_field(wp_unslash($_POST['format'])) : 'mysql';
 		
 		if (!isset($this->import_formats[$format])) {
-			wp_send_json_error(array('message' => __('Invalid import format', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid import format', 'ai-post-scheduler'));
 			return;
 		}
 		
 		// Check if file was uploaded
 		if (!isset($_FILES['import_file'])) {
-			wp_send_json_error(array('message' => __('No file uploaded', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No file uploaded', 'ai-post-scheduler'));
 			return;
 		}
 		
@@ -129,7 +129,7 @@ class AIPS_Data_Management {
 		// Validate file
 		$validation = $importer->validate_file($file);
 		if (is_wp_error($validation)) {
-			wp_send_json_error(array('message' => $validation->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $validation->get_error_message()));
 			return;
 		}
 		
@@ -137,10 +137,10 @@ class AIPS_Data_Management {
 		$result = $importer->import($file['tmp_name']);
 		
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 			return;
 		}
 		
-		wp_send_json_success(array('message' => __('Data imported successfully', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array(), __('Data imported successfully', 'ai-post-scheduler'));
 	}
 }
