@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow sync-wp-core
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow sync-wp-core phpstan
 
 # Default target
 .DEFAULT_GOAL := help
@@ -132,6 +132,10 @@ plugin-list: ## List all installed plugins
 test: ## Run plugin tests
 	@echo "$(BLUE)Running tests...$(NC)"
 	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test"
+
+phpstan: ## Run PHPStan static analysis
+	@echo "$(BLUE)Running PHPStan...$(NC)"
+	php ./ai-post-scheduler/vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=1G
 
 test-verbose: ## Run plugin tests with verbose output
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"

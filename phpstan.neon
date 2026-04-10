@@ -1,0 +1,21 @@
+includes:
+    # Requires: composer require --dev szepeviktor/phpstan-wordpress
+    - ai-post-scheduler/vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - ai-post-scheduler/includes/
+        - ai-post-scheduler/ai-post-scheduler.php
+
+    # Standard exclusions
+    excludePaths:
+        - ai-post-scheduler/vendor/
+        - .docker/
+
+    # Important for WordPress: Handle global constants and legacy hooks
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+
+    # Optional: Cache directory to speed up subsequent runs
+    tmpDir: .phpstan-cache
