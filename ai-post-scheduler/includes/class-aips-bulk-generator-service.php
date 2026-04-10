@@ -161,17 +161,18 @@ class AIPS_Bulk_Generation_Result {
 class AIPS_Bulk_Generator_Service {
 
 	/**
-	 * @var AIPS_History_Service
+	 * @var AIPS_History_Service_Interface
 	 */
 	private $history_service;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_History_Service|null $history_service Injectable for testing.
+	 * @param AIPS_History_Service_Interface|null $history_service Injectable for testing.
 	 */
-	public function __construct( $history_service = null ) {
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+	public function __construct( ?AIPS_History_Service_Interface $history_service = null ) {
+		$container = AIPS_Container::get_instance();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 	}
 
 	/**

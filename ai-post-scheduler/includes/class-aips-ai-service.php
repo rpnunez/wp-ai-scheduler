@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Provides AI content generation capabilities through AI Engine integration.
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
-class AIPS_AI_Service {
+class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
     /**
      * @var self|null Singleton instance.
@@ -44,7 +44,7 @@ class AIPS_AI_Service {
     private $ai_engine;
     
     /**
-     * @var AIPS_Logger Logger instance
+     * @var AIPS_Logger_Interface Logger instance
      */
     private $logger;
     
@@ -79,8 +79,17 @@ class AIPS_AI_Service {
     /**
      * Initialize the AI Service.
      */
-    public function __construct($logger = null, $config = null, $resilience_service = null) {
-        $this->logger = $logger ?: AIPS_Logger::instance();
+    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null) {
+        if ($logger) {
+            $this->logger = $logger;
+        } else {
+            $container = AIPS_Container::get_instance();
+            if ($container->has(AIPS_Logger_Interface::class)) {
+                $this->logger = $container->make(AIPS_Logger_Interface::class);
+            } else {
+                $this->logger = AIPS_Logger::instance();
+            }
+        }
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
 

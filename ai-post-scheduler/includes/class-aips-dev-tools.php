@@ -37,7 +37,7 @@ class AIPS_Dev_Tools {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
         }
 
         $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
@@ -49,7 +49,7 @@ class AIPS_Dev_Tools {
         $include_ai_variables = isset($_POST['include_ai_variables']) && $_POST['include_ai_variables'] === 'true';
 
         if (empty($topic)) {
-            wp_send_json_error(array('message' => __('Topic is required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Topic is required.', 'ai-post-scheduler'));
         }
 
         // Construct the prompt
@@ -84,7 +84,7 @@ class AIPS_Dev_Tools {
         $response = $ai_service->generate_text($prompt, array('temperature' => 0.7));
 
         if (is_wp_error($response)) {
-            wp_send_json_error(array('message' => $response->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $response->get_error_message()));
         }
 
         // Parse JSON
@@ -96,7 +96,7 @@ class AIPS_Dev_Tools {
         $data = json_decode($json_str, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler'),
                 'debug' => $json_str
             ));
@@ -197,7 +197,7 @@ class AIPS_Dev_Tools {
             }
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => __('Scaffold generated successfully!', 'ai-post-scheduler'),
             'items' => $created_items
         ));
