@@ -330,7 +330,7 @@ final class AI_Post_Scheduler {
         });
 
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
-            return new AIPS_Schedule_Repository();
+            return AIPS_Schedule_Repository::instance();
         });
 
         $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
