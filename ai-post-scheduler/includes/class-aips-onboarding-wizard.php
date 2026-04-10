@@ -56,13 +56,16 @@ class AIPS_Onboarding_Wizard {
 
 	public function register_page() {
 		add_submenu_page(
-			null,
+			'ai-post-scheduler',
 			__('Onboarding Wizard', 'ai-post-scheduler'),
 			__('Onboarding Wizard', 'ai-post-scheduler'),
 			'manage_options',
 			self::PAGE_SLUG,
 			array($this, 'render_page')
 		);
+
+		// Keep wizard accessible by URL without adding a visible submenu item.
+		remove_submenu_page('ai-post-scheduler', self::PAGE_SLUG);
 	}
 
 	/**
@@ -482,4 +485,3 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 }
-
