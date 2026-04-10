@@ -52,7 +52,7 @@ class AIPS_Voices {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $data = array(
@@ -65,18 +65,18 @@ class AIPS_Voices {
         );
         
         if (empty($data['name']) || empty($data['title_prompt']) || empty($data['content_instructions'])) {
-            wp_send_json_error(array('message' => __('Name, Title Prompt, and Content Instructions are required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Name, Title Prompt, and Content Instructions are required.', 'ai-post-scheduler'));
         }
         
         $id = $this->save($data);
         
         if ($id) {
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => __('Voice saved successfully.', 'ai-post-scheduler'),
                 'voice_id' => $id
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to save voice.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to save voice.', 'ai-post-scheduler'));
         }
     }
     
@@ -84,19 +84,19 @@ class AIPS_Voices {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
         
         if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid voice ID.', 'ai-post-scheduler'));
         }
         
         if ($this->delete($id)) {
-            wp_send_json_success(array('message' => __('Voice deleted successfully.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Voice deleted successfully.', 'ai-post-scheduler'));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete voice.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete voice.', 'ai-post-scheduler'));
         }
     }
     
@@ -104,21 +104,21 @@ class AIPS_Voices {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
         
         if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid voice ID.', 'ai-post-scheduler'));
         }
         
         $voice = $this->get($id);
         
         if ($voice) {
-            wp_send_json_success(array('voice' => $voice));
+            AIPS_Ajax_Response::success(array('voice' => $voice));
         } else {
-            wp_send_json_error(array('message' => __('Voice not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Voice not found.', 'ai-post-scheduler'));
         }
     }
     
@@ -126,13 +126,13 @@ class AIPS_Voices {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $voices = $this->repository->search($search);
         
-        wp_send_json_success(array('voices' => $voices));
+        AIPS_Ajax_Response::success(array('voices' => $voices));
     }
     
     public function render_page() {
