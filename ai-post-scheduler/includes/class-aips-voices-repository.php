@@ -22,6 +22,23 @@ if (!defined('ABSPATH')) {
 class AIPS_Voices_Repository {
 
     /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
      * @var string Table name (with prefix)
      */
     private $table_name;
@@ -32,33 +49,58 @@ class AIPS_Voices_Repository {
     private $wpdb;
 
     /**
+     * @var AIPS_Cache In-request identity-map cache (array driver).
+     */
+    private $cache = null;
+
+    /**
      * Initialize the repository.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_voices';
+        $this->cache = AIPS_Cache_Factory::named( 'aips_voices_repository', 'array' );
     }
 
     /**
      * Get all voices.
      *
+     * Results are cached for the duration of the request so repeat calls
+     * within the same request do not issue additional DB queries.
+     *
      * @param bool $active_only Whether to return only active voices.
      * @return array Array of voice objects.
      */
     public function get_all($active_only = false) {
-        $where = $active_only ? "WHERE is_active = 1" : "";
-        return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        $key = 'all:' . ( $active_only ? '1' : '0' );
+        if ( $this->cache->has( $key ) ) {
+            return $this->cache->get( $key );
+        }
+        $where  = $active_only ? "WHERE is_active = 1" : "";
+        $result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+        $this->cache->set( $key, $result );
+        return $result;
     }
 
     /**
      * Get a single voice by ID.
      *
+     * Non-null results are cached for the duration of the request.
+     *
      * @param int $id Voice ID.
      * @return object|null Voice object or null if not found.
      */
     public function get_by_id($id) {
-        return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        $key = 'id:' . (int) $id;
+        if ( $this->cache->has( $key ) ) {
+            return $this->cache->get( $key );
+        }
+        $result = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE id = %d", $id ) );
+        if ( $result !== null ) {
+            $this->cache->set( $key, $result );
+        }
+        return $result;
     }
 
     /**
@@ -79,6 +121,10 @@ class AIPS_Voices_Repository {
         $format = array('%s', '%s', '%s', '%s', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+
+        if ( $result ) {
+            $this->cache->flush();
+        }
 
         return $result ? $this->wpdb->insert_id : false;
     }
@@ -131,6 +177,10 @@ class AIPS_Voices_Repository {
             array('%d')
         );
 
+        if ( $result !== false ) {
+            $this->cache->flush();
+        }
+
         return $result !== false;
     }
 
@@ -141,7 +191,11 @@ class AIPS_Voices_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        if ( $result !== false ) {
+            $this->cache->flush();
+        }
+        return $result !== false;
     }
 
     /**
