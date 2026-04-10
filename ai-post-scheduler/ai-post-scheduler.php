@@ -350,6 +350,8 @@ final class AI_Post_Scheduler {
      * the init phase while deferring controller construction to request time, so
      * only one controller is constructed per AJAX request.
      *
+     * Used as a fallback in boot_ajax() when an action is not found in the registry.
+     *
      * @return void
      */
     private function register_lazy_ajax_hooks() {
@@ -380,95 +382,75 @@ final class AI_Post_Scheduler {
     /**
      * Initialize plugin runtime.
      *
-     * Loads translations, registers taxonomy, instantiates admin controllers,
-     * and boots scheduler/services used in all contexts.
+     * Dispatches to the appropriate context-specific boot method based on the
+     * current request type, ensuring only the subsystems required for that
+     * context are instantiated.
      *
      * @return void
      */
     public function init() {
+        $this->boot_common();
+
+        if (wp_doing_cron()) {
+            $this->boot_cron();
+        } elseif (wp_doing_ajax()) {
+            $this->boot_ajax();
+        } elseif (is_admin()) {
+            $this->boot_admin();
+        } else {
+            $this->boot_frontend();
+        }
+    }
+
+    /**
+     * Boot subsystems required in every request context.
+     *
+     * Loads text domain, registers container bindings, and registers the
+     * Source Group taxonomy. Called before any context-specific boot method.
+     *
+     * @return void
+     */
+    private function boot_common() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
-      
-        // Register initial container bindings for core singletons
+
+        // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
         // Register the Source Group taxonomy (not attached to any post type).
-        // Only needed in admin and cron contexts; skip on frontend page loads.
-        if (is_admin() || wp_doing_cron()) {
-            register_taxonomy(
-                'aips_source_group',
-                array(),
-                array(
-                    'labels'            => array(
-                        'name'              => __('Source Groups', 'ai-post-scheduler'),
-                        'singular_name'     => __('Source Group', 'ai-post-scheduler'),
-                        'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
-                        'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
-                        'new_item'          => __('New Source Group', 'ai-post-scheduler'),
-                        'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
-                    ),
-                    'hierarchical'      => false,
-                    'show_ui'           => false,
-                    'show_in_nav_menus' => false,
-                    'show_in_rest'      => false,
-                    'public'            => false,
-                    'rewrite'           => false,
-                    'query_var'         => false,
-                )
-            );
-        }
-        
-        if (is_admin()) {
-            if (!wp_doing_ajax()) {
-                // Admin page rendering: instantiate all admin classes up front.
-                new AIPS_DB_Manager();
-                new AIPS_Admin_Menu();
-                new AIPS_Settings();
-                new AIPS_Onboarding_Wizard();
-                new AIPS_Admin_Assets();
-                new AIPS_Voices();
-                new AIPS_Templates();
-                new AIPS_Templates_Controller();
-                new AIPS_History();
+        register_taxonomy(
+            'aips_source_group',
+            array(),
+            array(
+                'labels'            => array(
+                    'name'              => __('Source Groups', 'ai-post-scheduler'),
+                    'singular_name'     => __('Source Group', 'ai-post-scheduler'),
+                    'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
+                    'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
+                    'new_item'          => __('New Source Group', 'ai-post-scheduler'),
+                    'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
+                ),
+                'hierarchical'      => false,
+                'show_ui'           => false,
+                'show_in_nav_menus' => false,
+                'show_in_rest'      => false,
+                'public'            => false,
+                'rewrite'           => false,
+                'query_var'         => false,
+            )
+        );
+    }
 
-                // Initialize Post Review handler globally to avoid duplicate AJAX registration
-                global $aips_post_review_handler;
-                $aips_post_review_handler = new AIPS_Post_Review();
-
-                new AIPS_Planner();
-                new AIPS_Schedule_Controller();
-                new AIPS_Generated_Posts_Controller();
-                new AIPS_Research_Controller();
-                new AIPS_Seeder_Admin();
-                new AIPS_Data_Management();
-                // Structures admin controller (CRUD endpoints for Article Structures UI)
-                new AIPS_Structures_Controller();
-                // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-                new AIPS_Prompt_Sections_Controller();
-
-                // Authors feature controllers
-                new AIPS_Authors_Controller();
-                new AIPS_Author_Topics_Controller();
-
-                // Taxonomy controller (AJAX endpoints for taxonomy generation management)
-                new AIPS_Taxonomy_Controller();
-
-                // AI Edit + Calendar controllers (AJAX endpoints)
-                new AIPS_AI_Edit_Controller();
-                new AIPS_Calendar_Controller();
-                // Sources controller (AJAX endpoints for trusted sources management)
-                new AIPS_Sources_Controller();
-                // Dev Tools
-                if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-                    new AIPS_Dev_Tools();
-                }
-            } else {
-                // AJAX request: use the registry to lazily resolve only the controller
-                // needed for this action, rather than constructing all ~20 controllers.
-                $this->register_lazy_ajax_hooks();
-            }
-        }
-        
-        // Initialize schedulers (both admin and frontend)
+    /**
+     * Boot subsystems required only during WP-Cron execution.
+     *
+     * Instantiates and registers cron hooks for the scheduler, topic generator,
+     * author post generator, and embeddings worker. Also boots the notification
+     * event handler (for generation-failure and quota alerts fired from cron)
+     * and the partial-generation reconciler (save_post fires when cron creates posts).
+     *
+     * @return void
+     */
+    private function boot_cron() {
         $aips_scheduler = new AIPS_Scheduler();
         add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
         add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
@@ -479,14 +461,81 @@ final class AI_Post_Scheduler {
         $aips_author_post_generator = new AIPS_Author_Post_Generator();
         add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
 
-        // Embeddings background worker
+        // Embeddings background worker.
         $aips_embeddings_cron = new AIPS_Embeddings_Cron();
         add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
 
-        new AIPS_Notifications();
-		    new AIPS_Partial_Generation_State_Reconciler();
+        // Research controller registers the aips_scheduled_research cron hook.
+        new AIPS_Research_Controller();
 
-        // Admin toolbar (visible on both admin and frontend for users with manage_options)
+        // Notification event handler receives generation-failure/quota alerts from cron.
+        new AIPS_Notifications();
+
+        // Reconciler's save_post hook fires when cron creates or updates posts.
+        new AIPS_Partial_Generation_State_Reconciler();
+    }
+
+    /**
+     * Boot subsystems required only during an admin AJAX request.
+     *
+     * Resolves and instantiates only the single controller class mapped to the
+     * current AJAX action in the registry. Falls back to registering lazy hooks
+     * for all registry actions when the action is not found in the registry.
+     *
+     * @return void
+     */
+    private function boot_ajax() {
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
+
+        $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
+        if ($controller_class && class_exists($controller_class)) {
+            // Constructing the controller registers its wp_ajax_* hooks; WordPress
+            // will dispatch the matching action automatically after init completes.
+            new $controller_class();
+            return;
+        }
+
+        // Fallback: register lazy-resolving hooks for all registry actions so that
+        // any action not yet in the registry still resolves its controller correctly.
+        $this->register_lazy_ajax_hooks();
+    }
+
+    /**
+     * Boot subsystems required for admin (non-AJAX) page views.
+     *
+     * Registers the admin menu, enqueues assets, initialises settings and
+     * onboarding, adds the admin toolbar node, and binds the notification event
+     * handler and partial-generation reconciler. All page-specific AJAX
+     * controllers are intentionally omitted here; they are resolved on demand
+     * via boot_ajax() when an AJAX request arrives.
+     *
+     * @return void
+     */
+    private function boot_admin() {
+        new AIPS_Admin_Menu();
+        new AIPS_Admin_Assets();
+        new AIPS_Settings();
+        new AIPS_Onboarding_Wizard();
+
+        // Toolbar node is visible on WP admin pages as well as the frontend.
+        new AIPS_Admin_Bar();
+
+        // Notification event handler listens for plugin-level events on admin pages.
+        new AIPS_Notifications();
+
+        // Reconciler's save_post hook fires on post-save actions initiated from admin.
+        new AIPS_Partial_Generation_State_Reconciler();
+    }
+
+    /**
+     * Boot subsystems required only for frontend (non-admin) page loads.
+     *
+     * Creates the admin toolbar node for users with manage_options capability.
+     * No schedulers, controllers, or admin-only subsystems are instantiated here.
+     *
+     * @return void
+     */
+    private function boot_frontend() {
         new AIPS_Admin_Bar();
     }
 }
