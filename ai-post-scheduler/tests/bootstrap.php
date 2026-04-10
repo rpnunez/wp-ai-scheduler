@@ -1416,6 +1416,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-cache-wp-object-cache-driver.php',
         'class-aips-cache.php',
         'class-aips-cache-factory.php',
+        // Typed DTOs / Value Objects (Step 16)
+        'class-aips-generation-result.php',
+        'class-aips-schedule-entry.php',
+        'class-aips-template-data.php',
     ];
     
     foreach ($files as $file) {
