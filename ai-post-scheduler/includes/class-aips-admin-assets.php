@@ -103,7 +103,8 @@ class AIPS_Admin_Assets {
             'defaultLabel'        => __('Default', 'ai-post-scheduler'),
             // Voice dropdown placeholder — referenced on both Voices and Templates pages
             'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
-            // "None" placeholder used in both template and schedule wizard summaries
+            // "None" placeholder for the *template* wizard summary (schedule wizard uses
+            // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
 
@@ -375,7 +376,8 @@ class AIPS_Admin_Assets {
             ));
         }
 
-        // Schedule Page Scripts
+        // Schedule Page Scripts — the calendar page shares the 'aips-schedule' substring so
+        // it is explicitly excluded; all other 'aips-schedule*' slugs are not currently in use.
         if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
             wp_localize_script('aips-admin-script', 'aipsScheduleL10n', array(
                 // Run schedule
@@ -392,7 +394,9 @@ class AIPS_Admin_Assets {
                 'startNow'                       => __('Now', 'ai-post-scheduler'),
                 'useDefault'                     => __('Use Default', 'ai-post-scheduler'),
                 'noTitle'                        => __('No title', 'ai-post-scheduler'),
-                // "None" placeholder used in the schedule wizard summary
+                // "None" placeholder used in schedule wizard summary; intentionally kept
+                // here (not inherited from global aipsAdminL10n) so this page's strings
+                // are fully self-contained.
                 'noneOption'                     => __('None', 'ai-post-scheduler'),
                 'yes'                            => __('Yes', 'ai-post-scheduler'),
                 'no'                             => __('No', 'ai-post-scheduler'),
