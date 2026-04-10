@@ -92,7 +92,7 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
@@ -100,27 +100,27 @@ class AIPS_Research_Controller {
         $keywords = isset($_POST['keywords']) ? AIPS_Utilities::sanitize_string_array((array) wp_unslash($_POST['keywords'])) : array();
         
         if (empty($niche)) {
-            wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Niche is required.', 'ai-post-scheduler'));
         }
         
         // Execute research
         $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
         
         if (is_wp_error($topics)) {
-            wp_send_json_error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
         }
         
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
         
         if ($saved_count === false) {
-            wp_send_json_error(array('message' => __('Failed to save research results.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to save research results.', 'ai-post-scheduler'));
         }
         
         // Get top 5 for display
         $top_topics = $this->research_service->get_top_topics($topics, 5);
         
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'topics' => $topics,
             'top_topics' => $top_topics,
             'saved_count' => $saved_count,
@@ -137,7 +137,7 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
@@ -179,7 +179,7 @@ class AIPS_Research_Controller {
         $stats = $this->repository->get_stats();
         $niches = $this->repository->get_niche_list();
         
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'topics' => $topics,
             'stats' => $stats,
             'niches' => $niches,
@@ -193,21 +193,21 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
         
         if (empty($topic_id)) {
-            wp_send_json_error(array('message' => __('Topic ID is required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Topic ID is required.', 'ai-post-scheduler'));
         }
         
         $result = $this->repository->delete($topic_id);
         
         if ($result) {
-            wp_send_json_success(array('message' => __('Topic deleted successfully.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Topic deleted successfully.', 'ai-post-scheduler'));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete topic.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete topic.', 'ai-post-scheduler'));
         }
     }
 
@@ -218,7 +218,7 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
@@ -229,18 +229,18 @@ class AIPS_Research_Controller {
         });
 
         if (empty($topic_ids)) {
-            wp_send_json_error(array('message' => __('Topic IDs are required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Topic IDs are required.', 'ai-post-scheduler'));
         }
 
         $result = $this->repository->delete_bulk($topic_ids);
 
         if ($result !== false) {
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $result),
                 'count' => $result
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete topics.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete topics.', 'ai-post-scheduler'));
         }
     }
     
@@ -253,7 +253,7 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
         
         $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
@@ -262,7 +262,7 @@ class AIPS_Research_Controller {
         $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
         
         if (empty($topic_ids) || empty($template_id) || empty($start_date)) {
-            wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
         }
         
         // Get topics from database
@@ -277,7 +277,7 @@ class AIPS_Research_Controller {
         }
         
         if (empty($topics)) {
-            wp_send_json_error(array('message' => __('No valid topics found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No valid topics found.', 'ai-post-scheduler'));
         }
 
         $history = $this->history_service->create('bulk_schedule', array(
@@ -305,13 +305,13 @@ class AIPS_Research_Controller {
         
         $base_time = strtotime($start_date);
         if ($base_time === false) {
-             wp_send_json_error(array('message' => __('Invalid start date provided.', 'ai-post-scheduler')));
+             AIPS_Ajax_Response::error(__('Invalid start date provided.', 'ai-post-scheduler'));
         }
         
         // Get interval duration and validate frequency
         $valid_intervals = $interval_calculator->get_intervals();
         if (!array_key_exists($frequency, $valid_intervals)) {
-             wp_send_json_error(array('message' => __('Invalid frequency provided.', 'ai-post-scheduler')));
+             AIPS_Ajax_Response::error(__('Invalid frequency provided.', 'ai-post-scheduler'));
         }
 
         $count = 0;
@@ -359,7 +359,7 @@ class AIPS_Research_Controller {
                     )
                 );
 
-                wp_send_json_error(array(
+                AIPS_Ajax_Response::error(array(
                     'message' => __('Schedules were created but topic statuses could not be updated. Please reload the library.', 'ai-post-scheduler'),
                 ));
                 return;
@@ -430,7 +430,7 @@ class AIPS_Research_Controller {
                 'status_updated_count' => $status_updated_count,
             ));
             
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => sprintf(__('Successfully scheduled %d topics.', 'ai-post-scheduler'), $count),
                 'scheduled_count' => $count,
             ));
@@ -443,7 +443,7 @@ class AIPS_Research_Controller {
                     'frequency' => $frequency,
                 )
             );
-            wp_send_json_error(array('message' => __('Failed to create schedules.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to create schedules.', 'ai-post-scheduler'));
         }
     }
 
@@ -456,13 +456,13 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
 
         if (empty($topic_ids)) {
-            wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
         }
 
         // Resolve topic rows from the database.
@@ -478,7 +478,7 @@ class AIPS_Research_Controller {
         }
 
         if (empty($topics)) {
-            wp_send_json_error(array('message' => __('No valid topics found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No valid topics found.', 'ai-post-scheduler'));
         }
 
         // Resolve the first active template.
@@ -486,7 +486,7 @@ class AIPS_Research_Controller {
         $templates           = $template_repository->get_all(true);
 
         if (empty($templates)) {
-            wp_send_json_error(array('message' => __('No active templates found. Please create a template first.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No active templates found. Please create a template first.', 'ai-post-scheduler'));
         }
 
         $template = $templates[0];
@@ -503,7 +503,7 @@ class AIPS_Research_Controller {
                 'template_id' => isset($template->id) ? absint($template->id) : 0,
             ));
 
-            wp_send_json_error(array('message' => $message));
+            AIPS_Ajax_Response::error(array('message' => $message));
             return;
         }
 
@@ -601,7 +601,7 @@ class AIPS_Research_Controller {
                 );
             }
 
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message'         => $message,
                 'success_count'   => $result->success_count,
                 'failed_count'    => $result->failed_count,
@@ -610,7 +610,7 @@ class AIPS_Research_Controller {
                 'processed_count' => $result->success_count + $result->failed_count,
             ));
         } else {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message'      => __('Failed to generate posts from selected topics.', 'ai-post-scheduler'),
                 'failed_topics' => $result->errors,
             ));
@@ -624,19 +624,19 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 
         if ($topic_id <= 0) {
-            wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
         }
 
         $topic = $this->repository->get_by_id($topic_id);
 
         if (!$topic) {
-            wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
         }
 
         $posts = $this->repository->get_generated_posts_by_topic_id($topic_id);
@@ -657,7 +657,7 @@ class AIPS_Research_Controller {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'topic' => array(
                 'id' => isset($topic['id']) ? absint($topic['id']) : 0,
                 'topic' => isset($topic['topic']) ? $topic['topic'] : '',
@@ -725,22 +725,22 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
 
         if (empty($niche)) {
-            wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Niche is required.', 'ai-post-scheduler'));
         }
 
         $gaps = $this->content_auditor->perform_gap_analysis($niche);
 
         if (is_wp_error($gaps)) {
-            wp_send_json_error(array('message' => $gaps->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $gaps->get_error_message()));
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'gaps' => $gaps,
             'niche' => $niche
         ));
@@ -755,27 +755,27 @@ class AIPS_Research_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $gap_topic = isset($_POST['gap_topic']) ? sanitize_text_field(wp_unslash($_POST['gap_topic'])) : '';
         $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
 
         if (empty($gap_topic) || empty($niche)) {
-            wp_send_json_error(array('message' => __('Gap topic and niche are required.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Gap topic and niche are required.', 'ai-post-scheduler'));
         }
 
         // Use the gap topic as a keyword for research
         $topics = $this->research_service->research_trending_topics($niche, 5, array($gap_topic));
 
         if (is_wp_error($topics)) {
-            wp_send_json_error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
         }
 
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),
             'count' => count($topics)
         ));

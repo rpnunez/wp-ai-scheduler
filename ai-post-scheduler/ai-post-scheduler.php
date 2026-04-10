@@ -339,6 +339,45 @@ final class AI_Post_Scheduler {
     }
 
     /**
+     * Register thin lazy-resolving wp_ajax_* hooks for all actions in the registry.
+     *
+     * Each closure registered at priority 5 removes itself and then constructs the
+     * correct controller (which registers its own handler at the default priority 10).
+     * WordPress continues iterating priorities after priority 5 completes, so the
+     * controller's handler at priority 10 fires automatically on the same request.
+     *
+     * This satisfies WordPress's requirement that wp_ajax_* hooks are added during
+     * the init phase while deferring controller construction to request time, so
+     * only one controller is constructed per AJAX request.
+     *
+     * @return void
+     */
+    private function register_lazy_ajax_hooks() {
+        foreach (AIPS_Ajax_Registry::all_actions() as $action) {
+            // $resolver is set to null first so the closure can capture it by reference
+            // and call remove_action() on itself — PHP requires the variable to exist
+            // before the closure is assigned.
+            $resolver = null;
+            $resolver = function() use ($action, &$resolver) {
+                // Remove this resolver before constructing the controller so that
+                // if do_action('wp_ajax_' . $action) is re-entered (e.g. via a
+                // recursive call or test scaffolding) the closure does not fire twice.
+                remove_action('wp_ajax_' . $action, $resolver, 5);
+
+                $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
+                if ($controller_class && class_exists($controller_class)) {
+                    // Intentionally not capturing the return value: each controller
+                    // registers its own wp_ajax_{$action} handler at priority 10 as
+                    // a constructor side-effect.  WordPress will invoke that handler
+                    // as the next hook priority in this same wp_ajax_{$action} cycle.
+                    new $controller_class();
+                }
+            };
+            add_action('wp_ajax_' . $action, $resolver, 5);
+        }
+    }
+
+    /**
      * Initialize plugin runtime.
      *
      * Loads translations, registers taxonomy, instantiates admin controllers,
@@ -379,46 +418,53 @@ final class AI_Post_Scheduler {
         }
         
         if (is_admin()) {
-            new AIPS_DB_Manager();
-            new AIPS_Admin_Menu();
-            new AIPS_Settings();
-            new AIPS_Onboarding_Wizard();
-            new AIPS_Admin_Assets();
-            new AIPS_Voices();
-            new AIPS_Templates();
-            new AIPS_Templates_Controller();
-            new AIPS_History();
-            
-            // Initialize Post Review handler globally to avoid duplicate AJAX registration
-            global $aips_post_review_handler;
-            $aips_post_review_handler = new AIPS_Post_Review();
-            
-            new AIPS_Planner();
-            new AIPS_Schedule_Controller();
-            new AIPS_Generated_Posts_Controller();
-            new AIPS_Research_Controller();
-            new AIPS_Seeder_Admin();
-            new AIPS_Data_Management();
-            // Structures admin controller (CRUD endpoints for Article Structures UI)
-            new AIPS_Structures_Controller();
-            // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
+            if (!wp_doing_ajax()) {
+                // Admin page rendering: instantiate all admin classes up front.
+                new AIPS_DB_Manager();
+                new AIPS_Admin_Menu();
+                new AIPS_Settings();
+                new AIPS_Onboarding_Wizard();
+                new AIPS_Admin_Assets();
+                new AIPS_Voices();
+                new AIPS_Templates();
+                new AIPS_Templates_Controller();
+                new AIPS_History();
 
-            // Authors feature controllers
-            new AIPS_Authors_Controller();
-            new AIPS_Author_Topics_Controller();
+                // Initialize Post Review handler globally to avoid duplicate AJAX registration
+                global $aips_post_review_handler;
+                $aips_post_review_handler = new AIPS_Post_Review();
 
-            // Taxonomy controller (AJAX endpoints for taxonomy generation management)
-            new AIPS_Taxonomy_Controller();
+                new AIPS_Planner();
+                new AIPS_Schedule_Controller();
+                new AIPS_Generated_Posts_Controller();
+                new AIPS_Research_Controller();
+                new AIPS_Seeder_Admin();
+                new AIPS_Data_Management();
+                // Structures admin controller (CRUD endpoints for Article Structures UI)
+                new AIPS_Structures_Controller();
+                // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
+                new AIPS_Prompt_Sections_Controller();
 
-            // AI Edit + Calendar controllers (AJAX endpoints)
-            new AIPS_AI_Edit_Controller();
-            new AIPS_Calendar_Controller();
-            // Sources controller (AJAX endpoints for trusted sources management)
-            new AIPS_Sources_Controller();
-            // Dev Tools
-            if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-                new AIPS_Dev_Tools();
+                // Authors feature controllers
+                new AIPS_Authors_Controller();
+                new AIPS_Author_Topics_Controller();
+
+                // Taxonomy controller (AJAX endpoints for taxonomy generation management)
+                new AIPS_Taxonomy_Controller();
+
+                // AI Edit + Calendar controllers (AJAX endpoints)
+                new AIPS_AI_Edit_Controller();
+                new AIPS_Calendar_Controller();
+                // Sources controller (AJAX endpoints for trusted sources management)
+                new AIPS_Sources_Controller();
+                // Dev Tools
+                if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
+                    new AIPS_Dev_Tools();
+                }
+            } else {
+                // AJAX request: use the registry to lazily resolve only the controller
+                // needed for this action, rather than constructing all ~20 controllers.
+                $this->register_lazy_ajax_hooks();
             }
         }
         

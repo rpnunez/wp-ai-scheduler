@@ -46,7 +46,7 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $data = array(
@@ -62,23 +62,23 @@ class AIPS_Schedule_Controller {
         );
 
         if (empty($data['template_id'])) {
-            wp_send_json_error(array('message' => __('Please select a template.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Please select a template.', 'ai-post-scheduler'));
         }
 
         $interval_calculator = new AIPS_Interval_Calculator();
         if (!$interval_calculator->is_valid_frequency($data['frequency'])) {
-            wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid frequency selected.', 'ai-post-scheduler'));
         }
 
         $id = $this->scheduler->save_schedule($data);
 
         if ($id) {
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => __('Schedule saved successfully.', 'ai-post-scheduler'),
                 'schedule_id' => $id
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to save schedule.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to save schedule.', 'ai-post-scheduler'));
         }
     }
 
@@ -86,19 +86,19 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
 
         if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid schedule ID.', 'ai-post-scheduler'));
         }
 
         if ($this->schedule_repository->delete($id)) {
-            wp_send_json_success(array('message' => __('Schedule deleted successfully.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Schedule deleted successfully.', 'ai-post-scheduler'));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete schedule.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete schedule.', 'ai-post-scheduler'));
         }
     }
 
@@ -106,22 +106,22 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid schedule ID.', 'ai-post-scheduler'));
         }
 
         $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
-            wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Schedule updated.', 'ai-post-scheduler'));
         } else {
-            wp_send_json_error(array('message' => __('Failed to update schedule.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to update schedule.', 'ai-post-scheduler'));
         }
     }
 
@@ -129,7 +129,7 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         // If schedule_id is provided, use the scheduler to run the schedule logic
@@ -137,7 +137,7 @@ class AIPS_Schedule_Controller {
         if ($schedule_id) {
             $result = $this->scheduler->run_schedule_now($schedule_id);
             if (is_wp_error($result)) {
-                wp_send_json_error(array('message' => $result->get_error_message()));
+                AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
             } else {
                 $post_ids = is_array($result) ? $result : array($result);
                 $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
@@ -148,7 +148,7 @@ class AIPS_Schedule_Controller {
                     count($post_ids)
                 );
 
-                 wp_send_json_success(array(
+                 AIPS_Ajax_Response::success(array(
                     'message' => $msg,
                     'post_ids' => $post_ids,
                     'edit_url' => $edit_url
@@ -160,14 +160,14 @@ class AIPS_Schedule_Controller {
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (!$template_id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid template ID.', 'ai-post-scheduler'));
         }
 
         $templates = new AIPS_Templates();
         $template = $templates->get($template_id);
 
         if (!$template) {
-            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
         }
 
         $voice = null;
@@ -208,7 +208,7 @@ class AIPS_Schedule_Controller {
             $error_msg = count($errors) > 1
                 ? __('All generation attempts failed.', 'ai-post-scheduler')
                 : $errors[0];
-            wp_send_json_error(array('message' => $error_msg, 'errors' => $errors));
+            AIPS_Ajax_Response::error(array('message' => $error_msg, 'errors' => $errors));
         }
 
         $message = sprintf(
@@ -230,7 +230,7 @@ class AIPS_Schedule_Controller {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => $message,
             'post_ids' => $post_ids,
             'errors' => $errors,
@@ -242,20 +242,20 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
-            wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
         $deleted = $this->schedule_repository->delete_bulk($ids);
 
         if ($deleted !== false) {
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => sprintf(
                     _n('%d schedule deleted successfully.', '%d schedules deleted successfully.', $deleted, 'ai-post-scheduler'),
                     $deleted
@@ -263,7 +263,7 @@ class AIPS_Schedule_Controller {
                 'deleted' => $deleted,
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete schedules.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to delete schedules.', 'ai-post-scheduler'));
         }
     }
 
@@ -271,7 +271,7 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
@@ -279,7 +279,7 @@ class AIPS_Schedule_Controller {
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (empty($ids)) {
-            wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
         $updated = $this->schedule_repository->set_active_bulk($ids, $is_active);
@@ -287,7 +287,7 @@ class AIPS_Schedule_Controller {
         if ($updated !== false) {
             $count = (int) $updated ?: count($ids);
             $action_label = $is_active ? __('activated', 'ai-post-scheduler') : __('paused', 'ai-post-scheduler');
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => sprintf(
                     /* translators: 1: number of schedules, 2: action label (activated/paused) */
                     _n('%1$d schedule %2$s successfully.', '%1$d schedules %2$s successfully.', $count, 'ai-post-scheduler'),
@@ -298,7 +298,7 @@ class AIPS_Schedule_Controller {
                 'is_active' => $is_active,
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to update schedules.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to update schedules.', 'ai-post-scheduler'));
         }
     }
 
@@ -306,19 +306,19 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
-            wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
         $max_bulk_run = apply_filters('aips_bulk_run_now_limit', 5);
         if (count($ids) > $max_bulk_run) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
                     /* translators: 1: selected count, 2: maximum allowed */
                     __('Too many schedules selected (%1$d). Please select no more than %2$d at a time to avoid timeouts.', 'ai-post-scheduler'),
@@ -347,7 +347,7 @@ class AIPS_Schedule_Controller {
         }
 
         if (empty($post_ids) && !empty($errors)) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => __('All schedule runs failed.', 'ai-post-scheduler'),
                 'errors'  => $errors,
             ));
@@ -365,7 +365,7 @@ class AIPS_Schedule_Controller {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message'  => $message,
             'post_ids' => $post_ids,
             'errors'   => $errors,
@@ -376,19 +376,19 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
-            wp_send_json_success(array('count' => 0));
+            AIPS_Ajax_Response::success(array('count' => 0));
         }
 
         $count = $this->schedule_repository->get_post_count_for_schedules($ids);
 
-        wp_send_json_success(array('count' => $count));
+        AIPS_Ajax_Response::success(array('count' => $count));
     }
 
     /**
@@ -401,22 +401,22 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         if (!$schedule_id) {
-            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid schedule ID.', 'ai-post-scheduler'));
         }
 
         $schedule = $this->schedule_repository->get_by_id($schedule_id);
 
         if (!$schedule) {
-            wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
         }
 
         if (empty($schedule->schedule_history_id)) {
-            wp_send_json_success(array('entries' => array()));
+            AIPS_Ajax_Response::success(array('entries' => array()));
         }
 
         $logs = $this->history_repository->get_logs_by_history_id(
@@ -452,7 +452,7 @@ class AIPS_Schedule_Controller {
             );
         }
 
-        wp_send_json_success(array('entries' => $entries));
+        AIPS_Ajax_Response::success(array('entries' => $entries));
     }
 
     /**
@@ -464,21 +464,21 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
         $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
 
         if (!$id || empty($type)) {
-            wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
         $result  = $service->run_now($id, $type);
 
         if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }
 
         // Format the success message based on type.
@@ -492,7 +492,7 @@ class AIPS_Schedule_Controller {
                 count($post_ids)
             );
 
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message'  => $msg,
                 'post_ids' => $post_ids,
                 'post_id'  => $first_post_id, // keep post_id for backward compatibility
@@ -500,7 +500,7 @@ class AIPS_Schedule_Controller {
             ));
         } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
             $count = is_array($result) ? count($result) : 0;
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message' => sprintf(
                     _n('%d topic generated successfully!', '%d topics generated successfully!', $count, 'ai-post-scheduler'),
                     $count
@@ -509,13 +509,13 @@ class AIPS_Schedule_Controller {
         } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
             $post_id  = is_int($result) ? $result : 0;
             $edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
-            wp_send_json_success(array(
+            AIPS_Ajax_Response::success(array(
                 'message'  => __('Post generated successfully from author topic!', 'ai-post-scheduler'),
                 'post_id'  => $post_id,
                 'edit_url' => $edit_url,
             ));
         } else {
-            wp_send_json_success(array('message' => __('Schedule executed successfully.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::success(array(), __('Schedule executed successfully.', 'ai-post-scheduler'));
         }
     }
 
@@ -528,7 +528,7 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id        = isset($_POST['id']) ? absint($_POST['id']) : 0;
@@ -536,7 +536,7 @@ class AIPS_Schedule_Controller {
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (!$id || empty($type)) {
-            wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
@@ -546,9 +546,9 @@ class AIPS_Schedule_Controller {
             $label = $is_active
                 ? __('Schedule activated.', 'ai-post-scheduler')
                 : __('Schedule paused.', 'ai-post-scheduler');
-            wp_send_json_success(array('message' => $label, 'is_active' => $is_active));
+            AIPS_Ajax_Response::success(array('message' => $label, 'is_active' => $is_active));
         } else {
-            wp_send_json_error(array('message' => __('Failed to update schedule.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Failed to update schedule.', 'ai-post-scheduler'));
         }
     }
 
@@ -561,14 +561,14 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $items     = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (empty($items)) {
-            wp_send_json_error(array('message' => __('No items provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
@@ -593,7 +593,7 @@ class AIPS_Schedule_Controller {
             ? __('activated', 'ai-post-scheduler')
             : __('paused', 'ai-post-scheduler');
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => sprintf(
                 /* translators: 1: count, 2: action */
                 _n('%1$d schedule %2$s.', '%1$d schedules %2$s.', $updated, 'ai-post-scheduler'),
@@ -615,18 +615,18 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
 
         if (empty($items)) {
-            wp_send_json_error(array('message' => __('No items provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
         $max_bulk = apply_filters('aips_unified_bulk_run_now_limit', 5);
         if (count($items) > $max_bulk) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
                     /* translators: 1: selected count, 2: max allowed */
                     __('Too many schedules selected (%1$d). Please select no more than %2$d at a time.', 'ai-post-scheduler'),
@@ -662,7 +662,7 @@ class AIPS_Schedule_Controller {
         }
 
         if ($success === 0 && !empty($errors)) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => __('All scheduled runs failed.', 'ai-post-scheduler'),
                 'errors'  => $errors,
             ));
@@ -679,7 +679,7 @@ class AIPS_Schedule_Controller {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => $message,
             'success' => $success,
             'errors'  => $errors,
@@ -696,13 +696,13 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
 
         if (empty($items)) {
-            wp_send_json_error(array('message' => __('No items provided.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
         $service       = new AIPS_Unified_Schedule_Service();
@@ -735,7 +735,7 @@ class AIPS_Schedule_Controller {
         }
 
         if ($deleted_count === 0) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message'      => __('No selected schedules could be deleted.', 'ai-post-scheduler'),
                 'deleted'      => 0,
                 'deleted_items'=> array(),
@@ -755,7 +755,7 @@ class AIPS_Schedule_Controller {
             );
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message'      => $message,
             'deleted'      => $deleted_count,
             'deleted_items'=> $deleted_items,
@@ -772,7 +772,7 @@ class AIPS_Schedule_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $id    = isset($_POST['id']) ? absint($_POST['id']) : 0;
@@ -780,12 +780,12 @@ class AIPS_Schedule_Controller {
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 0;
 
         if (!$id || empty($type)) {
-            wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
         $entries = $service->get_history($id, $type, $limit);
 
-        wp_send_json_success(array('entries' => $entries));
+        AIPS_Ajax_Response::success(array('entries' => $entries));
     }
 }
