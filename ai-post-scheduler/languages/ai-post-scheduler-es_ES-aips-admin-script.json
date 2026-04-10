@@ -1,0 +1,27 @@
+{
+    "translation-revision-date": "2024-01-01T00:00:00+00:00",
+    "generator": "Manual",
+    "source": "assets/js/admin.js",
+    "domain": "messages",
+    "locale_data": {
+        "messages": {
+            "": {
+                "domain": "messages",
+                "lang": "es_ES",
+                "plural-forms": "nplurals=2; plural=(n != 1);"
+            },
+            "Run Now": [
+                "Ejecutar ahora"
+            ],
+            "Saving...": [
+                "Guardando..."
+            ],
+            "Generate Now": [
+                "Generar ahora"
+            ],
+            "Generating...": [
+                "Generando..."
+            ]
+        }
+    }
+}
