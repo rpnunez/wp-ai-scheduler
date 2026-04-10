@@ -111,7 +111,7 @@ class AIPS_Planner {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $topics = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
+        $topics = isset($_POST['topics']) && is_array($_POST['topics']) ? wp_unslash($_POST['topics']) : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
         $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
@@ -163,7 +163,7 @@ class AIPS_Planner {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $raw_topics  = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
+        $raw_topics  = isset($_POST['topics']) && is_array($_POST['topics']) ? wp_unslash($_POST['topics']) : array();
         $topics      = array_values(array_filter(AIPS_Utilities::sanitize_string_array($raw_topics)));
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 

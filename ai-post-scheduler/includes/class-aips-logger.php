@@ -254,12 +254,21 @@ class AIPS_Logger implements AIPS_Logger_Interface {
             }
 
             $file_size = filesize($file);
+            if ($file_size === false) {
+                $file_size = 0;
+            }
+
             $file_mtime = filemtime($file);
+            if ($file_mtime === false) {
+                $file_mtime_formatted = 'Unknown';
+            } else {
+                $file_mtime_formatted = date('Y-m-d H:i:s', $file_mtime);
+            }
 
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => $file_size !== false ? size_format($file_size) : size_format(0),
-                'modified' => $file_mtime !== false ? date('Y-m-d H:i:s', $file_mtime) : 'Unknown',
+                'size' => size_format($file_size),
+                'modified' => $file_mtime_formatted,
             );
         }
         

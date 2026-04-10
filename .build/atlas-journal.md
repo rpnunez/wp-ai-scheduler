@@ -1372,3 +1372,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+## 2026-04-08 - [Extract wp_unslash correctly and Handle false return in filesize]
+**Context:**  and  can return false, triggering TypeError in PHP 8+. Calling  inside arrays double slashes data in WordPress leading to text corruption.
+**Decision:** Applied strict false checks to  and . Cast arrays securely to  and strictly unslashed them once.
+**Consequence:** Handled TypeError accurately, and prevented text unslash corruption.
+**Tests:** Validated using PHP unit tests.
+## 2024-05-18 - [Extract wp_unslash correctly and Handle false return in filesize]
+**Context:** `filesize()` and `filemtime()` can return false, triggering TypeError in PHP 8+. Calling `wp_unslash` inside arrays double slashes data in WordPress leading to text corruption.
+**Decision:** Applied strict false checks to `filesize()` and `filemtime()`. Cast arrays securely to `(array)` and strictly unslashed them once.
+**Consequence:** Handled TypeError accurately, and prevented text unslash corruption.
+**Tests:** Validated using PHP unit tests.
