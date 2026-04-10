@@ -3899,11 +3899,11 @@
 
             $modal.find('#sw_summary_title').text(title || '(' + (aipsScheduleL10n.noTitle || 'No title') + ')');
             $modal.find('#sw_summary_template').text(templateText || '-');
-            $modal.find('#sw_summary_topic').text(topic || aipsAdminL10n.noneOption || '-');
+            $modal.find('#sw_summary_topic').text(topic || aipsScheduleL10n.noneOption || '-');
             $modal.find('#sw_summary_frequency').text(frequencyText || '-');
             $modal.find('#sw_summary_start_time').text(startTime || aipsScheduleL10n.startNow || 'Now');
             $modal.find('#sw_summary_structure').text(structureText || aipsScheduleL10n.useDefault || 'Use Default');
-            $modal.find('#sw_summary_rotation').text(rotationText || aipsAdminL10n.noneOption || '-');
+            $modal.find('#sw_summary_rotation').text(rotationText || aipsScheduleL10n.noneOption || '-');
             $modal.find('#sw_summary_active').text(isActive ? (aipsScheduleL10n.yes || 'Yes') : (aipsScheduleL10n.no || 'No'));
         },
 

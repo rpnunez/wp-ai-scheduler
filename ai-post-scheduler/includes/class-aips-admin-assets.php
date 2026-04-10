@@ -392,6 +392,8 @@ class AIPS_Admin_Assets {
                 'startNow'                       => __('Now', 'ai-post-scheduler'),
                 'useDefault'                     => __('Use Default', 'ai-post-scheduler'),
                 'noTitle'                        => __('No title', 'ai-post-scheduler'),
+                // "None" placeholder used in the schedule wizard summary
+                'noneOption'                     => __('None', 'ai-post-scheduler'),
                 'yes'                            => __('Yes', 'ai-post-scheduler'),
                 'no'                             => __('No', 'ai-post-scheduler'),
                 // Buttons/links
