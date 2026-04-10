@@ -61,12 +61,13 @@
 **Action:** Added a contextual "Clear Filters" ghost button next to the "Filter" submit button in `generated-posts.php` and `post-review.php` that only appears when a filter is actively applied.
 
 ## 2024-04-04 - Search Empty States
-Learning: PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
-Action: Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
-## 2026-04-06 - Planner Empty State UX Enhancement
-Learning: Improved empty state components significantly enhance UX without modifying core flows.
-Action: Implemented an interactive empty state with an actionable 'Clear Search' button for the Planner topic search.
+**Learning:** PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
+**Action:** Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
 
-## 2024-05-18 - Standardize "Clear" Button Styling in Filters
-Learning: Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
-Action: Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+## 2026-04-06 - Planner Empty State UX Enhancement
+**Learning:** Improved empty state components significantly enhance UX without modifying core flows.
+**Action:** Implemented an interactive empty state with an actionable 'Clear Search' button for the Planner topic search.
+
+## 2026-04-09 - Standardize "Clear" Button Styling in Filters
+**Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
+**Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
