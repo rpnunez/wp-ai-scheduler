@@ -1463,4 +1463,58 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
+
+    // Context-detection stubs used by the context-aware boot dispatcher.
+    // Each function is backed by a mutable global so tests can control the
+    // simulated request context without affecting the real environment.
+    if (!function_exists('wp_doing_cron')) {
+        function wp_doing_cron() {
+            return !empty($GLOBALS['aips_test_doing_cron']);
+        }
+    }
+
+    if (!function_exists('wp_doing_ajax')) {
+        function wp_doing_ajax() {
+            return !empty($GLOBALS['aips_test_doing_ajax']);
+        }
+    }
+
+    if (!function_exists('is_admin')) {
+        function is_admin() {
+            return !empty($GLOBALS['aips_test_is_admin']);
+        }
+    }
+
+    if (!function_exists('load_plugin_textdomain')) {
+        function load_plugin_textdomain($domain, $deprecated = false, $plugin_rel_path = false) {
+            // No-op stub for testing.
+        }
+    }
+
+    if (!function_exists('register_taxonomy')) {
+        function register_taxonomy($taxonomy, $object_type, $args = array()) {
+            // No-op stub for testing.
+        }
+    }
+
+    if (!function_exists('remove_action')) {
+        function remove_action($hook_name, $callback, $priority = 10) {
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority])) {
+                return false;
+            }
+
+            foreach ($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority] as $idx => $entry) {
+                if ($entry['callback'] === $callback) {
+                    unset($GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority][$idx]);
+                    // Re-index the array so numeric indices stay contiguous.
+                    $GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority] = array_values(
+                        $GLOBALS['aips_test_hooks']['actions'][$hook_name][$priority]
+                    );
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 }
