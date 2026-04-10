@@ -13,10 +13,18 @@ if (!defined('ABSPATH')) {
 class AIPS_Dev_Tools {
 
     /**
+     * @var bool Prevent duplicate AJAX hook registration when multiple instances are created.
+     */
+    private static $hooks_registered = false;
+
+    /**
      * Initialize the class.
      */
     public function __construct() {
-        add_action('wp_ajax_aips_generate_scaffold', array($this, 'ajax_generate_scaffold'));
+        if (!self::$hooks_registered) {
+            add_action('wp_ajax_aips_generate_scaffold', array($this, 'ajax_generate_scaffold'));
+            self::$hooks_registered = true;
+        }
     }
 
     /**

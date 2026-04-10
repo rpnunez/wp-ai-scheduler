@@ -4,6 +4,11 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Voices {
+
+    /**
+     * @var bool Prevent duplicate AJAX hook registration when multiple instances are created.
+     */
+    private static $hooks_registered = false;
     
     /**
      * @var AIPS_Voices_Repository Repository for database operations
@@ -12,11 +17,14 @@ class AIPS_Voices {
     
     public function __construct() {
         $this->repository = new AIPS_Voices_Repository();
-        
-        add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
-        add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
-        add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
-        add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
+
+        if (!self::$hooks_registered) {
+            add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
+            add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
+            add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
+            add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
+            self::$hooks_registered = true;
+        }
     }
     
     public function get_all($active_only = false) {

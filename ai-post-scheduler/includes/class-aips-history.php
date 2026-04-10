@@ -10,6 +10,11 @@ if (!defined('ABSPATH')) {
  * retrieval, export, stats, and admin page rendering.
  */
 class AIPS_History {
+
+    /**
+     * @var bool Prevent duplicate AJAX hook registration when multiple instances are created.
+     */
+    private static $hooks_registered = false;
     
     /**
      * @var AIPS_History_Repository Repository for database operations
@@ -23,14 +28,17 @@ class AIPS_History {
      */
     public function __construct() {
         $this->repository = new AIPS_History_Repository();
-        
-        add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
-        add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
-        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
-        add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
-        add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
-        add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
-        add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
+
+        if (!self::$hooks_registered) {
+            add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
+            add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
+            add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
+            add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
+            add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
+            add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
+            add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
+            self::$hooks_registered = true;
+        }
     }
 
     /**

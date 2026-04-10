@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
  * Manages the Generated Posts admin interface and AJAX endpoints for viewing post generation sessions.
  */
 class AIPS_Generated_Posts_Controller {
+
+	/**
+	 * @var bool Prevent duplicate AJAX hook registration when multiple instances are created.
+	 */
+	private static $hooks_registered = false;
 	
 	/**
 	 * @var AIPS_History_Repository Repository for database operations
@@ -57,12 +62,15 @@ class AIPS_Generated_Posts_Controller {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
-		
-		// Register AJAX handlers
-		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
-		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
-		// AJAX endpoint to download the session JSON as a file
-		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
+
+		if (!self::$hooks_registered) {
+			// Register AJAX handlers
+			add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
+			add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
+			// AJAX endpoint to download the session JSON as a file
+			add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
+			self::$hooks_registered = true;
+		}
 	}
 	
 	/**
