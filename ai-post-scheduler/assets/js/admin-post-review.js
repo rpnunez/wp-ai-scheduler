@@ -425,9 +425,9 @@
 
                 if ($('.aips-empty-state').length === 0) {
                     var emptyStateHtml = '<div class="aips-empty-state">' +
-                        '<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>' +
-                        '<h3>' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
-                        '<p>' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
+                        '<div class="dashicons dashicons-yes-alt aips-empty-state-icon" aria-hidden="true"></div>' +
+                        '<h3 class="aips-empty-state-title">' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
+                        '<p class="aips-empty-state-description">' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
                         '</div>';
                     $('#aips-post-review-form').after(emptyStateHtml);
                 } else {
