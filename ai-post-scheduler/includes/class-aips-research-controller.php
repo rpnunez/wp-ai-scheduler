@@ -532,16 +532,19 @@ class AIPS_Research_Controller {
             $topics,
             function ($topic_data) use ($generator, $template, &$generated_topic_ids, $logger) {
                 $context = new AIPS_Template_Context($template, null, $topic_data['topic'], 'manual');
-                $post_id = $generator->generate_post($context);
+                $gen_result = $generator->generate_post($context);
 
-                if (is_wp_error($post_id)) {
+                if ($gen_result->is_failure()) {
+                    $error_msg = !empty($gen_result->errors) ? implode(', ', $gen_result->errors) : __('Generation failed', 'ai-post-scheduler');
                     $logger->log(
                         "Failed to generate post for topic: {$topic_data['topic']}",
                         'error',
-                        array('error' => $post_id->get_error_message())
+                        array('error' => $error_msg)
                     );
-                    return $post_id;
+                    return new WP_Error('generation_failed', $error_msg);
                 }
+
+                $post_id = $gen_result->post_id;
 
                 // Persist a durable post-to-trending-topic link so the Research UI
                 // can show generated-post counts and drill into post lists later.

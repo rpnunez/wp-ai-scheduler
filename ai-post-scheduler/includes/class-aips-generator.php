@@ -568,7 +568,7 @@ class AIPS_Generator {
      * This is the core implementation that works with any context type.
      *
      * @param AIPS_Generation_Context $context Generation context.
-     * @return int|WP_Error ID of created post or WP_Error on failure.
+     * @return AIPS_Generation_Result
      */
     private function generate_post_from_context($context) {
         $generation_start = microtime(true);
@@ -743,7 +743,7 @@ class AIPS_Generator {
                 )
             );
 
-            return $post_id;
+            return AIPS_Generation_Result::from_wp_error($post_id, (float)(microtime(true) - $generation_start));
         }
 
         // Handle featured image generation/selection.
@@ -836,19 +836,34 @@ class AIPS_Generator {
 
         $this->generation_logger->set_history_id(null);
 
-        return $post_id;
+        $generation_time = (float)(microtime(true) - $generation_start);
+
+        if ($generation_incomplete) {
+            $component_errors = array();
+            foreach ($component_statuses as $component => $ok) {
+                if (!$ok) {
+                    /* translators: %s: component name (e.g. post_title, featured_image) */
+                    $component_errors[] = sprintf(__('%s generation failed', 'ai-post-scheduler'), $component);
+                }
+            }
+            return AIPS_Generation_Result::partial($post_id, $component_errors, $component_statuses, $generation_time);
+        }
+
+        return AIPS_Generation_Result::success($post_id, $component_statuses, $generation_time);
     }
 
     /**
      * Emit a generation failure notification for non-scheduled runs.
      *
      * @param AIPS_Generation_Context $context Generation context.
-     * @param WP_Error                $error   Error object.
+     * @param AIPS_Generation_Result  $result  Failed generation result.
      * @return void
      */
-    private function emit_generation_failure_notification($context, WP_Error $error) {
+    private function emit_generation_failure_notification($context, AIPS_Generation_Result $result) {
         $resource_label = __('Manual generation', 'ai-post-scheduler');
-        $dedupe_parts = array('generation_failed', $context->get_type(), $context->get_id(), $error->get_error_code());
+        $error_message  = !empty($result->errors) ? implode(', ', $result->errors) : __('Generation failed', 'ai-post-scheduler');
+        $error_code     = 'generation_failed';
+        $dedupe_parts = array('generation_failed', $context->get_type(), $context->get_id(), $error_code);
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
@@ -861,8 +876,8 @@ class AIPS_Generator {
 
         do_action('aips_generation_failed', array(
             'resource_label'  => $resource_label,
-            'error_code'      => $error->get_error_code(),
-            'error_message'   => $error->get_error_message(),
+            'error_code'      => $error_code,
+            'error_message'   => $error_message,
             'context_type'    => $context->get_type(),
             'context_id'      => $context->get_id(),
             'history_id'      => $this->current_history ? $this->current_history->get_id() : 0,

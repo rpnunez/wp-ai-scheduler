@@ -180,8 +180,9 @@ class AIPS_Bulk_Generator_Service {
 	 *
 	 * @param array    $items       Sanitized items to process (topic IDs, topic strings, or
 	 *                              associative arrays — whatever $generate_fn expects).
-	 * @param callable $generate_fn fn( $item ): int|WP_Error
-	 *                              Must return a new post ID on success or a WP_Error on failure.
+	 * @param callable $generate_fn fn( $item ): AIPS_Generation_Result|int|WP_Error
+	 *                              Must return an AIPS_Generation_Result, a new post ID (int),
+	 *                              or a WP_Error on failure.
 	 * @param array    $options     See class-level docblock.
 	 * @return AIPS_Bulk_Generation_Result
 	 */
@@ -266,6 +267,51 @@ class AIPS_Bulk_Generator_Service {
 
 		foreach ( $items as $item ) {
 			$result = call_user_func( $generate_fn, $item );
+
+			// Normalise AIPS_Generation_Result to the legacy int/WP_Error branches
+			// so the rest of the loop only needs two paths.
+			if ( $result instanceof AIPS_Generation_Result ) {
+				if ( $result->is_failure() ) {
+					$raw_error_msg = !empty( $result->errors )
+						? implode( ', ', $result->errors )
+						: __( 'Generation failed', 'ai-post-scheduler' );
+
+					if ( $error_formatter ) {
+						$error_msg = call_user_func( $error_formatter, $item, $raw_error_msg );
+					} elseif ( ! is_scalar( $item ) ) {
+						_doing_it_wrong(
+							__METHOD__,
+							'AIPS_Bulk_Generator_Service::run() received a non-scalar item without an error_formatter option. Provide an error_formatter to generate meaningful error messages.',
+							'1.8.0'
+						);
+						$error_msg = sprintf( '%s: %s', wp_json_encode( $item ), $raw_error_msg );
+					} else {
+						$error_msg = sprintf( '%s: %s', (string) $item, $raw_error_msg );
+					}
+					$errors[] = $error_msg;
+					$failed_count++;
+					$history->record(
+						'warning',
+						$error_msg,
+						null,
+						null,
+						array( 'item' => $item, 'error_code' => 'generation_failed' )
+					);
+				} else {
+					$success_count++;
+					$post_id_or_ids = $result->post_id;
+					$post_ids[]     = $post_id_or_ids;
+					$history->record(
+						'activity',
+						/* translators: %s: post ID */
+						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), $post_id_or_ids ),
+						null,
+						null,
+						array( 'item' => $item, 'post_id' => $post_id_or_ids )
+					);
+				}
+				continue;
+			}
 
 			if ( is_wp_error( $result ) ) {
 				$failed_count++;

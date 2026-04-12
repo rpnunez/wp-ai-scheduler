@@ -438,13 +438,14 @@ class AIPS_Onboarding_Wizard {
 		}
 
 		$generator = new AIPS_Generator();
-		$post_id = $generator->generate_post($template, null, $topic);
+		$gen_result = $generator->generate_post($template, null, $topic);
 
-		if (is_wp_error($post_id)) {
-			AIPS_Ajax_Response::error($post_id->get_error_message(), 'error', 500);
+		if ($gen_result->is_failure()) {
+			$error_msg = !empty($gen_result->errors) ? implode(', ', $gen_result->errors) : __('Generation failed', 'ai-post-scheduler');
+			AIPS_Ajax_Response::error($error_msg, 'error', 500);
 		}
 
-		$post_id = (int) $post_id;
+		$post_id = (int) $gen_result->post_id;
 		$this->update_state(array('post_id' => $post_id));
 
 		do_action('aips_onboarding_post_generated', $post_id, $template_id, $topic);

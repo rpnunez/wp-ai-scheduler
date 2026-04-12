@@ -144,6 +144,51 @@ class Test_AIPS_Generation_Result extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
+	// toArray()
+	// -----------------------------------------------------------------------
+
+	/**
+	 * toArray() returns all five fields for a success result.
+	 */
+	public function test_to_array_success() {
+		$statuses = array( 'post_title' => true, 'post_content' => true );
+		$result   = AIPS_Generation_Result::success( 5, $statuses, 1.2 );
+		$arr      = $result->toArray();
+
+		$this->assertSame( 5, $arr['post_id'] );
+		$this->assertSame( AIPS_Generation_Result::STATUS_COMPLETED, $arr['status'] );
+		$this->assertEmpty( $arr['errors'] );
+		$this->assertSame( $statuses, $arr['component_statuses'] );
+		$this->assertSame( 1.2, $arr['generation_time'] );
+	}
+
+	/**
+	 * toArray() includes errors and STATUS_PARTIAL for a partial result.
+	 */
+	public function test_to_array_partial() {
+		$errors = array( 'featured_image generation failed' );
+		$result = AIPS_Generation_Result::partial( 7, $errors );
+		$arr    = $result->toArray();
+
+		$this->assertSame( 7, $arr['post_id'] );
+		$this->assertSame( AIPS_Generation_Result::STATUS_PARTIAL, $arr['status'] );
+		$this->assertSame( $errors, $arr['errors'] );
+	}
+
+	/**
+	 * toArray() returns null post_id and STATUS_FAILED for a failure result.
+	 */
+	public function test_to_array_failure() {
+		$result = AIPS_Generation_Result::failure( array( 'AI service unavailable' ), 0.5 );
+		$arr    = $result->toArray();
+
+		$this->assertNull( $arr['post_id'] );
+		$this->assertSame( AIPS_Generation_Result::STATUS_FAILED, $arr['status'] );
+		$this->assertContains( 'AI service unavailable', $arr['errors'] );
+		$this->assertSame( 0.5, $arr['generation_time'] );
+	}
+
+	// -----------------------------------------------------------------------
 	// Immutability
 	// -----------------------------------------------------------------------
 
