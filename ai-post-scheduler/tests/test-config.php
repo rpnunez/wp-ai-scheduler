@@ -18,18 +18,81 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	private $config;
 
 	/**
+	 * Option keys this test class may mutate.
+	 *
+	 * @var array
+	 */
+	private $tracked_option_keys = array(
+		'aips_ai_model',
+		'aips_max_tokens_limit',
+		'aips_enable_logging',
+		'aips_cache_driver',
+		'aips_ai_env',
+	);
+
+	/**
+	 * Original option values captured before each test.
+	 *
+	 * @var array
+	 */
+	private $original_option_values = array();
+
+	/**
+	 * Snapshot tracked option values before each test runs.
+	 *
+	 * @return void
+	 */
+	private function capture_tracked_option_values(): void {
+		$this->original_option_values = array();
+
+		foreach ( $this->tracked_option_keys as $option_key ) {
+			$sentinel = new stdClass();
+			$value    = get_option( $option_key, $sentinel );
+
+			$this->original_option_values[ $option_key ] = array(
+				'exists' => $value !== $sentinel,
+				'value'  => $value !== $sentinel ? $value : null,
+			);
+		}
+	}
+
+	/**
+	 * Restore tracked option values after each test runs.
+	 *
+	 * @return void
+	 */
+	private function restore_tracked_option_values(): void {
+		foreach ( $this->tracked_option_keys as $option_key ) {
+			if ( ! isset( $this->original_option_values[ $option_key ] ) ) {
+				delete_option( $option_key );
+				continue;
+			}
+
+			if ( ! empty( $this->original_option_values[ $option_key ]['exists'] ) ) {
+				update_option( $option_key, $this->original_option_values[ $option_key ]['value'] );
+			} else {
+				delete_option( $option_key );
+			}
+		}
+
+		$this->original_option_values = array();
+	}
+
+	/**
 	 * Runs before each test.
 	 */
 	public function setUp(): void {
 		parent::setUp();
 		$this->config = AIPS_Config::get_instance();
+		$this->capture_tracked_option_values();
 		$this->config->flush_option_cache();
 	}
 
 	/**
-	 * Runs after each test — flush cache and clear any test options.
+	 * Runs after each test — flush cache, restore hooks, and restore/delete any tracked test options.
 	 */
 	public function tearDown(): void {
+		$this->restore_tracked_option_values();
 		$this->config->flush_option_cache();
 		$this->config->reregister_option_cache_hooks();
 		parent::tearDown();
