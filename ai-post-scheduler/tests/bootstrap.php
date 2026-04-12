@@ -1365,6 +1365,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-history-service.php',
         'class-aips-generation-execution-runner.php',
         'class-aips-schedule-processor.php',
+        'class-aips-schedule-result-handler.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
         'class-aips-planner.php',

@@ -61,6 +61,11 @@ class AIPS_Schedule_Processor {
     private $runner;
 
     /**
+     * @var AIPS_Schedule_Result_Handler
+     */
+    private $result_handler;
+
+    /**
      * Constructor.
      *
      * @param AIPS_Schedule_Repository_Interface|null $repository
@@ -90,6 +95,14 @@ class AIPS_Schedule_Processor {
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
+
+        $this->result_handler = new AIPS_Schedule_Result_Handler(
+            $this->repository,
+            $this->history_service,
+            $this->history_repository,
+            $this->logger,
+            $this->template_type_selector
+        );
     }
 
     /**
@@ -290,7 +303,7 @@ class AIPS_Schedule_Processor {
             : sprintf(__('Schedule "%s" started execution', 'ai-post-scheduler'), $schedule->name);
 
         // Load the schedule's persistent lifecycle history container (or create one if missing)
-        $history = $this->get_or_create_schedule_history($schedule->schedule_id);
+        $history = $this->result_handler->get_or_create_schedule_history($schedule->schedule_id);
 
         if ($history) {
             $history->record(
@@ -524,7 +537,7 @@ class AIPS_Schedule_Processor {
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
-            $this->handle_post_execution_cleanup($schedule, $overall_result);
+            $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result);
         } else {
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
 
@@ -545,214 +558,11 @@ class AIPS_Schedule_Processor {
 
         // Handle Logging and Events based on Result
         if (is_wp_error($overall_result)) {
-            $this->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
+            $this->result_handler->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
         } else {
-            $this->handle_execution_success($schedule, $overall_result, $history, $is_manual);
+            $this->result_handler->handle_execution_success($schedule, $overall_result, $history, $is_manual);
         }
 
         return $overall_result;
-    }
-
-    /**
-     * Handle cleanup after automated execution (delete one-time, update recurring).
-     *
-     * @param object $schedule
-     * @param mixed  $result Array of post IDs on success, WP_Error on failure.
-     */
-    private function handle_post_execution_cleanup($schedule, $result) {
-        $is_success = !is_wp_error($result);
-
-        if ($schedule->frequency === 'once') {
-            if ($is_success) {
-                // If it's a one-time schedule and successful, delete it
-                $this->repository->delete($schedule->schedule_id);
-                $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
-            } else {
-                // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
-                $this->repository->update($schedule->schedule_id, array(
-                    'is_active' => 0,
-                    'status' => 'failed',
-                    'last_run' => current_time('mysql')
-                ));
-                $this->logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
-
-                // Log to the schedule's persistent lifecycle history container
-                $fail_history = $this->get_or_create_schedule_history($schedule->schedule_id);
-                if ($fail_history) {
-                    $fail_history->record(
-                        'activity',
-                        sprintf(
-                            __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
-                            $schedule->name
-                        ),
-                        array(
-                            'event_type' => 'schedule_failed',
-                            'event_status' => 'failed',
-                        ),
-                        null,
-                        array(
-                            'schedule_id' => $schedule->schedule_id,
-                            'template_id' => $schedule->template_id,
-                            'error' => $result->get_error_message(),
-                            'frequency' => $schedule->frequency,
-                        )
-                    );
-                }
-            }
-        } else {
-            // For recurring schedules, we ONLY update last_run here.
-            // next_run was already updated at the start (Claim-First).
-            $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
-        }
-    }
-
-    /**
-     * Handle failure logging.
-     */
-    private function handle_execution_failure($schedule, $result, $history, $is_manual) {
-        $error_msg = $result->get_error_message();
-        $history_id = (is_object($history) && method_exists($history, 'get_id')) ? $history->get_id() : 0;
-
-        $this->logger->log('Schedule failed: ' . $error_msg, 'error', array(
-            'schedule_id' => $schedule->schedule_id
-        ));
-
-        // Update the history record
-        $history->record(
-            'activity',
-            sprintf(
-                $is_manual ? __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler') : __('Schedule "%s" failed to generate post: %s', 'ai-post-scheduler'),
-                $schedule->name,
-                $error_msg
-            ),
-            array(
-                'event_type' => $is_manual ? 'manual_schedule_failed' : 'schedule_failed',
-                'event_status' => 'failed',
-            ),
-            null,
-            array(
-                'schedule_id' => $schedule->schedule_id,
-                'template_id' => $schedule->template_id,
-                'error' => $error_msg,
-                'frequency' => $schedule->frequency,
-            )
-        );
-
-        if (!$is_manual) {
-            do_action('aips_scheduler_error', array(
-                'schedule_id'    => $schedule->schedule_id,
-                'template_id'    => $schedule->template_id,
-                'schedule_name'  => $schedule->name,
-                'error_code'     => $result->get_error_code(),
-                'error_message'  => $error_msg,
-                'frequency'      => $schedule->frequency,
-                'history_id'     => $history_id,
-                'correlation_id' => AIPS_Correlation_ID::get(),
-                'creation_method'=> 'scheduled',
-                'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-                'dedupe_key'     => 'scheduler_failure_' . absint($schedule->schedule_id) . '_' . sanitize_key($result->get_error_code()),
-                'dedupe_window'  => 900,
-            ));
-
-            // Dispatch schedule execution failed event
-            do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
-        }
-    }
-
-    /**
-     * Handle success logging.
-     */
-    private function handle_execution_success($schedule, $result, $history, $is_manual) {
-        // Handle $result as an array of post IDs (or a single ID for safety/legacy callers)
-        $post_ids = is_array($result) ? $result : array($result);
-
-        $this->logger->log('Schedule completed successfully', 'info', array(
-            'schedule_id' => $schedule->schedule_id,
-            'post_ids' => $post_ids
-        ));
-
-        // For logging, we'll base the status on the first post generated, or summarize
-        $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
-        $post = get_post($first_post_id);
-
-        if ($post) {
-            $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
-            $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
-
-            if ($is_manual) {
-                $event_type = 'manual_schedule_completed';
-                $event_status = 'success';
-            }
-
-            $post_title_summary = $post->post_title;
-            if (count($post_ids) > 1) {
-                $post_title_summary .= ' ' . sprintf(__('(and %d more)', 'ai-post-scheduler'), count($post_ids) - 1);
-            }
-
-            // Update the history record
-            $history->record(
-                'activity',
-                sprintf(
-                    __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
-                    (count($post_ids) > 1) ? __('Posts', 'ai-post-scheduler') : (($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler')),
-                    $schedule->name,
-                    $post_title_summary
-                ),
-                array(
-                    'event_type' => $event_type,
-                    'event_status' => $event_status,
-                ),
-                null,
-                array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'post_id' => $result,
-                    'template_id' => $schedule->template_id,
-                    'post_status' => $post->post_status,
-                    'frequency' => $schedule->frequency,
-                )
-            );
-        }
-
-        if (!$is_manual) {
-            // Dispatch schedule execution completed event
-            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result, $schedule);
-
-            // Invalidate the schedule execution count cache (Bolt)
-            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
-        }
-    }
-
-    /**
-     * Load the schedule's persistent lifecycle history container, or create one if missing.
-     *
-     * @param int $schedule_id Schedule ID.
-     * @return AIPS_History_Container|null Container instance or null on failure.
-     */
-    private function get_or_create_schedule_history($schedule_id) {
-        $schedule = $this->repository->get_by_id($schedule_id);
-
-        if (!$schedule) {
-            return null;
-        }
-
-        if (!empty($schedule->schedule_history_id)) {
-            $container = AIPS_History_Container::load_existing($this->history_repository, $schedule->schedule_history_id);
-            if ($container) {
-                return $container;
-            }
-        }
-
-        // No existing container — create one and attach it to the schedule
-        $container = $this->history_service->create('schedule_lifecycle', array(
-            'schedule_id' => $schedule_id,
-        ));
-
-        if ($container && $container->get_id()) {
-            $this->repository->update($schedule_id, array(
-                'schedule_history_id' => $container->get_id(),
-            ));
-        }
-
-        return $container;
     }
 }
