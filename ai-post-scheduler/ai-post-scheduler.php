@@ -598,8 +598,9 @@ final class AI_Post_Scheduler {
      */
     private function boot_legacy() {
         // Scheduler and cron hooks must be registered on every request so
-        // WordPress can fire them when wp-cron.php executes (which runs in
-        // a pseudo-frontend context, not a cron context).
+        // WordPress can fire them when wp-cron.php executes. That request
+        // sets DOING_CRON / wp_doing_cron() even though it boots WordPress
+        // similarly to a non-admin request.
         $aips_scheduler = new AIPS_Scheduler();
         add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
         add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
