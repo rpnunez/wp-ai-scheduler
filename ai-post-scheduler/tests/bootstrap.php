@@ -111,12 +111,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     // Initialize container bindings early, before any test classes load
     // This is a helper function that will be called after all classes are loaded
-    function aips_test_register_container_bindings() {
-        if (!class_exists('AIPS_Container')) {
-            return;
-        }
+    if (!function_exists('aips_test_register_container_bindings')) {
+        function aips_test_register_container_bindings() {
+            if (!class_exists('AIPS_Container')) {
+                return;
+            }
 
-        $container = AIPS_Container::get_instance();
+            $container = AIPS_Container::get_instance();
 
         // Register AIPS_Config (uses get_instance() instead of instance())
         if (class_exists('AIPS_Config')) {
@@ -258,6 +259,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return new AIPS_Generation_Context_Factory();
             });
         }
+    }
     }
 
     // Mock WordPress functions if not available
