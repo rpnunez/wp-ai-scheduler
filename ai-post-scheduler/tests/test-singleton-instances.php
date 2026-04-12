@@ -14,6 +14,105 @@
 class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 
 	/**
+	 * List of singleton classes that register WordPress hooks in their constructors.
+	 * These need cleanup after each test to prevent hook pollution.
+	 *
+	 * @var array
+	 */
+	private $hook_owning_classes = array(
+		'AIPS_Authors_Controller',
+		'AIPS_Author_Topics_Controller',
+		'AIPS_Post_Review',
+		'AIPS_Research_Controller',
+	);
+
+	/**
+	 * Reset singleton instances after each test to prevent cross-test pollution.
+	 *
+	 * This is especially important for classes that register WordPress hooks in
+	 * their constructors (controllers, handlers), as those hooks would otherwise
+	 * persist across tests and cause order-dependent behavior.
+	 *
+	 * @return void
+	 */
+	public function tearDown(): void {
+		parent::tearDown();
+
+		// Reset singleton instances for all classes with instance() methods
+		$classes_to_reset = array(
+			'AIPS_History_Repository',
+			'AIPS_History_Service',
+			'AIPS_Logger',
+			'AIPS_Interval_Calculator',
+			'AIPS_Template_Repository',
+			'AIPS_AI_Service',
+			'AIPS_Notifications_Repository',
+			'AIPS_Schedule_Repository',
+			'AIPS_Voices_Repository',
+			'AIPS_Article_Structure_Repository',
+			'AIPS_Prompt_Section_Repository',
+			'AIPS_Authors_Repository',
+			'AIPS_Scheduler',
+			'AIPS_Author_Topics_Scheduler',
+			'AIPS_Author_Post_Generator',
+			'AIPS_Embeddings_Cron',
+			'AIPS_Notifications',
+			'AIPS_Authors_Controller',
+			'AIPS_Author_Topics_Controller',
+			'AIPS_Post_Review',
+			'AIPS_Research_Controller',
+		);
+
+		foreach ( $classes_to_reset as $class ) {
+			$this->reset_singleton( $class );
+		}
+
+		// Clean up WordPress global hook state for hook-owning classes
+		global $wp_filter;
+		if ( isset( $wp_filter ) ) {
+			// Remove all wp_ajax_aips_* hooks that may have been registered by controllers
+			foreach ( $wp_filter as $hook_name => $hook ) {
+				if ( strpos( $hook_name, 'wp_ajax_aips_' ) === 0 ) {
+					unset( $wp_filter[ $hook_name ] );
+				}
+			}
+
+			// Also clean up the scheduled research hook from AIPS_Research_Controller
+			if ( isset( $wp_filter['aips_scheduled_research'] ) ) {
+				unset( $wp_filter['aips_scheduled_research'] );
+			}
+		}
+	}
+
+	/**
+	 * Reset a singleton instance to null using Reflection.
+	 *
+	 * This allows tests to instantiate fresh instances without being affected
+	 * by previous test runs.
+	 *
+	 * @param string $class Fully-qualified class name.
+	 * @return void
+	 */
+	private function reset_singleton( $class ) {
+		if ( ! class_exists( $class ) ) {
+			return;
+		}
+
+		try {
+			$reflection = new ReflectionClass( $class );
+			if ( $reflection->hasProperty( 'instance' ) ) {
+				$property = $reflection->getProperty( 'instance' );
+				$property->setAccessible( true );
+				$property->setValue( null, null );
+			}
+		} catch ( ReflectionException $e ) {
+			// If reflection fails, we can't reset the singleton, but that's OK
+			// for test purposes - it just means the next test might see the
+			// cached instance from this test.
+		}
+	}
+
+	/**
 	 * Helper: assert that a class has a public static instance() method and that
 	 * successive calls return the same object.
 	 *
