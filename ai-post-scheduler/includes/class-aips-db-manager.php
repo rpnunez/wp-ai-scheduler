@@ -189,12 +189,10 @@ class AIPS_DB_Manager {
             description text,
             structure_data longtext NOT NULL,
             is_active tinyint(1) DEFAULT 1,
-            is_default tinyint(1) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            KEY is_active (is_active),
-            KEY is_default (is_default)
+			KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sections (
@@ -740,7 +738,6 @@ class AIPS_DB_Manager {
                     'sections' => array('introduction', 'prerequisites', 'steps', 'tips', 'troubleshooting', 'conclusion'),
                     'prompt_template' => "Write a comprehensive how-to guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:troubleshooting}}\n\n{{section:conclusion}}",
                 )),
-                'is_default' => 1,
             ),
             array(
                 'name' => 'Tutorial',
@@ -792,6 +789,11 @@ class AIPS_DB_Manager {
 
             if (!$exists) {
                 $wpdb->insert($table_structures, $structure);
+                $exists = $wpdb->insert_id;
+            }
+
+            if ($structure['name'] === 'How-To Guide' && !get_option('aips_default_article_structure_id')) {
+                update_option('aips_default_article_structure_id', (int) $exists);
             }
         }
     }

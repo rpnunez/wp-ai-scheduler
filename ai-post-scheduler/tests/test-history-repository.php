@@ -10,6 +10,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 	private $repository;
 	private $template_repository;
 	private $test_template_id;
+	private $test_schedule_id;
 	private $test_history_ids = array();
 
 	public function setUp(): void {
@@ -33,6 +34,28 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		
 		// Create test history entries
 		$this->create_test_history_entries();
+		$this->create_test_schedule();
+	}
+
+	private function create_test_schedule() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id' => $this->test_template_id,
+				'name' => 'Test Schedule',
+				'frequency' => 'daily',
+				'next_run' => current_time('mysql'),
+				'is_active' => 1,
+				'status' => 'active',
+				'created_at' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS),
+			),
+			array('%d', '%s', '%s', '%s', '%d', '%s', '%s')
+		);
+
+		$this->test_schedule_id = $wpdb->insert_id;
 	}
 
 	private function create_test_history_entries() {
@@ -63,15 +86,35 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		global $wpdb;
 		$history_table = $wpdb->prefix . 'aips_history';
 		$template_table = $wpdb->prefix . 'aips_templates';
+		$schedule_table = $wpdb->prefix . 'aips_schedule';
 		
 		// Clean up test data
 		foreach ($this->test_history_ids as $id) {
 			$wpdb->delete($history_table, array('id' => $id), array('%d'));
 		}
+
+		if (!empty($this->test_schedule_id)) {
+			$wpdb->delete($schedule_table, array('id' => $this->test_schedule_id), array('%d'));
+			delete_transient('aips_schedule_completed_count_' . $this->test_schedule_id);
+		}
 		
 		$wpdb->delete($template_table, array('id' => $this->test_template_id), array('%d'));
 		
 		parent::tearDown();
+	}
+
+	/**
+	 * Test count_completed_for_schedule returns completed rows since schedule creation.
+	 */
+	public function test_count_completed_for_schedule_returns_completed_count() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Schedule count test requires the full WordPress test library.');
+		}
+
+		$count = $this->repository->count_completed_for_schedule($this->test_schedule_id);
+
+		$this->assertSame(3, $count);
 	}
 
 	/**

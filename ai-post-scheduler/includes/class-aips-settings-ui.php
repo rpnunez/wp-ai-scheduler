@@ -559,6 +559,26 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the Default Article Structure field.
+     *
+     * @return void
+     */
+    public function site_default_article_structure_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_default_article_structure_id');
+        $repository = new AIPS_Article_Structure_Repository();
+        $structures = $repository->get_all(true);
+        ?>
+        <select name="aips_default_article_structure_id">
+            <option value="0"><?php esc_html_e('Select an article structure', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($structures as $structure) : ?>
+                <option value="<?php echo esc_attr($structure->id); ?>" <?php selected((int) $value, (int) $structure->id); ?>><?php echo esc_html($structure->name); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Used as the fallback structure whenever a schedule or generation flow does not specify one explicitly.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the Brand Voice / Tone field.
      *
      * @return void

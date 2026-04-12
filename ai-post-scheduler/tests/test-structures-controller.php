@@ -358,7 +358,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 			$wpdb->get_row_return_val = (object) array(
 				'id' => 1,
 				'name' => 'Mocked Structure',
-				'is_default' => 0
+				'is_active' => 1
 			);
 		}
 
@@ -438,77 +438,6 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		
 		try {
 			$this->controller->ajax_delete_structure();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		
-		$output = $this->getActualOutput();
-		$response = json_decode($output, true);
-		
-		$this->assertFalse($response['success']);
-		$this->assertStringContainsString('Permission denied', $response['data']['message']);
-	}
-	
-	/**
-	 * Test ajax_set_structure_default success
-	 */
-	public function test_ajax_set_structure_default_success() {
-		wp_set_current_user($this->admin_user_id);
-		
-		// Set POST data
-		$_POST['structure_id'] = 1;
-		
-		$this->expectOutputRegex('/.*/');
-		
-		try {
-			$this->controller->ajax_set_structure_default();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		
-		$output = $this->getActualOutput();
-		$response = json_decode($output, true);
-		
-		// Verify the controller processes the request
-		$this->assertIsArray($response);
-		$this->assertArrayHasKey('success', $response);
-	}
-	
-	/**
-	 * Test ajax_set_structure_default with invalid ID
-	 */
-	public function test_ajax_set_structure_default_invalid_id() {
-		wp_set_current_user($this->admin_user_id);
-		
-		$_POST['structure_id'] = 0;
-		
-		$this->expectOutputRegex('/.*Invalid structure ID.*/');
-		
-		try {
-			$this->controller->ajax_set_structure_default();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		
-		$output = $this->getActualOutput();
-		$response = json_decode($output, true);
-		
-		$this->assertFalse($response['success']);
-		$this->assertStringContainsString('Invalid structure ID', $response['data']['message']);
-	}
-	
-	/**
-	 * Test ajax_set_structure_default without permission
-	 */
-	public function test_ajax_set_structure_default_permission_denied() {
-		wp_set_current_user($this->subscriber_user_id);
-		
-		$_POST['structure_id'] = 1;
-		
-		$this->expectOutputRegex('/.*Permission denied.*/');
-		
-		try {
-			$this->controller->ajax_set_structure_default();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
@@ -609,7 +538,6 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->assertArrayHasKey('wp_ajax_aips_get_structure', $wp_filter);
 		$this->assertArrayHasKey('wp_ajax_aips_save_structure', $wp_filter);
 		$this->assertArrayHasKey('wp_ajax_aips_delete_structure', $wp_filter);
-		$this->assertArrayHasKey('wp_ajax_aips_set_structure_default', $wp_filter);
 		$this->assertArrayHasKey('wp_ajax_aips_toggle_structure_active', $wp_filter);
 	}
 }

@@ -111,23 +111,30 @@ class AIPS_Article_Structure_Repository {
 	/**
 	 * Get the default article structure.
 	 *
-	 * The result is cached for the duration of the request. A null result
-	 * (no default defined) is not cached so the next call re-queries the DB.
+	 * The configured default article structure ID is stored as a plugin setting.
+	 * The underlying structure row is resolved via get_by_id(), which is cached
+	 * for the duration of the request.
 	 *
 	 * @return object|null Default structure object or null if not found.
 	 */
 	public function get_default() {
-		$key = 'default';
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
+		$structure_id = (int) AIPS_Config::get_instance()->get_option('aips_default_article_structure_id');
+
+		if ($structure_id < 1) {
+			return null;
 		}
-		$result = $this->wpdb->get_row(
-			"SELECT * FROM {$this->table_name} WHERE is_default = 1 AND is_active = 1 ORDER BY id ASC LIMIT 1"
-		);
-		if ( $result !== null ) {
-			$this->cache->set( $key, $result );
+
+		$structure = $this->get_by_id($structure_id);
+
+		if (!$structure) {
+			return null;
 		}
-		return $result;
+
+		if (isset($structure->is_active) && (int) $structure->is_active !== 1) {
+			return null;
+		}
+
+		return $structure;
 	}
 	
 	/**
@@ -140,7 +147,6 @@ class AIPS_Article_Structure_Repository {
 	 *     @type string $description     Structure description.
 	 *     @type string $structure_data  JSON-encoded structure configuration.
 	 *     @type int    $is_active       Active status flag.
-	 *     @type int    $is_default      Default structure flag.
 	 * }
 	 * @return int|false The inserted ID on success, false on failure.
 	 */
@@ -150,15 +156,9 @@ class AIPS_Article_Structure_Repository {
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'structure_data' => $data['structure_data'],
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
-			'is_default' => !empty($data['is_default']) ? 1 : 0,
 		);
 		
-		// If setting as default, unset other defaults
-		if ($insert_data['is_default']) {
-			$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
-		}
-		
-		$format = array('%s', '%s', '%s', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%d');
 		
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
@@ -198,16 +198,6 @@ class AIPS_Article_Structure_Repository {
 		if (isset($data['is_active'])) {
 			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
 			$format[] = '%d';
-		}
-		
-		if (isset($data['is_default'])) {
-			$update_data['is_default'] = $data['is_default'] ? 1 : 0;
-			$format[] = '%d';
-			
-			// If setting as default, unset other defaults
-			if ($update_data['is_default']) {
-				$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
-			}
 		}
 		
 		if (empty($update_data)) {
@@ -252,20 +242,6 @@ class AIPS_Article_Structure_Repository {
 	 */
 	public function set_active($id, $is_active) {
 		return $this->update($id, array('is_active' => $is_active));
-	}
-	
-	/**
-	 * Set a structure as default.
-	 *
-	 * @param int $id Structure ID.
-	 * @return bool True on success, false on failure.
-	 */
-	public function set_default($id) {
-		// Unset all defaults first
-		$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
-		
-		// Set this one as default
-		return $this->update($id, array('is_default' => 1));
 	}
 	
 	/**

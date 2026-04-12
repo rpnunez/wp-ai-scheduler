@@ -545,6 +545,7 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'niche',               $s );
 		$this->assertArrayHasKey( 'target_audience',     $s );
 		$this->assertArrayHasKey( 'content_goals',       $s );
+		$this->assertArrayHasKey( 'default_article_structure_id', $s );
 		$this->assertArrayHasKey( 'brand_voice',         $s );
 		$this->assertArrayHasKey( 'content_language',    $s );
 		$this->assertArrayHasKey( 'content_guidelines',  $s );
@@ -554,11 +555,13 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	/** @test */
 	public function test_get_site_content_config_defaults() {
 		delete_option( 'aips_site_niche' );
+		delete_option( 'aips_default_article_structure_id' );
 		delete_option( 'aips_site_content_language' );
 
 		$s = $this->config->get_site_content_config();
 
 		$this->assertSame( '',   $s['niche'] );
+		$this->assertSame( 0,    $s['default_article_structure_id'] );
 		$this->assertSame( 'en', $s['content_language'] );
 	}
 

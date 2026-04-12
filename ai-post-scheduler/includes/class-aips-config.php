@@ -173,6 +173,7 @@ class AIPS_Config {
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
             'aips_site_content_goals' => '',
+            'aips_default_article_structure_id' => 0,
             'aips_site_brand_voice' => '',
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
@@ -298,6 +299,21 @@ class AIPS_Config {
         if ($this->cache !== null) {
             $this->cache->flush();
         }
+    }
+
+    /**
+     * Return a named runtime cache instance.
+     *
+     * This is a thin wrapper around the cache factory so classes that already
+     * depend on AIPS_Config can request a scoped cache without managing the
+     * factory directly.
+     *
+     * @param string $name   Cache namespace.
+     * @param string $driver Cache driver. Defaults to the request-scoped array driver.
+     * @return AIPS_Cache
+     */
+    public function get_runtime_cache($name, $driver = 'array') {
+        return AIPS_Cache_Factory::named($name, $driver);
     }
     
     // ========================================
@@ -523,6 +539,7 @@ class AIPS_Config {
             'niche'               => (string) $this->get_option('aips_site_niche'),
             'target_audience'     => (string) $this->get_option('aips_site_target_audience'),
             'content_goals'       => (string) $this->get_option('aips_site_content_goals'),
+            'default_article_structure_id' => (int) $this->get_option('aips_default_article_structure_id'),
             'brand_voice'         => (string) $this->get_option('aips_site_brand_voice'),
             'content_language'    => (string) $this->get_option('aips_site_content_language'),
             'content_guidelines'  => (string) $this->get_option('aips_site_content_guidelines'),

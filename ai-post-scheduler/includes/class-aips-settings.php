@@ -442,6 +442,14 @@ class AIPS_Settings {
             'aips_content_strategy_section'
         );
 
+		add_settings_field(
+			'aips_default_article_structure_id',
+			__('Default Article Structure', 'ai-post-scheduler'),
+			array($this->ui, 'site_default_article_structure_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
+
         add_settings_field(
             'aips_site_brand_voice',
             __('Brand Voice / Tone', 'ai-post-scheduler'),
@@ -631,6 +639,11 @@ class AIPS_Settings {
                 'sanitize_callback' => 'sanitize_textarea_field',
                 'default'           => $config_defaults['aips_site_content_goals'],
             ),
+			'aips_default_article_structure_id' => array(
+				'key'               => 'default_article_structure_id',
+				'sanitize_callback' => 'absint',
+				'default'           => $config_defaults['aips_default_article_structure_id'],
+			),
             'aips_site_brand_voice' => array(
                 'key'               => 'brand_voice',
                 'sanitize_callback' => 'sanitize_text_field',
