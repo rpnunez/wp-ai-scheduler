@@ -356,4 +356,159 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			'Admin menu must NOT be registered when wp_doing_cron() is true'
 		);
 	}
+
+	// -------------------------------------------------------------------------
+	// Lazy instantiation: scheduler singletons must NOT be created on non-cron
+	// page loads (Phase B.4 — Step 6 regression guard).
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Helper: read the private static $instance property of a class via Reflection.
+	 *
+	 * Returns the current value of the singleton holder, or false if the property
+	 * does not exist on the class.
+	 *
+	 * @param string $class_name Fully-qualified class name.
+	 * @return mixed|false
+	 */
+	private function get_singleton_instance( $class_name ) {
+		if ( ! class_exists( $class_name ) ) {
+			return false;
+		}
+		$rc = new ReflectionClass( $class_name );
+		if ( ! $rc->hasProperty( 'instance' ) ) {
+			return false;
+		}
+		$prop = $rc->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		return $prop->getValue( null );
+	}
+
+	/**
+	 * Helper: reset the private static $instance property of a class to null.
+	 *
+	 * @param string $class_name Fully-qualified class name.
+	 * @return void
+	 */
+	private function reset_singleton_instance( $class_name ) {
+		if ( ! class_exists( $class_name ) ) {
+			return;
+		}
+		$rc = new ReflectionClass( $class_name );
+		if ( ! $rc->hasProperty( 'instance' ) ) {
+			return;
+		}
+		$prop = $rc->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+	}
+
+	/**
+	 * On an admin page load, boot_admin() must not instantiate AIPS_Scheduler.
+	 *
+	 * Closures registered in boot_cron() are only bound when boot_cron() runs;
+	 * they never run on admin requests. Therefore AIPS_Scheduler::$instance must
+	 * remain null after init() completes in an admin context.
+	 */
+	public function test_admin_boot_does_not_instantiate_scheduler_singleton() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		// Reset the singleton so a previous test cannot pollute this one.
+		$this->reset_singleton_instance( 'AIPS_Scheduler' );
+
+		$GLOBALS['aips_test_is_admin'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Scheduler' ),
+			'AIPS_Scheduler::$instance must be null after admin boot — schedulers must only be instantiated when their cron hook fires'
+		);
+	}
+
+	/**
+	 * On a frontend page load, boot_frontend() must not instantiate AIPS_Scheduler.
+	 */
+	public function test_frontend_boot_does_not_instantiate_scheduler_singleton() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Scheduler' );
+
+		// All context globals default to false — frontend context.
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Scheduler' ),
+			'AIPS_Scheduler::$instance must be null after frontend boot — schedulers must not be instantiated on frontend requests'
+		);
+	}
+
+	/**
+	 * On an admin page load, boot_admin() must not instantiate AIPS_Author_Topics_Scheduler.
+	 */
+	public function test_admin_boot_does_not_instantiate_author_topics_scheduler_singleton() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Author_Topics_Scheduler' );
+
+		$GLOBALS['aips_test_is_admin'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Author_Topics_Scheduler' ),
+			'AIPS_Author_Topics_Scheduler::$instance must be null after admin boot'
+		);
+	}
+
+	/**
+	 * On an admin page load, boot_admin() must not instantiate AIPS_Author_Post_Generator.
+	 */
+	public function test_admin_boot_does_not_instantiate_author_post_generator_singleton() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Author_Post_Generator' );
+
+		$GLOBALS['aips_test_is_admin'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Author_Post_Generator' ),
+			'AIPS_Author_Post_Generator::$instance must be null after admin boot'
+		);
+	}
+
+	/**
+	 * On an admin page load, boot_admin() must not instantiate AIPS_Embeddings_Cron.
+	 */
+	public function test_admin_boot_does_not_instantiate_embeddings_cron_singleton() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Embeddings_Cron' );
+
+		$GLOBALS['aips_test_is_admin'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Embeddings_Cron' ),
+			'AIPS_Embeddings_Cron::$instance must be null after admin boot'
+		);
+	}
 }
