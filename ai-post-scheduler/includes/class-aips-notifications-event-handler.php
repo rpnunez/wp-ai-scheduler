@@ -51,7 +51,7 @@ class AIPS_Notifications_Event_Handler {
 	public function __construct($notifications, ?AIPS_Notifications_Repository_Interface $repository = null) {
 		$container = AIPS_Container::get_instance();
 		$this->notifications = $notifications;
-		$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : AIPS_Notifications_Repository::instance());
+		$this->repository = $repository ?: $container->make(AIPS_Notifications_Repository_Interface::class);
 		$this->register_hooks();
 	}
 

@@ -20,17 +20,14 @@ class AIPS_Dashboard_Controller {
      * @return void
      */
     public function render_page() {
-        // Use container to resolve registered bindings, with fallback to direct instantiation
         $container = AIPS_Container::get_instance();
-        $history_repo = $container->has(AIPS_History_Repository_Interface::class)
-            ? $container->make(AIPS_History_Repository_Interface::class)
-            : new AIPS_History_Repository();
-        $schedule_repo = $container->has(AIPS_Schedule_Repository_Interface::class)
-            ? $container->make(AIPS_Schedule_Repository_Interface::class)
-            : new AIPS_Schedule_Repository();
-        $template_repo = $container->has(AIPS_Template_Repository::class)
-            ? $container->make(AIPS_Template_Repository::class)
-            : new AIPS_Template_Repository();
+
+        // Use container for registered services
+        $history_repo = $container->make(AIPS_History_Repository_Interface::class);
+        $schedule_repo = $container->make(AIPS_Schedule_Repository_Interface::class);
+        $template_repo = $container->make(AIPS_Template_Repository::class);
+
+        // Repository classes (not in container)
         $post_review_repo = new AIPS_Post_Review_Repository();
         $author_topics_repo = new AIPS_Author_Topics_Repository();
 

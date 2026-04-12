@@ -54,14 +54,13 @@ class AIPS_Generated_Posts_Controller {
 	 * Initialize the controller
 	 */
 	public function __construct() {
-		// Use container to resolve registered bindings, with fallback to direct instantiation
 		$container = AIPS_Container::get_instance();
-		$this->history_repository = $container->has(AIPS_History_Repository_Interface::class)
-			? $container->make(AIPS_History_Repository_Interface::class)
-			: new AIPS_History_Repository();
-		$this->schedule_repository = $container->has(AIPS_Schedule_Repository_Interface::class)
-			? $container->make(AIPS_Schedule_Repository_Interface::class)
-			: new AIPS_Schedule_Repository();
+
+		// Use container for registered services
+		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
+		$this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
+
+		// Repository classes (not in container)
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
 
 		// Register AJAX handlers

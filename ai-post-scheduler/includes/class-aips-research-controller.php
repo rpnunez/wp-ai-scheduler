@@ -71,17 +71,16 @@ class AIPS_Research_Controller {
      * Initialize the controller.
      */
     public function __construct() {
-        // Use container to resolve registered bindings, with fallback to direct instantiation
         $container = AIPS_Container::get_instance();
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = $container->has(AIPS_Logger_Interface::class)
-            ? $container->make(AIPS_Logger_Interface::class)
-            : new AIPS_Logger();
-        $this->history_service        = $container->has(AIPS_History_Service_Interface::class)
-            ? $container->make(AIPS_History_Service_Interface::class)
-            : new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
+
+        // Use container for registered services
+        $this->logger = $container->make(AIPS_Logger_Interface::class);
+        $this->history_service = $container->make(AIPS_History_Service_Interface::class);
+
+        // Service and repository classes (not in container)
+        $this->research_service = new AIPS_Research_Service();
+        $this->repository = new AIPS_Trending_Topics_Repository();
+        $this->content_auditor = new AIPS_Content_Auditor();
         $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
 
         $this->init_hooks();
