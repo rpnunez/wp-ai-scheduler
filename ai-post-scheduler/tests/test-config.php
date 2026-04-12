@@ -103,6 +103,50 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
+	// has_option — database-presence check
+	// -----------------------------------------------------------------------
+
+	/** @test */
+	public function test_has_option_returns_false_when_option_absent() {
+		delete_option( 'aips_ai_model' );
+		$this->assertFalse( $this->config->has_option( 'aips_ai_model' ) );
+	}
+
+	/** @test */
+	public function test_has_option_returns_true_when_option_present() {
+		update_option( 'aips_ai_model', 'gpt-4o' );
+		$this->assertTrue( $this->config->has_option( 'aips_ai_model' ) );
+	}
+
+	/** @test */
+	public function test_has_option_returns_true_when_option_stored_as_false() {
+		update_option( 'aips_enable_retry', false );
+		// The value is explicitly stored — has_option() must return true even though
+		// the stored value is boolean false (which WordPress uses as its "not found" sentinel).
+		$this->assertTrue( $this->config->has_option( 'aips_enable_retry' ) );
+	}
+
+	/** @test */
+	public function test_has_option_returns_true_when_option_stored_as_empty_string() {
+		update_option( 'aips_unsplash_access_key', '' );
+		$this->assertTrue( $this->config->has_option( 'aips_unsplash_access_key' ) );
+	}
+
+	/** @test */
+	public function test_has_option_returns_false_for_completely_unknown_key() {
+		delete_option( 'aips_nonexistent_xyz_abc' );
+		$this->assertFalse( $this->config->has_option( 'aips_nonexistent_xyz_abc' ) );
+	}
+
+	/** @test */
+	public function test_has_option_does_not_fall_back_to_registered_defaults() {
+		// aips_max_tokens_limit has a registered default of 16000 in get_default_options().
+		// has_option() must not return true just because a default is registered.
+		delete_option( 'aips_max_tokens_limit' );
+		$this->assertFalse( $this->config->has_option( 'aips_max_tokens_limit' ) );
+	}
+
+	// -----------------------------------------------------------------------
 	// get_ai_config — typed accessor
 	// -----------------------------------------------------------------------
 

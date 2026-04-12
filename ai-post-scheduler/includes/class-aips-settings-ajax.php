@@ -64,10 +64,7 @@ class AIPS_Settings_AJAX {
         }
 
         $removed_options = 0;
-        // Intentional direct get_option(): checking for the presence of a legacy
-        // option (false = not set) before deleting it. AIPS_Config::get_option()
-        // would return its registered default instead of false for a missing key.
-        if (false !== get_option('aips_review_notifications_enabled', false)) {
+        if (AIPS_Config::get_instance()->has_option('aips_review_notifications_enabled')) {
             delete_option('aips_review_notifications_enabled');
             $removed_options++;
         }

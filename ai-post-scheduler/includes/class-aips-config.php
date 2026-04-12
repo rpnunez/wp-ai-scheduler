@@ -268,6 +268,25 @@ class AIPS_Config {
     }
 
     /**
+     * Check whether an option key is present in the database.
+     *
+     * Unlike get_option(), this method returns false for any key that has no
+     * stored value — it never falls back to the plugin's registered defaults.
+     * This is useful when you need to distinguish "option not set at all" from
+     * "option set to false/0/empty string".
+     *
+     * @param string $option_name Option name.
+     * @return bool True when the option exists in the database, false otherwise.
+     */
+    public function has_option($option_name) {
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
+        return get_option($option_name, $not_set) !== $not_set;
+    }
+
+    /**
      * Flush the entire per-request option cache.
      *
      * Useful in tests or after a batch of update_option() calls made outside
@@ -291,7 +310,7 @@ class AIPS_Config {
      * @return string Plugin version.
      */
     public function get_version() {
-        return defined('AIPS_VERSION') ? AIPS_VERSION : '1.5.0';
+        return AIPS_VERSION;
     }
     
     /**
@@ -300,7 +319,7 @@ class AIPS_Config {
      * @return string Plugin directory path.
      */
     public function get_plugin_dir() {
-        return defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : plugin_dir_path(__FILE__);
+        return AIPS_PLUGIN_DIR;
     }
     
     /**
@@ -309,7 +328,7 @@ class AIPS_Config {
      * @return string Plugin URL.
      */
     public function get_plugin_url() {
-        return defined('AIPS_PLUGIN_URL') ? AIPS_PLUGIN_URL : plugin_dir_url(__FILE__);
+        return AIPS_PLUGIN_URL;
     }
     
     /**
