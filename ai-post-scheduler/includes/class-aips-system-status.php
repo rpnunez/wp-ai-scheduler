@@ -122,9 +122,10 @@ class AIPS_System_Status {
             $recipient_count = count($parts);
         }
 
-        $daily_marker = (string) $config->get_option('aips_notif_daily_digest_last_sent');
-        $weekly_marker = (string) $config->get_option('aips_notif_weekly_summary_last_sent');
-        $monthly_marker = (string) $config->get_option('aips_notif_monthly_report_last_sent');
+        $digest         = $config->get_notification_digest_config();
+        $daily_marker   = $digest['daily_last_sent'];
+        $weekly_marker  = $digest['weekly_last_sent'];
+        $monthly_marker = $digest['monthly_last_sent'];
 
         $new_cron = wp_next_scheduled('aips_notification_rollups');
         $legacy_cron = wp_next_scheduled('aips_send_review_notifications');
