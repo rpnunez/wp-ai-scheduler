@@ -21,7 +21,7 @@ if (!function_exists('wp_parse_args')) {
     }
 }
 
-class Test_AIPS_History_Repository_Performance extends WP_UnitTestCase {
+class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
 
     private $wpdb_backup;
 
@@ -96,5 +96,52 @@ class Test_AIPS_History_Repository_Performance extends WP_UnitTestCase {
 
         // Call get_history
         $repo->get_history();
+    }
+
+    /**
+     * Test that unbounded partial generation queries do not emit LIMIT -1.
+     */
+    public function test_get_partial_generations_omits_limit_for_unbounded_requests() {
+        $wpdb_mock = $this->getMockBuilder('stdClass')
+            ->setMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
+            ->getMock();
+
+        $wpdb_mock->prefix = 'wp_';
+        $wpdb_mock->posts = 'wp_posts';
+        $wpdb_mock->postmeta = 'wp_postmeta';
+
+        $wpdb_mock->expects($this->never())
+            ->method('prepare');
+
+        $wpdb_mock->method('esc_like')
+            ->will($this->returnCallback(function($text) {
+                return $text;
+            }));
+
+        $wpdb_mock->expects($this->once())
+            ->method('get_results')
+            ->with($this->callback(function($query) {
+                return strpos($query, 'LIMIT') === false && strpos($query, 'OFFSET') === false;
+            }))
+            ->willReturn(array());
+
+        $wpdb_mock->expects($this->once())
+            ->method('get_var')
+            ->with($this->callback(function($query) {
+                return strpos($query, 'LIMIT') === false;
+            }))
+            ->willReturn(2);
+
+        $GLOBALS['wpdb'] = $wpdb_mock;
+
+        $repo = new AIPS_History_Repository();
+        $result = $repo->get_partial_generations(array(
+            'per_page' => -1,
+            'page' => 1,
+        ));
+
+        $this->assertSame(2, $result['total']);
+        $this->assertSame(1, $result['pages']);
+        $this->assertSame(1, $result['current_page']);
     }
 }
