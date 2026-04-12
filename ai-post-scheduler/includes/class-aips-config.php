@@ -268,6 +268,25 @@ class AIPS_Config {
     }
 
     /**
+     * Check whether an option key is present in the database.
+     *
+     * Unlike get_option(), this method returns false for any key that has no
+     * stored value — it never falls back to the plugin's registered defaults.
+     * This is useful when you need to distinguish "option not set at all" from
+     * "option set to false/0/empty string".
+     *
+     * @param string $option_name Option name.
+     * @return bool True when the option exists in the database, false otherwise.
+     */
+    public function has_option($option_name) {
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
+        return get_option($option_name, $not_set) !== $not_set;
+    }
+
+    /**
      * Flush the entire per-request option cache.
      *
      * Useful in tests or after a batch of update_option() calls made outside
@@ -291,7 +310,7 @@ class AIPS_Config {
      * @return string Plugin version.
      */
     public function get_version() {
-        return defined('AIPS_VERSION') ? AIPS_VERSION : '1.5.0';
+        return AIPS_VERSION;
     }
     
     /**
@@ -300,7 +319,7 @@ class AIPS_Config {
      * @return string Plugin directory path.
      */
     public function get_plugin_dir() {
-        return defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : plugin_dir_path(__FILE__);
+        return AIPS_PLUGIN_DIR;
     }
     
     /**
@@ -309,7 +328,7 @@ class AIPS_Config {
      * @return string Plugin URL.
      */
     public function get_plugin_url() {
-        return defined('AIPS_PLUGIN_URL') ? AIPS_PLUGIN_URL : plugin_dir_url(__FILE__);
+        return AIPS_PLUGIN_URL;
     }
     
     /**
@@ -324,13 +343,22 @@ class AIPS_Config {
     /**
      * Get AI model configuration.
      *
-     * @return array AI model configuration.
+     * Returns all settings needed to configure an AI generation request,
+     * including the model identifier, optional environment/project ID,
+     * token limit, and temperature.
+     *
+     * @return array AI model configuration with keys:
+     *               'model'            (string) AI model identifier.
+     *               'env_id'           (string) Optional AI Engine environment ID.
+     *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
+     *               'temperature'      (float)  Sampling temperature (creativity).
      */
     public function get_ai_config() {
         return array(
-            'model' => $this->get_option('aips_ai_model'),
+            'model'            => (string) $this->get_option('aips_ai_model'),
+            'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
-            'temperature' => (float) $this->get_option('aips_temperature'),
+            'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
     
@@ -425,6 +453,63 @@ class AIPS_Config {
         return array(
             'review_email'  => (string) $this->get_option('aips_review_notifications_email'),
             'preferences'   => is_array($preferences) ? $preferences : array(),
+        );
+    }
+
+    /**
+     * Get notification digest scheduling markers.
+     *
+     * These runtime markers record the last date/period for which each periodic
+     * summary was sent, allowing cron handlers and the system-status page to
+     * determine whether a summary is due. They are read together in multiple
+     * places and updated individually via set_option().
+     *
+     * @return array Notification digest configuration with keys:
+     *               'daily_last_sent'   (string) ISO date (Y-m-d) of the last daily digest.
+     *               'weekly_last_sent'  (string) ISO year-week (o-W) of the last weekly summary.
+     *               'monthly_last_sent' (string) ISO year-month (Y-m) of the last monthly report.
+     */
+    public function get_notification_digest_config() {
+        return array(
+            'daily_last_sent'   => (string) $this->get_option('aips_notif_daily_digest_last_sent'),
+            'weekly_last_sent'  => (string) $this->get_option('aips_notif_weekly_summary_last_sent'),
+            'monthly_last_sent' => (string) $this->get_option('aips_notif_monthly_report_last_sent'),
+        );
+    }
+
+    /**
+     * Get cache framework configuration.
+     *
+     * Returns all settings that configure the plugin's cache layer, including
+     * driver selection, DB prefix, default TTL, and Redis connection details.
+     *
+     * Note: AIPS_Cache_Factory::make_driver() reads these settings via direct
+     * get_option() calls to avoid a bootstrapping circular dependency (AIPS_Config
+     * internally relies on AIPS_Cache_Factory). All other callers that need these
+     * values should use this accessor instead.
+     *
+     * @return array Cache configuration with keys:
+     *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
+     *               'db_prefix'      (string) Table prefix for the DB driver.
+     *               'default_ttl'    (int)    Default time-to-live in seconds.
+     *               'redis_host'     (string) Redis hostname.
+     *               'redis_port'     (int)    Redis port.
+     *               'redis_password' (string) Redis auth password (empty = no auth).
+     *               'redis_db'       (int)    Redis database index.
+     *               'redis_prefix'   (string) Key prefix for Redis entries.
+     *               'redis_timeout'  (float)  Connection timeout in seconds.
+     */
+    public function get_cache_config() {
+        return array(
+            'driver'         => (string) $this->get_option('aips_cache_driver'),
+            'db_prefix'      => (string) $this->get_option('aips_cache_db_prefix'),
+            'default_ttl'    => (int)    $this->get_option('aips_cache_default_ttl'),
+            'redis_host'     => (string) $this->get_option('aips_cache_redis_host'),
+            'redis_port'     => (int)    $this->get_option('aips_cache_redis_port'),
+            'redis_password' => (string) $this->get_option('aips_cache_redis_password'),
+            'redis_db'       => (int)    $this->get_option('aips_cache_redis_db'),
+            'redis_prefix'   => (string) $this->get_option('aips_cache_redis_prefix'),
+            'redis_timeout'  => (float)  $this->get_option('aips_cache_redis_timeout'),
         );
     }
 

@@ -552,14 +552,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array Normalized options array.
      */
     private function prepare_options($options, $prompt = '') {
-        $config = AIPS_Config::get_instance();
-        $model = $config->get_option('aips_ai_model');
-        $env_id = $config->get_option('aips_ai_env_id');
+        $ai_config = AIPS_Config::get_instance()->get_ai_config();
         
         $default_options = array(
-            'model' => $model,
-            'envId' => $env_id,
-            'temperature' => (float) $config->get_option('aips_temperature'),
+            'model'       => $ai_config['model'],
+            'envId'       => $ai_config['env_id'],
+            'temperature' => $ai_config['temperature'],
         );
 
         if (isset($options['env_id'])) {
