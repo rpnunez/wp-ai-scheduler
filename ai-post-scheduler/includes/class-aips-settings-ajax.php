@@ -34,7 +34,8 @@ class AIPS_Settings_AJAX {
             AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
         }
 
-        $ai_service = new AIPS_AI_Service();
+        $container = AIPS_Container::get_instance();
+        $ai_service = $container->make(AIPS_AI_Service::class);
         $result = $ai_service->generate_text(
             'Say "Hello World" in 2 words.',
             array(

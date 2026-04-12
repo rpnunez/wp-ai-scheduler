@@ -88,8 +88,8 @@ class AIPS_Component_Regeneration_Service {
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
 
-		// Initialize services with container-resolved AI service
-		$this->generator = new AIPS_Generator(null, $ai_service);
+		// Initialize services with container-resolved AI service and Generator
+		$this->generator = $container->make(AIPS_Generator::class);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 		$this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content(

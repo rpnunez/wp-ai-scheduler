@@ -420,7 +420,8 @@ class AIPS_Post_Review {
 		}
 		
 		// Get the template
-		$template_repository = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$template_repository = $container->make(AIPS_Template_Repository::class);
 		$template = $template_repository->get_by_id($history_item->template_id);
 		
 		if (!$template) {
@@ -444,7 +445,8 @@ class AIPS_Post_Review {
 		));
 		
 		// Trigger regeneration using the generator (same API as history retry)
-		$generator = new AIPS_Generator();
+		$container = AIPS_Container::get_instance();
+		$generator = $container->make(AIPS_Generator::class);
 		$result = $generator->generate_post($template);
 		
 		if (is_wp_error($result)) {
@@ -511,8 +513,9 @@ class AIPS_Post_Review {
 
 		$total_requested = count($items);
 		$history_service = $this->history_service;
-		$generator       = new AIPS_Generator();
-		$template_repo   = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$generator       = $container->make(AIPS_Generator::class);
+		$template_repo   = $container->make(AIPS_Template_Repository::class);
 
 		$result = $this->bulk_generator_service->run(
 			$items,

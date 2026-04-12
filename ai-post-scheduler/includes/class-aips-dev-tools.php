@@ -80,7 +80,8 @@ class AIPS_Dev_Tools {
         $prompt .= "\nReturn ONLY the raw JSON object. No markdown formatting or explanation.";
 
         // Call AI Service
-        $ai_service = new AIPS_AI_Service();
+        $container = AIPS_Container::get_instance();
+        $ai_service = $container->make(AIPS_AI_Service::class);
         $response = $ai_service->generate_text($prompt, array('temperature' => 0.7));
 
         if (is_wp_error($response)) {
@@ -123,8 +124,9 @@ class AIPS_Dev_Tools {
 
         // 2. Create Structure
         if ($include_structure && isset($data['article_structure'])) {
-            $structure_repo = new AIPS_Article_Structure_Repository();
-            $section_repo = new AIPS_Prompt_Section_Repository();
+            $container = AIPS_Container::get_instance();
+            $structure_repo = AIPS_Article_Structure_Repository::instance();
+            $section_repo = $container->make(AIPS_Prompt_Section_Repository::class);
 
             // Handle sections
             $sections_list = array();
@@ -171,7 +173,8 @@ class AIPS_Dev_Tools {
 
         // 3. Create Template
         if (isset($data['template'])) {
-            $template_repo = new AIPS_Template_Repository();
+            $container = AIPS_Container::get_instance();
+            $template_repo = $container->make(AIPS_Template_Repository::class);
 
             $template_data = array(
                 'name' => sanitize_text_field($data['template']['name']),

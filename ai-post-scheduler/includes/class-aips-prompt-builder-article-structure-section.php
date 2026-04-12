@@ -43,7 +43,14 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 	 */
 	public function __construct($structure_manager = null, $section_repository = null, $template_processor = null) {
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-		$this->section_repository = $section_repository ?: new AIPS_Prompt_Section_Repository();
+
+		if ($section_repository) {
+			$this->section_repository = $section_repository;
+		} else {
+			$container = AIPS_Container::get_instance();
+			$this->section_repository = $container->make(AIPS_Prompt_Section_Repository::class);
+		}
+
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 	}
 

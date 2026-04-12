@@ -110,7 +110,8 @@ class AIPS_System_Status {
      * @return array<string, array<string, mixed>>
      */
     private function check_notifications() {
-        $repository = class_exists('AIPS_Notifications_Repository') ? new AIPS_Notifications_Repository() : null;
+        $container = AIPS_Container::get_instance();
+        $repository = $container->has(AIPS_Notifications_Repository::class) ? $container->make(AIPS_Notifications_Repository::class) : null;
         $config     = AIPS_Config::get_instance();
         // Fall back to the WP-native admin_email when no plugin email has been configured.
         // admin_email is a core WordPress option and is not managed by AIPS_Config.
@@ -896,7 +897,8 @@ class AIPS_System_Status {
         $logs_data = array();
 
         // Check AIPS logs
-        $logger = new AIPS_Logger();
+        $container = AIPS_Container::get_instance();
+        $logger = $container->make(AIPS_Logger::class);
         $log_files = $logger->get_log_files();
 
         if (!empty($log_files)) {

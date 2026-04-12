@@ -6,9 +6,10 @@ if (!defined('ABSPATH')) {
 class AIPS_Upgrades {
     
     private $logger;
-    
+
     public function __construct() {
-        $this->logger = new AIPS_Logger();
+        $container = AIPS_Container::get_instance();
+        $this->logger = $container->make(AIPS_Logger::class);
     }
     
     public static function check_and_run() {
@@ -31,7 +32,8 @@ class AIPS_Upgrades {
         $result = AIPS_DB_Manager::install_tables();
 
         if (is_wp_error($result)) {
-            $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
+            $container = AIPS_Container::get_instance();
+            $notifications = $container->has(AIPS_Notifications::class) ? $container->make(AIPS_Notifications::class) : null;
 
             if ($notifications instanceof AIPS_Notifications) {
                 $notifications->system_error(array(

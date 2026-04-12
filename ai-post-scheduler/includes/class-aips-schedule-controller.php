@@ -192,7 +192,8 @@ class AIPS_Schedule_Controller {
         $post_ids = array();
         $errors = array();
 
-        $generator = new AIPS_Generator();
+        $container = AIPS_Container::get_instance();
+        $generator = $container->make(AIPS_Generator::class);
         $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 
         for ($i = 0; $i < $quantity; $i++) {

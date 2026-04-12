@@ -243,7 +243,8 @@ class AIPS_Templates_Controller {
         // Create context
         $context = new AIPS_Template_Context($template, $voice, null, 'preview');
 
-        $generator = new AIPS_Generator();
+        $container = AIPS_Container::get_instance();
+        $generator = $container->make(AIPS_Generator::class);
         $result = $generator->generate_preview($context);
 
         if (is_wp_error($result)) {
