@@ -64,7 +64,13 @@ class Test_Stub_History_Container {
  * Stub history service — creates Test_Stub_History_Container instances and
  * tracks all containers created during a test so assertions can inspect them.
  */
-class Test_Stub_History_Service {
+class Test_Stub_History_Service implements AIPS_History_Service_Interface {
+
+	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
+	public function post_has_history_and_completed($post_id) { return false; }
+	public function get_by_id($history_id) { return null; }
+	public function update_history_record($history_id, $data) { return true; }
+	public function find_incomplete($type, $metadata = array()) { return null; }
 	/** @var array[] Meta about each container created: ['type', 'metadata', 'container']. */
 	public $containers_created = array();
 

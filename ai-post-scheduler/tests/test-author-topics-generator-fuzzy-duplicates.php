@@ -79,12 +79,14 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_ai_service( $topics ) {
-		return new class( $topics ) {
+		return new class( $topics ) implements AIPS_AI_Service_Interface {
 			private $topics;
 			public function __construct( $t ) { $this->topics = $t; }
-			public function generate_json( $prompt, $options = array() ) {
-				return $this->topics;
-			}
+			public function generate_json( $prompt, $options = array() ) { return $this->topics; }
+			public function is_available() { return true; }
+			public function generate_text($prompt, $options = array()) { return ""; }
+			public function generate_image($prompt, $options = array()) { return ""; }
+			public function get_call_log() { return array(); }
 		};
 	}
 
@@ -94,8 +96,12 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_logger() {
-		return new class {
-			public function log( $message, $level = 'info', $context = array() ) {}
+		return new class implements AIPS_Logger_Interface {
+			public function log($message, $level = 'info', $context = array()) {}
+			public function get_logs($limit = 100, $offset = 0, $filters = array()) { return array(); }
+			public function clear_logs() { return true; }
+			public function delete_old_logs($days) { return true; }
+			public function addSeparator($text) {}
 		};
 	}
 

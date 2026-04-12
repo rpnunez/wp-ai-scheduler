@@ -16,6 +16,18 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_ai_service( $payload ) {
+		return new class( $payload ) implements AIPS_AI_Service_Interface {
+			private $payload;
+			public function __construct( $p ) { $this->payload = $p; }
+			public function generate_json( $prompt, $options = array() ) { return $this->payload; }
+			public function is_available() { return true; }
+			public function generate_text($prompt, $options = array()) { return ""; }
+			public function generate_image($prompt, $options = array()) { return ""; }
+			public function get_call_log() { return array(); }
+		};
+	}
+
+	private function _old_make_ai_service( $payload ) {
 		return new class( $payload ) {
 			private $payload;
 			public function __construct( $p ) { $this->payload = $p; }
@@ -29,6 +41,16 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_logger() {
+		return new class implements AIPS_Logger_Interface {
+			public function log($message, $level = 'info', $context = array()) {}
+			public function get_logs($limit = 100, $offset = 0, $filters = array()) { return array(); }
+			public function clear_logs() { return true; }
+			public function delete_old_logs($days) { return true; }
+			public function addSeparator($text) {}
+		};
+	}
+
+	private function _old_make_logger() {
 		return new class {
 			public function log( $message, $level = 'info', $context = array() ) {}
 		};
@@ -40,6 +62,24 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_history_service() {
+		return new class implements AIPS_History_Service_Interface {
+			public function create( $type, $metadata = array() ) {
+				return new class {
+					public function record( $log_type, $message, $input = null, $output = null, $context = array() ) {}
+					public function record_error( $message, $error_details = array(), $wp_error = null ) {}
+					public function complete_success( $result_data = array() ) {}
+					public function complete_failure( $error_message, $error_data = array() ) {}
+				};
+			}
+			public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
+			public function post_has_history_and_completed($post_id) { return false; }
+			public function get_by_id($history_id) { return null; }
+			public function update_history_record($history_id, $data) { return true; }
+			public function find_incomplete($type, $metadata = array()) { return null; }
+		};
+	}
+
+	private function _old_make_history_service() {
 		return new class {
 			public function create( $type, $metadata = array() ) {
 				return new class {

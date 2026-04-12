@@ -13,3 +13,7 @@
 ## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
 **Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
 **Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
+
+## 2024-10-23 - Fix TypeError on Anonymous Test Mocks (Missing Interface Implements)
+**Learning:** When using PHP 8+ with strictly typed constructors (e.g. `__construct(?AIPS_AI_Service_Interface $ai_service)`), anonymous mock classes instantiated during tests (e.g. `new class() { ... }`) MUST explicitly implement the typed interface (`implements AIPS_AI_Service_Interface`). Otherwise, PHP will throw a fatal `TypeError` during test execution, causing test suites to fail.
+**Action:** When creating ad-hoc test stubs or mock classes that will be injected into strongly-typed constructors, always ensure the anonymous class explicitly `implements` the required interface and fulfills all abstract methods.
