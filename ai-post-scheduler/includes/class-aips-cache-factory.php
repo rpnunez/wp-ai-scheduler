@@ -71,6 +71,13 @@ class AIPS_Cache_Factory {
 	 * Falls back to ArrayDriver if the chosen driver cannot be initialised
 	 * (e.g. Redis extension missing) and optionally schedules an admin notice.
 	 *
+	 * Note: This method intentionally uses direct get_option() calls instead of
+	 * AIPS_Config::get_instance()->get_option(). AIPS_Config relies on
+	 * AIPS_Cache_Factory::named() to create its own per-request cache, so using
+	 * AIPS_Config here while the singleton is still being constructed would create
+	 * a bootstrapping circular dependency. See AIPS_Config::get_cache_config() for
+	 * the equivalent typed accessor intended for all other callers.
+	 *
 	 * @param string|null $driver_name Optional override. Null = read from settings.
 	 * @return AIPS_Cache_Driver
 	 */

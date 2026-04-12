@@ -64,7 +64,7 @@ class AIPS_Settings_AJAX {
         }
 
         $removed_options = 0;
-        if (false !== get_option('aips_review_notifications_enabled', false)) {
+        if (AIPS_Config::get_instance()->has_option('aips_review_notifications_enabled')) {
             delete_option('aips_review_notifications_enabled');
             $removed_options++;
         }
