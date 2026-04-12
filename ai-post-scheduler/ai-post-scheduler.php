@@ -133,6 +133,11 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function init_hooks() {
+        // Register container bindings immediately so they are available to
+        // AIPS_Upgrades::check_and_run(), which fires on plugins_loaded at
+        // the default priority (10) — after this constructor runs at priority 5.
+        $this->register_container_bindings();
+
         add_action('plugins_loaded', array($this, 'check_upgrades'));
         add_action('init', array($this, 'init'));
     }
@@ -270,9 +275,9 @@ final class AI_Post_Scheduler {
     /**
      * Register initial container bindings for core singletons.
      *
-     * Phase 1 registration as described in the container architecture plan:
-     * Registers the most-duplicated singletons to validate the container works
-     * correctly before more complex refactors.
+     * Called synchronously from init_hooks() so bindings are available at
+     * plugins_loaded priority 5, before AIPS_Upgrades::check_and_run() fires
+     * at the default plugins_loaded priority (10).
      *
      * @return void
      */
@@ -437,6 +442,10 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Generation_Execution_Runner::class, function( $container ) {
             return new AIPS_Generation_Execution_Runner();
         });
+
+        $container->singleton(AIPS_Voices::class, function( $container ) {
+            return new AIPS_Voices();
+        });
     }
 
     /**
@@ -506,16 +515,14 @@ final class AI_Post_Scheduler {
     /**
      * Boot subsystems required in every request context.
      *
-     * Loads text domain, registers container bindings, and registers the
-     * Source Group taxonomy. Called before any context-specific boot method.
+     * Loads text domain and registers the Source Group taxonomy.
+     * Container bindings are registered earlier in init_hooks() so they are
+     * available to AIPS_Upgrades::check_and_run() during plugins_loaded.
      *
      * @return void
      */
     private function boot_common() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
-
-        // Register initial container bindings for core singletons.
-        $this->register_container_bindings();
 
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(

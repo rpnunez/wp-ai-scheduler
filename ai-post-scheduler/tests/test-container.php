@@ -33,6 +33,8 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		$this->container->clear();
+		// Re-register test bindings so subsequent tests can resolve container dependencies.
+		aips_test_register_container_bindings();
 		parent::tearDown();
 	}
 

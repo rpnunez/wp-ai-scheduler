@@ -9,7 +9,11 @@ class AIPS_Upgrades {
 
     public function __construct() {
         $container = AIPS_Container::get_instance();
-        $this->logger = $container->make(AIPS_Logger::class);
+        // Use a safe fallback in case this is constructed before container bindings
+        // are registered (e.g. during activation before boot_common() has run).
+        $this->logger = $container->has(AIPS_Logger::class)
+            ? $container->make(AIPS_Logger::class)
+            : AIPS_Logger::instance();
     }
     
     public static function check_and_run() {

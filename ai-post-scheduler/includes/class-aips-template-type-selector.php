@@ -41,9 +41,9 @@ class AIPS_Template_Type_Selector {
 	 * Initialize the selector.
 	 */
 	public function __construct() {
-		// Resolve required repository through container binding.
+		// Resolve required repositories through container bindings.
 		$container = AIPS_Container::get_instance();
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
+		$this->structure_repository = $container->make(AIPS_Article_Structure_Repository::class);
 		$this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
 	}
 	
