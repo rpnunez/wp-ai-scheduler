@@ -157,6 +157,10 @@ class AIPS_Topic_Penalty_Service {
 	/**
 	 * Flag an author for policy review.
 	 *
+	 * Adds a record to the author's metadata indicating a policy review is required.
+	 * Includes robust JSON decoding and type checking to prevent silent failures
+	 * and undefined property warnings when reading from the database or cache.
+	 *
 	 * @param int $author_id Author ID.
 	 * @param int $topic_id  Topic ID that triggered the flag.
 	 */
@@ -168,9 +172,12 @@ class AIPS_Topic_Penalty_Service {
 		}
 		
 		// Store flag in author metadata
-		$metadata = !empty($author->details) ? json_decode($author->details, true) : array();
-		if (!is_array($metadata)) {
-			$metadata = array();
+		$metadata = array();
+		if (isset($author->details) && !empty($author->details)) {
+			$decoded = json_decode($author->details, true);
+			if (is_array($decoded)) {
+				$metadata = $decoded;
+			}
 		}
 		
 		if (!isset($metadata['policy_flags'])) {
@@ -227,19 +234,23 @@ class AIPS_Topic_Penalty_Service {
 	/**
 	 * Get author policy flags.
 	 *
+	 * Retrieves current policy flags from author metadata. Safely checks for
+	 * proper data structure and `json_decode` failures, returning an empty array
+	 * gracefully instead of throwing type errors or warnings.
+	 *
 	 * @param int $author_id Author ID.
 	 * @return array Array of policy flags.
 	 */
 	public function get_author_policy_flags($author_id) {
 		$author = $this->authors_repository->get_by_id($author_id);
 		
-		if (!$author || empty($author->details)) {
+		if (!$author || !isset($author->details) || empty($author->details)) {
 			return array();
 		}
 		
 		$metadata = json_decode($author->details, true);
 		
-		if (!is_array($metadata) || !isset($metadata['policy_flags'])) {
+		if (!is_array($metadata) || !isset($metadata['policy_flags']) || !is_array($metadata['policy_flags'])) {
 			return array();
 		}
 		
@@ -248,6 +259,10 @@ class AIPS_Topic_Penalty_Service {
 	
 	/**
 	 * Clear author policy flags.
+	 *
+	 * Removes all policy flags from an author's metadata. Features safe JSON handling
+	 * to prevent corruption of other existing metadata elements if decoding fails
+	 * or if the field is improperly formatted.
 	 *
 	 * @param int $author_id Author ID.
 	 * @return bool True on success, false on failure.
@@ -259,9 +274,12 @@ class AIPS_Topic_Penalty_Service {
 			return false;
 		}
 		
-		$metadata = !empty($author->details) ? json_decode($author->details, true) : array();
-		if (!is_array($metadata)) {
-			$metadata = array();
+		$metadata = array();
+		if (isset($author->details) && !empty($author->details)) {
+			$decoded = json_decode($author->details, true);
+			if (is_array($decoded)) {
+				$metadata = $decoded;
+			}
 		}
 		
 		$metadata['policy_flags'] = array();
