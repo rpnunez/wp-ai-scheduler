@@ -536,14 +536,14 @@ class AIPS_Generator {
      * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
      * @param object|null $voice Optional voice object with overrides (legacy).
      * @param string|null $topic Optional topic to be injected into prompts (legacy).
-     * @return int|WP_Error ID of created post or WP_Error on failure.
+     * @return AIPS_Generation_Result
      */
     public function generate_post($template_or_context, $voice = null, $topic = null) {
         // Check if we're using the new context-based approach
         if ($template_or_context instanceof AIPS_Generation_Context) {
             $result = $this->generate_post_from_context($template_or_context);
 
-            if (is_wp_error($result) && $template_or_context->get_creation_method() !== 'scheduled') {
+            if ($result->is_failure() && $template_or_context->get_creation_method() !== 'scheduled') {
                 $this->emit_generation_failure_notification($template_or_context, $result);
             }
 
@@ -555,7 +555,7 @@ class AIPS_Generator {
         $context = new AIPS_Template_Context($template, $voice, $topic);
         $result = $this->generate_post_from_context($context);
 
-        if (is_wp_error($result)) {
+        if ($result->is_failure()) {
             $this->emit_generation_failure_notification($context, $result);
         }
 
