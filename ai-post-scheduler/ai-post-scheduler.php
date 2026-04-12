@@ -465,27 +465,41 @@ final class AI_Post_Scheduler {
     /**
      * Boot subsystems required only during WP-Cron execution.
      *
-     * Instantiates and registers cron hooks for the scheduler, topic generator,
-     * author post generator, and embeddings worker. Also boots the notification
-     * event handler (for generation-failure and quota alerts fired from cron)
-     * and the partial-generation reconciler (save_post fires when cron creates posts).
+     * Registers cron hook callbacks as closures that resolve the singleton
+     * instance at runtime (when WordPress fires the event). This means that
+     * a cron request dispatched for, say, aips_generate_author_topics will only
+     * ever instantiate AIPS_Author_Topics_Scheduler — the other scheduler
+     * objects are never constructed unless their own hooks fire in the same run.
+     *
+     * Also boots the notification event handler (for generation-failure and quota
+     * alerts fired from cron) and the partial-generation reconciler
+     * (save_post fires when cron creates posts).
      *
      * @return void
      */
     private function boot_cron() {
-        $aips_scheduler = new AIPS_Scheduler();
-        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
-        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+        // Lazy-resolve the main template scheduler only when its hook fires.
+        add_action('aips_generate_scheduled_posts', function() {
+            AIPS_Scheduler::instance()->process();
+        });
+        add_filter('cron_schedules', function($schedules) {
+            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+        });
 
-        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
-        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+        // Lazy-resolve the author-topics scheduler only when its hook fires.
+        add_action('aips_generate_author_topics', function() {
+            AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
+        });
 
-        $aips_author_post_generator = new AIPS_Author_Post_Generator();
-        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
+        // Lazy-resolve the author-post generator only when its hook fires.
+        add_action('aips_generate_author_posts', function() {
+            AIPS_Author_Post_Generator::instance()->process();
+        });
 
-        // Embeddings background worker.
-        $aips_embeddings_cron = new AIPS_Embeddings_Cron();
-        add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+        // Lazy-resolve the embeddings worker only when its hook fires.
+        add_action('aips_process_author_embeddings', function($args) {
+            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
+        }, 10, 1);
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
