@@ -478,9 +478,9 @@ final class AI_Post_Scheduler {
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.
-        add_action('aips_process_author_embeddings', function() {
-            AIPS_Embeddings_Cron::instance()->process_author_embeddings();
-        });
+        add_action('aips_process_author_embeddings', function($args) {
+            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
+        }, 10, 1);
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
