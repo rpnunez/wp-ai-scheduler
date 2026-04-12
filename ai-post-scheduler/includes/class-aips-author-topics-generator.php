@@ -74,11 +74,11 @@ class AIPS_Author_Topics_Generator {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
 		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
-		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
-		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic();
+		$this->topics_repository   = $topics_repository   ?: $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository     = $logs_repository     ?: $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->embeddings_service  = $embeddings_service  ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+		$this->feedback_repository = $feedback_repository ?: $container->make(AIPS_Feedback_Repository::class);
+		$this->prompt_builder      = $prompt_builder      ?: new AIPS_Prompt_Builder_Topic();
 	}
 	
 	/**

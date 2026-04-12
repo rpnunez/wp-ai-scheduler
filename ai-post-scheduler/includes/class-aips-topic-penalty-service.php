@@ -71,8 +71,8 @@ class AIPS_Topic_Penalty_Service {
 	 */
 	public function __construct($topics_repository = null, $authors_repository = null, ?AIPS_Logger_Interface $logger = null) {
 		$container = AIPS_Container::get_instance();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->topics_repository = $topics_repository ?: $container->make(AIPS_Author_Topics_Repository::class);
+		$this->authors_repository = $authors_repository ?: $container->make(AIPS_Authors_Repository::class);
 		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 	

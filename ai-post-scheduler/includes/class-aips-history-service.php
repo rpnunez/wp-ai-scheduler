@@ -55,12 +55,7 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 		}
 
 		$container = AIPS_Container::get_instance();
-		if ($container->has(AIPS_History_Repository_Interface::class)) {
-			$this->repository = $container->make(AIPS_History_Repository_Interface::class);
-			return;
-		}
-
-		$this->repository = AIPS_History_Repository::instance();
+		$this->repository = $container->make(AIPS_History_Repository_Interface::class);
 	}
 	
 	/**

@@ -349,6 +349,94 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Generator::class, function( $container ) {
             return new AIPS_Generator();
         });
+
+        $container->singleton(AIPS_Voices_Repository::class, function( $container ) {
+            return AIPS_Voices_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Prompt_Section_Repository::class, function( $container ) {
+            return AIPS_Prompt_Section_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Trending_Topics_Repository::class, function( $container ) {
+            return new AIPS_Trending_Topics_Repository();
+        });
+
+        $container->singleton(AIPS_Research_Service::class, function( $container ) {
+            return new AIPS_Research_Service();
+        });
+
+        $container->singleton(AIPS_Content_Auditor::class, function( $container ) {
+            return new AIPS_Content_Auditor();
+        });
+
+        $container->singleton(AIPS_Bulk_Generator_Service::class, function( $container ) {
+            return new AIPS_Bulk_Generator_Service();
+        });
+
+        $container->singleton(AIPS_Templates::class, function( $container ) {
+            return new AIPS_Templates();
+        });
+
+        $container->singleton(AIPS_Authors_Repository::class, function( $container ) {
+            return AIPS_Authors_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Article_Structure_Repository::class, function( $container ) {
+            return AIPS_Article_Structure_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Author_Topics_Repository::class, function( $container ) {
+            return new AIPS_Author_Topics_Repository();
+        });
+
+        $container->singleton(AIPS_Author_Topic_Logs_Repository::class, function( $container ) {
+            return new AIPS_Author_Topic_Logs_Repository();
+        });
+
+        $container->singleton(AIPS_Feedback_Repository::class, function( $container ) {
+            return new AIPS_Feedback_Repository();
+        });
+
+        $container->singleton(AIPS_Post_Review_Repository::class, function( $container ) {
+            return new AIPS_Post_Review_Repository();
+        });
+
+        $container->singleton(AIPS_Topic_Expansion_Service::class, function( $container ) {
+            return new AIPS_Topic_Expansion_Service();
+        });
+
+        $container->singleton(AIPS_Topic_Penalty_Service::class, function( $container ) {
+            return new AIPS_Topic_Penalty_Service();
+        });
+
+        $container->singleton(AIPS_Author_Topics_Generator::class, function( $container ) {
+            return new AIPS_Author_Topics_Generator();
+        });
+
+        $container->singleton(AIPS_Generation_Context_Factory::class, function( $container ) {
+            return new AIPS_Generation_Context_Factory();
+        });
+
+        $container->singleton(AIPS_Author_Suggestions_Service::class, function( $container ) {
+            return new AIPS_Author_Suggestions_Service();
+        });
+
+        $container->singleton(AIPS_Session_To_JSON::class, function( $container ) {
+            return new AIPS_Session_To_JSON();
+        });
+
+        $container->singleton(AIPS_Author_Topics_Scheduler::class, function( $container ) {
+            return new AIPS_Author_Topics_Scheduler();
+        });
+
+        $container->singleton(AIPS_Author_Post_Generator::class, function( $container ) {
+            return new AIPS_Author_Post_Generator();
+        });
+
+        $container->singleton(AIPS_Generation_Execution_Runner::class, function( $container ) {
+            return new AIPS_Generation_Execution_Runner();
+        });
     }
 
     /**

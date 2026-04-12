@@ -61,9 +61,9 @@ class AIPS_Embeddings_Cron {
 	 */
 	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$container = AIPS_Container::get_instance();
-		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->expansion_service = $expansion_service ?: $container->make(AIPS_Topic_Expansion_Service::class);
+		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 	}
 
 	/**

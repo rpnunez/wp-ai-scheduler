@@ -75,11 +75,11 @@ class AIPS_Authors_Controller {
 	public function __construct() {
 		$container = AIPS_Container::get_instance();
 
-		$this->repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
+		$this->repository        = $container->make(AIPS_Authors_Repository::class);
+		$this->topics_repository = $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository   = $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->feedback_repository = $container->make(AIPS_Feedback_Repository::class);
+		$this->topics_scheduler  = $container->make(AIPS_Author_Topics_Scheduler::class);
 
 		// Use container for registered services
 		$this->notifications = $container->make(AIPS_Notifications::class);
@@ -517,7 +517,7 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Site niche is required.', 'ai-post-scheduler'));
 		}
 
-		$service = new AIPS_Author_Suggestions_Service();
+		$service = AIPS_Container::get_instance()->make(AIPS_Author_Suggestions_Service::class);
 		$suggestions = $service->suggest_authors(array(
 			'site_niche'      => $site_niche,
 			'target_audience' => $target_audience,

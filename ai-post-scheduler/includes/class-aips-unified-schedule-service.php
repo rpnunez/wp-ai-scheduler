@@ -47,12 +47,9 @@ class AIPS_Unified_Schedule_Service {
 	public function __construct() {
 		$container = AIPS_Container::get_instance();
 
-		// Use container for registered services
 		$this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
-		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
-
-		// Repository classes (not in container)
-		$this->authors_repository = new AIPS_Authors_Repository();
+		$this->history_repository  = $container->make(AIPS_History_Repository_Interface::class);
+		$this->authors_repository  = $container->make(AIPS_Authors_Repository::class);
 	}
 
 	/**

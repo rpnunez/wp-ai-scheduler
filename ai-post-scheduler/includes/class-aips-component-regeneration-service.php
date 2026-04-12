@@ -84,8 +84,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
 		$ai_service = $container->make(AIPS_AI_Service_Interface::class);
 
-		// Utility classes (not in container)
-		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
+		$this->generation_context_factory = $container->make(AIPS_Generation_Context_Factory::class);
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
 

@@ -30,7 +30,8 @@ class AIPS_Prompt_Sections_Controller {
 	 * @return void
 	 */
 	public function __construct($repo = null) {
-		$this->repo = $repo ?: new AIPS_Prompt_Section_Repository();
+		$container = AIPS_Container::get_instance();
+		$this->repo = $repo ?: $container->make(AIPS_Prompt_Section_Repository::class);
 
 		add_action('wp_ajax_aips_get_prompt_sections', array($this, 'ajax_get_sections'));
 		add_action('wp_ajax_aips_get_prompt_section', array($this, 'ajax_get_section'));

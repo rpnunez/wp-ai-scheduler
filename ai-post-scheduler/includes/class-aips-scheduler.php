@@ -74,12 +74,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         $container = AIPS_Container::get_instance();
 
         // Use container for registered services
-        $this->repository = $container->make(AIPS_Schedule_Repository_Interface::class);
+        $this->repository          = $container->make(AIPS_Schedule_Repository_Interface::class);
         $this->template_repository = $container->make(AIPS_Template_Repository::class);
-        $this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
-        $this->history_service = $container->make(AIPS_History_Service_Interface::class);
+        $this->history_repository  = $container->make(AIPS_History_Repository_Interface::class);
+        $this->history_service     = $container->make(AIPS_History_Service_Interface::class);
 
-        // Utility classes (not in container)
         $this->template_type_selector = new AIPS_Template_Type_Selector();
 
         // Instantiate the processor with dependencies

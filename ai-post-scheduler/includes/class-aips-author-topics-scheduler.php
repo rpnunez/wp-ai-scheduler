@@ -71,12 +71,13 @@ class AIPS_Author_Topics_Scheduler {
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->authors_repository = $container->make(AIPS_Authors_Repository::class);
+		$this->topics_generator   = $container->make(AIPS_Author_Topics_Generator::class);
+		$this->logger             = $container->make(AIPS_Logger_Interface::class);
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_service = new AIPS_History_Service();
-		$this->notifications = new AIPS_Notifications();
+		$this->history_service    = $container->make(AIPS_History_Service_Interface::class);
+		$this->notifications      = $container->make(AIPS_Notifications::class);
 	}
 	
 	/**

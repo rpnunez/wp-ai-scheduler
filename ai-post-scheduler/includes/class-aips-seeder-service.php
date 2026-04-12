@@ -13,13 +13,10 @@ class AIPS_Seeder_Service {
     public function __construct() {
         $container = AIPS_Container::get_instance();
 
-        // Use container for registered services
         $this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
-
-        // Service classes (not in container)
-        $this->generator = new AIPS_Generator();
-        $this->voices = new AIPS_Voices();
-        $this->templates = new AIPS_Templates();
+        $this->generator  = $container->make(AIPS_Generator::class);
+        $this->voices     = $container->make(AIPS_Voices::class);
+        $this->templates  = $container->make(AIPS_Templates::class);
     }
 
     /**

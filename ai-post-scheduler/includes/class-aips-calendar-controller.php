@@ -39,7 +39,6 @@ class AIPS_Calendar_Controller {
 		$this->schedule_repo = $container->make(AIPS_Schedule_Repository_Interface::class);
 		$this->template_repo = $container->make(AIPS_Template_Repository::class);
 
-		// Utility classes (not in container)
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 
 		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));

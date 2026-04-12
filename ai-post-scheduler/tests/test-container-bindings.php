@@ -60,6 +60,8 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Template_Repository::class));
+		$this->assertTrue($this->container->has(AIPS_Notifications::class));
+		$this->assertTrue($this->container->has(AIPS_Generator::class));
 	}
 
 	/**
@@ -133,6 +135,8 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Template_Repository::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Notifications::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Generator::class]);
 	}
 
 	/**
@@ -149,9 +153,9 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 14 singleton bindings and no transient bindings
+		// Should have 16 singleton bindings and no transient bindings
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(14, $counts['singleton']);
-		$this->assertEquals(14, $counts['total']);
+		$this->assertEquals(16, $counts['singleton']);
+		$this->assertEquals(16, $counts['total']);
 	}
 }

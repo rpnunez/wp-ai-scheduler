@@ -26,14 +26,10 @@ class AIPS_Templates {
         global $wpdb;
         $this->table_name          = $wpdb->prefix . 'aips_templates';
 
-        // Use container to resolve registered bindings, with fallback to direct instantiation
+        // Resolve required repositories through container bindings.
         $container = AIPS_Container::get_instance();
-        $this->repository = $container->has(AIPS_Template_Repository::class)
-            ? $container->make(AIPS_Template_Repository::class)
-            : new AIPS_Template_Repository();
-        $this->schedule_repository = $container->has(AIPS_Schedule_Repository_Interface::class)
-            ? $container->make(AIPS_Schedule_Repository_Interface::class)
-            : new AIPS_Schedule_Repository();
+        $this->repository = $container->make(AIPS_Template_Repository::class);
+        $this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
         $this->interval_calculator = new AIPS_Interval_Calculator();
     }
     

@@ -312,7 +312,7 @@ class AIPS_Notifications_Event_Handler {
 		}
 
 		if (!is_object($schedule)) {
-			$schedule_repository = new AIPS_Schedule_Repository();
+			$schedule_repository = AIPS_Container::get_instance()->make(AIPS_Schedule_Repository_Interface::class);
 			$schedule = $schedule_repository->get_by_id($schedule_id);
 		}
 
@@ -325,7 +325,7 @@ class AIPS_Notifications_Event_Handler {
 		}
 
 		if ('' === $template_name && $template_id) {
-			$template_repository = new AIPS_Template_Repository();
+			$template_repository = AIPS_Container::get_instance()->make(AIPS_Template_Repository::class);
 			$template = $template_repository->get_by_id($template_id);
 			$template_name = ($template && !empty($template->name)) ? $template->name : '';
 		}

@@ -128,9 +128,9 @@ class AIPS_Notifications {
 		?AIPS_History_Service_Interface $history_service = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->repository      = $repository      ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : new AIPS_Notifications_Repository());
+		$this->repository      = $repository      ?: $container->make(AIPS_Notifications_Repository_Interface::class);
 		$this->templates       = $templates       instanceof AIPS_Notification_Templates   ? $templates       : new AIPS_Notification_Templates();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 
 		$this->event_handler = new AIPS_Notifications_Event_Handler($this, $this->repository);
 

@@ -26,10 +26,8 @@ class AIPS_Dashboard_Controller {
         $history_repo = $container->make(AIPS_History_Repository_Interface::class);
         $schedule_repo = $container->make(AIPS_Schedule_Repository_Interface::class);
         $template_repo = $container->make(AIPS_Template_Repository::class);
-
-        // Repository classes (not in container)
-        $post_review_repo = new AIPS_Post_Review_Repository();
-        $author_topics_repo = new AIPS_Author_Topics_Repository();
+        $post_review_repo = $container->make(AIPS_Post_Review_Repository::class);
+        $author_topics_repo = $container->make(AIPS_Author_Topics_Repository::class);
 
         // Get stats
         $history_stats = $history_repo->get_stats();
