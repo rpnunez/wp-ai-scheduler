@@ -233,48 +233,125 @@ class AIPS_Generator {
             }
         }
 
-        // Extract AI variables from the title prompt
-        $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
-
-        if (empty($ai_variables)) {
-            return array();
-        }
-
         // Build context from content prompt and generated content.
         // Use smart truncation to preserve context from both beginning and end of content.
         $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
         $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
 
-        // Build the prompt to resolve AI variables
+        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+    }
+
+    /**
+     * Resolve AI variables for a template string using context text.
+     *
+     * @param string $template_string Template that may include AI variables.
+     * @param string $context_str     Context used to resolve variable values.
+     * @param string $log_type        Log component label for observability.
+     * @return array Associative array of resolved AI variable values.
+     */
+    private function resolve_ai_variables_for_template_string($template_string, $context_str, $log_type = 'ai_variables') {
+        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
+            return array();
+        }
+
+        $ai_variables = $this->template_processor->extract_ai_variables($template_string);
+
+        if (empty($ai_variables)) {
+            return array();
+        }
+
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
 
-        // Call AI to resolve the variables.
-        $options = array();
-        $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
+        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
+        $options = array('max_tokens' => 200);
+        $result = $this->generate_content($resolve_prompt, $options, $log_type);
 
         if (is_wp_error($result)) {
             $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
 
-        // Parse the AI response to extract variable values
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
 
         if (empty($resolved_values)) {
-            // AI call succeeded but we could not extract any variable values.
-            // This usually indicates invalid JSON or an unexpected response format.
             $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
                 'variables' => $ai_variables,
                 'raw_response' => $result,
+                'component' => $log_type,
             ));
         } else {
             $this->generation_logger->log('Resolved AI variables', 'info', array(
                 'variables' => $ai_variables,
                 'resolved'   => $resolved_values,
+                'component' => $log_type,
             ));
         }
 
         return $resolved_values;
+    }
+
+    /**
+     * Build context text for featured image AI variable resolution.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param string                  $content Generated content.
+     * @param string                  $title   Generated title.
+     * @return string
+     */
+    private function build_featured_image_variable_context($context, $content = '', $title = '') {
+        $context_parts = array();
+
+        if (!empty($context->get_content_prompt())) {
+            $context_parts[] = 'Content Prompt: ' . $context->get_content_prompt();
+        }
+
+        if (!empty($title)) {
+            $context_parts[] = 'Generated Post Title: ' . $title;
+        }
+
+        if (!empty($content)) {
+            $context_parts[] = "Generated Article Content:\n" . $this->smart_truncate_content($content, 1600);
+        }
+
+        if (!empty($context->get_topic())) {
+            $context_parts[] = 'Topic: ' . $context->get_topic();
+        }
+
+        return implode("\n\n", $context_parts);
+    }
+
+    /**
+     * Process featured image prompt with basic template variables and AI variables.
+     *
+     * Resolves any AI variables (custom {{VariableName}} placeholders not in the
+     * system variable list) using the generated content and title as context,
+     * then processes standard template variables such as {{topic}}.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param string                  $content Generated article content.
+     * @param string                  $title   Generated post title.
+     * @return string Processed image prompt with all variables replaced.
+     */
+    public function process_featured_image_prompt($context, $content = '', $title = '') {
+        $image_prompt = $context->get_image_prompt();
+
+        if (empty($image_prompt)) {
+            return '';
+        }
+
+        $topic_str = $context->get_topic();
+        $resolved_ai_variables = array();
+
+        if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
+            $image_context = $this->build_featured_image_variable_context($context, $content, $title);
+            $resolved_ai_variables = $this->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
+        }
+
+        if (method_exists($this->template_processor, 'process_with_ai_variables')) {
+            return $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
+        }
+
+        return $this->template_processor->process($image_prompt, $topic_str);
     }
 
     /**
@@ -509,7 +586,7 @@ class AIPS_Generator {
         // Handle image preview data (not generation)
         if ($context->should_generate_featured_image()) {
             if ($context->get_featured_image_source() === 'ai_prompt') {
-                $result['image_prompt'] = $this->post_featured_image_prompt_builder->build($context);
+                $result['image_prompt'] = $this->process_featured_image_prompt($context, $content, $title);
             } elseif ($context->get_featured_image_source() === 'unsplash') {
                 $keywords = $context->get_unsplash_keywords();
                 $topic_str = $context->get_topic();
@@ -748,7 +825,7 @@ class AIPS_Generator {
 
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
-        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success);
+        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content);
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
@@ -886,7 +963,7 @@ class AIPS_Generator {
      * @param string                  $title   Title of the generated post, used as image alt text/context.
      * @return int|null ID of the featured image attachment or null on failure/disabled.
      */
-    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null) {
+    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null, $content = '') {
         $featured_image_id = null;
         $featured_image_source = '';
 
@@ -929,7 +1006,7 @@ class AIPS_Generator {
                 $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
-            $processed_image_prompt = $this->post_featured_image_prompt_builder->build($context);
+            $processed_image_prompt = $this->process_featured_image_prompt($context, $content, $title);
 
             // Log AI request for featured image
             if ($this->current_history) {
