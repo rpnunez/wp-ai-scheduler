@@ -615,7 +615,8 @@ class AIPS_Settings {
             'aips-settings'
         );
 
-        foreach (AIPS_Config::get_instance()->get_available_features() as $flag_name => $flag_meta) {
+        $available_features = AIPS_Config::get_instance()->get_available_features();
+        foreach ($available_features as $flag_name => $flag_meta) {
             add_settings_field(
                 'aips_feature_flag_' . $flag_name,
                 esc_html($flag_meta['name']),
