@@ -68,15 +68,22 @@ class AIPS_Authors_Controller {
 
 	/**
 	 * Initialize the controller.
+	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin.
 	 */
 	public function __construct() {
+		$container = AIPS_Container::get_instance();
+
 		$this->repository = new AIPS_Authors_Repository();
 		$this->topics_repository = new AIPS_Author_Topics_Repository();
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->notifications = new AIPS_Notifications();
-		
+
+		// Use container for registered services
+		$this->notifications = $container->make(AIPS_Notifications::class);
+
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
 		add_action('wp_ajax_aips_delete_author', array($this, 'ajax_delete_author'));

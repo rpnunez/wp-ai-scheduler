@@ -37,6 +37,13 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	/**
 	 * Constructor.
 	 *
+	 * CONSTRUCTOR INJECTION PATTERN: Runtime Configuration Object
+	 *
+	 * This class accepts runtime-specific data (author, topic, expanded context)
+	 * that cannot be pre-configured in the dependency injection container.
+	 * Each instance represents a unique generation context created during
+	 * request processing, making container registration inappropriate.
+	 *
 	 * @param object $author            Author object.
 	 * @param object $topic             Topic object.
 	 * @param string $expanded_context  Optional expanded context from similar topics.

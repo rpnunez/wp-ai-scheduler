@@ -38,6 +38,13 @@ class AIPS_Notifications_Event_Handler {
 	/**
 	 * Constructor.
 	 *
+	 * CONSTRUCTOR INJECTION PATTERN: Parent-Child Relationship
+	 *
+	 * This class requires a parent AIPS_Notifications instance to function.
+	 * The relationship is established at runtime when the parent instantiates
+	 * its event handler, making container registration impractical. The parent
+	 * instance cannot be pre-configured in the container.
+	 *
 	 * @param AIPS_Notifications                          $notifications The dispatcher.
 	 * @param AIPS_Notifications_Repository_Interface|null $repository   DB notifications repository.
 	 */

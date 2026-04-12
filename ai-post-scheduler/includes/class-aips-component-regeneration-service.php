@@ -73,15 +73,23 @@ class AIPS_Component_Regeneration_Service {
 	
 	/**
 	 * Constructor
+	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin.
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
+		$container = AIPS_Container::get_instance();
+
+		// Use container for registered services
+		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
+		$ai_service = $container->make(AIPS_AI_Service_Interface::class);
+
+		// Utility classes (not in container)
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
-		
-		// Initialize AI services
-		$ai_service = new AIPS_AI_Service();
+
+		// Initialize services with container-resolved AI service
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);

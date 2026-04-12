@@ -339,6 +339,16 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register AIPS_Notifications
+        $container->singleton(AIPS_Notifications::class, function( $container ) {
+            return AIPS_Notifications::instance();
+        });
+
+        // Register AIPS_Generator (note: creates instances with dependencies from container)
+        $container->singleton(AIPS_Generator::class, function( $container ) {
+            return new AIPS_Generator();
+        });
     }
 
     /**
