@@ -20,16 +20,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Bar {
 
 	/**
-	 * @var AIPS_Notifications_Repository
+	 * Lazily-resolved notifications repository.
+	 * Null until the first rendering hook actually needs it.
+	 *
+	 * @var AIPS_Notifications_Repository_Interface|null
 	 */
-	private $repository;
+	private $repository = null;
 
 	/**
 	 * Constructor.
+	 *
+	 * The notifications repository is NOT resolved here so that it is never
+	 * instantiated for non-admin users or non-admin-bar contexts.
 	 */
 	public function __construct() {
-		$this->repository = AIPS_Notifications_Repository::instance();
-
 		add_action('admin_bar_menu', array($this, 'add_toolbar_node'), 100);
 		add_action('wp_ajax_aips_mark_notification_read', array($this, 'ajax_mark_read'));
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
@@ -69,6 +73,21 @@ class AIPS_Admin_Bar {
 	}
 
 	/**
+	 * Lazily resolve and return the notifications repository.
+	 *
+	 * The singleton is only fetched on the first call, which happens inside a
+	 * rendering or AJAX hook — never in the constructor.
+	 *
+	 * @return AIPS_Notifications_Repository_Interface
+	 */
+	private function get_repository(): AIPS_Notifications_Repository_Interface {
+		if ($this->repository === null) {
+			$this->repository = AIPS_Notifications_Repository::instance();
+		}
+		return $this->repository;
+	}
+
+	/**
 	 * Add the AI Post Scheduler node to the admin toolbar.
 	 *
 	 * @param WP_Admin_Bar $wp_admin_bar Admin bar object.
@@ -84,7 +103,7 @@ class AIPS_Admin_Bar {
 			$cache_key,
 			MINUTE_IN_SECONDS,
 			function() {
-				return $this->repository->count_unread();
+				return $this->get_repository()->count_unread();
 			},
 			'aips_admin_bar'
 		);
@@ -144,7 +163,7 @@ class AIPS_Admin_Bar {
 		}
 
 		// ---------- Notifications group ----------
-		$notifications = ($unread_count > 0) ? AIPS_Notifications_Repository::instance()->get_unread(20) : array();
+		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
 
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-notifications',
@@ -229,14 +248,14 @@ class AIPS_Admin_Bar {
 			AIPS_Ajax_Response::invalid_request(__('Invalid notification ID.', 'ai-post-scheduler'));
 		}
 
-		$updated = AIPS_Notifications_Repository::instance()->mark_as_read($id);
+		$updated = $this->get_repository()->mark_as_read($id);
 
 		if (!$updated) {
 			AIPS_Ajax_Response::error(__('Notification could not be updated or was already read.', 'ai-post-scheduler'));
 		}
 
 		$cache_key    = 'aips_unread_count_' . get_current_user_id();
-		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
+		$unread_count = $this->get_repository()->count_unread();
 
 		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
@@ -255,10 +274,10 @@ class AIPS_Admin_Bar {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$result       = AIPS_Notifications_Repository::instance()->mark_all_as_read();
+		$result       = $this->get_repository()->mark_all_as_read();
 
 		$cache_key    = 'aips_unread_count_' . get_current_user_id();
-		$unread_count = AIPS_Notifications_Repository::instance()->count_unread();
+		$unread_count = $this->get_repository()->count_unread();
 
 		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
@@ -271,8 +290,6 @@ class AIPS_Admin_Bar {
 				array('unread_count' => $unread_count)
 			);
 		}
-
-		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
 
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
