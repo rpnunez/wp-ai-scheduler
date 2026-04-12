@@ -829,7 +829,15 @@ class AIPS_Settings_UI {
     public function feature_flag_field_callback( $args ) {
         $flag        = isset($args['flag']) ? sanitize_key($args['flag']) : '';
         $description = isset($args['description']) ? $args['description'] : '';
-        $enabled     = AIPS_Config::get_instance()->is_feature_enabled($flag);
+        $config      = AIPS_Config::get_instance();
+        $features    = $config->get_available_features();
+        $default     = false;
+
+        if (isset($features[ $flag ]) && is_array($features[ $flag ]) && isset($features[ $flag ]['default'])) {
+            $default = (bool) $features[ $flag ]['default'];
+        }
+
+        $enabled = $config->is_feature_enabled($flag, $default);
         ?>
         <input type="hidden" name="aips_feature_flags[<?php echo esc_attr($flag); ?>]" value="0">
         <label>
@@ -852,15 +860,18 @@ class AIPS_Settings_UI {
      * @return array Sanitized associative array of flag_name => bool.
      */
     public function sanitize_feature_flags( $value ) {
-        if (!is_array($value)) {
-            return array();
-        }
+        $submitted = is_array($value) ? $value : array();
+        $features  = AIPS_Config::get_instance()->get_available_features();
+        $sanitized = array();
 
-        $known_flags = array_keys(AIPS_Config::get_instance()->get_available_features());
-        $sanitized   = array();
+        foreach ($features as $flag => $feature_config) {
+            $default = false;
 
-        foreach ($known_flags as $flag) {
-            $sanitized[$flag] = isset($value[$flag]) ? (bool) $value[$flag] : false;
+            if (is_array($feature_config) && isset($feature_config['default'])) {
+                $default = (bool) $feature_config['default'];
+            }
+
+            $sanitized[$flag] = isset($submitted[$flag]) ? (bool) $submitted[$flag] : $default;
         }
 
         return $sanitized;
