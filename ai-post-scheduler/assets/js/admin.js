@@ -917,14 +917,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success modal instead of alert
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -936,6 +929,76 @@
                     AIPS.Utilities.resetButton($btn);
                 }
             });
+        },
+
+        /**
+         * Render and display the generated-posts success modal.
+         *
+         * Uses server-provided summary text plus the per-post preview payload to
+         * build the modal body with AIPS HTML templates.
+         *
+         * @param {Object} data - AJAX success payload from `aips_run_now`.
+         */
+        showGeneratedPostsModal: function(data) {
+            var generatedCount = parseInt(data && data.generated_count, 10);
+            var posts = $.isArray(data && data.posts) ? data.posts : [];
+            var summaryMessage = data && data.summary_message ? data.summary_message : '';
+            var noticeMessage = data && data.notice_message ? data.notice_message : '';
+            var templateEngine = AIPS.Templates || null;
+            var rowsHtml = '';
+            var tableHtml = '';
+            var $modalTitle = $('#aips-post-success-modal-title');
+            var $summary = $('#aips-success-message');
+            var $notice = $('#aips-success-note');
+            var $results = $('#aips-post-results-container');
+
+            if (isNaN(generatedCount) || generatedCount < 1) {
+                generatedCount = posts.length;
+            }
+
+            if ($modalTitle.length) {
+                $modalTitle.text(
+                    generatedCount === 1
+                        ? ($modalTitle.data('singularTitle') || 'Post Successfully Generated')
+                        : ($modalTitle.data('pluralTitle') || 'Posts Successfully Generated')
+                );
+            }
+
+            if ($summary.length) {
+                $summary.text(summaryMessage || (generatedCount === 1 ? '1 post has been generated.' : generatedCount + ' posts have been generated.'));
+            }
+
+            if ($notice.length) {
+                if (noticeMessage) {
+                    $notice.text(noticeMessage).show();
+                } else {
+                    $notice.text('').hide();
+                }
+            }
+
+            if ($results.length) {
+                $results.empty();
+
+                if (templateEngine && posts.length) {
+                    $.each(posts, function(index, post) {
+                        rowsHtml += templateEngine.render('aips-tmpl-generated-post-row', {
+                            title: post.title || '',
+                            excerpt: post.excerpt || '',
+                            content_snippet: post.content_snippet || '',
+                            edit_url: post.edit_url || '',
+                            view_url: post.view_url || ''
+                        });
+                    });
+
+                    tableHtml = templateEngine.renderRaw('aips-tmpl-generated-posts-table', {
+                        rows: rowsHtml
+                    });
+
+                    $results.html(tableHtml);
+                }
+            }
+
+            $('#aips-post-success-modal').show();
         },
 
         /**
@@ -3490,13 +3553,7 @@
                 success: function(response) {
                     if (response.success) {
                         $('#aips-template-modal').hide();
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }

@@ -1267,6 +1267,31 @@
     gap: 10px;
 }
 
+.aips-post-success-summary {
+    text-align: center;
+    padding: 20px 20px 0;
+}
+
+.aips-post-success-icon {
+    font-size: 48px;
+    color: #46b450;
+    width: 48px;
+    height: 48px;
+}
+
+.aips-post-success-message {
+    font-size: 16px;
+    margin-top: 20px;
+}
+
+.aips-post-success-note {
+    margin-top: 10px;
+}
+
+.aips-post-results-container {
+    margin-top: 20px;
+}
+
 /* Wizard Modal Styles */
 .aips-wizard-modal .aips-modal-content {
     max-width: 900px;
