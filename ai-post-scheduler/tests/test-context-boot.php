@@ -369,7 +369,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Feature flag: aips_enable_context_boot
+	// Feature flag: enable_context_boot
 	// -------------------------------------------------------------------------
 
 	/**
