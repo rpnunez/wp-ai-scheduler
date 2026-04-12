@@ -95,7 +95,7 @@ class AIPS_Dev_Tools {
 
         $data = json_decode($json_str, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
             AIPS_Ajax_Response::error(array(
                 'message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler'),
                 'debug' => $json_str

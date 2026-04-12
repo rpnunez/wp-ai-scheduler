@@ -13,3 +13,7 @@
 ## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
 **Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
 **Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
+
+## 2024-04-12 - Enforce strict type validation for JSON decoding
+**Learning:** `json_decode` with associative arrays (true) can return scalar values (like integers or booleans) or `null` for malformed input, which can bypass loose truthy checks and cause fatal `TypeError`s when passed to functions or iterations expecting arrays.
+**Action:** Always verify the result of `json_decode($json, true)` using `is_array()` before utilizing the decoded data, and explicitly assign safe fallback values (such as an empty array) when decoding fails or does not yield the expected type.

@@ -62,7 +62,7 @@ class AIPS_Article_Structure_Manager {
 		
 		$structure_data = json_decode($structure->structure_data, true);
 		
-		if (json_last_error() !== JSON_ERROR_NONE) {
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($structure_data)) {
 			return new WP_Error('invalid_structure_data', __('Invalid article structure data.', 'ai-post-scheduler'));
 		}
 		

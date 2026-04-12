@@ -76,7 +76,7 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 		// Parse JSON
 		$data = json_decode($json_content, true);
 		
-		if ($data === null) {
+		if (!is_array($data)) {
 			return new WP_Error('parse_error', __('Invalid JSON format.', 'ai-post-scheduler'));
 		}
 		

@@ -186,7 +186,8 @@ class AIPS_Research_Controller {
         // Parse keywords from JSON and enrich each topic with generated-post counts.
         foreach ($topics as &$topic) {
             if (!empty($topic['keywords'])) {
-                $topic['keywords'] = json_decode($topic['keywords'], true);
+                $decoded = json_decode($topic['keywords'], true);
+                $topic['keywords'] = is_array($decoded) ? $decoded : array();
             }
 
             $topic_id = isset($topic['id']) ? absint($topic['id']) : 0;

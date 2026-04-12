@@ -231,17 +231,13 @@ class AIPS_Research_Service {
         // Decode JSON
         $topics = json_decode($json_str, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->logger->log("Failed to parse research JSON: " . json_last_error_msg(), 'error', array(
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
+            $this->logger->log("Failed to parse research JSON or not an array: " . json_last_error_msg(), 'error', array(
                 'response_preview' => substr($json_str, 0, 200),
             ));
 
             // Fallback: try to extract topics from text
             return $this->fallback_parse_topics($response, $count);
-        }
-
-        if (!is_array($topics)) {
-            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
         }
 
         // Validate and normalize topics

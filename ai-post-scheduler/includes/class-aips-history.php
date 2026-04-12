@@ -178,6 +178,9 @@ class AIPS_History {
         $generation_log = array();
         if (!empty($history_item->generation_log)) {
             $generation_log = json_decode($history_item->generation_log, true);
+            if (!is_array($generation_log)) {
+                $generation_log = array();
+            }
         }
         
         $response = array(

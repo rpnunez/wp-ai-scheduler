@@ -1055,7 +1055,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $revisions = array();
         foreach ($results as $row) {
             $details = json_decode($row->details, true);
-            if (!$details) {
+            if (!is_array($details)) {
                 continue;
             }
 
