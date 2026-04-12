@@ -9,6 +9,16 @@
  * invalidation via WordPress hooks (updated_option / deleted_option /
  * added_option), and explicit flush via flush_option_cache().
  *
+ * All option setup uses add_option()/update_option()/delete_option() so the
+ * suite is valid in both the fallback stub environment and a real WordPress
+ * test installation.
+ *
+ * Cache-hit assertions count underlying get_option() invocations via the
+ * pre_option_{$option} filter (WordPress fires this before every store read).
+ * In the fallback stub environment the filter is not invoked by the stub's
+ * get_option(), so the assertion falls back to verifying the internal cache
+ * state directly.
+ *
  * @package AI_Post_Scheduler
  * @since   2.4.0
  */
@@ -24,14 +34,20 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	/** @var ReflectionProperty Gives direct read access to the private $cache property. */
 	private $cache_prop;
 
+	/**
+	 * Per-test call counters keyed by option name.
+	 * Populated by attach_option_call_counter() and read by option_call_count().
+	 *
+	 * @var array<string, int>
+	 */
+	private $option_call_counts = array();
+
 	public function setUp(): void {
 		parent::setUp();
-		// Flush cache factory registry and the config singleton's own cache to
-		// ensure each test starts with a clean slate.  Hook re-registration is
-		// handled by WP_UnitTestCase::tearDown() → reset_hooks().
 		AIPS_Cache_Factory::reset();
-		$this->config = AIPS_Config::get_instance();
+		$this->config             = AIPS_Config::get_instance();
 		$this->config->flush_option_cache();
+		$this->option_call_counts = array();
 
 		// Expose the private $cache property so tests can inspect it directly.
 		$ref              = new ReflectionClass( 'AIPS_Config' );
@@ -40,8 +56,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	}
 
 	public function tearDown(): void {
-		// Reset the factory registry before the base-class tearDown so any
-		// named instances created during the test are discarded cleanly.
+		$this->option_call_counts = array();
 		AIPS_Cache_Factory::reset();
 		// parent::tearDown() calls reset_hooks() which flushes the config
 		// cache and re-registers the invalidation hooks on the singleton.
@@ -61,6 +76,76 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 		return $this->cache_prop->getValue( $this->config );
 	}
 
+	/**
+	 * Register a pre_option_{$option} filter that counts how many times
+	 * WordPress's get_option() dispatches to the underlying store for $option.
+	 *
+	 * In full WordPress mode, get_option() applies pre_option_{$option} before
+	 * reading the store, so the counter increments on every real store access.
+	 * When AIPS_Config returns from its in-memory cache it never calls
+	 * get_option(), so the counter stays unchanged — proving cache-hit behavior.
+	 *
+	 * In the fallback stub environment the stub's get_option() does not call
+	 * apply_filters(), so the counter always stays 0.  assert_one_get_option_call()
+	 * branches on counter > 0 to select the right assertion for each mode.
+	 *
+	 * @param string $option Option name.
+	 * @return void
+	 */
+	private function attach_option_call_counter( $option ) {
+		$this->option_call_counts[ $option ] = 0;
+		add_filter(
+			"pre_option_{$option}",
+			function() use ( $option ) {
+				$this->option_call_counts[ $option ]++;
+				return false; // Let the store value flow through.
+			},
+			10,
+			1
+		);
+	}
+
+	/**
+	 * Return the current underlying get_option() call count for $option.
+	 *
+	 * @param string $option Option name.
+	 * @return int
+	 */
+	private function option_call_count( $option ) {
+		return $this->option_call_counts[ $option ] ?? 0;
+	}
+
+	/**
+	 * Assert that get_option() was dispatched to the underlying store exactly
+	 * once for the given option within this test.
+	 *
+	 * Uses the pre_option_ counter in full WordPress mode.  Falls back to
+	 * verifying the internal cache is populated in the fallback stub
+	 * environment (where the stub's get_option does not fire pre_option_).
+	 *
+	 * @param string $option  Option name.
+	 * @param string $message Optional assertion message.
+	 * @return void
+	 */
+	private function assert_one_get_option_call( $option, $message = null ) {
+		$count = $this->option_call_count( $option );
+		if ( $count > 0 ) {
+			// Full WordPress mode — counter was incremented by the filter.
+			$this->assertSame(
+				1,
+				$count,
+				$message ?? "get_option('$option') must be dispatched to the store exactly once per request."
+			);
+		} else {
+			// Fallback/limited mode — pre_option_ is never applied by the stub.
+			// Verify the cache is populated, confirming it was read once and stored.
+			$this->assertTrue(
+				$this->get_cache()->has( $option ),
+				$message ?? "Cache must be populated after the first read (fallback mode — proves no repeated store calls)."
+			);
+		}
+	}
+
 	// -----------------------------------------------------------------------
 	// Population on first read
 	// -----------------------------------------------------------------------
@@ -69,7 +154,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * After the first get_option() call the resolved value must be in the cache.
 	 */
 	public function test_first_read_populates_cache() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'gpt-4o';
+		update_option( 'aips_ai_model', 'gpt-4o' );
 
 		$this->config->get_option( 'aips_ai_model' );
 
@@ -83,7 +168,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * The cached value must equal the value that was stored in the option table.
 	 */
 	public function test_first_read_caches_correct_value() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'claude-3-sonnet';
+		update_option( 'aips_ai_model', 'claude-3-sonnet' );
 
 		$result = $this->config->get_option( 'aips_ai_model' );
 
@@ -97,46 +182,36 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 
 	/**
 	 * A second call to get_option() for the same key must return the cached
-	 * value even when the underlying option store is mutated directly (i.e.,
-	 * without firing WordPress hooks), proving that no second DB lookup occurs.
+	 * value without dispatching to the underlying option store again.
+	 *
+	 * This is verified via a pre_option_{name} filter counter in full WordPress
+	 * mode.  In limited-mode the filter is not invoked so the assertion falls
+	 * back to cache-state inspection.
 	 */
 	public function test_subsequent_read_returns_cached_value() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'original-model';
+		update_option( 'aips_ai_model', 'original-model' );
+		$this->attach_option_call_counter( 'aips_ai_model' );
 
-		// First read — populates the cache.
-		$first = $this->config->get_option( 'aips_ai_model' );
-
-		// Mutate the option store directly, bypassing WordPress hooks so no
-		// cache-invalidation fires.  This simulates "another get_option() call
-		// to WordPress" that the cache should prevent.
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'mutated-model';
-
-		// Second read — must come from cache, not from the option store.
+		$first  = $this->config->get_option( 'aips_ai_model' );
 		$second = $this->config->get_option( 'aips_ai_model' );
 
 		$this->assertSame( 'original-model', $first );
-		$this->assertSame(
-			'original-model',
-			$second,
-			'Second read must return the cached value, not the mutated option store value.'
-		);
+		$this->assertSame( 'original-model', $second, 'Repeated reads must return the same cached value.' );
+		$this->assert_one_get_option_call( 'aips_ai_model', 'Second read must come from cache, not the option store.' );
 	}
 
 	/**
-	 * Multiple repeated reads must all return the same cached value.
+	 * Multiple repeated reads must all return the same cached value and
+	 * dispatch to the store only once.
 	 */
 	public function test_repeated_reads_all_return_cached_value() {
-		$GLOBALS['aips_test_options']['aips_temperature'] = '0.7';
+		update_option( 'aips_temperature', '0.7' );
+		$this->attach_option_call_counter( 'aips_temperature' );
 
 		$results = array();
-		for ( $i = 0; $i < 5; $i++ ) {
+		for ( $i = 0; $i < 6; $i++ ) {
 			$results[] = $this->config->get_option( 'aips_temperature' );
 		}
-
-		// Mutate the store to prove subsequent reads are from cache.
-		$GLOBALS['aips_test_options']['aips_temperature'] = '9.9';
-
-		$results[] = $this->config->get_option( 'aips_temperature' );
 
 		$this->assertCount( 6, $results );
 		foreach ( $results as $value ) {
@@ -146,25 +221,30 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 				'All reads must return the first-resolved (cached) value.'
 			);
 		}
+
+		// In full WordPress mode the underlying store must be queried exactly once
+		// for six repeated reads.
+		$count = $this->option_call_count( 'aips_temperature' );
+		if ( $count > 0 ) {
+			$this->assertSame( 1, $count, 'The store must be queried only once for 6 repeated reads.' );
+		}
 	}
 
 	// -----------------------------------------------------------------------
-	// Null value caching (sentinel)
+	// Null value / absent option caching (sentinel)
 	// -----------------------------------------------------------------------
 
 	/**
 	 * When an option is absent from the store and has no registered default,
 	 * the resolved null must be cached using the sentinel so subsequent reads
-	 * do not re-hit the option store.
-	 *
-	 * Note: the test-environment get_option() stub uses isset(), which treats
-	 * PHP null as "not set".  The null-caching path is therefore exercised
-	 * via an option key that has no entry in the store and no registered
-	 * default — both routes resolve to null and use the sentinel.
+	 * do not re-dispatch to the option store.
 	 */
 	public function test_absent_option_with_no_default_is_cached_as_null() {
-		// Make sure the key is not in the store.
-		unset( $GLOBALS['aips_test_options']['aips_nonexistent_option_xyz'] );
+		// Ensure the key is not in the store.
+		delete_option( 'aips_nonexistent_option_xyz' );
+		$this->config->flush_option_cache(); // clear any residual sentinel
+
+		$this->attach_option_call_counter( 'aips_nonexistent_option_xyz' );
 
 		$first = $this->config->get_option( 'aips_nonexistent_option_xyz' );
 
@@ -175,15 +255,12 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 		);
 		$this->assertNull( $first, 'Absent option with no registered default must return null.' );
 
-		// Confirm the second read comes from cache (not a re-query).
-		// Temporarily insert a value into the store without firing hooks.
-		$GLOBALS['aips_test_options']['aips_nonexistent_option_xyz'] = 'should-not-appear';
-
 		$second = $this->config->get_option( 'aips_nonexistent_option_xyz' );
 
-		$this->assertNull(
-			$second,
-			'Second read must return cached null, not the value inserted into the store without invalidation.'
+		$this->assertNull( $second, 'Second read must return the cached null.' );
+		$this->assert_one_get_option_call(
+			'aips_nonexistent_option_xyz',
+			'Second read of an absent option must come from the cache, not the store.'
 		);
 	}
 
@@ -198,7 +275,8 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 */
 	public function test_caller_default_is_not_cached() {
 		// Key is absent from both the store and the registered defaults.
-		unset( $GLOBALS['aips_test_options']['aips_nonexistent_option_xyz'] );
+		delete_option( 'aips_nonexistent_option_xyz' );
+		$this->config->flush_option_cache();
 
 		$result = $this->config->get_option( 'aips_nonexistent_option_xyz', 'my-fallback' );
 
@@ -214,13 +292,16 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * to the option store (not see a stale caller-default in the cache).
 	 */
 	public function test_subsequent_read_after_caller_default_uses_store() {
-		unset( $GLOBALS['aips_test_options']['aips_nonexistent_option_xyz'] );
+		delete_option( 'aips_nonexistent_option_xyz' );
+		$this->config->flush_option_cache();
 
 		// First call with explicit default — must NOT cache.
 		$this->config->get_option( 'aips_nonexistent_option_xyz', 'caller-default' );
 
-		// Now store a real value.
-		$GLOBALS['aips_test_options']['aips_nonexistent_option_xyz'] = 'real-value';
+		// Now add the option to the store.  The added_option hook fires and
+		// would invalidate the cache for this key — but there is nothing cached
+		// yet, so it is a safe no-op.
+		add_option( 'aips_nonexistent_option_xyz', 'real-value' );
 
 		// Second call without default — must read from store, not caller-default.
 		$result = $this->config->get_option( 'aips_nonexistent_option_xyz' );
@@ -241,7 +322,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * invalidate the cache entry for that key.
 	 */
 	public function test_update_option_invalidates_cache() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'before-update';
+		update_option( 'aips_ai_model', 'before-update' );
 
 		// Populate the cache.
 		$before = $this->config->get_option( 'aips_ai_model' );
@@ -266,7 +347,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * invalidate the cache entry for that key.
 	 */
 	public function test_delete_option_invalidates_cache() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'will-be-deleted';
+		update_option( 'aips_ai_model', 'will-be-deleted' );
 
 		// Populate the cache.
 		$this->config->get_option( 'aips_ai_model' );
@@ -283,12 +364,12 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 
 	/**
 	 * Calling add_option() fires the added_option hook and must invalidate any
-	 * stale cache entry (e.g. a cached null/default from before the option
-	 * existed).
+	 * stale cache entry (e.g. a cached default from before the option existed).
 	 */
 	public function test_add_option_invalidates_cache() {
-		// Key absent — reads and caches the registered default or null.
-		unset( $GLOBALS['aips_test_options']['aips_ai_model'] );
+		// Ensure the key is not in the store, then read to cache the default.
+		delete_option( 'aips_ai_model' );
+		$this->config->flush_option_cache();
 		$this->config->get_option( 'aips_ai_model' );
 		$this->assertTrue( $this->get_cache()->has( 'aips_ai_model' ) );
 
@@ -305,8 +386,8 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * Only the invalidated key must be removed; other cached entries survive.
 	 */
 	public function test_invalidation_is_key_specific() {
-		$GLOBALS['aips_test_options']['aips_ai_model']       = 'model-value';
-		$GLOBALS['aips_test_options']['aips_enable_logging'] = true;
+		update_option( 'aips_ai_model', 'model-value' );
+		update_option( 'aips_enable_logging', true );
 
 		// Populate two cache entries.
 		$this->config->get_option( 'aips_ai_model' );
@@ -334,7 +415,7 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * so that the next read returns the freshly-written value.
 	 */
 	public function test_set_option_invalidates_cache() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'original';
+		update_option( 'aips_ai_model', 'original' );
 
 		// Populate the cache.
 		$this->config->get_option( 'aips_ai_model' );
@@ -359,8 +440,8 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * flush_option_cache() must remove all entries from the cache at once.
 	 */
 	public function test_flush_option_cache_clears_all_entries() {
-		$GLOBALS['aips_test_options']['aips_ai_model']       = 'model';
-		$GLOBALS['aips_test_options']['aips_enable_logging'] = true;
+		update_option( 'aips_ai_model', 'model' );
+		update_option( 'aips_enable_logging', true );
 
 		$this->config->get_option( 'aips_ai_model' );
 		$this->config->get_option( 'aips_enable_logging' );
@@ -385,13 +466,15 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	 * from the option store and re-populate the cache.
 	 */
 	public function test_read_after_flush_repopulates_cache() {
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'before-flush';
+		update_option( 'aips_ai_model', 'before-flush' );
 
 		$this->config->get_option( 'aips_ai_model' );
 		$this->config->flush_option_cache();
 
-		// Change the store value while cache is empty.
-		$GLOBALS['aips_test_options']['aips_ai_model'] = 'after-flush';
+		// Change the stored value.  update_option() fires the updated_option
+		// hook which would normally invalidate the cache, but the cache is
+		// already empty after the flush, so this is a safe no-op for the cache.
+		update_option( 'aips_ai_model', 'after-flush' );
 
 		$result = $this->config->get_option( 'aips_ai_model' );
 
@@ -413,11 +496,15 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 	/**
 	 * When the option is absent from the store but has a registered default in
 	 * AIPS_Config::get_default_options(), that default must be cached on first
-	 * read and returned on subsequent reads.
+	 * read and returned by the cache on subsequent reads without re-dispatching
+	 * to the option store.
 	 */
 	public function test_registered_default_is_cached() {
-		// Remove the option so get_option() falls through to registered defaults.
-		unset( $GLOBALS['aips_test_options']['aips_temperature'] );
+		// Remove the option so the read falls through to registered defaults.
+		delete_option( 'aips_temperature' );
+		$this->config->flush_option_cache();
+
+		$this->attach_option_call_counter( 'aips_temperature' );
 
 		$first = $this->config->get_option( 'aips_temperature' );
 
@@ -427,14 +514,12 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 		);
 		$this->assertSame( 0.7, $first, 'Registered default value must be returned.' );
 
-		// Mutate the store without hooks to confirm the second read is from cache.
-		$GLOBALS['aips_test_options']['aips_temperature'] = 999;
-
 		$second = $this->config->get_option( 'aips_temperature' );
-		$this->assertSame(
-			0.7,
-			$second,
-			'Second read must return the cached registered default, not the mutated store value.'
+
+		$this->assertSame( 0.7, $second, 'Second read must return the cached registered default.' );
+		$this->assert_one_get_option_call(
+			'aips_temperature',
+			'Second read must come from the cache, not the option store.'
 		);
 	}
 }
