@@ -1292,6 +1292,75 @@
     margin-top: 20px;
 }
 
+.aips-generated-posts-modal-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--aips-gray-200);
+    border-radius: var(--aips-radius-md);
+    overflow: hidden;
+}
+
+.aips-generated-posts-modal-table thead th {
+    border-bottom: 1px solid var(--aips-gray-200);
+}
+
+.aips-generated-posts-modal-table .column-title {
+    width: 44%;
+}
+
+.aips-generated-posts-modal-table .column-excerpt {
+    width: 31%;
+}
+
+.aips-generated-posts-modal-table .column-actions {
+    width: 25%;
+    text-align: left;
+    vertical-align: top;
+}
+
+.aips-generated-post-result-row td {
+    border-bottom: 1px solid var(--aips-gray-100);
+    vertical-align: top;
+}
+
+.aips-generated-post-result-snippet-row td {
+    padding-top: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--aips-gray-200);
+    background: var(--aips-gray-50);
+}
+
+.aips-generated-posts-modal-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.aips-generated-posts-modal-table .column-actions .cell-actions {
+    justify-content: flex-start;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.aips-generated-posts-modal-table .column-actions .aips-btn {
+    min-width: 88px;
+    text-align: center;
+}
+
+.aips-preview-content h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.aips-post-preview-content-body {
+    padding: 16px;
+    margin-top: 12px;
+    background: var(--aips-gray-50);
+    border: 1px solid var(--aips-gray-200);
+    border-radius: var(--aips-radius-base);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
 /* Wizard Modal Styles */
 .aips-wizard-modal .aips-modal-content {
     max-width: 900px;

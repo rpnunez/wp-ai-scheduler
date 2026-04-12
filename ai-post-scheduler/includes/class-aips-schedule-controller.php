@@ -97,6 +97,7 @@ class AIPS_Schedule_Controller {
                 'title'           => $title,
                 'excerpt'         => $excerpt,
                 'content_snippet' => $content_snippet,
+                'post_content'    => wpautop(wp_kses_post((string) $post->post_content)),
                 'edit_url'        => esc_url_raw(get_edit_post_link($post_id, 'raw')),
                 'view_url'        => esc_url_raw($view_url),
             );

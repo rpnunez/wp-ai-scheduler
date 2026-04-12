@@ -20,6 +20,8 @@
     ];
 
     Object.assign(AIPS, {
+        generatedPostPreviewMap: {},
+
         /**
          * Bootstrap the AIPS admin interface.
          *
@@ -71,6 +73,7 @@
             $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
+            $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
@@ -952,6 +955,8 @@
             var $notice = $('#aips-success-note');
             var $results = $('#aips-post-results-container');
 
+            AIPS.generatedPostPreviewMap = {};
+
             if (isNaN(generatedCount) || generatedCount < 1) {
                 generatedCount = posts.length;
             }
@@ -981,7 +986,18 @@
 
                 if (templateEngine && posts.length) {
                     $.each(posts, function(index, post) {
+                        var postId = parseInt(post.id, 10);
+
+                        if (!isNaN(postId) && postId > 0) {
+                            AIPS.generatedPostPreviewMap[postId] = {
+                                title: post.title || '',
+                                excerpt: post.excerpt || '',
+                                post_content: post.post_content || ''
+                            };
+                        }
+
                         rowsHtml += templateEngine.render('aips-tmpl-generated-post-row', {
+                            post_id: postId || 0,
                             title: post.title || '',
                             excerpt: post.excerpt || '',
                             content_snippet: post.content_snippet || '',
@@ -999,6 +1015,28 @@
             }
 
             $('#aips-post-success-modal').show();
+        },
+
+        /**
+         * Open the quick-preview modal for a generated post from the success table.
+         *
+         * @param {Event} e - Click event from `.aips-quick-preview-post`.
+         */
+        openGeneratedPostPreview: function(e) {
+            e.preventDefault();
+
+            var postId = parseInt($(this).data('postId'), 10);
+            var preview = !isNaN(postId) ? AIPS.generatedPostPreviewMap[postId] : null;
+
+            if (!preview) {
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                return;
+            }
+
+            $('#aips-post-preview-title').text(preview.title || '(no title)');
+            $('#aips-post-preview-excerpt').text(preview.excerpt || 'No excerpt available.');
+            $('#aips-post-preview-content').html(preview.post_content || '<p>No content available.</p>');
+            $('#aips-post-quick-preview-modal').show();
         },
 
         /**

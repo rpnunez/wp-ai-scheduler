@@ -708,7 +708,7 @@ if (!defined('ABSPATH')) {
                 <tr>
                     <th class="column-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
                     <th class="column-excerpt"><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></th>
-                    <th class="column-actions"><?php esc_html_e('Action', 'ai-post-scheduler'); ?></th>
+                    <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                 </tr>
             </thead>
             <tbody>{{rows}}</tbody>
@@ -719,22 +719,44 @@ if (!defined('ABSPATH')) {
         <tr class="aips-generated-post-result-row">
             <td class="column-title"><div class="cell-primary"><strong>{{title}}</strong></div></td>
             <td class="column-excerpt">{{excerpt}}</td>
-            <td class="column-actions" rowspan="2">
+            <td class="column-actions">
                 <div class="cell-actions">
-                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{edit_url}}">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{edit_url}}" target="_blank" rel="noopener noreferrer">
                         <?php esc_html_e('Edit Post', 'ai-post-scheduler'); ?>
                     </a>
-                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="{{view_url}}" target="_blank" rel="noopener noreferrer">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{view_url}}" target="_blank" rel="noopener noreferrer">
                         <?php esc_html_e('View Post', 'ai-post-scheduler'); ?>
                     </a>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-preview-post" data-post-id="{{post_id}}">
+                        <?php esc_html_e('Quick Preview', 'ai-post-scheduler'); ?>
+                    </button>
                 </div>
             </td>
         </tr>
         <tr class="aips-generated-post-result-snippet-row">
-            <td colspan="2">
+            <td colspan="3">
                 <div class="cell-meta"><strong><?php esc_html_e('Content Snippet', 'ai-post-scheduler'); ?></strong></div>
                 <div>{{content_snippet}}</div>
             </td>
         </tr>
     </script>
+
+    <div id="aips-post-quick-preview-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('Post Quick Preview', 'ai-post-scheduler'); ?></h2>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div class="aips-preview-content">
+                    <h3 id="aips-post-preview-title"></h3>
+                    <p id="aips-post-preview-excerpt" class="description"></p>
+                    <div id="aips-post-preview-content" class="aips-post-preview-content-body"></div>
+                </div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+            </div>
+        </div>
+    </div>
 </div>
