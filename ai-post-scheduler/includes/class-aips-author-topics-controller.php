@@ -84,20 +84,28 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * Initialize the controller.
 	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin. Optional parameters are
+	 * retained for testing purposes only.
+	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 */
 	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null) {
 		$container = AIPS_Container::get_instance();
+
+		// Repositories (not in container yet - could be added if needed)
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository    = new AIPS_Feedback_Repository();
+
+		// Services - use container for registered singletons
 		$this->post_generator         = new AIPS_Author_Post_Generator();
 		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
+		$this->history_service        = $container->make(AIPS_History_Service_Interface::class);
 		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->history_repository     = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 
 		// Register AJAX endpoints
