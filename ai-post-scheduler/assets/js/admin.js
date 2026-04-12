@@ -3733,6 +3733,10 @@
             var totalSteps = parseInt($modal.data('wizard-steps'), 10) ||
                 $modal.find('.aips-wizard-step-content').not('.aips-post-save-step').length;
 
+            // Restore the progress nav and footer in case they were hidden by showPostSaveActions.
+            $modal.find('.aips-wizard-progress').show();
+            $modal.find('.aips-wizard-footer').show();
+
             // Hide all steps, then show the target step
             $modal.find('.aips-wizard-step-content').hide();
             $modal.find('.aips-wizard-step-content[data-step="' + step + '"]').show();
