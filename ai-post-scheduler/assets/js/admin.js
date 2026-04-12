@@ -14,11 +14,6 @@
         { step: 2, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
     ];
 
-    // Required-field rules for the schedule wizard.
-    var SCHEDULE_WIZARD_REQUIRED_FIELDS = [
-        { step: 1, selector: '#sw_schedule_template', messageKey: 'scheduleTemplateRequired' }
-    ];
-
     Object.assign(AIPS, {
         generatedPostPreviewMap: {},
 
@@ -1219,35 +1214,22 @@
         },
 
         /**
-         * Open the schedule wizard in "Add New" mode.
+         * Open the schedule modal in "Add New" mode.
          *
-         * Resets the wizard form, initialises the wizard to step 1, and shows
-         * the schedule wizard modal. Falls back to the legacy modal if the
-         * wizard modal is not present on the page.
+         * Resets the schedule form and shows the legacy schedule modal.
          *
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
         openScheduleModal: function(e) {
             e.preventDefault();
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            if (!$wizardModal.length) {
-                // Fallback to legacy modal if wizard not present
-                $('#aips-schedule-form')[0].reset();
-                $('#schedule_id').val('');
-                $('#aips-schedule-modal-title').text('Add New Schedule');
-                $('#aips-schedule-modal').show();
-                return;
-            }
-            $('#aips-schedule-wizard-form')[0].reset();
-            $('#sw_schedule_id').val('');
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
-            AIPS.wizardGoToStep(1, $wizardModal);
-            $wizardModal.show();
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val('');
+            $('#aips-schedule-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
+            $('#aips-schedule-modal').show();
         },
 
         /**
-         * Opens the schedule wizard pre-filled with the existing schedule's data
-         * so the user can modify it in-place without deleting and recreating.
+         * Open the legacy schedule modal with existing row data for editing.
          *
          * @param {Event} e - Click event from the edit button.
          */
@@ -1265,54 +1247,27 @@
             var nextRun = $row.data('next-run');
             var isActive = $row.data('is-active');
 
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            if (!$wizardModal.length) {
-                // Fallback to legacy modal
-                $('#aips-schedule-form')[0].reset();
-                $('#schedule_id').val(scheduleId);
-                $('#schedule_title').val(scheduleTitle || '');
-                $('#schedule_template').val(templateId);
-                $('#schedule_frequency').val(frequency);
-                $('#schedule_topic').val(topic || '');
-                $('#article_structure_id').val(articleStructureId || '');
-                $('#rotation_pattern').val(rotationPattern || '');
-                $('#schedule_is_active').prop('checked', isActive == 1);
-                if (nextRun) {
-                    var dt0 = new Date(nextRun);
-                    if (!isNaN(dt0.getTime())) {
-                        var pad0 = function(n) { return n < 10 ? '0' + n : n; };
-                        $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
-                            'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
-                    }
-                }
-                $('#aips-schedule-modal-title').text('Edit Schedule');
-                $('#aips-schedule-modal').show();
-                return;
-            }
-
-            $('#aips-schedule-wizard-form')[0].reset();
-            $('#sw_schedule_id').val(scheduleId);
-            $('#sw_schedule_title').val(scheduleTitle || '');
-            $('#sw_schedule_template').val(templateId);
-            $('#sw_schedule_frequency').val(frequency);
-            $('#sw_schedule_topic').val(topic || '');
-            $('#sw_article_structure_id').val(articleStructureId || '');
-            $('#sw_rotation_pattern').val(rotationPattern || '');
-            $('#sw_schedule_is_active').prop('checked', isActive == 1);
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val(scheduleId);
+            $('#schedule_title').val(scheduleTitle || '');
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_topic').val(topic || '');
+            $('#article_structure_id').val(articleStructureId || '');
+            $('#rotation_pattern').val(rotationPattern || '');
+            $('#schedule_is_active').prop('checked', isActive == 1);
 
             if (nextRun) {
-                var dt = new Date(nextRun);
-                if (!isNaN(dt.getTime())) {
-                    var pad = function(n) { return n < 10 ? '0' + n : n; };
-                    var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
-                        'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-                    $('#sw_schedule_start_time').val(localValue);
+                var dt0 = new Date(nextRun);
+                if (!isNaN(dt0.getTime())) {
+                    var pad0 = function(n) { return n < 10 ? '0' + n : n; };
+                    $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
+                        'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
                 }
             }
 
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
-            AIPS.wizardGoToStep(1, $wizardModal);
-            $wizardModal.show();
+            $('#aips-schedule-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
+            $('#aips-schedule-modal').show();
         },
 
         /**
@@ -2901,15 +2856,10 @@
         },
 
         /**
-         * Auto-opens the schedule wizard with a pre-selected template when
-         * the schedule page is loaded with a ?schedule_template= query parameter.
+         * Auto-open the legacy schedule modal with pre-selected values from URL.
          */
         initScheduleAutoOpen: function() {
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            var $legacyModal = $('#aips-schedule-modal');
-
-            // Use wizard modal if available, fall back to legacy modal.
-            var $modal = $wizardModal.length ? $wizardModal : $legacyModal;
+            var $modal = $('#aips-schedule-modal');
             if (!$modal.length) return;
 
             // Prefer preselect from data attribute, then fall back to URL query param.
@@ -2948,42 +2898,21 @@
                 return;
             }
 
-            if ($wizardModal.length) {
-                // Use wizard modal
-                var $wizardForm = $('#aips-schedule-wizard-form');
-                if (!$wizardForm.length) return;
+            var $legacyForm = $('#aips-schedule-form');
+            if (!$legacyForm.length) return;
 
-                $wizardForm[0].reset();
-                $('#sw_schedule_id').val('');
+            $legacyForm[0].reset();
+            $('#schedule_id').val('');
 
-                if (preselectIdNum > 0) {
-                    $('#sw_schedule_template').val(preselectIdNum);
-                }
-                if (preselectStructureIdNum > 0) {
-                    $('#sw_article_structure_id').val(preselectStructureIdNum);
-                }
-
-                $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
-                AIPS.wizardGoToStep(1, $wizardModal);
-                $wizardModal.show();
-            } else {
-                // Fall back to legacy modal
-                var $legacyForm = $('#aips-schedule-form');
-                if (!$legacyForm.length) return;
-
-                $legacyForm[0].reset();
-                $('#schedule_id').val('');
-
-                if (preselectIdNum > 0) {
-                    $('#schedule_template').val(preselectIdNum);
-                }
-                if (preselectStructureIdNum > 0) {
-                    $('#article_structure_id').val(preselectStructureIdNum);
-                }
-
-                $('#aips-schedule-modal-title').text('Add New Schedule');
-                $legacyModal.show();
+            if (preselectIdNum > 0) {
+                $('#schedule_template').val(preselectIdNum);
             }
+            if (preselectStructureIdNum > 0) {
+                $('#article_structure_id').val(preselectStructureIdNum);
+            }
+
+            $('#aips-schedule-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
+            $modal.show();
 
             // Clean the URL to prevent re-triggering on refresh
             if (window.history && window.history.replaceState) {
@@ -3165,11 +3094,8 @@
          */
         getFirstInvalidStep: function($modal) {
             $modal = $modal || AIPS.currentWizardModal;
-            var modalId = $modal ? $modal.attr('id') : '';
-            var rules = (modalId === 'aips-schedule-wizard-modal')
-                ? SCHEDULE_WIZARD_REQUIRED_FIELDS
-                : WIZARD_REQUIRED_FIELDS;
-            var L10n = (modalId === 'aips-schedule-wizard-modal') ? aipsScheduleL10n : aipsTemplatesL10n;
+            var rules = WIZARD_REQUIRED_FIELDS;
+            var L10n = aipsTemplatesL10n;
 
             for (var i = 0; i < rules.length; i++) {
                 var rule = rules[i];
@@ -3193,11 +3119,8 @@
          */
         validateWizardStep: function(step, $modal) {
             $modal = $modal || AIPS.currentWizardModal;
-            var modalId = $modal ? $modal.attr('id') : '';
-            var rules = (modalId === 'aips-schedule-wizard-modal')
-                ? SCHEDULE_WIZARD_REQUIRED_FIELDS
-                : WIZARD_REQUIRED_FIELDS;
-            var L10n = (modalId === 'aips-schedule-wizard-modal') ? aipsScheduleL10n : aipsTemplatesL10n;
+            var rules = WIZARD_REQUIRED_FIELDS;
+            var L10n = aipsTemplatesL10n;
 
             for (var i = 0; i < rules.length; i++) {
                 var rule = rules[i];
@@ -3211,10 +3134,7 @@
         },
 
         /**
-         * Populate the final summary step of the active wizard.
-         *
-         * Dispatches to the appropriate summary renderer based on the modal's
-         * `id`; the template wizard and schedule wizard have different fields.
+         * Populate the final summary step of the active template wizard.
          *
          * @param {jQuery} $modal - The wizard modal element.
          */
@@ -3222,11 +3142,7 @@
             $modal = $modal || AIPS.currentWizardModal;
             if (!$modal || !$modal.length) return;
 
-            if ($modal.attr('id') === 'aips-schedule-wizard-modal') {
-                AIPS.updateScheduleWizardSummary($modal);
-            } else {
-                AIPS.updateTemplateWizardSummary($modal);
-            }
+            AIPS.updateTemplateWizardSummary($modal);
         },
 
         /**
@@ -3265,36 +3181,6 @@
             } else {
                 $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageNo);
             }
-        },
-
-        /**
-         * Populate the schedule wizard's Review step with the current form values.
-         *
-         * Reads all schedule wizard fields and updates the corresponding
-         * `#sw_summary_*` elements in the Review step.
-         *
-         * @param {jQuery} $modal - The schedule wizard modal element.
-         */
-        updateScheduleWizardSummary: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-
-            var title = $('#sw_schedule_title').val();
-            var templateText = $('#sw_schedule_template option:selected').text();
-            var topic = $('#sw_schedule_topic').val();
-            var frequencyText = $('#sw_schedule_frequency option:selected').text();
-            var startTime = $('#sw_schedule_start_time').val();
-            var structureText = $('#sw_article_structure_id option:selected').text();
-            var rotationText = $('#sw_rotation_pattern option:selected').text();
-            var isActive = $('#sw_schedule_is_active').is(':checked');
-
-            $modal.find('#sw_summary_title').text(title || '(' + (aipsScheduleL10n.noTitle || 'No title') + ')');
-            $modal.find('#sw_summary_template').text(templateText || '-');
-            $modal.find('#sw_summary_topic').text(topic || aipsScheduleL10n.noneOption || '-');
-            $modal.find('#sw_summary_frequency').text(frequencyText || '-');
-            $modal.find('#sw_summary_start_time').text(startTime || aipsScheduleL10n.startNow || 'Now');
-            $modal.find('#sw_summary_structure').text(structureText || aipsScheduleL10n.useDefault || 'Use Default');
-            $modal.find('#sw_summary_rotation').text(rotationText || aipsScheduleL10n.noneOption || '-');
-            $modal.find('#sw_summary_active').text(isActive ? (aipsScheduleL10n.yes || 'Yes') : (aipsScheduleL10n.no || 'No'));
         },
 
         // AI Variables feature methods
