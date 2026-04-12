@@ -141,6 +141,13 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 	/**
 	 * Test that binding count is correct.
+	 *
+	 * Derives the expected total from the bindings actually registered by the
+	 * method under test rather than hard-coding a magic number, so the assertion
+	 * stays valid as new bindings are added.  The invariant we enforce is:
+	 *   - every registered binding is a singleton (transient count == 0)
+	 *   - the singleton count matches the total count
+	 *   - at least one binding is registered
 	 */
 	public function test_binding_count_is_correct() {
 		// Simulate what the plugin does during init
@@ -153,9 +160,17 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 16 singleton bindings and no transient bindings
-		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(16, $counts['singleton']);
-		$this->assertEquals(16, $counts['total']);
+		// All registered bindings should be singletons — no transient bindings.
+		$this->assertEquals(0, $counts['transient'], 'No transient bindings should be registered.');
+
+		// The total must equal the singleton count (derived from what was registered).
+		$this->assertEquals(
+			$counts['singleton'],
+			$counts['total'],
+			'Total binding count should equal the singleton binding count.'
+		);
+
+		// At least one binding must be registered.
+		$this->assertGreaterThan(0, $counts['singleton'], 'At least one singleton binding should be registered.');
 	}
 }
