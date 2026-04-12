@@ -73,4 +73,30 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		unset($_GET['page']);
 	}
+
+	/**
+	 * Regression test: hidden Author Topics page must remain URL-accessible.
+	 */
+	public function test_author_topics_is_registered_as_hidden_page() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$this->assertArrayHasKey(
+			'admin_page_aips-author-topics',
+			$_registered_pages,
+			'Author Topics page should be registered for direct admin.php?page= access.'
+		);
+
+		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+
+		$this->assertNotContains(
+			'aips-author-topics',
+			$submenu_pages,
+			'Author Topics page should remain hidden from the visible submenu.'
+		);
+	}
 }
