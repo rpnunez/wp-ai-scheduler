@@ -1,75 +1,86 @@
 <?php
 /**
- * Test case for Schedule Controller run now
+ * Tests for run-now endpoints in AIPS_Schedule_Controller.
  *
  * @package AI_Post_Scheduler
  */
 
 class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
 
-    private $controller;
-    private $scheduler;
+	/** @var AIPS_Schedule_Controller */
+	private $controller;
 
-    public function setUp(): void {
-        parent::setUp();
+	/** @var int */
+	private $admin_user_id;
 
-        // Mock Scheduler
-        $this->scheduler = $this->getMockBuilder('AIPS_Scheduler')
-            ->onlyMethods(array('run_schedule_now', 'save_schedule', 'toggle_active'))
-            ->getMock();
+	/** @var int */
+	private $subscriber_user_id;
 
-        $this->controller = new AIPS_Schedule_Controller($this->scheduler);
+	public function setUp(): void {
+		parent::setUp();
 
-        // Mock WP User
-        $user_id = $this->factory->user->create(array('role' => 'administrator'));
-        wp_set_current_user($user_id);
-    }
+		$this->controller = new AIPS_Schedule_Controller();
+		$this->admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->subscriber_user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+	}
 
-    public function test_ajax_run_now_with_schedule_id() {
-        $_POST['schedule_id'] = 123;
-        $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
-        $_REQUEST['nonce'] = $_POST['nonce'];
+	public function tearDown(): void {
+		$_POST    = array();
+		$_REQUEST = array();
+		parent::tearDown();
+	}
 
-        $this->scheduler->expects($this->once())
-            ->method('run_schedule_now')
-            ->with(123)
-            ->willReturn(456); // Post ID
+	/**
+	 * @param callable $callable Endpoint callback.
+	 * @return array Decoded JSON response.
+	 */
+	private function call_ajax( callable $callable ) {
+		$_REQUEST = array_merge( $_REQUEST, $_POST );
+		ob_start();
+		try {
+			$callable();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected for wp_send_json.
+		}
 
-        try {
-            $this->controller->ajax_run_now();
-        } catch (WPAjaxDieContinueException $e) {
-            // Expected
-        }
+		return json_decode( ob_get_clean(), true );
+	}
 
-        $output = $this->getActualOutput();
-        $response = json_decode($output, true);
+	public function test_ajax_run_now_requires_template_id() {
+		wp_set_current_user( $this->admin_user_id );
 
-        $this->assertTrue($response['success']);
-        $this->assertEquals(456, $response['data']['post_ids'][0]);
-    }
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['template_id'] = 0;
 
-    public function test_ajax_run_now_with_schedule_id_failure() {
-        $_POST['schedule_id'] = 123;
-        $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
-        $_REQUEST['nonce'] = $_POST['nonce'];
+		$response = $this->call_ajax( array( $this->controller, 'ajax_run_now' ) );
 
-        $error = new WP_Error('fail', 'Failed to run');
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'Invalid template ID.', $response['data']['message'] );
+	}
 
-        $this->scheduler->expects($this->once())
-            ->method('run_schedule_now')
-            ->with(123)
-            ->willReturn($error);
+	public function test_ajax_unified_run_now_requires_valid_parameters() {
+		wp_set_current_user( $this->admin_user_id );
 
-        try {
-            $this->controller->ajax_run_now();
-        } catch (WPAjaxDieContinueException $e) {
-            // Expected
-        }
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['id']    = 0;
+		$_POST['type']  = '';
 
-        $output = $this->getActualOutput();
-        $response = json_decode($output, true);
+		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_run_now' ) );
 
-        $this->assertFalse($response['success']);
-        $this->assertEquals('Failed to run', $response['data']['message']);
-    }
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'Invalid parameters.', $response['data']['message'] );
+	}
+
+	public function test_ajax_unified_run_now_permission_denied_for_non_admin() {
+		wp_set_current_user( $this->subscriber_user_id );
+
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['id']    = 1;
+		$_POST['type']  = AIPS_Unified_Schedule_Service::TYPE_TEMPLATE;
+
+		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_run_now' ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'Permission denied.', $response['data']['message'] );
+	}
 }

@@ -380,16 +380,10 @@ class AIPS_Admin_Assets {
         // it is explicitly excluded; all other 'aips-schedule*' slugs are not currently in use.
         if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
             wp_localize_script('aips-admin-script', 'aipsScheduleL10n', array(
-                // Run schedule
-                'runScheduleConfirm'             => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
-                'scheduleRunning'                => __('Running...', 'ai-post-scheduler'),
                 // Schedule wizard
                 'scheduleTemplateRequired'       => __('Please select a Template to continue.', 'ai-post-scheduler'),
                 'addNewSchedule'                 => __('Add New Schedule', 'ai-post-scheduler'),
                 'editSchedule'                   => __('Edit Schedule', 'ai-post-scheduler'),
-                'cloneSchedule'                  => __('Clone Schedule', 'ai-post-scheduler'),
-                'saveSchedule'                   => __('Save Schedule', 'ai-post-scheduler'),
-                'scheduleSavedSuccess'           => __('Schedule saved successfully.', 'ai-post-scheduler'),
                 // Schedule wizard summary display
                 'startNow'                       => __('Now', 'ai-post-scheduler'),
                 'useDefault'                     => __('Use Default', 'ai-post-scheduler'),
@@ -401,31 +395,17 @@ class AIPS_Admin_Assets {
                 'yes'                            => __('Yes', 'ai-post-scheduler'),
                 'no'                             => __('No', 'ai-post-scheduler'),
                 // Buttons/links
-                'runNow'                         => __('Run Now', 'ai-post-scheduler'),
                 'cancel'                         => __('Cancel', 'ai-post-scheduler'),
                 'yesRunNow'                      => __('Yes, run now', 'ai-post-scheduler'),
                 // Single schedule delete
                 'deleteScheduleConfirm'          => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
-                // Bulk schedule selection/delete
-                'selectAtLeastOneSchedule'       => __('Please select at least one schedule.', 'ai-post-scheduler'),
-                'deleteOneScheduleConfirm'       => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
-                /* translators: %d: number of schedules to delete */
-                'deleteMultipleSchedulesConfirm' => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
                 // Unified schedule bulk-action validation
                 'selectBulkAction'               => __('Please select a bulk action.', 'ai-post-scheduler'),
                 'selectAtLeastOne'               => __('Please select at least one schedule.', 'ai-post-scheduler'),
                 // Schedule error toasts
-                'failedToLoadHistory'            => __('Failed to load history.', 'ai-post-scheduler'),
                 'failedToDeleteSchedules'        => __('Failed to delete schedules.', 'ai-post-scheduler'),
-                'bulkRunFailed'                  => __('Bulk run failed.', 'ai-post-scheduler'),
                 // Bulk run-now confirm dialog
                 'runSchedulesNow'                => __('Run Schedules Now', 'ai-post-scheduler'),
-                'runPostsConfirmSingular'        => __('This will generate an estimated 1 post. Are you sure?', 'ai-post-scheduler'),
-                /* translators: %d: estimated number of posts to generate */
-                'runPostsConfirmPlural'          => __('This will generate an estimated %d posts. Are you sure?', 'ai-post-scheduler'),
-                'runOneScheduleConfirm'          => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
-                /* translators: %d: number of schedules to run */
-                'runMultipleSchedulesConfirm'    => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
                 // Unified schedule bulk delete dialog
                 'deleteSchedulesHeading'         => __('Delete Schedules', 'ai-post-scheduler'),
                 'noDeletableSchedulesSelected'   => __('None of the selected schedules can be deleted.', 'ai-post-scheduler'),

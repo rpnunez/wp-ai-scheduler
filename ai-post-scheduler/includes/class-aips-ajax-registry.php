@@ -39,14 +39,6 @@ class AIPS_Ajax_Registry {
 
 		// Schedule Controller
 		'aips_save_schedule'              => 'AIPS_Schedule_Controller',
-		'aips_delete_schedule'            => 'AIPS_Schedule_Controller',
-		'aips_toggle_schedule'            => 'AIPS_Schedule_Controller',
-		'aips_run_now'                    => 'AIPS_Schedule_Controller',
-		'aips_bulk_delete_schedules'      => 'AIPS_Schedule_Controller',
-		'aips_bulk_toggle_schedules'      => 'AIPS_Schedule_Controller',
-		'aips_bulk_run_now_schedules'     => 'AIPS_Schedule_Controller',
-		'aips_get_schedules_post_count'   => 'AIPS_Schedule_Controller',
-		'aips_get_schedule_history'       => 'AIPS_Schedule_Controller',
 		'aips_unified_run_now'            => 'AIPS_Schedule_Controller',
 		'aips_unified_toggle'             => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_toggle'        => 'AIPS_Schedule_Controller',

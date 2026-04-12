@@ -213,7 +213,12 @@ if (!function_exists('aips_next_run_relative')) {
 						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
-						data-schedule-id="<?php echo esc_attr($sched['id']); ?>">
+						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
+						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
 								class="aips-unified-checkbox"
@@ -304,7 +309,6 @@ if (!function_exists('aips_next_run_relative')) {
 								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
 									aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
-									data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
@@ -325,8 +329,9 @@ if (!function_exists('aips_next_run_relative')) {
 
 								<!-- Delete (template schedules only) -->
 								<?php if ($sched['can_delete']): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-unified-schedule"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
