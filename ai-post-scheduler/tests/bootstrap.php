@@ -253,6 +253,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             });
         }
 
+        // Register AIPS_Author_Topics_Repository
+        if (class_exists('AIPS_Author_Topics_Repository')) {
+            $container->singleton(AIPS_Author_Topics_Repository::class, function( $container ) {
+                return new AIPS_Author_Topics_Repository();
+            });
+        }
+
         // Register AIPS_Generation_Context_Factory
         if (class_exists('AIPS_Generation_Context_Factory')) {
             $container->singleton(AIPS_Generation_Context_Factory::class, function( $container ) {
