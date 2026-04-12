@@ -802,4 +802,68 @@ class AIPS_Settings_UI {
         return in_array($value, $allowed, true) ? $value : 'array';
     }
 
+    // -----------------------------------------------------------------------
+    // Feature Flags section callbacks
+    // -----------------------------------------------------------------------
+
+    /**
+     * Render the description for the Feature Flags settings section.
+     *
+     * @return void
+     */
+    public function feature_flags_section_callback() {
+        echo '<p>' . esc_html__('Enable or disable experimental and opt-in features. Changes take effect on the next page load. Use with caution in production — enable on staging first.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render a single feature-flag checkbox field.
+     *
+     * @param array $args {
+     *     Field configuration passed from add_settings_field().
+     *
+     *     @type string $flag        Internal flag name (key in aips_feature_flags array).
+     *     @type string $description Human-readable description shown below the checkbox.
+     * }
+     * @return void
+     */
+    public function feature_flag_field_callback( $args ) {
+        $flag        = isset($args['flag']) ? sanitize_key($args['flag']) : '';
+        $description = isset($args['description']) ? $args['description'] : '';
+        $enabled     = AIPS_Config::get_instance()->is_feature_enabled($flag);
+        ?>
+        <input type="hidden" name="aips_feature_flags[<?php echo esc_attr($flag); ?>]" value="0">
+        <label>
+            <input type="checkbox"
+                   name="aips_feature_flags[<?php echo esc_attr($flag); ?>]"
+                   value="1"
+                   <?php checked($enabled, true); ?>>
+            <?php echo esc_html($description); ?>
+        </label>
+        <?php
+    }
+
+    /**
+     * Sanitize the submitted feature-flags array.
+     *
+     * Ensures each flag value is a boolean integer (0 or 1) and that only
+     * known flags are accepted. Unknown keys are silently discarded.
+     *
+     * @param mixed $value Raw submitted value (expected to be an array).
+     * @return array Sanitized associative array of flag_name => bool.
+     */
+    public function sanitize_feature_flags( $value ) {
+        if (!is_array($value)) {
+            return array();
+        }
+
+        $known_flags = array_keys(AIPS_Config::get_instance()->get_available_features());
+        $sanitized   = array();
+
+        foreach ($known_flags as $flag) {
+            $sanitized[$flag] = isset($value[$flag]) ? (bool) $value[$flag] : false;
+        }
+
+        return $sanitized;
+    }
+
 }

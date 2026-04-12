@@ -19,6 +19,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->reset_context_globals();
+		$this->set_feature_flag( 'enable_context_boot', false );
 	}
 
 	/**
@@ -26,6 +27,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		$this->reset_context_globals();
+		$this->set_feature_flag( 'enable_context_boot', false );
 		parent::tearDown();
 	}
 
@@ -233,6 +235,9 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			$this->markTestSkipped( 'Limited-mode environment required.' );
 		}
 
+		// Enable context-aware boot so the frontend dispatcher is used.
+		$this->set_feature_flag( 'enable_context_boot', true );
+
 		// All context globals default to false (frontend).
 		$plugin = AI_Post_Scheduler::get_instance();
 		$plugin->init();
@@ -275,6 +280,9 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
 			$this->markTestSkipped( 'Limited-mode environment required.' );
 		}
+
+		// Enable context-aware boot so only admin subsystems are loaded.
+		$this->set_feature_flag( 'enable_context_boot', true );
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
@@ -338,6 +346,9 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			$this->markTestSkipped( 'Limited-mode environment required.' );
 		}
 
+		// Enable context-aware boot so the dispatcher priority order is exercised.
+		$this->set_feature_flag( 'enable_context_boot', true );
+
 		$GLOBALS['aips_test_doing_cron'] = true;
 		$GLOBALS['aips_test_is_admin']   = true;
 
@@ -355,5 +366,158 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			$this->count_action_callbacks( 'admin_menu' ),
 			'Admin menu must NOT be registered when wp_doing_cron() is true'
 		);
+	}
+
+	// -------------------------------------------------------------------------
+	// Feature flag: aips_enable_context_boot
+	// -------------------------------------------------------------------------
+
+	/**
+	 * When the flag is disabled (default), boot_legacy() runs and scheduler
+	 * hooks are registered even on a non-cron frontend request.
+	 */
+	public function test_legacy_boot_registers_scheduler_hooks_on_any_request() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		// Ensure the feature flag is disabled (default).
+		$this->set_feature_flag( 'enable_context_boot', false );
+
+		// Simulate a plain frontend request (all context globals default to false).
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'aips_generate_scheduled_posts' ),
+			'boot_legacy() must register scheduler hooks on every request when flag is disabled'
+		);
+	}
+
+	/**
+	 * When the flag is enabled, a frontend request must NOT register scheduler hooks
+	 * (because boot_frontend() is called, not boot_cron()).
+	 */
+	public function test_context_boot_enabled_frontend_has_no_scheduler_hooks() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->set_feature_flag( 'enable_context_boot', true );
+
+		// All context globals default to false → frontend path.
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertSame(
+			0,
+			$this->count_action_callbacks( 'aips_generate_scheduled_posts' ),
+			'boot_frontend() must not register scheduler hooks when context boot is enabled'
+		);
+	}
+
+	/**
+	 * When the flag is enabled, a cron context must register scheduler hooks.
+	 */
+	public function test_context_boot_enabled_cron_registers_scheduler_hooks() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->set_feature_flag( 'enable_context_boot', true );
+		$GLOBALS['aips_test_doing_cron'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'aips_generate_scheduled_posts' ),
+			'boot_cron() must register scheduler hooks when context boot is enabled and context is cron'
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// boot_common(): taxonomy frontend guard
+	// -------------------------------------------------------------------------
+
+	/**
+	 * boot_common() must not register the aips_source_group taxonomy on frontend.
+	 *
+	 * When context boot is enabled the taxonomy guard in boot_common() skips
+	 * taxonomy registration on pure frontend page loads.
+	 */
+	public function test_boot_common_skips_taxonomy_on_frontend() {
+		// This test only makes sense in the full WP environment where
+		// register_taxonomy() is callable and taxonomy_exists() works.
+		if ( ! function_exists( 'taxonomy_exists' ) ) {
+			$this->markTestSkipped( 'Full WordPress environment required.' );
+		}
+
+		$this->set_feature_flag( 'enable_context_boot', true );
+
+		// Plain frontend request: all context globals false, is_admin() false,
+		// wp_doing_cron() false, wp_doing_ajax() false.
+		$GLOBALS['aips_test_doing_cron'] = false;
+		$GLOBALS['aips_test_doing_ajax'] = false;
+		$GLOBALS['aips_test_is_admin']   = false;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertFalse(
+			taxonomy_exists( 'aips_source_group' ),
+			'aips_source_group taxonomy must not be registered on the frontend'
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// enable_context_boot in AIPS_Config::get_available_features()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * The enable_context_boot flag must be present in AIPS_Config::get_available_features().
+	 */
+	public function test_enable_context_boot_is_registered_in_available_features() {
+		$features = AIPS_Config::get_instance()->get_available_features();
+
+		$this->assertArrayHasKey(
+			'enable_context_boot',
+			$features,
+			'AIPS_Config::get_available_features() must include enable_context_boot'
+		);
+	}
+
+	/**
+	 * The enable_context_boot flag must default to false (disabled) for safe rollout.
+	 */
+	public function test_enable_context_boot_defaults_to_false() {
+		$features = AIPS_Config::get_instance()->get_available_features();
+
+		$this->assertFalse(
+			$features['enable_context_boot']['default'],
+			'enable_context_boot must default to false for safe rollout'
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Directly set a feature flag value on the AIPS_Config singleton using reflection.
+	 *
+	 * @param string $flag    Flag name (key in feature_flags array).
+	 * @param bool   $enabled Whether the flag should be enabled.
+	 */
+	private function set_feature_flag( $flag, $enabled ) {
+		$config = AIPS_Config::get_instance();
+		$rc     = new ReflectionClass( $config );
+		$prop   = $rc->getProperty( 'feature_flags' );
+		$prop->setAccessible( true );
+		$flags          = $prop->getValue( $config );
+		$flags[ $flag ] = (bool) $enabled;
+		$prop->setValue( $config, $flags );
 	}
 }

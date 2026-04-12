@@ -33,6 +33,7 @@ if (!defined('ABSPATH')) {
 					<button type="button" class="aips-tab-link" data-tab="settings-cache"><?php esc_html_e('Cache', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-api-keys"><?php esc_html_e('API Keys', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-developers"><?php esc_html_e('Developers', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-feature-flags"><?php esc_html_e('Feature Flags', 'ai-post-scheduler'); ?></button>
 				</div>
 
 				<form method="post" action="options.php" id="aips-settings-form">
@@ -131,6 +132,17 @@ if (!defined('ABSPATH')) {
 						<p class="description"><?php esc_html_e('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler'); ?></p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
+						</table>
+						<p class="submit">
+							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+						</p>
+					</div>
+
+					<!-- Feature Flags Tab -->
+					<div id="settings-feature-flags-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Enable or disable experimental and opt-in features. Enable on a staging site first and validate before turning on in production.', 'ai-post-scheduler'); ?></p>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_feature_flags_section'); ?>
 						</table>
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">

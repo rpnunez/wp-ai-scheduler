@@ -385,31 +385,44 @@ final class AI_Post_Scheduler {
     /**
      * Initialize plugin runtime.
      *
-     * Dispatches to the appropriate context-specific boot method based on the
-     * current request type, ensuring only the subsystems required for that
-     * context are instantiated.
+     * When the `enable_context_boot` feature flag is enabled, dispatches to the
+     * appropriate context-specific boot method based on the current request type,
+     * ensuring only the subsystems required for that context are instantiated.
+     *
+     * When the flag is disabled (default), falls back to `boot_legacy()` which
+     * instantiates all subsystems on every request — the safe pre-refactoring
+     * behaviour retained for gradual rollout.
      *
      * @return void
      */
     public function init() {
         $this->boot_common();
 
-        if (wp_doing_cron()) {
-            $this->boot_cron();
-        } elseif (wp_doing_ajax()) {
-            $this->boot_ajax();
-        } elseif (is_admin()) {
-            $this->boot_admin();
+        if (AIPS_Config::get_instance()->is_feature_enabled('enable_context_boot')) {
+            if (wp_doing_cron()) {
+                $this->boot_cron();
+            } elseif (wp_doing_ajax()) {
+                $this->boot_ajax();
+            } elseif (is_admin()) {
+                $this->boot_admin();
+            } else {
+                $this->boot_frontend();
+            }
         } else {
-            $this->boot_frontend();
+            $this->boot_legacy();
         }
     }
 
     /**
      * Boot subsystems required in every request context.
      *
-     * Loads text domain, registers container bindings, and registers the
-     * Source Group taxonomy. Called before any context-specific boot method.
+     * Loads text domain, registers container bindings, and — on non-frontend
+     * contexts — registers the Source Group taxonomy. Called before any
+     * context-specific boot method.
+     *
+     * The taxonomy is guarded on pure frontend page loads because it is only
+     * needed for admin, AJAX, and cron contexts; skipping it on the frontend
+     * avoids a small but unnecessary registration cost.
      *
      * @return void
      */
@@ -418,6 +431,12 @@ final class AI_Post_Scheduler {
 
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
+
+        // Guard: only register the taxonomy on admin, AJAX, and cron requests.
+        // Frontend page loads do not require the aips_source_group taxonomy.
+        if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron()) {
+            return;
+        }
 
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
@@ -550,6 +569,55 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+    }
+
+    /**
+     * Legacy flat-init boot path.
+     *
+     * Instantiates all plugin subsystems on every request, matching the
+     * behaviour that existed before context-aware bootstrap was introduced.
+     * Used as the safe default when the `enable_context_boot` feature flag
+     * is disabled so that existing deployments are not affected until the
+     * flag is explicitly enabled on staging and validated.
+     *
+     * @return void
+     */
+    private function boot_legacy() {
+        // Scheduler and cron hooks must be registered on every request so
+        // WordPress can fire them when wp-cron.php executes (which runs in
+        // a pseudo-frontend context, not a cron context).
+        $aips_scheduler = new AIPS_Scheduler();
+        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
+        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+
+        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
+        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+
+        $aips_author_post_generator = new AIPS_Author_Post_Generator();
+        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
+
+        $aips_embeddings_cron = new AIPS_Embeddings_Cron();
+        add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+
+        // Research controller registers the aips_scheduled_research cron hook.
+        new AIPS_Research_Controller();
+
+        // Notifications and reconciler are needed on both admin and cron paths.
+        new AIPS_Notifications();
+        new AIPS_Partial_Generation_State_Reconciler();
+
+        // Admin bar is shown on admin pages and to manage_options users on the frontend.
+        new AIPS_Admin_Bar();
+
+        if (is_admin()) {
+            new AIPS_Admin_Menu();
+            new AIPS_Admin_Assets();
+            new AIPS_Settings();
+            new AIPS_Onboarding_Wizard();
+
+            // Lazy AJAX hook registration covers all controller actions.
+            $this->register_lazy_ajax_hooks();
+        }
     }
 }
 

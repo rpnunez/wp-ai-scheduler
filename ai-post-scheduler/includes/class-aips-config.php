@@ -613,30 +613,35 @@ class AIPS_Config {
      */
     public function get_available_features() {
         return array(
+            'enable_context_boot' => array(
+                'name'        => __('Context-Aware Boot', 'ai-post-scheduler'),
+                'description' => __('Route each request to a context-specific boot method (cron, AJAX, admin, or frontend) so only the required subsystems are loaded. Disable to fall back to the legacy flat-init behaviour. Enable on staging first, then flip to enabled once validated.', 'ai-post-scheduler'),
+                'default'     => false,
+            ),
             'advanced_retry' => array(
-                'name' => __('Advanced Retry Logic', 'ai-post-scheduler'),
+                'name'        => __('Advanced Retry Logic', 'ai-post-scheduler'),
                 'description' => __('Enable exponential backoff and circuit breaker for AI requests.', 'ai-post-scheduler'),
-                'default' => true,
+                'default'     => true,
             ),
             'rate_limiting' => array(
-                'name' => __('Rate Limiting', 'ai-post-scheduler'),
+                'name'        => __('Rate Limiting', 'ai-post-scheduler'),
                 'description' => __('Limit the number of AI requests per time period.', 'ai-post-scheduler'),
-                'default' => false,
+                'default'     => false,
             ),
             'event_system' => array(
-                'name' => __('Event System', 'ai-post-scheduler'),
+                'name'        => __('Event System', 'ai-post-scheduler'),
                 'description' => __('Enable event dispatching for better extensibility.', 'ai-post-scheduler'),
-                'default' => true,
+                'default'     => true,
             ),
             'performance_monitoring' => array(
-                'name' => __('Performance Monitoring', 'ai-post-scheduler'),
+                'name'        => __('Performance Monitoring', 'ai-post-scheduler'),
                 'description' => __('Track and log performance metrics.', 'ai-post-scheduler'),
-                'default' => false,
+                'default'     => false,
             ),
             'batch_generation' => array(
-                'name' => __('Batch Generation', 'ai-post-scheduler'),
+                'name'        => __('Batch Generation', 'ai-post-scheduler'),
                 'description' => __('Generate multiple posts in a single batch.', 'ai-post-scheduler'),
-                'default' => true,
+                'default'     => true,
             ),
         );
     }
