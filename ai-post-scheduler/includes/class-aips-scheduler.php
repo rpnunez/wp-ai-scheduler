@@ -70,12 +70,23 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
-        $this->template_repository = new AIPS_Template_Repository();
-        $this->history_repository = new AIPS_History_Repository();
-        $this->history_service = new AIPS_History_Service($this->history_repository);
+
+        // Use container to resolve registered bindings, with fallback to direct instantiation
+        $container = AIPS_Container::get_instance();
+        $this->repository = $container->has(AIPS_Schedule_Repository_Interface::class)
+            ? $container->make(AIPS_Schedule_Repository_Interface::class)
+            : new AIPS_Schedule_Repository();
+        $this->template_repository = $container->has(AIPS_Template_Repository::class)
+            ? $container->make(AIPS_Template_Repository::class)
+            : new AIPS_Template_Repository();
+        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class)
+            ? $container->make(AIPS_History_Repository_Interface::class)
+            : new AIPS_History_Repository();
+        $this->history_service = $container->has(AIPS_History_Service_Interface::class)
+            ? $container->make(AIPS_History_Service_Interface::class)
+            : new AIPS_History_Service($this->history_repository);
         $this->template_type_selector = new AIPS_Template_Type_Selector();
-        
+
         // Instantiate the processor with dependencies
         // We pass the generator if it's already set (which it isn't in __construct usually)
         // or let the processor instantiate its own.

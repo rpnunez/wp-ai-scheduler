@@ -56,10 +56,14 @@ class AIPS_Post_Review {
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
+		// Use container to resolve registered bindings, with fallback to direct instantiation
+		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Post_Review_Repository();
-		$this->history_service        = new AIPS_History_Service();
+		$this->history_service        = $container->has(AIPS_History_Service_Interface::class)
+			? $container->make(AIPS_History_Service_Interface::class)
+			: new AIPS_History_Service();
 		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
-		
+
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
 		add_action('wp_ajax_aips_publish_post', array($this, 'ajax_publish_post'));

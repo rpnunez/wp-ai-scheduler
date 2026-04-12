@@ -11,10 +11,14 @@ class AIPS_Seeder_Service {
     private $schedule_repository;
 
     public function __construct() {
+        // Use container to resolve registered bindings, with fallback to direct instantiation
+        $container = AIPS_Container::get_instance();
         $this->generator = new AIPS_Generator();
         $this->voices = new AIPS_Voices();
         $this->templates = new AIPS_Templates();
-        $this->schedule_repository = new AIPS_Schedule_Repository();
+        $this->schedule_repository = $container->has(AIPS_Schedule_Repository_Interface::class)
+            ? $container->make(AIPS_Schedule_Repository_Interface::class)
+            : new AIPS_Schedule_Repository();
     }
 
     /**

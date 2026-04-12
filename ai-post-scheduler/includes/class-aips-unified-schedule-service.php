@@ -45,9 +45,15 @@ class AIPS_Unified_Schedule_Service {
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
-		$this->schedule_repository = new AIPS_Schedule_Repository();
+		// Use container to resolve registered bindings, with fallback to direct instantiation
+		$container = AIPS_Container::get_instance();
+		$this->schedule_repository = $container->has(AIPS_Schedule_Repository_Interface::class)
+			? $container->make(AIPS_Schedule_Repository_Interface::class)
+			: new AIPS_Schedule_Repository();
 		$this->authors_repository  = new AIPS_Authors_Repository();
-		$this->history_repository  = new AIPS_History_Repository();
+		$this->history_repository  = $container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: new AIPS_History_Repository();
 	}
 
 	/**

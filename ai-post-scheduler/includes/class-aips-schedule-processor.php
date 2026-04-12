@@ -82,7 +82,7 @@ class AIPS_Schedule_Processor {
     ) {
         $container = AIPS_Container::get_instance();
         $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
-        $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
+        $this->template_repository = $template_repository ?: ($container->has(AIPS_Template_Repository::class) ? $container->make(AIPS_Template_Repository::class) : new AIPS_Template_Repository());
         $this->generator = $generator ?: new AIPS_Generator();
         $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service($this->history_repository));

@@ -33,9 +33,15 @@ class AIPS_Calendar_Controller {
 	 * Initialize the controller.
 	 */
 	public function __construct() {
-		$this->schedule_repo = new AIPS_Schedule_Repository();
+		// Use container to resolve registered bindings, with fallback to direct instantiation
+		$container = AIPS_Container::get_instance();
+		$this->schedule_repo = $container->has(AIPS_Schedule_Repository_Interface::class)
+			? $container->make(AIPS_Schedule_Repository_Interface::class)
+			: new AIPS_Schedule_Repository();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->template_repo = new AIPS_Template_Repository();
+		$this->template_repo = $container->has(AIPS_Template_Repository::class)
+			? $container->make(AIPS_Template_Repository::class)
+			: new AIPS_Template_Repository();
 		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
 	}
 	
