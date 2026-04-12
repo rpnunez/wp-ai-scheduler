@@ -21,6 +21,23 @@ if (!defined('ABSPATH')) {
 class AIPS_Embeddings_Cron {
 
 	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
+	/**
 	 * @var AIPS_Topic_Expansion_Service Topic expansion service
 	 */
 	private $expansion_service;

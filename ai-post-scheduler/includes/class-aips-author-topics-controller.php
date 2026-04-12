@@ -20,6 +20,23 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Topics_Controller {
 
 	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
+	/**
 	 * @var AIPS_Author_Topics_Repository Repository for topics
 	 */
 	private $repository;
