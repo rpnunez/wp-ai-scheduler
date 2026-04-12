@@ -92,18 +92,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_authors_page')
         );
 
-        // Author Topics page - register under plugin parent, then hide from submenu.
+        // Author Topics page - hidden from menu navigation, accessible via URL.
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
             'aips-author-topics',
             array($this, 'render_author_topics_page')
         );
-
-        // Keep this page URL-accessible without showing an extra submenu item.
-        remove_submenu_page('ai-post-scheduler', 'aips-author-topics');
 
         add_submenu_page(
             'ai-post-scheduler',
