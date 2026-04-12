@@ -80,6 +80,42 @@ class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 		$this->assert_singleton_contract( 'AIPS_Authors_Repository' );
 	}
 
+	public function test_scheduler_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Scheduler' );
+	}
+
+	public function test_author_topics_scheduler_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Author_Topics_Scheduler' );
+	}
+
+	public function test_author_post_generator_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Author_Post_Generator' );
+	}
+
+	public function test_embeddings_cron_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Embeddings_Cron' );
+	}
+
+	public function test_notifications_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Notifications' );
+	}
+
+	public function test_authors_controller_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Authors_Controller' );
+	}
+
+	public function test_author_topics_controller_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Author_Topics_Controller' );
+	}
+
+	public function test_post_review_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Post_Review' );
+	}
+
+	public function test_research_controller_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Research_Controller' );
+	}
+
 	/**
 	 * Verify that new ClassName() still produces an independent instance
 	 * (constructors are not private).

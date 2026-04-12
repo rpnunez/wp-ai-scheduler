@@ -22,7 +22,24 @@ if (!defined('ABSPATH')) {
  * dispatched through the standard cron handler contract.
  */
 class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_Authors_Repository Repository for authors
 	 */

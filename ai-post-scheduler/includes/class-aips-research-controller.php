@@ -19,7 +19,24 @@ if (!defined('ABSPATH')) {
  * Manages the complete research workflow from discovery to scheduling.
  */
 class AIPS_Research_Controller {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * @var AIPS_Research_Service Research service instance
      */
