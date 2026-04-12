@@ -156,9 +156,7 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
-        // Use the raw WP function here intentionally: we need to distinguish
-        // "option does not exist" (false) from any stored value including '0'.
-        $previously_installed = get_option('aips_db_version') !== false;
+        $previously_installed = AIPS_Config::get_instance()->has_option('aips_db_version');
         $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
@@ -263,7 +261,7 @@ final class AI_Post_Scheduler {
         $defaults['aips_db_version'] = AIPS_VERSION;
         
         foreach ($defaults as $key => $value) {
-            if (get_option($key) === false) {
+            if (!AIPS_Config::get_instance()->has_option($key)) {
                 add_option($key, $value);
             }
         }
