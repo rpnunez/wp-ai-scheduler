@@ -373,17 +373,24 @@ class Test_AIPS_Template_Data extends WP_UnitTestCase {
 
 	/**
 	 * from_row() coerces boolean flags from tinyint strings.
+	 *
+	 * Validates that wpdb tinyint string '0' maps to false, not true.
+	 * (Direct (bool) cast on a non-empty string would incorrectly produce true.)
 	 */
 	public function test_from_row_coerces_boolean_flags() {
 		$active    = AIPS_Template_Data::from_row( $this->make_row( array( 'is_active' => '1' ) ) );
 		$inactive  = AIPS_Template_Data::from_row( $this->make_row( array( 'is_active' => '0' ) ) );
 		$with_img  = AIPS_Template_Data::from_row( $this->make_row( array( 'generate_featured_image' => '1' ) ) );
 		$no_img    = AIPS_Template_Data::from_row( $this->make_row( array( 'generate_featured_image' => '0' ) ) );
+		$with_src  = AIPS_Template_Data::from_row( $this->make_row( array( 'include_sources' => '1' ) ) );
+		$no_src    = AIPS_Template_Data::from_row( $this->make_row( array( 'include_sources' => '0' ) ) );
 
 		$this->assertTrue( $active->is_active );
 		$this->assertFalse( $inactive->is_active );
 		$this->assertTrue( $with_img->generate_featured_image );
 		$this->assertFalse( $no_img->generate_featured_image );
+		$this->assertTrue( $with_src->include_sources );
+		$this->assertFalse( $no_src->include_sources );
 	}
 
 	/**

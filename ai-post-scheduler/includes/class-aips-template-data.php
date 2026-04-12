@@ -280,7 +280,7 @@ class AIPS_Template_Data {
 			isset( $row->voice_id ) && $row->voice_id !== null ? (int) $row->voice_id : null,
 			(int) ( $row->post_quantity ?? 1 ),
 			isset( $row->image_prompt ) && $row->image_prompt !== '' ? (string) $row->image_prompt : null,
-			(bool) ( $row->generate_featured_image ?? false ),
+			1 === (int) ( $row->generate_featured_image ?? 0 ),
 			(string) ( $row->featured_image_source ?? 'ai_prompt' ),
 			isset( $row->featured_image_unsplash_keywords ) && $row->featured_image_unsplash_keywords !== '' ? (string) $row->featured_image_unsplash_keywords : null,
 			isset( $row->featured_image_media_ids ) && $row->featured_image_media_ids !== '' ? (string) $row->featured_image_media_ids : null,
@@ -288,9 +288,9 @@ class AIPS_Template_Data {
 			isset( $row->post_category ) && $row->post_category !== null ? (int) $row->post_category : null,
 			isset( $row->post_tags ) && $row->post_tags !== '' ? (string) $row->post_tags : null,
 			isset( $row->post_author ) && $row->post_author !== null ? (int) $row->post_author : null,
-			(bool) ( $row->include_sources ?? false ),
+			1 === (int) ( $row->include_sources ?? 0 ),
 			isset( $row->source_group_ids ) && $row->source_group_ids !== '' ? (string) $row->source_group_ids : null,
-			(bool) ( $row->is_active ?? true ),
+			1 === (int) ( $row->is_active ?? 1 ),
 			(string) ( $row->created_at ?? '' ),
 			(string) ( $row->updated_at ?? '' )
 		);
