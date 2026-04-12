@@ -169,6 +169,12 @@ if (!defined('ABSPATH')) {
 							<div class="dashicons dashicons-saved aips-empty-state-icon" aria-hidden="true"></div>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Partial Generations', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('Posts with missing generated components will appear here so you can review and repair them.', 'ai-post-scheduler'); ?></p>
+							<div class="aips-empty-state-actions">
+								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-primary">
+									<span class="dashicons dashicons-calendar-alt"></span>
+									<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
+								</a>
+							</div>
 						</div>
 						<?php endif; ?>
 					<?php endif; ?>

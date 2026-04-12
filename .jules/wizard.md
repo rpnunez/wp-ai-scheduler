@@ -71,3 +71,7 @@
 ## 2026-04-09 - Standardize "Clear" Button Styling in Filters
 **Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
 **Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+
+## 2026-04-10 - Add Call-to-Actions in Empty States
+**Learning:** Found several admin template empty states (`tab-partial-generations.php`, `history.php`, `research.php`) missing their corresponding call-to-action buttons. Without `.aips-empty-state-actions` and actionable buttons, empty states are a dead end.
+**Action:** Added `.aips-empty-state-actions` wrappers and relevant primary buttons (e.g., links to 'Manage Schedules') to empty states that were previously lacking clear next steps, keeping consistency with the design system.

@@ -218,6 +218,12 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     <div class="dashicons dashicons-backup aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No History Yet', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('Generation history containers will appear here once you start creating AI-powered content.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-empty-state-actions">
+                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-primary">
+                            <span class="dashicons dashicons-calendar-alt"></span>
+                            <?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
