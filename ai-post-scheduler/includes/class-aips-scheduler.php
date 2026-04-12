@@ -12,7 +12,24 @@ if (!defined('ABSPATH')) {
  * cron handler contract alongside other generation handlers.
  */
 class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     private $schedule_table;
     private $templates_table;
     private $interval_calculator;
