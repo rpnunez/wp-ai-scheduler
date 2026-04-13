@@ -22,7 +22,8 @@ class AIPS_History {
      * @return void
      */
     public function __construct() {
-        $this->repository = new AIPS_History_Repository();
+        $container = AIPS_Container::get_instance();
+        $this->repository = $container->make(AIPS_History_Repository_Interface::class);
         
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
@@ -338,14 +339,15 @@ class AIPS_History {
             AIPS_Ajax_Response::error(__('History item not found or no template associated.', 'ai-post-scheduler'));
         }
         
-        $templates = new AIPS_Templates();
+        $container = AIPS_Container::get_instance();
+        $templates = $container->make(AIPS_Templates::class);
         $template = $templates->get($history_item->template_id);
         
         if (!$template) {
             AIPS_Ajax_Response::error(__('Template no longer exists.', 'ai-post-scheduler'));
         }
         
-        $generator = new AIPS_Generator();
+        $generator = $container->make(AIPS_Generator::class);
         $result = $generator->generate_post($template);
         
         if (is_wp_error($result) && !is_int($result)) {

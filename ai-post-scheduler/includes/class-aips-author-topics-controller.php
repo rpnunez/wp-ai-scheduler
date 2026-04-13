@@ -84,21 +84,29 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * Initialize the controller.
 	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin. Optional parameters are
+	 * retained for testing purposes only.
+	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 */
 	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null) {
 		$container = AIPS_Container::get_instance();
-		$this->repository             = new AIPS_Author_Topics_Repository();
-		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository    = new AIPS_Feedback_Repository();
-		$this->post_generator         = new AIPS_Author_Post_Generator();
-		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
-		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
+
+		// Repositories - use container for singleton instances
+		$this->repository             = $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository        = $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->feedback_repository    = $container->make(AIPS_Feedback_Repository::class);
+
+		// Services - use container for registered singletons
+		$this->post_generator         = $container->make(AIPS_Author_Post_Generator::class);
+		$this->penalty_service        = $container->make(AIPS_Topic_Penalty_Service::class);
+		$this->history_service        = $container->make(AIPS_History_Service_Interface::class);
+		$this->expansion_service      = $expansion_service ?: $container->make(AIPS_Topic_Expansion_Service::class);
+		$this->history_repository     = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
+		$this->bulk_generator_service = $bulk_generator_service ?: $container->make(AIPS_Bulk_Generator_Service::class);
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -751,7 +759,7 @@ class AIPS_Author_Topics_Controller {
 
 		if ($author_id === 0) {
 			// Schedule one job per author
-			$authors_repo = new AIPS_Authors_Repository();
+			$authors_repo = AIPS_Container::get_instance()->make(AIPS_Authors_Repository::class);
 			$authors = $authors_repo->get_all();
 
 			foreach ($authors as $author) {

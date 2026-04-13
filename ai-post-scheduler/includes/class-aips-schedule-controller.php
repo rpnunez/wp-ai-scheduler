@@ -19,9 +19,11 @@ class AIPS_Schedule_Controller {
 
     public function __construct($scheduler = null, ?AIPS_Schedule_Repository_Interface $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
         $container = AIPS_Container::get_instance();
-        $this->scheduler           = $scheduler ?: new AIPS_Scheduler();
-        $this->schedule_repository = $schedule_repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
-        $this->history_repository  = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+
+        // Use container for registered services when not injected
+        $this->scheduler = $scheduler ?: new AIPS_Scheduler();
+        $this->schedule_repository = $schedule_repository ?: $container->make(AIPS_Schedule_Repository_Interface::class);
+        $this->history_repository = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -254,7 +256,8 @@ class AIPS_Schedule_Controller {
         $post_ids = array();
         $errors = array();
 
-        $generator = new AIPS_Generator();
+        $container = AIPS_Container::get_instance();
+        $generator = $container->make(AIPS_Generator::class);
         $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 
         for ($i = 0; $i < $quantity; $i++) {

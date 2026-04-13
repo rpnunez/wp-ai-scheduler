@@ -84,11 +84,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $this->logger = $logger;
         } else {
             $container = AIPS_Container::get_instance();
-            if ($container->has(AIPS_Logger_Interface::class)) {
-                $this->logger = $container->make(AIPS_Logger_Interface::class);
-            } else {
-                $this->logger = AIPS_Logger::instance();
-            }
+            $this->logger = $container->make(AIPS_Logger_Interface::class);
         }
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);

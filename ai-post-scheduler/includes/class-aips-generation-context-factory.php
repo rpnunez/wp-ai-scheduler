@@ -50,11 +50,13 @@ class AIPS_Generation_Context_Factory {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->template_repository = new AIPS_Template_Repository();
-		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->voices_repository = new AIPS_Voices_Repository();
+		// Resolve required repositories through container bindings.
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
+		$this->template_repository = $container->make(AIPS_Template_Repository::class);
+		$this->author_topics_repository = $container->make(AIPS_Author_Topics_Repository::class);
+		$this->authors_repository = $container->make(AIPS_Authors_Repository::class);
+		$this->voices_repository = $container->make(AIPS_Voices_Repository::class);
 	}
 
 	/**

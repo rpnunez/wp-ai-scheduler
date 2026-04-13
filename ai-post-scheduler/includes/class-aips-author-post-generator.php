@@ -87,17 +87,23 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	
 	/**
 	 * Initialize the generator.
+	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->authors_repository = $container->make(AIPS_Authors_Repository::class);
+		$this->topics_repository  = $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository    = $container->make(AIPS_Author_Topic_Logs_Repository::class);
+
+		$this->generator           = $container->make(AIPS_Generator::class);
+		$this->logger              = $container->make(AIPS_Logger_Interface::class);
+		$this->history_service     = $container->make(AIPS_History_Service_Interface::class);
+		$this->expansion_service   = $container->make(AIPS_Topic_Expansion_Service::class);
+		$this->runner              = $container->make(AIPS_Generation_Execution_Runner::class);
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->history_service = new AIPS_History_Service();
-		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 	}
 	
 	/**

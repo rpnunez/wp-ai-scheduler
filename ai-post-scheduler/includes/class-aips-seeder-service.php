@@ -11,10 +11,12 @@ class AIPS_Seeder_Service {
     private $schedule_repository;
 
     public function __construct() {
-        $this->generator = new AIPS_Generator();
-        $this->voices = new AIPS_Voices();
-        $this->templates = new AIPS_Templates();
-        $this->schedule_repository = new AIPS_Schedule_Repository();
+        $container = AIPS_Container::get_instance();
+
+        $this->schedule_repository = $container->make(AIPS_Schedule_Repository_Interface::class);
+        $this->generator  = $container->make(AIPS_Generator::class);
+        $this->voices     = $container->make(AIPS_Voices::class);
+        $this->templates  = $container->make(AIPS_Templates::class);
     }
 
     /**

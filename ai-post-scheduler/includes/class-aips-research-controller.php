@@ -71,13 +71,15 @@ class AIPS_Research_Controller {
      * Initialize the controller.
      */
     public function __construct() {
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
-        $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
-        
+        $container = AIPS_Container::get_instance();
+
+        $this->logger                 = $container->make(AIPS_Logger_Interface::class);
+        $this->history_service        = $container->make(AIPS_History_Service_Interface::class);
+        $this->research_service       = $container->make(AIPS_Research_Service::class);
+        $this->repository             = $container->make(AIPS_Trending_Topics_Repository::class);
+        $this->content_auditor        = $container->make(AIPS_Content_Auditor::class);
+        $this->bulk_generator_service = $container->make(AIPS_Bulk_Generator_Service::class);
+
         $this->init_hooks();
     }
     
@@ -317,7 +319,7 @@ class AIPS_Research_Controller {
         );
         
         // Use schedule repository to create schedules
-        $schedule_repository = new AIPS_Schedule_Repository();
+        $schedule_repository = AIPS_Container::get_instance()->make(AIPS_Schedule_Repository_Interface::class);
         $interval_calculator = new AIPS_Interval_Calculator();
         
         $base_time = strtotime($start_date);
@@ -499,7 +501,8 @@ class AIPS_Research_Controller {
         }
 
         // Resolve the first active template.
-        $template_repository = new AIPS_Template_Repository();
+        $container           = AIPS_Container::get_instance();
+        $template_repository = $container->make(AIPS_Template_Repository::class);
         $templates           = $template_repository->get_all(true);
 
         if (empty($templates)) {
@@ -509,7 +512,7 @@ class AIPS_Research_Controller {
         $template = $templates[0];
 
         // Check AI Engine availability before running the batch.
-        $generator = new AIPS_Generator();
+        $generator = $container->make(AIPS_Generator::class);
 
         if (!$generator->is_available()) {
             $message = __('AI Engine is not available. Please install and configure Meow Apps AI Engine before generating posts.', 'ai-post-scheduler');

@@ -58,9 +58,9 @@ class AIPS_Topic_Expansion_Service {
 		$container = AIPS_Container::get_instance();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 	}
 	
 	/**

@@ -35,7 +35,8 @@ class AIPS_Planner {
             $count = 10;
         }
 
-        $generator = new AIPS_Generator();
+        $container = AIPS_Container::get_instance();
+        $generator = $container->make(AIPS_Generator::class);
         if (!$generator->is_available()) {
             AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
@@ -269,7 +270,8 @@ class AIPS_Planner {
      * @return AIPS_Generator
      */
     protected function make_generator() {
-        return new AIPS_Generator();
+        $container = AIPS_Container::get_instance();
+        return $container->make(AIPS_Generator::class);
     }
 
     /**

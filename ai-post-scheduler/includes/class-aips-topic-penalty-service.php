@@ -61,15 +61,19 @@ class AIPS_Topic_Penalty_Service {
 	/**
 	 * Initialize the penalty service.
 	 *
+	 * Dependencies are resolved from the container when available to ensure
+	 * consistent singleton usage across the plugin. Optional parameters are
+	 * retained for testing purposes only.
+	 *
 	 * @param AIPS_Author_Topics_Repository|null $topics_repository Topics repository.
 	 * @param AIPS_Authors_Repository|null       $authors_repository Authors repository.
 	 * @param AIPS_Logger_Interface|null         $logger Logger instance.
 	 */
 	public function __construct($topics_repository = null, $authors_repository = null, ?AIPS_Logger_Interface $logger = null) {
 		$container = AIPS_Container::get_instance();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->topics_repository = $topics_repository ?: $container->make(AIPS_Author_Topics_Repository::class);
+		$this->authors_repository = $authors_repository ?: $container->make(AIPS_Authors_Repository::class);
+		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 	
 	/**

@@ -132,8 +132,9 @@ class AIPS_Onboarding_Wizard {
 		$site_ctx = class_exists('AIPS_Site_Context') ? AIPS_Site_Context::get() : array();
 		$ai_engine_active = class_exists('Meow_MWAI_Core');
 
-		$authors_repo = new AIPS_Authors_Repository();
-		$templates_repo = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$authors_repo = AIPS_Authors_Repository::instance();
+		$templates_repo = $container->make(AIPS_Template_Repository::class);
 
 		$author = !empty($state['author_id']) ? $authors_repo->get_by_id((int) $state['author_id']) : null;
 		$template = !empty($state['template_id']) ? $templates_repo->get_by_id((int) $state['template_id']) : null;
@@ -333,7 +334,8 @@ class AIPS_Onboarding_Wizard {
 			'is_active' => 1,
 		);
 
-		$repo = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$repo = $container->make(AIPS_Template_Repository::class);
 		$template_id = $repo->create($data);
 
 		if (!$template_id) {
@@ -431,13 +433,14 @@ class AIPS_Onboarding_Wizard {
 			AIPS_Ajax_Response::invalid_request(__('Generate topics (or enter a topic) first.', 'ai-post-scheduler'));
 		}
 
-		$templates_repo = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$templates_repo = $container->make(AIPS_Template_Repository::class);
 		$template = $templates_repo->get_by_id($template_id);
 		if (!$template) {
 			AIPS_Ajax_Response::error(__('Template not found. Please restart the wizard.', 'ai-post-scheduler'), 'not_found', 404);
 		}
 
-		$generator = new AIPS_Generator();
+		$generator = $container->make(AIPS_Generator::class);
 		$post_id = $generator->generate_post($template, null, $topic);
 
 		if (is_wp_error($post_id)) {

@@ -80,14 +80,14 @@ class AIPS_Generator {
         $markdown_parser = null
     ) {
         $container = AIPS_Container::get_instance();
-        $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-        $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+        $this->logger             = $logger ?: $container->make(AIPS_Logger_Interface::class);
+        $this->ai_service         = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
-        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
+        $this->history_service    = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+        $this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();

@@ -349,8 +349,9 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_structures_page() {
-        $structure_repo = new AIPS_Article_Structure_Repository();
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $structure_repo = AIPS_Article_Structure_Repository::instance();
+        $container = AIPS_Container::get_instance();
+        $section_repo = $container->make(AIPS_Prompt_Section_Repository::class);
 
         $structures = $structure_repo->get_all(false);
         $sections = $section_repo->get_all(false);
@@ -366,7 +367,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_prompt_sections_page() {
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $container = AIPS_Container::get_instance();
+        $section_repo = $container->make(AIPS_Prompt_Section_Repository::class);
         $sections = $section_repo->get_all(false);
 
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';

@@ -31,6 +31,14 @@ class AIPS_Cache {
 	/**
 	 * Constructor.
 	 *
+	 * CONSTRUCTOR INJECTION PATTERN: Strategy Pattern
+	 *
+	 * This class implements the strategy pattern, accepting different cache
+	 * driver implementations (array, database, Redis, WP Object Cache) at
+	 * runtime. The driver selection is based on admin settings and cannot
+	 * be predetermined in the container. This allows flexible cache backend
+	 * switching without code changes.
+	 *
 	 * @param AIPS_Cache_Driver|null $driver Optional driver. When null, the
 	 *                                        factory resolves the driver from
 	 *                                        the current admin settings.

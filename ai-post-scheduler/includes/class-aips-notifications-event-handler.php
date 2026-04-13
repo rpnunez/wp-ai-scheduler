@@ -38,13 +38,20 @@ class AIPS_Notifications_Event_Handler {
 	/**
 	 * Constructor.
 	 *
+	 * CONSTRUCTOR INJECTION PATTERN: Parent-Child Relationship
+	 *
+	 * This class requires a parent AIPS_Notifications instance to function.
+	 * The relationship is established at runtime when the parent instantiates
+	 * its event handler, making container registration impractical. The parent
+	 * instance cannot be pre-configured in the container.
+	 *
 	 * @param AIPS_Notifications                          $notifications The dispatcher.
 	 * @param AIPS_Notifications_Repository_Interface|null $repository   DB notifications repository.
 	 */
 	public function __construct($notifications, ?AIPS_Notifications_Repository_Interface $repository = null) {
 		$container = AIPS_Container::get_instance();
 		$this->notifications = $notifications;
-		$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : AIPS_Notifications_Repository::instance());
+		$this->repository = $repository ?: $container->make(AIPS_Notifications_Repository_Interface::class);
 		$this->register_hooks();
 	}
 
@@ -305,7 +312,7 @@ class AIPS_Notifications_Event_Handler {
 		}
 
 		if (!is_object($schedule)) {
-			$schedule_repository = new AIPS_Schedule_Repository();
+			$schedule_repository = AIPS_Container::get_instance()->make(AIPS_Schedule_Repository_Interface::class);
 			$schedule = $schedule_repository->get_by_id($schedule_id);
 		}
 
@@ -318,7 +325,7 @@ class AIPS_Notifications_Event_Handler {
 		}
 
 		if ('' === $template_name && $template_id) {
-			$template_repository = new AIPS_Template_Repository();
+			$template_repository = AIPS_Container::get_instance()->make(AIPS_Template_Repository::class);
 			$template = $template_repository->get_by_id($template_id);
 			$template_name = ($template && !empty($template->name)) ? $template->name : '';
 		}

@@ -35,8 +35,9 @@ class AIPS_Session_To_JSON {
 	 * Initialize the converter
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $container->make(AIPS_History_Repository_Interface::class);
+		$this->logger = $container->make(AIPS_Logger_Interface::class);
 	}
 	
 	/**
@@ -429,7 +430,7 @@ class AIPS_Session_To_JSON {
 			return $result;
 		}
 
-		$logger = new AIPS_Logger();
+		$logger = AIPS_Container::get_instance()->make(AIPS_Logger_Interface::class);
 		foreach ($files as $file) {
 			if (!is_file($file)) {
 				continue;

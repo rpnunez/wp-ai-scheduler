@@ -34,6 +34,258 @@ if (!defined('WP_CORE_DIR')) {
     define('WP_CORE_DIR', getenv('WP_CORE_DIR') ? getenv('WP_CORE_DIR') : '/tmp/wordpress');
 }
 
+// Container binding helper used by both WP-test and limited-mode environments.
+// Defined unconditionally here so it is available regardless of which test path runs.
+// Called at the end of this file after all plugin classes have been loaded.
+if (!function_exists('aips_test_register_container_bindings')) {
+    function aips_test_register_container_bindings() {
+        if (!class_exists('AIPS_Container')) {
+            return;
+        }
+
+        // When the full plugin is loaded (WP test environment), delegate to the
+        // plugin's own register_container_bindings() method via reflection to avoid
+        // duplicating the canonical binding list here.
+        if (class_exists('AI_Post_Scheduler')) {
+            $plugin = AI_Post_Scheduler::get_instance();
+            $reflection = new ReflectionClass($plugin);
+            $method = $reflection->getMethod('register_container_bindings');
+            $method->setAccessible(true);
+            $method->invoke($plugin);
+            return;
+        }
+
+        // Limited mode (no WordPress environment): register manually so unit tests
+        // that depend on the container can still resolve their dependencies.
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        if (class_exists('AIPS_Config')) {
+            $container->singleton(AIPS_Config::class, function( $container ) {
+                return AIPS_Config::get_instance();
+            });
+        }
+
+        // Register AIPS_History_Repository
+        if (class_exists('AIPS_History_Repository')) {
+            $container->singleton(AIPS_History_Repository::class, function( $container ) {
+                return AIPS_History_Repository::instance();
+            });
+
+            if (interface_exists('AIPS_History_Repository_Interface')) {
+                $container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
+                    return $container->make(AIPS_History_Repository::class);
+                });
+            }
+        }
+
+        // Register AIPS_History_Service
+        if (class_exists('AIPS_History_Service')) {
+            $container->singleton(AIPS_History_Service::class, function( $container ) {
+                return AIPS_History_Service::instance();
+            });
+
+            if (interface_exists('AIPS_History_Service_Interface')) {
+                $container->singleton(AIPS_History_Service_Interface::class, function( $container ) {
+                    return $container->make(AIPS_History_Service::class);
+                });
+            }
+        }
+
+        // Register AIPS_Notifications_Repository
+        if (class_exists('AIPS_Notifications_Repository')) {
+            $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+                return AIPS_Notifications_Repository::instance();
+            });
+
+            if (interface_exists('AIPS_Notifications_Repository_Interface')) {
+                $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {
+                    return $container->make(AIPS_Notifications_Repository::class);
+                });
+            }
+        }
+
+        // Register AIPS_Logger
+        if (class_exists('AIPS_Logger')) {
+            $container->singleton(AIPS_Logger::class, function( $container ) {
+                return AIPS_Logger::instance();
+            });
+
+            if (interface_exists('AIPS_Logger_Interface')) {
+                $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
+                    return $container->make(AIPS_Logger::class);
+                });
+            }
+        }
+
+        // Register AIPS_AI_Service
+        if (class_exists('AIPS_AI_Service')) {
+            $container->singleton(AIPS_AI_Service::class, function( $container ) {
+                return AIPS_AI_Service::instance();
+            });
+
+            if (interface_exists('AIPS_AI_Service_Interface')) {
+                $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
+                    return $container->make(AIPS_AI_Service::class);
+                });
+            }
+        }
+
+        // Register AIPS_Schedule_Repository
+        if (class_exists('AIPS_Schedule_Repository')) {
+            $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
+                return AIPS_Schedule_Repository::instance();
+            });
+
+            if (interface_exists('AIPS_Schedule_Repository_Interface')) {
+                $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
+                    return $container->make(AIPS_Schedule_Repository::class);
+                });
+            }
+        }
+
+        // Register AIPS_Template_Repository
+        if (class_exists('AIPS_Template_Repository')) {
+            $container->singleton(AIPS_Template_Repository::class, function( $container ) {
+                return AIPS_Template_Repository::instance();
+            });
+        }
+
+        // Register AIPS_Notifications
+        if (class_exists('AIPS_Notifications')) {
+            $container->singleton(AIPS_Notifications::class, function( $container ) {
+                return AIPS_Notifications::instance();
+            });
+        }
+
+        // Register AIPS_Generator
+        if (class_exists('AIPS_Generator')) {
+            $container->singleton(AIPS_Generator::class, function( $container ) {
+                return new AIPS_Generator();
+            });
+        }
+
+        // Register AIPS_Voices_Repository
+        if (class_exists('AIPS_Voices_Repository')) {
+            $container->singleton(AIPS_Voices_Repository::class, function( $container ) {
+                return AIPS_Voices_Repository::instance();
+            });
+        }
+
+        // Register AIPS_Voices
+        if (class_exists('AIPS_Voices')) {
+            $container->singleton(AIPS_Voices::class, function( $container ) {
+                return new AIPS_Voices();
+            });
+        }
+
+        // Register AIPS_Prompt_Section_Repository
+        if (class_exists('AIPS_Prompt_Section_Repository')) {
+            $container->singleton(AIPS_Prompt_Section_Repository::class, function( $container ) {
+                return AIPS_Prompt_Section_Repository::instance();
+            });
+        }
+
+        // Register AIPS_Article_Structure_Repository
+        if (class_exists('AIPS_Article_Structure_Repository')) {
+            $container->singleton(AIPS_Article_Structure_Repository::class, function( $container ) {
+                return AIPS_Article_Structure_Repository::instance();
+            });
+        }
+
+        // Register AIPS_Authors_Repository
+        if (class_exists('AIPS_Authors_Repository')) {
+            $container->singleton(AIPS_Authors_Repository::class, function( $container ) {
+                return AIPS_Authors_Repository::instance();
+            });
+        }
+
+        // Register AIPS_Author_Topics_Repository
+        if (class_exists('AIPS_Author_Topics_Repository')) {
+            $container->singleton(AIPS_Author_Topics_Repository::class, function( $container ) {
+                return new AIPS_Author_Topics_Repository();
+            });
+        }
+
+        // Register AIPS_Author_Topic_Logs_Repository
+        if (class_exists('AIPS_Author_Topic_Logs_Repository')) {
+            $container->singleton(AIPS_Author_Topic_Logs_Repository::class, function( $container ) {
+                return new AIPS_Author_Topic_Logs_Repository();
+            });
+        }
+
+        // Register AIPS_Generation_Context_Factory
+        if (class_exists('AIPS_Generation_Context_Factory')) {
+            $container->singleton(AIPS_Generation_Context_Factory::class, function( $container ) {
+                return new AIPS_Generation_Context_Factory();
+            });
+        }
+
+        // Register AIPS_Feedback_Repository
+        if (class_exists('AIPS_Feedback_Repository')) {
+            $container->singleton(AIPS_Feedback_Repository::class, function( $container ) {
+                return new AIPS_Feedback_Repository();
+            });
+        }
+
+        // Register AIPS_Post_Review_Repository
+        if (class_exists('AIPS_Post_Review_Repository')) {
+            $container->singleton(AIPS_Post_Review_Repository::class, function( $container ) {
+                return new AIPS_Post_Review_Repository();
+            });
+        }
+
+        // Register AIPS_Research_Service
+        if (class_exists('AIPS_Research_Service')) {
+            $container->singleton(AIPS_Research_Service::class, function( $container ) {
+                return new AIPS_Research_Service();
+            });
+        }
+
+        // Register AIPS_Topic_Expansion_Service
+        if (class_exists('AIPS_Topic_Expansion_Service')) {
+            $container->singleton(AIPS_Topic_Expansion_Service::class, function( $container ) {
+                return new AIPS_Topic_Expansion_Service();
+            });
+        }
+
+        // Register AIPS_Author_Topics_Generator
+        if (class_exists('AIPS_Author_Topics_Generator')) {
+            $container->singleton(AIPS_Author_Topics_Generator::class, function( $container ) {
+                return new AIPS_Author_Topics_Generator();
+            });
+        }
+
+        // Register AIPS_Trending_Topics_Repository
+        if (class_exists('AIPS_Trending_Topics_Repository')) {
+            $container->singleton(AIPS_Trending_Topics_Repository::class, function( $container ) {
+                return new AIPS_Trending_Topics_Repository();
+            });
+        }
+
+        // Register AIPS_Author_Post_Generator
+        if (class_exists('AIPS_Author_Post_Generator')) {
+            $container->singleton(AIPS_Author_Post_Generator::class, function( $container ) {
+                return new AIPS_Author_Post_Generator();
+            });
+        }
+
+        // Register AIPS_Author_Topics_Scheduler
+        if (class_exists('AIPS_Author_Topics_Scheduler')) {
+            $container->singleton(AIPS_Author_Topics_Scheduler::class, function( $container ) {
+                return new AIPS_Author_Topics_Scheduler();
+            });
+        }
+
+        // Register AIPS_Generation_Execution_Runner
+        if (class_exists('AIPS_Generation_Execution_Runner')) {
+            $container->singleton(AIPS_Generation_Execution_Runner::class, function( $container ) {
+                return new AIPS_Generation_Execution_Runner();
+            });
+        }
+    }
+}
+
 // Check if WordPress test library exists
 if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     require_once WP_TESTS_DIR . '/includes/functions.php';
@@ -108,7 +360,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('DAY_IN_SECONDS')) {
         define('DAY_IN_SECONDS', 86400);
     }
-    
+
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
         function esc_html__($text, $domain = 'default') {
@@ -1522,3 +1774,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 }
+
+// Register container bindings now that all plugin classes are loaded.
+// The function is always defined above, so this always runs in both
+// the WordPress test environment and limited-mode environments.
+aips_test_register_container_bindings();

@@ -51,8 +51,8 @@ class AIPS_Generation_Execution_Runner {
 	 */
 	public function __construct(?AIPS_History_Service_Interface $history_service = null, ?AIPS_Logger_Interface $logger = null) {
 		$container = AIPS_Container::get_instance();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->logger = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 
 	/**

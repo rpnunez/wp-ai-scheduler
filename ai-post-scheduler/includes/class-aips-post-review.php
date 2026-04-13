@@ -56,10 +56,15 @@ class AIPS_Post_Review {
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
-		$this->repository             = new AIPS_Post_Review_Repository();
-		$this->history_service        = new AIPS_History_Service();
+		$container = AIPS_Container::get_instance();
+
+		// Use container for registered services
+		$this->history_service = $container->make(AIPS_History_Service_Interface::class);
+
+		// Repository and service classes (not in container)
+		$this->repository = new AIPS_Post_Review_Repository();
 		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
-		
+
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
 		add_action('wp_ajax_aips_publish_post', array($this, 'ajax_publish_post'));
@@ -415,7 +420,8 @@ class AIPS_Post_Review {
 		}
 		
 		// Get the template
-		$template_repository = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$template_repository = $container->make(AIPS_Template_Repository::class);
 		$template = $template_repository->get_by_id($history_item->template_id);
 		
 		if (!$template) {
@@ -439,7 +445,8 @@ class AIPS_Post_Review {
 		));
 		
 		// Trigger regeneration using the generator (same API as history retry)
-		$generator = new AIPS_Generator();
+		$container = AIPS_Container::get_instance();
+		$generator = $container->make(AIPS_Generator::class);
 		$result = $generator->generate_post($template);
 		
 		if (is_wp_error($result)) {
@@ -506,8 +513,9 @@ class AIPS_Post_Review {
 
 		$total_requested = count($items);
 		$history_service = $this->history_service;
-		$generator       = new AIPS_Generator();
-		$template_repo   = new AIPS_Template_Repository();
+		$container = AIPS_Container::get_instance();
+		$generator       = $container->make(AIPS_Generator::class);
+		$template_repo   = $container->make(AIPS_Template_Repository::class);
 
 		$result = $this->bulk_generator_service->run(
 			$items,

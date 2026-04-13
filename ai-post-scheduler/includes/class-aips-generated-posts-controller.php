@@ -54,10 +54,13 @@ class AIPS_Generated_Posts_Controller {
 	 * Initialize the controller
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->post_review_repository = new AIPS_Post_Review_Repository();
-		
+		$container = AIPS_Container::get_instance();
+
+		// Use container for registered services
+		$this->history_repository     = $container->make(AIPS_History_Repository_Interface::class);
+		$this->schedule_repository    = $container->make(AIPS_Schedule_Repository_Interface::class);
+		$this->post_review_repository = $container->make(AIPS_Post_Review_Repository::class);
+
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
 		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
@@ -169,12 +172,13 @@ class AIPS_Generated_Posts_Controller {
 		$partial_current_page = $partial_page; // For Partial Generations tab
 		
 		// Get templates for filter dropdown
-		$template_repository = new AIPS_Template_Repository();
-		$templates = $template_repository->get_all();
+		$container           = AIPS_Container::get_instance();
+		$template_repository = $container->make(AIPS_Template_Repository::class);
+		$templates           = $template_repository->get_all();
 
 		// Get authors for filter dropdown
-		$authors_repository = new AIPS_Authors_Repository();
-		$authors = $authors_repository->get_all();
+		$authors_repository = $container->make(AIPS_Authors_Repository::class);
+		$authors            = $authors_repository->get_all();
 		
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
@@ -368,7 +372,7 @@ class AIPS_Generated_Posts_Controller {
 		$config = AIPS_Config::get_instance();
 		$TEMPFILE_LOG_THRESHOLD = (int) $config->get_option('generated_posts_log_threshold_tmpfile', 200);
 		
-		$converter = new AIPS_Session_To_JSON();
+		$converter = AIPS_Container::get_instance()->make(AIPS_Session_To_JSON::class);
 		
 		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
 			$temp = $converter->generate_json_to_tempfile($history_id, true);
@@ -451,7 +455,7 @@ class AIPS_Generated_Posts_Controller {
 		}
 		
 		// Use the Session To JSON converter
-		$converter = new AIPS_Session_To_JSON();
+		$converter = AIPS_Container::get_instance()->make(AIPS_Session_To_JSON::class);
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
@@ -478,7 +482,7 @@ class AIPS_Generated_Posts_Controller {
 			$template_id = $history_item->template_id;
 			
 			if (!isset($this->template_cache[$template_id])) {
-				$template_repository = new AIPS_Template_Repository();
+				$template_repository = AIPS_Container::get_instance()->make(AIPS_Template_Repository::class);
 				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
 			}
 			
@@ -493,12 +497,12 @@ class AIPS_Generated_Posts_Controller {
 			$topic_id = $history_item->topic_id;
 			
 			if (!isset($this->author_cache[$author_id])) {
-				$authors_repository = new AIPS_Authors_Repository();
+				$authors_repository = AIPS_Container::get_instance()->make(AIPS_Authors_Repository::class);
 				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
 			}
 			
 			if (!isset($this->topic_cache[$topic_id])) {
-				$topics_repository = new AIPS_Author_Topics_Repository();
+				$topics_repository = AIPS_Container::get_instance()->make(AIPS_Author_Topics_Repository::class);
 				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
 			}
 			

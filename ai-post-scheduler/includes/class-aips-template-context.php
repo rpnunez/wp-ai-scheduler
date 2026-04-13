@@ -37,6 +37,13 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	/**
 	 * Constructor.
 	 *
+	 * CONSTRUCTOR INJECTION PATTERN: Runtime Configuration Object
+	 *
+	 * This class accepts runtime-specific data (template, voice, topic) that
+	 * cannot be pre-configured in the dependency injection container. Each
+	 * instance represents a unique generation context created during request
+	 * processing, making container registration inappropriate.
+	 *
 	 * @param object      $template Template object.
 	 * @param object|null $voice    Optional voice object.
 	 * @param string|null $topic    Optional topic string.

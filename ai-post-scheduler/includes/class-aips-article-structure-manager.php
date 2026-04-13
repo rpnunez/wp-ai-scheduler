@@ -34,8 +34,9 @@ class AIPS_Article_Structure_Manager {
 	 * Initialize the manager.
 	 */
 	public function __construct() {
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
-		$this->section_repository = new AIPS_Prompt_Section_Repository();
+		$container                  = AIPS_Container::get_instance();
+		$this->structure_repository = $container->make(AIPS_Article_Structure_Repository::class);
+		$this->section_repository   = $container->make(AIPS_Prompt_Section_Repository::class);
 	}
 	
 	/**

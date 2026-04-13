@@ -81,15 +81,17 @@ class AIPS_Schedule_Processor {
         $runner = null
     ) {
         $container = AIPS_Container::get_instance();
-        $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
-        $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
-        $this->generator = $generator ?: new AIPS_Generator();
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
-        $this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service($this->history_repository));
-        $this->interval_calculator = new AIPS_Interval_Calculator();
+
+        $this->repository          = $repository ?: $container->make(AIPS_Schedule_Repository_Interface::class);
+        $this->template_repository = $template_repository ?: $container->make(AIPS_Template_Repository::class);
+        $this->generator           = $generator ?: $container->make(AIPS_Generator::class);
+        $this->history_repository  = $container->make(AIPS_History_Repository_Interface::class);
+        $this->history_service     = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+        $this->logger              = $logger ?: $container->make(AIPS_Logger_Interface::class);
+
+        $this->interval_calculator    = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
-        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-        $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
+        $this->runner                 = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
     }
 
     /**

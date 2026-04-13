@@ -49,10 +49,14 @@ class AIPS_Taxonomy_Controller {
 	 */
 	public function __construct($repository = null, ?AIPS_History_Service_Interface $history_service = null, $prompt_builder = null, ?AIPS_AI_Service_Interface $ai_service = null) {
 		$container = AIPS_Container::get_instance();
-		$this->repository      = $repository ?: new AIPS_Taxonomy_Repository();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Taxonomy();
-		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+
+		// Use container for registered services when not injected
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->ai_service = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+
+		// Repository and builder classes (not in container)
+		$this->repository = $repository ?: new AIPS_Taxonomy_Repository();
+		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Taxonomy();
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_taxonomy_items', array($this, 'ajax_get_taxonomy_items'));
