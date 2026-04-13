@@ -348,10 +348,33 @@ class AIPS_Generator {
         }
 
         if (method_exists($this->template_processor, 'process_with_ai_variables')) {
-            return $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
+            $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
+        } else {
+            $processed_prompt = $this->template_processor->process($image_prompt, $topic_str);
         }
 
-        return $this->template_processor->process($image_prompt, $topic_str);
+        return $this->remove_unresolved_template_placeholders($processed_prompt);
+    }
+
+    /**
+     * Remove any unresolved template placeholders from a processed prompt.
+     *
+     * This is a defensive cleanup step for public featured image prompt
+     * processing so downstream preview and generation paths never receive raw
+     * {{Variable}} tokens when AI-variable resolution is partial.
+     *
+     * @param string $prompt Processed prompt text.
+     * @return string Prompt with unresolved placeholders removed.
+     */
+    private function remove_unresolved_template_placeholders($prompt) {
+        $prompt = (string) $prompt;
+        $prompt = preg_replace('/\{\{[^{}]+\}\}/', '', $prompt);
+
+        if (!is_string($prompt)) {
+            return '';
+        }
+
+        return trim(preg_replace('/\s+/', ' ', $prompt));
     }
 
     /**
