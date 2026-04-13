@@ -216,6 +216,13 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $saved_count, 'message' => "Created {$saved_count} planner entries (scheduled once).");
     }
 
+    /**
+     * Helper function to query the AI, strip markdown formatting, and safely decode the JSON response into an array.
+     *
+     * @param string $prompt The prompt asking the AI to return a JSON array of objects or strings.
+     * @return array|null The decoded JSON data as an associative array, or null if the API call failed or the result was not valid JSON array.
+     * @since 1.0.0
+     */
     private function generate_json($prompt) {
         $result = $this->generator->generate_content($prompt, array('temperature' => 0.7), 'seeder_json');
 

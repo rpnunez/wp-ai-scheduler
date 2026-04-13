@@ -1010,6 +1010,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @param int $post_id Post ID
      * @param string $component_type Component type (title, excerpt, content, featured_image)
      * @param int $limit Maximum number of revisions to retrieve (default: 20)
+     * @since 1.0.0
      * @return array Array of revision objects with id, timestamp, value, history_id
      */
     public function get_component_revisions($post_id, $component_type, $limit = 20) {

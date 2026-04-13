@@ -31,6 +31,7 @@ class AIPS_Dev_Tools {
     /**
      * Handle AJAX request to generate scaffold.
      *
+     * Expects 'json' in the POST request. Outputs JSON and terminates.
      * @return void
      */
     public function ajax_generate_scaffold() {

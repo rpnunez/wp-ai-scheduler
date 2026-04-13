@@ -154,6 +154,7 @@ class AIPS_History {
     /**
      * AJAX handler to return details for a single history item.
      *
+     * Expects 'id' in the POST request. Outputs JSON and terminates.
      * @return void
      */
     public function ajax_get_history_details() {
@@ -203,6 +204,7 @@ class AIPS_History {
      * summary data from the history record itself, so the modal can display
      * the complete picture of that generation run.
      *
+     * Expects 'id' in the POST request. Outputs JSON and terminates.
      * @return void
      */
     public function ajax_get_history_logs() {
