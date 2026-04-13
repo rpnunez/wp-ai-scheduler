@@ -22,21 +22,22 @@ if (!defined('ABSPATH')) {
 class AIPS_Session_To_JSON {
 	
 	/**
-	 * @var AIPS_History_Repository Repository for database operations
+	 * @var AIPS_History_Repository_Interface Repository for database operations
 	 */
 	private $history_repository;
 
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
 	/**
 	 * Initialize the converter
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->logger = new AIPS_Logger();
+	public function __construct(?AIPS_History_Repository_Interface $history_repository = null, ?AIPS_Logger_Interface $logger = null) {
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 	}
 	
 	/**

@@ -19,7 +19,7 @@ class AIPS_Generation_Logger {
     private $session;
     private $history_id;
 
-    public function __construct($logger, $history_repository, $session) {
+    public function __construct(AIPS_Logger_Interface $logger, AIPS_History_Repository_Interface $history_repository, $session) {
         $this->logger = $logger;
         $this->history_repository = $history_repository;
         $this->session = $session;

@@ -61,7 +61,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	private $generator;
 	
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 	
@@ -76,7 +76,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	private $expansion_service;
 	
 	/**
-	 * @var AIPS_History_Service Service for history logging
+	 * @var AIPS_History_Service_Interface Service for history logging
 	 */
 	private $history_service;
 
@@ -88,15 +88,16 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	/**
 	 * Initialize the generator.
 	 */
-	public function __construct() {
+	public function __construct(?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$this->authors_repository = new AIPS_Authors_Repository();
 		$this->topics_repository = new AIPS_Author_Topics_Repository();
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 	}
 	

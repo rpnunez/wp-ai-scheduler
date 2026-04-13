@@ -27,7 +27,7 @@ class AIPS_Unified_Schedule_Service {
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
 
 	/**
-	 * @var AIPS_Schedule_Repository
+	 * @var AIPS_Schedule_Repository_Interface
 	 */
 	private $schedule_repository;
 
@@ -37,17 +37,18 @@ class AIPS_Unified_Schedule_Service {
 	private $authors_repository;
 
 	/**
-	 * @var AIPS_History_Repository
+	 * @var AIPS_History_Repository_Interface
 	 */
 	private $history_repository;
 
 	/**
 	 * Initialise the service and its dependencies.
 	 */
-	public function __construct() {
-		$this->schedule_repository = new AIPS_Schedule_Repository();
+	public function __construct(?AIPS_Schedule_Repository_Interface $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+		$container = AIPS_Container::get_instance();
+		$this->schedule_repository = $schedule_repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
 		$this->authors_repository  = new AIPS_Authors_Repository();
-		$this->history_repository  = new AIPS_History_Repository();
+		$this->history_repository  = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 	}
 
 	/**

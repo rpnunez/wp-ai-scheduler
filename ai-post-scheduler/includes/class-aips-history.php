@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 class AIPS_History {
     
     /**
-     * @var AIPS_History_Repository Repository for database operations
+     * @var AIPS_History_Repository_Interface Repository for database operations
      */
     private $repository;
 
@@ -21,8 +21,9 @@ class AIPS_History {
      *
      * @return void
      */
-    public function __construct() {
-        $this->repository = new AIPS_History_Repository();
+    public function __construct(?AIPS_History_Repository_Interface $repository = null) {
+        $container = AIPS_Container::get_instance();
+        $this->repository = $repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
         
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
