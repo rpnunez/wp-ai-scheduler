@@ -338,6 +338,11 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     if (!function_exists('wp_using_ext_object_cache')) {
         function wp_using_ext_object_cache() {
+            // Allow individual tests to override the return value via the
+            // _aips_test_ext_object_cache global (set to true/false).
+            if (isset($GLOBALS['_aips_test_ext_object_cache'])) {
+                return (bool) $GLOBALS['_aips_test_ext_object_cache'];
+            }
             return false;
         }
     }
@@ -1322,6 +1327,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-db-manager.php',
         'class-aips-trending-topics-repository.php',
         'class-aips-history-repository.php',
+        'interface-aips-template-repository-interface.php',
         'class-aips-schedule-repository.php',
         'class-aips-template-repository.php',
         'class-aips-article-structure-repository.php',
@@ -1416,6 +1422,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-cache-wp-object-cache-driver.php',
         'class-aips-cache.php',
         'class-aips-cache-factory.php',
+        // Persistent caching decorators (Phase D.3)
+        'class-aips-caching-template-repository.php',
+        'class-aips-caching-schedule-repository.php',
         // Typed DTOs / Value Objects (Step 16)
         'class-aips-generation-result.php',
         'class-aips-schedule-entry.php',
