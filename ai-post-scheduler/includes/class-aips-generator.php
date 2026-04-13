@@ -233,8 +233,20 @@ class AIPS_Generator {
             }
         }
 
-        // Build context from content prompt and generated content.
-        // Use smart truncation to preserve context from both beginning and end of content.
+        // Avoid building the content context when the title prompt does not
+        // contain any AI variables to resolve.
+        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
+            return array();
+        }
+
+        $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        if (empty($ai_variables)) {
+            return array();
+        }
+
+        // Build context from content prompt and generated content only when AI
+        // variables are present. Use smart truncation to preserve context from
+        // both beginning and end of content.
         $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
         $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
 
