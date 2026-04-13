@@ -71,3 +71,7 @@
 ## 2026-04-09 - Standardize "Clear" Button Styling in Filters
 **Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
 **Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+
+## $(date +%Y-%m-%d) - Add Empty State to Topic Search
+Learning: List-based search interfaces often miss empty states when filtering happens entirely client-side, leading to a confusing blank screen.
+Action: Always verify that client-side list filtering logic counts visible rows and explicitly toggles a dedicated empty state container when results yield zero matches.

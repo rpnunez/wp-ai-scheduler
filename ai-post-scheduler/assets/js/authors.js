@@ -1005,6 +1005,7 @@
 			var term = $('#aips-topic-search').val().toLowerCase().trim();
 			var $rows = $('.aips-topics-table tbody tr');
 			var $clearBtn = $('#aips-topic-search-clear');
+			var visibleCount = 0;
 
 			if (term.length > 0) {
 				$clearBtn.show();
@@ -1017,10 +1018,20 @@
 				var title = $row.find('.topic-title').text().toLowerCase();
 				if (title.indexOf(term) > -1) {
 					$row.show();
+					visibleCount++;
 				} else {
 					$row.hide();
 				}
 			});
+
+			// Show empty state if no rows match the search query
+			if (term.length > 0 && visibleCount === 0) {
+				$('#aips-topics-content').hide();
+				$('#aips-topic-search-no-results').show();
+			} else {
+				$('#aips-topic-search-no-results').hide();
+				$('#aips-topics-content').show();
+			}
 		},
 
 		/**
@@ -1030,6 +1041,8 @@
 		 */
 		clearTopicSearch: function(e) {
 			e.preventDefault();
+			$('#aips-topic-search-no-results').hide();
+			$('#aips-topics-content').show();
 			$('#aips-topic-search').val('').trigger('keyup');
 		},
 
