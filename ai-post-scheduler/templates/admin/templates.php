@@ -679,19 +679,79 @@ if (!defined('ABSPATH')) {
     </div>
 
     <div id="aips-post-success-modal" class="aips-modal" style="display: none;">
-        <div class="aips-modal-content">
+        <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
-                <h2><?php esc_html_e('Post Successfully Generated', 'ai-post-scheduler'); ?></h2>
+                <h2
+                    id="aips-post-success-modal-title"
+                    data-singular-title="<?php echo esc_attr__('Post Successfully Generated', 'ai-post-scheduler'); ?>"
+                    data-plural-title="<?php echo esc_attr__('Posts Successfully Generated', 'ai-post-scheduler'); ?>"
+                ><?php esc_html_e('Post Successfully Generated', 'ai-post-scheduler'); ?></h2>
                 <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
-                <div style="text-align: center; padding: 20px;">
-                    <span class="dashicons dashicons-yes-alt" style="font-size: 48px; color: #46b450; width: 48px; height: 48px;"></span>
-                    <p style="font-size: 16px; margin-top: 20px;" id="aips-success-message"><?php esc_html_e('Your post has been successfully generated!', 'ai-post-scheduler'); ?></p>
-                    <div id="aips-post-link-container" style="margin-top: 20px;">
-                        <strong><?php esc_html_e('Link to Post:', 'ai-post-scheduler'); ?></strong><br>
-                        <a href="#" id="aips-post-link" target="_blank" class="button button-primary" style="margin-top: 10px;"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
-                    </div>
+                <div class="aips-post-success-summary">
+                    <span class="dashicons dashicons-yes-alt aips-post-success-icon"></span>
+                    <p class="aips-post-success-message" id="aips-success-message"><?php esc_html_e('1 post has been generated.', 'ai-post-scheduler'); ?></p>
+                    <p id="aips-success-note" class="description aips-post-success-note" style="display: none;"></p>
+                </div>
+                <div id="aips-post-results-container" class="aips-post-results-container"></div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="aips-tmpl-generated-posts-table">
+        <table class="aips-table aips-generated-posts-modal-table">
+            <thead>
+                <tr>
+                    <th class="column-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+                    <th class="column-excerpt"><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></th>
+                    <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                </tr>
+            </thead>
+            <tbody>{{rows}}</tbody>
+        </table>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-generated-post-row">
+        <tr class="aips-generated-post-result-row">
+            <td class="column-title"><div class="cell-primary"><strong>{{title}}</strong></div></td>
+            <td class="column-excerpt">{{excerpt}}</td>
+            <td class="column-actions">
+                <div class="cell-actions">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{edit_url}}" target="_blank" rel="noopener noreferrer">
+                        <?php esc_html_e('Edit Post', 'ai-post-scheduler'); ?>
+                    </a>
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{view_url}}" target="_blank" rel="noopener noreferrer">
+                        <?php esc_html_e('View Post', 'ai-post-scheduler'); ?>
+                    </a>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-preview-post" data-post-id="{{post_id}}">
+                        <?php esc_html_e('Quick Preview', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        <tr class="aips-generated-post-result-snippet-row">
+            <td colspan="3">
+                <div class="cell-meta"><strong><?php esc_html_e('Content Snippet', 'ai-post-scheduler'); ?></strong></div>
+                <div>{{content_snippet}}</div>
+            </td>
+        </tr>
+    </script>
+
+    <div id="aips-post-quick-preview-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('Post Quick Preview', 'ai-post-scheduler'); ?></h2>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div class="aips-preview-content">
+                    <h3 id="aips-post-preview-title"></h3>
+                    <p id="aips-post-preview-excerpt" class="description"></p>
+                    <div id="aips-post-preview-content" class="aips-post-preview-content-body"></div>
                 </div>
             </div>
             <div class="aips-modal-footer">
