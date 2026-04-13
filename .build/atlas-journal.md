@@ -1372,3 +1372,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+
+## 2026-04-13 - Extract System Diagnostics Service
+**Context:** The `AIPS_System_Status` class handles UI rendering but also gathers underlying system diagnostic data.
+**Decision:** Applied Separation of Concerns by extracting system diagnostics gathering logic into a new `AIPS_System_Diagnostics_Service` class.
+**Consequence:** `AIPS_System_Status` now delegates to `AIPS_System_Diagnostics_Service` to retrieve data, making it focused purely on rendering.
+**Tests:** Added `test-aips-system-diagnostics-service.php` and updated autoloader tests.

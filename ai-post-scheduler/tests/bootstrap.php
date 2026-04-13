@@ -1143,6 +1143,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return addcslashes($text, '_%\\');
             }
 
+            public function db_version() {
+                return '10.5.15-MariaDB';
+            }
+
             public function prepare($query, ...$args) {
                 // Simple mock prepare - just return the query with args
                 // In real implementation, this would properly escape and format
@@ -1382,6 +1386,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-admin-menu-helper.php',
         'class-aips-calendar-controller.php',
         'class-aips-system-status.php',
+        'class-aips-system-diagnostics-service.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
         'class-aips-post-review-repository.php',
@@ -1520,5 +1525,39 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
             return false;
         }
+    }
+}
+
+if (!function_exists('wp_is_writable')) {
+    function wp_is_writable($path) {
+        return is_writable($path);
+    }
+}
+
+if (!function_exists('wp_next_scheduled')) {
+    function wp_next_scheduled($hook) {
+        return time();
+    }
+}
+if (!function_exists('get_option')) {
+    function get_option($option) {
+        return '';
+    }
+}
+
+if (!function_exists('_get_cron_array')) {
+    function _get_cron_array() {
+        return array();
+    }
+}
+
+if (!function_exists('size_format')) {
+    function size_format($bytes, $decimals = 0) {
+        return $bytes . ' B';
+    }
+}
+if (!function_exists('wp_upload_dir')) {
+    function wp_upload_dir() {
+        return array('basedir' => sys_get_temp_dir() . '/wp-uploads');
     }
 }
