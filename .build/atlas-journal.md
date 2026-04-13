@@ -1372,3 +1372,19 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+
+## 2024-04-13 - Detangle God Objects (CSS and PHP)
+
+**Context:** The project has "God Files/Objects" causing code smells and violating SRP/Separation of Concerns. In particular, `admin.css` had grown over 3,500 lines and `class-aips-generator.php` mixed text generation orchestration with the responsibility of AI variable parsing and resolution.
+
+**Decision:**
+1. Extracted UI components (Badges, Buttons, Cards, Forms, Modern Component Styles) from `admin.css` into `admin-components.css` and updated `class-aips-admin-assets.php` to enqueue the new styles to ensure UI styling is separated properly.
+2. Extracted `resolve_ai_variables` from `AIPS_Generator` into a new dedicated class `AIPS_AI_Variables_Resolver` (`includes/class-aips-ai-variables-resolver.php`). The new class handles extracting, formatting prompts, and parsing responses specifically for AI variables, keeping `AIPS_Generator` focused solely on orchestrating content generation. The `AIPS_Generator` instantiates the new class in its constructor to maintain strict backward compatibility.
+
+**Consequence:**
+- CSS is now more modular, reducing the size of `admin.css` and making component styles easier to locate and maintain.
+- `AIPS_Generator` is leaner and more aligned with the Single Responsibility Principle. AI variable resolution logic can be independently tested and modified without risking regressions in core post generation.
+- Full backward compatibility was maintained by injecting dependencies internally without changing public APIs.
+
+**Tests:**
+Added `AIPS_AI_Variables_Resolver` to `tests/bootstrap.php` and `tests/test-autoloader.php`. Ran full PHPUnit suite to confirm the extraction did not break generation tests. Run UI playwright verification for UI regressions.

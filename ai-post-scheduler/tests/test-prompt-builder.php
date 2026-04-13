@@ -563,7 +563,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_generator_substitutes_ai_variables_in_title_prompt() {
 		// Stub AI service that captures every prompt sent to generate_text().
 		$captured_prompts = array();
-		$stub_ai_service  = new class( $captured_prompts ) {
+		$stub_ai_service  = new class( $captured_prompts ) implements AIPS_AI_Service_Interface { public function generate_json($p, $o=[]) {return [];} public function generate_image($p, $o=[]) {return "";} public function get_call_log() {return [];}
 			private $captured_prompts;
 
 			public function __construct( &$captured_prompts ) {
@@ -584,9 +584,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$template_processor = new AIPS_Template_Processor();
 
 		$generator = new AIPS_Generator(
-			null,               // logger  – use default
-			$stub_ai_service,   // ai_service
-			$template_processor // template_processor
+			null,
+			$stub_ai_service,
+			$template_processor
 		);
 
 		// Template whose title prompt contains an AI variable placeholder.
