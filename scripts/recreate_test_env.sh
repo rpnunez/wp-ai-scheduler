@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /c/Projects/NunezScheduler/wp-ai-scheduler
+# Prompt for required paths
+read -r -p "Path to repo root (e.g. /c/Projects/MyProject/wp-ai-scheduler): " REPO_DIR
+read -r -p "Path where 'wordpress-tests-lib' folder should be created (e.g. /c/Projects/MyProject): " WP_TESTS_PARENT_DIR
+read -r -p "Path to full WordPress installation (e.g. /c/Projects/MyProject/wordpress): " WP_CORE_DIR_INPUT
 
-export WP_TESTS_DIR='C:/Projects/NunezScheduler/wordpress-tests-lib'
-export WP_CORE_DIR='C:/Projects/NunezScheduler/wordpress-6.9/wordpress'
+[[ -d "$REPO_DIR" ]] || { echo "Repo directory not found: $REPO_DIR"; exit 1; }
+[[ -d "$WP_TESTS_PARENT_DIR" ]] || { echo "WordPress tests parent directory not found: $WP_TESTS_PARENT_DIR"; exit 1; }
+[[ -d "$WP_CORE_DIR_INPUT" ]] || { echo "WordPress core directory not found: $WP_CORE_DIR_INPUT"; exit 1; }
+
+cd "$REPO_DIR"
+
+export WP_TESTS_DIR="${WP_TESTS_PARENT_DIR}/wordpress-tests-lib"
+export WP_CORE_DIR="$WP_CORE_DIR_INPUT"
 
 DB_NAME='wp_ns_tests_schedule'
 DB_USER='root'
@@ -31,7 +40,7 @@ fi
 mysqladmin "${MYSQL_AUTH[@]}" drop "$DB_NAME" --force || true
 mysqladmin "${MYSQL_AUTH[@]}" create "$DB_NAME"
 
-rm -rf /c/Projects/NunezScheduler/wordpress-tests-lib
+rm -rf "$WP_TESTS_DIR"
 
 cd scripts
 ./install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" latest
