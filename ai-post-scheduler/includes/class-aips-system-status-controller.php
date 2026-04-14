@@ -37,7 +37,7 @@ class AIPS_System_Status_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$page     = max(1, (int) (isset($_POST['page']) ? $_POST['page'] : 1));
+		$page     = max(1, isset($_POST['page']) ? absint(wp_unslash($_POST['page'])) : 1);
 		$per_page = 10;
 		$offset   = ($page - 1) * $per_page;
 
