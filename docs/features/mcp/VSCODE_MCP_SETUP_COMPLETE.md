@@ -306,9 +306,10 @@ Comprehensive test coverage:
 
 Run tests:
 ```bash
+cd ai-post-scheduler
 composer test
 # or
-vendor/bin/phpunit ai-post-scheduler/tests/test-mcp-bridge.php
+vendor/bin/phpunit tests/test-mcp-bridge.php
 ```
 
 ## Troubleshooting

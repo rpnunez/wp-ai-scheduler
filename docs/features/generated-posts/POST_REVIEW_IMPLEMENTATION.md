@@ -138,7 +138,8 @@ do_action('aips_post_review_regenerated', $history_id);
 ## Testing Instructions
 ```bash
 # Run unit tests
-vendor/bin/phpunit ai-post-scheduler/tests/test-post-review-repository.php
+cd ai-post-scheduler
+vendor/bin/phpunit tests/test-post-review-repository.php
 
 # Run integration test
 php ai-post-scheduler/tests/integration-test-post-review.php

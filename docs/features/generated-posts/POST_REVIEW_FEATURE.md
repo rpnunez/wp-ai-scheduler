@@ -222,7 +222,8 @@ Tests are located in:
 
 Run tests with:
 ```bash
-vendor/bin/phpunit ai-post-scheduler/tests/test-post-review-repository.php
+cd ai-post-scheduler
+vendor/bin/phpunit tests/test-post-review-repository.php
 php ai-post-scheduler/tests/integration-test-post-review.php
 ```
 
