@@ -78,6 +78,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
 							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
 							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
+							<th class="column-fetch-status"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></th>
 							<th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
 							<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 						</tr>
@@ -93,12 +94,19 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 									$group_names[] = $source_group_name_map[$tid];
 								}
 							}
+							$fetch_interval   = isset($source->fetch_interval)   ? $source->fetch_interval   : '';
+							$last_fetched_at  = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
+							$next_fetch_at    = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
+							$fetch_data       = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
+							$fetch_status_val = $fetch_data ? $fetch_data->fetch_status : '';
+							$word_count_val   = $fetch_data ? (int) $fetch_data->word_count : 0;
 						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
 							data-url="<?php echo esc_attr($source->url); ?>"
 							data-label="<?php echo esc_attr($source->label); ?>"
 							data-description="<?php echo esc_attr($source->description); ?>"
 							data-active="<?php echo esc_attr($source->is_active); ?>"
+							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
 							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
 							<td class="column-label cell-primary">
 								<?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?>
@@ -115,6 +123,39 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 									<?php endforeach; ?>
 								<?php else: ?>
 									<span class="cell-meta">—</span>
+								<?php endif; ?>
+							</td>
+							<td class="column-fetch-status">
+								<?php if ($fetch_status_val === 'success'): ?>
+									<span class="aips-badge aips-badge-success" title="<?php echo esc_attr($last_fetched_at); ?>">
+										<span class="dashicons dashicons-yes-alt"></span>
+										<?php
+										printf(
+											/* translators: %d = number of characters extracted */
+											esc_html__('%d chars', 'ai-post-scheduler'),
+											$word_count_val
+										);
+										?>
+									</span>
+								<?php elseif ($fetch_status_val === 'failed'): ?>
+									<span class="aips-badge aips-badge-warning">
+										<span class="dashicons dashicons-warning"></span>
+										<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
+									</span>
+								<?php elseif ($fetch_status_val === 'pending'): ?>
+									<span class="aips-badge aips-badge-neutral">
+										<span class="dashicons dashicons-clock"></span>
+										<?php esc_html_e('Pending', 'ai-post-scheduler'); ?>
+									</span>
+								<?php else: ?>
+									<span class="cell-meta">
+										<?php echo $fetch_interval ? esc_html__('Scheduled', 'ai-post-scheduler') : '—'; ?>
+									</span>
+								<?php endif; ?>
+								<?php if ($fetch_interval): ?>
+									<div class="cell-meta" style="font-size:11px; margin-top:2px;">
+										<?php echo esc_html($fetch_interval); ?>
+									</div>
 								<?php endif; ?>
 							</td>
 							<td class="column-status">
@@ -137,6 +178,12 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 										title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
 										<span class="dashicons dashicons-edit"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+									</button>
+									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now"
+										data-id="<?php echo esc_attr($source->id); ?>"
+										title="<?php esc_attr_e('Fetch content now', 'ai-post-scheduler'); ?>">
+										<span class="dashicons dashicons-download"></span>
+										<span class="screen-reader-text"><?php esc_html_e('Fetch Now', 'ai-post-scheduler'); ?></span>
 									</button>
 									<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
@@ -234,6 +281,22 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 					<label for="aips-source-description"><?php esc_html_e('Notes', 'ai-post-scheduler'); ?></label>
 					<textarea id="aips-source-description" name="description" rows="3" class="large-text"
 						placeholder="<?php esc_attr_e('Optional notes about why this source is trusted.', 'ai-post-scheduler'); ?>"></textarea>
+				</div>
+
+				<!-- Fetch Interval -->
+				<?php
+				$interval_calc      = new AIPS_Interval_Calculator();
+				$interval_displays  = $interval_calc->get_all_interval_displays();
+				?>
+				<div class="aips-form-row">
+					<label for="aips-source-fetch-interval"><?php esc_html_e('Auto-Fetch Frequency', 'ai-post-scheduler'); ?></label>
+					<select id="aips-source-fetch-interval" name="fetch_interval" class="aips-form-select">
+						<option value=""><?php esc_html_e('— No automatic fetching —', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($interval_displays as $key => $label): ?>
+							<option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php esc_html_e('How often to automatically fetch and cache this source\'s content. Leave blank to disable auto-fetching (you can still use "Fetch Now" manually).', 'ai-post-scheduler'); ?></p>
 				</div>
 
 				<!-- Source Groups -->

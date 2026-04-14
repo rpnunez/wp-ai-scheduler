@@ -21,6 +21,7 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_sources_data',
         'aips_taxonomy',
         'aips_cache',
     );
@@ -71,6 +72,7 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
         $table_taxonomy             = $tables['aips_taxonomy'];
         $table_cache                = $tables['aips_cache'];
 
@@ -354,10 +356,15 @@ class AIPS_DB_Manager {
             label varchar(255) DEFAULT NULL,
             description text DEFAULT NULL,
             is_active tinyint(1) NOT NULL DEFAULT 1,
+            fetch_interval varchar(50) DEFAULT NULL,
+            last_fetched_at datetime DEFAULT NULL,
+            next_fetch_at datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY is_active (is_active),
+            KEY fetch_interval (fetch_interval),
+            KEY next_fetch_at (next_fetch_at),
             KEY created_at (created_at)
         ) $charset_collate;";
 
@@ -369,6 +376,27 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_term (source_id, term_id),
             KEY source_id (source_id),
             KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_sources_data (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) NOT NULL,
+            url varchar(2083) NOT NULL DEFAULT '',
+            page_title varchar(500) DEFAULT NULL,
+            meta_description text DEFAULT NULL,
+            extracted_text longtext DEFAULT NULL,
+            raw_html longtext DEFAULT NULL,
+            word_count int NOT NULL DEFAULT 0,
+            fetch_status varchar(20) NOT NULL DEFAULT 'pending',
+            http_status int DEFAULT NULL,
+            error_message text DEFAULT NULL,
+            fetched_at datetime DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_id (source_id),
+            KEY fetch_status (fetch_status),
+            KEY fetched_at (fetched_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_taxonomy (

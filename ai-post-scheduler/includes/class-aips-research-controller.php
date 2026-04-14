@@ -95,6 +95,7 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_get_trending_topic_posts', array($this, 'ajax_get_trending_topic_posts'));
         add_action('wp_ajax_aips_perform_gap_analysis', array($this, 'ajax_perform_gap_analysis'));
         add_action('wp_ajax_aips_generate_topics_from_gap', array($this, 'ajax_generate_topics_from_gap'));
+        add_action('wp_ajax_aips_research_from_sources', array($this, 'ajax_research_from_sources'));
 
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
@@ -795,6 +796,59 @@ class AIPS_Research_Controller {
         AIPS_Ajax_Response::success(array(
             'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),
             'count' => count($topics)
+        ));
+    }
+
+    /**
+     * AJAX handler: Research topics using source content as context.
+     *
+     * Expected POST params: term_ids[], niche, count, keywords.
+     *
+     * @return void Sends JSON response.
+     */
+    public function ajax_research_from_sources() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $term_ids = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
+            ? array_map('absint', $_POST['term_ids'])
+            : array();
+        $niche    = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
+        $count    = isset($_POST['count']) ? absint($_POST['count']) : 10;
+        $keywords = isset($_POST['keywords'])
+            ? AIPS_Utilities::sanitize_string_array((array) wp_unslash($_POST['keywords']))
+            : array();
+
+        if (empty($term_ids)) {
+            AIPS_Ajax_Response::error(__('At least one source group is required.', 'ai-post-scheduler'));
+        }
+
+        if (empty($niche)) {
+            AIPS_Ajax_Response::error(__('Niche is required.', 'ai-post-scheduler'));
+        }
+
+        $topics = $this->research_service->research_from_sources($term_ids, $niche, $count, $keywords);
+
+        if (is_wp_error($topics)) {
+            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+        }
+
+        $saved_count = $this->repository->save_research_batch($topics, $niche);
+
+        if ($saved_count === false) {
+            AIPS_Ajax_Response::error(__('Failed to save research results.', 'ai-post-scheduler'));
+        }
+
+        $top_topics = $this->research_service->get_top_topics($topics, 5);
+
+        AIPS_Ajax_Response::success(array(
+            'topics'      => $topics,
+            'top_topics'  => $top_topics,
+            'saved_count' => $saved_count,
+            'niche'       => $niche,
         ));
     }
 }

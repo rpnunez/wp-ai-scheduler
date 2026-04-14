@@ -260,23 +260,29 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
-	 * Topic context does not support source group filtering.
+	 * Whether source injection is enabled for this topic's author.
 	 *
-	 * Source injection for topics is handled in AIPS_Prompt_Builder_Topic::build().
+	 * Reads the include_sources flag directly from the author row. When the
+	 * author has opted in and has source group IDs configured the
+	 * AIPS_Prompt_Builder filter will inject fetched source content.
 	 *
-	 * @return bool Always false.
+	 * @return bool
 	 */
 	public function get_include_sources() {
-		return false;
+		return !empty($this->author->include_sources);
 	}
 
 	/**
-	 * Topic context does not support source group filtering.
+	 * Get the source group IDs configured on this topic's author.
 	 *
-	 * @return int[] Always empty array.
+	 * @return int[] Array of term IDs (empty when no groups are configured).
 	 */
 	public function get_source_group_ids() {
-		return array();
+		if (empty($this->author->source_group_ids)) {
+			return array();
+		}
+		$decoded = json_decode($this->author->source_group_ids, true);
+		return is_array($decoded) ? array_map('intval', $decoded) : array();
 	}
 
 	/**

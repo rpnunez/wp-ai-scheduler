@@ -26,6 +26,10 @@ class AIPS_Upgrades {
             $this->migrate_to_2_3_1();
         }
 
+        if (version_compare($from_version, '2.4.0', '<')) {
+            $this->migrate_to_2_4_0();
+        }
+
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates
         $result = AIPS_DB_Manager::install_tables();
@@ -83,6 +87,47 @@ class AIPS_Upgrades {
             $exists = $wpdb->get_row( $wpdb->prepare(
                 "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
                 $key_name
+            ) );
+
+            if ( ! $exists ) {
+                $wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+            }
+        }
+    }
+
+    /**
+     * Migration for version 2.4.0.
+     *
+     * Adds three new columns to aips_sources for scheduled-fetch support:
+     *   - fetch_interval  varchar(50)  — frequency key (e.g. 'daily')
+     *   - last_fetched_at datetime     — timestamp of last successful fetch
+     *   - next_fetch_at   datetime     — pre-computed next fetch time
+     *
+     * Each ADD is guarded with a SHOW COLUMNS check so the ALTER is a no-op
+     * on fresh installs (where dbDelta has already created the columns).
+     *
+     * The new aips_sources_data table is created via dbDelta in install_tables().
+     */
+    private function migrate_to_2_4_0() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'aips_sources';
+
+        // Only proceed if the sources table already exists.
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        if ( $table_exists !== $table ) {
+            return;
+        }
+
+        $columns = array(
+            'fetch_interval'  => 'ADD COLUMN fetch_interval varchar(50) DEFAULT NULL AFTER is_active',
+            'last_fetched_at' => 'ADD COLUMN last_fetched_at datetime DEFAULT NULL AFTER fetch_interval',
+            'next_fetch_at'   => 'ADD COLUMN next_fetch_at datetime DEFAULT NULL AFTER last_fetched_at',
+        );
+
+        foreach ( $columns as $col_name => $add_clause ) {
+            $exists = $wpdb->get_row( $wpdb->prepare(
+                "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $col_name
             ) );
 
             if ( ! $exists ) {

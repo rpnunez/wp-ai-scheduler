@@ -264,9 +264,10 @@ INSTRUCTIONS;
     /**
      * Build a trusted sources block for inclusion in AI prompts.
      *
-     * Fetches active source URLs from the given source group term IDs and
-     * formats them into a prompt instruction block. Returns an empty string
-     * when no matching sources are found.
+     * When extracted text is available in aips_sources_data the block includes
+     * a snippet of the fetched content alongside the URL, giving the model
+     * real reference material to draw from.  Sources that have not yet been
+     * fetched fall back gracefully to URL-only entries.
      *
      * @param int[] $term_ids Source group term IDs to fetch sources from.
      * @return string Formatted sources block, or empty string.
@@ -276,18 +277,52 @@ INSTRUCTIONS;
             return '';
         }
 
-        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+        $source_rows = $this->sources_repo->get_by_group_term_ids($term_ids, true);
 
-        if (empty($source_urls)) {
+        if (empty($source_rows)) {
             return '';
         }
 
-        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
-        foreach ($source_urls as $url) {
-            $block .= '  - ' . $url . "\n";
+        // Bulk-load any available extracted text for these sources.
+        $source_ids  = array_map(function ($s) { return (int) $s->id; }, $source_rows);
+        $data_repo   = new AIPS_Sources_Data_Repository();
+        $content_map = $data_repo->get_extracted_texts_by_source_ids($source_ids);
+
+        $snippet_max = absint(get_option('aips_source_snippet_max_chars', AIPS_Sources_Fetcher::DEFAULT_PROMPT_SNIPPET_CHARS));
+        if ($snippet_max < 100) {
+            $snippet_max = AIPS_Sources_Fetcher::DEFAULT_PROMPT_SNIPPET_CHARS;
         }
 
-        return $block . "\n";
+        $block = "Trusted Sources (use the following content and URLs as factual references):\n\n";
+
+        foreach ($source_rows as $source) {
+            $sid   = (int) $source->id;
+            $label = !empty($source->label) ? $source->label : $source->url;
+
+            $block .= sprintf("--- Source: %s (%s) ---\n", $label, $source->url);
+
+            if (isset($content_map[$sid])) {
+                $snippet = $content_map[$sid]->extracted_text;
+                if (mb_strlen($snippet) > $snippet_max) {
+                    $snippet = mb_substr($snippet, 0, $snippet_max) . '…';
+                }
+                $block .= $snippet . "\n";
+            } else {
+                $block .= "[Content not yet fetched — reference this URL where relevant]\n";
+            }
+
+            $block .= "\n";
+        }
+
+        /**
+         * Filters the formatted sources block before it is injected into a prompt.
+         *
+         * @since 2.4.0
+         * @param string   $block       The formatted sources block.
+         * @param int[]    $term_ids    Source group term IDs that were queried.
+         * @param object[] $source_rows Source row objects that were found.
+         */
+        return apply_filters('aips_sources_block', $block, $term_ids, $source_rows);
     }
 
     /**
