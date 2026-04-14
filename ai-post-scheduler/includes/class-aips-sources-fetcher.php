@@ -76,19 +76,29 @@ class AIPS_Sources_Fetcher {
 	 */
 	public function fetch( $source ) {
 		$source_id = isset( $source->id ) ? absint( $source->id ) : 0;
-		$url       = isset( $source->url ) ? $source->url : '';
+		$url       = isset( $source->url ) ? esc_url_raw( $source->url ) : '';
 
 		if ( ! $source_id || empty( $url ) ) {
 			return array( 'success' => false, 'word_count' => 0, 'error' => 'Invalid source data.' );
 		}
 
+		if ( ! wp_http_validate_url( $url ) ) {
+			$error_msg = 'Invalid or unsafe source URL.';
+			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, 0 );
+			$this->sources_repo->update_after_fetch( $source_id, false );
+
+			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: rejected unsafe URL for source #%d (%s)', $source_id, $url ), 'warning' );
+			return array( 'success' => false, 'word_count' => 0, 'error' => $error_msg );
+		}
+
 		$start = microtime( true );
 		$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: starting fetch for source #%d (%s)', $source_id, $url ), 'info' );
 
-		$response = wp_remote_get( $url, array(
-			'timeout'    => 15,
-			'user-agent' => 'Mozilla/5.0 (compatible; AIPS-Source-Fetcher/2.4; +https://wordpress.org)',
-			'sslverify'  => true,
+		$response = wp_safe_remote_get( $url, array(
+			'timeout'            => 15,
+			'user-agent'         => 'Mozilla/5.0 (compatible; AIPS-Source-Fetcher/2.4; +https://wordpress.org)',
+			'sslverify'          => true,
+			'reject_unsafe_urls' => true,
 		) );
 
 		if ( is_wp_error( $response ) ) {
