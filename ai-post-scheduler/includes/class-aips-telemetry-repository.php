@@ -46,11 +46,37 @@ class AIPS_Telemetry_Repository {
 	 */
 	public function insert(array $data) {
 		global $wpdb;
-		$table    = $wpdb->prefix . 'aips_telemetry';
+		$table = $wpdb->prefix . 'aips_telemetry';
+
+		$column_formats = array(
+			'page'              => '%s',
+			'user_id'           => '%d',
+			'request_method'    => '%s',
+			'num_queries'       => '%d',
+			'peak_memory_bytes' => '%d',
+			'elapsed_ms'        => '%f',
+			'payload'           => '%s',
+			'inserted_at'       => '%s',
+		);
+
+		$normalized_data = array();
+		$formats         = array();
+		foreach ($column_formats as $column => $format) {
+			if (!array_key_exists($column, $data)) {
+				continue;
+			}
+			$normalized_data[$column] = $data[$column];
+			$formats[]                = $format;
+		}
+
+		if (empty($normalized_data)) {
+			return false;
+		}
+
 		$inserted = $wpdb->insert(
 			$table,
-			$data,
-			array('%s', '%d', '%s', '%d', '%d', '%f', '%s', '%s')
+			$normalized_data,
+			$formats
 		);
 		if ($inserted === false) {
 			return false;

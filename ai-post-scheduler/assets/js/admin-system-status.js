@@ -10,6 +10,7 @@
  *   - resetSuccess       {string} Success confirmation text
  *   - resetFailed        {string} Generic failure text
  *   - requestFailed      {string} Network/AJAX failure text
+ *   - telemetryLoading   {string} "Loading..." text
  *   - telemetryPage      {string} "Page %1$s of %2$s" pattern
  *   - telemetryTotal     {string} "%s records" pattern
  *   - telemetryNoRecords {string} "No telemetry records found." text
@@ -176,7 +177,7 @@
 			}
 
 			var $tbody = $('#aips-telemetry-tbody');
-			$tbody.html('<tr><td colspan="8" class="aips-telemetry-loading">Loading\u2026</td></tr>');
+			$tbody.html('<tr><td colspan="8" class="aips-telemetry-loading">' + (l10n.telemetryLoading || 'Loading...') + '</td></tr>');
 
 			$('#aips-telemetry-prev, #aips-telemetry-next').prop('disabled', true);
 

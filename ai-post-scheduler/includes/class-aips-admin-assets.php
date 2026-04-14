@@ -826,6 +826,7 @@ class AIPS_Admin_Assets {
                 'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
                 'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
                 'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'telemetryLoading'   => __('Loading…', 'ai-post-scheduler'),
                 'telemetryPage'      => __('Page %1$s of %2$s', 'ai-post-scheduler'),
                 'telemetryTotal'     => __('%s records', 'ai-post-scheduler'),
                 'telemetryNoRecords' => __('No telemetry records found.', 'ai-post-scheduler'),

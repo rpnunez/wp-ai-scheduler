@@ -46,6 +46,11 @@ class AIPS_Telemetry {
 	private $shutdown_registered = false;
 
 	/**
+	 * @var bool Whether this request has already been flushed.
+	 */
+	private $flushed = false;
+
+	/**
 	 * @var AIPS_Telemetry_Repository
 	 */
 	private $repository;
@@ -76,12 +81,12 @@ class AIPS_Telemetry {
 	 * Add a structured event to the in-request buffer.
 	 *
 	 * @param array $data Arbitrary key/value pairs describing the event.
-	 *                    A '_ts' key (relative microsecond offset) is added automatically.
+	 *                    A '_ts' key (microseconds since request start) is added automatically.
 	 * @return void
 	 */
 	public function add_event(array $data) {
 		if (!empty($data)) {
-			$data['_ts'] = microtime(true);
+			$data['_ts'] = (int) round((microtime(true) - $this->start_time) * 1000000);
 			$this->events[] = $data;
 		}
 	}
@@ -110,6 +115,10 @@ class AIPS_Telemetry {
 	 * @return void
 	 */
 	public function flush() {
+		if ($this->flushed) {
+			return;
+		}
+
 		// Double-check the option at flush time in case it was toggled mid-request.
 		if (!AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			return;
@@ -133,7 +142,7 @@ class AIPS_Telemetry {
 			'request_uri'    => $request_uri,
 		);
 
-		$this->repository->insert(array(
+		$inserted = $this->repository->insert(array(
 			'page'              => $page,
 			'user_id'           => $user_id,
 			'request_method'    => $request_method,
@@ -143,6 +152,11 @@ class AIPS_Telemetry {
 			'payload'           => wp_json_encode($payload),
 			'inserted_at'       => current_time('mysql'),
 		));
+
+		if ($inserted !== false) {
+			$this->events  = array();
+			$this->flushed = true;
+		}
 	}
 
 	/**
