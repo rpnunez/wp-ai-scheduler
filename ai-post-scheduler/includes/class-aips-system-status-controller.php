@@ -39,17 +39,19 @@ class AIPS_System_Status_Controller {
 
 		$page     = max(1, isset($_POST['page']) ? absint(wp_unslash($_POST['page'])) : 1);
 		$per_page = 10;
-		$offset   = ($page - 1) * $per_page;
 
-		$repo  = new AIPS_Telemetry_Repository();
-		$rows  = $repo->get_page($per_page, $offset);
-		$total = $repo->count();
+		$repo        = new AIPS_Telemetry_Repository();
+		$total       = $repo->count();
+		$total_pages = max(1, (int) ceil($total / max(1, $per_page)));
+		$page        = min($page, $total_pages);
+		$offset      = ($page - 1) * $per_page;
+		$rows        = $repo->get_page($per_page, $offset);
 
 		AIPS_Ajax_Response::success(array(
 			'rows'        => $rows,
 			'total'       => $total,
 			'per_page'    => $per_page,
-			'total_pages' => (int) ceil($total / max(1, $per_page)),
+			'total_pages' => $total_pages,
 			'page'        => $page,
 		));
 	}
