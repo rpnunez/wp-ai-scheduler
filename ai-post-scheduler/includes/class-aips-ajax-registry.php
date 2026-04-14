@@ -47,12 +47,12 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_run_now_schedules'     => 'AIPS_Schedule_Controller',
 		'aips_get_schedules_post_count'   => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_history'       => 'AIPS_Schedule_Controller',
-		'aips_unified_run_now'            => 'AIPS_Schedule_Controller',
-		'aips_unified_toggle'             => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_toggle'        => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
-		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_unified_run_now'            => 'AIPS_Unified_Schedule_Controller',
+		'aips_unified_toggle'             => 'AIPS_Unified_Schedule_Controller',
+		'aips_unified_bulk_toggle'        => 'AIPS_Unified_Schedule_Controller',
+		'aips_unified_bulk_run_now'       => 'AIPS_Unified_Schedule_Controller',
+		'aips_unified_bulk_delete'        => 'AIPS_Unified_Schedule_Controller',
+		'aips_get_unified_schedule_history' => 'AIPS_Unified_Schedule_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',

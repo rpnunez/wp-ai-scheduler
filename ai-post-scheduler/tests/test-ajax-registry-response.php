@@ -87,6 +87,7 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 		$expected_controllers = array(
 			'AIPS_Templates_Controller',
 			'AIPS_Schedule_Controller',
+			'AIPS_Unified_Schedule_Controller',
 			'AIPS_Authors_Controller',
 			'AIPS_Author_Topics_Controller',
 			'AIPS_AI_Edit_Controller',

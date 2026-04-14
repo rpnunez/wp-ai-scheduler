@@ -1372,3 +1372,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+
+## 2024-04-14 - [Extract Unified Schedule Endpoints]
+**Context:** The `AIPS_Schedule_Controller` class contained logic for both legacy templates and unified schedules (all types), causing the class to bloat to almost 900 lines and violating the Single Responsibility Principle.
+**Decision:** Extracted all `ajax_unified_*` methods and hook registrations into a dedicated `AIPS_Unified_Schedule_Controller` class. The original controller constructor was updated to instantiate the new controller, maintaining backward compatibility.
+**Consequence:** `AIPS_Schedule_Controller` is significantly smaller and focused on standard scheduling tasks. `AIPS_Unified_Schedule_Controller` cleanly manages all polymorphic schedule endpoints. Instantiation coupling remains but preserves the external API footprint.
+**Tests:** Validated autoloader loading of the new controller, updated registry mappings, and verified that all existing test suites continue to pass.
