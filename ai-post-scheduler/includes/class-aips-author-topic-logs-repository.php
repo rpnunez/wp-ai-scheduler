@@ -44,9 +44,18 @@ class AIPS_Author_Topic_Logs_Repository {
 	 * Get all logs for a topic.
 	 *
 	 * @param int $author_topic_id Author topic ID.
+	 * @param int $limit           Maximum number of logs to return. 0 returns all. Default 200.
 	 * @return array Array of log objects.
 	 */
-	public function get_by_topic($author_topic_id) {
+	public function get_by_topic($author_topic_id, $limit = 200) {
+		$limit = absint($limit);
+		if ($limit > 0) {
+			return $this->wpdb->get_results($this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC LIMIT %d",
+				$author_topic_id,
+				$limit
+			));
+		}
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC",
 			$author_topic_id
