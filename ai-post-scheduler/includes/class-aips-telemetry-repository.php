@@ -27,6 +27,26 @@ class AIPS_Telemetry_Repository {
 	private static $instance = null;
 
 	/**
+	 * @var wpdb WordPress database adapter.
+	 */
+	private $wpdb;
+
+	/**
+	 * @var string Fully qualified telemetry table name.
+	 */
+	private $table;
+
+	/**
+	 * Initialize repository dependencies.
+	 */
+	public function __construct() {
+		global $wpdb;
+
+		$this->wpdb  = $wpdb;
+		$this->table = $wpdb->prefix . 'aips_telemetry';
+	}
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return AIPS_Telemetry_Repository
@@ -45,9 +65,6 @@ class AIPS_Telemetry_Repository {
 	 * @return int|false Inserted row ID, or false on failure.
 	 */
 	public function insert(array $data) {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_telemetry';
-
 		$column_formats = array(
 			'page'              => '%s',
 			'user_id'           => '%d',
@@ -73,15 +90,15 @@ class AIPS_Telemetry_Repository {
 			return false;
 		}
 
-		$inserted = $wpdb->insert(
-			$table,
+		$inserted = $this->wpdb->insert(
+			$this->table,
 			$normalized_data,
 			$formats
 		);
 		if ($inserted === false) {
 			return false;
 		}
-		return (int) $wpdb->insert_id;
+		return (int) $this->wpdb->insert_id;
 	}
 
 	/**
@@ -95,12 +112,10 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_page($per_page = 10, $offset = 0) {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_telemetry';
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d",
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} ORDER BY id DESC LIMIT %d OFFSET %d",
 				(int) $per_page,
 				(int) $offset
 			),
@@ -118,15 +133,13 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_filtered_page($start_date, $end_date, $per_page = 25, $offset = 0) {
-		global $wpdb;
-		$table           = $wpdb->prefix . 'aips_telemetry';
 		$start_datetime  = $start_date . ' 00:00:00';
 		$end_datetime    = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s ORDER BY id DESC LIMIT %d OFFSET %d",
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s ORDER BY id DESC LIMIT %d OFFSET %d",
 				$start_datetime,
 				$end_datetime,
 				(int) $per_page,
@@ -137,15 +150,34 @@ class AIPS_Telemetry_Repository {
 	}
 
 	/**
+	 * Retrieve a single telemetry row by ID.
+	 *
+	 * Returns the full persisted row including the raw payload column.
+	 *
+	 * @param int $id Row ID.
+	 * @return array|null Full row data, or null when no row exists.
+	 */
+	public function get_row($id) {
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, payload, inserted_at FROM {$this->table} WHERE id = %d LIMIT 1",
+				(int) $id
+			),
+			ARRAY_A
+		);
+
+		return is_array($row) ? $row : null;
+	}
+
+	/**
 	 * Count the total number of telemetry rows.
 	 *
 	 * @return int
 	 */
 	public function count() {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_telemetry';
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+		return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
 	}
 
 	/**
@@ -156,15 +188,13 @@ class AIPS_Telemetry_Repository {
 	 * @return int
 	 */
 	public function count_filtered($start_date, $end_date) {
-		global $wpdb;
-		$table          = $wpdb->prefix . 'aips_telemetry';
 		$start_datetime = $start_date . ' 00:00:00';
 		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
 
-		return (int) $wpdb->get_var(
-			$wpdb->prepare(
+		return (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT COUNT(*) FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s",
+				"SELECT COUNT(*) FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s",
 				$start_datetime,
 				$end_datetime
 			)
@@ -179,15 +209,13 @@ class AIPS_Telemetry_Repository {
 	 * @return array<int, array<string, string|int|float>>
 	 */
 	public function get_daily_rollup($start_date, $end_date) {
-		global $wpdb;
-		$table          = $wpdb->prefix . 'aips_telemetry';
 		$start_datetime = $start_date . ' 00:00:00';
 		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
 				$start_datetime,
 				$end_datetime
 			),
@@ -202,12 +230,10 @@ class AIPS_Telemetry_Repository {
 	 * @return array|null Decoded payload array, or null if not found.
 	 */
 	public function get_payload($id) {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_telemetry';
-		$json  = $wpdb->get_var(
-			$wpdb->prepare(
+		$json = $this->wpdb->get_var(
+			$this->wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT payload FROM {$table} WHERE id = %d",
+				"SELECT payload FROM {$this->table} WHERE id = %d",
 				(int) $id
 			)
 		);

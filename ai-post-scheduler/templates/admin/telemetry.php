@@ -118,11 +118,12 @@ if (!defined('ABSPATH')) {
 								<th><?php esc_html_e('Peak Memory', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Elapsed (ms)', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Inserted At', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
 						<tbody id="aips-telemetry-tbody">
 							<tr>
-								<td colspan="8" class="aips-telemetry-loading"><?php esc_html_e('Loading…', 'ai-post-scheduler'); ?></td>
+								<td colspan="9" class="aips-telemetry-loading"><?php esc_html_e('Loading…', 'ai-post-scheduler'); ?></td>
 							</tr>
 						</tbody>
 					</table>
@@ -144,12 +145,24 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
+
+		<div id="aips-telemetry-details-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-telemetry-details-title">
+			<div class="aips-modal-content aips-modal-large">
+				<div class="aips-modal-header">
+					<h2 id="aips-telemetry-details-title"><?php esc_html_e('Telemetry Details', 'ai-post-scheduler'); ?></h2>
+					<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+				</div>
+				<div class="aips-modal-body" id="aips-telemetry-details-content">
+					<p class="aips-telemetry-loading"><?php esc_html_e('Select a telemetry row to view its details.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
 
 <script type="text/html" id="aips-tmpl-telemetry-message-row">
 	<tr>
-		<td colspan="8" class="{{class_name}}">{{message}}</td>
+		<td colspan="9" class="{{class_name}}">{{message}}</td>
 	</tr>
 </script>
 
@@ -168,5 +181,38 @@ if (!defined('ABSPATH')) {
 		<td>{{peak_memory}}</td>
 		<td>{{elapsed_ms}}</td>
 		<td>{{inserted_at}}</td>
+		<td>
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-telemetry-view-details" data-telemetry-id="{{raw_id}}">{{view_details_label}}</button>
+		</td>
 	</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-telemetry-detail-row">
+	<tr>
+		<th scope="row">{{label}}</th>
+		<td>{{value}}</td>
+	</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-telemetry-details-loading">
+	<div class="aips-details-section">
+		<p class="aips-telemetry-loading">{{message}}</p>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-telemetry-details-modal-body">
+	<div class="aips-details-section">
+		<h3><?php esc_html_e('Request Details', 'ai-post-scheduler'); ?></h3>
+		<table class="aips-details-table">
+			<tbody>{{detail_rows}}</tbody>
+		</table>
+	</div>
+	<div class="aips-details-section">
+		<h3><?php esc_html_e('Payload', 'ai-post-scheduler'); ?></h3>
+		<div class="aips-json-viewer"><pre>{{payload_json}}</pre></div>
+	</div>
+	<div class="aips-details-section">
+		<h3><?php esc_html_e('Events Array', 'ai-post-scheduler'); ?></h3>
+		<div class="aips-json-viewer"><pre>{{events_json}}</pre></div>
+	</div>
 </script>

@@ -854,8 +854,11 @@ class AIPS_Admin_Assets {
 
             wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', array(
                 'nonce'                => wp_create_nonce('aips_get_telemetry'),
+                'detailsNonce'         => wp_create_nonce('aips_get_telemetry_details'),
                 'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'loadingDetails'       => __('Loading telemetry details…', 'ai-post-scheduler'),
                 'requestFailed'        => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'detailsRequestFailed' => __('Failed to load telemetry details. Please try again.', 'ai-post-scheduler'),
                 'telemetryPage'        => __('Page %1$s of %2$s', 'ai-post-scheduler'),
                 'telemetryTotal'       => __('%s records', 'ai-post-scheduler'),
                 'telemetryNoRecords'   => __('No telemetry records found for the selected range.', 'ai-post-scheduler'),
@@ -871,6 +874,18 @@ class AIPS_Admin_Assets {
                 'rangeSummary'         => __('Showing telemetry from %1$s to %2$s.', 'ai-post-scheduler'),
                 'refreshLabel'         => __('Refresh', 'ai-post-scheduler'),
                 'refreshing'           => __('Refreshing…', 'ai-post-scheduler'),
+                'viewDetails'          => __('View Details', 'ai-post-scheduler'),
+                'detailsTitle'         => __('Telemetry Details #%s', 'ai-post-scheduler'),
+                'detailsIdLabel'       => __('ID', 'ai-post-scheduler'),
+                'detailsPageLabel'     => __('Page', 'ai-post-scheduler'),
+                'detailsMethodLabel'   => __('Method', 'ai-post-scheduler'),
+                'detailsUserIdLabel'   => __('User ID', 'ai-post-scheduler'),
+                'detailsQueriesLabel'  => __('Queries', 'ai-post-scheduler'),
+                'detailsPeakMemoryLabel' => __('Peak Memory', 'ai-post-scheduler'),
+                'detailsElapsedLabel'  => __('Elapsed', 'ai-post-scheduler'),
+                'detailsInsertedLabel' => __('Inserted At', 'ai-post-scheduler'),
+                'payloadEmpty'         => __('No payload was stored for this telemetry row.', 'ai-post-scheduler'),
+                'eventsEmpty'          => __('[]', 'ai-post-scheduler'),
             ));
         }
     }

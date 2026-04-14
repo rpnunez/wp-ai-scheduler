@@ -251,6 +251,31 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Repository::get_row() returns the full stored row for an existing ID.
+	 *
+	 * @return void
+	 */
+	public function test_repository_get_row_returns_full_row() {
+		$id = $this->repo->insert(array(
+			'page'              => 'admin:aips-telemetry',
+			'user_id'           => 7,
+			'request_method'    => 'GET',
+			'num_queries'       => 11,
+			'peak_memory_bytes' => 4194304,
+			'elapsed_ms'        => 21.5,
+			'payload'           => wp_json_encode(array('events' => array(array('type' => 'example')))),
+			'inserted_at'       => current_time('mysql'),
+		));
+
+		$row = $this->repo->get_row($id);
+
+		$this->assertIsArray($row);
+		$this->assertSame('admin:aips-telemetry', $row['page']);
+		$this->assertSame('GET', $row['request_method']);
+		$this->assertArrayHasKey('payload', $row);
+	}
+
+	/**
 	 * Verify enable_telemetry default is false.
 	 *
 	 * @return void

@@ -51,6 +51,7 @@
 			$(document).on('click', '#aips-telemetry-next', this.nextPage.bind(this));
 			$(document).on('change', '#aips-telemetry-per-page', this.changePerPage.bind(this));
 			$(document).on('change', '#aips-telemetry-start-date, #aips-telemetry-end-date', this.changeDateRange.bind(this));
+			$(document).on('click', '.aips-telemetry-view-details', this.viewDetails.bind(this));
 		},
 
 		/**
@@ -242,15 +243,139 @@
 			$tbody.html(rows.map(function(row) {
 				return AIPS.Templates.render('aips-tmpl-telemetry-data-row', {
 					id: this.displayValue(row.id),
+					raw_id: this.displayValue(row.id),
 					page: this.displayValue(row.page),
 					request_method: this.displayValue(row.request_method),
 					user_id: this.displayValue(row.user_id),
 					num_queries: this.displayValue(row.num_queries),
 					peak_memory: this.formatMemory(row.peak_memory_bytes),
 					elapsed_ms: this.formatElapsed(row.elapsed_ms),
-					inserted_at: this.formatInsertedAt(row.inserted_at)
+					inserted_at: this.formatInsertedAt(row.inserted_at),
+					view_details_label: window.aipsTelemetryL10n.viewDetails || 'View Details'
 				});
 			}, this).join(''));
+		},
+
+		/**
+		 * Load and display details for a single telemetry row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		viewDetails: function(e) {
+			e.preventDefault();
+
+			var self = this;
+			var $button = $(e.currentTarget);
+			var rowId = parseInt($button.attr('data-telemetry-id'), 10) || 0;
+
+			if (rowId < 1) {
+				AIPS.Utilities.showToast(window.aipsTelemetryL10n.requestFailed || 'Request failed. Please try again.', 'error');
+				return;
+			}
+
+			this.openDetailsModal(
+				(window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details #%s').replace('%s', rowId),
+				AIPS.Templates.render('aips-tmpl-telemetry-details-loading', {
+					message: window.aipsTelemetryL10n.loadingDetails || 'Loading telemetry details...'
+				})
+			);
+
+			$button.prop('disabled', true);
+
+			$.post(
+				ajaxurl,
+				{
+					action: 'aips_get_telemetry_details',
+					nonce: window.aipsTelemetryL10n.detailsNonce || '',
+					id: rowId
+				},
+				function(response) {
+					if (!response || !response.success || !response.data || !response.data.row) {
+						self.handleDetailsFailure();
+						return;
+					}
+
+					self.renderDetailsModal(response.data);
+				}
+			).fail(function() {
+				self.handleDetailsFailure();
+			}).always(function() {
+				$button.prop('disabled', false);
+			});
+		},
+
+		/**
+		 * Render the telemetry details modal content.
+		 *
+		 * @param {Object} data Server response data.
+		 * @return {void}
+		 */
+		renderDetailsModal: function(data) {
+			var row = data.row || {};
+			var detailRows = [
+				{ label: window.aipsTelemetryL10n.detailsIdLabel || 'ID', value: this.displayValue(row.id) },
+				{ label: window.aipsTelemetryL10n.detailsPageLabel || 'Page', value: this.displayValue(row.page) },
+				{ label: window.aipsTelemetryL10n.detailsMethodLabel || 'Method', value: this.displayValue(row.request_method) },
+				{ label: window.aipsTelemetryL10n.detailsUserIdLabel || 'User ID', value: this.displayValue(row.user_id) },
+				{ label: window.aipsTelemetryL10n.detailsQueriesLabel || 'Queries', value: this.displayValue(row.num_queries) },
+				{ label: window.aipsTelemetryL10n.detailsPeakMemoryLabel || 'Peak Memory', value: this.formatMemory(row.peak_memory_bytes) + ' (' + this.displayValue(row.peak_memory_bytes) + ' bytes)' },
+				{ label: window.aipsTelemetryL10n.detailsElapsedLabel || 'Elapsed', value: this.formatElapsed(row.elapsed_ms) },
+				{ label: window.aipsTelemetryL10n.detailsInsertedLabel || 'Inserted At', value: this.formatInsertedAt(row.inserted_at) }
+			];
+
+			var detailRowsHtml = detailRows.map(function(item) {
+				return AIPS.Templates.render('aips-tmpl-telemetry-detail-row', {
+					label: item.label,
+					value: item.value
+				});
+			}).join('');
+
+			var payloadJson = data.payload_decoded
+				? JSON.stringify(data.payload_decoded, null, 2)
+				: (row.payload || window.aipsTelemetryL10n.payloadEmpty || 'No payload was stored for this telemetry row.');
+
+			var eventsJson = Array.isArray(data.events)
+				? JSON.stringify(data.events, null, 2)
+				: (window.aipsTelemetryL10n.eventsEmpty || '[]');
+
+			this.openDetailsModal(
+				(window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details #%s').replace('%s', this.displayValue(row.id)),
+				AIPS.Templates.renderRaw('aips-tmpl-telemetry-details-modal-body', {
+					detail_rows: detailRowsHtml,
+					payload_json: AIPS.Templates.escape(payloadJson),
+					events_json: AIPS.Templates.escape(eventsJson)
+				})
+			);
+		},
+
+		/**
+		 * Show a details-request failure message.
+		 *
+		 * @return {void}
+		 */
+		handleDetailsFailure: function() {
+			var message = window.aipsTelemetryL10n.detailsRequestFailed || 'Failed to load telemetry details. Please try again.';
+			this.openDetailsModal(
+				window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details',
+				AIPS.Templates.render('aips-tmpl-telemetry-details-loading', {
+					message: message
+				})
+			);
+			AIPS.Utilities.showToast(message, 'error');
+		},
+
+		/**
+		 * Open the telemetry details modal.
+		 *
+		 * @param {string} title Modal title.
+		 * @param {string} bodyHtml Modal body HTML.
+		 * @return {void}
+		 */
+		openDetailsModal: function(title, bodyHtml) {
+			$('#aips-telemetry-details-title').text(title);
+			$('#aips-telemetry-details-content').html(bodyHtml);
+			$('#aips-telemetry-details-modal').fadeIn(150);
 		},
 
 		/**

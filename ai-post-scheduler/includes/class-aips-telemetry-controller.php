@@ -18,10 +18,19 @@ if (!defined('ABSPATH')) {
 class AIPS_Telemetry_Controller {
 
 	/**
-	 * Register AJAX handlers.
+	 * @var AIPS_Telemetry_Repository
+	 */
+	private $repository;
+
+	/**
+	 * Resolve dependencies and register AJAX handlers.
 	 */
 	public function __construct() {
+		$container = AIPS_Container::get_instance();
+		$this->repository = $container->make(AIPS_Telemetry_Repository::class);
+
 		add_action('wp_ajax_aips_get_telemetry', array($this, 'ajax_get_telemetry'));
+		add_action('wp_ajax_aips_get_telemetry_details', array($this, 'ajax_get_telemetry_details'));
 	}
 
 	/**
@@ -78,14 +87,13 @@ class AIPS_Telemetry_Controller {
 		$per_page           = in_array($requested_per_page, $allowed_per_page, true) ? $requested_per_page : 25;
 		$page               = max(1, isset($_POST['page']) ? absint(wp_unslash($_POST['page'])) : 1);
 
-		$repo        = new AIPS_Telemetry_Repository();
-		$total       = $repo->count_filtered($start_date, $end_date);
+		$total       = $this->repository->count_filtered($start_date, $end_date);
 		$total_pages = max(1, (int) ceil($total / max(1, $per_page)));
 		$page        = min($page, $total_pages);
 		$offset      = ($page - 1) * $per_page;
 
-		$rows        = $repo->get_filtered_page($start_date, $end_date, $per_page, $offset);
-		$chart_rows  = $repo->get_daily_rollup($start_date, $end_date);
+		$rows        = $this->repository->get_filtered_page($start_date, $end_date, $per_page, $offset);
+		$chart_rows  = $this->repository->get_daily_rollup($start_date, $end_date);
 		$chart_data  = $this->build_chart_series($start_date, $end_date, $chart_rows);
 
 		AIPS_Ajax_Response::success(array(
@@ -97,6 +105,49 @@ class AIPS_Telemetry_Controller {
 			'start_date'  => $start_date,
 			'end_date'    => $end_date,
 			'charts'      => $chart_data,
+		));
+	}
+
+	/**
+	 * Return a single telemetry row and decoded payload details.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_telemetry_details() {
+		check_ajax_referer('aips_get_telemetry_details', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		if (!AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+			AIPS_Ajax_Response::error(__('Telemetry is disabled.', 'ai-post-scheduler'));
+		}
+
+		$row_id = isset($_POST['id']) ? absint(wp_unslash($_POST['id'])) : 0;
+		if ($row_id < 1) {
+			AIPS_Ajax_Response::invalid_request(__('A valid telemetry row ID is required.', 'ai-post-scheduler'));
+		}
+
+		$row = $this->repository->get_row($row_id);
+		if (!$row) {
+			AIPS_Ajax_Response::not_found(__('Telemetry row', 'ai-post-scheduler'));
+		}
+
+		$payload_decoded = null;
+		$events          = array();
+
+		if (!empty($row['payload'])) {
+			$payload_decoded = json_decode($row['payload'], true);
+			if (is_array($payload_decoded) && !empty($payload_decoded['events']) && is_array($payload_decoded['events'])) {
+				$events = $payload_decoded['events'];
+			}
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'row'             => $row,
+			'payload_decoded' => is_array($payload_decoded) ? $payload_decoded : null,
+			'events'          => $events,
 		));
 	}
 

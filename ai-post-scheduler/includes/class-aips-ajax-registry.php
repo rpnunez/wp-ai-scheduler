@@ -216,6 +216,7 @@ class AIPS_Ajax_Registry {
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
+		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
 		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 	);
 
