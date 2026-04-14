@@ -216,7 +216,7 @@ class AIPS_Sources_Fetcher {
 		$text = strip_tags( $html );
 		$text = html_entity_decode( $text, ENT_QUOTES, 'UTF-8' );
 
-		// Normalise whitespace: collapse runs of spaces/tabs and then collapse
+		// Normalize whitespace: collapse runs of spaces/tabs and then collapse
 		// runs of blank lines to a single blank line.
 		$text = preg_replace( '/[ \t]+/', ' ', $text );
 		$text = preg_replace( '/\n{3,}/', "\n\n", $text );

@@ -263,7 +263,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * Whether source injection is enabled for this topic's author.
 	 *
 	 * Reads the include_sources flag directly from the author row. When the
-	 * author has opted in and has source group IDs configured the
+	 * author has opted in and has source group IDs configured, the
 	 * AIPS_Prompt_Builder filter will inject fetched source content.
 	 *
 	 * @return bool

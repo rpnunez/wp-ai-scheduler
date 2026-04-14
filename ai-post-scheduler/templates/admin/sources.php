@@ -97,9 +97,9 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 							$fetch_interval   = isset($source->fetch_interval)   ? $source->fetch_interval   : '';
 							$last_fetched_at  = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
 							$next_fetch_at    = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
-							$fetch_data       = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
-							$fetch_status_val = $fetch_data ? $fetch_data->fetch_status : '';
-							$word_count_val   = $fetch_data ? (int) $fetch_data->word_count : 0;
+							$fetch_data        = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
+							$fetch_status_val  = $fetch_data ? $fetch_data->fetch_status : '';
+							$char_count_val    = $fetch_data ? (int) $fetch_data->word_count : 0;
 						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
 							data-url="<?php echo esc_attr($source->url); ?>"
@@ -133,7 +133,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 										printf(
 											/* translators: %d = number of characters extracted */
 											esc_html__('%d chars', 'ai-post-scheduler'),
-											$word_count_val
+											$char_count_val
 										);
 										?>
 									</span>
