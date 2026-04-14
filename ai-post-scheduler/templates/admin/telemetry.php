@@ -18,12 +18,6 @@ if (!defined('ABSPATH')) {
 					<h1 class="aips-page-title"><?php esc_html_e('Telemetry', 'ai-post-scheduler'); ?></h1>
 					<p class="aips-page-description"><?php esc_html_e('Inspect request-level performance trends, refresh charts by date range, and review raw telemetry rows.', 'ai-post-scheduler'); ?></p>
 				</div>
-				<div class="aips-page-actions">
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('system_status')); ?>">
-						<span class="dashicons dashicons-admin-tools"></span>
-						<?php esc_html_e('Back to System Status', 'ai-post-scheduler'); ?>
-					</a>
-				</div>
 			</div>
 		</div>
 

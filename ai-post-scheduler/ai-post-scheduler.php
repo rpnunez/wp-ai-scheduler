@@ -341,6 +341,10 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Schedule_Repository::class);
         });
 
+        $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
+            return AIPS_Telemetry_Repository::instance();
+        });
+
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
