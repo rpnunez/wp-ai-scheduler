@@ -388,7 +388,7 @@ class Test_AIPS_Load_Smoke extends WP_UnitTestCase {
 		$this->assertNotFalse( $schedule_id, 'Schedule creation should succeed' );
 
 		// Simulate the claim-first lock: advance next_run.
-		$new_next_run = date( 'Y-m-d H:i:s', strtotime( '+1 day' ) );
+		$new_next_run = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS );
 		$lock_result  = $schedule_repo->update( $schedule_id, array( 'next_run' => $new_next_run ) );
 		$this->assertNotFalse( $lock_result, 'Lock acquisition (next_run update) should succeed' );
 
@@ -421,7 +421,7 @@ class Test_AIPS_Load_Smoke extends WP_UnitTestCase {
 			'is_active'       => 1,
 		) );
 
-		$overdue = date( 'Y-m-d H:i:s', strtotime( '-1 hour' ) );
+		$overdue = gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS );
 
 		$id_a = $schedule_repo->create( array(
 			'template_id' => $template_id,

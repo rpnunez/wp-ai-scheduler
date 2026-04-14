@@ -204,9 +204,9 @@ run_ab() {
     log "Running ab: ${label}" | tee -a "$REPORT_FILE"
 
     local ab_cmd="ab -c ${CONCURRENCY} -n ${REQUESTS} -H \"Cookie: ${COOKIE_HEADER}\""
+    local post_file=""
 
     if [ "$method" = "POST" ] && [ -n "$post_data" ]; then
-        local post_file
         post_file=$(mktemp /tmp/ab_post_XXXXXX.txt)
         echo -n "$post_data" > "$post_file"
         ab_cmd="$ab_cmd -p ${post_file} -T application/x-www-form-urlencoded"
