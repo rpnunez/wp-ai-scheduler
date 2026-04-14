@@ -23,6 +23,7 @@ class AIPS_DB_Manager {
         'aips_source_group_terms',
         'aips_taxonomy',
         'aips_cache',
+        'aips_telemetry',
     );
 
     public function __construct() {
@@ -73,6 +74,7 @@ class AIPS_DB_Manager {
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_taxonomy             = $tables['aips_taxonomy'];
         $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
 
         $sql = array();
 
@@ -398,6 +400,22 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY cache_key_group (cache_key, cache_group),
             KEY expires_at (expires_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_telemetry (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            page varchar(191) NOT NULL DEFAULT '',
+            request_method varchar(10) NOT NULL DEFAULT '',
+            user_id bigint(20) NOT NULL DEFAULT 0,
+            num_queries int(11) NOT NULL DEFAULT 0,
+            peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
+            elapsed_ms float NOT NULL DEFAULT 0,
+            payload longtext DEFAULT NULL,
+            inserted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY page (page),
+            KEY user_id (user_id),
+            KEY inserted_at (inserted_at)
         ) $charset_collate;";
 
         return $sql;

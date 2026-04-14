@@ -401,6 +401,57 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
+            <!-- Telemetry -->
+            <?php if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) : ?>
+            <div class="aips-content-panel" id="aips-telemetry-panel">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-chart-bar"></span>
+                        <?php esc_html_e('Telemetry', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body no-padding">
+                    <div id="aips-telemetry-table-wrap">
+                        <table class="aips-table aips-telemetry-table">
+                            <thead>
+                                <tr>
+                                    <th><?php esc_html_e('ID', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Page', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Method', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('User ID', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Queries', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Peak Memory', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Elapsed (ms)', 'ai-post-scheduler'); ?></th>
+                                    <th><?php esc_html_e('Inserted At', 'ai-post-scheduler'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody id="aips-telemetry-tbody">
+                                <tr>
+                                    <td colspan="8" class="aips-telemetry-loading">
+                                        <?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="aips-telemetry-pagination aips-panel-toolbar">
+                        <span id="aips-telemetry-count" class="aips-telemetry-count"></span>
+                        <div class="aips-btn-group">
+                            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-telemetry-prev" disabled>
+                                <span class="dashicons dashicons-arrow-left-alt2"></span>
+                                <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
+                            </button>
+                            <span id="aips-telemetry-page-label" class="aips-telemetry-page-label"></span>
+                            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-telemetry-next" disabled>
+                                <span class="dashicons dashicons-arrow-right-alt2"></span>
+                                <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
     </div>
 </div>

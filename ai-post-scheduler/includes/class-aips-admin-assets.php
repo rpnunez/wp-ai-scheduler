@@ -819,12 +819,16 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'         => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'   => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'   => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'  => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'   => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
+                'telemetryNonce'     => wp_create_nonce('aips_get_telemetry'),
+                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'telemetryPage'      => __('Page %1$s of %2$s', 'ai-post-scheduler'),
+                'telemetryTotal'     => __('%s records', 'ai-post-scheduler'),
+                'telemetryNoRecords' => __('No telemetry records found.', 'ai-post-scheduler'),
             ));
         }
     }

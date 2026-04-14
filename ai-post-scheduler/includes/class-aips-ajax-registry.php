@@ -213,6 +213,10 @@ class AIPS_Ajax_Registry {
 
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
+
+		// System Status
+		'aips_get_telemetry'              => 'AIPS_System_Status_Controller',
+		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 	);
 
 	/**
