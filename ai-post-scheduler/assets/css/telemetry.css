@@ -1,0 +1,158 @@
+.aips-telemetry-overview-panel,
+.aips-telemetry-table-panel {
+	margin-bottom: 24px;
+}
+
+.aips-telemetry-filter-bar {
+	align-items: flex-end;
+	gap: 16px;
+}
+
+.aips-telemetry-filter-bar .aips-filter-left {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	align-items: flex-end;
+}
+
+.aips-telemetry-filter-bar .aips-filter-label-inline,
+.aips-telemetry-table-toolbar .aips-filter-label-inline {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	white-space: nowrap;
+}
+
+.aips-telemetry-filter-bar .aips-filter-label-inline span,
+.aips-telemetry-table-toolbar .aips-filter-label-inline span {
+	white-space: nowrap;
+}
+
+.aips-telemetry-filter-bar .aips-form-input,
+.aips-telemetry-table-toolbar .aips-form-select {
+	min-width: 145px;
+}
+
+.aips-telemetry-filter-bar .aips-filter-right {
+	margin-left: auto;
+	max-width: 420px;
+	text-align: right;
+}
+
+.aips-telemetry-range-summary {
+	margin: 0;
+	color: #50575e;
+	font-size: 13px;
+}
+
+.aips-telemetry-charts-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 20px;
+}
+
+.aips-telemetry-chart-card {
+	background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
+	border: 1px solid #d0d5dd;
+	border-radius: 8px;
+	box-shadow: 0 10px 30px rgba(29, 35, 39, 0.05);
+	padding: 16px;
+	min-height: 320px;
+	position: relative;
+	overflow: hidden;
+}
+
+.aips-telemetry-chart-card::before {
+	content: '';
+	position: absolute;
+	inset: 0 auto auto 0;
+	width: 100%;
+	height: 3px;
+	background: linear-gradient(90deg, #2271b1 0%, #72aee6 50%, #00a32a 100%);
+}
+
+.aips-telemetry-chart-canvas-wrap {
+	position: relative;
+	height: 280px;
+}
+
+.aips-telemetry-table-toolbar,
+.aips-telemetry-pagination {
+	gap: 16px;
+}
+
+.aips-telemetry-table-toolbar .aips-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-left: auto;
+}
+
+.aips-telemetry-count,
+.aips-telemetry-page-label {
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aips-telemetry-table-wrap {
+	overflow-x: auto;
+}
+
+.aips-telemetry-table th,
+.aips-telemetry-table td {
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.aips-telemetry-loading,
+.aips-telemetry-empty {
+	padding: 24px;
+	text-align: center;
+	color: #646970;
+	font-weight: 600;
+}
+
+@media screen and (max-width: 960px) {
+	.aips-telemetry-charts-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-telemetry-filter-bar .aips-filter-right {
+		margin-left: 0;
+		max-width: none;
+		text-align: left;
+	}
+
+	.aips-telemetry-chart-card {
+		min-height: 280px;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.aips-telemetry-filter-bar,
+	.aips-telemetry-table-toolbar,
+	.aips-telemetry-pagination {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.aips-telemetry-filter-bar .aips-filter-left,
+	.aips-telemetry-filter-bar .aips-filter-right,
+	.aips-telemetry-table-toolbar .aips-toolbar-right,
+	.aips-telemetry-pagination .aips-toolbar-right {
+		width: 100%;
+	}
+
+	.aips-telemetry-filter-bar .aips-filter-left .aips-filter-label-inline,
+	.aips-telemetry-table-toolbar .aips-filter-label-inline {
+		justify-content: space-between;
+	}
+
+	.aips-telemetry-table-toolbar .aips-toolbar-right {
+		margin-left: 0;
+	}
+
+	.aips-telemetry-chart-canvas-wrap {
+		height: 240px;
+	}
+}

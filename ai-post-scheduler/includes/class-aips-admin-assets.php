@@ -820,16 +820,57 @@ class AIPS_Admin_Assets {
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
                 'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
-                'telemetryNonce'     => wp_create_nonce('aips_get_telemetry'),
                 'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
                 'showDetails'        => __('Show Details', 'ai-post-scheduler'),
                 'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
                 'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
                 'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
-                'telemetryLoading'   => __('Loading…', 'ai-post-scheduler'),
-                'telemetryPage'      => __('Page %1$s of %2$s', 'ai-post-scheduler'),
-                'telemetryTotal'     => __('%s records', 'ai-post-scheduler'),
-                'telemetryNoRecords' => __('No telemetry records found.', 'ai-post-scheduler'),
+            ));
+        }
+
+        if (strpos($hook, 'aips-telemetry') !== false) {
+            wp_enqueue_style(
+                'aips-telemetry-style',
+                AIPS_PLUGIN_URL . 'assets/css/telemetry.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-chartjs',
+                'https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js',
+                array(),
+                '4.4.2',
+                true
+            );
+
+            wp_enqueue_script(
+                'aips-telemetry-script',
+                AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
+                array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', array(
+                'nonce'                => wp_create_nonce('aips_get_telemetry'),
+                'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'requestFailed'        => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'telemetryPage'        => __('Page %1$s of %2$s', 'ai-post-scheduler'),
+                'telemetryTotal'       => __('%s records', 'ai-post-scheduler'),
+                'telemetryNoRecords'   => __('No telemetry records found for the selected range.', 'ai-post-scheduler'),
+                'chartQueriesTitle'    => __('Queries Executed per Day', 'ai-post-scheduler'),
+                'chartMemoryTitle'     => __('Peak Memory per Day', 'ai-post-scheduler'),
+                'chartElapsedTitle'    => __('Average Elapsed Time per Day', 'ai-post-scheduler'),
+                'chartRequestsTitle'   => __('Requests Logged per Day', 'ai-post-scheduler'),
+                'chartQueriesLabel'    => __('Queries', 'ai-post-scheduler'),
+                'chartMemoryLabel'     => __('Peak Memory (MB)', 'ai-post-scheduler'),
+                'chartElapsedLabel'    => __('Average Elapsed (ms)', 'ai-post-scheduler'),
+                'chartRequestsLabel'   => __('Requests', 'ai-post-scheduler'),
+                'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+                'rangeSummary'         => __('Showing telemetry from %1$s to %2$s.', 'ai-post-scheduler'),
+                'refreshLabel'         => __('Refresh', 'ai-post-scheduler'),
+                'refreshing'           => __('Refreshing…', 'ai-post-scheduler'),
             ));
         }
     }

@@ -109,6 +109,34 @@ class AIPS_Telemetry_Repository {
 	}
 
 	/**
+	 * Retrieve a filtered page of telemetry rows, newest first.
+	 *
+	 * @param string $start_date Inclusive start date in Y-m-d format.
+	 * @param string $end_date   Inclusive end date in Y-m-d format.
+	 * @param int    $per_page   Maximum rows to return.
+	 * @param int    $offset     Number of rows to skip.
+	 * @return array Array of associative-array rows.
+	 */
+	public function get_filtered_page($start_date, $end_date, $per_page = 25, $offset = 0) {
+		global $wpdb;
+		$table           = $wpdb->prefix . 'aips_telemetry';
+		$start_datetime  = $start_date . ' 00:00:00';
+		$end_datetime    = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s ORDER BY id DESC LIMIT %d OFFSET %d",
+				$start_datetime,
+				$end_datetime,
+				(int) $per_page,
+				(int) $offset
+			),
+			ARRAY_A
+		);
+	}
+
+	/**
 	 * Count the total number of telemetry rows.
 	 *
 	 * @return int
@@ -118,6 +146,53 @@ class AIPS_Telemetry_Repository {
 		$table = $wpdb->prefix . 'aips_telemetry';
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+	}
+
+	/**
+	 * Count telemetry rows within an inclusive date range.
+	 *
+	 * @param string $start_date Inclusive start date in Y-m-d format.
+	 * @param string $end_date   Inclusive end date in Y-m-d format.
+	 * @return int
+	 */
+	public function count_filtered($start_date, $end_date) {
+		global $wpdb;
+		$table          = $wpdb->prefix . 'aips_telemetry';
+		$start_datetime = $start_date . ' 00:00:00';
+		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s",
+				$start_datetime,
+				$end_datetime
+			)
+		);
+	}
+
+	/**
+	 * Return daily telemetry aggregates for charting.
+	 *
+	 * @param string $start_date Inclusive start date in Y-m-d format.
+	 * @param string $end_date   Inclusive end date in Y-m-d format.
+	 * @return array<int, array<string, string|int|float>>
+	 */
+	public function get_daily_rollup($start_date, $end_date) {
+		global $wpdb;
+		$table          = $wpdb->prefix . 'aips_telemetry';
+		$start_datetime = $start_date . ' 00:00:00';
+		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$table} WHERE inserted_at >= %s AND inserted_at < %s GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
+				$start_datetime,
+				$end_datetime
+			),
+			ARRAY_A
+		);
 	}
 
 	/**
