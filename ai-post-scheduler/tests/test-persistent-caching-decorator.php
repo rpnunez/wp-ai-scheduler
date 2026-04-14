@@ -513,6 +513,7 @@ class Test_Caching_Decorator_Container_Bindings extends WP_UnitTestCase {
 		$this->container = AIPS_Container::get_instance();
 		$this->container->clear();
 		AIPS_Cache_Factory::reset();
+		unset( $GLOBALS['_aips_test_ext_object_cache'] );
 		global $wp_object_cache_storage;
 		$wp_object_cache_storage = array();
 	}
@@ -520,6 +521,7 @@ class Test_Caching_Decorator_Container_Bindings extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$this->container->clear();
 		AIPS_Cache_Factory::reset();
+		unset( $GLOBALS['_aips_test_ext_object_cache'] );
 		global $wp_object_cache_storage;
 		$wp_object_cache_storage = array();
 		parent::tearDown();
@@ -563,7 +565,6 @@ class Test_Caching_Decorator_Container_Bindings extends WP_UnitTestCase {
 
 	public function test_template_interface_resolves_to_caching_decorator_with_persistent_cache() {
 		// Temporarily override the wp_using_ext_object_cache() return value.
-		add_filter( 'aips_test_ext_object_cache', '__return_true' );
 		$this->_override_ext_object_cache( true );
 
 		$this->register_bindings();

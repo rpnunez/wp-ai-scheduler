@@ -36,11 +36,6 @@ class AIPS_Caching_Schedule_Repository implements AIPS_Schedule_Repository_Inter
 	const TTL = 300;
 
 	/**
-	 * WP object-cache group for schedule entries.
-	 */
-	const GROUP = 'aips_schedules';
-
-	/**
 	 * Inner repository that owns the actual DB queries.
 	 *
 	 * @var AIPS_Schedule_Repository_Interface
@@ -59,15 +54,15 @@ class AIPS_Caching_Schedule_Repository implements AIPS_Schedule_Repository_Inter
 	 *
 	 * @param AIPS_Schedule_Repository_Interface $inner Inner repository.
 	 * @param AIPS_Cache|null                    $cache Optional cache instance.
-	 *                                                   Defaults to a new AIPS_Cache
-	 *                                                   using the wp_object_cache driver.
+	 *                                                   Defaults to a named wp_object_cache
+	 *                                                   instance via AIPS_Cache_Factory.
 	 */
 	public function __construct(
 		AIPS_Schedule_Repository_Interface $inner,
-		AIPS_Cache $cache = null
+		?AIPS_Cache $cache = null
 	) {
 		$this->inner = $inner;
-		$this->cache = $cache ?: new AIPS_Cache( new AIPS_Cache_Wp_Object_Cache_Driver( 'aips_schedules' ) );
+		$this->cache = $cache ?: AIPS_Cache_Factory::named( 'aips_caching_schedules', 'wp_object_cache' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -81,7 +76,7 @@ class AIPS_Caching_Schedule_Repository implements AIPS_Schedule_Repository_Inter
 		$key = 'all:' . ( $active_only ? '1' : '0' );
 		return $this->cache->remember( $key, self::TTL, function() use ( $active_only ) {
 			return $this->inner->get_all( $active_only );
-		}, self::GROUP );
+		} );
 	}
 
 	/**
@@ -89,12 +84,12 @@ class AIPS_Caching_Schedule_Repository implements AIPS_Schedule_Repository_Inter
 	 */
 	public function get_by_id($id) {
 		$key = 'id:' . (int) $id;
-		if ( $this->cache->has( $key, self::GROUP ) ) {
-			return $this->cache->get( $key, self::GROUP );
+		if ( $this->cache->has( $key ) ) {
+			return $this->cache->get( $key );
 		}
 		$result = $this->inner->get_by_id( $id );
 		if ( $result !== null ) {
-			$this->cache->set( $key, $result, self::TTL, self::GROUP );
+			$this->cache->set( $key, $result, self::TTL );
 		}
 		return $result;
 	}
