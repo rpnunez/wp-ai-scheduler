@@ -485,6 +485,11 @@ final class AI_Post_Scheduler {
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
 
+        // Ensure the sources fetch cron exists during normal cron bootstrap so it
+        // is scheduled consistently even before the sources cron class runs later.
+        if (!wp_next_scheduled('aips_fetch_sources')) {
+            wp_schedule_event(current_time('timestamp'), 'hourly', 'aips_fetch_sources');
+        }
         // Sources cron: fetch content for sources that have a fetch_interval configured.
         AIPS_Sources_Cron::instance();
 
