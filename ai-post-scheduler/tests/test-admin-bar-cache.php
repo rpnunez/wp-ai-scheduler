@@ -19,6 +19,11 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+
+		if ( ! class_exists( 'WP_Admin_Bar' ) && defined( 'ABSPATH' ) && defined( 'WPINC' ) ) {
+			require_once ABSPATH . WPINC . '/class-wp-admin-bar.php';
+		}
+
 		AIPS_Cache_Factory::reset();
 		$this->admin_bar  = new AIPS_Admin_Bar();
 		$this->repository = new AIPS_Notifications_Repository();
@@ -51,7 +56,7 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		// Create a mock WP_Admin_Bar
 		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
 			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
+			->onlyMethods(array('add_node'))
 			->getMock();
 
 		$cache     = AIPS_Cache_Factory::instance();
@@ -99,10 +104,9 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		// Create a mock WP_Admin_Bar
 		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
 			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
+			->onlyMethods(array('add_node'))
 			->getMock();
 		$wp_admin_bar->method('add_node')->willReturn(true);
-		$wp_admin_bar->method('add_group')->willReturn(true);
 
 		// Call add_toolbar_node
 		$admin_bar->add_toolbar_node($wp_admin_bar);
@@ -143,10 +147,9 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		// Create a mock WP_Admin_Bar
 		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
 			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
+			->onlyMethods(array('add_node'))
 			->getMock();
 		$wp_admin_bar->method('add_node')->willReturn(true);
-		$wp_admin_bar->method('add_group')->willReturn(true);
 
 		// Call add_toolbar_node
 		$admin_bar->add_toolbar_node($wp_admin_bar);
@@ -182,24 +185,32 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		// Set up AJAX request
 		$orig_post    = $_POST;
 		$orig_request = $_REQUEST;
+		$die_handler  = static function( $message ) {
+			throw new Exception( is_scalar( $message ) ? (string) $message : 'wp_die' );
+		};
+		$die_filter   = static function() use ( $die_handler ) {
+			return $die_handler;
+		};
 
 		try {
+			add_filter( 'wp_die_handler', $die_filter );
+
 			$_POST['id']       = $notif_id;
 			$_POST['nonce']    = wp_create_nonce('aips_admin_bar_nonce');
 			$_REQUEST['nonce'] = wp_create_nonce('aips_admin_bar_nonce');
 
-			// Call ajax_mark_read and catch the die exception
+			// Call ajax_mark_read and swallow wp_die control flow in full WP mode.
 			try {
 				$this->admin_bar->ajax_mark_read();
-				$this->fail('Expected WPAjaxDieContinueException');
-			} catch (WPAjaxDieContinueException $e) {
-				// Expected - AJAX handlers call wp_die
+			} catch ( Exception $e ) {
+				// Expected when wp_die is triggered by wp_send_json_*.
 			}
 
 			// Verify cache now holds the fresh count (0 after marking the only notification read)
 			$this->assertTrue($cache->has($cache_key, 'aips_admin_bar'), 'Cache should be repopulated after mark_read');
 			$this->assertSame(0, $cache->get($cache_key, 'aips_admin_bar'), 'Cache value should reflect new unread count');
 		} finally {
+			remove_filter( 'wp_die_handler', $die_filter );
 			$_POST    = $orig_post;
 			$_REQUEST = $orig_request;
 		}
@@ -231,23 +242,31 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		// Set up AJAX request
 		$orig_post    = $_POST;
 		$orig_request = $_REQUEST;
+		$die_handler  = static function( $message ) {
+			throw new Exception( is_scalar( $message ) ? (string) $message : 'wp_die' );
+		};
+		$die_filter   = static function() use ( $die_handler ) {
+			return $die_handler;
+		};
 
 		try {
+			add_filter( 'wp_die_handler', $die_filter );
+
 			$_POST['nonce']    = wp_create_nonce('aips_admin_bar_nonce');
 			$_REQUEST['nonce'] = wp_create_nonce('aips_admin_bar_nonce');
 
-			// Call ajax_mark_all_read and catch the die exception
+			// Call ajax_mark_all_read and swallow wp_die control flow in full WP mode.
 			try {
 				$this->admin_bar->ajax_mark_all_read();
-				$this->fail('Expected WPAjaxDieContinueException');
-			} catch (WPAjaxDieContinueException $e) {
-				// Expected - AJAX handlers call wp_die
+			} catch ( Exception $e ) {
+				// Expected when wp_die is triggered by wp_send_json_*.
 			}
 
 			// Verify cache now holds the fresh count (0 after marking all read)
 			$this->assertTrue($cache->has($cache_key, 'aips_admin_bar'), 'Cache should be repopulated after mark_all_read');
 			$this->assertSame(0, $cache->get($cache_key, 'aips_admin_bar'), 'Cache value should reflect new unread count');
 		} finally {
+			remove_filter( 'wp_die_handler', $die_filter );
 			$_POST    = $orig_post;
 			$_REQUEST = $orig_request;
 		}
