@@ -137,7 +137,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <?php esc_html_e('Use pre-fetched content from your Trusted Sources to ground AI topic suggestions in real reference material.', 'ai-post-scheduler'); ?>
             </p>
             <form id="aips-research-from-sources-form" method="post">
-                <?php wp_nonce_field('aips_ajax_nonce', 'aips_nonce'); ?>
+                <input
+                    type="hidden"
+                    id="aips-source-research-nonce"
+                    name="aips_nonce"
+                    value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>"
+                >
                 <table class="form-table">
                     <tr>
                         <th scope="row">
