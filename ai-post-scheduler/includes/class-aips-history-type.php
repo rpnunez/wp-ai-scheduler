@@ -2,7 +2,7 @@
 /**
  * History Type Constants
  *
- * Defines constants for different types of history entries in the unified history system.
+ * Defines constants for different types of history entries in the history system.
  * These constants are used to categorize history entries for filtering and display.
  *
  * @package AI_Post_Scheduler
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_History_Type
  *
- * Provides type constants for the unified history system.
+ * Provides type constants for the history system.
  * Used to categorize all history entries including logs, errors, AI calls, etc.
  */
 class AIPS_History_Type {

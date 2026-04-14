@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for AIPS_Schedule_Controller unified bulk AJAX endpoints.
+ * Tests for AIPS_Schedule_Controller bulk AJAX endpoints.
  *
  * @package AI_Post_Scheduler
  */
@@ -31,7 +31,7 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$wpdb->insert(
 			$wpdb->prefix . 'aips_templates',
 			array(
-				'name'            => 'Unified Bulk Test Template',
+				'name'            => 'Schedule Bulk Test Template',
 				'prompt_template' => 'Write about {{topic}}',
 				'is_active'       => 1,
 				'post_quantity'   => 1,
@@ -81,43 +81,43 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 				'frequency'   => 'daily',
 				'next_run'    => gmdate( 'Y-m-d H:i:s', time() + HOUR_IN_SECONDS ),
 				'is_active'   => (int) $is_active,
-				'topic'       => 'Unified bulk topic',
+				'topic'       => 'Schedule bulk topic',
 			)
 		);
 
 		return (int) $wpdb->insert_id;
 	}
 
-	public function test_unified_bulk_delete_requires_items() {
+	public function test_schedule_bulk_delete_requires_items() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['items'] = array();
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_delete' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_delete' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertSame( 'No items provided.', $response['data']['message'] );
 	}
 
-	public function test_unified_bulk_delete_permission_denied() {
+	public function test_schedule_bulk_delete_permission_denied() {
 		wp_set_current_user( $this->subscriber_user_id );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['items'] = array(
 			array(
 				'id'   => 123,
-				'type' => AIPS_Unified_Schedule_Service::TYPE_TEMPLATE,
+				'type' => AIPS_Schedule_Service::TYPE_TEMPLATE,
 			),
 		);
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_delete' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_delete' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertSame( 'Permission denied.', $response['data']['message'] );
 	}
 
-	public function test_unified_bulk_delete_template_schedule_success() {
+	public function test_schedule_bulk_delete_template_schedule_success() {
 		wp_set_current_user( $this->admin_user_id );
 		$schedule_id = $this->create_template_schedule( 1 );
 
@@ -125,11 +125,11 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$_POST['items'] = array(
 			array(
 				'id'   => $schedule_id,
-				'type' => AIPS_Unified_Schedule_Service::TYPE_TEMPLATE,
+				'type' => AIPS_Schedule_Service::TYPE_TEMPLATE,
 			),
 		);
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_delete' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_delete' ) );
 
 		$this->assertTrue( $response['success'] );
 		$this->assertSame( 1, (int) $response['data']['deleted'] );
@@ -139,20 +139,20 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$this->assertNull( $row );
 	}
 
-	public function test_unified_bulk_toggle_requires_items() {
+	public function test_schedule_bulk_toggle_requires_items() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$_POST['nonce']     = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['items']     = array();
 		$_POST['is_active'] = 0;
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_toggle' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_toggle' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertSame( 'No items provided.', $response['data']['message'] );
 	}
 
-	public function test_unified_bulk_toggle_template_schedule_success() {
+	public function test_schedule_bulk_toggle_template_schedule_success() {
 		wp_set_current_user( $this->admin_user_id );
 		$schedule_id = $this->create_template_schedule( 1 );
 
@@ -160,12 +160,12 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$_POST['items']     = array(
 			array(
 				'id'   => $schedule_id,
-				'type' => AIPS_Unified_Schedule_Service::TYPE_TEMPLATE,
+				'type' => AIPS_Schedule_Service::TYPE_TEMPLATE,
 			),
 		);
 		$_POST['is_active'] = 0;
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_toggle' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_toggle' ) );
 
 		$this->assertTrue( $response['success'] );
 		$this->assertSame( 1, (int) $response['data']['updated'] );
@@ -176,21 +176,21 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$this->assertSame( 0, (int) $row->is_active );
 	}
 
-	public function test_unified_bulk_run_now_rejects_too_many_items() {
+	public function test_schedule_bulk_run_now_rejects_too_many_items() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$items = array();
 		for ( $i = 1; $i <= 6; $i++ ) {
 			$items[] = array(
 				'id'   => $i,
-				'type' => AIPS_Unified_Schedule_Service::TYPE_TEMPLATE,
+				'type' => AIPS_Schedule_Service::TYPE_TEMPLATE,
 			);
 		}
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['items'] = $items;
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_unified_bulk_run_now' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_schedule_bulk_run_now' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertStringContainsString( 'Too many schedules selected', $response['data']['message'] );

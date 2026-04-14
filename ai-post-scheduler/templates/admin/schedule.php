@@ -3,10 +3,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-// Data for the unified schedules page
-$unified_service = new AIPS_Schedule_Service();
+// Data for the schedules page
+$schedule_service = new AIPS_Schedule_Service();
 $type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
-$all_schedules   = $unified_service->get_all($type_filter);
+$all_schedules   = $schedule_service->get_all($type_filter);
 
 // Also fetch template-schedule data needed for the "Add Schedule" modal
 $templates_handler  = new AIPS_Templates();
@@ -116,7 +116,7 @@ if (!function_exists('aips_next_run_relative')) {
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
-					<select id="aips-unified-type-filter" class="aips-form-select">
+					<select id="aips-schedule-type-filter" class="aips-form-select">
 						<option value="" <?php selected($type_filter, ''); ?>><?php esc_html_e('All Types', 'ai-post-scheduler'); ?></option>
 						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_TEMPLATE); ?>>
 							<?php esc_html_e('Post Generation', 'ai-post-scheduler'); ?>
@@ -130,43 +130,43 @@ if (!function_exists('aips_next_run_relative')) {
 					</select>
 				</div>
 				<div class="aips-filter-right">
-					<label class="screen-reader-text" for="aips-unified-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-unified-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-unified-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-schedule-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
 			<!-- Bulk Actions Toolbar -->
 			<div class="aips-panel-toolbar">
 				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-					<button type="button" id="aips-unified-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
+					<button type="button" id="aips-schedule-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
 						<?php esc_html_e('Select All', 'ai-post-scheduler'); ?>
 					</button>
-					<button type="button" id="aips-unified-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
+					<button type="button" id="aips-schedule-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
 						<?php esc_html_e('Unselect All', 'ai-post-scheduler'); ?>
 					</button>
-					<select id="aips-unified-bulk-action" class="aips-form-input" style="width:auto;">
+					<select id="aips-schedule-bulk-action" class="aips-form-input" style="width:auto;">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="run_now"><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></option>
 						<option value="pause"><?php esc_html_e('Pause', 'ai-post-scheduler'); ?></option>
 						<option value="resume"><?php esc_html_e('Resume', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button type="button" id="aips-unified-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
+					<button type="button" id="aips-schedule-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
 						<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
 					</button>
-					<span id="aips-unified-selected-count" class="aips-selected-count" style="display:none;"></span>
+					<span id="aips-schedule-selected-count" class="aips-selected-count" style="display:none;"></span>
 				</div>
 			</div>
 
-			<!-- Unified Schedules Table -->
+			<!-- Schedules Table -->
 			<div class="aips-panel-body no-padding">
 				<?php if (!empty($all_schedules)): ?>
-				<table class="aips-table aips-unified-schedule-table">
+				<table class="aips-table aips-schedule-table">
 					<thead>
 						<tr>
 							<th class="check-column">
-								<input type="checkbox" id="cb-select-all-unified" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
+								<input type="checkbox" id="cb-select-all-schedules" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
 							</th>
 							<th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 							<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
@@ -206,7 +206,7 @@ if (!function_exists('aips_next_run_relative')) {
 						// Composite row ID for JS (e.g. "template_schedule:5")
 						$row_key = esc_attr($sched['type'] . ':' . $sched['id']);
 					?>
-					<tr class="aips-unified-row"
+					<tr class="aips-schedule-row"
 						data-id="<?php echo esc_attr($sched['id']); ?>"
 						data-type="<?php echo esc_attr($sched['type']); ?>"
 						data-row-key="<?php echo $row_key; ?>"
@@ -221,7 +221,7 @@ if (!function_exists('aips_next_run_relative')) {
 						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
-								class="aips-unified-checkbox"
+								class="aips-schedule-checkbox"
 								value="<?php echo $row_key; ?>"
 								aria-label="<?php echo esc_attr(sprintf(__('Select: %s', 'ai-post-scheduler'), $sched['title'])); ?>">
 						</th>
@@ -234,7 +234,7 @@ if (!function_exists('aips_next_run_relative')) {
 							<?php endif; ?>
 							<div class="aips-row-actions">
 								<a href="#"
-									class="aips-view-unified-history"
+									class="aips-view-schedule-history"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									data-name="<?php echo esc_attr($sched['title']); ?>"
@@ -293,7 +293,7 @@ if (!function_exists('aips_next_run_relative')) {
 								</span>
 								<label class="aips-toggle">
 									<input type="checkbox"
-										class="aips-unified-toggle-schedule"
+										class="aips-schedule-toggle"
 										data-id="<?php echo esc_attr($sched['id']); ?>"
 										data-type="<?php echo esc_attr($sched['type']); ?>"
 										aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
@@ -319,7 +319,7 @@ if (!function_exists('aips_next_run_relative')) {
 								<?php endif; ?>
 
 								<!-- Run Now (all types) -->
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
+								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-schedule-run-now"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>"
@@ -329,7 +329,7 @@ if (!function_exists('aips_next_run_relative')) {
 
 								<!-- Delete (template schedules only) -->
 								<?php if ($sched['can_delete']): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-unified-schedule"
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
@@ -345,12 +345,12 @@ if (!function_exists('aips_next_run_relative')) {
 				</table>
 
 				<!-- No Search Results State -->
-				<div id="aips-unified-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
+				<div id="aips-schedule-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
 					<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
+						<button type="button" class="aips-btn aips-btn-primary aips-clear-schedule-search-btn">
 							<span class="dashicons dashicons-dismiss"></span>
 							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 						</button>

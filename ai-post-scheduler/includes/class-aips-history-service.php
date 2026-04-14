@@ -2,7 +2,7 @@
 /**
  * History Service
  *
- * Unified service for logging and tracking all generation activities.
+ * Service for logging and tracking all generation activities.
  * Wraps session management and history updates into a clean API.
  *
  * @package AI_Post_Scheduler
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_History_Service
  *
- * Provides a unified interface for logging generation activities,
+ * Provides a consistent interface for logging generation activities,
  * managing sessions, and updating history records.
  */
 class AIPS_History_Service implements AIPS_History_Service_Interface {

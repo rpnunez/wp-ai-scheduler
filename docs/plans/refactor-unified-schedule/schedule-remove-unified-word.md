@@ -3,6 +3,19 @@
 ## Goal
 Remove the word "unified" from primary schedule-related class names, function/method names, JS selectors, CSS hooks, comments, and tests, while using a temporary backward-compatible AJAX alias window.
 
+## Status
+Completed as of 2026-04-13.
+
+- Phase 1 complete: backend schedule naming migrated to non-unified primary names.
+- Phase 2 complete: frontend JS, template, and CSS schedule hooks migrated.
+- Phase 3 complete: schedule tests and targeted comment/docblock cleanup updated.
+- Phase 4 complete: legacy `aips_unified_*` AJAX aliases, deprecation logging, and alias-only tests removed.
+- Strict grep gate passed: `rg -n "\bunified\b|Unified" ai-post-scheduler --glob '!**/vendor/**'` returned no matches.
+
+Final state:
+- The schedule runtime uses only `aips_schedule_*` action names.
+- No `unified` schedule references remain in the plugin codebase under `ai-post-scheduler/`.
+
 ## Scope
 Primary scope:
 - [ai-post-scheduler/includes/class-aips-unified-schedule-service.php](ai-post-scheduler/includes/class-aips-unified-schedule-service.php)

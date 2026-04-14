@@ -399,14 +399,14 @@ class AIPS_Admin_Assets {
                 'yesRunNow'                      => __('Yes, run now', 'ai-post-scheduler'),
                 // Single schedule delete
                 'deleteScheduleConfirm'          => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
-                // Unified schedule bulk-action validation
+                // Schedule bulk-action validation
                 'selectBulkAction'               => __('Please select a bulk action.', 'ai-post-scheduler'),
                 'selectAtLeastOne'               => __('Please select at least one schedule.', 'ai-post-scheduler'),
                 // Schedule error toasts
                 'failedToDeleteSchedules'        => __('Failed to delete schedules.', 'ai-post-scheduler'),
                 // Bulk run-now confirm dialog
                 'runSchedulesNow'                => __('Run Schedules Now', 'ai-post-scheduler'),
-                // Unified schedule bulk delete dialog
+                // Schedule bulk delete dialog
                 'deleteSchedulesHeading'         => __('Delete Schedules', 'ai-post-scheduler'),
                 'noDeletableSchedulesSelected'   => __('None of the selected schedules can be deleted.', 'ai-post-scheduler'),
                 'deleteSchedulesListIntro'       => __('The following schedules will be deleted:', 'ai-post-scheduler'),

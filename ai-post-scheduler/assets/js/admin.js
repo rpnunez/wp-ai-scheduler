@@ -106,21 +106,21 @@
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-edit-schedule', this.editSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
-            $(document).on('click', '.aips-delete-unified-schedule', this.deleteSchedule);
+            $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
 
-            // Unified Schedule Page handlers
-            $(document).on('change', '#cb-select-all-unified', this.toggleAllUnified);
-            $(document).on('change', '.aips-unified-checkbox', this.toggleUnifiedSelection);
-            $(document).on('click', '#aips-unified-select-all', this.selectAllUnified);
-            $(document).on('click', '#aips-unified-unselect-all', this.unselectAllUnified);
-            $(document).on('click', '#aips-unified-bulk-apply', this.applyUnifiedBulkAction);
-            $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
-            $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
-            $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
-            $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
-            $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
-            $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
-            $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
+            // Schedule page handlers
+            $(document).on('change', '#cb-select-all-schedules', this.toggleAllScheduleRows);
+            $(document).on('change', '.aips-schedule-checkbox', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-schedule-select-all', this.selectAllSchedules);
+            $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
+            $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
+            $(document).on('change', '.aips-schedule-toggle', this.toggleSchedule);
+            $(document).on('click', '.aips-schedule-run-now', this.runScheduleNow);
+            $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
+            $(document).on('change', '#aips-schedule-type-filter', this.filterScheduleByType);
+            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
+            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
+            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
 
 
@@ -875,7 +875,7 @@
          * Immediately generate a post from a template without waiting for its
          * scheduled run.
          *
-         * Sends the unified run-now AJAX action with template type metadata.
+         * Sends the schedule run-now AJAX action with template type metadata.
          * Displays the generated-post modal when the backend returns modal
          * payload fields; otherwise falls back to a toast message.
          *
@@ -892,7 +892,7 @@
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_run_now',
+                    action: 'aips_schedule_run_now',
                     nonce: aipsAjax.nonce,
                     id: id,
                     type: 'template_schedule'
@@ -923,7 +923,7 @@
          * Uses server-provided summary text plus the per-post preview payload to
          * build the modal body with AIPS HTML templates.
          *
-         * @param {Object} data - AJAX success payload from unified run-now.
+         * @param {Object} data - AJAX success payload from schedule run-now.
          */
         showGeneratedPostsModal: function(data) {
             var generatedCount = parseInt(data && data.generated_count, 10);
@@ -1316,8 +1316,8 @@
                         // Dynamically update the schedules table
                         $.get(location.href, function(html) {
                             var $newDoc = $(html);
-                            var $newContent = $newDoc.find('.aips-unified-schedule-table').closest('.aips-content-panel');
-                            var $existingPanel = $('.aips-unified-schedule-table').closest('.aips-content-panel');
+                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
+                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
 
                             if ($newContent.length) {
                                 if ($existingPanel.length) {
@@ -1334,7 +1334,7 @@
                                     }
                                 }
 
-                                AIPS.updateUnifiedBulkActions();
+                                AIPS.updateScheduleBulkActions();
                             } else {
                                 location.reload();
                             }
@@ -1353,12 +1353,12 @@
         },
 
         /**
-         * Confirm and delete a template schedule from the unified schedules table.
+         * Confirm and delete a template schedule from the schedules table.
          *
-         * Uses the unified bulk-delete endpoint with a single item payload so the
-         * row lifecycle remains consistent with other unified delete flows.
+         * Uses the schedule bulk-delete endpoint with a single item payload so the
+         * row lifecycle remains consistent with other schedule delete flows.
          *
-         * @param {Event} e - Click event from `.aips-delete-unified-schedule`.
+         * @param {Event} e - Click event from `.aips-delete-schedule`.
          */
         deleteSchedule: function(e) {
             e.preventDefault();
@@ -1380,7 +1380,7 @@
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
-                            action: 'aips_unified_bulk_delete',
+                            action: 'aips_schedule_bulk_delete',
                             nonce: aipsAjax.nonce,
                             items: [
                                 {
@@ -1394,7 +1394,7 @@
                                 $row.fadeOut(250, function() {
                                     $(this).remove();
                                 });
-                                AIPS.updateUnifiedBulkActions();
+                                AIPS.updateScheduleBulkActions();
                                 AIPS.Utilities.showToast((response.data && response.data.message) || 'Schedule deleted successfully.', 'success');
                             } else {
                                 AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.errorOccurred, 'error');
@@ -1409,16 +1409,16 @@
         },
 
         // =====================================================================
-        // Unified Schedule Page handlers
+        // Schedule page handlers
         // =====================================================================
 
         /**
          * Navigate to the schedules page filtered by type when the type
          * dropdown changes.
          *
-         * @param {Event} e - Change event from `#aips-unified-type-filter`.
+         * @param {Event} e - Change event from `#aips-schedule-type-filter`.
          */
-        filterUnifiedByType: function(e) {
+        filterScheduleByType: function(e) {
             var type = $(this).val();
             var url  = window.location.href.split('?')[0];
             var params = new URLSearchParams(window.location.search);
@@ -1431,16 +1431,16 @@
         },
 
         /**
-         * Live-filter the unified schedule table rows by the search term.
+         * Live-filter the schedule table rows by the search term.
          *
-         * @param {Event} e - Keyup / search event from `#aips-unified-search`.
+         * @param {Event} e - Keyup / search event from `#aips-schedule-search`.
          */
-        filterUnifiedSchedules: function(e) {
+        filterSchedules: function(e) {
             var term = $(this).val().toLowerCase().trim();
-            var $clear = $('#aips-unified-search-clear');
+            var $clear = $('#aips-schedule-search-clear');
             $clear.toggle(term.length > 0);
 
-            var $rows = $('.aips-unified-row');
+            var $rows = $('.aips-schedule-row');
             var found = 0;
 
             $rows.each(function() {
@@ -1450,66 +1450,66 @@
                 if (match) { found++; }
             });
 
-            $('#aips-unified-search-no-results').toggle(found === 0 && $rows.length > 0);
+            $('#aips-schedule-search-no-results').toggle(found === 0 && $rows.length > 0);
         },
 
         /**
-         * Clear the unified schedule search field and restore all rows.
+         * Clear the schedule search field and restore all rows.
          *
-         * Bound to `#aips-unified-search-clear` and `.aips-clear-unified-search-btn`.
+         * Bound to `#aips-schedule-search-clear` and `.aips-clear-schedule-search-btn`.
          *
          * @param {Event} e - Click event.
          */
-        clearUnifiedSearch: function(e) {
+        clearScheduleSearch: function(e) {
             e.preventDefault();
-            $('#aips-unified-search').val('');
-            $('.aips-unified-row').show();
-            $('#aips-unified-search-clear').hide();
-            $('#aips-unified-search-no-results').hide();
+            $('#aips-schedule-search').val('');
+            $('.aips-schedule-row').show();
+            $('#aips-schedule-search-clear').hide();
+            $('#aips-schedule-search-no-results').hide();
         },
 
         /**
-         * Sync all unified-schedule checkboxes with the "select all" header.
+         * Sync all schedule checkboxes with the "select all" header.
          */
-        toggleAllUnified: function() {
+        toggleAllScheduleRows: function() {
             var isChecked = $(this).prop('checked');
-            $('.aips-unified-checkbox:visible').prop('checked', isChecked);
-            AIPS.updateUnifiedBulkActions();
+            $('.aips-schedule-checkbox:visible').prop('checked', isChecked);
+            AIPS.updateScheduleBulkActions();
         },
 
         /**
          * Keep the "select all" in sync when individual rows are toggled.
          */
-        toggleUnifiedSelection: function() {
-            var total   = $('.aips-unified-checkbox:visible').length;
-            var checked = $('.aips-unified-checkbox:visible:checked').length;
-            $('#cb-select-all-unified').prop('checked', total > 0 && checked === total);
-            AIPS.updateUnifiedBulkActions();
+        toggleScheduleSelection: function() {
+            var total   = $('.aips-schedule-checkbox:visible').length;
+            var checked = $('.aips-schedule-checkbox:visible:checked').length;
+            $('#cb-select-all-schedules').prop('checked', total > 0 && checked === total);
+            AIPS.updateScheduleBulkActions();
         },
 
         /** Check all visible rows. */
-        selectAllUnified: function() {
-            $('.aips-unified-checkbox:visible').prop('checked', true);
-            $('#cb-select-all-unified').prop('checked', true);
-            AIPS.updateUnifiedBulkActions();
+        selectAllSchedules: function() {
+            $('.aips-schedule-checkbox:visible').prop('checked', true);
+            $('#cb-select-all-schedules').prop('checked', true);
+            AIPS.updateScheduleBulkActions();
         },
 
         /** Uncheck all rows. */
-        unselectAllUnified: function() {
-            $('.aips-unified-checkbox').prop('checked', false);
-            $('#cb-select-all-unified').prop('checked', false);
-            AIPS.updateUnifiedBulkActions();
+        unselectAllSchedules: function() {
+            $('.aips-schedule-checkbox').prop('checked', false);
+            $('#cb-select-all-schedules').prop('checked', false);
+            AIPS.updateScheduleBulkActions();
         },
 
         /**
-         * Enable or disable the unified bulk-action Apply button and show the
+         * Enable or disable the schedule bulk-action Apply button and show the
          * selection count.
          */
-        updateUnifiedBulkActions: function() {
-            var count      = $('.aips-unified-checkbox:checked').length;
-            var $apply     = $('#aips-unified-bulk-apply');
-            var $unselect  = $('#aips-unified-unselect-all');
-            var $countLbl  = $('#aips-unified-selected-count');
+        updateScheduleBulkActions: function() {
+            var count      = $('.aips-schedule-checkbox:checked').length;
+            var $apply     = $('#aips-schedule-bulk-apply');
+            var $unselect  = $('#aips-schedule-unselect-all');
+            var $countLbl  = $('#aips-schedule-selected-count');
 
             $apply.prop('disabled', count === 0);
             $unselect.prop('disabled', count === 0);
@@ -1522,24 +1522,24 @@
         },
 
         /**
-         * Parse selected unified-schedule checkboxes and dispatch the chosen
+         * Parse selected schedule checkboxes and dispatch the chosen
          * bulk action.
          *
          * Supported actions: `run_now`, `pause`, `resume`, `delete`.
          *
-         * @param {Event} e - Click event from `#aips-unified-bulk-apply`.
+         * @param {Event} e - Click event from `#aips-schedule-bulk-apply`.
          */
-        applyUnifiedBulkAction: function(e) {
+        applyScheduleBulkAction: function(e) {
             e.preventDefault();
 
-            var action = $('#aips-unified-bulk-action').val();
+            var action = $('#aips-schedule-bulk-action').val();
             if (!action) {
                 AIPS.Utilities.showToast(aipsScheduleL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
                 return;
             }
 
             var items = [];
-            $('.aips-unified-checkbox:checked').each(function() {
+            $('.aips-schedule-checkbox:checked').each(function() {
                 var $checkbox = $(this);
                 var $row = $checkbox.closest('tr');
                 var parts = $(this).val().split(':');
@@ -1567,25 +1567,25 @@
                     [
                         { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                         { label: aipsScheduleL10n.yesRunNow || 'Yes, Run Now', className: 'aips-btn aips-btn-primary', action: function() {
-                            AIPS.unifiedBulkRunNow(items);
+                            AIPS.scheduleBulkRunNow(items);
                         }}
                     ]
                 );
             } else if (action === 'pause') {
-                AIPS.unifiedBulkToggle(items, 0);
+                AIPS.scheduleBulkToggle(items, 0);
             } else if (action === 'resume') {
-                AIPS.unifiedBulkToggle(items, 1);
+                AIPS.scheduleBulkToggle(items, 1);
             } else if (action === 'delete') {
-                AIPS.confirmUnifiedBulkDelete(items);
+                AIPS.confirmScheduleBulkDelete(items);
             }
         },
 
         /**
-         * Confirm unified bulk delete and include a list of schedule names.
+         * Confirm schedule bulk delete and include a list of schedule names.
          *
          * @param {Array<{type: string, id: number, title: string, canDelete: boolean}>} items
          */
-        confirmUnifiedBulkDelete: function(items) {
+        confirmScheduleBulkDelete: function(items) {
             var deletableItems = items.filter(function(item) {
                 return item && item.canDelete;
             });
@@ -1622,7 +1622,7 @@
                         label: aipsAdminL10n.confirmDeleteButton || 'Delete',
                         className: 'aips-btn aips-btn-danger-solid',
                         action: function() {
-                            AIPS.unifiedBulkDelete(deletableItems);
+                            AIPS.scheduleBulkDelete(deletableItems);
                         }
                     }
                 ]
@@ -1630,19 +1630,19 @@
         },
 
         /**
-         * Bulk run-now for mixed-type schedules via `aips_unified_bulk_run_now`.
+         * Bulk run-now for mixed-type schedules via `aips_schedule_bulk_run_now`.
          *
          * @param {Array<{type: string, id: number}>} items
          */
-        unifiedBulkRunNow: function(items) {
-            var $applyBtn = $('#aips-unified-bulk-apply');
+        scheduleBulkRunNow: function(items) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
             AIPS.Utilities.setButtonLoading($applyBtn, 'Running…');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_bulk_run_now',
+                    action: 'aips_schedule_bulk_run_now',
                     nonce: aipsAjax.nonce,
                     items: items
                 },
@@ -1658,26 +1658,26 @@
                 },
                 complete: function() {
                     AIPS.Utilities.resetButton($applyBtn);
-                    AIPS.updateUnifiedBulkActions();
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
 
         /**
-         * Bulk pause/resume mixed-type schedules via `aips_unified_bulk_toggle`.
+         * Bulk pause/resume mixed-type schedules via `aips_schedule_bulk_toggle`.
          *
          * @param {Array<{type: string, id: number}>} items
          * @param {number} isActive 1 to resume, 0 to pause.
          */
-        unifiedBulkToggle: function(items, isActive) {
-            var $applyBtn = $('#aips-unified-bulk-apply');
+        scheduleBulkToggle: function(items, isActive) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
             AIPS.Utilities.setButtonLoading($applyBtn, isActive ? 'Resuming\u2026' : 'Pausing\u2026');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_bulk_toggle',
+                    action: 'aips_schedule_bulk_toggle',
                     nonce: aipsAjax.nonce,
                     items: items,
                     is_active: isActive
@@ -1732,17 +1732,17 @@
                             var key  = item.type + ':' + item.id;
                             var $row = $('tr[data-row-key="' + key + '"]');
                             if ($row.length) {
-                                AIPS.updateUnifiedRowStatus($row, isActive);
+                                AIPS.updateScheduleRowStatus($row, isActive);
                                 // In partial success, unselect only successful rows to keep failures visible.
                                 if (Object.keys(failedKeysMap).length > 0) {
-                                    $row.find('.aips-unified-checkbox').prop('checked', false);
+                                    $row.find('.aips-schedule-checkbox').prop('checked', false);
                                 }
                             }
                         });
 
                         // If there were no known failures, keep existing behavior (unselect all).
                         if (Object.keys(failedKeysMap).length === 0) {
-                            AIPS.unselectAllUnified();
+                            AIPS.unselectAllSchedules();
                         }
                     } else {
                         AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.errorOccurred, 'error');
@@ -1753,25 +1753,25 @@
                 },
                 complete: function() {
                     AIPS.Utilities.resetButton($applyBtn);
-                    AIPS.updateUnifiedBulkActions();
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
 
         /**
-         * Bulk-delete template schedules selected from the unified table.
+         * Bulk-delete template schedules selected from the schedule table.
          *
          * @param {Array<{type: string, id: number}>} items
          */
-        unifiedBulkDelete: function(items) {
-            var $applyBtn = $('#aips-unified-bulk-apply');
+        scheduleBulkDelete: function(items) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
             $applyBtn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_bulk_delete',
+                    action: 'aips_schedule_bulk_delete',
                     nonce: aipsAjax.nonce,
                     items: items
                 },
@@ -1780,7 +1780,7 @@
                         var data = response.data || {};
                         var deletedItems = Array.isArray(data.deleted_items) ? data.deleted_items : [];
 
-                        $('#aips-unified-bulk-action').val('');
+                        $('#aips-schedule-bulk-action').val('');
 
                         deletedItems.forEach(function(item) {
                             if (!item || !item.type || typeof item.id === 'undefined') {
@@ -1790,7 +1790,7 @@
                             var rowKey = item.type + ':' + item.id;
                             $('tr[data-row-key="' + rowKey + '"]').fadeOut(250, function() {
                                 $(this).remove();
-                                AIPS.updateUnifiedBulkActions();
+                                AIPS.updateScheduleBulkActions();
                             });
                         });
 
@@ -1804,17 +1804,17 @@
                 },
                 complete: function() {
                     $applyBtn.prop('disabled', false).text('Apply');
-                    AIPS.updateUnifiedBulkActions();
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
 
         /**
-         * Toggle a single unified schedule's active status.
+         * Toggle a single schedule's active status.
          *
-         * Bound to the `change` event on `.aips-unified-toggle-schedule`.
+         * Bound to the `change` event on `.aips-schedule-toggle`.
          */
-        toggleUnifiedSchedule: function() {
+        toggleSchedule: function() {
             var $toggle  = $(this);
             var id       = $toggle.data('id');
             var type     = $toggle.data('type');
@@ -1825,7 +1825,7 @@
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_toggle',
+                    action: 'aips_schedule_toggle',
                     nonce: aipsAjax.nonce,
                     id: id,
                     type: type,
@@ -1833,7 +1833,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.updateUnifiedRowStatus($row, isActive);
+                        AIPS.updateScheduleRowStatus($row, isActive);
                     } else {
                         // Revert the toggle
                         $toggle.prop('checked', !isActive);
@@ -1848,13 +1848,13 @@
         },
 
         /**
-         * Update the status badge and toggle for a unified schedule row.
+         * Update the status badge and toggle for a schedule row.
          *
          * @param {jQuery} $row     The `<tr>` element to update.
          * @param {number} isActive 1 = active/resumed, 0 = paused.
          */
-        updateUnifiedRowStatus: function($row, isActive) {
-            var $toggle  = $row.find('.aips-unified-toggle-schedule');
+        updateScheduleRowStatus: function($row, isActive) {
+            var $toggle  = $row.find('.aips-schedule-toggle');
             var $wrapper = $row.find('.aips-schedule-status-wrapper');
             var $badge   = $wrapper.find('.aips-badge');
             var $icon    = $badge.find('.dashicons');
@@ -1877,13 +1877,13 @@
         },
 
         /**
-         * Run a single unified schedule immediately.
+         * Run a single schedule immediately.
          *
-         * Bound to click on `.aips-unified-run-now`.
+         * Bound to click on `.aips-schedule-run-now`.
          *
          * @param {Event} e - Click event.
          */
-        runNowUnified: function(e) {
+        runScheduleNow: function(e) {
             e.preventDefault();
 
             var $btn  = $(this);
@@ -1898,7 +1898,7 @@
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_run_now',
+                    action: 'aips_schedule_run_now',
                     nonce: aipsAjax.nonce,
                     id: id,
                     type: type
@@ -1929,9 +1929,9 @@
         /**
          * Open the Schedule History modal and load entries for any schedule type.
          *
-         * @param {Event} e - Click event from `.aips-view-unified-history`.
+         * @param {Event} e - Click event from `.aips-view-schedule-history`.
          */
-        viewUnifiedScheduleHistory: function(e) {
+        viewScheduleHistory: function(e) {
             e.preventDefault();
 
             var $btn  = $(this);
@@ -1958,7 +1958,7 @@
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_get_unified_schedule_history',
+                    action: 'aips_get_schedule_history',
                     nonce: aipsAjax.nonce,
                     id: id,
                     type: type,
@@ -2829,7 +2829,7 @@
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_unified_run_now',
+                    action: 'aips_schedule_run_now',
                     nonce: aipsAjax.nonce,
                     id: templateId,
                     type: 'template_schedule'

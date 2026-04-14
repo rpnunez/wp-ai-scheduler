@@ -46,14 +46,6 @@ class AIPS_Ajax_Registry {
 		'aips_schedule_bulk_delete'       => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_history'       => 'AIPS_Schedule_Controller',
 
-		// Schedule Controller (legacy unified aliases)
-		'aips_unified_run_now'            => 'AIPS_Schedule_Controller',
-		'aips_unified_toggle'             => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_toggle'        => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
-		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
-		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
-
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
 		'aips_reject_topic'               => 'AIPS_Author_Topics_Controller',

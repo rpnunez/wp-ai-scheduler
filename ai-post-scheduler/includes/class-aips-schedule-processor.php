@@ -152,7 +152,7 @@ class AIPS_Schedule_Processor {
             return new WP_Error('template_not_found', __('Template not found.', 'ai-post-scheduler'));
         }
 
-        // Merge schedule data with template data to create a unified object
+        // Merge schedule data with template data to create a combined object
         // similar to what the JOIN query produces for process_due_schedules
         $schedule_with_template = (object) array_merge((array) $template_data, (array) $schedule);
 

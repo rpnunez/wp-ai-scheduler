@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for schedule history repository and unified schedule history endpoint.
+ * Tests for schedule history repository and schedule history endpoint.
  *
  * @package AI_Post_Scheduler
  */
@@ -69,40 +69,40 @@ class Test_AIPS_Schedule_History extends WP_UnitTestCase {
 		$this->assertEmpty( $logs );
 	}
 
-	public function test_ajax_get_unified_schedule_history_requires_valid_parameters() {
+	public function test_ajax_get_schedule_history_requires_valid_parameters() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['id']    = 0;
 		$_POST['type']  = '';
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_get_unified_schedule_history' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertSame( 'Invalid parameters.', $response['data']['message'] );
 	}
 
-	public function test_ajax_get_unified_schedule_history_permission_denied() {
+	public function test_ajax_get_schedule_history_permission_denied() {
 		wp_set_current_user( $this->subscriber_user_id );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['id']    = 1;
-		$_POST['type']  = AIPS_Unified_Schedule_Service::TYPE_TEMPLATE;
+		$_POST['type']  = AIPS_Schedule_Service::TYPE_TEMPLATE;
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_get_unified_schedule_history' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 		$this->assertFalse( $response['success'] );
 		$this->assertSame( 'Permission denied.', $response['data']['message'] );
 	}
 
-	public function test_ajax_get_unified_schedule_history_unknown_schedule_returns_empty_entries() {
+	public function test_ajax_get_schedule_history_unknown_schedule_returns_empty_entries() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['id']    = 999999;
-		$_POST['type']  = AIPS_Unified_Schedule_Service::TYPE_TEMPLATE;
+		$_POST['type']  = AIPS_Schedule_Service::TYPE_TEMPLATE;
 
-		$response = $this->call_ajax( array( $this->controller, 'ajax_get_unified_schedule_history' ) );
+		$response = $this->call_ajax( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 		$this->assertTrue( $response['success'] );
 		$this->assertIsArray( $response['data']['entries'] );

@@ -14,41 +14,83 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Generator {
 
+    /**
+     * @var AIPS_AI_Service_Interface AI service for text/image generation
+     */
     private $ai_service;
+
+    /**
+     * @var AIPS_Logger_Interface Plugin-wide logger
+     */
     private $logger;
 
     /**
-     * @var AIPS_History_Service_Interface History service for unified logging
+     * @var AIPS_History_Service_Interface Service for centralized history logging
      */
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository_Interface History repository for logger
+     * @var AIPS_History_Repository_Interface Repository for history data
      */
     private $history_repository;
 
     /**
-     * @var AIPS_History_Container|null Current history container
+     * @var AIPS_History_Container|null Current history container for the active generation
      */
     private $current_history;
 
     /**
-     * @var AIPS_Generation_Logger Handles logging logic.
+     * @var AIPS_Generation_Logger Specialized logger for generation sessions
      */
     private $generation_logger;
 
+    /**
+     * @var AIPS_Template_Processor Processor for template variables and logic
+     */
     private $template_processor;
+
+    /**
+     * @var AIPS_Image_Service Service for handling featured images
+     */
     private $image_service;
+
+    /**
+     * @var AIPS_Article_Structure_Manager Manager for article layouts
+     */
     private $structure_manager;
+
+    /**
+     * @var AIPS_Post_Manager Manager for WordPress post operations
+     */
     private $post_manager;
+
+    /**
+     * @var AIPS_Prompt_Builder Main builder for AI prompts
+     */
     private $prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Content Builder for article body prompts
+     */
     private $post_content_prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Title Builder for post title prompts
+     */
     private $post_title_prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Excerpt Builder for post excerpt prompts
+     */
     private $post_excerpt_prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Featured_Image Builder for image generation prompts
+     */
     private $post_featured_image_prompt_builder;
 
     /**
-     * @var AIPS_Markdown_Parser Markdown parser
+     * @var AIPS_Markdown_Parser|null Parser for converting Markdown to HTML
      */
     private $markdown_parser;
 
@@ -58,26 +100,26 @@ class AIPS_Generator {
      * Accepts dependencies for easier testing; falls back to concrete
      * implementations when not provided.
      *
-    * @param AIPS_Logger_Interface|null $logger
-    * @param AIPS_AI_Service_Interface|null $ai_service
-     * @param object|null $template_processor
-     * @param object|null $image_service
-     * @param object|null $structure_manager
-     * @param object|null $post_manager
-    * @param AIPS_History_Service_Interface|null $history_service
-     * @param object|null $prompt_builder
-     * @param object|null $markdown_parser
+     * @param AIPS_Logger_Interface|null            $logger
+     * @param AIPS_AI_Service_Interface|null        $ai_service
+     * @param object|null                           $template_processor
+     * @param object|null                           $image_service
+     * @param object|null                           $structure_manager
+     * @param object|null                           $post_manager
+     * @param AIPS_History_Service_Interface|null   $history_service
+     * @param object|null                           $prompt_builder
+     * @param object|null                           $markdown_parser
      */
     public function __construct(
-        ?AIPS_Logger_Interface $logger = null,
-        ?AIPS_AI_Service_Interface $ai_service = null,
-        $template_processor = null,
-        $image_service = null,
-        $structure_manager = null,
-        $post_manager = null,
-        ?AIPS_History_Service_Interface $history_service = null,
-        $prompt_builder = null,
-        $markdown_parser = null
+        ?AIPS_Logger_Interface $logger          = null,
+        ?AIPS_AI_Service_Interface $ai_service  = null,
+        $template_processor                     = null, // AIPS_Template_Processor
+        $image_service                          = null, // AIPS_Image_Service
+        $structure_manager                      = null, // AIPS_Article_Structure_Manager
+        $post_manager                           = null, // AIPS_Post_Manager
+        ?AIPS_History_Service_Interface $history_service = null, // AIPS_History_Service
+        $prompt_builder                         = null, // AIPS_Prompt_Builder
+        $markdown_parser                        = null // AIPS_Markdown_Parser
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());

@@ -472,14 +472,14 @@
 }
 
 /* WordPress-style hover row actions for schedule rows */
-.aips-unified-row .aips-row-actions {
+.aips-schedule-row .aips-row-actions {
 	visibility: hidden;
 	margin-top: var(--aips-space-1);
 	font-size: var(--aips-text-xs);
 }
 
-.aips-unified-row:hover .aips-row-actions,
-.aips-unified-row:focus-within .aips-row-actions {
+.aips-schedule-row:hover .aips-row-actions,
+.aips-schedule-row:focus-within .aips-row-actions {
 	visibility: visible;
 }
 
@@ -3392,8 +3392,8 @@ margin-right: 8px;
 }
 
 /* ==========================================================================
-   Unified Schedules Page — Type Badges & Muted Text
-   ========================================================================== */
+    Schedules Page — Type Badges & Muted Text
+    ========================================================================== */
 
 .aips-badge-type-template {
 	background: #dbeafe;
@@ -3432,14 +3432,14 @@ margin-right: 8px;
 	opacity: .6;
 }
 
-/* Unified schedule table: checkbox column width */
-.aips-unified-schedule-table thead .check-column {
+/* Schedule table: checkbox column width */
+.aips-schedule-table thead .check-column {
 	width: 2.5rem;
 	text-align: center;
 	padding: var(--aips-space-3) var(--aips-space-4);
 }
 
-.aips-unified-schedule-table tbody .check-column {
+.aips-schedule-table tbody .check-column {
 	text-align: center;
 	padding: var(--aips-space-4);
 }

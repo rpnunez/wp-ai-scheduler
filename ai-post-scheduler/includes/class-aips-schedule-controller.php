@@ -19,31 +19,6 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_schedule_bulk_run_now', array($this, 'ajax_schedule_bulk_run_now'));
         add_action('wp_ajax_aips_schedule_bulk_delete', array($this, 'ajax_schedule_bulk_delete'));
         add_action('wp_ajax_aips_get_schedule_history', array($this, 'ajax_get_schedule_history'));
-
-        // Legacy aliases kept during the deprecation window.
-        add_action('wp_ajax_aips_unified_run_now', array($this, 'ajax_unified_run_now'));
-        add_action('wp_ajax_aips_unified_toggle', array($this, 'ajax_unified_toggle'));
-        add_action('wp_ajax_aips_unified_bulk_toggle', array($this, 'ajax_unified_bulk_toggle'));
-        add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
-        add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
-        add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
-    }
-
-    /**
-     * Log a deprecation notice when a legacy unified action is called.
-     *
-     * @param string $legacy_action Legacy action name.
-     * @param string $new_action Replacement action name.
-     * @return void
-     */
-    private function log_deprecated_unified_action($legacy_action, $new_action) {
-        error_log(
-            sprintf(
-                '[AIPS] Deprecated AJAX action "%1$s" called. Use "%2$s" instead. Alias will be removed in a future release.',
-                sanitize_key($legacy_action),
-                sanitize_key($new_action)
-            )
-        );
     }
 
     /**
@@ -331,7 +306,6 @@ class AIPS_Schedule_Controller {
         }
 
         $max_bulk = apply_filters('aips_schedule_bulk_run_now_limit', 5);
-        $max_bulk = apply_filters('aips_unified_bulk_run_now_limit', $max_bulk);
         if (count($items) > $max_bulk) {
             AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
@@ -494,65 +468,5 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
-    }
-
-    /**
-     * Legacy alias for aips_unified_run_now.
-     *
-     * @return void
-     */
-    public function ajax_unified_run_now() {
-        $this->log_deprecated_unified_action('aips_unified_run_now', 'aips_schedule_run_now');
-        $this->ajax_schedule_run_now();
-    }
-
-    /**
-     * Legacy alias for aips_unified_toggle.
-     *
-     * @return void
-     */
-    public function ajax_unified_toggle() {
-        $this->log_deprecated_unified_action('aips_unified_toggle', 'aips_schedule_toggle');
-        $this->ajax_schedule_toggle();
-    }
-
-    /**
-     * Legacy alias for aips_unified_bulk_toggle.
-     *
-     * @return void
-     */
-    public function ajax_unified_bulk_toggle() {
-        $this->log_deprecated_unified_action('aips_unified_bulk_toggle', 'aips_schedule_bulk_toggle');
-        $this->ajax_schedule_bulk_toggle();
-    }
-
-    /**
-     * Legacy alias for aips_unified_bulk_run_now.
-     *
-     * @return void
-     */
-    public function ajax_unified_bulk_run_now() {
-        $this->log_deprecated_unified_action('aips_unified_bulk_run_now', 'aips_schedule_bulk_run_now');
-        $this->ajax_schedule_bulk_run_now();
-    }
-
-    /**
-     * Legacy alias for aips_unified_bulk_delete.
-     *
-     * @return void
-     */
-    public function ajax_unified_bulk_delete() {
-        $this->log_deprecated_unified_action('aips_unified_bulk_delete', 'aips_schedule_bulk_delete');
-        $this->ajax_schedule_bulk_delete();
-    }
-
-    /**
-     * Legacy alias for aips_get_unified_schedule_history.
-     *
-     * @return void
-     */
-    public function ajax_get_unified_schedule_history() {
-        $this->log_deprecated_unified_action('aips_get_unified_schedule_history', 'aips_get_schedule_history');
-        $this->ajax_get_schedule_history();
     }
 }
