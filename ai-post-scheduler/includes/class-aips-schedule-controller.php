@@ -12,13 +12,38 @@ class AIPS_Schedule_Controller {
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
 
-        // Unified schedule endpoints (all types)
+        // Primary schedule endpoints (all types)
+        add_action('wp_ajax_aips_schedule_run_now', array($this, 'ajax_schedule_run_now'));
+        add_action('wp_ajax_aips_schedule_toggle', array($this, 'ajax_schedule_toggle'));
+        add_action('wp_ajax_aips_schedule_bulk_toggle', array($this, 'ajax_schedule_bulk_toggle'));
+        add_action('wp_ajax_aips_schedule_bulk_run_now', array($this, 'ajax_schedule_bulk_run_now'));
+        add_action('wp_ajax_aips_schedule_bulk_delete', array($this, 'ajax_schedule_bulk_delete'));
+        add_action('wp_ajax_aips_get_schedule_history', array($this, 'ajax_get_schedule_history'));
+
+        // Legacy aliases kept during the deprecation window.
         add_action('wp_ajax_aips_unified_run_now', array($this, 'ajax_unified_run_now'));
         add_action('wp_ajax_aips_unified_toggle', array($this, 'ajax_unified_toggle'));
         add_action('wp_ajax_aips_unified_bulk_toggle', array($this, 'ajax_unified_bulk_toggle'));
         add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
+    }
+
+    /**
+     * Log a deprecation notice when a legacy unified action is called.
+     *
+     * @param string $legacy_action Legacy action name.
+     * @param string $new_action Replacement action name.
+     * @return void
+     */
+    private function log_deprecated_unified_action($legacy_action, $new_action) {
+        error_log(
+            sprintf(
+                '[AIPS] Deprecated AJAX action "%1$s" called. Use "%2$s" instead. Alias will be removed in a future release.',
+                sanitize_key($legacy_action),
+                sanitize_key($new_action)
+            )
+        );
     }
 
     /**
@@ -130,7 +155,7 @@ class AIPS_Schedule_Controller {
      *
      * Expects POST: id (int), type (string).
      */
-    public function ajax_unified_run_now() {
+    public function ajax_schedule_run_now() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -144,7 +169,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = new AIPS_Schedule_Service();
         $result  = $service->run_now($id, $type);
 
         if (is_wp_error($result)) {
@@ -152,7 +177,7 @@ class AIPS_Schedule_Controller {
         }
 
         // Format the success message based on type.
-        if ($type === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+        if ($type === AIPS_Schedule_Service::TYPE_TEMPLATE) {
             $post_ids = is_array($result) ? $result : array($result);
             $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
             $edit_url = $first_post_id ? esc_url_raw(get_edit_post_link($first_post_id, 'raw')) : '';
@@ -179,7 +204,7 @@ class AIPS_Schedule_Controller {
                 'errors'          => array(),
                 'edit_url'        => $edit_url,
             ));
-        } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
+        } elseif ($type === AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC) {
             $count = is_array($result) ? count($result) : 0;
             AIPS_Ajax_Response::success(array(
                 'message' => sprintf(
@@ -187,7 +212,7 @@ class AIPS_Schedule_Controller {
                     $count
                 ),
             ));
-        } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+        } elseif ($type === AIPS_Schedule_Service::TYPE_AUTHOR_POST) {
             $post_id  = is_int($result) ? $result : 0;
             $edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
             AIPS_Ajax_Response::success(array(
@@ -205,7 +230,7 @@ class AIPS_Schedule_Controller {
      *
      * Expects POST: id (int), type (string), is_active (0|1).
      */
-    public function ajax_unified_toggle() {
+    public function ajax_schedule_toggle() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -220,7 +245,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = new AIPS_Schedule_Service();
         $result  = $service->toggle($id, $type, $is_active);
 
         if ($result !== false) {
@@ -238,7 +263,7 @@ class AIPS_Schedule_Controller {
      *
      * Expects POST: items (array of {id, type}), is_active (0|1).
      */
-    public function ajax_unified_bulk_toggle() {
+    public function ajax_schedule_bulk_toggle() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -252,7 +277,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = new AIPS_Schedule_Service();
         $updated = 0;
         $errors  = array();
 
@@ -292,7 +317,7 @@ class AIPS_Schedule_Controller {
      *
      * Expects POST: items (array of {id, type}).
      */
-    public function ajax_unified_bulk_run_now() {
+    public function ajax_schedule_bulk_run_now() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -305,7 +330,8 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $max_bulk = apply_filters('aips_unified_bulk_run_now_limit', 5);
+        $max_bulk = apply_filters('aips_schedule_bulk_run_now_limit', 5);
+        $max_bulk = apply_filters('aips_unified_bulk_run_now_limit', $max_bulk);
         if (count($items) > $max_bulk) {
             AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
@@ -317,7 +343,7 @@ class AIPS_Schedule_Controller {
             ));
         }
 
-        $service  = new AIPS_Unified_Schedule_Service();
+        $service  = new AIPS_Schedule_Service();
         $success  = 0;
         $errors   = array();
 
@@ -373,7 +399,7 @@ class AIPS_Schedule_Controller {
      * Expects POST: items (array of {id, type}).
      * Only template schedules are deletable.
      */
-    public function ajax_unified_bulk_delete() {
+    public function ajax_schedule_bulk_delete() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -386,7 +412,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $service       = new AIPS_Unified_Schedule_Service();
+        $service       = new AIPS_Schedule_Service();
         $deleted_count = 0;
         $deleted_items = array();
         $failed_items  = array();
@@ -449,7 +475,7 @@ class AIPS_Schedule_Controller {
      *
      * Expects POST: id (int), type (string).
      */
-    public function ajax_get_unified_schedule_history() {
+    public function ajax_get_schedule_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -464,9 +490,69 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = new AIPS_Schedule_Service();
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * Legacy alias for aips_unified_run_now.
+     *
+     * @return void
+     */
+    public function ajax_unified_run_now() {
+        $this->log_deprecated_unified_action('aips_unified_run_now', 'aips_schedule_run_now');
+        $this->ajax_schedule_run_now();
+    }
+
+    /**
+     * Legacy alias for aips_unified_toggle.
+     *
+     * @return void
+     */
+    public function ajax_unified_toggle() {
+        $this->log_deprecated_unified_action('aips_unified_toggle', 'aips_schedule_toggle');
+        $this->ajax_schedule_toggle();
+    }
+
+    /**
+     * Legacy alias for aips_unified_bulk_toggle.
+     *
+     * @return void
+     */
+    public function ajax_unified_bulk_toggle() {
+        $this->log_deprecated_unified_action('aips_unified_bulk_toggle', 'aips_schedule_bulk_toggle');
+        $this->ajax_schedule_bulk_toggle();
+    }
+
+    /**
+     * Legacy alias for aips_unified_bulk_run_now.
+     *
+     * @return void
+     */
+    public function ajax_unified_bulk_run_now() {
+        $this->log_deprecated_unified_action('aips_unified_bulk_run_now', 'aips_schedule_bulk_run_now');
+        $this->ajax_schedule_bulk_run_now();
+    }
+
+    /**
+     * Legacy alias for aips_unified_bulk_delete.
+     *
+     * @return void
+     */
+    public function ajax_unified_bulk_delete() {
+        $this->log_deprecated_unified_action('aips_unified_bulk_delete', 'aips_schedule_bulk_delete');
+        $this->ajax_schedule_bulk_delete();
+    }
+
+    /**
+     * Legacy alias for aips_get_unified_schedule_history.
+     *
+     * @return void
+     */
+    public function ajax_get_unified_schedule_history() {
+        $this->log_deprecated_unified_action('aips_get_unified_schedule_history', 'aips_get_schedule_history');
+        $this->ajax_get_schedule_history();
     }
 }

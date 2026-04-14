@@ -1,6 +1,6 @@
 <?php
 /**
- * Unified Schedule Service
+ * Schedule Service
  *
  * Aggregates all schedule types (template schedules, author topic generation,
  * author post generation) into a single normalised list for the Schedules admin page.
@@ -14,12 +14,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class AIPS_Unified_Schedule_Service
+ * Class AIPS_Schedule_Service
  *
- * Provides a unified view of every scheduled process in the plugin,
+ * Provides a normalised view of every scheduled process in the plugin,
  * regardless of which underlying database table stores it.
  */
-class AIPS_Unified_Schedule_Service {
+class AIPS_Schedule_Service {
 
 	/** Schedule type constants */
 	const TYPE_TEMPLATE    = 'template_schedule';

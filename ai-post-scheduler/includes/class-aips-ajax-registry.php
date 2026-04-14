@@ -39,6 +39,14 @@ class AIPS_Ajax_Registry {
 
 		// Schedule Controller
 		'aips_save_schedule'              => 'AIPS_Schedule_Controller',
+		'aips_schedule_run_now'           => 'AIPS_Schedule_Controller',
+		'aips_schedule_toggle'            => 'AIPS_Schedule_Controller',
+		'aips_schedule_bulk_toggle'       => 'AIPS_Schedule_Controller',
+		'aips_schedule_bulk_run_now'      => 'AIPS_Schedule_Controller',
+		'aips_schedule_bulk_delete'       => 'AIPS_Schedule_Controller',
+		'aips_get_schedule_history'       => 'AIPS_Schedule_Controller',
+
+		// Schedule Controller (legacy unified aliases)
 		'aips_unified_run_now'            => 'AIPS_Schedule_Controller',
 		'aips_unified_toggle'             => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_toggle'        => 'AIPS_Schedule_Controller',

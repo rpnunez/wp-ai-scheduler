@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Data for the unified schedules page
-$unified_service = new AIPS_Unified_Schedule_Service();
+$unified_service = new AIPS_Schedule_Service();
 $type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
 $all_schedules   = $unified_service->get_all($type_filter);
 
@@ -42,12 +42,12 @@ if (!function_exists('aips_frequency_label')) {
  */
 if (!function_exists('aips_type_badge')) {
 	function aips_type_badge($type) {
-		switch ($type) {
-			case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
+			switch ($type) {
+				case AIPS_Schedule_Service::TYPE_TEMPLATE:
 				return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
+				case AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC:
 				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
+				case AIPS_Schedule_Service::TYPE_AUTHOR_POST:
 				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
 		}
 		return '';
@@ -59,10 +59,10 @@ if (!function_exists('aips_type_badge')) {
  */
 if (!function_exists('aips_run_output_label')) {
 	function aips_run_output_label($type) {
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
+		if ($type === AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC) {
 			return __('Generated topics for author queue', 'ai-post-scheduler');
 		}
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+		if ($type === AIPS_Schedule_Service::TYPE_AUTHOR_POST) {
 			return __('Generated approved-topic post', 'ai-post-scheduler');
 		}
 		return __('Generated post from template', 'ai-post-scheduler');
@@ -118,13 +118,13 @@ if (!function_exists('aips_next_run_relative')) {
 				<div class="aips-filter-left">
 					<select id="aips-unified-type-filter" class="aips-form-select">
 						<option value="" <?php selected($type_filter, ''); ?>><?php esc_html_e('All Types', 'ai-post-scheduler'); ?></option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_TEMPLATE); ?>>
 							<?php esc_html_e('Post Generation', 'ai-post-scheduler'); ?>
 						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
 							<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
 						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_AUTHOR_POST); ?>>
 							<?php esc_html_e('Author Posts', 'ai-post-scheduler'); ?>
 						</option>
 					</select>
@@ -305,7 +305,7 @@ if (!function_exists('aips_next_run_relative')) {
 						<td class="column-actions">
 							<div class="cell-actions">
 								<!-- Edit (template schedules only) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
+										<?php if ($sched['type'] === AIPS_Schedule_Service::TYPE_TEMPLATE): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
 									aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
