@@ -17,6 +17,9 @@ concurrency:
   group: load-smoke-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 # ─────────────────────────────────────────────────────────────────────────────
 # This workflow runs the Phase H.3 smoke tests that validate the plugin's
 # resilience contracts under concurrent / burst load conditions without
@@ -131,6 +134,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: load-smoke
     if: always()
+    permissions: {}
 
     steps:
       - name: Check smoke test results

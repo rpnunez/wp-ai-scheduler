@@ -99,6 +99,14 @@ class Test_AIPS_Load_Smoke extends WP_UnitTestCase {
 		delete_transient( 'aips_rate_limiter_requests' );
 		delete_transient( 'aips_circuit_breaker_state' );
 		unset( $GLOBALS['aips_test_options'] );
+
+		// Clean up any templates and schedules created during locking tests.
+		global $wpdb;
+		if ( isset( $wpdb ) && is_object( $wpdb ) && ! property_exists( $wpdb, 'get_col_return_val' ) ) {
+			$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_schedule WHERE topic IN ('Lock test','Topic A','Topic B')" );
+			$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_templates WHERE name IN ('Smoke Lock Test Template','Concurrent Lock Template')" );
+		}
+
 		parent::tearDown();
 	}
 
@@ -368,8 +376,8 @@ class Test_AIPS_Load_Smoke extends WP_UnitTestCase {
 		) );
 		$this->assertNotFalse( $template_id, 'Template creation should succeed' );
 
-		// Create an overdue daily schedule.
-		$overdue_time = date( 'Y-m-d H:i:s', strtotime( '-2 hours' ) );
+		// Create an overdue daily schedule (7200 seconds = 2 hours in the past).
+		$overdue_time = gmdate( 'Y-m-d H:i:s', time() - 7200 );
 		$schedule_id  = $schedule_repo->create( array(
 			'template_id' => $template_id,
 			'frequency'   => 'daily',

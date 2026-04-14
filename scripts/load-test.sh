@@ -146,7 +146,7 @@ ADMIN_NONCE=""
 # Retrieve a nonce for AJAX calls.
 NONCE_RESPONSE=$(curl -s -b "$COOKIE_JAR" \
     "${SITE_URL}/wp-admin/admin-ajax.php?action=aips_get_admin_nonce" 2>/dev/null || true)
-if echo "$NONCE_RESPONSE" | grep -qE '"nonce":"[a-f0-9]+"' 2>/dev/null; then
+if echo "$NONCE_RESPONSE" | grep -qE '"nonce":"[a-zA-Z0-9]+"' 2>/dev/null; then
     ADMIN_NONCE=$(echo "$NONCE_RESPONSE" | sed 's/.*"nonce":"\([^"]*\)".*/\1/')
     log "Nonce obtained: ${ADMIN_NONCE}"
 else
@@ -215,6 +215,7 @@ run_ab() {
     ab_cmd="$ab_cmd \"${url}\""
 
     eval "$ab_cmd" 2>&1 | tee "$report_section" | tee -a "$REPORT_FILE"
+    [ -n "${post_file:-}" ] && rm -f "$post_file"
     echo "" | tee -a "$REPORT_FILE"
 }
 
