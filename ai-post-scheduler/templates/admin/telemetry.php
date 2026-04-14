@@ -89,8 +89,8 @@ if (!defined('ABSPATH')) {
 						<span><?php esc_html_e('Rows per page', 'ai-post-scheduler'); ?></span>
 						<select id="aips-telemetry-per-page" class="aips-form-select">
 							<option value="25" <?php selected($per_page, 25); ?>>25</option>
-							<option value="50">50</option>
-							<option value="100">100</option>
+							<option value="50" <?php selected($per_page, 50); ?>>50</option>
+							<option value="100" <?php selected($per_page, 100); ?>>100</option>
 						</select>
 					</label>
 					<button type="button" class="aips-btn aips-btn-secondary aips-telemetry-refresh">

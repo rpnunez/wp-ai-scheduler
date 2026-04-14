@@ -133,8 +133,10 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_filtered_page($start_date, $end_date, $per_page = 25, $offset = 0) {
-		$start_datetime  = $start_date . ' 00:00:00';
-		$end_datetime    = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+		$tz             = wp_timezone();
+		$start_datetime = $start_date . ' 00:00:00';
+		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
+		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
@@ -188,8 +190,10 @@ class AIPS_Telemetry_Repository {
 	 * @return int
 	 */
 	public function count_filtered($start_date, $end_date) {
+		$tz             = wp_timezone();
 		$start_datetime = $start_date . ' 00:00:00';
-		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
+		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
 
 		return (int) $this->wpdb->get_var(
 			$this->wpdb->prepare(
@@ -209,8 +213,10 @@ class AIPS_Telemetry_Repository {
 	 * @return array<int, array<string, string|int|float>>
 	 */
 	public function get_daily_rollup($start_date, $end_date) {
+		$tz             = wp_timezone();
 		$start_datetime = $start_date . ' 00:00:00';
-		$end_datetime   = date('Y-m-d 00:00:00', strtotime($end_date . ' +1 day'));
+		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
+		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
