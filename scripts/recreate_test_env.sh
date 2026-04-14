@@ -15,10 +15,18 @@ cd "$REPO_DIR"
 export WP_TESTS_DIR="${WP_TESTS_PARENT_DIR}/wordpress-tests-lib"
 export WP_CORE_DIR="$WP_CORE_DIR_INPUT"
 
-DB_NAME='wp_ns_tests_schedule'
-DB_USER='root'
-DB_PASS=''
-DB_HOST='localhost'
+# Prompt for DB credentials (press Enter to accept defaults)
+read -r -p "Database name (press Enter to use 'nunezscheduler_test'): " DB_NAME
+DB_NAME="${DB_NAME:-nunezscheduler_test}"
+
+read -r -p "Database user (press Enter to use 'root'): " DB_USER
+DB_USER="${DB_USER:-root}"
+
+read -r -p "Database password (press Enter to use empty string): " DB_PASS
+DB_PASS="${DB_PASS:-}"
+
+read -r -p "Database host (press Enter to use 'localhost'): " DB_HOST
+DB_HOST="${DB_HOST:-localhost}"
 
 # If MySQL tools are not on PATH, uncomment this line:
 # export PATH="/c/xampp/mysql/bin:$PATH"
