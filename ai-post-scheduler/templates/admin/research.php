@@ -161,7 +161,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                             <div class="aips-checkbox-group">
                                 <?php foreach ($research_source_groups as $rsg): ?>
                                     <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
-                                        <input type="checkbox" name="source_term_ids[]"
+                                        <input type="checkbox" name="term_ids[]"
                                                value="<?php echo esc_attr($rsg->term_id); ?>">
                                         <?php echo esc_html($rsg->name); ?>
                                     </label>

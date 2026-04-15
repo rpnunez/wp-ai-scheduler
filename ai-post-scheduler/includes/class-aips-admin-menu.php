@@ -414,25 +414,7 @@ class AIPS_Admin_Menu {
 
         // Build source → fetch-data map for the Content status column.
         $data_repo             = new AIPS_Sources_Data_Repository();
-        $source_fetch_data_map = array();
-        if (!empty($all_source_ids)) {
-            // Load both success and failed rows so we can show error state too.
-            global $wpdb;
-            $table        = $wpdb->prefix . 'aips_sources_data';
-            $placeholders = implode(',', array_fill(0, count($all_source_ids), '%d'));
-            // phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            $rows = $wpdb->get_results(
-                $wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "SELECT * FROM {$table} WHERE source_id IN ($placeholders)",
-                    ...$all_source_ids
-                )
-            );
-            // phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            foreach ($rows as $row) {
-                $source_fetch_data_map[(int) $row->source_id] = $row;
-            }
-        }
+        $source_fetch_data_map = $data_repo->get_by_source_ids( $all_source_ids );
 
         include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }

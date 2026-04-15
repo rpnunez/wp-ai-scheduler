@@ -234,9 +234,10 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		}
 		$http_response = $this->make_http_response( '<html><body>Not found</body></html>', 404 );
 
-		add_filter( 'pre_http_request', function () use ( $http_response ) {
+		$filter_cb = function ( $preempt, $args, $url ) use ( $http_response ) {
 			return $http_response;
-		} );
+		};
+		add_filter( 'pre_http_request', $filter_cb, 10, 3 );
 
 		$mock_data_repo    = $this->createMock( AIPS_Sources_Data_Repository::class );
 		$mock_sources_repo = $this->createMock( AIPS_Sources_Repository::class );
@@ -252,7 +253,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		$fetcher = new AIPS_Sources_Fetcher( $mock_data_repo, $mock_sources_repo );
 		$result  = $fetcher->fetch( $this->make_source( 5, 'https://example.com/404' ) );
 
-		remove_all_filters( 'pre_http_request' );
+		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
 		$this->assertFalse( $result['success'] );
 	}
@@ -273,9 +274,10 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		$http_response = $this->make_http_response( $html, 200 );
 
-		add_filter( 'pre_http_request', function () use ( $http_response ) {
+		$filter_cb = function ( $preempt, $args, $url ) use ( $http_response ) {
 			return $http_response;
-		} );
+		};
+		add_filter( 'pre_http_request', $filter_cb, 10, 3 );
 
 		$mock_data_repo    = $this->createMock( AIPS_Sources_Data_Repository::class );
 		$mock_sources_repo = $this->createMock( AIPS_Sources_Repository::class );
@@ -300,7 +302,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		$fetcher = new AIPS_Sources_Fetcher( $mock_data_repo, $mock_sources_repo );
 		$result  = $fetcher->fetch( $this->make_source( 10, 'https://example.com' ) );
 
-		remove_all_filters( 'pre_http_request' );
+		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
 		$this->assertTrue( $result['success'] );
 		$this->assertGreaterThan( 0, $result['word_count'] );

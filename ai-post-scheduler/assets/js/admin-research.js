@@ -31,6 +31,7 @@
          */
         bindResearchEvents: function() {
             $(document).on('submit', '#aips-research-form', AIPS.submitResearchForm);
+            $(document).on('submit', '#aips-research-from-sources-form', AIPS.submitResearchFromSourcesForm);
             $(document).on('click', '#load-topics', AIPS.loadTopics);
             $(document).on('keyup search', '#filter-search', AIPS.filterTopics);
             $(document).on('click', '#filter-search-clear, #clear-topics-search', AIPS.clearTopicsSearch);
@@ -78,6 +79,58 @@
                     niche: niche,
                     count: count,
                     keywords: keywords
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.renderResearchResults(response.data);
+                        $('#load-topics').trigger('click');
+                    } else {
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
+                },
+                complete: function() {
+                    $submit.prop('disabled', false).removeClass('is-loading');
+                    $spinner.removeClass('is-active');
+                }
+            });
+        },
+
+        /**
+         * Handle submission of the "Research from Trusted Sources" form.
+         *
+         * Sends the selected source groups, niche, and count to the
+         * aips_research_from_sources AJAX endpoint and renders the results.
+         *
+         * @param {Event} e Submit event.
+         */
+        submitResearchFromSourcesForm: function(e) {
+            e.preventDefault();
+
+            var $form    = $(e.currentTarget);
+            var $submit  = $('#source-research-submit');
+            var $spinner = $('#source-research-spinner');
+
+            var niche    = $('#source-research-niche').val();
+            var count    = $('#source-research-count').val();
+            var termIds  = $form.find('input[name="term_ids[]"]:checked').map(function() {
+                return $(this).val();
+            }).get();
+
+            $submit.prop('disabled', true).addClass('is-loading');
+            $spinner.addClass('is-active');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_research_from_sources',
+                    nonce: $('#aips-source-research-nonce').val(),
+                    niche: niche,
+                    count: count,
+                    term_ids: termIds
                 },
                 success: function(response) {
                     if (response.success) {

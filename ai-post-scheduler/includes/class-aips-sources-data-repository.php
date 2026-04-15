@@ -60,8 +60,9 @@ class AIPS_Sources_Data_Repository {
 	/**
 	 * Insert or update a fetch record for a source.
 	 *
-	 * Uses INSERT … ON DUPLICATE KEY UPDATE so a second fetch just refreshes
-	 * the existing row (the unique key is source_id).
+	 * Checks whether a row already exists for the given source_id and then
+	 * performs either an update or an insert so the latest fetch snapshot is
+	 * stored for that source.
 	 *
 	 * @param int   $source_id Source ID (FK to aips_sources.id).
 	 * @param array $data {
@@ -131,6 +132,40 @@ class AIPS_Sources_Data_Repository {
 				absint( $source_id )
 			)
 		);
+	}
+
+	/**
+	 * Bulk-load all fetch data rows for an array of source IDs.
+	 *
+	 * Unlike get_extracted_texts_by_source_ids(), this returns every row
+	 * regardless of fetch_status so callers can display error states too.
+	 *
+	 * @param int[] $source_ids Array of source IDs.
+	 * @return array<int,object> Map of source_id => row object.
+	 */
+	public function get_by_source_ids( array $source_ids ) {
+		if ( empty( $source_ids ) ) {
+			return array();
+		}
+
+		$source_ids   = array_map( 'absint', $source_ids );
+		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT * FROM {$this->table_name} WHERE source_id IN ($placeholders)",
+				...$source_ids
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		$map = array();
+		foreach ( $rows as $row ) {
+			$map[ (int) $row->source_id ] = $row;
+		}
+		return $map;
 	}
 
 	/**

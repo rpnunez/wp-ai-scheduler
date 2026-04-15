@@ -149,8 +149,11 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to update source.', 'ai-post-scheduler'));
 			}
 
-			// Update fetch schedule if supplied.
-			$this->repo->set_fetch_schedule($id, $fetch_interval ?: null);
+			// Update fetch schedule if supplied; an invalid interval key is a client error.
+			$schedule_ok = $this->repo->set_fetch_schedule($id, $fetch_interval ?: null);
+			if (!$schedule_ok && !empty($fetch_interval)) {
+				AIPS_Ajax_Response::error(__('Invalid fetch interval. Please choose a valid option.', 'ai-post-scheduler'));
+			}
 
 			$this->repo->set_source_terms($id, $term_ids);
 
@@ -171,9 +174,12 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to create source.', 'ai-post-scheduler'));
 			}
 
-			// Set fetch schedule if supplied.
+			// Set fetch schedule if supplied; an invalid interval key is a client error.
 			if ($fetch_interval) {
-				$this->repo->set_fetch_schedule($new_id, $fetch_interval);
+				$schedule_ok = $this->repo->set_fetch_schedule($new_id, $fetch_interval);
+				if (!$schedule_ok) {
+					AIPS_Ajax_Response::error(__('Invalid fetch interval. Please choose a valid option.', 'ai-post-scheduler'));
+				}
 			}
 
 			$this->repo->set_source_terms($new_id, $term_ids);

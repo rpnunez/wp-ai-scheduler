@@ -23,7 +23,7 @@ class AIPS_Sources_Fetcher {
 
 	/**
 	 * Maximum characters of extracted_text stored per source.
-	 * Configurable via the aips_source_snippet_max_chars option.
+	 * Configurable via the aips_source_fetch_max_chars option.
 	 *
 	 * @var int
 	 */
@@ -31,6 +31,7 @@ class AIPS_Sources_Fetcher {
 
 	/**
 	 * Maximum characters of extracted_text included per source in an AI prompt.
+	 * Configurable via the aips_source_snippet_max_chars option.
 	 *
 	 * @var int
 	 */
@@ -127,7 +128,7 @@ class AIPS_Sources_Fetcher {
 		$meta_description = $this->extract_meta_description( $body );
 		$extracted_text   = $this->extract_text( $body );
 
-		$max_chars = absint( get_option( 'aips_source_snippet_max_chars', self::DEFAULT_MAX_CHARS ) );
+		$max_chars = absint( get_option( 'aips_source_fetch_max_chars', self::DEFAULT_MAX_CHARS ) );
 		if ( $max_chars < 500 ) {
 			$max_chars = self::DEFAULT_MAX_CHARS;
 		}
