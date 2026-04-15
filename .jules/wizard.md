@@ -71,3 +71,7 @@
 ## 2026-04-09 - Standardize "Clear" Button Styling in Filters
 **Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
 **Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+
+## 2026-04-10 - Standardize Queue Search Clear Button
+**Learning:** Found an inconsistency in the "Clear Search" button for the Author's Generation Queue where it used `.aips-btn-secondary` instead of the newly standardized `.aips-btn-ghost` class, leading to visual inconsistency with other search bars.
+**Action:** Updated the class in `ai-post-scheduler/templates/admin/authors.php` to match the standard ghost styling, ensuring uniform appearance across the plugin interface.
