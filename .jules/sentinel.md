@@ -86,3 +86,8 @@
 **Vulnerability:** Missing proper explicit nonce handling in Onboarding Wizard AJAX endpoints (relied on implicit wp_die instead of explicitly handling false parameter).
 **Learning:** Relying on default check_ajax_referer behavior causes a wp_die() without proper JSON response, leading to poor UX and non-standard generic error handling.
 **Prevention:** Always verify nonce explicitly using false parameter and return generic errors via wp_send_json_error instead of relying on default wp_die() behavior.
+
+## 2024-05-24 - Information Exposure via AJAX Error Responses
+**Vulnerability:** The AI Edit Controller was returning detailed internal error messages to the client using `$error->get_error_message()` in `AIPS_Ajax_Response::error()` when `is_wp_error()` was true. This could expose stack traces, database schema details, or internal API responses to malicious actors.
+**Learning:** Directly passing the result of `get_error_message()` to client-facing JSON responses violates the Defense in Depth principle.
+**Prevention:** Always log detailed error messages internally using `error_log()` and return generic, localized error messages to the client (e.g., "An error occurred during the operation.").
