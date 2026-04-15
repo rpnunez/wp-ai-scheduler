@@ -66,6 +66,18 @@ class AIPS_Telemetry {
 	}
 
 	/**
+	 * Whether telemetry collection is currently enabled.
+	 *
+	 * Use this to guard add_event() call-sites so disabled requests incur
+	 * zero overhead — no singleton creation, no event-buffer allocation.
+	 *
+	 * @return bool
+	 */
+	public static function is_enabled() {
+		return (bool) AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
+	}
+
+	/**
 	 * Return (and lazily create) the singleton.
 	 *
 	 * @return AIPS_Telemetry

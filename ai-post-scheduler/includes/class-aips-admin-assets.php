@@ -838,7 +838,10 @@ class AIPS_Admin_Assets {
 
             wp_enqueue_script(
                 'aips-chartjs',
-                'https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js',
+                apply_filters(
+                    'aips_chartjs_src',
+                    AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+                ),
                 array(),
                 '4.4.2',
                 true
