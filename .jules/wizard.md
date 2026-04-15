@@ -71,3 +71,6 @@
 ## 2026-04-09 - Standardize "Clear" Button Styling in Filters
 **Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
 **Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+## 2025-04-14 - Empty State and Clear Filter for Queue Search
+Learning: Sometimes when search bars use an empty state, they forget to include the clear search button within the empty state itself, making it hard for users to revert without clicking into the input and deleting text.
+Action: Always verify that empty state screens triggered by search have an obvious way to clear the search filter right where the user is looking.
