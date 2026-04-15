@@ -3646,36 +3646,3 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
-
-/* -----------------------------------------------------------------------
-   Telemetry table (System Status page)
-   ----------------------------------------------------------------------- */
-
-.aips-telemetry-table {
-    width: 100%;
-}
-
-.aips-telemetry-loading,
-.aips-telemetry-empty {
-    padding: 16px;
-    color: #666;
-    font-style: italic;
-}
-
-.aips-telemetry-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    border-top: 1px solid #e5e7eb;
-}
-
-.aips-telemetry-count {
-    font-size: 13px;
-    color: #666;
-}
-
-.aips-telemetry-page-label {
-    font-size: 13px;
-    padding: 0 8px;
-}
