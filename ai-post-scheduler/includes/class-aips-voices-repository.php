@@ -49,7 +49,7 @@ class AIPS_Voices_Repository {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache (array driver).
+     * @var AIPS_Cache In-request identity-map cache.
      */
     private $cache = null;
 
@@ -60,7 +60,7 @@ class AIPS_Voices_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_voices';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_voices_repository', 'array' );
+        $this->cache = AIPS_Cache_Factory::named( 'aips_voices_repository' );
     }
 
     /**
