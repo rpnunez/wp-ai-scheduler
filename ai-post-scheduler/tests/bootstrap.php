@@ -1382,6 +1382,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-admin-menu-helper.php',
         'class-aips-calendar-controller.php',
         'class-aips-system-status.php',
+        'class-aips-system-diagnostics-service.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
         'class-aips-post-review-repository.php',
