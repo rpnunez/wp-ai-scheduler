@@ -31,6 +31,9 @@ class AIPS_Dev_Tools {
     /**
      * Handle AJAX request to generate scaffold.
      *
+     * Includes defensive strict array checking after JSON decoding the AI response
+     * to prevent scalar decoding errors.
+     *
      * @return void
      */
     public function ajax_generate_scaffold() {
@@ -95,7 +98,7 @@ class AIPS_Dev_Tools {
 
         $data = json_decode($json_str, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
             AIPS_Ajax_Response::error(array(
                 'message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler'),
                 'debug' => $json_str
