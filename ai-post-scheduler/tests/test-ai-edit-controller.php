@@ -478,4 +478,85 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( 'AIPS_AI_Edit_Controller', $controller );
 	}
+
+	/**
+	 * Test that a WP_Error from get_generation_context in ajax_get_post_components
+	 * returns a generic message to the client, not the internal error details.
+	 */
+	public function test_get_post_components_wp_error_returns_generic_message() {
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$wp_error = new WP_Error( 'db_query_failed', 'Internal DB error details that must not leak' );
+		$mock_service->method( 'get_generation_context' )
+			->willReturn( $wp_error );
+
+		$post_id = $this->factory->post->create();
+		$nonce   = wp_create_nonce( 'aips_ajax_nonce' );
+
+		$_POST    = array(
+			'action'     => 'aips_get_post_components',
+			'post_id'    => $post_id,
+			'history_id' => 1,
+			'nonce'      => $nonce,
+		);
+		$_REQUEST = $_POST;
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service );
+
+		ob_start();
+		try {
+			$controller->ajax_get_post_components();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringNotContainsString( 'Internal DB error details', $response['data']['message'] );
+		$this->assertStringContainsString( 'Failed to retrieve generation context', $response['data']['message'] );
+	}
+
+	/**
+	 * Test that a WP_Error from get_generation_context in ajax_regenerate_component
+	 * returns a generic message to the client, not the internal error details.
+	 */
+	public function test_regenerate_component_wp_error_returns_generic_message() {
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$wp_error = new WP_Error( 'db_query_failed', 'Internal DB error details that must not leak' );
+		$mock_service->method( 'get_generation_context' )
+			->willReturn( $wp_error );
+
+		$post_id = $this->factory->post->create();
+		$nonce   = wp_create_nonce( 'aips_ajax_nonce' );
+
+		$_POST    = array(
+			'action'     => 'aips_regenerate_component',
+			'post_id'    => $post_id,
+			'history_id' => 1,
+			'component'  => 'title',
+			'nonce'      => $nonce,
+		);
+		$_REQUEST = $_POST;
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service );
+
+		ob_start();
+		try {
+			$controller->ajax_regenerate_component();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode( $output, true );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringNotContainsString( 'Internal DB error details', $response['data']['message'] );
+		$this->assertStringContainsString( 'Failed to retrieve generation context', $response['data']['message'] );
+	}
 }
