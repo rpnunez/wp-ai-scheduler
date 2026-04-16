@@ -93,7 +93,7 @@ class AIPS_AI_Variables_Resolver {
 
         // Call AI to resolve the variables.
         $options = array();
-        $result = call_user_func($this->generation_callback, $resolve_prompt, $options, 'ai_variables');
+        $result = ($this->generation_callback)($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
             $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
