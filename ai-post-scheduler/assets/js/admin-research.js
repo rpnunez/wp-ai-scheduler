@@ -829,7 +829,7 @@
             }
 
             var count = AIPS.researchSelectedTopics.length;
-            var message = (aipsResearchL10n.confirmGenerationMessage || 'Generate %d post(s) immediately from selected topics?').replace('%d', count);
+            var message = aipsResearchL10n.confirmGenerationMessage.replace('%d', count);
             $('#aips-generate-now-count-message').text(message);
             $('#aips-generate-now-template').val('');
             $('#aips-generate-now-modal').fadeIn();
@@ -849,7 +849,7 @@
             var templateId = $('#aips-generate-now-template').val();
 
             if (!templateId) {
-                AIPS.Utilities.showToast(aipsResearchL10n.selectTemplateRequired || 'Please select a template before generating.', 'error');
+                AIPS.Utilities.showToast(aipsResearchL10n.selectTemplateRequired, 'error');
                 return;
             }
 
