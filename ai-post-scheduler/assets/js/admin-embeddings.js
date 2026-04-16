@@ -45,8 +45,8 @@
 		 * @param {number} batchSize  Optional. Batch size for processing (default 20).
 		 */
 		queueEmbeddings: function(authorId, batchSize) {
-			authorId  = parseInt(authorId)  || 0;
-			batchSize = parseInt(batchSize) || 20;
+			authorId  = parseInt(authorId, 10)  || 0;
+			batchSize = parseInt(batchSize, 10) || 20;
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,

@@ -1521,54 +1521,65 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
+}
 
-    // ----------------------------------------------------------------
-    // Script/style enqueue stubs (used by AIPS_Admin_Assets tests)
-    // Each call is recorded in $GLOBALS['aips_test_enqueued_scripts']
-    // and $GLOBALS['aips_test_enqueued_styles'] so tests can assert
-    // which assets were enqueued for a given admin page hook.
-    // ----------------------------------------------------------------
-    if (!isset($GLOBALS['aips_test_enqueued_scripts'])) {
-        $GLOBALS['aips_test_enqueued_scripts'] = array();
+// ----------------------------------------------------------------
+// Script/style enqueue stubs.
+//
+// Defined at file-level so they are available in BOTH the full
+// WordPress test environment (CI) and limited-mode runs.
+//
+// In the full WP environment these functions already exist, so
+// the if(!function_exists()) guards prevent redeclaration.
+//
+// In limited mode (no WP test library) the stubs are the sole
+// definitions, recording every enqueued handle in the tracking
+// globals below so test assertions can inspect them.
+//
+// Tests that need to work in both environments should prefer the
+// WP-native queue inspection path when WP_Scripts is available
+// (see Test_AIPS_Admin_Assets_Embeddings::enqueued_scripts_for_hook).
+// ----------------------------------------------------------------
+if (!isset($GLOBALS['aips_test_enqueued_scripts'])) {
+    $GLOBALS['aips_test_enqueued_scripts'] = array();
+}
+
+if (!isset($GLOBALS['aips_test_enqueued_styles'])) {
+    $GLOBALS['aips_test_enqueued_styles'] = array();
+}
+
+if (!function_exists('wp_enqueue_script')) {
+    function wp_enqueue_script($handle, $src = '', $deps = array(), $ver = false, $in_footer = false) {
+        $GLOBALS['aips_test_enqueued_scripts'][] = $handle;
     }
+}
 
-    if (!isset($GLOBALS['aips_test_enqueued_styles'])) {
-        $GLOBALS['aips_test_enqueued_styles'] = array();
+if (!function_exists('wp_enqueue_style')) {
+    function wp_enqueue_style($handle, $src = '', $deps = array(), $ver = false, $media = 'all') {
+        $GLOBALS['aips_test_enqueued_styles'][] = $handle;
     }
+}
 
-    if (!function_exists('wp_enqueue_script')) {
-        function wp_enqueue_script($handle, $src = '', $deps = array(), $ver = false, $in_footer = false) {
-            $GLOBALS['aips_test_enqueued_scripts'][] = $handle;
-        }
+if (!function_exists('wp_localize_script')) {
+    function wp_localize_script($handle, $object_name, $l10n) {
+        // No-op stub: localization data is not needed for enqueue-scoping tests.
     }
+}
 
-    if (!function_exists('wp_enqueue_style')) {
-        function wp_enqueue_style($handle, $src = '', $deps = array(), $ver = false, $media = 'all') {
-            $GLOBALS['aips_test_enqueued_styles'][] = $handle;
-        }
+if (!function_exists('wp_enqueue_media')) {
+    function wp_enqueue_media($args = array()) {
+        // No-op stub for testing.
     }
+}
 
-    if (!function_exists('wp_localize_script')) {
-        function wp_localize_script($handle, $object_name, $l10n) {
-            // No-op stub: localization data is not needed for enqueue-scoping tests.
-        }
+if (!function_exists('home_url')) {
+    function home_url($path = '', $scheme = null) {
+        return 'http://example.com' . $path;
     }
+}
 
-    if (!function_exists('wp_enqueue_media')) {
-        function wp_enqueue_media($args = array()) {
-            // No-op stub for testing.
-        }
-    }
-
-    if (!function_exists('home_url')) {
-        function home_url($path = '', $scheme = null) {
-            return 'http://example.com' . $path;
-        }
-    }
-
-    if (!function_exists('_x')) {
-        function _x($text, $context, $domain = 'default') {
-            return $text;
-        }
+if (!function_exists('_x')) {
+    function _x($text, $context, $domain = 'default') {
+        return $text;
     }
 }

@@ -5,6 +5,14 @@
  * Verifies that `aips-admin-embeddings` is enqueued only on the
  * Authors and Author Topics admin pages and NOT on any other plugin page.
  *
+ * Works in both the full WordPress test environment (CI) and the limited
+ * test environment (no WordPress library). The helper method
+ * enqueued_scripts_for_hook() detects which environment is active and
+ * uses the appropriate assertion mechanism:
+ *  - Full WP env: inspects $wp_scripts->queue (WP-native).
+ *  - Limited env: reads $GLOBALS['aips_test_enqueued_scripts'] populated
+ *    by the bootstrap stubs.
+ *
  * @package AI_Post_Scheduler
  */
 
@@ -22,7 +30,7 @@ class Test_AIPS_Admin_Assets_Embeddings extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		parent::tearDown();
-		// Reset enqueue tracking between tests.
+		// Reset limited-mode tracking between tests.
 		$GLOBALS['aips_test_enqueued_scripts'] = array();
 		$GLOBALS['aips_test_enqueued_styles']  = array();
 	}
@@ -32,13 +40,43 @@ class Test_AIPS_Admin_Assets_Embeddings extends WP_UnitTestCase {
 	/* ---------------------------------------------------------------------- */
 
 	/**
+	 * Whether the full WordPress test environment is available.
+	 *
+	 * @return bool
+	 */
+	private function is_wp_environment() {
+		return isset( $GLOBALS['wp_scripts'] ) && $GLOBALS['wp_scripts'] instanceof WP_Scripts;
+	}
+
+	/**
 	 * Call enqueue_admin_assets() with the given hook and return the list of
 	 * enqueued script handles.
+	 *
+	 * In the full WordPress environment the WP_Scripts queue is saved,
+	 * cleared, the method is called, and the resulting queue is captured
+	 * before the original queue is restored — preventing cross-test
+	 * contamination without side-effects on unrelated tests.
+	 *
+	 * In the limited test environment the bootstrap tracking global is used.
 	 *
 	 * @param string $hook Admin page hook suffix.
 	 * @return array<string>
 	 */
 	private function enqueued_scripts_for_hook( $hook ) {
+		if ( $this->is_wp_environment() ) {
+			global $wp_scripts;
+			$saved_queue       = $wp_scripts->queue;
+			$wp_scripts->queue = array();
+
+			$this->admin_assets->enqueue_admin_assets( $hook );
+
+			$result            = $wp_scripts->queue;
+			$wp_scripts->queue = $saved_queue;
+
+			return $result;
+		}
+
+		// Limited-mode: use bootstrap tracking globals.
 		$GLOBALS['aips_test_enqueued_scripts'] = array();
 		$this->admin_assets->enqueue_admin_assets( $hook );
 		return $GLOBALS['aips_test_enqueued_scripts'];
