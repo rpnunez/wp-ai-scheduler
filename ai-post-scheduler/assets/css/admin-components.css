@@ -1,0 +1,270 @@
+/* ==========================================================================
+   Modern Component Styles
+   ========================================================================== */
+
+
+/* ==========================================================================
+   Status Badges (Modern Design)
+   ========================================================================== */
+
+.aips-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+	padding: var(--aips-space-1) var(--aips-space-3);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-medium);
+	border-radius: var(--aips-radius-base);
+	line-height: var(--aips-leading-tight);
+}
+
+.aips-badge-success {
+	background: var(--aips-success-light);
+	color: var(--aips-success-dark);
+}
+
+.aips-badge-warning {
+	background: var(--aips-warning-light);
+	color: var(--aips-warning-dark);
+}
+
+.aips-badge-error {
+	background: var(--aips-error-light);
+	color: var(--aips-error-dark);
+}
+
+.aips-badge-info {
+	background: var(--aips-info-light);
+	color: var(--aips-info-dark);
+}
+
+.aips-badge-neutral {
+	background: var(--aips-gray-100);
+	color: var(--aips-gray-700);
+}
+
+.aips-badge .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+
+/* ==========================================================================
+   Buttons (Redesigned)
+   ========================================================================== */
+
+.aips-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--aips-space-2);
+	padding: var(--aips-space-2) var(--aips-space-4);
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	border-radius: var(--aips-radius-base);
+	cursor: pointer;
+	transition: all var(--aips-transition-base);
+	border: 1px solid transparent;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.aips-btn:focus {
+	outline: 2px solid var(--aips-primary);
+	outline-offset: 2px;
+}
+
+.aips-btn-primary {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+}
+
+.aips-btn-primary:hover {
+	background: var(--aips-primary-hover);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-secondary {
+	background: var(--aips-white);
+	color: var(--aips-gray-700);
+	border-color: var(--aips-gray-300);
+}
+
+.aips-btn-secondary:hover {
+	border-color: var(--aips-gray-400);
+	box-shadow: var(--aips-shadow-xs);
+}
+
+.aips-btn-ghost {
+	background: transparent;
+	color: var(--aips-gray-600);
+	border: none;
+}
+
+.aips-btn-ghost:hover {
+	background: var(--aips-gray-50);
+}
+
+.aips-btn-danger {
+	background: transparent;
+	color: var(--aips-error);
+	border: none;
+}
+
+.aips-btn-danger:hover {
+	background: var(--aips-error-light);
+}
+
+/* Solid danger buttons (toolbar style, matches Reload button appearance) */
+.aips-btn-danger-solid {
+	background: var(--aips-error);
+	color: var(--aips-white);
+	border: 1px solid var(--aips-error-dark);
+}
+
+.aips-btn-danger-solid:hover:not(:disabled) {
+	background: var(--aips-error-dark);
+	border-color: var(--aips-error-dark);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-danger-solid:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.aips-btn-sm {
+	padding: var(--aips-space-1) var(--aips-space-3);
+	font-size: var(--aips-text-xs);
+}
+
+.aips-btn-icon {
+	padding: var(--aips-space-2);
+	width: 32px;
+	height: 32px;
+}
+
+.aips-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.aips-card {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-5);
+	box-shadow: var(--aips-shadow-sm);
+	transition: all var(--aips-transition-base);
+}
+
+.aips-card:hover {
+	box-shadow: var(--aips-shadow-base);
+}
+
+.aips-card-header {
+	padding-bottom: var(--aips-space-4);
+	border-bottom: 1px solid var(--aips-gray-100);
+	margin-bottom: var(--aips-space-4);
+}
+
+.aips-card-title {
+	font-size: var(--aips-text-lg);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+	margin: 0;
+}
+
+.aips-card-body {
+	/* Content area */
+}
+
+.aips-card-footer {
+	padding-top: var(--aips-space-4);
+	border-top: 1px solid var(--aips-gray-100);
+	margin-top: var(--aips-space-4);
+}
+
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+.aips-form-group {
+	margin-bottom: var(--aips-space-5);
+}
+
+.aips-form-label {
+	display: block;
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-700);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-form-input,
+.aips-form-select,
+.aips-form-textarea {
+	width: 100%;
+	padding: var(--aips-space-2) var(--aips-space-3);
+	font-size: var(--aips-text-sm);
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-base);
+	transition: all var(--aips-transition-base);
+	background: var(--aips-white);
+	color: var(--aips-gray-900);
+}
+
+.aips-form-input:focus,
+.aips-form-select:focus,
+.aips-form-textarea:focus {
+	outline: none;
+	border-color: var(--aips-primary);
+	box-shadow: 0 0 0 3px var(--aips-primary-light);
+}
+
+.aips-form-help {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+	margin-top: var(--aips-space-1);
+}
+
+.aips-form-section {
+	margin-bottom: var(--aips-space-8);
+}
+
+.aips-form-section-header {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	margin-bottom: var(--aips-space-4);
+	padding-bottom: var(--aips-space-3);
+	border-bottom: 1px solid var(--aips-gray-200);
+}
+
+.aips-form-section-icon {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+	color: var(--aips-primary);
+}
+
+.aips-form-section-title {
+	font-size: var(--aips-text-lg);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+	margin: 0;
+}
+
+.aips-form-section-description {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-500);
+	margin: var(--aips-space-2) 0 0;
+}

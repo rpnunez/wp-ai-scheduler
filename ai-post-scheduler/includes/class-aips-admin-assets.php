@@ -37,9 +37,16 @@ class AIPS_Admin_Assets {
         // Global Admin Styles and Scripts
 
         wp_enqueue_style(
+            'aips-admin-components-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-components.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-admin-components-style'),
             AIPS_VERSION
         );
 
