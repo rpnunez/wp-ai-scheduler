@@ -1330,13 +1330,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
 **Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
 
-## 2024-03-18 - [Extract Bulk Generate Estimate Database Query to Repository]
+## 2026-03-18 - [Extract Bulk Generate Estimate Database Query to Repository]
 **Context:** `AIPS_Author_Topics_Controller::ajax_get_bulk_generate_estimate` contained a hardcoded, direct database query using `global $wpdb` to select the recent `_aips_post_generation_total_time` postmeta entries. This violated the Separation of Concerns principle, bypassing repository layers that should handle database operations.
 **Decision:** Extracted the data retrieval and time estimate calculation logic into `AIPS_History_Repository::get_estimated_generation_time()`. The controller now instantiates this repository and delegates the query to it, maintaining encapsulation.
 **Consequence:** The controller is strictly limited to handling the request payload and responding with JSON. The `AIPS_History_Repository` now manages this historical post metadata lookup, resulting in better testability, compliance with domain architecture boundaries, and no raw `$wpdb` querying in the controller space.
 **Tests:** Existing tests for generation timings function unchanged, and the `get_estimated_generation_time` abstraction handles database fetching robustly.
 
-## 2024-05-28 - [Expose Resilience Options to UI]
+## 2026-05-28 - [Expose Resilience Options to UI]
 **Context:** `AIPS_Config` defined resilience options (Retry, Rate Limiting, Circuit Breaker) and used hard-coded default overrides instead of allowing user configuration via the UI, violating the separation of concern between configuration declaration and user options.
 **Decision:** Updated `AIPS_Settings` to register new `aips_resilience_section` and corresponding option fields via the WordPress Settings API. Reverted hardcoded fallbacks in `AIPS_Config`.
 **Consequence:**
@@ -1344,7 +1344,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Negative:** Added slightly more UI complexity to the settings page.
 **Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
 
-## 2025-02-12 - [Extract Admin Menu from Settings]
+## 2026-02-12 - [Extract Admin Menu from Settings]
 **Context:** The `AIPS_Settings` class handled registering settings options via the WordPress Settings API and also managed rendering the admin UI and the admin menu registration via `add_menu_page`/`add_submenu_page`. This violated the Single Responsibility Principle, making `AIPS_Settings` overloaded and tightly coupling admin routing with options management.
 **Decision:** Created a new `AIPS_Admin_Menu` class to handle admin menu registration and page rendering logic. The `AIPS_Settings` class now solely focuses on settings initialization via the `admin_init` hook and some relevant AJAX actions.
 **Consequence:**
@@ -1373,7 +1373,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
 
-## 2024-04-13 - Detangle God Objects (CSS and PHP)
+## 2026-04-13 - Detangle God Objects (CSS and PHP)
 
 **Context:** The project has "God Files/Objects" causing code smells and violating SRP/Separation of Concerns. In particular, `admin.css` had grown over 3,500 lines and `class-aips-generator.php` mixed text generation orchestration with the responsibility of AI variable parsing and resolution.
 
