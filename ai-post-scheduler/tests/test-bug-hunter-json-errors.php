@@ -73,7 +73,7 @@ PHP;
         unlink($bridge_file);
 		unlink($test_file);
 
-		// Should fail gracefully with invalid JSON error, not a TypeError
-		$this->assertStringContainsString('FAILED: Invalid JSON in schema file', $output);
+		// Should fail gracefully with a schema structure/type error, not a TypeError.
+		$this->assertStringContainsString('FAILED: Schema file must decode to an array', $output);
 	}
 }
