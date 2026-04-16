@@ -266,7 +266,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	// ------------------------------------------------------------------
 
 	/** @test */
-	public function test_fetch_success_calls_upsert_and_update_after_fetch() {
+	public function test_fetch_success_calls_insert_if_new_and_update_after_fetch() {
 		if ( ! function_exists( 'wp_safe_remote_get' ) || ! function_exists( 'wp_remote_get' ) ) {
 			$this->markTestSkipped( 'wp_safe_remote_get() is not available in this test environment.' );
 		}
@@ -286,7 +286,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		$mock_sources_repo = $this->createMock( AIPS_Sources_Repository::class );
 
 		$mock_data_repo->expects( $this->once() )
-			->method( 'upsert' )
+			->method( 'insert_if_new' )
 			->with(
 				10,
 				$this->callback( function ( $data ) {
@@ -586,7 +586,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		$mock_sources_repo = $this->createMock( AIPS_Sources_Repository::class );
 
 		$mock_data_repo->expects( $this->once() )
-			->method( 'upsert' )
+			->method( 'insert_if_new' )
 			->with(
 				20,
 				$this->callback( function ( $data ) {

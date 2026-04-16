@@ -128,17 +128,6 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
-	 * @deprecated 2.4.1 Use insert_if_new() instead. Kept for backwards compatibility.
-	 *
-	 * @param int   $source_id Source ID.
-	 * @param array $data      Fetch result data.
-	 * @return bool
-	 */
-	public function upsert( $source_id, array $data ) {
-		return $this->insert_if_new( $source_id, $data );
-	}
-
-	/**
 	 * Retrieve the most recent fetch snapshot for a source.
 	 *
 	 * @param int $source_id Source ID.
