@@ -156,7 +156,7 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
+				"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
 				$limit
 			)
 		);

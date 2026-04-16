@@ -45,7 +45,8 @@
             $(document).on('click', '#aips-delete-selected-topics', AIPS.bulkDeleteSelectedTopics);
             $(document).on('click', '#aips-schedule-selected-topics', AIPS.scheduleSelectedTopics);
             $(document).on('click', '#aips-generate-selected-topics', AIPS.bulkGenerateSelectedTopics);
-	            $(document).on('click', '.aips-post-count-badge[data-context="trending-topic"]', AIPS.viewTrendingTopicPosts);
+            $(document).on('click', '#aips-generate-now-confirm', AIPS.confirmGenerateNow);
+            $(document).on('click', '.aips-post-count-badge[data-context="trending-topic"]', AIPS.viewTrendingTopicPosts);
             $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
         },
 
@@ -815,6 +816,9 @@
         /**
          * Bulk generate posts from selected topics immediately (on-demand).
          *
+         * Opens the template-selection modal so the user can choose which
+         * template to use before generation begins.
+         *
          * @param {Event} e Click event.
          */
         bulkGenerateSelectedTopics: function(e) {
@@ -824,27 +828,42 @@
                 return;
             }
 
-            AIPS.Utilities.confirm(
-                aipsResearchL10n.confirmGenerationMessage.replace('%d', AIPS.researchSelectedTopics.length),
-                aipsResearchL10n.confirmGenerationTitle,
-                [
-                    { label: aipsResearchL10n.cancelButton, className: 'aips-btn aips-btn-secondary' },
-                    {
-                        label: aipsResearchL10n.generateNowButton,
-                        className: 'aips-btn aips-btn-primary',
-                        action: function() {
-                            var $btn = $('#aips-generate-selected-topics');
-                            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsResearchL10n.generatingButton);
+            var count = AIPS.researchSelectedTopics.length;
+            var message = aipsResearchL10n.confirmGenerationMessage.replace('%d', count);
+            $('#aips-generate-now-count-message').text(message);
+            $('#aips-generate-now-template').val('');
+            $('#aips-generate-now-modal').fadeIn();
+        },
 
-                            AIPS.runResearchBulkGenerateWithProgress($btn, {
-                                action: 'aips_generate_trending_topics_bulk',
-                                nonce: $('#aips_nonce').val(),
-                                topic_ids: AIPS.researchSelectedTopics
-                            });
-                        }
-                    }
-                ]
-            );
+        /**
+         * Handle confirmation click inside the Generate Now template-selection modal.
+         *
+         * Validates that a template has been selected, then closes the modal and
+         * kicks off bulk generation with the chosen template ID.
+         *
+         * @param {Event} e Click event.
+         */
+        confirmGenerateNow: function(e) {
+            e.preventDefault();
+
+            var templateId = $('#aips-generate-now-template').val();
+
+            if (!templateId) {
+                AIPS.Utilities.showToast(aipsResearchL10n.selectTemplateRequired, 'error');
+                return;
+            }
+
+            $('#aips-generate-now-modal').fadeOut();
+
+            var $btn = $('#aips-generate-selected-topics');
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsResearchL10n.generatingButton);
+
+            AIPS.runResearchBulkGenerateWithProgress($btn, {
+                action: 'aips_generate_trending_topics_bulk',
+                nonce: $('#aips_nonce').val(),
+                topic_ids: AIPS.researchSelectedTopics,
+                template_id: templateId
+            });
         },
 
         /**
