@@ -305,7 +305,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Generate Posts Now', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <p id="aips-generate-now-count-message"></p>
