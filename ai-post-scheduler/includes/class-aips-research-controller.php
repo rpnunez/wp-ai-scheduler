@@ -499,15 +499,26 @@ class AIPS_Research_Controller {
             AIPS_Ajax_Response::error(__('No valid topics found.', 'ai-post-scheduler'));
         }
 
-        // Resolve the first active template.
+        // Resolve the template to use for generation.
+        $template_id         = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $template_repository = new AIPS_Template_Repository();
-        $templates           = $template_repository->get_all(true);
 
-        if (empty($templates)) {
-            AIPS_Ajax_Response::error(__('No active templates found. Please create a template first.', 'ai-post-scheduler'));
+        if ($template_id > 0) {
+            $template = $template_repository->get_by_id($template_id);
+
+            if (!$template || empty($template->is_active)) {
+                AIPS_Ajax_Response::error(__('The selected template was not found or is inactive. Please select a valid template.', 'ai-post-scheduler'));
+            }
+        } else {
+            // Fall back to the first active template when no ID is provided.
+            $templates = $template_repository->get_all(true);
+
+            if (empty($templates)) {
+                AIPS_Ajax_Response::error(__('No active templates found. Please create a template first.', 'ai-post-scheduler'));
+            }
+
+            $template = $templates[0];
         }
-
-        $template = $templates[0];
 
         // Check AI Engine availability before running the batch.
         $generator = new AIPS_Generator();

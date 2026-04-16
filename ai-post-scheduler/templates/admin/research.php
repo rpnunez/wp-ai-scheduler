@@ -366,6 +366,51 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
 
+    <!-- Generate Now — Template Selection Modal -->
+    <div id="aips-generate-now-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('Generate Posts Now', 'ai-post-scheduler'); ?></h2>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <p id="aips-generate-now-count-message"></p>
+                <?php if (empty($templates)): ?>
+                    <p class="description"><?php esc_html_e('No active templates found. Please create a template first.', 'ai-post-scheduler'); ?></p>
+                <?php else: ?>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="aips-generate-now-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <select id="aips-generate-now-template" class="aips-form-select">
+                                    <option value=""><?php esc_html_e('Select a template&hellip;', 'ai-post-scheduler'); ?></option>
+                                    <?php foreach ($templates as $tmpl):
+                                        $tmpl = (object) $tmpl;
+                                    ?>
+                                        <option value="<?php echo esc_attr($tmpl->id); ?>">
+                                            <?php echo esc_html($tmpl->name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                <?php endif; ?>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                <?php if (!empty($templates)): ?>
+                    <button type="button" class="aips-btn aips-btn-primary" id="aips-generate-now-confirm">
+                        <span class="dashicons dashicons-media-text"></span>
+                        <?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?>
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
     <!-- Trending Topic Posts Modal -->
     <div id="aips-trending-topic-posts-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
