@@ -1372,3 +1372,8 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+## 2025-01-20 - Extract Modal Styles from admin.css
+**Context:** The `admin.css` file has become a "God Object" (over 3,600 lines), containing styles for multiple disjointed domains, including modals, which violates Separation of Concerns and makes the file hard to maintain.
+**Decision:** Extracted the modal styles into a dedicated `admin-modals.css` file and enqueued it globally alongside the main admin styles to maintain backward compatibility.
+**Consequence:** An additional HTTP request is introduced in the admin area, but this is an acceptable trade-off for significantly improved code organization and developer experience.
+**Tests:** Ran the existing test suite (`composer test`) to ensure PHP modifications for asset enqueueing did not introduce syntax errors or regressions.
