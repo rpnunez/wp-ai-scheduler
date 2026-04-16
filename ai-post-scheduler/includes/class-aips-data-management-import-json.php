@@ -58,7 +58,10 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 	}
 	
 	/**
-	 * Import the data from JSON file
+	 * Import the data from JSON file.
+	 *
+	 * Uses strict array checking after `json_decode` to ensure decoded data is correctly formatted
+	 * and prevent scalar type errors during import.
 	 * 
 	 * @param string $file_path Path to the uploaded file
 	 * @return bool|WP_Error True on success, WP_Error on failure
@@ -76,8 +79,12 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 		// Parse JSON
 		$data = json_decode($json_content, true);
 		
-		if ($data === null) {
+		if (json_last_error() !== JSON_ERROR_NONE) {
 			return new WP_Error('parse_error', __('Invalid JSON format.', 'ai-post-scheduler'));
+		}
+		
+		if (!is_array($data)) {
+			return new WP_Error('parse_error', __('JSON must contain an object or array at the top level.', 'ai-post-scheduler'));
 		}
 		
 		// Validate data structure
