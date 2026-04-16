@@ -13,3 +13,7 @@
 ## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
 **Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
 **Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
+
+## 2026-04-15 - [PHP 8 Strict Typing with Anonymous Mock Classes]
+**Learning:** Returning anonymous classes (`new class() {}`) that do not explicitly implement required interfaces (like `AIPS_AI_Service_Interface`) will cause fatal `TypeError`s in PHP 8+ when injected into type-hinted constructors. Additionally, if an anonymous class explicitly implements an interface, it must define *all* methods declared in that interface to avoid a fatal "contains abstract methods" error, even if those methods aren't used in the test.
+**Action:** When mocking dependencies for PHPUnit tests, always define explicit standard stub classes (e.g., `class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface`) rather than relying on anonymous classes, and ensure all interface methods have dummy implementations. Use unique class names per test file (e.g. `_For_Suggestions`) if `class_exists` checks cannot be used safely to prevent redeclaration errors.
