@@ -152,19 +152,6 @@ class AIPS_Cache_Factory {
 	public static function named( $name, $driver_name = null ) {
 		if (!isset( self::$named[ $name ] )) {
 			self::$named[ $name ] = self::make( $driver_name );
-		} elseif ($driver_name !== null) {
-			// The instance already exists; the $driver_name argument is ignored.
-			// Warn in debug mode so developers notice the mismatch early.
-			_doing_it_wrong(
-				__CLASS__ . '::named()',
-				sprintf(
-					/* translators: 1: named-instance identifier, 2: driver name argument */
-					__( 'A named cache instance "%1$s" already exists and cannot be re-created with driver "%2$s". Call register() to replace it explicitly.', 'ai-post-scheduler' ),
-					esc_html( $name ),
-					esc_html( $driver_name )
-				),
-				'2.4.0'
-			);
 		}
 		return self::$named[ $name ];
 	}

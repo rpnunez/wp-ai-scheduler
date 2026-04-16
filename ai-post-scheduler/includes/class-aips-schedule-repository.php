@@ -54,7 +54,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache (array driver).
+     * @var AIPS_Cache In-request identity-map cache.
      */
     private $cache = null;
     
@@ -66,7 +66,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository', 'array' );
+        $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository' );
     }
     
     /**

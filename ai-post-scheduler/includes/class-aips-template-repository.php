@@ -49,7 +49,7 @@ class AIPS_Template_Repository {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache (array driver).
+     * @var AIPS_Cache In-request identity-map cache.
      */
     private $cache = null;
     
@@ -60,14 +60,14 @@ class AIPS_Template_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_template_repository', 'array' );
+        $this->cache = AIPS_Cache_Factory::named( 'aips_template_repository' );
     }
     
     /**
      * Get all templates with optional filtering.
      *
      * Results are cached for the duration of the request using the named
-     * array-driver cache instance so repeat calls within the same request
+     * named cache instance so repeat calls within the same request
      * do not issue additional DB queries.
      *
      * @param bool $active_only Optional. Return only active templates. Default false.
