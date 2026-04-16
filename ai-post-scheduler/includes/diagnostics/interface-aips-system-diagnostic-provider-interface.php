@@ -1,6 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) {
-    return;
+	exit;
 }
 
 /**
@@ -10,10 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 interface AIPS_System_Diagnostic_Provider_Interface {
 
-    /**
-     * Retrieves the diagnostic data for the provider's domain.
-     *
-     * @return array<string, mixed> Array containing diagnostic keys and data.
-     */
-    public function get_diagnostics(): array;
+	/**
+	 * Retrieves the diagnostic data for the provider's domain.
+	 *
+	 * @return array<string, mixed> Array containing diagnostic keys and data.
+	 */
+	public function get_diagnostics(): array;
 }
