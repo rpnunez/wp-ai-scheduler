@@ -123,8 +123,12 @@ if (file_exists($schema_file)) {
 	}
 
 	$schema = json_decode($schema_content, true);
-	if (json_last_error() !== JSON_ERROR_NONE || !is_array($schema)) {
-		echo "❌ FAILED: Invalid JSON in schema file\n";
+	if (json_last_error() !== JSON_ERROR_NONE) {
+		echo "❌ FAILED: Invalid JSON in schema file (" . json_last_error_msg() . ")\n";
+		exit(1);
+	}
+	if (!is_array($schema)) {
+		echo "❌ FAILED: Schema file must decode to an array\n";
 		exit(1);
 	}
 	
