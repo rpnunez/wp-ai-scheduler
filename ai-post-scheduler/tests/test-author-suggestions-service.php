@@ -7,6 +7,49 @@
  * @package AI_Post_Scheduler
  */
 
+class AIPS_Test_Stub_AI_Service_For_Suggestions implements AIPS_AI_Service_Interface {
+	private $payload;
+	public function __construct( $p ) { $this->payload = $p; }
+	public function generate_json( $prompt, $options = array() ) { return $this->payload; }
+	public function is_available() { return true; }
+	public function generate_text($prompt, $options = array()) { return ""; }
+	public function generate_image($prompt, $options = array()) { return ""; }
+	public function get_call_log() { return array(); }
+}
+
+class AIPS_Test_Stub_Logger_For_Suggestions implements AIPS_Logger_Interface {
+	public function log( $message, $level = 'info', $context = array() ) {}
+	public function clear() {}
+	public function get_logs($limit = 100, $offset = 0) { return array(); }
+	public function set_level($level) {}
+	public function addSeparator($text = "") {}
+}
+
+class AIPS_Test_Stub_History_Container_For_Suggestions {
+	public function record( $log_type, $message, $input = null, $output = null, $context = array() ) {}
+	public function record_error( $message, $error_details = array(), $wp_error = null ) {}
+	public function complete_success( $result_data = array() ) {}
+	public function complete_failure( $error_message, $error_data = array() ) {}
+}
+
+class AIPS_Test_Stub_History_Service_For_Suggestions implements AIPS_History_Service_Interface {
+	public function create( $type, $metadata = array() ) {
+		return new AIPS_Test_Stub_History_Container_For_Suggestions();
+	}
+	public function get_container() { return null; }
+	public function with_correlation($correlation_id) { return $this; }
+	public function delete_old_history($days) { return 0; }
+	public function register_type($type, $label) {}
+	public function get_registered_types() { return array(); }
+	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
+	public function post_has_history_and_completed($post_id) { return false; }
+	public function get_by_id($id) { return null; }
+	public function get_all($args = array()) { return array(); }
+	public function delete($id) { return true; }
+	public function update_history_record($id, $data) { return true; }
+	public function find_incomplete( $type, $metadata = array() ) { return array(); }
+}
+
 class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 
 	/**
@@ -16,11 +59,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_ai_service( $payload ) {
-		return new class( $payload ) {
-			private $payload;
-			public function __construct( $p ) { $this->payload = $p; }
-			public function generate_json( $prompt, $options = array() ) { return $this->payload; }
-		};
+		return new AIPS_Test_Stub_AI_Service_For_Suggestions( $payload );
 	}
 
 	/**
@@ -29,9 +68,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_logger() {
-		return new class {
-			public function log( $message, $level = 'info', $context = array() ) {}
-		};
+		return new AIPS_Test_Stub_Logger_For_Suggestions();
 	}
 
 	/**
@@ -40,16 +77,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_history_service() {
-		return new class {
-			public function create( $type, $metadata = array() ) {
-				return new class {
-					public function record( $log_type, $message, $input = null, $output = null, $context = array() ) {}
-					public function record_error( $message, $error_details = array(), $wp_error = null ) {}
-					public function complete_success( $result_data = array() ) {}
-					public function complete_failure( $error_message, $error_data = array() ) {}
-				};
-			}
-		};
+		return new AIPS_Test_Stub_History_Service_For_Suggestions();
 	}
 
 	/**
