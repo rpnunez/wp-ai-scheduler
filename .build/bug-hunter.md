@@ -17,3 +17,7 @@
 ## 2026-04-15 - [Fix Silent json_decode Failures on Scalar Decodes]
 **Learning:** `json_decode()` can return scalar values (like strings or integers) for valid JSON inputs (e.g. `'"string"'`). Relying solely on `json_last_error() === JSON_ERROR_NONE` or assuming the result is an array can lead to silent TypeErrors or invalid offset accesses when code tries to access keys on a boolean/string/integer.
 **Action:** Always verify that the decoded JSON result is an array (or the expected type) using `is_array($decoded)` before proceeding, and ensure safe fallbacks or explicit error handling if it is not.
+
+## 2026-04-15 - [PHP 8 Strict Typing with Anonymous Mock Classes]
+**Learning:** Returning anonymous classes (`new class() {}`) that do not explicitly implement required interfaces (like `AIPS_AI_Service_Interface`) will cause fatal `TypeError`s in PHP 8+ when injected into type-hinted constructors. Additionally, if an anonymous class explicitly implements an interface, it must define *all* methods declared in that interface to avoid a fatal "contains abstract methods" error, even if those methods aren't used in the test.
+**Action:** When mocking dependencies for PHPUnit tests, always define explicit standard stub classes (e.g., `class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface`) rather than relying on anonymous classes, and ensure all interface methods have dummy implementations. Use unique class names per test file (e.g. `_For_Suggestions`) if `class_exists` checks cannot be used safely to prevent redeclaration errors.
