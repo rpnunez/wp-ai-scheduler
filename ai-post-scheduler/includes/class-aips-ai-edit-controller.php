@@ -58,8 +58,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_get_post_components() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -149,8 +149,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_regenerate_component() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -250,8 +250,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_regenerate_all_components() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -349,8 +349,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_save_post_components() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -435,8 +435,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_get_component_revisions() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -479,8 +479,8 @@ class AIPS_AI_Edit_Controller {
 	 */
 	public function ajax_restore_component_revision() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
