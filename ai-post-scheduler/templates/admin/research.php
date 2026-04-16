@@ -387,7 +387,9 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                 <h3 class="aips-empty-state-title">{{title}}</h3>
                 <p class="aips-empty-state-description">{{description}}</p>
-                <button type="button" class="aips-btn aips-btn-sm {{button_class}}" id="{{button_id}}">{{button_label}}</button>
+                <div class="aips-empty-state-actions">
+                    <button type="button" class="aips-btn aips-btn-sm {{button_class}}" id="{{button_id}}">{{button_label}}</button>
+                </div>
             </div>
         </div>
     </script>
