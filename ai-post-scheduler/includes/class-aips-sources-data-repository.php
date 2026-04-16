@@ -143,6 +143,25 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
+	 * Retrieve the most recent successful fetch snapshot for a source.
+	 *
+	 * Useful after recording a failure row — returns the last row with
+	 * fetch_status = 'success' so callers can confirm previously-cached
+	 * content is still present.
+	 *
+	 * @param int $source_id Source ID.
+	 * @return object|null Row object or null if no success row exists.
+	 */
+	public function get_latest_success_by_source_id( $source_id ) {
+		return $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE source_id = %d AND fetch_status = 'success' ORDER BY id DESC LIMIT 1",
+				absint( $source_id )
+			)
+		);
+	}
+
+	/**
 	 * Bulk-load the most recent fetch data row for each of the given source IDs.
 	 *
 	 * Returns every source regardless of fetch_status so callers can display

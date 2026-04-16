@@ -158,8 +158,14 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to update source.', 'ai-post-scheduler'));
 			}
 
-			// Interval already validated above; ignore the return value here.
-			$this->repo->set_fetch_schedule($id, $fetch_interval ?: null);
+			if ($fetch_interval) {
+				$schedule_result = $this->repo->set_fetch_schedule($id, $fetch_interval);
+				if (false === $schedule_result) {
+					AIPS_Ajax_Response::error(__('Source was updated, but saving the auto-fetch schedule failed. Please try again.', 'ai-post-scheduler'));
+				}
+			} else {
+				$this->repo->set_fetch_schedule($id, null);
+			}
 
 			$this->repo->set_source_terms($id, $term_ids);
 

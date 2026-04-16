@@ -121,7 +121,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 	}
 
 	/** @test */
-	public function test_mark_fetch_failed_updates_status_but_not_extracted_text() {
+	public function test_mark_fetch_failed_preserves_prior_success_content() {
 		$this->repo->insert_if_new( 66, array(
 			'url'            => 'https://example.com',
 			'extracted_text' => 'Previously good content.',
@@ -131,11 +131,15 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 
 		$this->repo->mark_fetch_failed( 66, 'Server error.', 500 );
 
-		$row = $this->repo->get_by_source_id( 66 );
-		$this->assertEquals( 'failed', $row->fetch_status );
-		$this->assertEquals( 'Server error.', $row->error_message );
-		// Previously fetched content must still be intact.
-		$this->assertEquals( 'Previously good content.', $row->extracted_text );
+		// get_by_source_id() now returns the failure row (most recent).
+		$latest = $this->repo->get_by_source_id( 66 );
+		$this->assertEquals( 'failed', $latest->fetch_status );
+		$this->assertEquals( 'Server error.', $latest->error_message );
+
+		// The previously fetched content is preserved in the latest success row.
+		$success_row = $this->repo->get_latest_success_by_source_id( 66 );
+		$this->assertNotNull( $success_row );
+		$this->assertEquals( 'Previously good content.', $success_row->extracted_text );
 	}
 
 	// ------------------------------------------------------------------
