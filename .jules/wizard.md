@@ -71,3 +71,6 @@
 ## 2026-04-09 - Standardize "Clear" Button Styling in Filters
 **Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
 **Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+## 2026-04-16 - Planner Layout Refactor
+Learning: Using CSS Grid for 75/25 layouts (`grid-template-columns: 3fr 1fr`) allows us to cleanly split content and sidebars without bloating the DOM structure or requiring float logic. Aligning items properly using `display: flex; flex-direction: column` in sidebar forms guarantees clean, readable inputs regardless of parent width.
+Action: Whenever building a review + form submission interface, isolate the configuration into a sticky/separate sidebar to visually detach the actions from the result lists. Keep data tables and list items tight (`padding: 4px 8px`) if the goal is rapid review rather than deep reading.
