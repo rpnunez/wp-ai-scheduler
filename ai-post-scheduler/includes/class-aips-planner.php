@@ -142,7 +142,7 @@ class AIPS_Planner {
             );
         }
 
-        $count = $schedule_repository->create_bulk($schedules);
+        $count = $scheduler->save_schedule_bulk($schedules);
 
         if ($count === false || $count === 0) {
             AIPS_Ajax_Response::error(__('Failed to schedule topics.', 'ai-post-scheduler'));
