@@ -34,7 +34,9 @@ class AIPS_Dev_Tools {
      * @return void
      */
     public function ajax_generate_scaffold() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
