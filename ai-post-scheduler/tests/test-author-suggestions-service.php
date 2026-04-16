@@ -47,7 +47,7 @@ class AIPS_Test_Stub_History_Service_For_Suggestions implements AIPS_History_Ser
 	public function get_all($args = array()) { return array(); }
 	public function delete($id) { return true; }
 	public function update_history_record($id, $data) { return true; }
-	public function find_incomplete($type, $metadata_filters = array(), $limit = 5) { return array(); }
+	public function find_incomplete( $type, $metadata = array() ) { return array(); }
 }
 
 class Test_Author_Suggestions_Service extends WP_UnitTestCase {
