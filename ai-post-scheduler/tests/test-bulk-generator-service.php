@@ -76,7 +76,7 @@ class Test_Stub_History_Service implements AIPS_History_Service_Interface {
 	public function get_all($args = array()) { return array(); }
 	public function delete($id) { return true; }
 	public function update_history_record($id, $data) { return true; }
-	public function find_incomplete($type, $metadata_filters = array(), $limit = 5) { return array(); }
+	public function find_incomplete($type, $metadata = array()) { return array(); }
 	/** @var array[] Meta about each container created: ['type', 'metadata', 'container']. */
 	public $containers_created = array();
 
