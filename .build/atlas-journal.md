@@ -1387,4 +1387,4 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - Full backward compatibility was maintained by injecting dependencies internally without changing public APIs.
 
 **Tests:**
-Added `AIPS_AI_Variables_Resolver` to `tests/bootstrap.php` and `tests/test-autoloader.php`. Ran full PHPUnit suite to confirm the extraction did not break generation tests. Run UI playwright verification for UI regressions.
+Updated `tests/test-prompt-builder.php` with a new test (`test_generator_substitutes_ai_variables_in_title_prompt`) to guard against regressions in title generation with AI variable substitution. The new `AIPS_AI_Variables_Resolver` class is automatically discovered by the existing `AIPS_Autoloader` (no manual bootstrap or autoloader changes were required). Ran the full PHPUnit suite to confirm the extraction did not break generation tests.

@@ -563,7 +563,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_generator_substitutes_ai_variables_in_title_prompt() {
 		// Stub AI service that captures every prompt sent to generate_text().
 		$captured_prompts = array();
-		$stub_ai_service  = new class( $captured_prompts ) implements AIPS_AI_Service_Interface { public function generate_json($p, $o=[]) {return [];} public function generate_image($p, $o=[]) {return "";} public function get_call_log() {return [];}
+		$stub_ai_service  = new class( $captured_prompts ) implements AIPS_AI_Service_Interface {
 			private $captured_prompts;
 
 			public function __construct( &$captured_prompts ) {
@@ -578,6 +578,18 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 				$this->captured_prompts[] = $prompt;
 				// Return a realistic title so the generator does not fall back.
 				return 'PHP 9.4 Release Candidate: What Senior Developers Need to Know';
+			}
+
+			public function generate_json( $p, $o = array() ) {
+				return array();
+			}
+
+			public function generate_image( $p, $o = array() ) {
+				return '';
+			}
+
+			public function get_call_log() {
+				return array();
 			}
 		};
 
