@@ -132,6 +132,12 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-edit"></span>
 											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 										</a>
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
+											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+											title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+											<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
+										</button>
 										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
 											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
