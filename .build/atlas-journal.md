@@ -1382,13 +1382,3 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * `admin.js` is leaner, with schedule-specific logic decoupled into its own file.
 * Trade-offs: Legacy schedule JS was kept in `admin.js` for now (per explicit instructions to only extract unified methods to `admin-schedule.js`), which means schedule JS is temporarily split across two files.
 **Tests:** Verified autoloader loads the new controller. Legacy tests in `test-schedule-controller-bulk.php` failed due to pre-existing mocking issues in limited mode but were left as-is since the legacy logic was not modified.
-
-## 2024-05-20 - [Extract Unified Schedule Controller and JS]
-**Context:** The `AIPS_Schedule_Controller` class was acting as a "God Object" handling both legacy schedule endpoints (`ajax_save_schedule`, `ajax_delete_schedule`, etc.) and unified schedule endpoints (`ajax_unified_run_now`, `ajax_unified_toggle`, etc.). Similarly, `admin.js` contained all schedule-related logic intermixed with other administrative scripts.
-**Decision:** Applied "Separation of Concerns". Extracted all `ajax_unified_*` methods into a new `AIPS_Unified_Schedule_Controller` class and updated `AIPS_Ajax_Registry` to route unified endpoints to this new controller. Additionally, extracted unified schedule JS logic and event bindings from `admin.js` into a new `admin-schedule.js` file, which is now enqueued via `AIPS_Admin_Assets`.
-**Consequence:**
-* `AIPS_Schedule_Controller` is now focused strictly on legacy schedule endpoints.
-* `AIPS_Unified_Schedule_Controller` is cleanly separated and handles only unified endpoints.
-* `admin.js` is leaner, with schedule-specific logic decoupled into its own file.
-* Trade-offs: Legacy schedule JS was kept in `admin.js` for now (per explicit instructions to only extract unified methods to `admin-schedule.js`), which means schedule JS is temporarily split across two files.
-**Tests:** Verified autoloader loads the new controller. Legacy tests in `test-schedule-controller-bulk.php` failed due to pre-existing mocking issues in limited mode but were left as-is since the legacy logic was not modified.

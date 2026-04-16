@@ -30,7 +30,7 @@ class AIPS_Unified_Schedule_Controller {
      * Expects POST: id (int), type (string).
      */
     public function ajax_unified_run_now() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -57,7 +57,7 @@ class AIPS_Unified_Schedule_Controller {
      * Expects POST: id (int), type (string), is_active (0|1).
      */
     public function ajax_unified_toggle() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -88,7 +88,7 @@ class AIPS_Unified_Schedule_Controller {
      * Expects POST: items (array of {id, type}), is_active (0|1).
      */
     public function ajax_unified_bulk_toggle() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -141,7 +141,7 @@ class AIPS_Unified_Schedule_Controller {
      * Expects POST: items (array of {id, type}).
      */
     public function ajax_unified_bulk_run_now() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -210,7 +210,7 @@ class AIPS_Unified_Schedule_Controller {
      * Only template schedules are deletable.
      */
     public function ajax_unified_bulk_delete() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -231,16 +231,16 @@ class AIPS_Unified_Schedule_Controller {
             $id   = isset($item['id']) ? absint($item['id']) : 0;
             $type = isset($item['type']) ? sanitize_key($item['type']) : '';
 
-            if (!$id || $type !== 'template') {
+            if (!$id || $type !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
                 continue; // only templates support delete in unified model right now
             }
 
-            $res = $service->delete_template_schedule($id);
-            if ($res) {
+            $res = $service->delete($id, $type);
+            if ($res && !is_wp_error($res)) {
                 $deleted_count++;
-                $deleted_items[] = $id;
+                $deleted_items[] = array('type' => $type, 'id' => $id);
             } else {
-                $failed_items[] = $id;
+                $failed_items[] = array('type' => $type, 'id' => $id);
             }
         }
 
@@ -269,68 +269,35 @@ class AIPS_Unified_Schedule_Controller {
      * Required POST fields: id, type.
      */
     public function ajax_get_unified_schedule_history() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce', false);
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $id    = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type  = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 0;
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Missing entity parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $history = $service->get_history($id, $type);
+        $history = $service->get_history($id, $type, $limit);
 
         if (is_wp_error($history)) {
             AIPS_Ajax_Response::error($history->get_error_message());
         }
 
-        if (empty($history)) {
-            $html = '<div class="aips-empty-state">';
-            $html .= '<span class="dashicons dashicons-backup aips-empty-state-icon" style="opacity: 0.5; font-size: 32px; width: 32px; height: 32px;"></span>';
-            $html .= '<h3 class="aips-empty-state-title" style="margin-top: 15px;">' . esc_html__('No History Yet', 'ai-post-scheduler') . '</h3>';
-            $html .= '<p class="aips-empty-state-description" style="max-width: 300px; margin: 10px auto;">' . esc_html__('This schedule hasn\'t run yet. Once it generates posts, the history will appear here.', 'ai-post-scheduler') . '</p>';
-            $html .= '</div>';
-            AIPS_Ajax_Response::success(array('html' => $html));
+        $entries = array();
+
+        if (isset($history['entries']) && is_array($history['entries'])) {
+            $entries = $history['entries'];
+        } elseif (is_array($history)) {
+            $entries = $history;
         }
 
-        // Render the list of generation events
-        ob_start();
-        echo '<div class="aips-history-events">';
-
-        foreach ($history as $event) {
-            $status_class = 'aips-badge-' . ($event['status'] === 'success' ? 'success' : 'error');
-
-            echo '<div class="aips-history-event">';
-            echo '<div class="aips-history-event-header">';
-            echo '<strong>' . esc_html(wp_date('M j, Y g:i A', $event['timestamp'])) . '</strong>';
-            echo '<span class="aips-badge ' . esc_attr($status_class) . '">' . esc_html($event['status']) . '</span>';
-            echo '</div>';
-
-            if ($event['status'] === 'success' && !empty($event['post_id'])) {
-                $post_url = get_edit_post_link($event['post_id']);
-                $post_title = get_the_title($event['post_id']);
-                echo '<div class="aips-history-event-body">';
-                echo '<span>' . esc_html__('Generated:', 'ai-post-scheduler') . '</span> ';
-                echo '<a href="' . esc_url($post_url) . '">' . esc_html($post_title ?: __('(No Title)', 'ai-post-scheduler')) . '</a>';
-                echo '</div>';
-            } elseif (!empty($event['error_message'])) {
-                echo '<div class="aips-history-event-error" style="color: #d63638; margin-top: 5px;">';
-                echo esc_html($event['error_message']);
-                echo '</div>';
-            }
-
-            echo '</div>';
-        }
-
-        echo '</div>';
-
-        $html = ob_get_clean();
-
-        AIPS_Ajax_Response::success(array('html' => $html));
+        AIPS_Ajax_Response::success(array('entries' => $entries));
     }
 }

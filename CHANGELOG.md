@@ -76,5 +76,3 @@ All notable changes to this project will be documented in this file.
 - [2024-05-22 10:00:00] Made generated topic titles editable in the Planner before scheduling.
 - Refactor: Extracted unified schedule endpoints into `AIPS_Unified_Schedule_Controller` to enforce Separation of Concerns.
 - Refactor: Extracted unified schedule JavaScript from `admin.js` into a dedicated `admin-schedule.js` file.
-- Refactor: Extracted unified schedule endpoints into `AIPS_Unified_Schedule_Controller` to enforce Separation of Concerns.
-- Refactor: Extracted unified schedule JavaScript from `admin.js` into a dedicated `admin-schedule.js` file.

@@ -3,12 +3,13 @@
  *
  * Handles unified scheduling operations.
  */
-var AIPS = AIPS || {};
-
-AIPS.Schedule = (function($) {
+(function($) {
     'use strict';
 
-    return {
+    window.AIPS = window.AIPS || {};
+    var AIPS = window.AIPS;
+
+    AIPS.Schedule = {
         init: function() {
             this.bindEvents();
         },
@@ -34,7 +35,7 @@ AIPS.Schedule = (function($) {
         toggleAllUnified: function() {
             var isChecked = $(this).prop('checked');
             $('.aips-unified-checkbox:visible').prop('checked', isChecked);
-            this.updateUnifiedBulkActions();
+            AIPS.Schedule.updateUnifiedBulkActions();
         },
 
         /**
@@ -44,21 +45,21 @@ AIPS.Schedule = (function($) {
             var total   = $('.aips-unified-checkbox:visible').length;
             var checked = $('.aips-unified-checkbox:visible:checked').length;
             $('#cb-select-all-unified').prop('checked', total > 0 && checked === total);
-            this.updateUnifiedBulkActions();
+            AIPS.Schedule.updateUnifiedBulkActions();
         },
 
         /** Check all visible rows. */
         selectAllUnified: function() {
             $('.aips-unified-checkbox:visible').prop('checked', true);
             $('#cb-select-all-unified').prop('checked', true);
-            this.updateUnifiedBulkActions();
+            AIPS.Schedule.updateUnifiedBulkActions();
         },
 
         /** Uncheck all rows. */
         unselectAllUnified: function() {
             $('.aips-unified-checkbox').prop('checked', false);
             $('#cb-select-all-unified').prop('checked', false);
-            this.updateUnifiedBulkActions();
+            AIPS.Schedule.updateUnifiedBulkActions();
         },
 
         /**
@@ -107,16 +108,16 @@ AIPS.Schedule = (function($) {
                     [
                         { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                         { label: aipsScheduleL10n.yesRunNow || 'Yes, Run Now', className: 'aips-btn aips-btn-primary', action: function() {
-                            this.unifiedBulkRunNow(items);
+                            AIPS.Schedule.unifiedBulkRunNow(items);
                         }}
                     ]
                 );
             } else if (action === 'pause') {
-                this.unifiedBulkToggle(items, 0);
+                AIPS.Schedule.unifiedBulkToggle(items, 0);
             } else if (action === 'resume') {
-                this.unifiedBulkToggle(items, 1);
+                AIPS.Schedule.unifiedBulkToggle(items, 1);
             } else if (action === 'delete') {
-                this.confirmUnifiedBulkDelete(items);
+                AIPS.Schedule.confirmUnifiedBulkDelete(items);
             }
         },
 
@@ -149,7 +150,7 @@ AIPS.Schedule = (function($) {
                 },
                 complete: function() {
                     AIPS.Utilities.resetButton($applyBtn);
-                    this.updateUnifiedBulkActions();
+                    AIPS.Schedule.updateUnifiedBulkActions();
                 }
             });
         },
@@ -223,7 +224,7 @@ AIPS.Schedule = (function($) {
                             var key  = item.type + ':' + item.id;
                             var $row = $('tr[data-row-key="' + key + '"]');
                             if ($row.length) {
-                                this.updateUnifiedRowStatus($row, isActive);
+                                AIPS.Schedule.updateUnifiedRowStatus($row, isActive);
                                 // In partial success, unselect only successful rows to keep failures visible.
                                 if (Object.keys(failedKeysMap).length > 0) {
                                     $row.find('.aips-unified-select').prop('checked', false);
@@ -233,7 +234,7 @@ AIPS.Schedule = (function($) {
 
                         // If there were no known failures, keep existing behavior (unselect all).
                         if (Object.keys(failedKeysMap).length === 0) {
-                            this.unselectAllUnified();
+                            AIPS.Schedule.unselectAllUnified();
                         }
                     } else {
                         AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.errorOccurred, 'error');
@@ -244,7 +245,7 @@ AIPS.Schedule = (function($) {
                 },
                 complete: function() {
                     AIPS.Utilities.resetButton($applyBtn);
-                    this.updateUnifiedBulkActions();
+                    AIPS.Schedule.updateUnifiedBulkActions();
                 }
             });
         },
@@ -281,7 +282,7 @@ AIPS.Schedule = (function($) {
                             var rowKey = item.type + ':' + item.id;
                             $('tr[data-row-key="' + rowKey + '"]').fadeOut(250, function() {
                                 $(this).remove();
-                                this.updateUnifiedBulkActions();
+                                AIPS.Schedule.updateUnifiedBulkActions();
                             });
                         });
 
@@ -295,7 +296,7 @@ AIPS.Schedule = (function($) {
                 },
                 complete: function() {
                     $applyBtn.prop('disabled', false).text('Apply');
-                    this.updateUnifiedBulkActions();
+                    AIPS.Schedule.updateUnifiedBulkActions();
                 }
             });
         },
@@ -324,7 +325,7 @@ AIPS.Schedule = (function($) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        this.updateUnifiedRowStatus($row, isActive);
+                        AIPS.Schedule.updateUnifiedRowStatus($row, isActive);
                     } else {
                         // Revert the toggle
                         $toggle.prop('checked', !isActive);
@@ -636,18 +637,16 @@ AIPS.Schedule = (function($) {
                         label: aipsAdminL10n.confirmDeleteButton || 'Delete',
                         className: 'aips-btn aips-btn-danger-solid',
                         action: function() {
-                            this.unifiedBulkDelete(deletableItems);
+                            AIPS.Schedule.unifiedBulkDelete(deletableItems);
                         }
                     }
                 ]
             );
-        },
+        }
     };
 
-})(jQuery);
-
-jQuery(document).ready(function($) {
-    if (AIPS.Schedule && typeof AIPS.Schedule.init === 'function') {
+    $(document).ready(function() {
         AIPS.Schedule.init();
-    }
-});
+    });
+
+})(jQuery);

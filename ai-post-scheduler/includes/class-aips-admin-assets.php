@@ -51,13 +51,15 @@ class AIPS_Admin_Assets {
             true
         );
 
-        wp_enqueue_script(
-            'aips-schedule-script',
-            AIPS_PLUGIN_URL . 'assets/js/admin-schedule.js',
-            array('jquery', 'aips-utilities-script', 'aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
+        if ('ai-post-scheduler_page_aips-schedule' === $hook) {
+            wp_enqueue_script(
+                'aips-schedule-script',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedule.js',
+                array('jquery', 'aips-utilities-script', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
