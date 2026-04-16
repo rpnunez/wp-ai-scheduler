@@ -415,9 +415,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
 		}
 
-		$logs = $this->logs_repository->get_by_topic($topic_id);
-
-		// Enrich with user names
+		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
 		foreach ($logs as &$log) {
 			if ($log->user_id) {
 				$user = get_user_by('id', $log->user_id);

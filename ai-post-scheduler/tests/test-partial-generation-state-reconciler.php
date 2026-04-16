@@ -121,14 +121,15 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When the primary key exists but returns empty string (e.g. value was
-	 * deleted after metadata_exists() returned true), the fallback 3-key check
-	 * may still result in no-op — verify the code path doesn't crash and the
-	 * hook is only fired when reconcile returns an array.
+	 * When the primary key exists but its value is an empty string (e.g. the
+	 * value was cleared after metadata_exists() became true), the reconciler
+	 * must still run — the metadata_exists() guard is the sole gate, so any
+	 * post that ever had AIPS meta will be reconciled and stale/empty values
+	 * will be repaired with current post-content state.
 	 */
-	public function test_no_hook_when_reconcile_returns_null() {
+	public function test_reconciles_when_meta_key_exists_with_empty_value() {
 		global $aips_test_meta;
-		// metadata_exists returns true because the key is set (even to empty string)
+		// metadata_exists returns true because the row exists (even with an empty value).
 		$aips_test_meta = array(
 			42 => array(
 				'aips_post_generation_component_statuses' => '',
@@ -142,12 +143,9 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 			$actions_fired[] = true;
 		});
 
-		// When all three values are empty get_post_meta returns '', so
-		// $has_generation_meta is false and we return early.
 		$this->reconciler->on_save_post(42, $this->make_post(), true);
 
-		// The metadata_exists fast-path passes (key is set), but the full
-		// 3-key check yields false (all empty), so reconcile is NOT called.
-		$this->assertEmpty($actions_fired, 'Hook must not fire when all meta values are empty strings.');
+		// The metadata_exists fast-path passes → reconcile runs → hook fires.
+		$this->assertNotEmpty($actions_fired, 'Hook must fire when a meta key exists, even with an empty value.');
 	}
 }

@@ -158,6 +158,34 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertCount( 3, $results );
 	}
 
+	/**
+	 * Test that get_unread() does NOT return the `meta` (longtext) column.
+	 *
+	 * The admin-bar dropdown never uses the meta column, so fetching it on
+	 * every page load for every manage_options user is wasted I/O.
+	 */
+	public function test_get_unread_excludes_meta_column() {
+		$this->repository->create_notification( array(
+			'type'    => 'test',
+			'message' => 'Column check',
+			'meta'    => array( 'key' => 'value' ),
+		) );
+
+		$results = $this->repository->get_unread( 1 );
+
+		$this->assertNotEmpty( $results );
+		$row = $results[0];
+
+		// Required display columns must be present.
+		$this->assertTrue( isset( $row->id ),      'id column must be present' );
+		$this->assertTrue( isset( $row->title ),   'title column must be present' );
+		$this->assertTrue( isset( $row->message ), 'message column must be present' );
+		$this->assertTrue( isset( $row->level ),   'level column must be present' );
+
+		// The heavy longtext `meta` column must NOT be fetched.
+		$this->assertFalse( isset( $row->meta ), 'meta (longtext) column must NOT be returned by get_unread()' );
+	}
+
 	// -----------------------------------------------------------------------
 	// Repository: count_unread
 	// -----------------------------------------------------------------------
