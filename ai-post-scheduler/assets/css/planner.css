@@ -82,7 +82,10 @@
 
 /* Planner Specific Utilities */
 .aips-planner-form-grid-2-1 {
-    display: grid; grid-template-columns: 2fr 1fr; gap: var(--aips-space-5); max-width: 800px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--aips-space-5);
+    max-width: 800px;
 }
 
 .aips-planner-count-input {
@@ -152,8 +155,6 @@
 
 .aips-planner-schedule-grid { grid-template-columns: 1fr; } /* was 3 */
 
-}
-
 .aips-planner-actions {
     margin-top: 20px;
 }
@@ -187,10 +188,12 @@
     grid-template-columns: 3fr 1fr;
     gap: var(--aips-space-5);
     margin-top: 20px;
+}
+.aips-planner-layout:not(.active) {
     display: none;
 }
 .aips-planner-layout.active {
-    display: grid;
+    display: grid !important;
 }
 @media (max-width: 1024px) {
     .aips-planner-layout {

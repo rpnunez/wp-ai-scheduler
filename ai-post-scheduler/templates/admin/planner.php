@@ -124,7 +124,7 @@ $default_planner_frequency = 'daily';
                             <span class="dashicons dashicons-media-text" ></span>
                             <?php echo esc_html__('Generate Now', 'ai-post-scheduler'); ?>
                         </button>
-                        <div ><span class="spinner"></span></div>
+                        <span class="spinner"></span>
                     </div>
                 </div>
             </div>
