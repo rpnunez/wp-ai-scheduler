@@ -3,6 +3,8 @@ name: Performance Tests
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - '.github/performance-baseline.json'
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
@@ -132,8 +134,7 @@ jobs:
             git show main:.github/performance-baseline.json > /tmp/performance-baseline.json
             echo "Baseline file downloaded from main branch"
           else
-            echo "No baseline file found on main branch"
-            echo "{}" > /tmp/performance-baseline.json
+            echo "No baseline file found on main branch - will run without comparison"
           fi
 
       - name: Run Performance Benchmark
@@ -159,9 +160,16 @@ jobs:
       - name: Update baseline on main branch
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
-          # Copy results as new baseline
+          # Create a deterministic baseline by stripping volatile per-run fields
           mkdir -p .github
-          cp /tmp/performance-results.json .github/performance-baseline.json
+          python3 -c "
+import json, sys
+data = json.load(open('/tmp/performance-results.json'))
+data.pop('timestamp', None)
+data.pop('php_version', None)
+json.dump(data, open('.github/performance-baseline.json', 'w'), indent=2)
+print('Baseline written (timestamp/php_version stripped)')
+"
 
           # Commit and push if changed
           git config user.name "GitHub Actions"
@@ -171,7 +179,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to baseline"
           else
-            git commit -m "Update performance baseline [skip ci]"
+            git commit -m "chore: update performance baseline [skip ci]"
             git push origin ${{ github.ref_name }}
           fi
 
