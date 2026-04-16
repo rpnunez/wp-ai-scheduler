@@ -453,8 +453,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
 		}
 		
-		// Get all logs for this topic
-		$logs = $this->logs_repository->get_by_topic($topic_id);
+		// Get logs for this topic (UI display only — capped at 200 entries).
+		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
 		
 		$posts = array();
 		foreach ($logs as $log) {
