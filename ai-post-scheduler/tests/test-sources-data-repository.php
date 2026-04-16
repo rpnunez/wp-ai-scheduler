@@ -36,7 +36,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 			'url'            => 'https://example.com',
 			'page_title'     => 'Example Title',
 			'extracted_text' => 'Some extracted content.',
-			'word_count'     => 23,
+			'char_count'     => 23,
 			'fetch_status'   => 'success',
 			'http_status'    => 200,
 		) );
@@ -55,7 +55,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 		$this->repo->upsert( 99, array(
 			'url'            => 'https://example.com',
 			'extracted_text' => 'First fetch.',
-			'word_count'     => 12,
+			'char_count'     => 12,
 			'fetch_status'   => 'success',
 			'http_status'    => 200,
 		) );
@@ -63,7 +63,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 		$this->repo->upsert( 99, array(
 			'url'            => 'https://example.com',
 			'extracted_text' => 'Second fetch with more content.',
-			'word_count'     => 31,
+			'char_count'     => 31,
 			'fetch_status'   => 'success',
 			'http_status'    => 200,
 		) );

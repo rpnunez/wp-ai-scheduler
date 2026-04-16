@@ -195,13 +195,14 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 	/** @test */
 	public function test_fetch_handles_wp_error_response() {
-		if ( ! function_exists( 'wp_remote_get' ) ) {
-			$this->markTestSkipped( 'wp_remote_get() is not available in this test environment.' );
+		if ( ! function_exists( 'wp_safe_remote_get' ) || ! function_exists( 'wp_remote_get' ) ) {
+			$this->markTestSkipped( 'wp_safe_remote_get() is not available in this test environment.' );
 		}
 		// Intercept the HTTP call and return a WP_Error.
-		add_filter( 'pre_http_request', function ( $preempt, $args, $url ) {
+		$filter_cb = function ( $preempt, $args, $url ) {
 			return new WP_Error( 'http_request_failed', 'Could not connect.' );
-		}, 10, 3 );
+		};
+		add_filter( 'pre_http_request', $filter_cb, 10, 3 );
 
 		$mock_data_repo    = $this->createMock( AIPS_Sources_Data_Repository::class );
 		$mock_sources_repo = $this->createMock( AIPS_Sources_Repository::class );
@@ -217,7 +218,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		$fetcher = new AIPS_Sources_Fetcher( $mock_data_repo, $mock_sources_repo );
 		$result  = $fetcher->fetch( $this->make_source( 1, 'https://example.com' ) );
 
-		remove_all_filters( 'pre_http_request' );
+		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
 		$this->assertFalse( $result['success'] );
 		$this->assertStringContainsString( 'Could not connect', $result['error'] );
@@ -229,8 +230,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 	/** @test */
 	public function test_fetch_handles_http_404_response() {
-		if ( ! function_exists( 'wp_remote_get' ) ) {
-			$this->markTestSkipped( 'wp_remote_get() is not available in this test environment.' );
+		if ( ! function_exists( 'wp_safe_remote_get' ) || ! function_exists( 'wp_remote_get' ) ) {
+			$this->markTestSkipped( 'wp_safe_remote_get() is not available in this test environment.' );
 		}
 		$http_response = $this->make_http_response( '<html><body>Not found</body></html>', 404 );
 
@@ -264,8 +265,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 	/** @test */
 	public function test_fetch_success_calls_upsert_and_update_after_fetch() {
-		if ( ! function_exists( 'wp_remote_get' ) ) {
-			$this->markTestSkipped( 'wp_remote_get() is not available in this test environment.' );
+		if ( ! function_exists( 'wp_safe_remote_get' ) || ! function_exists( 'wp_remote_get' ) ) {
+			$this->markTestSkipped( 'wp_safe_remote_get() is not available in this test environment.' );
 		}
 		$html = '<!DOCTYPE html><html><head>'
 			. '<title>Test Page</title>'
@@ -305,7 +306,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
 		$this->assertTrue( $result['success'] );
-		$this->assertGreaterThan( 0, $result['word_count'] );
+		$this->assertGreaterThan( 0, $result['char_count'] );
 		$this->assertEmpty( $result['error'] );
 	}
 }

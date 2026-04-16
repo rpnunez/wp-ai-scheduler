@@ -134,6 +134,19 @@ class AIPS_Upgrades {
                 $wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
             }
         }
+
+        // Rename word_count → char_count on aips_sources_data if it exists with the old name.
+        $table_sources_data = $wpdb->prefix . 'aips_sources_data';
+        $sources_data_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_sources_data ) );
+        if ( $sources_data_exists === $table_sources_data ) {
+            $old_col = $wpdb->get_row( $wpdb->prepare(
+                "SHOW COLUMNS FROM `{$table_sources_data}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                'word_count'
+            ) );
+            if ( $old_col ) {
+                $wpdb->query( "ALTER TABLE `{$table_sources_data}` CHANGE COLUMN `word_count` `char_count` int NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            }
+        }
     }
 }
 ?>

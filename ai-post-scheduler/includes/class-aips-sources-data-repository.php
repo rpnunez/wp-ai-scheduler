@@ -73,7 +73,7 @@ class AIPS_Sources_Data_Repository {
 	 *     @type string $meta_description Extracted meta description.
 	 *     @type string $extracted_text   Cleaned readable body text.
 	 *     @type string $raw_html         Original raw HTML (may be empty).
-	 *     @type int    $word_count       Character count of extracted_text.
+	 *     @type int    $char_count       Character count of extracted_text.
 	 *     @type string $fetch_status     'success' or 'failed'.
 	 *     @type int    $http_status      HTTP response code.
 	 *     @type string $error_message    Error message on failure.
@@ -93,9 +93,9 @@ class AIPS_Sources_Data_Repository {
 			'url'              => isset( $data['url'] ) ? esc_url_raw( $data['url'] ) : '',
 			'page_title'       => isset( $data['page_title'] ) ? sanitize_text_field( $data['page_title'] ) : '',
 			'meta_description' => isset( $data['meta_description'] ) ? sanitize_textarea_field( $data['meta_description'] ) : '',
-			'extracted_text'   => isset( $data['extracted_text'] ) ? wp_kses_post( $data['extracted_text'] ) : '',
+			'extracted_text'   => isset( $data['extracted_text'] ) ? sanitize_textarea_field( $data['extracted_text'] ) : '',
 			'raw_html'         => isset( $data['raw_html'] ) ? $data['raw_html'] : '',
-			'word_count'       => isset( $data['word_count'] ) ? absint( $data['word_count'] ) : 0,
+			'char_count'       => isset( $data['char_count'] ) ? absint( $data['char_count'] ) : 0,
 			'fetch_status'     => isset( $data['fetch_status'] ) ? sanitize_text_field( $data['fetch_status'] ) : 'success',
 			'http_status'      => isset( $data['http_status'] ) ? absint( $data['http_status'] ) : 0,
 			'error_message'    => isset( $data['error_message'] ) ? sanitize_textarea_field( $data['error_message'] ) : '',

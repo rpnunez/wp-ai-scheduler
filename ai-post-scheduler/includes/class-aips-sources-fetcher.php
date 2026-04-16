@@ -71,7 +71,7 @@ class AIPS_Sources_Fetcher {
 	 *     Result summary.
 	 *
 	 *     @type bool   $success    True if fetch and storage succeeded.
-	 *     @type int    $word_count Number of characters stored.
+	 *     @type int    $char_count Number of characters stored.
 	 *     @type string $error      Error message on failure (empty on success).
 	 * }
 	 */
@@ -80,7 +80,7 @@ class AIPS_Sources_Fetcher {
 		$url       = isset( $source->url ) ? esc_url_raw( $source->url ) : '';
 
 		if ( ! $source_id || empty( $url ) ) {
-			return array( 'success' => false, 'word_count' => 0, 'error' => 'Invalid source data.' );
+			return array( 'success' => false, 'char_count' => 0, 'error' => 'Invalid source data.' );
 		}
 
 		if ( ! wp_http_validate_url( $url ) ) {
@@ -89,7 +89,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: rejected unsafe URL for source #%d (%s)', $source_id, $url ), 'warning' );
-			return array( 'success' => false, 'word_count' => 0, 'error' => $error_msg );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
 		}
 
 		$start = microtime( true );
@@ -108,7 +108,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: fetch failed for source #%d — %s', $source_id, $error_msg ), 'warning' );
-			return array( 'success' => false, 'word_count' => 0, 'error' => $error_msg );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
 		}
 
 		$http_status = wp_remote_retrieve_response_code( $response );
@@ -120,7 +120,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: HTTP error for source #%d — %s', $source_id, $error_msg ), 'warning' );
-			return array( 'success' => false, 'word_count' => 0, 'error' => $error_msg );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
 		}
 
 		// Parse the HTML.
@@ -138,20 +138,29 @@ class AIPS_Sources_Fetcher {
 
 		$store_raw_html = (bool) get_option( 'aips_source_store_raw_html', false );
 
-		$word_count = mb_strlen( $extracted_text );
+		$char_count = mb_strlen( $extracted_text );
 		$duration   = round( microtime( true ) - $start, 2 );
 
-		$this->data_repo->upsert( $source_id, array(
+		$upsert_ok = $this->data_repo->upsert( $source_id, array(
 			'url'              => $url,
 			'page_title'       => $page_title,
 			'meta_description' => $meta_description,
 			'extracted_text'   => $extracted_text,
 			'raw_html'         => $store_raw_html ? $body : '',
-			'word_count'       => $word_count,
+			'char_count'       => $char_count,
 			'fetch_status'     => 'success',
 			'http_status'      => $http_status,
 			'error_message'    => '',
 		) );
+
+		if ( ! $upsert_ok ) {
+			$error_msg = 'Failed to store fetched content in database.';
+			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
+			$this->sources_repo->update_after_fetch( $source_id, false );
+
+			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: upsert failed for source #%d', $source_id ), 'warning' );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+		}
 
 		$this->sources_repo->update_after_fetch( $source_id, true );
 
@@ -161,12 +170,12 @@ class AIPS_Sources_Fetcher {
 				$source_id,
 				$url,
 				$duration,
-				$word_count
+				$char_count
 			),
 			'info'
 		);
 
-		return array( 'success' => true, 'word_count' => $word_count, 'error' => '' );
+		return array( 'success' => true, 'char_count' => $char_count, 'error' => '' );
 	}
 
 	/**

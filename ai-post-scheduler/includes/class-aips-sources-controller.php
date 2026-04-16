@@ -139,6 +139,15 @@ class AIPS_Sources_Controller {
 			'is_active'   => $is_active,
 		);
 
+		// Validate fetch_interval upfront, before any DB write, so an invalid
+		// value never results in a partially-saved state.
+		if (!empty($fetch_interval)) {
+			$calculator = AIPS_Interval_Calculator::instance();
+			if (!$calculator->is_valid_frequency($fetch_interval)) {
+				AIPS_Ajax_Response::error(__('Invalid fetch interval. Please choose a valid option.', 'ai-post-scheduler'));
+			}
+		}
+
 		if ($id) {
 			if ($this->repo->url_exists($url, $id)) {
 				AIPS_Ajax_Response::error(__('This URL already exists as another source.', 'ai-post-scheduler'));
@@ -149,11 +158,8 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to update source.', 'ai-post-scheduler'));
 			}
 
-			// Update fetch schedule if supplied; an invalid interval key is a client error.
-			$schedule_ok = $this->repo->set_fetch_schedule($id, $fetch_interval ?: null);
-			if (!$schedule_ok && !empty($fetch_interval)) {
-				AIPS_Ajax_Response::error(__('Invalid fetch interval. Please choose a valid option.', 'ai-post-scheduler'));
-			}
+			// Interval already validated above; ignore the return value here.
+			$this->repo->set_fetch_schedule($id, $fetch_interval ?: null);
 
 			$this->repo->set_source_terms($id, $term_ids);
 
@@ -174,12 +180,9 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to create source.', 'ai-post-scheduler'));
 			}
 
-			// Set fetch schedule if supplied; an invalid interval key is a client error.
+			// Interval already validated above; ignore the return value here.
 			if ($fetch_interval) {
-				$schedule_ok = $this->repo->set_fetch_schedule($new_id, $fetch_interval);
-				if (!$schedule_ok) {
-					AIPS_Ajax_Response::error(__('Invalid fetch interval. Please choose a valid option.', 'ai-post-scheduler'));
-				}
+				$this->repo->set_fetch_schedule($new_id, $fetch_interval);
 			}
 
 			$this->repo->set_source_terms($new_id, $term_ids);
@@ -400,7 +403,7 @@ class AIPS_Sources_Controller {
 				? sprintf(
 					/* translators: %d = number of characters extracted */
 					__('Fetched successfully. %d characters extracted.', 'ai-post-scheduler'),
-					$result['word_count']
+					$result['char_count']
 				)
 				: sprintf(
 					/* translators: %s = error message */

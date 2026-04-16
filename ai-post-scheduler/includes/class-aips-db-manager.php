@@ -386,7 +386,7 @@ class AIPS_DB_Manager {
             meta_description text DEFAULT NULL,
             extracted_text longtext DEFAULT NULL,
             raw_html longtext DEFAULT NULL,
-            word_count int NOT NULL DEFAULT 0,
+            char_count int NOT NULL DEFAULT 0,
             fetch_status varchar(20) NOT NULL DEFAULT 'pending',
             http_status int DEFAULT NULL,
             error_message text DEFAULT NULL,

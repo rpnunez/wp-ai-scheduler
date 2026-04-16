@@ -99,7 +99,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 							$next_fetch_at    = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
 							$fetch_data        = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
 							$fetch_status_val  = $fetch_data ? $fetch_data->fetch_status : '';
-							$char_count_val    = $fetch_data ? (int) $fetch_data->word_count : 0;
+							$char_count_val    = $fetch_data ? (int) $fetch_data->char_count : 0;
 						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
 							data-url="<?php echo esc_attr($source->url); ?>"
