@@ -13,9 +13,13 @@
     "php": ">=8.2"
   },
   "require-dev": {
+    "phpmd/phpmd": "^2.15",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^9.6",
-    "yoast/phpunit-polyfills": "^2.0",
-    "wp-phpunit/wp-phpunit": "^6.6"
+    "squizlabs/php_codesniffer": "^4.0",
+    "szepeviktor/phpstan-wordpress": "^2.0",
+    "wp-phpunit/wp-phpunit": "^6.6",
+    "yoast/phpunit-polyfills": "^2.0"
   },
   "autoload": {
     "classmap": [
