@@ -23,35 +23,20 @@ if (!defined('ABSPATH')) {
  * - Historical feedback (approved/rejected topic titles)
  * - Qualitative feedback guidance (admin-supplied rejection/approval reasons)
  */
-class AIPS_Prompt_Builder_Topic {
-
-	/**
-	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
-	 */
-	private $base_builder;
-
-	/**
-	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
-	 */
-	public function __construct($base_builder = null) {
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
-	}
+class AIPS_Prompt_Builder_Topic extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the complete topic generation prompt for the given author.
 	 *
-	 * @param object   $author            Author database record.
-	 * @param string[] $approved_topics   Titles of recently approved topics (diversity guard).
-	 * @param string[] $rejected_topics   Titles of recently rejected topics (avoidance list).
-	 * @param string   $feedback_guidance Qualitative guidance block from admin feedback reasons.
+	 * @param object   $primary_input Author database record.
+	 * @param string[] ...$args Optional approved topics, rejected topics, and feedback guidance.
 	 * @return string
 	 */
-	public function build(
-		$author,
-		array $approved_topics = array(),
-		array $rejected_topics = array(),
-		$feedback_guidance = ''
-	) {
+	public function build($primary_input, ...$args) {
+		$author = $primary_input;
+		$approved_topics = isset($args[0]) && is_array($args[0]) ? $args[0] : array();
+		$rejected_topics = isset($args[1]) && is_array($args[1]) ? $args[1] : array();
+		$feedback_guidance = isset($args[2]) ? $args[2] : '';
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
 			$quantity = 5;
@@ -60,7 +45,7 @@ class AIPS_Prompt_Builder_Topic {
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
 
 		// ---- Site-wide context (injected first so author-level settings override if needed) ----
-		$prompt .= $this->base_builder->build_site_context_block();
+		$prompt .= $this->get_base_builder()->build_site_context_block();
 
 		// ---- Trusted sources (injected when the author opts in) ----
 		if (!empty($author->include_sources)) {
@@ -69,7 +54,7 @@ class AIPS_Prompt_Builder_Topic {
 				$decoded   = json_decode($author->source_group_ids, true);
 				$group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
 			}
-			$sources_block = $this->base_builder->build_sources_block($group_ids);
+			$sources_block = $this->get_base_builder()->build_sources_block($group_ids);
 			if (!empty($sources_block)) {
 				$prompt .= $sources_block;
 			}

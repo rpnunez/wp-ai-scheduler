@@ -20,24 +20,12 @@ if (!defined('ABSPATH')) {
  *
  * Builds AI prompts for author persona suggestion generation.
  */
-class AIPS_Prompt_Builder_Authors {
-
-	/**
-	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
-	 */
-	private $base_builder;
-
-	/**
-	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
-	 */
-	public function __construct($base_builder = null) {
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
-	}
+class AIPS_Prompt_Builder_Authors extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the AI prompt for author suggestion generation.
 	 *
-	 * @param array $inputs {
+	 * @param array $primary_input {
 	 *     Context inputs.
 	 *
 	 *     @type string $site_niche      Required. The site/blog niche.
@@ -46,10 +34,12 @@ class AIPS_Prompt_Builder_Authors {
 	 *     @type string $brand_voice     Optional. Overall brand voice/tone.
 	 *     @type string $site_url        Optional. Site URL for context only.
 	 * }
-	 * @param int $count Number of author suggestions to request.
+	 * @param mixed ...$args Additional builder arguments, with the first value treated as the requested count.
 	 * @return string
 	 */
-	public function build(array $inputs, $count) {
+	public function build($primary_input, ...$args) {
+		$inputs = is_array($primary_input) ? $primary_input : array();
+		$count = isset($args[0]) ? (int) $args[0] : 0;
 		$site_niche      = isset($inputs['site_niche']) ? sanitize_text_field($inputs['site_niche']) : '';
 		$target_audience = isset($inputs['target_audience']) ? sanitize_text_field($inputs['target_audience']) : '';
 		$content_goals   = isset($inputs['content_goals']) ? sanitize_textarea_field($inputs['content_goals']) : '';

@@ -70,8 +70,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_post_content_builder_build_basic() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($structure_manager, null, $template_processor);
-		$builder = new AIPS_Prompt_Builder_Post_Content($template_processor, $section_builder);
+		$section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($template_processor, null, $structure_manager, null);
+		$builder = new AIPS_Prompt_Builder_Post_Content($template_processor, null, $structure_manager, null, $section_builder);
 
 		$template = (object) array(
 			'prompt_template' => 'Write about {{topic}}',
@@ -202,6 +202,27 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
 		$this->assertStringContainsString('Understanding AI Technology', $result);
 		$this->assertStringContainsString('ARTICLE BODY:', $result);
+	}
+
+	/**
+	 * Test dedicated prompt builders implement the shared interface.
+	 */
+	public function test_dedicated_prompt_builders_implement_shared_interface() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$builders = array(
+			new AIPS_Prompt_Builder_Article_Structure_Section($template_processor, null, $structure_manager, null),
+			new AIPS_Prompt_Builder_Post_Content($template_processor, null, $structure_manager, null),
+			new AIPS_Prompt_Builder_Post_Title($template_processor),
+			new AIPS_Prompt_Builder_Post_Excerpt($template_processor),
+			new AIPS_Prompt_Builder_Post_Featured_Image($template_processor),
+			new AIPS_Prompt_Builder_Topic(),
+			new AIPS_Prompt_Builder_Authors(),
+		);
+
+		foreach ($builders as $builder) {
+			$this->assertInstanceOf(AIPS_Prompt_Builder_Interface::class, $builder);
+		}
 	}
 
 	/**
