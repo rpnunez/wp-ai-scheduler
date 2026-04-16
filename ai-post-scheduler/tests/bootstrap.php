@@ -1521,4 +1521,83 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
+
+    if (!function_exists('add_menu_page')) {
+        function add_menu_page($page_title, $menu_title, $capability, $menu_slug, $function = '', $icon_url = '', $position = null) {
+            global $_registered_pages;
+            $hookname = get_plugin_page_hookname($menu_slug, '');
+            $_registered_pages[$hookname] = true;
+            return $hookname;
+        }
+    }
+
+    if (!function_exists('add_submenu_page')) {
+        function add_submenu_page($parent_slug, $page_title, $menu_title, $capability, $menu_slug, $function = '', $position = null) {
+            global $_registered_pages, $submenu;
+
+            if (!isset($submenu[$parent_slug])) {
+                $submenu[$parent_slug] = array();
+            }
+            if ($menu_title !== null) { // For null parent hidden pages
+                 $submenu[$parent_slug][] = array($menu_title, $capability, $menu_slug, $page_title);
+            }
+
+            $hookname = get_plugin_page_hookname($menu_slug, $parent_slug);
+            $_registered_pages[$hookname] = true;
+            return $hookname;
+        }
+    }
+
+    if (!function_exists('get_plugin_page_hookname')) {
+        function get_plugin_page_hookname($plugin_page, $parent_page) {
+            global $_registered_pages;
+            $parent = get_admin_page_parent($parent_page);
+            $page_type = 'admin';
+            if (empty($parent_page) || 'admin.php' === $parent_page || isset($_registered_pages[$plugin_page])) {
+                $page_type = 'admin';
+            } elseif (false !== strpos($parent, '?')) {
+                $page_type = substr($parent, 0, strpos($parent, '?'));
+                $page_type = substr($page_type, 0, -4);
+            } else {
+                $page_type = substr($parent, 0, -4);
+            }
+            return $page_type . '_page_' . $plugin_page;
+        }
+    }
+
+    if (!function_exists('get_admin_page_parent')) {
+        function get_admin_page_parent($parent = '') {
+            return $parent;
+        }
+    }
+
+    if (!function_exists('wp_list_pluck')) {
+        function wp_list_pluck($list, $field, $index_key = null) {
+            $newlist = array();
+            if (!$list) {
+                return $newlist;
+            }
+            foreach ($list as $key => $value) {
+                if (is_object($value)) {
+                    if (isset($value->$field)) {
+                        if (null === $index_key) {
+                            $newlist[$key] = $value->$field;
+                        } elseif (isset($value->$index_key)) {
+                            $newlist[$value->$index_key] = $value->$field;
+                        }
+                    }
+                } elseif (is_array($value)) {
+                    if (array_key_exists($field, $value)) {
+                        if (null === $index_key) {
+                            $newlist[$key] = $value[$field];
+                        } elseif (array_key_exists($index_key, $value)) {
+                            $newlist[$value[$index_key]] = $value[$field];
+                        }
+                    }
+                }
+            }
+            return $newlist;
+        }
+    }
+
 }
