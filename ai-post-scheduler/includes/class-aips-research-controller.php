@@ -106,7 +106,9 @@ class AIPS_Research_Controller {
      * Executes AI research and stores results in database.
      */
     public function ajax_research_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -151,7 +153,9 @@ class AIPS_Research_Controller {
      * Retrieves previously researched topics with filtering.
      */
     public function ajax_get_trending_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -207,7 +211,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Delete a trending topic.
      */
     public function ajax_delete_trending_topic() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -232,7 +238,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Bulk delete trending topics.
      */
     public function ajax_delete_trending_topic_bulk() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -267,7 +275,9 @@ class AIPS_Research_Controller {
      * Creates schedules for selected trending topics.
      */
     public function ajax_schedule_trending_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -470,7 +480,9 @@ class AIPS_Research_Controller {
      * Creates posts on-demand from selected trending topics.
      */
     public function ajax_generate_trending_topics_bulk() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -498,15 +510,26 @@ class AIPS_Research_Controller {
             AIPS_Ajax_Response::error(__('No valid topics found.', 'ai-post-scheduler'));
         }
 
-        // Resolve the first active template.
+        // Resolve the template to use for generation.
+        $template_id         = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $template_repository = new AIPS_Template_Repository();
-        $templates           = $template_repository->get_all(true);
 
-        if (empty($templates)) {
-            AIPS_Ajax_Response::error(__('No active templates found. Please create a template first.', 'ai-post-scheduler'));
+        if ($template_id > 0) {
+            $template = $template_repository->get_by_id($template_id);
+
+            if (!$template || empty($template->is_active)) {
+                AIPS_Ajax_Response::error(__('The selected template was not found or is inactive. Please select a valid template.', 'ai-post-scheduler'));
+            }
+        } else {
+            // Fall back to the first active template when no ID is provided.
+            $templates = $template_repository->get_all(true);
+
+            if (empty($templates)) {
+                AIPS_Ajax_Response::error(__('No active templates found. Please create a template first.', 'ai-post-scheduler'));
+            }
+
+            $template = $templates[0];
         }
-
-        $template = $templates[0];
 
         // Check AI Engine availability before running the batch.
         $generator = new AIPS_Generator();
@@ -638,7 +661,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Get generated posts linked to a trending topic.
      */
     public function ajax_get_trending_topic_posts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -739,7 +764,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Perform gap analysis.
      */
     public function ajax_perform_gap_analysis() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -769,7 +796,9 @@ class AIPS_Research_Controller {
      * Uses the gap topic as a seed for the standard research service.
      */
     public function ajax_generate_topics_from_gap() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();

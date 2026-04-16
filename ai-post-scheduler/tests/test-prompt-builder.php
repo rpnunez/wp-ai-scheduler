@@ -6,6 +6,19 @@
  * @subpackage Tests
  */
 
+class AIPS_Test_Stub_AI_Service_For_Prompt_Builder implements AIPS_AI_Service_Interface {
+	private $captured_prompts;
+	public function __construct( &$captured_prompts ) { $this->captured_prompts = &$captured_prompts; }
+	public function is_available() { return true; }
+	public function generate_text( $prompt, $options = array() ) {
+		$this->captured_prompts[] = $prompt;
+		return 'PHP 9.4 Release Candidate: What Senior Developers Need to Know';
+	}
+	public function generate_json($prompt, $options = array()) { return array(); }
+	public function generate_image($prompt, $options = array()) { return ""; }
+	public function get_call_log() { return array(); }
+}
+
 class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 	/**
@@ -563,23 +576,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_generator_substitutes_ai_variables_in_title_prompt() {
 		// Stub AI service that captures every prompt sent to generate_text().
 		$captured_prompts = array();
-		$stub_ai_service  = new class( $captured_prompts ) {
-			private $captured_prompts;
-
-			public function __construct( &$captured_prompts ) {
-				$this->captured_prompts = &$captured_prompts;
-			}
-
-			public function is_available() {
-				return true;
-			}
-
-			public function generate_text( $prompt, $options = array() ) {
-				$this->captured_prompts[] = $prompt;
-				// Return a realistic title so the generator does not fall back.
-				return 'PHP 9.4 Release Candidate: What Senior Developers Need to Know';
-			}
-		};
+		$stub_ai_service  = new AIPS_Test_Stub_AI_Service_For_Prompt_Builder( $captured_prompts );
 
 		$template_processor = new AIPS_Template_Processor();
 

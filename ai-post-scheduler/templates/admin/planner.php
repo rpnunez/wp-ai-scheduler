@@ -46,42 +46,54 @@ $default_planner_frequency = 'daily';
         </div>
     </div>
 
-    <!-- Review & Schedule Card -->
-    <div id="planner-results" class="aips-content-panel aips-planner-results">
-        <div class="aips-panel-header">
-            <div class="aips-panel-header-content">
-                <span class="dashicons dashicons-yes-alt dashicons-icon-lg"></span>
-                <div>
-                    <h3 class="aips-panel-title"><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
+    <!-- Review & Schedule Container -->
+    <div id="planner-results" class="aips-planner-results aips-planner-layout">
+        <!-- Review Section (75%) -->
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <div class="aips-panel-header-content">
+                    <span class="dashicons dashicons-yes-alt dashicons-icon-lg"></span>
+                    <div>
+                        <h3 class="aips-panel-title"><?php echo esc_html__('Review Topics', 'ai-post-scheduler'); ?></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="aips-panel-body">
+                <div class="aips-toolbar aips-planner-toolbar">
+                    <div class="aips-toolbar-left">
+                        <label class="aips-planner-select-all">
+                            <input type="checkbox" id="check-all-topics" >
+                            <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?>
+                        </label>
+                        <span class="selection-count aips-planner-selection-count"></span>
+                    </div>
+                    <div class="aips-toolbar-right aips-planner-toolbar-right">
+                        <label class="screen-reader-text" for="planner-topic-search"><?php esc_html_e('Filter topics:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="planner-topic-search" class="aips-form-input aips-planner-topic-search" placeholder="<?php esc_attr_e('Filter topics...', 'ai-post-scheduler'); ?>">
+                        <button type="button" id="planner-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="btn-copy-topics" class="aips-btn aips-btn-sm aips-btn-secondary"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="btn-clear-topics" class="aips-btn aips-btn-sm aips-btn-ghost"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
+                    </div>
+                </div>
+
+                <div id="topics-list" class="aips-topics-grid">
+                    <!-- Topics inserted via JS -->
                 </div>
             </div>
         </div>
-        <div class="aips-panel-body">
-            <div class="aips-toolbar aips-planner-toolbar">
-                <div class="aips-toolbar-left">
-                    <label class="aips-planner-select-all">
-                        <input type="checkbox" id="check-all-topics" >
-                        <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?>
-                    </label>
-                    <span class="selection-count aips-planner-selection-count"></span>
-                </div>
-                <div class="aips-toolbar-right aips-planner-toolbar-right">
-                    <label class="screen-reader-text" for="planner-topic-search"><?php esc_html_e('Filter topics:', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="planner-topic-search" class="aips-form-input aips-planner-topic-search" placeholder="<?php esc_attr_e('Filter topics...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="planner-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
-                    <button type="button" id="btn-copy-topics" class="aips-btn aips-btn-sm aips-btn-secondary"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
-                    <button type="button" id="btn-clear-topics" class="aips-btn aips-btn-sm aips-btn-ghost"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
+
+        <!-- Schedule Section Sidebar (25%) -->
+        <div class="aips-content-panel aips-planner-sidebar">
+            <div class="aips-panel-header">
+                <div class="aips-panel-header-content">
+                    <span class="dashicons dashicons-calendar-alt dashicons-icon-lg"></span>
+                    <div>
+                        <h3 class="aips-panel-title"><?php echo esc_html__('Schedule', 'ai-post-scheduler'); ?></h3>
+                    </div>
                 </div>
             </div>
-
-            <div id="topics-list" class="aips-topics-grid">
-                <!-- Topics inserted via JS -->
-            </div>
-
-            <div class="aips-schedule-settings aips-planner-schedule-settings">
-                <h4 ><?php echo esc_html__('Bulk Schedule Settings', 'ai-post-scheduler'); ?></h4>
-
-                <div class="aips-form-grid aips-form-grid aips-planner-schedule-grid">
+            <div class="aips-panel-body">
+                <div class="aips-schedule-settings aips-planner-schedule-settings">
                     <div class="aips-form-field">
                         <label for="bulk-template" class="aips-form-label"><?php echo esc_html__('Use Template', 'ai-post-scheduler'); ?></label>
                         <select id="bulk-template" class="aips-form-input">
@@ -102,18 +114,18 @@ $default_planner_frequency = 'daily';
                         <label for="bulk-frequency" class="aips-form-label"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
                         <?php AIPS_Template_Helper::render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                     </div>
-                </div>
 
-                <div class="aips-planner-actions">
-                    <button type="button" id="btn-bulk-schedule" class="aips-btn aips-btn-primary aips-btn-lg">
-                        <span class="dashicons dashicons-calendar-alt" ></span>
-                        <?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?>
-                    </button>
-                    <button type="button" id="btn-bulk-generate-now" class="aips-btn aips-btn-secondary aips-btn-lg">
-                        <span class="dashicons dashicons-media-text" ></span>
-                        <?php echo esc_html__('Generate Now', 'ai-post-scheduler'); ?>
-                    </button>
-                    <span class="spinner"></span>
+                    <div class="aips-planner-actions">
+                        <button type="button" id="btn-bulk-schedule" class="aips-btn aips-btn-primary aips-btn-lg">
+                            <span class="dashicons dashicons-calendar-alt" ></span>
+                            <?php echo esc_html__('Schedule Selected', 'ai-post-scheduler'); ?>
+                        </button>
+                        <button type="button" id="btn-bulk-generate-now" class="aips-btn aips-btn-secondary aips-btn-lg">
+                            <span class="dashicons dashicons-media-text" ></span>
+                            <?php echo esc_html__('Generate Now', 'ai-post-scheduler'); ?>
+                        </button>
+                        <span class="spinner"></span>
+                    </div>
                 </div>
             </div>
         </div>
