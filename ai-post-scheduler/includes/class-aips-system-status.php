@@ -51,9 +51,6 @@ class AIPS_System_Status {
      * @return array
      */
     public function get_system_info() {
-        if ( ! class_exists( 'AIPS_System_Diagnostics_Service' ) ) {
-            return array();
-        }
         $diagnostics = new AIPS_System_Diagnostics_Service();
         return $diagnostics->get_system_info();
     }
