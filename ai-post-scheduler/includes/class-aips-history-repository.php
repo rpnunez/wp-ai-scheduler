@@ -375,12 +375,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get history record by post ID.
      *
+     * Selects only metadata columns (excludes the `generated_content` and
+     * `generation_log` longtext columns) since callers only need the record ID
+     * and lightweight metadata fields. Use get_by_id() when full content is required.
+     *
      * @param int $post_id The post ID to find.
      * @return object|null History record or null if not found.
      */
     public function get_by_post_id($post_id) {
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
+                    creation_method, status, generated_title, error_message,
+                    created_at, completed_at
+             FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
             $post_id
         ));
     }

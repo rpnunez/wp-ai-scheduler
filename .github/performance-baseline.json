@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-04-16 00:00:00",
+  "php_version": "8.2",
+  "benchmarks": {
+    "admin_dashboard": {
+      "name": "Admin Dashboard Load",
+      "queries": 25,
+      "memory_delta": 2097152,
+      "memory_peak": 41943040,
+      "wall_time": 150.0
+    },
+    "frontend_page": {
+      "name": "Frontend Page Load",
+      "queries": 15,
+      "memory_delta": 1048576,
+      "memory_peak": 41943040,
+      "wall_time": 100.0
+    },
+    "plugin_admin": {
+      "name": "Plugin Admin Page Load",
+      "queries": 10,
+      "memory_delta": 524288,
+      "memory_peak": 41943040,
+      "wall_time": 80.0
+    },
+    "ajax_endpoint": {
+      "name": "AJAX Endpoint (Template List)",
+      "queries": 5,
+      "memory_delta": 262144,
+      "memory_peak": 41943040,
+      "wall_time": 50.0
+    },
+    "schedule_check": {
+      "name": "Schedule Check (Heavy Query)",
+      "queries": 3,
+      "memory_delta": 131072,
+      "memory_peak": 41943040,
+      "wall_time": 30.0
+    }
+  },
+  "totals": {
+    "queries": 58,
+    "memory_peak": 41943040,
+    "wall_time": 410.0
+  }
+}

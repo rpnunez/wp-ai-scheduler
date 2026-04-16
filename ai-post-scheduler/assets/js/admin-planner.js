@@ -43,7 +43,7 @@
                 success: function(response) {
                     if (response.success) {
                         window.AIPS.renderTopics(response.data.topics);
-                        $('#planner-results').slideDown();
+                        $('#planner-results').addClass('active');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -77,7 +77,7 @@
 
             if (topics.length > 0) {
                 window.AIPS.renderTopics(topics, true); // true = append
-                $('#planner-results').slideDown();
+                $('#planner-results').addClass('active');
                 $('#planner-manual-topics').val('');
             }
         },
@@ -126,7 +126,7 @@
 
                 // Hide panel if list is completely empty
                 if ($('#topics-list .topic-item').length === 0) {
-                    $('#planner-results').slideUp();
+                    $('#planner-results').removeClass('active');
                     $('#planner-niche').val('');
                     $('#planner-topic-search').val('');
                 }
@@ -182,7 +182,7 @@
             if ($btn.data('is-confirming')) {
                 // Second click - Execute
                 $('#topics-list').empty();
-                $('#planner-results').slideUp();
+                $('#planner-results').removeClass('active');
                 $('#planner-niche').val('');
                 $('#planner-manual-topics').val('');
                 $('#planner-topic-search').val(''); // Clear search input
@@ -400,7 +400,7 @@
                                 window.AIPS.updateSelectionCount();
 
                                 if ($('#topics-list .topic-item').length === 0) {
-                                    $('#planner-results').slideUp();
+                                    $('#planner-results').removeClass('active');
                                     $('#planner-niche').val('');
                                     $('#planner-manual-topics').val('');
                                     $('#planner-topic-search').val('');
@@ -485,7 +485,7 @@
                             window.AIPS.updateSelectionCount();
 
                             if ($('#topics-list .topic-item').length === 0) {
-                                $('#planner-results').slideUp();
+                                $('#planner-results').removeClass('active');
                                 $('#planner-niche').val('');
                                 $('#planner-manual-topics').val('');
                                 $('#planner-topic-search').val('');
