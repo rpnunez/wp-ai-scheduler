@@ -94,12 +94,12 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 									$group_names[] = $source_group_name_map[$tid];
 								}
 							}
-							$fetch_interval   = isset($source->fetch_interval)   ? $source->fetch_interval   : '';
-							$last_fetched_at  = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
-							$next_fetch_at    = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
-							$fetch_data        = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
-							$fetch_status_val  = $fetch_data ? $fetch_data->fetch_status : '';
-							$char_count_val    = $fetch_data ? (int) $fetch_data->char_count : 0;
+						$fetch_interval        = isset($source->fetch_interval)   ? $source->fetch_interval   : '';
+						$last_fetched_at       = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
+						$next_fetch_at         = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
+						$fetch_data            = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
+						$fetch_status_val      = $fetch_data ? $fetch_data->fetch_status : '';
+						$content_count_val     = isset($source_content_count_map[$src_id]) ? (int) $source_content_count_map[$src_id] : 0;
 						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
 							data-url="<?php echo esc_attr($source->url); ?>"
@@ -126,14 +126,14 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 								<?php endif; ?>
 							</td>
 							<td class="column-fetch-status">
-								<?php if ($fetch_status_val === 'success'): ?>
+								<?php if ($content_count_val > 0): ?>
 									<span class="aips-badge aips-badge-success" title="<?php echo esc_attr($last_fetched_at); ?>">
-										<span class="dashicons dashicons-yes-alt"></span>
+										<span class="dashicons dashicons-archive"></span>
 										<?php
 										printf(
-											/* translators: %d = number of characters extracted */
-											esc_html__('%d chars', 'ai-post-scheduler'),
-											$char_count_val
+											/* translators: %d = number of archived content snapshots */
+											esc_html(_n('%d content', '%d content', $content_count_val, 'ai-post-scheduler')),
+											$content_count_val
 										);
 										?>
 									</span>

@@ -283,10 +283,10 @@ INSTRUCTIONS;
             return '';
         }
 
-        // Bulk-load any available extracted text for these sources.
+        // Bulk-load the next-to-use archive row for each source (round-robin via num_used).
         $source_ids  = array_map(function ($s) { return (int) $s->id; }, $source_rows);
         $data_repo   = new AIPS_Sources_Data_Repository();
-        $content_map = $data_repo->get_extracted_texts_by_source_ids($source_ids);
+        $content_map = $data_repo->pick_next_for_prompt_bulk($source_ids);
 
         $snippet_max = absint(get_option('aips_source_snippet_max_chars', AIPS_Sources_Fetcher::DEFAULT_PROMPT_SNIPPET_CHARS));
         if ($snippet_max < 100) {
@@ -295,6 +295,8 @@ INSTRUCTIONS;
 
         $block = "Trusted Sources (use the following content and URLs as factual references):\n\n";
 
+        $used_row_ids = array();
+
         foreach ($source_rows as $source) {
             $sid   = (int) $source->id;
             $label = !empty($source->label) ? $source->label : $source->url;
@@ -302,16 +304,23 @@ INSTRUCTIONS;
             $block .= sprintf("--- Source: %s (%s) ---\n", $label, $source->url);
 
             if (isset($content_map[$sid])) {
-                $snippet = $content_map[$sid]->extracted_text;
+                $row     = $content_map[$sid];
+                $snippet = $row->extracted_text;
                 if (mb_strlen($snippet) > $snippet_max) {
                     $snippet = mb_substr($snippet, 0, $snippet_max) . '…';
                 }
                 $block .= $snippet . "\n";
+                $used_row_ids[] = (int) $row->id;
             } else {
                 $block .= "[Content not yet fetched — reference this URL where relevant]\n";
             }
 
             $block .= "\n";
+        }
+
+        // Advance the round-robin counter for every archive row used in this prompt.
+        foreach ($used_row_ids as $row_id) {
+            $data_repo->increment_num_used($row_id);
         }
 
         /**

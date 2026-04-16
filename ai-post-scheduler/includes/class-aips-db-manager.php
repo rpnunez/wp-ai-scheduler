@@ -387,6 +387,8 @@ class AIPS_DB_Manager {
             extracted_text longtext DEFAULT NULL,
             raw_html longtext DEFAULT NULL,
             char_count int NOT NULL DEFAULT 0,
+            content_hash varchar(64) DEFAULT NULL,
+            num_used int NOT NULL DEFAULT 0,
             fetch_status varchar(20) NOT NULL DEFAULT 'pending',
             http_status int DEFAULT NULL,
             error_message text DEFAULT NULL,
@@ -394,9 +396,11 @@ class AIPS_DB_Manager {
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            UNIQUE KEY source_id (source_id),
+            UNIQUE KEY source_content_hash (source_id, content_hash),
+            KEY source_id (source_id),
             KEY fetch_status (fetch_status),
-            KEY fetched_at (fetched_at)
+            KEY fetched_at (fetched_at),
+            KEY num_used (num_used)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_taxonomy (

@@ -17,8 +17,9 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Sources_Fetcher
  *
  * Fetches a source URL, auto-detects its content type (RSS/Atom feed, JSON,
- * or HTML), parses it with the appropriate strategy, and upserts the
- * extracted plain-text result into AIPS_Sources_Data_Repository.
+ * or HTML), parses it with the appropriate strategy, and stores the
+ * extracted plain-text result into AIPS_Sources_Data_Repository as a new
+ * archived snapshot (deduplicated by content hash).
  *
  * Supported content types:
  *  - RSS 2.0 / Atom feeds  (application/rss+xml, application/atom+xml, text/xml, application/xml)
@@ -169,7 +170,7 @@ class AIPS_Sources_Fetcher {
 		$char_count = mb_strlen( $extracted_text );
 		$duration   = round( microtime( true ) - $start, 2 );
 
-		$upsert_ok = $this->data_repo->upsert( $source_id, array(
+		$insert_ok = $this->data_repo->insert_if_new( $source_id, array(
 			'url'              => $url,
 			'page_title'       => $page_title,
 			'meta_description' => $meta_description,
@@ -181,12 +182,12 @@ class AIPS_Sources_Fetcher {
 			'error_message'    => '',
 		) );
 
-		if ( ! $upsert_ok ) {
+		if ( ! $insert_ok ) {
 			$error_msg = 'Failed to store fetched content in database.';
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
 			$this->sources_repo->update_after_fetch( $source_id, false );
 
-			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: upsert failed for source #%d', $source_id ), 'warning' );
+			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: insert failed for source #%d', $source_id ), 'warning' );
 			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
 		}
 
