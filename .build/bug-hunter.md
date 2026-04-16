@@ -13,3 +13,7 @@
 ## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
 **Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
 **Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
+
+## 2024-05-24 - Safely Handle json_decode in AIPS_Topic_Penalty_Service
+**Learning:** `json_decode()` can fail or return unexpected types, and chaining `isset()` or property accesses before ensuring the property exists causes PHP warnings. Relying on implicit array casting of `null` or `false` leads to silent failures or unexpected logic paths. In limited WP test mode, stubs may omit properties like `$author->details` leading to undefined property notices.
+**Action:** Always check `isset()` on expected properties before accessing them, especially when passing data to `json_decode()`. Add explicit checks like `is_array()` after `json_decode()` to prevent fatal type errors. Ensure robust fallback values are assigned instead of silently suppressing errors.
