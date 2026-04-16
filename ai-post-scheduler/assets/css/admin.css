@@ -1237,7 +1237,7 @@
     margin: 0;
 }
 
-.aips-modal-close {
+.aips-modal-header .aips-modal-close {
     background: none;
     border: none;
     font-size: 24px;
@@ -1249,7 +1249,7 @@
     appearance: none;
 }
 
-.aips-modal-close:hover {
+.aips-modal-header .aips-modal-close:hover {
     color: #1d2327;
 }
 
@@ -1431,12 +1431,20 @@
     border-color: #00a32a;
     color: transparent; /* Hide original step number text */
     position: relative;
+    font-size: 0;
 }
 
 .aips-wizard-step.completed .aips-step-number::before {
     content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #fff;
     font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
 }
 
 .aips-step-label {
@@ -1479,8 +1487,17 @@
     font-size: 14px;
 }
 
+.aips-wizard-step-content .aips-form-row label {
+    font-size: var(--aips-text-sm);
+    font-weight: var(--aips-font-medium);
+    color: var(--aips-gray-700);
+    margin-bottom: var(--aips-space-2);
+}
+
 .aips-wizard-footer {
     justify-content: space-between;
+    gap: 12px;
+    flex-wrap: nowrap;
 }
 
 .aips-footer-left,
@@ -1489,6 +1506,7 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: nowrap;
 }
 
 .aips-footer-center {
@@ -1496,24 +1514,13 @@
     justify-content: center;
 }
 
-.aips-save-draft-template .dashicons {
-    vertical-align: middle;
-    margin-top: -2px;
-    margin-right: 4px;
-}
-
-.aips-wizard-next .dashicons,
-.aips-wizard-back .dashicons {
-    vertical-align: middle;
-    margin-top: -2px;
-}
-
-.aips-wizard-next .dashicons {
-    margin-left: 4px;
-}
-
-.aips-wizard-back .dashicons {
-    margin-right: 4px;
+.aips-wizard-footer .aips-btn .dashicons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 /* Template Summary Styles */
@@ -1523,6 +1530,12 @@
     border-radius: 4px;
     padding: 20px;
     margin-bottom: 20px;
+}
+
+.aips-template-summary-divider {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid #dcdcde;
 }
 
 .aips-template-summary h4 {

@@ -11,7 +11,9 @@
     // Each entry maps a 1-based step number to its required field selector and l10n message key.
     var WIZARD_REQUIRED_FIELDS = [
         { step: 1, selector: '#template_name',   messageKey: 'templateNameRequired' },
-        { step: 2, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
+        { step: 2, selector: '#prompt_template', messageKey: 'contentPromptRequired' },
+        { step: 4, selector: '#post_status',     messageKey: 'postStatusRequired' },
+        { step: 4, selector: '#post_author',     messageKey: 'postAuthorRequired' }
     ];
 
     // Required-field rules for the schedule wizard.
@@ -452,6 +454,8 @@
             e.preventDefault();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            $('#post_status').val('');
+            $('#post_author').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -505,10 +509,10 @@
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
-                        $('#post_status').val(t.post_status);
+                        $('#post_status').val(t.post_status || '');
                         $('#post_category').val(t.post_category);
                         $('#post_tags').val(t.post_tags);
-                        $('#post_author').val(t.post_author);
+                        $('#post_author').val(t.post_author || '');
                         $('#is_active').prop('checked', t.is_active == 1);
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
@@ -758,6 +762,22 @@
                 return;
             }
 
+            var postStatus = $('#post_status').val();
+            if (!postStatus) {
+                AIPS.Utilities.showToast(aipsTemplatesL10n.postStatusRequired, 'warning');
+                AIPS.wizardGoToStep(4, $('#aips-template-modal'));
+                $('#post_status').focus();
+                return;
+            }
+
+            var postAuthor = $('#post_author').val();
+            if (!postAuthor) {
+                AIPS.Utilities.showToast(aipsTemplatesL10n.postAuthorRequired, 'warning');
+                AIPS.wizardGoToStep(4, $('#aips-template-modal'));
+                $('#post_author').focus();
+                return;
+            }
+
             AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving, {isHtml: true});
 
             // Save with is_active set to 0 (inactive)
@@ -831,6 +851,22 @@
             if (promptRule && !$(promptRule.selector).val().trim()) {
                 AIPS.Utilities.showToast(aipsTemplatesL10n[promptRule.messageKey], 'warning');
                 $(promptRule.selector).focus();
+                return;
+            }
+
+            var postStatus = $('#post_status').val();
+            if (!postStatus) {
+                AIPS.Utilities.showToast(aipsTemplatesL10n.postStatusRequired, 'warning');
+                AIPS.wizardGoToStep(4, $('#aips-template-modal'));
+                $('#post_status').focus();
+                return;
+            }
+
+            var postAuthor = $('#post_author').val();
+            if (!postAuthor) {
+                AIPS.Utilities.showToast(aipsTemplatesL10n.postAuthorRequired, 'warning');
+                AIPS.wizardGoToStep(4, $('#aips-template-modal'));
+                $('#post_author').focus();
                 return;
             }
 

@@ -332,6 +332,8 @@ class AIPS_Admin_Assets {
                 // Template wizard validation
                 'templateNameRequired'    => __('Template Name is required.', 'ai-post-scheduler'),
                 'contentPromptRequired'   => __('Content Prompt is required.', 'ai-post-scheduler'),
+                'postStatusRequired'      => __('Post Status is required.', 'ai-post-scheduler'),
+                'postAuthorRequired'      => __('Author is required.', 'ai-post-scheduler'),
                 // Draft save action
                 'draftSaved'              => __('Draft saved successfully.', 'ai-post-scheduler'),
                 'saveDraft'               => __('Save Draft', 'ai-post-scheduler'),
