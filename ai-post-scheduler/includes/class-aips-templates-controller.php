@@ -307,11 +307,11 @@ class AIPS_Templates_Controller {
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $prompt_builder->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content, true);
+        $title_prompt = $prompt_builder->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, true);
+        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic);
 
         // Build image prompt if enabled
         $image_prompt_processed = $prompt_builder->get_post_featured_image_builder()->build($template_data, $sample_topic);
