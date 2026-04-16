@@ -127,7 +127,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for approving a topic.
 	 */
 	public function ajax_approve_topic() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -195,7 +197,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for rejecting a topic.
 	 */
 	public function ajax_reject_topic() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -263,7 +267,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for editing a topic.
 	 */
 	public function ajax_edit_topic() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -300,7 +306,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for deleting a topic.
 	 */
 	public function ajax_delete_topic() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -325,7 +333,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for generating a post from a topic.
 	 */
 	public function ajax_generate_post_from_topic() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -385,7 +395,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for getting topic logs.
 	 */
 	public function ajax_get_topic_logs() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -420,7 +432,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for bulk approving topics.
 	 */
 	public function ajax_bulk_approve_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -460,7 +474,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for bulk rejecting topics.
 	 */
 	public function ajax_bulk_reject_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -500,7 +516,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for bulk deleting topics.
 	 */
 	public function ajax_bulk_delete_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -563,7 +581,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for regenerating a post.
 	 */
 	public function ajax_regenerate_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -620,7 +640,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for deleting a generated post.
 	 */
 	public function ajax_delete_generated_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -645,7 +667,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for getting topic feedback.
 	 */
 	public function ajax_get_topic_feedback() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -676,7 +700,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for getting similar topics.
 	 */
 	public function ajax_get_similar_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -710,7 +736,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for suggesting related topics.
 	 */
 	public function ajax_suggest_related_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -735,7 +763,9 @@ class AIPS_Author_Topics_Controller {
 	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
 	 */
 	public function ajax_compute_topic_embeddings() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -810,7 +840,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for getting all approved topics for the generation queue.
 	 */
 	public function ajax_get_generation_queue() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -828,7 +860,9 @@ class AIPS_Author_Topics_Controller {
 	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
 	 */
 	public function ajax_bulk_generate_from_queue() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -867,7 +901,9 @@ class AIPS_Author_Topics_Controller {
 	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
 	 */
 	public function ajax_bulk_generate_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -957,7 +993,9 @@ class AIPS_Author_Topics_Controller {
 	 * AJAX handler for bulk deleting feedback items.
 	 */
 	public function ajax_bulk_delete_feedback() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -1026,7 +1064,9 @@ class AIPS_Author_Topics_Controller {
 	 * default of 30 seconds when no historical data is available.
 	 */
 	public function ajax_get_bulk_generate_estimate() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

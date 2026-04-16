@@ -86,3 +86,7 @@
 **Vulnerability:** Missing proper explicit nonce handling in Onboarding Wizard AJAX endpoints (relied on implicit wp_die instead of explicitly handling false parameter).
 **Learning:** Relying on default check_ajax_referer behavior causes a wp_die() without proper JSON response, leading to poor UX and non-standard generic error handling.
 **Prevention:** Always verify nonce explicitly using false parameter and return generic errors via wp_send_json_error instead of relying on default wp_die() behavior.
+## 2024-05-24 - Fix Default wp_die() in check_ajax_referer
+**Vulnerability:** Found 130+ instances of `check_ajax_referer` without `false` as the third parameter. This caused WordPress to fire a default `wp_die()` with an HTML response on nonce failure, rather than returning a generic JSON error.
+**Learning:** Always pass `false` as the third parameter to `check_ajax_referer` in AJAX endpoints to prevent `wp_die()` and handle the failure explicitly.
+**Prevention:** Use `if ( ! check_ajax_referer('nonce_action', 'nonce', false) ) { ... }` consistently across all AJAX handlers.

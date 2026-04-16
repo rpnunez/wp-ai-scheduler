@@ -57,7 +57,9 @@ class AIPS_AI_Edit_Controller {
 	 * Fetches all components of a post along with its generation context.
 	 */
 	public function ajax_get_post_components() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -146,7 +148,9 @@ class AIPS_AI_Edit_Controller {
 	 * Regenerates a single component of a post using AI.
 	 */
 	public function ajax_regenerate_component() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -245,7 +249,9 @@ class AIPS_AI_Edit_Controller {
 	 * logged a featured-image failure.
 	 */
 	public function ajax_regenerate_all_components() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -342,7 +348,9 @@ class AIPS_AI_Edit_Controller {
 	 * Persists the changed components to the WordPress post.
 	 */
 	public function ajax_save_post_components() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -426,7 +434,9 @@ class AIPS_AI_Edit_Controller {
 	 * Fetches revision history for a specific post component.
 	 */
 	public function ajax_get_component_revisions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -468,7 +478,9 @@ class AIPS_AI_Edit_Controller {
 	 * Restores a specific revision value for a post component.
 	 */
 	public function ajax_restore_component_revision() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
