@@ -601,8 +601,14 @@ class AIPS_AI_Edit_Controller {
 	/**
 	 * Logs a WP_Error server-side without exposing internal details to the client.
 	 *
+	 * Use this instead of calling error_log() directly when handling WP_Error
+	 * instances in AJAX handlers. It ensures a consistent log format that includes
+	 * the calling method name and the WP_Error code, aiding debugging while keeping
+	 * internal error details out of client-facing responses.
+	 *
 	 * @param WP_Error $error  The error to log.
 	 * @param string   $method The calling method name; pass __METHOD__ from the caller.
+	 * @return void
 	 */
 	private function log_wp_error( WP_Error $error, $method = '' ) {
 		$context = $method ? '[' . $method . '] ' : '';
