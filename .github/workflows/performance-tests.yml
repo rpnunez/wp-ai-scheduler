@@ -157,14 +157,14 @@ jobs:
         run: |
           # Create a deterministic baseline by stripping volatile per-run fields
           mkdir -p .github
-          python3 -c "
-import json, sys
-data = json.load(open('/tmp/performance-results.json'))
-data.pop('timestamp', None)
-data.pop('php_version', None)
-json.dump(data, open('.github/performance-baseline.json', 'w'), indent=2)
-print('Baseline written (timestamp/php_version stripped)')
-"
+          python3 << 'PYTHON_SCRIPT'
+          import json
+          data = json.load(open('/tmp/performance-results.json'))
+          data.pop('timestamp', None)
+          data.pop('php_version', None)
+          json.dump(data, open('.github/performance-baseline.json', 'w'), indent=2)
+          print('Baseline written (timestamp/php_version stripped)')
+          PYTHON_SCRIPT
 
           # Commit and push if changed
           git config user.name "GitHub Actions"
