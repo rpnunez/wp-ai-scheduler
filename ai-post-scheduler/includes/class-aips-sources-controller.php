@@ -180,9 +180,11 @@ class AIPS_Sources_Controller {
 				AIPS_Ajax_Response::error(__('Failed to create source.', 'ai-post-scheduler'));
 			}
 
-			// Interval already validated above; ignore the return value here.
 			if ($fetch_interval) {
-				$this->repo->set_fetch_schedule($new_id, $fetch_interval);
+				$schedule_result = $this->repo->set_fetch_schedule($new_id, $fetch_interval);
+				if (false === $schedule_result) {
+					AIPS_Ajax_Response::error(__('Source was created, but scheduling auto-fetch failed. Please try again.', 'ai-post-scheduler'));
+				}
 			}
 
 			$this->repo->set_source_terms($new_id, $term_ids);
