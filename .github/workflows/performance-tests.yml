@@ -1,12 +1,6 @@
 name: Performance Tests
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - '.github/performance-baseline.json'
-  pull_request:
-    branches: [ main, develop ]
   workflow_dispatch:
 
 concurrency:
