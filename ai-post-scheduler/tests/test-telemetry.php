@@ -24,6 +24,10 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+			$this->markTestSkipped('WordPress upgrade helpers are unavailable in limited PHPUnit mode.');
+		}
+
 		// Ensure the telemetry table exists.
 		AIPS_DB_Manager::install_tables();
 
@@ -67,8 +71,8 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	 */
 	public function test_add_event_populates_buffer() {
 		$telemetry = AIPS_Telemetry::instance();
-		$telemetry->add_event(array('type' => 'cache_miss', 'key' => 'my_key'));
-		$telemetry->add_event(array('type' => 'class_init',  'class' => 'AIPS_Config'));
+		$telemetry->add_event('cache', array('type' => 'cache_miss', 'key' => 'my_key'));
+		$telemetry->add_event('classes', array('type' => 'class_init',  'class' => 'AIPS_Config'));
 
 		$ref = new ReflectionProperty('AIPS_Telemetry', 'events');
 		$ref->setAccessible(true);
@@ -77,6 +81,25 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		$this->assertCount(2, $events);
 		$this->assertSame('cache_miss', $events[0]['type']);
 		$this->assertSame('class_init',  $events[1]['type']);
+		$this->assertSame('cache', $events[0]['_bucket']);
+		$this->assertSame('classes', $events[1]['_bucket']);
+	}
+
+	/**
+	 * Verify the legacy add_event(array()) form remains supported.
+	 *
+	 * @return void
+	 */
+	public function test_add_event_legacy_signature_is_supported() {
+		$telemetry = AIPS_Telemetry::instance();
+		$telemetry->add_event(array('type' => 'cache_get', 'hit' => true));
+
+		$ref = new ReflectionProperty('AIPS_Telemetry', 'events');
+		$ref->setAccessible(true);
+		$events = $ref->getValue($telemetry);
+
+		$this->assertCount(1, $events);
+		$this->assertSame('cache', $events[0]['_bucket']);
 	}
 
 	/**
@@ -135,7 +158,8 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	 */
 	public function test_flush_payload_structure() {
 		$telemetry = AIPS_Telemetry::instance();
-		$telemetry->add_event(array('type' => 'cache_miss'));
+		$telemetry->add_event('cache', array('type' => 'cache_get', 'hit' => false));
+		$telemetry->add_event('classes', array('type' => 'class_initialized', 'class' => 'AIPS_Config'));
 		$telemetry->flush();
 
 		global $wpdb;
@@ -147,10 +171,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 
 		$payload = json_decode($row['payload'], true);
 		$this->assertArrayHasKey('events',         $payload);
+		$this->assertArrayHasKey('event_summary',  $payload);
+		$this->assertArrayHasKey('cache_summary',  $payload);
+		$this->assertArrayHasKey('query_summary',  $payload);
 		$this->assertArrayHasKey('num_queries',    $payload);
 		$this->assertArrayHasKey('peak_memory_mb', $payload);
 		$this->assertArrayHasKey('elapsed_ms',     $payload);
-		$this->assertCount(1, $payload['events'], 'Events array must contain the single event that was added.');
+		$this->assertArrayHasKey('request_type',   $payload);
+		$this->assertSame(2, $payload['event_summary']['total']);
+		$this->assertSame(1, $payload['cache_summary']['misses']);
+		$this->assertCount(2, $payload['events'], 'Events array must contain the two events that were added.');
+		$this->assertSame($payload['request_type'], $row['type']);
+		$this->assertStringContainsString('cache', $row['event_categories']);
 	}
 
 	// -----------------------------------------------------------------------
@@ -179,10 +211,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		$wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_telemetry");
 
 		$id = $this->repo->insert(array(
+			'type'              => 'admin',
 			'page'              => 'admin:dashboard',
+			'event_categories'  => 'cache,classes',
 			'user_id'           => 1,
 			'request_method'    => 'GET',
 			'num_queries'       => 5,
+			'total_events'      => 7,
+			'cache_calls'       => 4,
+			'cache_hits'        => 3,
+			'cache_misses'      => 1,
+			'slow_query_count'  => 1,
+			'duplicate_query_count' => 2,
 			'peak_memory_bytes' => 8388608,
 			'elapsed_ms'        => 42.0,
 			'payload'           => wp_json_encode(array('events' => array())),
@@ -203,10 +243,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		$wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_telemetry");
 
 		$this->repo->insert(array(
+			'type'              => 'admin',
 			'page'              => 'admin:dashboard',
+			'event_categories'  => 'classes',
 			'user_id'           => 1,
 			'request_method'    => 'GET',
 			'num_queries'       => 5,
+			'total_events'      => 1,
+			'cache_calls'       => 0,
+			'cache_hits'        => 0,
+			'cache_misses'      => 0,
+			'slow_query_count'  => 0,
+			'duplicate_query_count' => 0,
 			'peak_memory_bytes' => 8388608,
 			'elapsed_ms'        => 42.0,
 			'payload'           => wp_json_encode(array()),
@@ -215,6 +263,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 
 		$rows = $this->repo->get_page(10, 0);
 		$this->assertCount(1, $rows);
+		$this->assertSame('admin', $rows[0]['type']);
 		$this->assertSame('admin:dashboard', $rows[0]['page']);
 	}
 
@@ -226,10 +275,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	public function test_repository_get_payload_decodes_json() {
 		$expected = array('events' => array(), 'num_queries' => 3);
 		$id = $this->repo->insert(array(
+			'type'              => 'ajax',
 			'page'              => 'ajax:aips_test',
+			'event_categories'  => 'query',
 			'user_id'           => 0,
 			'request_method'    => 'POST',
 			'num_queries'       => 3,
+			'total_events'      => 0,
+			'cache_calls'       => 0,
+			'cache_hits'        => 0,
+			'cache_misses'      => 0,
+			'slow_query_count'  => 0,
+			'duplicate_query_count' => 0,
 			'peak_memory_bytes' => 1048576,
 			'elapsed_ms'        => 10.0,
 			'payload'           => wp_json_encode($expected),
@@ -257,10 +314,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	 */
 	public function test_repository_get_row_returns_full_row() {
 		$id = $this->repo->insert(array(
+			'type'              => 'admin',
 			'page'              => 'admin:aips-telemetry',
+			'event_categories'  => 'cache,performance',
 			'user_id'           => 7,
 			'request_method'    => 'GET',
 			'num_queries'       => 11,
+			'total_events'      => 3,
+			'cache_calls'       => 2,
+			'cache_hits'        => 1,
+			'cache_misses'      => 1,
+			'slow_query_count'  => 1,
+			'duplicate_query_count' => 2,
 			'peak_memory_bytes' => 4194304,
 			'elapsed_ms'        => 21.5,
 			'payload'           => wp_json_encode(array('events' => array(array('type' => 'example')))),
@@ -270,9 +335,77 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		$row = $this->repo->get_row($id);
 
 		$this->assertIsArray($row);
+		$this->assertSame('admin', $row['type']);
 		$this->assertSame('admin:aips-telemetry', $row['page']);
+		$this->assertSame('cache,performance', $row['event_categories']);
+		$this->assertSame('2', (string) $row['duplicate_query_count']);
 		$this->assertSame('GET', $row['request_method']);
 		$this->assertArrayHasKey('payload', $row);
+	}
+
+	/**
+	 * Verify filtered counts and pages honour the new filter fields.
+	 *
+	 * @return void
+	 */
+	public function test_repository_filters_by_type_category_method_and_issues() {
+		global $wpdb;
+		$wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_telemetry");
+
+		$inserted_at = current_time('mysql');
+
+		$this->repo->insert(array(
+			'type'              => 'admin',
+			'page'              => 'admin:aips-telemetry',
+			'event_categories'  => 'cache,performance',
+			'user_id'           => 1,
+			'request_method'    => 'GET',
+			'num_queries'       => 8,
+			'total_events'      => 4,
+			'cache_calls'       => 3,
+			'cache_hits'        => 1,
+			'cache_misses'      => 2,
+			'slow_query_count'  => 1,
+			'duplicate_query_count' => 0,
+			'peak_memory_bytes' => 1048576,
+			'elapsed_ms'        => 20,
+			'payload'           => wp_json_encode(array()),
+			'inserted_at'       => $inserted_at,
+		));
+
+		$this->repo->insert(array(
+			'type'              => 'ajax',
+			'page'              => 'ajax:heartbeat',
+			'event_categories'  => 'classes',
+			'user_id'           => 0,
+			'request_method'    => 'POST',
+			'num_queries'       => 2,
+			'total_events'      => 1,
+			'cache_calls'       => 0,
+			'cache_hits'        => 0,
+			'cache_misses'      => 0,
+			'slow_query_count'  => 0,
+			'duplicate_query_count' => 0,
+			'peak_memory_bytes' => 1048576,
+			'elapsed_ms'        => 10,
+			'payload'           => wp_json_encode(array()),
+			'inserted_at'       => $inserted_at,
+		));
+
+		$today = date_i18n('Y-m-d', current_time('timestamp'));
+		$filters = array(
+			'type' => 'admin',
+			'event_category' => 'cache',
+			'request_method' => 'GET',
+			'page_search' => 'telemetry',
+			'issues_only' => true,
+		);
+
+		$this->assertSame(1, $this->repo->count_filtered($today, $today, $filters));
+
+		$rows = $this->repo->get_filtered_page($today, $today, $filters, 25, 0);
+		$this->assertCount(1, $rows);
+		$this->assertSame('admin:aips-telemetry', $rows[0]['page']);
 	}
 
 	/**
@@ -286,5 +419,36 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 
 		$value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
 		$this->assertFalse((bool) $value, 'enable_telemetry must default to false.');
+	}
+
+	/**
+	 * Verify is_enabled() guards against re-entrant option lookups.
+	 *
+	 * This regression test simulates a pre_option callback that re-enters
+	 * AIPS_Telemetry::is_enabled() while the outer call is in-flight.
+	 *
+	 * @return void
+	 */
+	public function test_is_enabled_reentrant_guard_prevents_recursion() {
+		$calls = 0;
+
+		$filter = function($pre_option, $option_name, $default) use (&$calls) {
+			$calls++;
+
+			// The nested call must short-circuit via the re-entrancy guard instead
+			// of recursing through get_option() again.
+			$this->assertFalse(AIPS_Telemetry::is_enabled());
+
+			return 1;
+		};
+
+		add_filter('pre_option_aips_enable_telemetry', $filter, 10, 3);
+
+		try {
+			$this->assertTrue(AIPS_Telemetry::is_enabled());
+			$this->assertSame(1, $calls, 'The pre_option filter should run exactly once.');
+		} finally {
+			remove_filter('pre_option_aips_enable_telemetry', $filter, 10);
+		}
 	}
 }

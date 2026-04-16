@@ -66,10 +66,18 @@ class AIPS_Telemetry_Repository {
 	 */
 	public function insert(array $data) {
 		$column_formats = array(
+			'type'              => '%s',
 			'page'              => '%s',
+			'event_categories'  => '%s',
 			'user_id'           => '%d',
 			'request_method'    => '%s',
 			'num_queries'       => '%d',
+			'total_events'      => '%d',
+			'cache_calls'       => '%d',
+			'cache_hits'        => '%d',
+			'cache_misses'      => '%d',
+			'slow_query_count'  => '%d',
+			'duplicate_query_count' => '%d',
 			'peak_memory_bytes' => '%d',
 			'elapsed_ms'        => '%f',
 			'payload'           => '%s',
@@ -115,7 +123,7 @@ class AIPS_Telemetry_Repository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} ORDER BY id DESC LIMIT %d OFFSET %d",
+				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} ORDER BY id DESC LIMIT %d OFFSET %d",
 				(int) $per_page,
 				(int) $offset
 			),
@@ -132,20 +140,27 @@ class AIPS_Telemetry_Repository {
 	 * @param int    $offset     Number of rows to skip.
 	 * @return array Array of associative-array rows.
 	 */
-	public function get_filtered_page($start_date, $end_date, $per_page = 25, $offset = 0) {
+	public function get_filtered_page($start_date, $end_date, array $filters = array(), $per_page = 25, $offset = 0) {
 		$tz             = wp_timezone();
 		$start_datetime = $start_date . ' 00:00:00';
 		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
 		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
+		$where          = array('inserted_at >= %s', 'inserted_at < %s');
+		$params         = array($start_datetime, $end_datetime);
+
+		$this->apply_filter_clauses($filters, $where, $params);
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s ORDER BY id DESC LIMIT %d OFFSET %d",
-				$start_datetime,
-				$end_datetime,
+				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT %d OFFSET %d",
+				...array_merge(
+					$params,
+					array(
 				(int) $per_page,
 				(int) $offset
+					)
+				)
 			),
 			ARRAY_A
 		);
@@ -163,7 +178,7 @@ class AIPS_Telemetry_Repository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
-				"SELECT id, page, request_method, user_id, num_queries, peak_memory_bytes, elapsed_ms, payload, inserted_at FROM {$this->table} WHERE id = %d LIMIT 1",
+				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, payload, inserted_at FROM {$this->table} WHERE id = %d LIMIT 1",
 				(int) $id
 			),
 			ARRAY_A
@@ -189,18 +204,21 @@ class AIPS_Telemetry_Repository {
 	 * @param string $end_date   Inclusive end date in Y-m-d format.
 	 * @return int
 	 */
-	public function count_filtered($start_date, $end_date) {
+	public function count_filtered($start_date, $end_date, array $filters = array()) {
 		$tz             = wp_timezone();
 		$start_datetime = $start_date . ' 00:00:00';
 		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
 		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
+		$where          = array('inserted_at >= %s', 'inserted_at < %s');
+		$params         = array($start_datetime, $end_datetime);
+
+		$this->apply_filter_clauses($filters, $where, $params);
 
 		return (int) $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT COUNT(*) FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s",
-				$start_datetime,
-				$end_datetime
+				"SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+				...$params
 			)
 		);
 	}
@@ -212,21 +230,58 @@ class AIPS_Telemetry_Repository {
 	 * @param string $end_date   Inclusive end date in Y-m-d format.
 	 * @return array<int, array<string, string|int|float>>
 	 */
-	public function get_daily_rollup($start_date, $end_date) {
+	public function get_daily_rollup($start_date, $end_date, array $filters = array()) {
 		$tz             = wp_timezone();
 		$start_datetime = $start_date . ' 00:00:00';
 		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
 		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
+		$where          = array('inserted_at >= %s', 'inserted_at < %s');
+		$params         = array($start_datetime, $end_datetime);
+
+		$this->apply_filter_clauses($filters, $where, $params);
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE inserted_at >= %s AND inserted_at < %s GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
-				$start_datetime,
-				$end_datetime
+				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
+				...$params
 			),
 			ARRAY_A
 		);
+	}
+
+	/**
+	 * Apply filter clauses for list/count/chart queries.
+	 *
+	 * @param array $filters Submitted filter values.
+	 * @param array $where   Mutable SQL clause list.
+	 * @param array $params  Mutable prepared-statement parameter list.
+	 * @return void
+	 */
+	private function apply_filter_clauses(array $filters, array &$where, array &$params) {
+		if (!empty($filters['type'])) {
+			$where[]  = 'type = %s';
+			$params[] = $filters['type'];
+		}
+
+		if (!empty($filters['event_category'])) {
+			$where[]  = 'FIND_IN_SET(%s, event_categories) > 0';
+			$params[] = $filters['event_category'];
+		}
+
+		if (!empty($filters['request_method'])) {
+			$where[]  = 'request_method = %s';
+			$params[] = $filters['request_method'];
+		}
+
+		if (!empty($filters['page_search'])) {
+			$where[]  = 'page LIKE %s';
+			$params[] = '%' . $this->wpdb->esc_like($filters['page_search']) . '%';
+		}
+
+		if (!empty($filters['issues_only'])) {
+			$where[] = '(slow_query_count > 0 OR duplicate_query_count > 0)';
+		}
 	}
 
 	/**

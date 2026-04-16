@@ -404,17 +404,31 @@ class AIPS_DB_Manager {
 
         $sql[] = "CREATE TABLE $table_telemetry (
             id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(50) NOT NULL DEFAULT '',
             page varchar(191) NOT NULL DEFAULT '',
+            event_categories varchar(191) NOT NULL DEFAULT '',
             request_method varchar(10) NOT NULL DEFAULT '',
             user_id bigint(20) NOT NULL DEFAULT 0,
             num_queries int(11) NOT NULL DEFAULT 0,
+            total_events int(11) NOT NULL DEFAULT 0,
+            cache_calls int(11) NOT NULL DEFAULT 0,
+            cache_hits int(11) NOT NULL DEFAULT 0,
+            cache_misses int(11) NOT NULL DEFAULT 0,
+            slow_query_count int(11) NOT NULL DEFAULT 0,
+            duplicate_query_count int(11) NOT NULL DEFAULT 0,
             peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
             elapsed_ms float NOT NULL DEFAULT 0,
             payload longtext DEFAULT NULL,
             inserted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
+            KEY type (type),
             KEY page (page),
+            KEY request_method (request_method),
             KEY user_id (user_id),
+            KEY slow_query_count (slow_query_count),
+            KEY duplicate_query_count (duplicate_query_count),
+            KEY cache_hits (cache_hits),
+            KEY cache_misses (cache_misses),
             KEY inserted_at (inserted_at)
         ) $charset_collate;";
 

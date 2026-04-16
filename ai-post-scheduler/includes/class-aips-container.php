@@ -59,7 +59,7 @@ class AIPS_Container {
 	private function __construct() {
 		// Container is empty until bindings are registered
 		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( array(
+			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'  => 'class_initialized',
 				'class' => 'AIPS_Container',
 			) );
@@ -77,7 +77,7 @@ class AIPS_Container {
 	 */
 	public function bind($id, Closure $factory) {
 		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( array(
+			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
 				'method' => 'bind',
 				'class'  => $id,
@@ -97,7 +97,7 @@ class AIPS_Container {
 	 */
 	public function singleton($id, Closure $factory) {
 		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( array(
+			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
 				'method' => 'singleton',
 				'class'  => $id,
@@ -118,7 +118,7 @@ class AIPS_Container {
 	 */
 	public function make($id) {
 		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( array(
+			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
 				'method' => 'make',
 				'class'  => $id,
@@ -134,7 +134,7 @@ class AIPS_Container {
 
 			// Resolve and cache the instance
 			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( array(
+				AIPS_Telemetry::instance()->add_event( 'classes', array(
 					'type'  => 'class_initialized',
 					'class' => $id,
 				) );
@@ -148,7 +148,7 @@ class AIPS_Container {
 		if (isset($this->bindings[$id])) {
 			// Always create a new instance for transient bindings
 			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( array(
+				AIPS_Telemetry::instance()->add_event( 'classes', array(
 					'type'  => 'class_initialized',
 					'class' => $id,
 				) );
