@@ -115,12 +115,32 @@ composer test:coverage
 vendor/bin/phpunit tests/test-template-processor.php
 ```
 
+### Performance Benchmarks
+
+The project includes performance benchmarking to detect regressions:
+
+```bash
+cd ai-post-scheduler
+
+# Run performance benchmark
+php bin/benchmark.php --wp-core-dir=/tmp/wordpress
+
+# Run with baseline comparison
+php bin/benchmark.php \
+  --wp-core-dir=/tmp/wordpress \
+  --baseline-file=../.github/performance-baseline.json \
+  --fail-on-regression
+```
+
+Performance benchmarks run automatically in CI on pull requests and fail PRs when thresholds are exceeded. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for details.
+
 ## Documentation
 
 - [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md)
 - [docs/HOOKS.md](docs/HOOKS.md)
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/SETUP.md](docs/SETUP.md)
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — performance benchmarking and CI integration
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — project-specific coding and architectural guidelines for developers and AI agents
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 

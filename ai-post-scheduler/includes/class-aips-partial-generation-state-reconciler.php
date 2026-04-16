@@ -57,14 +57,6 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
-		$has_generation_meta = '' !== (string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true)
-			|| '' !== (string) get_post_meta($post_id, 'aips_post_generation_incomplete', true)
-			|| '' !== (string) get_post_meta($post_id, 'aips_post_generation_had_partial', true);
-
-		if (!$has_generation_meta) {
-			return;
-		}
-
 		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id);
 		if (is_array($statuses)) {
 			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'save_post');
