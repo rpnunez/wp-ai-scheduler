@@ -84,7 +84,8 @@ class AIPS_AI_Edit_Controller {
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
+			error_log('AIPS AI Edit Controller Error: ' . $context->get_error_message());
+			AIPS_Ajax_Response::error(__('Failed to retrieve generation context.', 'ai-post-scheduler'));
 		}
 
 		// Ensure the history context belongs to the requested post
@@ -209,7 +210,8 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
+				error_log('AIPS AI Edit Controller Error: ' . $snapshot_result->get_error_message());
+				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
 			}
 		}
 		
@@ -231,7 +233,8 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			error_log('AIPS AI Edit Controller Error: ' . $result->get_error_message());
+			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
 		}
 		
 		AIPS_Ajax_Response::success(array('new_value' => $result));
@@ -267,7 +270,8 @@ class AIPS_AI_Edit_Controller {
 
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
+			error_log('AIPS AI Edit Controller Error: ' . $context->get_error_message());
+			AIPS_Ajax_Response::error(__('Failed to retrieve generation context.', 'ai-post-scheduler'));
 		}
 
 		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
@@ -302,13 +306,15 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
+				error_log('AIPS AI Edit Controller Error: ' . $snapshot_result->get_error_message());
+				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
 			}
 		}
 
 		$result = $this->service->regenerate_all_components($context);
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			error_log('AIPS AI Edit Controller Error: ' . $result->get_error_message());
+			AIPS_Ajax_Response::error(__('An error occurred while regenerating all components.', 'ai-post-scheduler'));
 		}
 
 		$regenerated_count = count($result['regenerated']);
@@ -383,7 +389,8 @@ class AIPS_AI_Edit_Controller {
 		$result = wp_update_post($post_data, true);
 		
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			error_log('AIPS AI Edit Controller Error: ' . $result->get_error_message());
+			AIPS_Ajax_Response::error(__('An error occurred while saving post components.', 'ai-post-scheduler'));
 		}
 		
 		// Update featured image
@@ -511,7 +518,8 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
+				error_log('AIPS AI Edit Controller Error: ' . $snapshot_result->get_error_message());
+				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
 			}
 		}
 		
@@ -565,7 +573,8 @@ class AIPS_AI_Edit_Controller {
 			$result = wp_update_post($post_data, true);
 			
 			if (is_wp_error($result)) {
-				AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+				error_log('AIPS AI Edit Controller Error: ' . $result->get_error_message());
+				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
 			}
 		}
 		
