@@ -298,6 +298,40 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     }
 
     /**
+     * Bulk-create schedule entries using the underlying repository.
+     *
+     * Uses the repository bulk method when available, with a safe fallback to
+     * per-record creation so interface-compatible repository implementations do
+     * not fatally error if they do not expose create_bulk().
+     *
+     * @param array $schedules Array of schedule data arrays.
+     * @return int|false Number of rows inserted, or false on failure.
+     */
+    public function save_schedule_bulk( array $schedules ) {
+        if ( empty( $schedules ) ) {
+            return 0;
+        }
+
+        if ( is_callable( array( $this->repository, 'create_bulk' ) ) ) {
+            return $this->repository->create_bulk( $schedules );
+        }
+
+        $created_count = 0;
+
+        foreach ( $schedules as $schedule ) {
+            $new_id = $this->repository->create( $schedule );
+
+            if ( ! $new_id ) {
+                return false;
+            }
+
+            $created_count++;
+        }
+
+        return $created_count;
+    }
+
+    /**
      * Load or create a persistent schedule lifecycle history container.
      *
      * If the schedule already has a schedule_history_id, load that container.
