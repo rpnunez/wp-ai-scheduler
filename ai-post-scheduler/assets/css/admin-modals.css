@@ -41,8 +41,6 @@
 }
 
 .aips-modal-large {
-    max-width: 900px;
-    max-height: 90vh;
     overflow-y: auto;
 }
 
@@ -109,9 +107,5 @@
     .aips-modal-header,
     .aips-modal-body {
         padding: 15px;
-    }
-
-    .aips-modal-large {
-        max-width: 95%;
     }
 }
