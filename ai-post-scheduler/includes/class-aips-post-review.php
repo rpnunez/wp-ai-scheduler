@@ -19,7 +19,24 @@ if (!defined('ABSPATH')) {
  * Handles post review functionality including bulk operations.
  */
 class AIPS_Post_Review {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_Post_Review_Repository Repository for database operations
 	 */
@@ -77,7 +94,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to get draft post preview data.
 	 */
 	public function ajax_get_draft_post_preview() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -111,7 +130,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to get draft posts.
 	 */
 	public function ajax_get_draft_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -134,7 +155,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to publish a single post.
 	 */
 	public function ajax_publish_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -246,7 +269,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to publish multiple posts.
 	 */
 	public function ajax_bulk_publish_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -378,7 +403,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to regenerate a post.
 	 */
 	public function ajax_regenerate_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -475,7 +502,9 @@ class AIPS_Post_Review {
 	 * items are processed in one request (soft truncation).
 	 */
 	public function ajax_bulk_regenerate_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -677,7 +706,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete a draft post.
 	 */
 	public function ajax_delete_draft_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -798,7 +829,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete multiple draft posts.
 	 */
 	public function ajax_bulk_delete_draft_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

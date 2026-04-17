@@ -116,9 +116,19 @@ foreach ($docs as $file => $desc) {
 // Validate JSON schema
 $schema_file = __DIR__ . '/mcp-bridge-schema.json';
 if (file_exists($schema_file)) {
-	$schema = json_decode(file_get_contents($schema_file), true);
+	$schema_content = file_get_contents($schema_file);
+	if ($schema_content === false) {
+		echo "❌ FAILED: Could not read schema file\n";
+		exit(1);
+	}
+
+	$schema = json_decode($schema_content, true);
 	if (json_last_error() !== JSON_ERROR_NONE) {
-		echo "❌ FAILED: Invalid JSON in schema file\n";
+		echo "❌ FAILED: Invalid JSON in schema file (" . json_last_error_msg() . ")\n";
+		exit(1);
+	}
+	if (!is_array($schema)) {
+		echo "❌ FAILED: Schema file must decode to an array\n";
 		exit(1);
 	}
 	

@@ -508,6 +508,7 @@ class AIPS_Admin_Assets {
               'cancelButton' => __('Cancel', 'ai-post-scheduler'),
               'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
               'generatingButton' => __('Generating...', 'ai-post-scheduler'),
+              'selectTemplateRequired' => __('Please select a template before generating.', 'ai-post-scheduler'),
           ));
         }
 

@@ -75,7 +75,9 @@ class AIPS_Data_Management {
 	 * Handle export AJAX request
 	 */
 	public function ajax_export_data() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
@@ -103,7 +105,9 @@ class AIPS_Data_Management {
 	 * Handle import AJAX request
 	 */
 	public function ajax_import_data() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));

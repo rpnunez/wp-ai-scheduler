@@ -49,7 +49,7 @@ class AIPS_Prompt_Section_Repository {
 	private $wpdb;
 
 	/**
-	 * @var AIPS_Cache In-request identity-map cache (array driver).
+	 * @var AIPS_Cache In-request identity-map cache.
 	 */
 	private $cache = null;
 	
@@ -60,14 +60,14 @@ class AIPS_Prompt_Section_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_prompt_sections';
-		$this->cache = AIPS_Cache_Factory::named( 'aips_prompt_section_repository', 'array' );
+		$this->cache = AIPS_Cache_Factory::named( 'aips_prompt_section_repository' );
 	}
 	
 	/**
 	 * Get all prompt sections with optional filtering.
 	 *
 	 * Results are cached for the duration of the request using the named
-	 * array-driver cache instance so repeat calls within the same request
+	 * named cache instance so repeat calls within the same request
 	 * do not issue additional DB queries.
 	 *
 	 * @param bool $active_only Optional. Return only active sections. Default false.

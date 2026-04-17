@@ -18,7 +18,24 @@ if (!defined('ABSPATH')) {
  * Manages AJAX endpoints for author CRUD operations.
  */
 class AIPS_Authors_Controller {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_Authors_Repository Repository for authors
 	 */
@@ -76,7 +93,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for saving an author.
 	 */
 	public function ajax_save_author() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -157,7 +176,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for deleting an author.
 	 */
 	public function ajax_delete_author() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -197,7 +218,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for getting an author.
 	 */
 	public function ajax_get_author() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -222,7 +245,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for getting author topics.
 	 */
 	public function ajax_get_author_topics() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -318,7 +343,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for getting author generated posts.
 	 */
 	public function ajax_get_author_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -352,7 +379,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for manually generating topics now.
 	 */
 	public function ajax_generate_topics_now() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -386,7 +415,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for getting author feedback.
 	 */
 	public function ajax_get_author_feedback() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -417,7 +448,9 @@ class AIPS_Authors_Controller {
 	 * AJAX handler for getting posts associated with a specific topic.
 	 */
 	public function ajax_get_topic_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -436,8 +469,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
 		}
 		
-		// Get all logs for this topic
-		$logs = $this->logs_repository->get_by_topic($topic_id);
+		// Get logs for this topic (UI display only — capped at 200 entries).
+		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
 		
 		$posts = array();
 		foreach ($logs as $log) {
@@ -477,7 +510,9 @@ class AIPS_Authors_Controller {
 	 * profiles that the admin can review and import with one click.
 	 */
 	public function ajax_suggest_authors() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

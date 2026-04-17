@@ -217,7 +217,7 @@ class AIPS_Session_To_JSON {
 			$details = json_decode($log_entry->details, true);
 			
 			// Handle JSON decode errors
-			if (json_last_error() !== JSON_ERROR_NONE) {
+			if (json_last_error() !== JSON_ERROR_NONE || !is_array($details)) {
 				$details = array(
 					'error' => 'Failed to decode log details',
 					'json_error' => json_last_error_msg(),

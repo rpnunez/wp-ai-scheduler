@@ -71,6 +71,13 @@ class AIPS_Cache_Factory {
 	 * Falls back to ArrayDriver if the chosen driver cannot be initialised
 	 * (e.g. Redis extension missing) and optionally schedules an admin notice.
 	 *
+	 * Note: This method intentionally uses direct get_option() calls instead of
+	 * AIPS_Config::get_instance()->get_option(). AIPS_Config relies on
+	 * AIPS_Cache_Factory::named() to create its own per-request cache, so using
+	 * AIPS_Config here while the singleton is still being constructed would create
+	 * a bootstrapping circular dependency. See AIPS_Config::get_cache_config() for
+	 * the equivalent typed accessor intended for all other callers.
+	 *
 	 * @param string|null $driver_name Optional override. Null = read from settings.
 	 * @return AIPS_Cache_Driver
 	 */
@@ -145,19 +152,6 @@ class AIPS_Cache_Factory {
 	public static function named( $name, $driver_name = null ) {
 		if (!isset( self::$named[ $name ] )) {
 			self::$named[ $name ] = self::make( $driver_name );
-		} elseif ($driver_name !== null) {
-			// The instance already exists; the $driver_name argument is ignored.
-			// Warn in debug mode so developers notice the mismatch early.
-			_doing_it_wrong(
-				__CLASS__ . '::named()',
-				sprintf(
-					/* translators: 1: named-instance identifier, 2: driver name argument */
-					__( 'A named cache instance "%1$s" already exists and cannot be re-created with driver "%2$s". Call register() to replace it explicitly.', 'ai-post-scheduler' ),
-					esc_html( $name ),
-					esc_html( $driver_name )
-				),
-				'2.4.0'
-			);
 		}
 		return self::$named[ $name ];
 	}

@@ -211,7 +211,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         $args = wp_parse_args($args, $defaults);
-        $offset = ($args['page'] - 1) * $args['per_page'];
+        $args['page'] = max(1, (int) $args['page']);
+        $args['per_page'] = (int) $args['per_page'];
+        $use_limit = $args['per_page'] > 0;
+        $offset = $use_limit ? (($args['page'] - 1) * $args['per_page']) : 0;
 
         $where_clauses = array(
             "h.status = 'completed'",
@@ -253,12 +256,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $posts_table = $this->wpdb->posts;
         $postmeta_table = $this->wpdb->postmeta;
 
-        $query_args = $where_args;
-        $query_args[] = $args['per_page'];
-        $query_args[] = $offset;
-
-        $results = $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT
+        $query = "SELECT
                 h.*,
                 t.name as template_name,
                 p.post_title,
@@ -280,10 +278,21 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             LEFT JOIN {$postmeta_table} pm_status ON pm_status.post_id = p.ID AND pm_status.meta_key = 'aips_post_generation_component_statuses'
             LEFT JOIN {$templates_table} t ON h.template_id = t.id
             WHERE $where_sql
-            ORDER BY $orderby_sql
-            LIMIT %d OFFSET %d",
-            $query_args
-        ));
+                ORDER BY $orderby_sql";
+
+        $query_args = $where_args;
+
+        if ($use_limit) {
+            $query .= ' LIMIT %d OFFSET %d';
+            $query_args[] = $args['per_page'];
+            $query_args[] = $offset;
+        }
+
+        if (!empty($query_args)) {
+            $results = $this->wpdb->get_results($this->wpdb->prepare($query, $query_args));
+        } else {
+            $results = $this->wpdb->get_results($query);
+        }
 
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
@@ -321,7 +330,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         return array(
             'items' => $results,
             'total' => (int) $total,
-            'pages' => ceil($total / $args['per_page']),
+            'pages' => $use_limit ? (int) ceil($total / $args['per_page']) : ($total > 0 ? 1 : 0),
             'current_page' => $args['page'],
         );
     }
@@ -366,12 +375,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get history record by post ID.
      *
+     * Selects only metadata columns (excludes the `generated_content` and
+     * `generation_log` longtext columns) since callers only need the record ID
+     * and lightweight metadata fields. Use get_by_id() when full content is required.
+     *
      * @param int $post_id The post ID to find.
      * @return object|null History record or null if not found.
      */
     public function get_by_post_id($post_id) {
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
+                    creation_method, status, generated_title, error_message,
+                    created_at, completed_at
+             FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
             $post_id
         ));
     }

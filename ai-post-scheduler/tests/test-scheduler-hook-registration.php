@@ -134,27 +134,30 @@ class Test_AIPS_Scheduler_Hook_Registration extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Bootstrap pattern: exactly one callback, regardless of extra instantiations
+	// Bootstrap pattern: exactly one closure callback per hook; additional class
+	// instantiations must not stack more callbacks.
 	// These tests are limited-mode only because in full WP mode the plugin
 	// bootstrap has already registered the hooks once before the test runs.
 	// -------------------------------------------------------------------------
 
 	/**
-	 * After the bootstrap pattern (one explicit add_action), multiple subsequent
-	 * AIPS_Scheduler instantiations must not stack additional callbacks on
-	 * aips_generate_scheduled_posts.
+	 * The closure-based bootstrap must register exactly one callback on
+	 * aips_generate_scheduled_posts, and additional AIPS_Scheduler instantiations
+	 * must not stack further callbacks.
 	 */
 	public function test_multiple_scheduler_instantiations_do_not_stack_cron_action() {
 		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
 			$this->markTestSkipped( 'Hook-stacking test requires the limited-mode environment.' );
 		}
 
-		// Simulate bootstrap: create the dedicated cron instance and register once.
-		$bootstrap_instance = new AIPS_Scheduler();
-		add_action( 'aips_generate_scheduled_posts', array( $bootstrap_instance, 'process' ) );
+		// Simulate the closure-based bootstrap introduced in Phase B.4.
+		add_action( 'aips_generate_scheduled_posts', function() {
+			AIPS_Scheduler::instance()->process();
+		} );
 		$this->assertSame( 1, $this->count_action_callbacks( 'aips_generate_scheduled_posts' ) );
 
-		// Simulate admin-controller instantiations (AIPS_Schedule_Controller, AIPS_Planner, etc.).
+		// Additional instantiations (e.g. from AIPS_Schedule_Controller) must not
+		// add more callbacks because constructors do not register hooks.
 		new AIPS_Scheduler();
 		new AIPS_Scheduler();
 
@@ -166,16 +169,19 @@ class Test_AIPS_Scheduler_Hook_Registration extends WP_UnitTestCase {
 	}
 
 	/**
-	 * After the bootstrap pattern, multiple AIPS_Scheduler instantiations must not
-	 * stack additional callbacks on cron_schedules.
+	 * The closure-based bootstrap must register exactly one callback on
+	 * cron_schedules, and additional AIPS_Scheduler instantiations must not
+	 * stack further callbacks.
 	 */
 	public function test_multiple_scheduler_instantiations_do_not_stack_cron_schedules_filter() {
 		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
 			$this->markTestSkipped( 'Hook-stacking test requires the limited-mode environment.' );
 		}
 
-		$bootstrap_instance = new AIPS_Scheduler();
-		add_filter( 'cron_schedules', array( $bootstrap_instance, 'add_cron_intervals' ) );
+		// Simulate the closure-based bootstrap.
+		add_filter( 'cron_schedules', function( $schedules ) {
+			return AIPS_Scheduler::instance()->add_cron_intervals( $schedules );
+		} );
 		$this->assertSame( 1, $this->count_filter_callbacks( 'cron_schedules' ) );
 
 		new AIPS_Scheduler();
@@ -189,16 +195,19 @@ class Test_AIPS_Scheduler_Hook_Registration extends WP_UnitTestCase {
 	}
 
 	/**
-	 * After the bootstrap pattern, multiple AIPS_Author_Topics_Scheduler instantiations
-	 * must not stack additional callbacks on aips_generate_author_topics.
+	 * The closure-based bootstrap must register exactly one callback on
+	 * aips_generate_author_topics, and additional AIPS_Author_Topics_Scheduler
+	 * instantiations must not stack further callbacks.
 	 */
 	public function test_multiple_author_topics_scheduler_instantiations_do_not_stack_callbacks() {
 		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
 			$this->markTestSkipped( 'Hook-stacking test requires the limited-mode environment.' );
 		}
 
-		$bootstrap_instance = new AIPS_Author_Topics_Scheduler();
-		add_action( 'aips_generate_author_topics', array( $bootstrap_instance, 'process_topic_generation' ) );
+		// Simulate the closure-based bootstrap.
+		add_action( 'aips_generate_author_topics', function() {
+			AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
+		} );
 		$this->assertSame( 1, $this->count_action_callbacks( 'aips_generate_author_topics' ) );
 
 		new AIPS_Author_Topics_Scheduler();
@@ -212,16 +221,19 @@ class Test_AIPS_Scheduler_Hook_Registration extends WP_UnitTestCase {
 	}
 
 	/**
-	 * After the bootstrap pattern, multiple AIPS_Author_Post_Generator instantiations
-	 * must not stack additional callbacks on aips_generate_author_posts.
+	 * The closure-based bootstrap must register exactly one callback on
+	 * aips_generate_author_posts, and additional AIPS_Author_Post_Generator
+	 * instantiations must not stack further callbacks.
 	 */
 	public function test_multiple_author_post_generator_instantiations_do_not_stack_callbacks() {
 		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
 			$this->markTestSkipped( 'Hook-stacking test requires the limited-mode environment.' );
 		}
 
-		$bootstrap_instance = new AIPS_Author_Post_Generator();
-		add_action( 'aips_generate_author_posts', array( $bootstrap_instance, 'process' ) );
+		// Simulate the closure-based bootstrap.
+		add_action( 'aips_generate_author_posts', function() {
+			AIPS_Author_Post_Generator::instance()->process();
+		} );
 		$this->assertSame( 1, $this->count_action_callbacks( 'aips_generate_author_posts' ) );
 
 		new AIPS_Author_Post_Generator();
