@@ -191,6 +191,9 @@ class AIPS_Content_Auditor {
      * Parse JSON from AI text response.
      * Handles markdown code blocks and raw JSON.
      *
+     * Applies defensive strict type checking to ensure the parsed JSON is actually
+     * an array, mitigating fatal scalar type errors.
+     *
      * @param string $response The raw text response from AI.
      * @return array|null Parsed array or null on failure.
      */
@@ -204,7 +207,7 @@ class AIPS_Content_Auditor {
 
         $decoded = json_decode($response, true);
 
-        if (json_last_error() === JSON_ERROR_NONE) {
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             return $decoded;
         }
 

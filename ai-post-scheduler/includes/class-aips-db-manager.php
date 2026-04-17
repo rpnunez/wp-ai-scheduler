@@ -483,7 +483,9 @@ class AIPS_DB_Manager {
     }
 
     public function ajax_repair_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error('Unauthorized');
         }
@@ -493,7 +495,9 @@ class AIPS_DB_Manager {
     }
 
     public function ajax_reinstall_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error('Unauthorized');
         }
@@ -516,7 +520,9 @@ class AIPS_DB_Manager {
     }
 
     public function ajax_wipe_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error('Unauthorized');
         }
@@ -535,7 +541,9 @@ class AIPS_DB_Manager {
      * @return void
      */
     public function ajax_flush_cron_events() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
         }

@@ -237,7 +237,9 @@ class AIPS_Admin_Bar {
 	 * AJAX: Mark a single notification as read.
 	 */
 	public function ajax_mark_read() {
-		check_ajax_referer('aips_admin_bar_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_admin_bar_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -268,7 +270,9 @@ class AIPS_Admin_Bar {
 	 * AJAX: Mark all notifications as read.
 	 */
 	public function ajax_mark_all_read() {
-		check_ajax_referer('aips_admin_bar_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_admin_bar_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

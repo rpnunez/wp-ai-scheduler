@@ -1081,7 +1081,10 @@ class AIPS_MCP_Bridge {
 		if (!empty($params['history_id'])) {
 			$history = $history_repo->get_by_id($params['history_id']);
 		} else {
-			$history = $history_repo->get_by_post_id($params['post_id']);
+			// get_by_post_id() returns a lightweight record (no longtext columns).
+			// Resolve to the full record via get_by_id() so generated_content is available.
+			$lightweight = $history_repo->get_by_post_id($params['post_id']);
+			$history = $lightweight ? $history_repo->get_by_id($lightweight->id) : null;
 		}
 		
 		if (!$history) {

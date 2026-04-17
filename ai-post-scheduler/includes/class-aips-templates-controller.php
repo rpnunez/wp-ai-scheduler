@@ -19,7 +19,9 @@ class AIPS_Templates_Controller {
     }
 
     public function ajax_save_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -83,7 +85,9 @@ class AIPS_Templates_Controller {
     }
 
     public function ajax_delete_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -112,7 +116,9 @@ class AIPS_Templates_Controller {
     }
 
     public function ajax_get_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -134,7 +140,9 @@ class AIPS_Templates_Controller {
     }
 
     public function ajax_clone_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -193,7 +201,9 @@ class AIPS_Templates_Controller {
     }
 
     public function ajax_test_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -267,7 +277,9 @@ class AIPS_Templates_Controller {
      * @since 1.7.0
      */
     public function ajax_preview_template_prompts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -300,8 +312,52 @@ class AIPS_Templates_Controller {
         // Get voice if selected
         $voice = $prompt_builder->get_voice($template_data->voice_id);
 
-        // Build prompts using the centralized method
-        $result = $prompt_builder->build_prompts($template_data, null, $voice);
+        $sample_topic = 'Example Topic';
+
+        // Build content prompt
+        $content_prompt = $prompt_builder->get_post_content_builder()->build($template_data, $sample_topic, $voice);
+
+        // Build title prompt
+        $sample_content = '[Generated article content would appear here]';
+        $title_prompt = $prompt_builder->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content);
+
+        // Build excerpt prompt (requires title and content)
+        $sample_title = '[Generated title would appear here]';
+        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic);
+
+        // Build image prompt if enabled
+        $image_prompt_processed = $prompt_builder->get_post_featured_image_builder()->build($template_data, $sample_topic);
+
+        // Get voice name if applicable
+        $voice_name = '';
+        if ($voice && isset($voice->name)) {
+            $voice_name = $voice->name;
+        }
+
+        // Get article structure name if applicable
+        $structure_name = '';
+        if (isset($template_data->article_structure_id) && $template_data->article_structure_id > 0) {
+            $structure_manager = new AIPS_Article_Structure_Manager();
+            $structure = $structure_manager->get_structure($template_data->article_structure_id);
+            if ($structure && !is_wp_error($structure) && isset($structure['name'])) {
+                $structure_name = $structure['name'];
+            }
+        }
+
+        $result = array(
+            'prompts' => array(
+                'content' => $content_prompt,
+                'title' => $title_prompt,
+                'excerpt' => $excerpt_prompt,
+                'image' => $image_prompt_processed,
+            ),
+            'metadata' => array(
+                'voice' => $voice_name,
+                'article_structure' => $structure_name,
+                'sample_topic' => $sample_topic,
+                'include_sources' => !empty($template_data->include_sources),
+            ),
+        );
 
         AIPS_Ajax_Response::success($result);
     }
