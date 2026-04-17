@@ -114,6 +114,16 @@ class AIPS_Schedule_Processor {
 
     public function set_repository(AIPS_Schedule_Repository_Interface $repository) {
         $this->repository = $repository;
+        $this->result_handler->set_repository($repository);
+    }
+
+    /**
+     * Replace the result handler entirely (e.g. inject a mock for testing).
+     *
+     * @param AIPS_Schedule_Result_Handler $result_handler
+     */
+    public function set_result_handler(AIPS_Schedule_Result_Handler $result_handler) {
+        $this->result_handler = $result_handler;
     }
 
     public function set_template_repository($repository) {

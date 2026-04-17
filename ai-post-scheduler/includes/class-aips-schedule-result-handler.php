@@ -63,6 +63,15 @@ class AIPS_Schedule_Result_Handler {
     }
 
     /**
+     * Replace the schedule repository (e.g. for test mocking).
+     *
+     * @param AIPS_Schedule_Repository_Interface $repository
+     */
+    public function set_repository(AIPS_Schedule_Repository_Interface $repository) {
+        $this->repository = $repository;
+    }
+
+    /**
      * Load the schedule's persistent lifecycle history container, or create one if missing.
      *
      * @param int $schedule_id Schedule ID.
