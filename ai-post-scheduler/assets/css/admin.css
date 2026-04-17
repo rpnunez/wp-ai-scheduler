@@ -1198,75 +1198,6 @@
     color: #856404;
 }
 
-.aips-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 100000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.aips-modal-content {
-    background: #fff;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.aips-modal-large {
-    max-width: 900px;
-}
-
-.aips-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border-bottom: 1px solid #dcdcde;
-}
-
-.aips-modal-header h2 {
-    margin: 0;
-}
-
-.aips-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #646970;
-    padding: 0;
-    line-height: 1;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.aips-modal-close:hover {
-    color: #1d2327;
-}
-
-.aips-modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.aips-modal-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #dcdcde;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
 .aips-post-success-summary {
     text-align: center;
     padding: 20px 20px 0;
@@ -1819,12 +1750,6 @@
     display: inline-block;
 }
 
-.aips-modal-large {
-    max-width: 900px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
 .aips-details-section {
     margin-bottom: 25px;
     padding-bottom: 20px;
@@ -1960,10 +1885,6 @@
     
     .aips-history-stats {
         flex-wrap: wrap;
-    }
-    
-    .aips-modal-large {
-        max-width: 95%;
     }
     
     .aips-details-table th {
@@ -3033,17 +2954,6 @@
 
 /* Responsive Styles */
 @media screen and (max-width: 782px) {
-    .aips-modal-content {
-        max-width: 95%;
-        max-height: 95vh;
-        margin: 2.5vh auto;
-    }
-    
-    .aips-modal-header,
-    .aips-modal-body {
-        padding: 15px;
-    }
-    
     .aips-tab-nav a,
     .aips-tab-nav button {
         padding: 8px 12px;
