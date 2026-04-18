@@ -191,6 +191,8 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Queue manager: 'wpcron' (default) or 'action_scheduler'.
             'aips_queue_manager' => 'wpcron',
+            // Telemetry
+            'aips_enable_telemetry' => false,
         );
     }
     

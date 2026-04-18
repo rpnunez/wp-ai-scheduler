@@ -86,7 +86,7 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 		if (!is_array($data)) {
 			return new WP_Error('parse_error', __('JSON must contain an object or array at the top level.', 'ai-post-scheduler'));
 		}
-		
+
 		// Validate data structure
 		if (!isset($data['tables']) || !is_array($data['tables'])) {
 			return new WP_Error('invalid_structure', __('Invalid data structure in JSON file.', 'ai-post-scheduler'));
