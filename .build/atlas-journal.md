@@ -1371,6 +1371,16 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
 
+## 2026-03-08 - [Extract Schedule Result Handler]
+**Context:** The `AIPS_Schedule_Processor` class had grown too large and handled multiple disparate responsibilities, including claim-first locking, sequence coordination, context processing, *as well as* finalization cleanup, failure persistence, and post-success notifications and history logging.
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Extracted all post-execution logic (`handle_post_execution_cleanup`, `handle_execution_failure`, `handle_execution_success`, and `get_or_create_schedule_history`) into a dedicated `AIPS_Schedule_Result_Handler` class.
+**Consequence:**
+* Reduced the size and complexity of `AIPS_Schedule_Processor` by delegating result finalization to a separate service.
+* `AIPS_Schedule_Result_Handler` cleanly centralizes success, failure, and cleanup events, making test mocking and event hooks easier to manage independently.
+* `AIPS_Schedule_Processor` is now strictly focused on finding schedules, asserting locks, and orchestrating generation batches.
+* Trade-off: Slightly increases DI dependencies initialized within `AIPS_Schedule_Processor` since `AIPS_Schedule_Result_Handler` must be constructed internally to preserve the public constructor signature for backward compatibility.
+**Tests:** Ran the existing test suite, ensuring `test_autoloader_loads_service_classes` correctly validates the new service class structure. No tests were broken as the API interface remains strictly identical for upstream callers.
+
 ## 2026-04-16 - [Detangle System Status Diagnostics]
 **Context:** The AIPS_System_Status class is a God Object handling UI rendering and complex system diagnostic data gathering. Extracting it into a single AIPS_System_Diagnostics_Service created another God Object.
 **Decision:** Introduced a Provider pattern. Created AIPS_System_Diagnostic_Provider_Interface. Extracted diagnostics into cohesive providers (Environment, Scheduler, Queue, Logs). AIPS_System_Diagnostics_Service now acts as an aggregator.
