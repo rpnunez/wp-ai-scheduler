@@ -29,9 +29,7 @@ class AIPS_Seeder_Admin {
     }
 
     public function ajax_process_seeder() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();

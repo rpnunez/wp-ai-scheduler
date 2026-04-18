@@ -234,9 +234,7 @@ class AIPS_Generated_Posts_Controller {
 	 * AJAX handler to get detailed session data for a post
 	 */
 	public function ajax_get_post_session() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -346,9 +344,7 @@ class AIPS_Generated_Posts_Controller {
 	 * will prompt the user to save the JSON to disk.
 	 */
 	public function ajax_download_session_json() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -442,9 +438,7 @@ class AIPS_Generated_Posts_Controller {
 	 * AJAX handler to get complete session JSON for debugging/BI purposes
 	 */
 	public function ajax_get_session_json() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

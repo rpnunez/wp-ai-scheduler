@@ -57,9 +57,7 @@ class AIPS_AI_Edit_Controller {
 	 * Fetches all components of a post along with its generation context.
 	 */
 	public function ajax_get_post_components() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -86,8 +84,7 @@ class AIPS_AI_Edit_Controller {
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			$this->log_wp_error($context, __METHOD__);
-			AIPS_Ajax_Response::error(__('Failed to retrieve generation context.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 
 		// Ensure the history context belongs to the requested post
@@ -149,9 +146,7 @@ class AIPS_AI_Edit_Controller {
 	 * Regenerates a single component of a post using AI.
 	 */
 	public function ajax_regenerate_component() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -182,8 +177,7 @@ class AIPS_AI_Edit_Controller {
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			$this->log_wp_error($context, __METHOD__);
-			AIPS_Ajax_Response::error(__('Failed to retrieve generation context.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 		
 		// Ensure the history context belongs to the requested post
@@ -215,8 +209,7 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 		
@@ -238,8 +231,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (is_wp_error($result)) {
-			$this->log_wp_error($result, __METHOD__);
-			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
 		AIPS_Ajax_Response::success(array('new_value' => $result));
@@ -253,9 +245,7 @@ class AIPS_AI_Edit_Controller {
 	 * logged a featured-image failure.
 	 */
 	public function ajax_regenerate_all_components() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -277,8 +267,7 @@ class AIPS_AI_Edit_Controller {
 
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
-			$this->log_wp_error($context, __METHOD__);
-			AIPS_Ajax_Response::error(__('Failed to retrieve generation context.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $context->get_error_message()));
 		}
 
 		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
@@ -313,15 +302,13 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 
 		$result = $this->service->regenerate_all_components($context);
 		if (is_wp_error($result)) {
-			$this->log_wp_error($result, __METHOD__);
-			AIPS_Ajax_Response::error(__('An error occurred while regenerating all components.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
 		$regenerated_count = count($result['regenerated']);
@@ -355,9 +342,7 @@ class AIPS_AI_Edit_Controller {
 	 * Persists the changed components to the WordPress post.
 	 */
 	public function ajax_save_post_components() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -398,8 +383,7 @@ class AIPS_AI_Edit_Controller {
 		$result = wp_update_post($post_data, true);
 		
 		if (is_wp_error($result)) {
-			$this->log_wp_error($result, __METHOD__);
-			AIPS_Ajax_Response::error(__('An error occurred while saving post components.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
 		// Update featured image
@@ -442,9 +426,7 @@ class AIPS_AI_Edit_Controller {
 	 * Fetches revision history for a specific post component.
 	 */
 	public function ajax_get_component_revisions() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -486,9 +468,7 @@ class AIPS_AI_Edit_Controller {
 	 * Restores a specific revision value for a post component.
 	 */
 	public function ajax_restore_component_revision() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('edit_posts')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -531,8 +511,7 @@ class AIPS_AI_Edit_Controller {
 			);
 
 			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				AIPS_Ajax_Response::error(array('message' => $snapshot_result->get_error_message()));
 			}
 		}
 		
@@ -586,8 +565,7 @@ class AIPS_AI_Edit_Controller {
 			$result = wp_update_post($post_data, true);
 			
 			if (is_wp_error($result)) {
-				$this->log_wp_error($result, __METHOD__);
-				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
+				AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 			}
 		}
 		
@@ -596,23 +574,6 @@ class AIPS_AI_Edit_Controller {
 			'component' => $component,
 			'value' => $restored_value,
 		));
-	}
-
-	/**
-	 * Logs a WP_Error server-side without exposing internal details to the client.
-	 *
-	 * Use this instead of calling error_log() directly when handling WP_Error
-	 * instances in AJAX handlers. It ensures a consistent log format that includes
-	 * the calling method name and the WP_Error code, aiding debugging while keeping
-	 * internal error details out of client-facing responses.
-	 *
-	 * @param WP_Error $error  The error to log.
-	 * @param string   $method The calling method name; pass __METHOD__ from the caller.
-	 * @return void
-	 */
-	private function log_wp_error( WP_Error $error, $method = '' ) {
-		$context = $method ? '[' . $method . '] ' : '';
-		error_log( 'AIPS AI Edit Controller Error ' . $context . '(' . $error->get_error_code() . '): ' . $error->get_error_message() );
 	}
 
 	/**

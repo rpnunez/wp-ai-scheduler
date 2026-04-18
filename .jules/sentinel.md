@@ -82,18 +82,7 @@
 **Vulnerability:** array_map() with sanitize_text_field() on nested arrays from user input causes fatal TypeErrors.
 **Learning:** PHP 8+ strict types require scalar validation before passing to string functions.
 **Prevention:** Use AIPS_Utilities::sanitize_string_array() which explicitly verifies is_scalar().
-
-## 2026-04-06 - [Secure Onboarding Wizard AJAX]
+## 2026-04-06 - Secure Onboarding Wizard AJAX
 **Vulnerability:** Missing proper explicit nonce handling in Onboarding Wizard AJAX endpoints (relied on implicit wp_die instead of explicitly handling false parameter).
 **Learning:** Relying on default check_ajax_referer behavior causes a wp_die() without proper JSON response, leading to poor UX and non-standard generic error handling.
 **Prevention:** Always verify nonce explicitly using false parameter and return generic errors via wp_send_json_error instead of relying on default wp_die() behavior.
-
-## 2026-05-24 - [Information Exposure via AJAX Error Responses]
-**Vulnerability:** The AI Edit Controller was returning detailed internal error messages to the client using `$error->get_error_message()` in `AIPS_Ajax_Response::error()` when `is_wp_error()` was true. This could expose stack traces, database schema details, or internal API responses to malicious actors.
-**Learning:** Directly passing the result of `get_error_message()` to client-facing JSON responses violates the Defense in Depth principle.
-**Prevention:** Always log detailed error messages internally using `error_log()` and return generic, localized error messages to the client (e.g., "An error occurred during the operation.").
-
-## 2026-04-16 - [Fix Default wp_die() in check_ajax_referer]
-**Vulnerability:** Found 130+ instances of `check_ajax_referer` without `false` as the third parameter. This caused WordPress to fire a default `wp_die()` with an HTML response on nonce failure, rather than returning a generic JSON error.
-**Learning:** Always pass `false` as the third parameter to `check_ajax_referer` in AJAX endpoints to prevent `wp_die()` and handle the failure explicitly.
-**Prevention:** Use `if ( ! check_ajax_referer('nonce_action', 'nonce', false) ) { ... }` consistently across all AJAX handlers.

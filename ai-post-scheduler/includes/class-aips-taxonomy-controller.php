@@ -72,9 +72,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for getting taxonomy items.
 	 */
 	public function ajax_get_taxonomy_items() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -100,9 +98,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for generating taxonomy items.
 	 */
 	public function ajax_generate_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -331,9 +327,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for approving a taxonomy item.
 	 */
 	public function ajax_approve_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -374,9 +368,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for rejecting a taxonomy item.
 	 */
 	public function ajax_reject_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -417,9 +409,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for deleting a taxonomy item.
 	 */
 	public function ajax_delete_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -444,9 +434,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for bulk approving taxonomy items.
 	 */
 	public function ajax_bulk_approve_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -485,9 +473,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for bulk rejecting taxonomy items.
 	 */
 	public function ajax_bulk_reject_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -526,9 +512,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for bulk deleting taxonomy items.
 	 */
 	public function ajax_bulk_delete_taxonomy() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -568,9 +552,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for bulk creating WordPress taxonomy terms.
 	 */
 	public function ajax_bulk_create_taxonomy_terms() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -612,9 +594,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for creating a WordPress taxonomy term from an approved item.
 	 */
 	public function ajax_create_taxonomy_term() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -644,9 +624,7 @@ class AIPS_Taxonomy_Controller {
 	 * AJAX handler for searching posts.
 	 */
 	public function ajax_search_posts() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

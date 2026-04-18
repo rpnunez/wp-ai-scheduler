@@ -8,28 +8,6 @@
  * @package AI_Post_Scheduler
  */
 
-class AIPS_Test_Stub_AI_Service_For_Feedback implements AIPS_AI_Service_Interface {
-	public $last_prompt = '';
-	private $topics;
-	public function __construct( $t ) { $this->topics = $t; }
-	public function generate_json( $prompt, $options = array() ) {
-		$this->last_prompt = $prompt;
-		return $this->topics;
-	}
-	public function is_available() { return true; }
-	public function generate_text($prompt, $options = array()) { return ""; }
-	public function generate_image($prompt, $options = array()) { return ""; }
-	public function get_call_log() { return array(); }
-}
-
-class AIPS_Test_Stub_Logger_For_Feedback implements AIPS_Logger_Interface {
-	public function log( $message, $level = 'info', $context = array() ) {}
-	public function clear() {}
-	public function get_logs($limit = 100, $offset = 0) { return array(); }
-	public function set_level($level) {}
-	public function addSeparator($text = "") {}
-}
-
 class Test_Author_Topics_Generator_Feedback_Guidance extends WP_UnitTestCase {
 
 	/**
@@ -95,7 +73,15 @@ class Test_Author_Topics_Generator_Feedback_Guidance extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_ai_service( $topics = array() ) {
-		return new AIPS_Test_Stub_AI_Service_For_Feedback( $topics );
+		return new class( $topics ) {
+			public $last_prompt = '';
+			private $topics;
+			public function __construct( $t ) { $this->topics = $t; }
+			public function generate_json( $prompt, $options = array() ) {
+				$this->last_prompt = $prompt;
+				return $this->topics;
+			}
+		};
 	}
 
 	/**
@@ -104,7 +90,9 @@ class Test_Author_Topics_Generator_Feedback_Guidance extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_logger() {
-		return new AIPS_Test_Stub_Logger_For_Feedback();
+		return new class {
+			public function log( $message, $level = 'info', $context = array() ) {}
+		};
 	}
 
 	/**

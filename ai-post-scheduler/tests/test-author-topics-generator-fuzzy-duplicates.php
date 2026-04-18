@@ -7,26 +7,6 @@
  * @package AI_Post_Scheduler
  */
 
-class AIPS_Test_Stub_AI_Service_For_Fuzzy implements AIPS_AI_Service_Interface {
-	private $topics;
-	public function __construct( $t ) { $this->topics = $t; }
-	public function generate_json( $prompt, $options = array() ) {
-		return $this->topics;
-	}
-	public function is_available() { return true; }
-	public function generate_text($prompt, $options = array()) { return ""; }
-	public function generate_image($prompt, $options = array()) { return ""; }
-	public function get_call_log() { return array(); }
-}
-
-class AIPS_Test_Stub_Logger_For_Fuzzy implements AIPS_Logger_Interface {
-	public function log( $message, $level = 'info', $context = array() ) {}
-	public function clear() {}
-	public function get_logs($limit = 100, $offset = 0) { return array(); }
-	public function set_level($level) {}
-	public function addSeparator($text = "") {}
-}
-
 class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 
 	/**
@@ -99,7 +79,13 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_ai_service( $topics ) {
-		return new AIPS_Test_Stub_AI_Service_For_Fuzzy( $topics );
+		return new class( $topics ) {
+			private $topics;
+			public function __construct( $t ) { $this->topics = $t; }
+			public function generate_json( $prompt, $options = array() ) {
+				return $this->topics;
+			}
+		};
 	}
 
 	/**
@@ -108,7 +94,9 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * @return object
 	 */
 	private function make_logger() {
-		return new AIPS_Test_Stub_Logger_For_Fuzzy();
+		return new class {
+			public function log( $message, $level = 'info', $context = array() ) {}
+		};
 	}
 
 	/**

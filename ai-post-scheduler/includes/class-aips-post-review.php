@@ -94,9 +94,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to get draft post preview data.
 	 */
 	public function ajax_get_draft_post_preview() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -130,9 +128,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to get draft posts.
 	 */
 	public function ajax_get_draft_posts() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -155,9 +151,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to publish a single post.
 	 */
 	public function ajax_publish_post() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -269,9 +263,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to publish multiple posts.
 	 */
 	public function ajax_bulk_publish_posts() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -403,9 +395,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to regenerate a post.
 	 */
 	public function ajax_regenerate_post() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -502,9 +492,7 @@ class AIPS_Post_Review {
 	 * items are processed in one request (soft truncation).
 	 */
 	public function ajax_bulk_regenerate_posts() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -706,9 +694,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete a draft post.
 	 */
 	public function ajax_delete_draft_post() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -829,9 +815,7 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete multiple draft posts.
 	 */
 	public function ajax_bulk_delete_draft_posts() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

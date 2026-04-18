@@ -50,13 +50,6 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
-        wp_enqueue_style(
-            'aips-admin-components',
-            AIPS_PLUGIN_URL . 'assets/css/admin-components.css',
-            array('aips-admin-style'),
-            AIPS_VERSION
-        );
-
         wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
@@ -390,16 +383,9 @@ class AIPS_Admin_Assets {
             ));
         }
 
-        // Schedule Page Styles & Scripts — the calendar page shares the 'aips-schedule' substring so
+        // Schedule Page Scripts — the calendar page shares the 'aips-schedule' substring so
         // it is explicitly excluded; all other 'aips-schedule*' slugs are not currently in use.
         if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
-            wp_enqueue_style(
-                'aips-schedule-style',
-                AIPS_PLUGIN_URL . 'assets/css/schedule.css',
-                array('aips-admin-style'),
-                AIPS_VERSION
-            );
-
             wp_localize_script('aips-admin-script', 'aipsScheduleL10n', array(
                 // Run schedule
                 'runScheduleConfirm'             => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),

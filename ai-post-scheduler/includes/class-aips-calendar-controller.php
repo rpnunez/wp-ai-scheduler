@@ -199,9 +199,7 @@ class AIPS_Calendar_Controller {
 	 * @return void
 	 */
 	public function ajax_get_calendar_events() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));

@@ -39,9 +39,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_bulk_delete_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -68,9 +66,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_clear_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -89,9 +85,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_export_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_die(__('Permission denied.', 'ai-post-scheduler'));
@@ -163,9 +157,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_get_history_details() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -214,9 +206,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_get_history_logs() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -280,9 +270,7 @@ class AIPS_History {
      * so the client can refresh the view without a full page reload.
      */
     public function ajax_reload_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -332,9 +320,7 @@ class AIPS_History {
      * @return void
      */
     public function ajax_retry_generation() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();

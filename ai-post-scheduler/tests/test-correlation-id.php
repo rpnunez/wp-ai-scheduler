@@ -16,29 +16,6 @@
  * - get_correlation_id() returns the correct value
  * - Multiple sequential runs produce independent IDs
  */
-class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_Repository_Interface {
-	private $capture;
-	private $id;
-	public function __construct($capture, $id) {
-		$this->capture = $capture;
-		$this->id = $id;
-	}
-	public function create($data) {
-		$this->capture->data = $data;
-		return $this->id;
-	}
-	public function get_history($args = array()) { return array(); }
-	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
-	public function get_by_id($id) { return null; }
-	public function get_by_post_id($post_id) { return array(); }
-	public function add_log_entry($history_id, $log_type, $details, $history_type_id = null) { return true; }
-	public function update($id, $data) { return true; }
-	public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) { return array(); }
-	public function get_estimated_generation_time($limit = 20) { return 0; }
-	public function get_component_revisions($post_id, $component_type, $limit = 20) { return array(); }
-	public function post_has_history_and_completed($post_id) { return false; }
-}
-
 class Test_AIPS_Correlation_ID extends WP_UnitTestCase {
 
 	// -----------------------------------------------------------------------
@@ -120,7 +97,19 @@ class Test_AIPS_Correlation_ID extends WP_UnitTestCase {
 	 * @return object The mock repository.
 	 */
 	private function make_capture_repo(stdClass $capture, $return_id = 1) {
-		return new AIPS_Test_Stub_History_Repository_For_Correlation($capture, $return_id);
+		return new class($capture, $return_id) {
+			private $capture;
+			private $id;
+			public function __construct($capture, $id) {
+				$this->capture = $capture;
+				$this->id = $id;
+			}
+			public function create($data) {
+				$this->capture->data = $data;
+				return $this->id;
+			}
+			public function get_by_id($id) { return null; }
+		};
 	}
 
 	public function test_history_container_inherits_active_correlation_id() {

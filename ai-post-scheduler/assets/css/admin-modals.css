@@ -1,20 +1,15 @@
 /* ===================================================================
-   Global AIPS Modal Styles
-   Shared modal UI styles used across AIPS admin pages.
+   Generated Posts Page Styles
    =================================================================== */
 
-/* Shared modal styles */
+/* Modal Styles */
 .aips-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
     z-index: 100000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .aips-modal-overlay {
@@ -28,20 +23,15 @@
 
 .aips-modal-content {
     position: relative;
-    background: #fff;
-    border-radius: 4px;
-    width: 90%;
     max-width: 900px;
     max-height: 90vh;
     margin: 5vh auto;
+    background: #fff;
+    border-radius: 4px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-.aips-modal-large {
-    overflow-y: auto;
 }
 
 .aips-modal-header {
@@ -69,13 +59,10 @@
 .aips-modal-close {
     background: none;
     border: none;
-    font-size: 24px;
     cursor: pointer;
-    color: #646970;
     padding: 0;
+    font-size: 24px;
     line-height: 1;
-    -webkit-appearance: none;
-    appearance: none;
 }
 
 .aips-modal-close:hover {
@@ -87,25 +74,4 @@
     overflow-y: auto;
     flex: 1;
     position: relative;
-}
-
-.aips-modal-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #dcdcde;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-@media screen and (max-width: 782px) {
-    .aips-modal-content {
-        max-width: 95%;
-        max-height: 95vh;
-        margin: 2.5vh auto;
-    }
-
-    .aips-modal-header,
-    .aips-modal-body {
-        padding: 15px;
-    }
 }

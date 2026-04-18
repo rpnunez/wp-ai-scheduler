@@ -3,9 +3,6 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-### Fixed
-- Added defensive `is_array` checks after `json_decode` operations across multiple files to prevent silent fatal errors on scalar JSON inputs.
-
 ### Changed
 - Standardized search and clear button CSS classes across all admin interfaces (`.aips-btn-sm`) for consistent UX.
 

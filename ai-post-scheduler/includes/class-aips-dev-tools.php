@@ -31,15 +31,10 @@ class AIPS_Dev_Tools {
     /**
      * Handle AJAX request to generate scaffold.
      *
-     * Includes defensive strict array checking after JSON decoding the AI response
-     * to prevent scalar decoding errors.
-     *
      * @return void
      */
     public function ajax_generate_scaffold() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
@@ -100,7 +95,7 @@ class AIPS_Dev_Tools {
 
         $data = json_decode($json_str, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+        if (json_last_error() !== JSON_ERROR_NONE) {
             AIPS_Ajax_Response::error(array(
                 'message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler'),
                 'debug' => $json_str
