@@ -3916,9 +3916,6 @@
         /**
          * Populate the final summary step of the active wizard.
          *
-         * Dispatches to the appropriate summary renderer based on the modal's
-         * `id`; the template wizard and schedule wizard have different fields.
-         *
          * @param {jQuery} $modal - The wizard modal element.
          */
         updateWizardSummary: function($modal) {
@@ -3927,46 +3924,6 @@
 
             if ($modal.attr('id') === 'aips-schedule-wizard-modal') {
                 AIPS.updateScheduleWizardSummary($modal);
-            } else {
-                AIPS.updateTemplateWizardSummary($modal);
-            }
-        },
-
-        /**
-         * Populate the template wizard's final summary step with form values.
-         *
-         * Reads template name, description, title prompt, content prompt, voice,
-         * post quantity, and featured-image settings, then updates the
-         * corresponding `#summary_*` elements.
-         *
-         * @param {jQuery} $modal - The template wizard modal element.
-         */
-        updateTemplateWizardSummary: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-
-            $modal.find('#summary_name').text($('#template_name').val() || '-');
-            $modal.find('#summary_description').text($('#template_description').val() || '-');
-
-            var titlePrompt = $('#title_prompt').val();
-            $modal.find('#summary_title_prompt').text(titlePrompt || aipsTemplatesL10n.autoGenerateFromContent);
-
-            var contentPrompt = $('#prompt_template').val();
-            if (contentPrompt.length > 100) {
-                contentPrompt = contentPrompt.substring(0, 100) + '...';
-            }
-            $modal.find('#summary_content_prompt').text(contentPrompt || '-');
-
-            var voiceText = $('#voice_id option:selected').text();
-            $modal.find('#summary_voice').text(voiceText || aipsAdminL10n.noneOption);
-
-            $modal.find('#summary_quantity').text($('#post_quantity').val() || '1');
-
-            var featuredImage = $('#generate_featured_image').is(':checked');
-            if (featuredImage) {
-                var source = $('#featured_image_source option:selected').text();
-                $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageYes.replace('%s', source));
-            } else {
-                $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageNo);
             }
         },
 

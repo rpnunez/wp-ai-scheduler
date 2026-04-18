@@ -235,3 +235,8 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+## 2025-04-18 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Removed the redundant summary step and consolidated post settings into Step 1 to streamline the template creation flow.
+**Files Modified:** ai-post-scheduler/templates/admin/templates.php, ai-post-scheduler/assets/js/admin.js
+**Outcome:** Reduced template creation from 4 steps to 3, allowing users to save faster without navigating through an unnecessary summary screen.
