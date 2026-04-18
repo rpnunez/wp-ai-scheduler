@@ -41,16 +41,21 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     /**
      * Manually load the plugin being tested.
      */
-    function _manually_load_plugin() {
-        define('ABSPATH', WP_CORE_DIR . '/');
-        
-        // Load plugin files
-        require dirname(__DIR__) . '/ai-post-scheduler.php';
+    if (!function_exists('_manually_load_plugin')) {
+        function _manually_load_plugin() {
+            if (!defined('ABSPATH')) {
+                define('ABSPATH', WP_CORE_DIR . '/');
+            }
+
+            // Load plugin files once even if the bootstrap path is evaluated repeatedly.
+            require_once dirname(__DIR__) . '/ai-post-scheduler.php';
+        }
     }
+
     tests_add_filter('muplugins_loaded', '_manually_load_plugin');
     
-    // Start up the WP testing environment
-    require WP_TESTS_DIR . '/includes/bootstrap.php';
+    // Start up the WP testing environment once.
+    require_once WP_TESTS_DIR . '/includes/bootstrap.php';
 } else {
     // Fallback when WordPress test library is not available
     echo "Warning: WordPress test library not found at " . WP_TESTS_DIR . "\n";
