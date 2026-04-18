@@ -140,15 +140,34 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $this->emit_integration_error_notification('text', $error, $options);
             return $error;
         }
-        
+      
         $params = $this->prepare_options($options, $prompt);
 
+        $log_context = array(
+            'model' => isset($params['model']) ? $params['model'] : '',
+            'max_tokens' => isset($params['maxTokens']) ? $params['maxTokens'] : ( isset($params['max_tokens']) ? $params['max_tokens'] : '' ),
+            'temperature' => isset($params['temperature']) ? $params['temperature'] : '',
+            'prompt_length' => is_string($prompt) ? strlen($prompt) : 0,
+            'has_prompt' => !empty($prompt),
+        );
+
+        if (defined('AIPS_AI_DEBUG_LOG_PROMPTS') && AIPS_AI_DEBUG_LOG_PROMPTS) {
+            $prompt_preview = is_string($prompt) ? substr($prompt, 0, 500) : '';
+
+            if (is_string($prompt) && strlen($prompt) > 500) {
+                $prompt_preview .= '... [truncated]';
+            }
+
+            $log_context['prompt_preview'] = $prompt_preview;
+            $log_context['options_keys'] = array_keys($options);
+            $log_context['params_keys'] = array_keys($params);
+        }
+
         $this->logger->addSeparator('[AIPS_AI_Service->generate_text] New AI Text Generation Request');
-        $this->logger->log('Prepared AI generation options', 'debug', array(
-            'options' => $options,
-            'params' => $params,
-            'prompt' => $prompt,
-        ));
+        $this->logger->log(
+            'Calling AI Engine for text generation: ' . wp_json_encode($log_context),
+            'info'
+        );
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
@@ -206,6 +225,20 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     public function generate_json($prompt, $options = array()) {
         // Check if AI Engine is available using consistent availability check
         $ai = $this->get_ai_engine();
+
+        $this->logger->log(
+            sprintf(
+                'Attempting to generate JSON with AI Engine. AI available: %s',
+                $ai ? 'Yes' : 'No'
+             ),
+             'info'
+        );
+
+        if (!$ai) {
+            $this->logger->log('AI Engine is not available.', 'error');
+        }
+        
+        // If AI Engine is not available, log and emit notification, then return error
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
@@ -243,16 +276,6 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                     $json_query_params['model'] = $params['model'];
                 }
                 
-                // Only pass temperature if specified
-                // if (isset($options['temperature'])) {
-                //    $json_query_params['temperature'] = $options['temperature'];
-                // }
-                
-                // Convert maxTokens to maxTokens for AI Engine
-                // if (isset($options['maxTokens'])) {
-                //    $json_query_params['maxTokens'] = $options['maxTokens'];
-                // }
-                
                 // Only pass env_id if specified. Support both 'env_id' and legacy 'envId' keys.
                 if (isset($params['env_id'])) {
                     $json_query_params['env_id'] = $params['env_id'];
@@ -265,9 +288,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 
                 // Use simpleJsonQuery which returns structured JSON data
                 $result = $ai->simpleJsonQuery($prompt, $json_query_params);
+
+                $this->logger->log('AI Engine simpleJsonQuery response: ' . print_r($result, true), 'debug');
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
+
+                    $this->logger->log('AI Engine returned empty response for simpleJsonQuery.', 'error');
 
                     $this->log_call('json', $prompt, $options, $error);
 
@@ -277,6 +304,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 // Validate that we got valid JSON data
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
+
+                    $this->logger->log('AI Engine returned invalid JSON data for simpleJsonQuery.', 'error', array(
+                        'response_preview' => substr(print_r($result, true), 0, 200),
+                    ));
 
                     $this->log_call('json', $prompt, $options, $error);
 
@@ -339,57 +370,224 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     private function fallback_json_generation($prompt, $options = array()) {
         $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
-        
-        // Generate text response
-        $text_response = $this->generate_text($prompt, $options);
-        
-        if (is_wp_error($text_response)) {
-            // Re-log as json type for accurate statistics
-            $this->log_call('json', $prompt, $options, $text_response);
 
-            return $text_response;
-        }
-        
-        // Clean and parse JSON
-        $json_str = trim($text_response);
-        
-        // Remove potential markdown code blocks
-        $json_str = preg_replace('/^```json\s*/m', '', $json_str);
-        $json_str = preg_replace('/^```\s*/m', '', $json_str);
-        $json_str = preg_replace('/```$/m', '', $json_str);
-        $json_str = trim($json_str);
-        
-        // Decode JSON
-        $data = json_decode($json_str, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $error = new WP_Error('json_parse_error', sprintf(
-                __('Failed to parse JSON: %s', 'ai-post-scheduler'),
-                json_last_error_msg()
-            ));
+        return $this->generate_json_from_text($prompt, $options);
+    }
 
-            $this->logger->log('JSON parse error: ' . json_last_error_msg(), 'error', array(
-                'response_preview' => substr($json_str, 0, 200),
-            ));
+    /**
+     * Generate JSON via text completion with robust extraction.
+     *
+     * This path intentionally does not rely on simpleJsonQuery(). Retries,
+     * rate limiting, and circuit-breaker behavior are delegated to
+     * AIPS_Resilience_Service::execute_safely().
+     *
+     * @param string $prompt  Prompt instructing JSON output.
+     * @param array  $options Optional generation options.
+     * @return array|WP_Error
+     */
+    public function generate_json_from_text($prompt, $options = array()) {
+        $ai = $this->get_ai_engine();
 
-            // Log as json type with error
+        if (!$ai) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
-
+            $this->emit_integration_error_notification('json', $error, $options);
             return $error;
         }
-        
-        if (!is_array($data)) {
-            $error = new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
 
-            $this->log_call('json', $prompt, $options, $error);
+        $params = $this->prepare_options($options, $prompt);
 
-            return $error;
+        $log_context = array(
+            'model'         => isset($params['model']) ? $params['model'] : '',
+            'max_tokens'    => isset($params['maxTokens']) ? $params['maxTokens'] : (isset($params['max_tokens']) ? $params['max_tokens'] : ''),
+            'temperature'   => isset($params['temperature']) ? $params['temperature'] : '',
+            'prompt_length' => is_string($prompt) ? strlen($prompt) : 0,
+            'has_prompt'    => !empty($prompt),
+        );
+
+        if (defined('AIPS_AI_DEBUG_LOG_PROMPTS') && AIPS_AI_DEBUG_LOG_PROMPTS) {
+            $prompt_preview = is_string($prompt) ? substr($prompt, 0, 500) : '';
+
+            if (is_string($prompt) && strlen($prompt) > 500) {
+                $prompt_preview .= '... [truncated]';
+            }
+
+            $log_context['prompt_preview'] = $prompt_preview;
+            $log_context['params_keys']    = array_keys($params);
         }
-        
-        // Log successful JSON generation in fallback mode
-        $this->log_call('json', $prompt, $options, null, wp_json_encode($data));
-        
-        return $data;
+
+        $this->logger->log('Calling AI Engine for text-based JSON generation: ' . wp_json_encode($log_context), 'info');
+
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
+            try {
+                $text_response = $ai->simpleTextQuery($prompt, $params);
+
+                if (!$text_response || empty($text_response)) {
+                    $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
+                    $this->log_call('json', $prompt, $options, $error);
+                    return $error;
+                }
+
+                $extract_result = $this->extract_json_fragment((string) $text_response);
+
+                if (is_wp_error($extract_result)) {
+                    $error = new WP_Error('json_parse_error', $extract_result->get_error_message());
+
+                    $this->logger->log('JSON extraction failed for text-based JSON generation.', 'error', array(
+                        'response_preview' => substr((string) $text_response, 0, 220),
+                        'response_full' => (string) $text_response,
+                    ));
+
+                    $this->log_call('json', $prompt, $options, $error);
+
+                    return $error;
+                }
+
+                $data = json_decode($extract_result, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+                    $error = new WP_Error(
+                        'json_parse_error',
+                        sprintf(
+                            __('Failed to parse JSON: %s', 'ai-post-scheduler'),
+                            json_last_error_msg()
+                        )
+                    );
+
+                    $this->logger->log('JSON decode failed for text-based JSON generation.', 'error', array(
+                        'response_preview' => substr((string) $text_response, 0, 220),
+                        'response_full' => (string) $text_response,
+                    ));
+
+                    $this->log_call('json', $prompt, $options, $error);
+
+                    return $error;
+                }
+
+                $this->log_call('json', $prompt, $options, null, wp_json_encode($data));
+
+                return $data;
+            } catch (Exception $e) {
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
+                $this->log_call('json', $prompt, $options, $error);
+                return $error;
+            }
+        }, 'json', $prompt, $options);
+
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call('json', $prompt, $options, $result);
+                $this->emit_quota_alert_notification('json', $result, $options);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Extract the first balanced JSON object/array from text.
+     *
+     * @param string $text Raw AI text response.
+     * @return string|WP_Error Balanced JSON fragment or WP_Error.
+     */
+    private function extract_json_fragment($text) {
+        $text = trim((string) $text);
+
+        // Remove common markdown wrappers.
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/```\s*$/', '', $text);
+        $text = trim((string) $text);
+
+        $start_pos_obj = strpos($text, '{');
+        $start_pos_arr = strpos($text, '[');
+
+        if ($start_pos_obj === false && $start_pos_arr === false) {
+            return new WP_Error('json_extract_failed', __('No JSON start token found in AI response.', 'ai-post-scheduler'));
+        }
+
+        if ($start_pos_obj === false) {
+            $start_pos = $start_pos_arr;
+        } elseif ($start_pos_arr === false) {
+            $start_pos = $start_pos_obj;
+        } else {
+            $start_pos = min($start_pos_obj, $start_pos_arr);
+        }
+
+        $slice = substr($text, $start_pos);
+
+        $in_string = false;
+        $escape    = false;
+        $stack     = array();
+        $length    = strlen($slice);
+
+        for ($i = 0; $i < $length; $i++) {
+            $ch = $slice[$i];
+
+            if ($in_string) {
+                if ($escape) {
+                    $escape = false;
+                } elseif ($ch === '\\') {
+                    $escape = true;
+                } elseif ($ch === '"') {
+                    $in_string = false;
+                }
+
+                continue;
+            }
+
+            if ($ch === '"') {
+                $in_string = true;
+                continue;
+            }
+
+            if ($ch === '{' || $ch === '[') {
+                $stack[] = $ch;
+                continue;
+            }
+
+            if ($ch === '}' || $ch === ']') {
+                if (empty($stack)) {
+                    return new WP_Error('json_extract_failed', __('JSON appears malformed (unexpected closing token).', 'ai-post-scheduler'));
+                }
+
+                $open = array_pop($stack);
+                if (($open === '{' && $ch !== '}') || ($open === '[' && $ch !== ']')) {
+                    return new WP_Error('json_extract_failed', __('JSON appears malformed (mismatched tokens).', 'ai-post-scheduler'));
+                }
+
+                if (empty($stack)) {
+                    $candidate = substr($slice, 0, $i + 1);
+                    return $this->sanitize_json_candidate($candidate);
+                }
+            }
+        }
+
+        return new WP_Error('json_extract_failed', __('JSON appears truncated before closing token.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Normalize control characters in a candidate JSON fragment.
+     *
+     * @param string $candidate Candidate JSON fragment.
+     * @return string
+     */
+    private function sanitize_json_candidate($candidate) {
+        return preg_replace_callback(
+            '/"((?:[^"\\\\]|\\\\.)*)"/',
+            function ($m) {
+                $inner = $m[1];
+                $inner = str_replace("\r", '\\r', $inner);
+                $inner = str_replace("\n", '\\n', $inner);
+                $inner = str_replace("\t", '\\t', $inner);
+                $inner = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $inner);
+
+                return '"' . $inner . '"';
+            },
+            (string) $candidate
+        );
     }
 
     /**
@@ -495,10 +693,6 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return int The calculated maxTokens value (always ≥ 1).
      */
     private function calculate_max_tokens($prompt, $type = 'content') {
-        // Estimate the number of tokens consumed by the prompt itself.
-        // Standard approximation: 1 token ≈ 4 characters.
-        $prompt_tokens = (int) ceil(strlen((string) $prompt) / 4);
-
         // Determine the expected output token requirement for this request type.
         if (is_int($type) && $type > 0) {
             // Caller supplied a custom output token count as the base.
@@ -526,18 +720,15 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $output_tokens = max(1, $output_tokens);
         }
 
-        // Sum prompt input cost and expected output size, then apply a 25% buffer.
-        $base_total = $prompt_tokens + $output_tokens;
-        $buffer     = (int) ceil($base_total * 0.25);
-        $calculated = $base_total + $buffer;
-
-        // Respect the hard maximum configured in settings.
-        $limit = (int) AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
-        if ($limit > 0 && $calculated > $limit) {
-            $calculated = $limit;
-        }
-
-        return max(1, $calculated);
+        return AIPS_Token_Budget::calculate(
+            $prompt,
+            $output_tokens,
+            array(
+                'buffer_ratio' => 0.25,
+                'minimum_tokens' => 1,
+                'respect_config_limit' => true,
+            )
+        );
     }
 
     /**
@@ -595,17 +786,15 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         // Forward optional advanced options to maintain backwards compatibility
         // with callers that rely on passing these through to simpleTextQuery().
-        if (defined('self::OPTIONAL_QUERY_OPTION_KEYS') || true) {
-            foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
-                // env_id is already normalized to envId above, so we avoid
-                // passing it through again here to prevent ambiguity.
-                if ('env_id' === $key) {
-                    continue;
-                }
+        foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
+            // env_id is already normalized to envId above, so we avoid
+            // passing it through again here to prevent ambiguity.
+            if ('env_id' === $key) {
+                continue;
+            }
 
-                if (isset($options[$key])) {
-                    $params[$key] = $options[$key];
-                }
+            if (isset($options[$key])) {
+                $params[$key] = $options[$key];
             }
         }
         return $params;
