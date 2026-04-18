@@ -131,7 +131,7 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 				__( 'A job is considered stuck when it remains in pending/partial status for more than %d minutes.', 'ai-post-scheduler' ),
 				AIPS_Metrics_Repository::STUCK_JOB_THRESHOLD_MINUTES
 			),
-			__( 'To recover: check the History log for correlation IDs, verify AI Engine is responding, then use Flush WP-Cron Events if cron events are missing.', 'ai-post-scheduler' ),
+			__( 'To recover: check the History log for correlation IDs, verify AI Engine is responding, then use Flush Queue Events if queue events are missing.', 'ai-post-scheduler' ),
 		) : array();
 
 		$checks['stuck_jobs'] = array(

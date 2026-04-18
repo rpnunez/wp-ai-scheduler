@@ -97,6 +97,74 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the Queue Manager setting field.
+     *
+     * Displays a dropdown to select between WP-Cron and Action Scheduler.
+     * The Action Scheduler option is disabled (with a warning) when the
+     * ActionScheduler library is not available.
+     *
+     * @return void
+     */
+    public function queue_manager_field_callback() {
+        $value    = AIPS_Config::get_instance()->get_option( 'aips_queue_manager', 'wpcron' );
+        $as_avail = AIPS_Queue_Manager::is_action_scheduler_available();
+        ?>
+        <select name="aips_queue_manager" id="aips_queue_manager">
+            <option value="wpcron" <?php selected( $value, 'wpcron' ); ?>>
+                <?php esc_html_e( 'WP-Cron (default)', 'ai-post-scheduler' ); ?>
+            </option>
+            <option value="action_scheduler"
+                <?php selected( $value, 'action_scheduler' ); ?>
+                <?php disabled( $as_avail, false ); ?>>
+                <?php esc_html_e( 'Action Scheduler', 'ai-post-scheduler' ); ?>
+                <?php if ( ! $as_avail ) : ?>
+                    &mdash; <?php esc_html_e( 'Not Available', 'ai-post-scheduler' ); ?>
+                <?php endif; ?>
+            </option>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Choose how the plugin queues and fires scheduled events (post generation, topic generation, research, etc.).', 'ai-post-scheduler' ); ?>
+        </p>
+        <?php if ( ! $as_avail ) : ?>
+            <p class="description aips-notice-warning" style="color:#d63638; margin-top:4px;">
+                <span class="dashicons dashicons-warning" style="vertical-align:text-bottom;"></span>
+                <?php esc_html_e( 'Action Scheduler is not available. Install and activate a plugin that provides the Action Scheduler library (e.g. WooCommerce, Action Scheduler standalone) to enable this option.', 'ai-post-scheduler' ); ?>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Sanitize the aips_queue_manager option value.
+     *
+     * Only 'wpcron' and 'action_scheduler' are accepted.
+     * Falls back to 'wpcron' for any unknown value.
+     *
+     * @param string $value Raw submitted value.
+     * @return string Sanitized driver identifier.
+     */
+    public function sanitize_queue_manager( $value ) {
+        $allowed = array( 'wpcron', 'action_scheduler' );
+        $value   = sanitize_text_field( (string) $value );
+
+        if ( ! in_array( $value, $allowed, true ) ) {
+            return 'wpcron';
+        }
+
+        // Do not allow saving 'action_scheduler' when the library is unavailable.
+        if ( $value === 'action_scheduler' && ! AIPS_Queue_Manager::is_action_scheduler_available() ) {
+            add_settings_error(
+                'aips_queue_manager',
+                'as_unavailable',
+                __( 'Action Scheduler is not available on this site. Queue Manager has been reset to WP-Cron.', 'ai-post-scheduler' )
+            );
+            return 'wpcron';
+        }
+
+        return $value;
+    }
+
+    /**
      * Render the AI model setting field.
      *
      * Displays a text input for specifying a custom AI Engine model.

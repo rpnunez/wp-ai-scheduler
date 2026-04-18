@@ -235,3 +235,27 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+
+## 2026-04-18 - Queue Manager (Action Scheduler Support)
+**Target Feature:** Scheduler / Queue Infrastructure
+**Improvement:** Added a pluggable Queue Manager abstraction that routes all scheduling, deactivation, and flush operations through a single class (`AIPS_Queue_Manager`) rather than calling `wp_schedule_event` / `wp_clear_scheduled_hook` / `wp_next_scheduled` directly. A new `aips_queue_manager` setting (General tab, Settings page) lets admins choose between **WP-Cron** (default) and **Action Scheduler**. The Action Scheduler option is automatically disabled (greyed out with an explanatory warning) when the AS library is not available.
+
+All cron-lifecycle code has been updated:
+- **Activation** — now delegates to `AIPS_Queue_Manager::schedule_all_events()`.
+- **Deactivation** — now delegates to `AIPS_Queue_Manager::unschedule_all_events()`.
+- **`boot_cron()`** — registers custom WP-Cron intervals only when WP-Cron is the active driver (no-op for AS).
+- **`ajax_flush_cron_events()`** — renamed in docblock / messages to "queue events"; delegates to `AIPS_Queue_Manager::flush_and_reschedule()`.
+- **System Status "Cron Status" panel** — renamed to "Queue Status"; shows the active driver and an appropriate inactive message per driver.
+- **Diagnostics scheduler provider** — `check_cron()` delegates to `AIPS_Queue_Manager::get_hook_status()`; `check_scheduler_health()` is fully driver-aware (WP-Cron: duplicate detection; AS: presence-only check). Added "Queue Driver" row to the scheduler-health section.
+- **Queue provider diagnostics** — updated stuck-job recovery hint to reference "Flush Queue Events".
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-queue-manager.php` ← new
+- `ai-post-scheduler/includes/class-aips-config.php`
+- `ai-post-scheduler/includes/class-aips-settings.php`
+- `ai-post-scheduler/includes/class-aips-settings-ui.php`
+- `ai-post-scheduler/includes/class-aips-db-manager.php`
+- `ai-post-scheduler/includes/diagnostics/class-aips-system-diagnostics-scheduler-provider.php`
+- `ai-post-scheduler/includes/diagnostics/class-aips-system-diagnostics-queue-provider.php`
+- `ai-post-scheduler/templates/admin/system-status.php`
+- `ai-post-scheduler/ai-post-scheduler.php`
+**Outcome:** Admins can now switch queue drivers from Settings → General without touching code. The WP-Cron path is fully backward-compatible. The Action Scheduler path uses AS's deduplication-safe `as_schedule_recurring_action()` / `as_unschedule_all_actions()` / `as_next_scheduled_action()` functions, so jobs cannot stack. All UI copy is driver-agnostic ("Queue Events", "Flush Queue Events", "Queue Status"), making the settings and status pages correct regardless of which driver is active.
