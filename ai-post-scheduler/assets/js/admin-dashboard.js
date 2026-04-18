@@ -24,9 +24,15 @@
 		 * @return {void}
 		 */
 		init: function() {
+            // Bind page-level events (if any) regardless of the current screen, to ensure functionality if the user navigates without a full page reload.
+            this.bindEvents();
+
+            // Only run on the dashboard page.
 			if (!$('#aips-dashboard-panel').length) {
 				return;
 			}
+
+            // Render charts from embedded data.
 			this.renderCharts();
 		},
 
@@ -46,36 +52,37 @@
 		 */
 		renderCharts: function() {
 			var data = window.aipsDashboardChartData;
-			var l10n = window.aipsDashboardL10n || {};
 
 			if (!data || !data.labels) {
 				return;
 			}
 
 			if (typeof Chart === 'undefined') {
+                // If Chart.js failed to load, show an error message in each chart container instead of the canvas.
 				$('.aips-dashboard-chart-wrap').each(function() {
-					$(this).html('<p class="aips-telemetry-loading">' + (l10n.chartUnavailable || 'Chart library failed to load.') + '</p>');
+					$(this).html('<p class="aips-telemetry-loading">' + (window.aipsDashboardL10n.chartUnavailable || 'Chart library failed to load.') + '</p>');
 				});
 				return;
 			}
 
+            // Posts by day: Completed vs Failed (Bar Chart)
 			this.renderChart(
 				'aips-chart-posts-by-day',
 				data.labels,
 				[
 					{
-						label: l10n.chartCompletedLabel || 'Completed',
+						label: window.aipsDashboardL10n.chartCompletedLabel || 'Completed',
 						data:  data.completed,
-						backgroundColor: this.toAlpha('#2271b1', 0.75),
+						backgroundColor: AIPS.Utilities.toAlpha('#2271b1', 0.75),
 						borderColor:     '#2271b1',
 						borderWidth: 2,
 						borderRadius: 4,
 						borderSkipped: false
 					},
 					{
-						label: l10n.chartFailedLabel || 'Failed',
+						label: window.aipsDashboardL10n.chartFailedLabel || 'Failed',
 						data:  data.failed,
-						backgroundColor: this.toAlpha('#b32d2e', 0.65),
+						backgroundColor: AIPS.Utilities.toAlpha('#b32d2e', 0.65),
 						borderColor:     '#b32d2e',
 						borderWidth: 2,
 						borderRadius: 4,
@@ -83,17 +90,18 @@
 					}
 				],
 				'bar',
-				l10n.chartPostsTitle || 'Post Generations by Day'
+                window.aipsDashboardL10n.chartPostsTitle || 'Post Generations by Day'
 			);
 
+            // Topics by day (Line Chart)
 			this.renderChart(
 				'aips-chart-topics-by-day',
 				data.labels,
 				[
 					{
-						label: l10n.chartTopicsLabel || 'Topics Generated',
+						label: window.aipsDashboardL10n.chartTopicsLabel || 'Topics Generated',
 						data:  data.topics,
-						backgroundColor: this.toAlpha('#00a32a', 0.65),
+						backgroundColor: AIPS.Utilities.toAlpha('#00a32a', 0.65),
 						borderColor:     '#00a32a',
 						borderWidth: 2,
 						fill:        true,
@@ -101,17 +109,18 @@
 					}
 				],
 				'line',
-				l10n.chartTopicsTitle || 'Topic Generations by Day'
+                window.aipsDashboardL10n.chartTopicsTitle || 'Topic Generations by Day'
 			);
 
+            // Error rate by day (Line Chart)
 			this.renderChart(
 				'aips-chart-error-rate',
 				data.labels,
 				[
 					{
-						label: l10n.chartErrorRateLabel || 'Error Rate (%)',
+						label: window.aipsDashboardL10n.chartErrorRateLabel || 'Error Rate (%)',
 						data:  data.errorRate,
-						backgroundColor: this.toAlpha('#dba617', 0.55),
+						backgroundColor: AIPS.Utilities.toAlpha('#dba617', 0.55),
 						borderColor:     '#dba617',
 						borderWidth: 2,
 						fill:        true,
@@ -119,7 +128,7 @@
 					}
 				],
 				'line',
-				l10n.chartErrorRateTitle || 'AI Error Rate (%)'
+                window.aipsDashboardL10n.chartErrorRateTitle || 'AI Error Rate (%)'
 			);
 		},
 
@@ -190,20 +199,6 @@
 				options: options
 			});
 		},
-
-		/**
-		 * Apply alpha transparency to a hex colour string.
-		 *
-		 * @param {string} hex   Six-digit hex colour (e.g. '#2271b1').
-		 * @param {number} alpha Opacity between 0 and 1.
-		 * @return {string} rgba() CSS colour string.
-		 */
-		toAlpha: function(hex, alpha) {
-			var r = parseInt(hex.slice(1, 3), 16);
-			var g = parseInt(hex.slice(3, 5), 16);
-			var b = parseInt(hex.slice(5, 7), 16);
-			return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-		}
 	};
 
 	$(document).ready(function() {

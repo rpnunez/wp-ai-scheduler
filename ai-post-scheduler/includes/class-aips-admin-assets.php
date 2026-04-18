@@ -966,7 +966,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-dashboard-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
-            array('jquery', 'aips-admin-script', 'aips-chartjs'),
+            array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs'),
             AIPS_VERSION,
             true
         );
