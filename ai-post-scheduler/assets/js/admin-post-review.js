@@ -441,7 +441,7 @@
          * Open the post-preview modal and load the rendered post content.
          *
          * Resets the modal to a loading state, then sends the
-         * `aips_get_draft_post_preview` AJAX action. On success, builds and
+         * `aips_get_post_preview` AJAX action. On success, builds and
          * injects an HTML preview (title, featured image, excerpt, body content,
          * and an optional edit link) into `#aips-preview-content-container`.
          *
@@ -464,7 +464,7 @@
                 url: aipsPostReviewL10n.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_get_draft_post_preview',
+                    action: 'aips_get_post_preview',
                     post_id: postId,
                     nonce: aipsPostReviewL10n.nonce
                 },
