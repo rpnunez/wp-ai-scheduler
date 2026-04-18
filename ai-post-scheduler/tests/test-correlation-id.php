@@ -37,6 +37,8 @@ class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_
 	public function get_estimated_generation_time($limit = 20) { return 0; }
 	public function get_component_revisions($post_id, $component_type, $limit = 20) { return array(); }
 	public function post_has_history_and_completed($post_id) { return false; }
+	public function count_completed_for_schedule($schedule) { return 0; }
+	public function invalidate_schedule_completed_count_cache($schedule_id) {}
 }
 
 class Test_AIPS_Correlation_ID extends WP_UnitTestCase {
