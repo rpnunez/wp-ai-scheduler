@@ -1062,7 +1062,7 @@
                     if (response.success) {
                         var $select = $('#voice_id');
                         var currentVal = $select.val();
-                        $select.html('<option value="0">' + aipsAdminL10n.noVoiceDefault + '</option>');
+                        $select.html('<option value="0">' + aipsTemplatesL10n.noVoiceDefault + '</option>');
                         $.each(response.data.voices, function(i, voice) {
                             $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
                         });
@@ -3239,10 +3239,10 @@
                     if (structure) {
                         var T = AIPS.Templates;
                         var activeBadge = structure.is_active == 1
-                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
-                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
+                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsStructuresL10n.activeLabel) + '</span>'
+                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsStructuresL10n.inactiveLabel) + '</span>';
                         var defaultBadge = structure.is_default == 1
-                            ? '<span class="aips-badge aips-badge-info">' + T.escape(aipsAdminL10n.defaultLabel) + '</span>'
+                            ? '<span class="aips-badge aips-badge-info">' + T.escape(aipsStructuresL10n.defaultLabel) + '</span>'
                             : '<span class="cell-meta">&mdash;</span>';
                         var scheduleUrl = (aipsAjax.schedulePageUrl || '') + '&schedule_structure=' + T.escape(String(structure.id));
 
@@ -3398,8 +3398,8 @@
                     if (section) {
                         var T = AIPS.Templates;
                         var activeBadge = section.is_active == 1
-                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
-                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
+                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsStructuresL10n.activeLabel) + '</span>'
+                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsStructuresL10n.inactiveLabel) + '</span>';
 
                         var rowHtml = T.renderRaw('aips-tmpl-section-row', {
                             id: T.escape(String(section.id)),
@@ -3963,7 +3963,7 @@
             $modal.find('#summary_content_prompt').text(contentPrompt || '-');
 
             var voiceText = $('#voice_id option:selected').text();
-            $modal.find('#summary_voice').text(voiceText || aipsAdminL10n.noneOption);
+            $modal.find('#summary_voice').text(voiceText || aipsTemplatesL10n.noneOption);
 
             $modal.find('#summary_quantity').text($('#post_quantity').val() || '1');
 

@@ -97,15 +97,6 @@ class AIPS_Admin_Assets {
             'saving'              => __('Saving...', 'ai-post-scheduler'),
             'generating'          => __('Generating...', 'ai-post-scheduler'),
             'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
-            // Status/badge labels used on multiple list pages
-            'activeLabel'         => __('Active', 'ai-post-scheduler'),
-            'inactiveLabel'       => __('Inactive', 'ai-post-scheduler'),
-            'defaultLabel'        => __('Default', 'ai-post-scheduler'),
-            // Voice dropdown placeholder — referenced on both Voices and Templates pages
-            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
-            // "None" placeholder for the *template* wizard summary (schedule wizard uses
-            // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
-            'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets
@@ -347,6 +338,12 @@ class AIPS_Admin_Assets {
                 'exampleTopic'            => __('Example Topic', 'ai-post-scheduler'),
                 'failedToGeneratePreview' => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
                 'previewNetworkError'     => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
+                // Voice dropdown placeholder for the template wizard voice selector
+                // (moved from aipsAdminL10n in Phase F.1 — used only on the Templates page)
+                'noVoiceDefault'          => __('No Voice (Use Default)', 'ai-post-scheduler'),
+                // "None" placeholder used in the template wizard summary
+                // (moved from aipsAdminL10n in Phase F.1 — used only on the Templates page)
+                'noneOption'              => __('None', 'ai-post-scheduler'),
             ));
         }
 
@@ -373,6 +370,11 @@ class AIPS_Admin_Assets {
                 'saveSectionFailed'      => __('Failed to save prompt section.', 'ai-post-scheduler'),
                 'loadSectionFailed'      => __('Failed to load prompt section.', 'ai-post-scheduler'),
                 'deleteSectionFailed'    => __('Failed to delete prompt section.', 'ai-post-scheduler'),
+                // Status/badge labels for structure and section rows
+                // (moved from aipsAdminL10n in Phase F.1 — used exclusively on the Structures page)
+                'activeLabel'            => __('Active', 'ai-post-scheduler'),
+                'inactiveLabel'          => __('Inactive', 'ai-post-scheduler'),
+                'defaultLabel'           => __('Default', 'ai-post-scheduler'),
             ));
         }
 
