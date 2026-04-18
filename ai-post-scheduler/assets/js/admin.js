@@ -20,6 +20,8 @@
     ];
 
     Object.assign(AIPS, {
+        generatedPostPreviewMap: {},
+
         /**
          * Bootstrap the AIPS admin interface.
          *
@@ -71,6 +73,7 @@
             $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
+            $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
@@ -917,14 +920,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success modal instead of alert
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -936,6 +932,111 @@
                     AIPS.Utilities.resetButton($btn);
                 }
             });
+        },
+
+        /**
+         * Render and display the generated-posts success modal.
+         *
+         * Uses server-provided summary text plus the per-post preview payload to
+         * build the modal body with AIPS HTML templates.
+         *
+         * @param {Object} data - AJAX success payload from `aips_run_now`.
+         */
+        showGeneratedPostsModal: function(data) {
+            var generatedCount = parseInt(data && data.generated_count, 10);
+            var posts = $.isArray(data && data.posts) ? data.posts : [];
+            var summaryMessage = data && data.summary_message ? data.summary_message : '';
+            var noticeMessage = data && data.notice_message ? data.notice_message : '';
+            var templateEngine = AIPS.Templates || null;
+            var rowsHtml = '';
+            var tableHtml = '';
+            var $modalTitle = $('#aips-post-success-modal-title');
+            var $summary = $('#aips-success-message');
+            var $notice = $('#aips-success-note');
+            var $results = $('#aips-post-results-container');
+
+            AIPS.generatedPostPreviewMap = {};
+
+            if (isNaN(generatedCount) || generatedCount < 1) {
+                generatedCount = posts.length;
+            }
+
+            if ($modalTitle.length) {
+                $modalTitle.text(
+                    generatedCount === 1
+                        ? ($modalTitle.data('singularTitle') || 'Post Successfully Generated')
+                        : ($modalTitle.data('pluralTitle') || 'Posts Successfully Generated')
+                );
+            }
+
+            if ($summary.length) {
+                $summary.text(summaryMessage || (generatedCount === 1 ? '1 post has been generated.' : generatedCount + ' posts have been generated.'));
+            }
+
+            if ($notice.length) {
+                if (noticeMessage) {
+                    $notice.text(noticeMessage).show();
+                } else {
+                    $notice.text('').hide();
+                }
+            }
+
+            if ($results.length) {
+                $results.empty();
+
+                if (templateEngine && posts.length) {
+                    $.each(posts, function(index, post) {
+                        var postId = parseInt(post.id, 10);
+
+                        if (!isNaN(postId) && postId > 0) {
+                            AIPS.generatedPostPreviewMap[postId] = {
+                                title: post.title || '',
+                                excerpt: post.excerpt || '',
+                                post_content: post.post_content || ''
+                            };
+                        }
+
+                        rowsHtml += templateEngine.render('aips-tmpl-generated-post-row', {
+                            post_id: postId || 0,
+                            title: post.title || '',
+                            excerpt: post.excerpt || '',
+                            content_snippet: post.content_snippet || '',
+                            edit_url: post.edit_url || '',
+                            view_url: post.view_url || ''
+                        });
+                    });
+
+                    tableHtml = templateEngine.renderRaw('aips-tmpl-generated-posts-table', {
+                        rows: rowsHtml
+                    });
+
+                    $results.html(tableHtml);
+                }
+            }
+
+            $('#aips-post-success-modal').show();
+        },
+
+        /**
+         * Open the quick-preview modal for a generated post from the success table.
+         *
+         * @param {Event} e - Click event from `.aips-quick-preview-post`.
+         */
+        openGeneratedPostPreview: function(e) {
+            e.preventDefault();
+
+            var postId = parseInt($(this).data('postId'), 10);
+            var preview = !isNaN(postId) ? AIPS.generatedPostPreviewMap[postId] : null;
+
+            if (!preview) {
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                return;
+            }
+
+            $('#aips-post-preview-title').text(preview.title || '(no title)');
+            $('#aips-post-preview-excerpt').text(preview.excerpt || 'No excerpt available.');
+            $('#aips-post-preview-content').html(preview.post_content || '<p>No content available.</p>');
+            $('#aips-post-quick-preview-modal').show();
         },
 
         /**
@@ -3484,13 +3585,7 @@
                 success: function(response) {
                     if (response.success) {
                         $('#aips-template-modal').hide();
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -3631,6 +3726,10 @@
 
             var totalSteps = parseInt($modal.data('wizard-steps'), 10) ||
                 $modal.find('.aips-wizard-step-content').not('.aips-post-save-step').length;
+
+            // Restore the progress nav and footer in case they were hidden by showPostSaveActions.
+            $modal.find('.aips-wizard-progress').show();
+            $modal.find('.aips-wizard-footer').show();
 
             // Hide all steps, then show the target step
             $modal.find('.aips-wizard-step-content').hide();

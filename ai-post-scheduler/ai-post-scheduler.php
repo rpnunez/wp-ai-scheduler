@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.3.2
+ * Version: 2.4.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -18,11 +18,46 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Capture the request start time as early as possible so AIPS_Telemetry
+// can compute an accurate elapsed-time measurement.
+if (!defined('AIPS_REQUEST_START')) {
+    define('AIPS_REQUEST_START', microtime(true));
+}
+
+// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
+// slow/duplicate query analysis can inspect the collected query log.
+if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
+    define('SAVEQUERIES', true);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
+    define('AIPS_TELEMETRY_SLOW_QUERY_MS', 100);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_REQUEST_MS')) {
+    define('AIPS_TELEMETRY_SLOW_REQUEST_MS', 1500);
+}
+
+if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
+    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
+}
+
 // Define plugin constants
-define('AIPS_VERSION', '2.3.2');
-define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+if (!defined('AIPS_VERSION')) {
+    define('AIPS_VERSION', '2.4.1');
+}
+
+if (!defined('AIPS_PLUGIN_DIR')) {
+    define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_URL')) {
+    define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_BASENAME')) {
+    define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+}
 
 final class AI_Post_Scheduler {
     
@@ -335,6 +370,10 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Schedule_Repository::class);
         });
 
+        $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
+            return AIPS_Telemetry_Repository::instance();
+        });
+
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
@@ -419,6 +458,11 @@ final class AI_Post_Scheduler {
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
+        // Boot request-level telemetry if the option is enabled.
+        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+            AIPS_Telemetry::instance()->boot();
+        }
+
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
             'aips_source_group',
@@ -446,27 +490,41 @@ final class AI_Post_Scheduler {
     /**
      * Boot subsystems required only during WP-Cron execution.
      *
-     * Instantiates and registers cron hooks for the scheduler, topic generator,
-     * author post generator, and embeddings worker. Also boots the notification
-     * event handler (for generation-failure and quota alerts fired from cron)
-     * and the partial-generation reconciler (save_post fires when cron creates posts).
+     * Registers cron hook callbacks as closures that resolve the singleton
+     * instance at runtime (when WordPress fires the event). This means that
+     * a cron request dispatched for, say, aips_generate_author_topics will only
+     * ever instantiate AIPS_Author_Topics_Scheduler — the other scheduler
+     * objects are never constructed unless their own hooks fire in the same run.
+     *
+     * Also boots the notification event handler (for generation-failure and quota
+     * alerts fired from cron) and the partial-generation reconciler
+     * (save_post fires when cron creates posts).
      *
      * @return void
      */
     private function boot_cron() {
-        $aips_scheduler = new AIPS_Scheduler();
-        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
-        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+        // Lazy-resolve the main template scheduler only when its hook fires.
+        add_action('aips_generate_scheduled_posts', function() {
+            AIPS_Scheduler::instance()->process();
+        });
+        add_filter('cron_schedules', function($schedules) {
+            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+        });
 
-        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
-        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+        // Lazy-resolve the author-topics scheduler only when its hook fires.
+        add_action('aips_generate_author_topics', function() {
+            AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
+        });
 
-        $aips_author_post_generator = new AIPS_Author_Post_Generator();
-        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
+        // Lazy-resolve the author-post generator only when its hook fires.
+        add_action('aips_generate_author_posts', function() {
+            AIPS_Author_Post_Generator::instance()->process();
+        });
 
-        // Embeddings background worker.
-        $aips_embeddings_cron = new AIPS_Embeddings_Cron();
-        add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+        // Lazy-resolve the embeddings worker only when its hook fires.
+        add_action('aips_process_author_embeddings', function($args) {
+            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
+        }, 10, 1);
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
@@ -563,6 +621,65 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+/**
+ * Tell Query Monitor that files under the real (symlink-resolved) plugin
+ * directory belong to this plugin, not WordPress Core.
+ *
+ * When the plugin directory is a symlink, PHP's debug_backtrace() returns the
+ * real path (e.g. C:/Projects/.../ai-post-scheduler) which does not start with
+ * WP_PLUGIN_DIR, so QM falls back to "WordPress Core".
+ *
+ * The three companion filters together register the resolved path and map the
+ * custom key back to TYPE_PLUGIN with the correct plugin-slug context so that
+ * QM shows "Plugin: ai-post-scheduler" in the Component column.
+ */
+add_filter('qm/component_dirs', function( array $dirs ) {
+    $real = realpath( AIPS_PLUGIN_DIR );
+    if ( false === $real ) {
+        return $dirs;
+    }
+
+    $real = rtrim( str_replace( '\\', '/', $real ), '/' );
+
+    // Compare against the canonical WordPress plugins path, not AIPS_PLUGIN_DIR.
+    // In symlinked installs plugin_dir_path(__FILE__) can already be resolved.
+    $expected = rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR . '/ai-post-scheduler' ), '/' );
+
+    // Only add when the real path differs from the canonical WP plugin path
+    // (i.e. a symlink is in use). Using a namespaced key avoids overwriting
+    // QM's built-in 'plugin' entry which is appended after this filter runs.
+    if ( $real !== $expected ) {
+        $dirs['plugin:ai-post-scheduler'] = $real;
+    }
+
+    return $dirs;
+});
+
+// Map the custom dir-key type back to TYPE_PLUGIN so QM shows the correct
+// component class and name rather than falling into the "unknown" branch.
+add_filter('qm/component_type/plugin:ai-post-scheduler', function() {
+    return 'plugin';
+});
+
+// Supply the plugin slug as the context so the component name becomes
+// "Plugin: ai-post-scheduler" instead of "Plugin: plugin:ai-post-scheduler".
+add_filter('qm/component_context/plugin', function( $context, $file ) {
+    $real = realpath( AIPS_PLUGIN_DIR );
+    
+    if ( false === $real || ! is_string( $file ) ) {
+        return $context;
+    }
+
+    $real = rtrim( str_replace( '\\', '/', $real ), '/' );
+    $file = str_replace( '\\', '/', $file );
+
+    if ( 0 === strpos( $file, $real . '/' ) || $file === $real ) {
+        return 'ai-post-scheduler';
+    }
+
+    return $context;
+}, 10, 2);
 
 // Backward-compatibility alias: old review hook now triggers the rollup hook.
 add_action('aips_send_review_notifications', function() {

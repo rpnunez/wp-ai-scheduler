@@ -92,18 +92,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_authors_page')
         );
 
-        // Author Topics page - register under plugin parent, then hide from submenu.
+        // Author Topics page - hidden from menu navigation, accessible via URL.
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
             'aips-author-topics',
             array($this, 'render_author_topics_page')
         );
-
-        // Keep this page URL-accessible without showing an extra submenu item.
-        remove_submenu_page('ai-post-scheduler', 'aips-author-topics');
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -185,6 +182,17 @@ class AIPS_Admin_Menu {
             'aips-status',
             array($this, 'render_status_page')
         );
+
+        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+            add_submenu_page(
+                'ai-post-scheduler',
+                __('Telemetry', 'ai-post-scheduler'),
+                __('Telemetry', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-telemetry',
+                array($this, 'render_telemetry_page')
+            );
+        }
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -385,6 +393,16 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Telemetry page.
+     *
+     * @return void
+     */
+    public function render_telemetry_page() {
+        $controller = new AIPS_Telemetry_Controller();
+        $controller->render_page();
     }
 
     /**

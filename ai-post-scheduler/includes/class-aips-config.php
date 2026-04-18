@@ -190,6 +190,8 @@ class AIPS_Config {
             'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
+            // Telemetry
+            'aips_enable_telemetry' => false,
         );
     }
     

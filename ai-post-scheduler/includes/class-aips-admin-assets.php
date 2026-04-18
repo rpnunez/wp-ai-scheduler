@@ -508,6 +508,7 @@ class AIPS_Admin_Assets {
               'cancelButton' => __('Cancel', 'ai-post-scheduler'),
               'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
               'generatingButton' => __('Generating...', 'ai-post-scheduler'),
+              'selectTemplateRequired' => __('Please select a template before generating.', 'ai-post-scheduler'),
           ));
         }
 
@@ -524,6 +525,13 @@ class AIPS_Admin_Assets {
             );
             
             // Enqueue Post Review module (for Pending Review tab)
+            wp_enqueue_style(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
@@ -819,12 +827,109 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'         => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'   => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'   => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'  => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'   => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
+                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+            ));
+        }
+
+        if (strpos($hook, 'aips-telemetry') !== false) {
+            wp_enqueue_style(
+                'aips-telemetry-style',
+                AIPS_PLUGIN_URL . 'assets/css/telemetry.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-chartjs',
+                apply_filters(
+                    'aips_chartjs_src',
+                    AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+                ),
+                array(),
+                '4.4.2',
+                true
+            );
+
+            wp_enqueue_script(
+                'aips-telemetry-script',
+                AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
+                array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', array(
+                'nonce'                => wp_create_nonce('aips_get_telemetry'),
+                'detailsNonce'         => wp_create_nonce('aips_get_telemetry_details'),
+                'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'loadingDetails'       => __('Loading telemetry details…', 'ai-post-scheduler'),
+                'filterLabel'          => __('Filter', 'ai-post-scheduler'),
+                'resetFiltersLabel'    => __('Reset Filters', 'ai-post-scheduler'),
+                'requestFailed'        => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'detailsRequestFailed' => __('Failed to load telemetry details. Please try again.', 'ai-post-scheduler'),
+                'telemetryPage'        => __('Page %1$s of %2$s', 'ai-post-scheduler'),
+                'telemetryTotal'       => __('%s records', 'ai-post-scheduler'),
+                'telemetryNoRecords'   => __('No telemetry records found for the selected range.', 'ai-post-scheduler'),
+                'chartQueriesTitle'    => __('Queries Executed per Day', 'ai-post-scheduler'),
+                'chartMemoryTitle'     => __('Peak Memory per Day', 'ai-post-scheduler'),
+                'chartElapsedTitle'    => __('Average Elapsed Time per Day', 'ai-post-scheduler'),
+                'chartRequestsTitle'   => __('Requests Logged per Day', 'ai-post-scheduler'),
+                'chartQueriesLabel'    => __('Queries', 'ai-post-scheduler'),
+                'chartMemoryLabel'     => __('Peak Memory (MB)', 'ai-post-scheduler'),
+                'chartElapsedLabel'    => __('Average Elapsed (ms)', 'ai-post-scheduler'),
+                'chartRequestsLabel'   => __('Requests', 'ai-post-scheduler'),
+                'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+                'rangeSummary'         => __('Showing telemetry from %1$s to %2$s.', 'ai-post-scheduler'),
+                'refreshLabel'         => __('Refresh', 'ai-post-scheduler'),
+                'refreshing'           => __('Refreshing…', 'ai-post-scheduler'),
+                'viewDetails'          => __('View Details', 'ai-post-scheduler'),
+                'detailsTitle'         => __('Telemetry Details #%s', 'ai-post-scheduler'),
+                'detailsIdLabel'       => __('ID', 'ai-post-scheduler'),
+                'detailsTypeLabel'     => __('Type', 'ai-post-scheduler'),
+                'detailsPageLabel'     => __('Page', 'ai-post-scheduler'),
+                'detailsCategoriesLabel' => __('Categories', 'ai-post-scheduler'),
+                'detailsMethodLabel'   => __('Method', 'ai-post-scheduler'),
+                'detailsUserIdLabel'   => __('User ID', 'ai-post-scheduler'),
+                'detailsEventsLabel'   => __('Events', 'ai-post-scheduler'),
+                'detailsCacheCallsLabel' => __('Cache Calls', 'ai-post-scheduler'),
+                'detailsCacheHitsLabel' => __('Cache Hits', 'ai-post-scheduler'),
+                'detailsCacheMissesLabel' => __('Cache Misses', 'ai-post-scheduler'),
+                'detailsQueriesLabel'  => __('Queries', 'ai-post-scheduler'),
+                'detailsSlowQueriesLabel' => __('Slow Queries', 'ai-post-scheduler'),
+                'detailsDuplicateQueriesLabel' => __('Duplicate Queries', 'ai-post-scheduler'),
+                'detailsPeakMemoryLabel' => __('Peak Memory', 'ai-post-scheduler'),
+                'detailsElapsedLabel'  => __('Elapsed', 'ai-post-scheduler'),
+                'detailsInsertedLabel' => __('Inserted At', 'ai-post-scheduler'),
+                'detailsEventsSection' => __('Events', 'ai-post-scheduler'),
+                'detailsEventSummarySection' => __('Event Summary', 'ai-post-scheduler'),
+                'detailsCacheSummarySection' => __('Cache Summary', 'ai-post-scheduler'),
+                'detailsQuerySummarySection' => __('Query Summary', 'ai-post-scheduler'),
+                'detailsEventsHelp'    => __('The full event list can be long. Expand to inspect each nested event object.', 'ai-post-scheduler'),
+                'detailsEventSummaryHelp' => __('High-level telemetry counts grouped by bucket and event type.', 'ai-post-scheduler'),
+                'detailsCacheSummaryHelp' => __('Cache activity grouped by operation and result.', 'ai-post-scheduler'),
+                'detailsQuerySummaryHelp' => __('Query totals, slow queries, and duplicate query counts.', 'ai-post-scheduler'),
+                'detailsRawPayloadLabel' => __('Raw Payload JSON', 'ai-post-scheduler'),
+                'detailsRawPayloadHelp' => __('Review the structured payload summaries above, or expand the raw JSON below for the original object.', 'ai-post-scheduler'),
+                'detailsEventItemLabel' => __('Event %s', 'ai-post-scheduler'),
+                'detailsItemLabel'      => __('Item %s', 'ai-post-scheduler'),
+                'locale'               => get_locale(),
+                'expandLabel'          => __('Expand', 'ai-post-scheduler'),
+                'collapseLabel'        => __('Collapse', 'ai-post-scheduler'),
+                'insertedJustNow'      => __('just now', 'ai-post-scheduler'),
+                'insertedMinutesAgo'   => __('%s minutes ago', 'ai-post-scheduler'),
+                'insertedMinuteAgo'    => __('1 minute ago', 'ai-post-scheduler'),
+                'insertedHoursAgo'     => __('%s hours ago', 'ai-post-scheduler'),
+                'insertedHourAgo'      => __('1 hour ago', 'ai-post-scheduler'),
+                'insertedHoursMinutesAgo' => __('%1$s hours and %2$s minutes ago', 'ai-post-scheduler'),
+                'insertedYesterdayAt'  => __('yesterday at %s', 'ai-post-scheduler'),
+                'insertedAbsoluteDate'  => __('%1$s %2$s', 'ai-post-scheduler'),
+                'payloadEmpty'         => __('No payload was stored for this telemetry row.', 'ai-post-scheduler'),
+                'eventsEmpty'          => __('[]', 'ai-post-scheduler'),
             ));
         }
     }
