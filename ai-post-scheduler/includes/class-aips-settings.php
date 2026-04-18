@@ -594,6 +594,41 @@ class AIPS_Settings {
             'aips-settings',
             'aips_cache_section'
         );
+
+        // -----------------------------------------------------------------------
+        // Feature Flags section
+        //
+        // All flags are stored together in a single 'aips_feature_flags' option
+        // (an associative array of flag_name => bool). The registry in
+        // AIPS_Config::get_available_features() is the single source of truth;
+        // each flag defined there gets a settings field here automatically.
+        // -----------------------------------------------------------------------
+        register_setting('aips_settings', 'aips_feature_flags', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_feature_flags'),
+            'default'           => array(),
+        ));
+
+        add_settings_section(
+            'aips_feature_flags_section',
+            __('Feature Flags', 'ai-post-scheduler'),
+            array($this->ui, 'feature_flags_section_callback'),
+            'aips-settings'
+        );
+
+        $available_features = AIPS_Config::get_instance()->get_available_features();
+        foreach ($available_features as $flag_name => $flag_meta) {
+            add_settings_field(
+                'aips_feature_flag_' . $flag_name,
+                esc_html($flag_meta['name']),
+                array($this->ui, 'feature_flag_field_callback'),
+                'aips-settings',
+                'aips_feature_flags_section',
+                array(
+                    'flag'        => $flag_name,
+                    'description' => $flag_meta['description'],
+                )
+            );
+        }
     }
 
     /**
