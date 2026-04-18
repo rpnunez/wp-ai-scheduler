@@ -2,12 +2,12 @@
  * System Status page — toggle log detail rows and reset the circuit breaker.
  *
  * Relies on `aipsSystemStatusL10n` localised by AIPS_Admin_Assets:
- *   - nonce          {string} wp_nonce for aips_reset_circuit_breaker
- *   - hideDetails    {string} "Hide Details" label
- *   - showDetails    {string} "Show Details" label
- *   - resetSuccess   {string} Success confirmation text
- *   - resetFailed    {string} Generic failure text
- *   - requestFailed  {string} Network/AJAX failure text
+ *   - nonce              {string} wp_nonce for aips_reset_circuit_breaker
+ *   - hideDetails        {string} "Hide Details" label
+ *   - showDetails        {string} "Show Details" label
+ *   - resetSuccess       {string} Success confirmation text
+ *   - resetFailed        {string} Generic failure text
+ *   - requestFailed      {string} Network/AJAX failure text
  *
  * @package AI_Post_Scheduler
  */

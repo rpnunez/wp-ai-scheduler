@@ -400,7 +400,6 @@ if (!defined('ABSPATH')) {
                     </p>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
