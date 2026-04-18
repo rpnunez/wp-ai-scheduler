@@ -323,17 +323,33 @@ class FeatureScanner:
                 ),
             })
 
+    # Classes that legitimately use raw get_option() for plugin keys
+    # (e.g. bootstrap timing, circular-dependency avoidance).
+    CONFIG_EXEMPT_CLASSES = frozenset([
+        'AIPS_Config', 'AIPS_Upgrades', 'AIPS_DB_Manager',
+        'AIPS_Cache_Factory', 'AIPS_Telemetry',
+    ])
+
     def _check_raw_get_option(self, class_name: str, content: str, feature: Dict):
-        """Flag direct get_option() calls outside AIPS_Config."""
-        if class_name in ('AIPS_Config', 'AIPS_Upgrades', 'AIPS_DB_Manager'):
+        """Flag direct get_option() calls for plugin-owned keys outside AIPS_Config.
+
+        Only flags calls whose option key starts with ``aips_``.  WordPress
+        core options (e.g. ``admin_email``) are ignored because they do not
+        belong to the plugin's configuration layer.
+        """
+        if class_name in self.CONFIG_EXEMPT_CLASSES:
             return
-        raw_calls = re.findall(r'\bget_option\s*\(', content)
+        # Match standalone get_option( 'aips_...' ) but NOT ->get_option()
+        raw_calls = re.findall(
+            r"""(?<!->)\bget_option\s*\(\s*['"]aips_""",
+            content,
+        )
         if raw_calls:
             self.standards_violations[class_name].append({
                 'rule': 'config_usage',
                 'severity': 'info',
                 'message': (
-                    f"Uses raw get_option() {len(raw_calls)} time(s) — "
+                    f"Uses raw get_option() for plugin keys {len(raw_calls)} time(s) — "
                     f"prefer AIPS_Config::get_instance()->get_option()"
                 ),
             })
