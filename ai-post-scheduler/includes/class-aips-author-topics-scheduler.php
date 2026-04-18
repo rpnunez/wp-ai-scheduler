@@ -48,7 +48,7 @@ class AIPS_Author_Topics_Scheduler {
 	private $topics_generator;
 	
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 	
@@ -58,7 +58,7 @@ class AIPS_Author_Topics_Scheduler {
 	private $interval_calculator;
 	
 	/**
-	 * @var AIPS_History_Service Service for history logging
+	 * @var AIPS_History_Service_Interface Service for history logging
 	 */
 	private $history_service;
 
@@ -70,12 +70,13 @@ class AIPS_Author_Topics_Scheduler {
 	/**
 	 * Initialize the scheduler.
 	 */
-	public function __construct() {
+	public function __construct(?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$this->authors_repository = new AIPS_Authors_Repository();
 		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_service = new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->notifications = new AIPS_Notifications();
 	}
 	
