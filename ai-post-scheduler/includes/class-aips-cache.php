@@ -56,6 +56,14 @@ class AIPS_Cache {
 	 */
 	public function get( $key, $group = 'default', $default = null ) {
 		$value = $this->driver->get( $key, $group );
+		$this->record_cache_event(
+			'get',
+			array(
+				'key'   => (string) $key,
+				'group' => (string) $group,
+				'hit'   => null !== $value,
+			)
+		);
 		return $value !== null ? $value : $default;
 	}
 
@@ -69,7 +77,17 @@ class AIPS_Cache {
 	 * @return bool True on success.
 	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
-		return $this->driver->set( $key, $value, (int) $ttl, $group );
+		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
+		$this->record_cache_event(
+			'set',
+			array(
+				'key'     => (string) $key,
+				'group'   => (string) $group,
+				'ttl'     => (int) $ttl,
+				'success' => (bool) $result,
+			)
+		);
+		return $result;
 	}
 
 	/**
@@ -80,7 +98,16 @@ class AIPS_Cache {
 	 * @return bool True on success.
 	 */
 	public function delete( $key, $group = 'default' ) {
-		return $this->driver->delete( $key, $group );
+		$result = $this->driver->delete( $key, $group );
+		$this->record_cache_event(
+			'delete',
+			array(
+				'key'     => (string) $key,
+				'group'   => (string) $group,
+				'success' => (bool) $result,
+			)
+		);
+		return $result;
 	}
 
 	/**
@@ -91,7 +118,16 @@ class AIPS_Cache {
 	 * @return bool True if the key exists and has not expired.
 	 */
 	public function has( $key, $group = 'default' ) {
-		return $this->driver->has( $key, $group );
+		$result = $this->driver->has( $key, $group );
+		$this->record_cache_event(
+			'has',
+			array(
+				'key'     => (string) $key,
+				'group'   => (string) $group,
+				'present' => (bool) $result,
+			)
+		);
+		return $result;
 	}
 
 	/**
@@ -100,7 +136,14 @@ class AIPS_Cache {
 	 * @return bool True on success.
 	 */
 	public function flush() {
-		return $this->driver->flush();
+		$result = $this->driver->flush();
+		$this->record_cache_event(
+			'flush',
+			array(
+				'success' => (bool) $result,
+			)
+		);
+		return $result;
 	}
 
 	// -----------------------------------------------------------------------
@@ -118,11 +161,29 @@ class AIPS_Cache {
 	 */
 	public function remember( $key, $ttl, $callback, $group = 'default' ) {
 		if ($this->has( $key, $group )) {
+			$this->record_cache_event(
+				'remember',
+				array(
+					'key'   => (string) $key,
+					'group' => (string) $group,
+					'ttl'   => (int) $ttl,
+					'hit'   => true,
+				)
+			);
 			return $this->get( $key, $group );
 		}
 
 		$value = $callback();
 		$this->set( $key, $value, (int) $ttl, $group );
+		$this->record_cache_event(
+			'remember',
+			array(
+				'key'   => (string) $key,
+				'group' => (string) $group,
+				'ttl'   => (int) $ttl,
+				'hit'   => false,
+			)
+		);
 
 		return $value;
 	}
@@ -142,6 +203,15 @@ class AIPS_Cache {
 		$value = (int) $this->get( $key, $group, 0 );
 		$value += (int) $step;
 		$this->set( $key, $value, 0, $group );
+		$this->record_cache_event(
+			'increment',
+			array(
+				'key'   => (string) $key,
+				'group' => (string) $group,
+				'step'  => (int) $step,
+				'value' => $value,
+			)
+		);
 		return $value;
 	}
 
@@ -160,6 +230,15 @@ class AIPS_Cache {
 		$value = (int) $this->get( $key, $group, 0 );
 		$value -= (int) $step;
 		$this->set( $key, $value, 0, $group );
+		$this->record_cache_event(
+			'decrement',
+			array(
+				'key'   => (string) $key,
+				'group' => (string) $group,
+				'step'  => (int) $step,
+				'value' => $value,
+			)
+		);
 		return $value;
 	}
 
@@ -174,5 +253,31 @@ class AIPS_Cache {
 	 */
 	public function get_driver() {
 		return $this->driver;
+	}
+
+	/**
+	 * Record a cache-specific telemetry event when request telemetry is enabled.
+	 *
+	 * @param string $operation Cache operation name.
+	 * @param array  $data      Additional event metadata.
+	 * @return void
+	 */
+	private function record_cache_event( $operation, array $data ) {
+		if (!class_exists( 'AIPS_Telemetry' ) || !AIPS_Telemetry::is_enabled()) {
+			return;
+		}
+
+		$driver = get_class( $this->driver );
+		AIPS_Telemetry::instance()->add_event(
+			'cache',
+			array_merge(
+				array(
+					'type'      => 'cache_' . sanitize_key( $operation ),
+					'operation' => sanitize_key( $operation ),
+					'driver'    => sanitize_text_field( $driver ),
+				),
+				$data
+			)
+		);
 	}
 }
