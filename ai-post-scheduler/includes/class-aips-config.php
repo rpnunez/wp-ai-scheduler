@@ -191,6 +191,7 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            'aips_telemetry_query_diagnostics' => false,
         );
     }
     
