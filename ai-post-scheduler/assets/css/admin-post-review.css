@@ -87,3 +87,61 @@
 	text-align: center;
 	margin-top: 8px;
 }
+
+/* ==========================================================================
+   Content page — Source meta in Title/Post cell (all three tabs)
+   ========================================================================== */
+
+.aips-cell-source {
+	display: block;
+	font-size: 12px;
+	color: var(--aips-text-tertiary, #757575);
+	margin-top: 3px;
+	font-weight: 400;
+}
+
+/* ==========================================================================
+   Pending Review — 3-column action button grid
+   ========================================================================== */
+
+.aips-actions-grid-3 {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 5px;
+	align-items: center;
+}
+
+.aips-actions-grid-3 .aips-btn {
+	justify-content: center;
+	width: 100%;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Content page — Source meta in Title/Post cell (all three tabs)
+   ========================================================================== */
+
+.aips-cell-source {
+	display: block;
+	font-size: 12px;
+	color: var(--aips-text-tertiary, #757575);
+	margin-top: 3px;
+	font-weight: 400;
+}
+
+/* ==========================================================================
+   Pending Review — 3-column action button grid
+   ========================================================================== */
+
+.aips-actions-grid-3 {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 5px;
+	align-items: center;
+}
+
+.aips-actions-grid-3 .aips-btn {
+	justify-content: center;
+	width: 100%;
+	text-align: center;
+}

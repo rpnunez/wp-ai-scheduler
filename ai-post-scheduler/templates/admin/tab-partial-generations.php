@@ -81,7 +81,7 @@ if (!defined('ABSPATH')) {
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Missing Components', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('State', 'ai-post-scheduler'); ?></th>
-								<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+
 								<th scope="col"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Updated', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
@@ -89,12 +89,29 @@ if (!defined('ABSPATH')) {
 							</tr>
 						</thead>
 						<tbody>
-							<?php foreach ($partial_posts_data as $post_data): ?>
+							<?php
+						$format_relative_date = static function ( $date_string ) {
+							if ( ! $date_string ) {
+								return '—';
+							}
+							$timestamp = strtotime( $date_string );
+							if ( ! $timestamp ) {
+								return '—';
+							}
+							if ( ( time() - $timestamp ) < DAY_IN_SECONDS ) {
+								/* translators: %s: human-readable time difference */
+								return sprintf( __( '%s ago', 'ai-post-scheduler' ), human_time_diff( $timestamp ) );
+							}
+							return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
+						};
+						?>
+						<?php foreach ($partial_posts_data as $post_data): ?>
 							<tr>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
+									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
 								</td>
 								<td>
 									<?php if (!empty($post_data['missing_components'])): ?>
@@ -113,18 +130,13 @@ if (!defined('ABSPATH')) {
 									<?php endif; ?>
 								</td>
 								<td>
-									<span class="aips-badge aips-badge-neutral">
-										<?php echo esc_html($post_data['source']); ?>
-									</span>
-								</td>
-								<td>
 									<div class="cell-meta"><?php echo esc_html($controller->format_post_status($post_data['post_status'])); ?></div>
 								</td>
 								<td>
-									<div class="cell-meta"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_updated']))); ?></div>
+									<div class="cell-meta"><?php echo esc_html($format_relative_date($post_data['date_updated'])); ?></div>
 								</td>
 								<td>
-									<div class="cell-meta"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?></div>
+									<div class="cell-meta"><?php echo esc_html($format_relative_date($post_data['date_generated'])); ?></div>
 								</td>
 								<td>
 									<div class="cell-actions">
