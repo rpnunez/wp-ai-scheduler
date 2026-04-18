@@ -13,8 +13,7 @@ This script analyzes the plugin's PHP files to generate comprehensive documentat
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
-from datetime import datetime
+from typing import Dict, List
 from collections import defaultdict
 
 
@@ -47,7 +46,6 @@ class FeatureScanner:
     def __init__(self, plugin_dir: str):
         self.plugin_dir = Path(plugin_dir)
         self.includes_dir = self.plugin_dir / "includes"
-        self.diagnostics_dir = self.includes_dir / "diagnostics"
         self.features = {}
         self.interfaces = {}
         self.class_dependencies = defaultdict(set)
@@ -55,31 +53,18 @@ class FeatureScanner:
         self.standards_violations = defaultdict(list)
 
     def scan_all_files(self) -> Dict:
-        """Scan all PHP files in includes and its subdirectories."""
+        """Scan all PHP files recursively under includes/ and its subdirectories."""
         if not self.includes_dir.exists():
             print(f"Error: Directory {self.includes_dir} does not exist")
             sys.exit(1)
 
-        # Scan class files in includes/
-        php_files = sorted(self.includes_dir.glob("class-aips-*.php"))
-        for php_file in php_files:
+        # Recursively scan class files under includes/
+        for php_file in sorted(self.includes_dir.rglob("class-aips-*.php")):
             self.analyze_file(php_file)
 
-        # Scan diagnostics subdirectory
-        if self.diagnostics_dir.exists():
-            diag_files = sorted(self.diagnostics_dir.glob("class-aips-*.php"))
-            for php_file in diag_files:
-                self.analyze_file(php_file)
-
-        # Scan interface files
-        interface_files = sorted(self.includes_dir.glob("interface-aips-*.php"))
-        for iface_file in interface_files:
+        # Recursively scan interface files under includes/
+        for iface_file in sorted(self.includes_dir.rglob("interface-aips-*.php")):
             self.analyze_interface_file(iface_file)
-
-        if self.diagnostics_dir.exists():
-            diag_iface_files = sorted(self.diagnostics_dir.glob("interface-aips-*.php"))
-            for iface_file in diag_iface_files:
-                self.analyze_interface_file(iface_file)
 
         # Run standards compliance checks after all files are scanned
         self.check_standards_compliance()
