@@ -43,6 +43,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     private $table_name;
     private $table_name_log;
+	private $schedule_table;
     
     /**
      * @var wpdb WordPress database abstraction object
@@ -57,6 +58,77 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
+        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+    }
+
+    /**
+     * Count completed generations for a schedule.
+     *
+     * @param int|object $schedule Schedule ID or schedule object.
+     * @return int
+     */
+    public function count_completed_for_schedule($schedule) {
+        if (is_numeric($schedule)) {
+            $schedule_id = absint($schedule);
+            if (!$schedule_id) {
+                return 0;
+            }
+
+            $schedule = $this->wpdb->get_row($this->wpdb->prepare(
+                "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
+                $schedule_id
+            ));
+        } else {
+            if (!is_object($schedule) || empty($schedule->id)) {
+                return 0;
+            }
+
+            $schedule_id = absint($schedule->id);
+
+            if (empty($schedule->template_id)) {
+                $schedule = $this->wpdb->get_row($this->wpdb->prepare(
+                    "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
+                    $schedule_id
+                ));
+            }
+        }
+
+        if (!$schedule || empty($schedule->template_id)) {
+            return 0;
+        }
+
+        $cache_key = 'aips_schedule_completed_count_' . $schedule_id;
+        $cached_count = get_transient($cache_key);
+
+        if ($cached_count !== false) {
+            return (int) $cached_count;
+        }
+
+        $count = (int) $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_name}
+            WHERE template_id = %d
+            AND status = %s
+            AND created_at >= (
+                SELECT created_at FROM {$this->schedule_table} WHERE id = %d
+            )",
+            (int) $schedule->template_id,
+            'completed',
+            $schedule_id
+        ));
+
+        set_transient($cache_key, $count, DAY_IN_SECONDS);
+
+        return $count;
+    }
+
+    /**
+     * Invalidate the cached completed-count for a schedule.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return void
+     */
+    public function invalidate_schedule_completed_count_cache($schedule_id) {
+        delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
     }
     
     /**

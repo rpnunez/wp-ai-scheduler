@@ -349,6 +349,26 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the enable telemetry setting field.
+     *
+     * Displays a checkbox to enable or disable request-level telemetry
+     * recording (staging/dev use only).
+     *
+     * @return void
+     */
+    public function enable_telemetry_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
+        ?>
+        <input type="hidden" name="aips_enable_telemetry" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
@@ -555,6 +575,41 @@ class AIPS_Settings_UI {
         ?>
         <textarea name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Default Article Structure field.
+     *
+     * @return void
+     */
+    public function site_default_article_structure_field_callback() {
+        $value = absint(AIPS_Config::get_instance()->get_option('aips_default_article_structure_id'));
+        $repository = new AIPS_Article_Structure_Repository();
+        $structures = $repository->get_all(false);
+        ?>
+        <select name="aips_default_article_structure_id">
+            <option value="0"><?php esc_html_e('Select an article structure', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($structures as $structure) : ?>
+                <?php
+                $structure_id = isset($structure->id) ? absint($structure->id) : 0;
+                $is_active    = true;
+
+                if (isset($structure->is_active)) {
+                    $is_active = (bool) $structure->is_active;
+                }
+
+                $label = $structure->name;
+                if (!$is_active) {
+                    $label .= ' ' . __('(Inactive)', 'ai-post-scheduler');
+                }
+
+                $disabled = (!$is_active && $value !== $structure_id) ? ' disabled="disabled"' : '';
+                ?>
+                <option value="<?php echo esc_attr($structure_id); ?>" <?php selected($value, $structure_id); ?><?php echo $disabled; ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Used as the fallback structure whenever a schedule or generation flow does not specify one explicitly.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 

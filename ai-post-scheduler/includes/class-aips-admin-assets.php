@@ -525,6 +525,13 @@ class AIPS_Admin_Assets {
             );
             
             // Enqueue Post Review module (for Pending Review tab)
+            wp_enqueue_style(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
@@ -820,12 +827,180 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'         => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'   => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'   => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'  => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'   => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed' => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
+                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+            ));
+        }
+
+        if (strpos($hook, 'aips-telemetry') !== false) {
+            wp_enqueue_style(
+                'aips-telemetry-style',
+                AIPS_PLUGIN_URL . 'assets/css/telemetry.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-chartjs',
+                apply_filters(
+                    'aips_chartjs_src',
+                    AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+                ),
+                array(),
+                '4.4.2',
+                true
+            );
+
+            wp_enqueue_script(
+                'aips-telemetry-script',
+                AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
+                array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', array(
+                'nonce'                => wp_create_nonce('aips_get_telemetry'),
+                'detailsNonce'         => wp_create_nonce('aips_get_telemetry_details'),
+                'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'loadingDetails'       => __('Loading telemetry details…', 'ai-post-scheduler'),
+                'filterLabel'          => __('Filter', 'ai-post-scheduler'),
+                'resetFiltersLabel'    => __('Reset Filters', 'ai-post-scheduler'),
+                'requestFailed'        => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'detailsRequestFailed' => __('Failed to load telemetry details. Please try again.', 'ai-post-scheduler'),
+                'telemetryPage'        => __('Page %1$s of %2$s', 'ai-post-scheduler'),
+                'telemetryTotal'       => __('%s records', 'ai-post-scheduler'),
+                'telemetryNoRecords'   => __('No telemetry records found for the selected range.', 'ai-post-scheduler'),
+                'chartQueriesTitle'    => __('Queries Executed per Day', 'ai-post-scheduler'),
+                'chartMemoryTitle'     => __('Peak Memory per Day', 'ai-post-scheduler'),
+                'chartElapsedTitle'    => __('Average Elapsed Time per Day', 'ai-post-scheduler'),
+                'chartRequestsTitle'   => __('Requests Logged per Day', 'ai-post-scheduler'),
+                'chartQueriesLabel'    => __('Queries', 'ai-post-scheduler'),
+                'chartMemoryLabel'     => __('Peak Memory (MB)', 'ai-post-scheduler'),
+                'chartElapsedLabel'    => __('Average Elapsed (ms)', 'ai-post-scheduler'),
+                'chartRequestsLabel'   => __('Requests', 'ai-post-scheduler'),
+                'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+                'rangeSummary'         => __('Showing telemetry from %1$s to %2$s.', 'ai-post-scheduler'),
+                'refreshLabel'         => __('Refresh', 'ai-post-scheduler'),
+                'refreshing'           => __('Refreshing…', 'ai-post-scheduler'),
+                'viewDetails'          => __('View Details', 'ai-post-scheduler'),
+                'detailsTitle'         => __('Telemetry Details #%s', 'ai-post-scheduler'),
+                'detailsIdLabel'       => __('ID', 'ai-post-scheduler'),
+                'detailsTypeLabel'     => __('Type', 'ai-post-scheduler'),
+                'detailsPageLabel'     => __('Page', 'ai-post-scheduler'),
+                'detailsCategoriesLabel' => __('Categories', 'ai-post-scheduler'),
+                'detailsMethodLabel'   => __('Method', 'ai-post-scheduler'),
+                'detailsUserIdLabel'   => __('User ID', 'ai-post-scheduler'),
+                'detailsEventsLabel'   => __('Events', 'ai-post-scheduler'),
+                'detailsCacheCallsLabel' => __('Cache Calls', 'ai-post-scheduler'),
+                'detailsCacheHitsLabel' => __('Cache Hits', 'ai-post-scheduler'),
+                'detailsCacheMissesLabel' => __('Cache Misses', 'ai-post-scheduler'),
+                'detailsQueriesLabel'  => __('Queries', 'ai-post-scheduler'),
+                'detailsSlowQueriesLabel' => __('Slow Queries', 'ai-post-scheduler'),
+                'detailsDuplicateQueriesLabel' => __('Duplicate Queries', 'ai-post-scheduler'),
+                'detailsPeakMemoryLabel' => __('Peak Memory', 'ai-post-scheduler'),
+                'detailsElapsedLabel'  => __('Elapsed', 'ai-post-scheduler'),
+                'detailsInsertedLabel' => __('Inserted At', 'ai-post-scheduler'),
+                'detailsEventsSection' => __('Events', 'ai-post-scheduler'),
+                'detailsEventSummarySection' => __('Event Summary', 'ai-post-scheduler'),
+                'detailsCacheSummarySection' => __('Cache Summary', 'ai-post-scheduler'),
+                'detailsQuerySummarySection' => __('Query Summary', 'ai-post-scheduler'),
+                'detailsEventsHelp'    => __('The full event list can be long. Expand to inspect each nested event object.', 'ai-post-scheduler'),
+                'detailsEventSummaryHelp' => __('High-level telemetry counts grouped by bucket and event type.', 'ai-post-scheduler'),
+                'detailsCacheSummaryHelp' => __('Cache activity grouped by operation and result.', 'ai-post-scheduler'),
+                'detailsQuerySummaryHelp' => __('Query totals, slow queries, and duplicate query counts.', 'ai-post-scheduler'),
+                'detailsRawPayloadLabel' => __('Raw Payload JSON', 'ai-post-scheduler'),
+                'detailsRawPayloadHelp' => __('Review the structured payload summaries above, or expand the raw JSON below for the original object.', 'ai-post-scheduler'),
+                'detailsEventItemLabel' => __('Event %s', 'ai-post-scheduler'),
+                'detailsItemLabel'      => __('Item %s', 'ai-post-scheduler'),
+                'locale'               => get_locale(),
+                'expandLabel'          => __('Expand', 'ai-post-scheduler'),
+                'collapseLabel'        => __('Collapse', 'ai-post-scheduler'),
+                'insertedJustNow'      => __('just now', 'ai-post-scheduler'),
+                'insertedMinutesAgo'   => __('%s minutes ago', 'ai-post-scheduler'),
+                'insertedMinuteAgo'    => __('1 minute ago', 'ai-post-scheduler'),
+                'insertedHoursAgo'     => __('%s hours ago', 'ai-post-scheduler'),
+                'insertedHourAgo'      => __('1 hour ago', 'ai-post-scheduler'),
+                'insertedHoursMinutesAgo' => __('%1$s hours and %2$s minutes ago', 'ai-post-scheduler'),
+                'insertedYesterdayAt'  => __('yesterday at %s', 'ai-post-scheduler'),
+                'insertedAbsoluteDate'  => __('%1$s %2$s', 'ai-post-scheduler'),
+                'payloadEmpty'         => __('No payload was stored for this telemetry row.', 'ai-post-scheduler'),
+                'eventsEmpty'          => __('[]', 'ai-post-scheduler'),
+            ));
+        }
+
+        // Internal Links Page Scripts
+        if (strpos($hook, 'aips-internal-links') !== false) {
+            wp_enqueue_script(
+                'aips-admin-internal-links',
+                AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+            wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksL10n', array(
+                'nonce'                    => wp_create_nonce('aips_ajax_nonce'),
+                'confirmDelete'            => __('Delete this suggestion? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmClearIndex'        => __('Clear the entire index and all suggestions? This cannot be undone.', 'ai-post-scheduler'),
+                'indexingStarted'          => __('Indexing started. Posts will be processed in the background.', 'ai-post-scheduler'),
+                'indexingNotAvailable'     => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler'),
+                'generating'               => __('Generating…', 'ai-post-scheduler'),
+                'reindexing'               => __('Re-indexing…', 'ai-post-scheduler'),
+                'loading'                  => __('Loading…', 'ai-post-scheduler'),
+                'noSuggestions'            => __('No suggestions found. Run indexing and generate suggestions to see results.', 'ai-post-scheduler'),
+                'errorLoading'             => __('Error loading suggestions.', 'ai-post-scheduler'),
+                'errorDeleting'            => __('Error deleting suggestion.', 'ai-post-scheduler'),
+                'statusUpdated'            => __('Status updated.', 'ai-post-scheduler'),
+                'anchorUpdated'            => __('Anchor text updated.', 'ai-post-scheduler'),
+                'statusUpdateFailed'       => __('Failed to update status.', 'ai-post-scheduler'),
+                'anchorUpdateFailed'       => __('Failed to update anchor text.', 'ai-post-scheduler'),
+                'invalidPostId'            => __('Please enter a valid post ID.', 'ai-post-scheduler'),
+                'requestFailed'            => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'acceptAction'             => __('Accept suggestion', 'ai-post-scheduler'),
+                'rejectAction'             => __('Reject suggestion', 'ai-post-scheduler'),
+                'accepted'                 => __('Accepted', 'ai-post-scheduler'),
+                'rejected'                 => __('Rejected', 'ai-post-scheduler'),
+                'pending'                  => __('Pending', 'ai-post-scheduler'),
+                'inserted'                 => __('Inserted', 'ai-post-scheduler'),
+                // Insert Link modal strings
+                'insertLink'               => __('Insert Link', 'ai-post-scheduler'),
+                'loadingFailed'            => __('Failed to load post data. Please try again.', 'ai-post-scheduler'),
+                'noContent'                => __('(No content)', 'ai-post-scheduler'),
+                'noInsertSuggestions'      => __('No accepted suggestions found for this post.', 'ai-post-scheduler'),
+                'insertBtn'                => __('Get Suggestions', 'ai-post-scheduler'),
+                'findingLocations'         => __('Finding insertion locations…', 'ai-post-scheduler'),
+                'locationsFailed'          => __('Failed to find insertion locations. Please try again.', 'ai-post-scheduler'),
+                'noLocations'              => __('No valid insertion locations could be shown for this suggestion.', 'ai-post-scheduler'),
+                'invalidLocationsHint'     => __('The AI responded, but its suggestions rewrote the source text instead of bracketing an existing phrase.', 'ai-post-scheduler'),
+                'insertionLocationsLabel'  => __('Insertion Locations', 'ai-post-scheduler'),
+                'returnedCountLabel'       => __('Showing %1$d valid of %2$d AI suggestions', 'ai-post-scheduler'),
+                'zeroSuggestionsReturned'  => __('0 valid suggestions', 'ai-post-scheduler'),
+                'aiSuggestionsReturned'    => __('AI returned %d suggestion(s)', 'ai-post-scheduler'),
+                'reasonLabel'              => __('Reason', 'ai-post-scheduler'),
+                'originalSnippetLabel'     => __('Original text', 'ai-post-scheduler'),
+                'withLinkLabel'            => __('With link inserted', 'ai-post-scheduler'),
+                'applyBtn'                 => __('Apply', 'ai-post-scheduler'),
+                'applying'                 => __('Applying…', 'ai-post-scheduler'),
+                'applied'                  => __('Link inserted successfully.', 'ai-post-scheduler'),
+                'applyFailed'              => __('Failed to apply insertion. Please try again.', 'ai-post-scheduler'),
+                'editAnchorText'           => __('Edit anchor text', 'ai-post-scheduler'),
+                'deleteSuggestion'         => __('Delete suggestion', 'ai-post-scheduler'),
+                'anchorLabel'              => __('Anchor', 'ai-post-scheduler'),
+                'optionLabel'              => __('Option', 'ai-post-scheduler'),
+                // Preview insertion flow strings
+                'updatePostBtn'            => __('Update Post with Inserted Links', 'ai-post-scheduler'),
+                'updating'                 => __('Updating…', 'ai-post-scheduler'),
+                'updateFailed'             => __('Failed to update post. Please try again.', 'ai-post-scheduler'),
+                'editInsertedLink'         => __('Edit anchor', 'ai-post-scheduler'),
+                'removeInsertedLink'       => __('Remove link', 'ai-post-scheduler'),
+                'alreadyApplied'           => __('This suggestion has already been applied to the preview.', 'ai-post-scheduler'),
+                'snippetNotFound'          => __('The selected text was not found in the content preview.', 'ai-post-scheduler'),
+                'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
+                'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
         }
     }

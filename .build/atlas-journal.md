@@ -1352,8 +1352,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
 
-## 2026-03-08 - Extract Notifications Event Handler
-
+## 2026-03-08 - [Extract Notifications Event Handler]
 **Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
 **Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
 **Consequence:**
@@ -1363,8 +1362,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
 **Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
 
-## 2026-03-08 - Extract Settings Callbacks and UI rendering
-
+## 2026-03-08 - [Extract Settings Callbacks and UI rendering]
 **Context:** The `AIPS_Settings` class had grown to over 1100 lines and acted as a "God Object", handling settings registration (`register_setting`), rendering sections and fields callbacks, sanitizing inputs, and processing AJAX endpoints (`ajax_test_connection`, `ajax_notifications_data_hygiene`). This violated the Single Responsibility Principle, tightly coupling data structure initialization with UI rendering and request handling.
 **Decision:** Applied "Separation of Concerns". Created `AIPS_Settings_UI` (to house all `_callback` methods and `sanitize_` routines) and `AIPS_Settings_AJAX` (to house the `wp_ajax_` handlers). The `AIPS_Settings` class now cleanly instantiates these helper classes inside its constructor and focuses purely on `register_settings` and schema definitions.
 **Consequence:**
@@ -1373,8 +1371,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
 
-## 2026-03-08 - Extract Schedule Result Handler
-
+## 2026-03-08 - [Extract Schedule Result Handler]
 **Context:** The `AIPS_Schedule_Processor` class had grown too large and handled multiple disparate responsibilities, including claim-first locking, sequence coordination, context processing, *as well as* finalization cleanup, failure persistence, and post-success notifications and history logging.
 **Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Extracted all post-execution logic (`handle_post_execution_cleanup`, `handle_execution_failure`, `handle_execution_success`, and `get_or_create_schedule_history`) into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:**
@@ -1383,3 +1380,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * `AIPS_Schedule_Processor` is now strictly focused on finding schedules, asserting locks, and orchestrating generation batches.
 * Trade-off: Slightly increases DI dependencies initialized within `AIPS_Schedule_Processor` since `AIPS_Schedule_Result_Handler` must be constructed internally to preserve the public constructor signature for backward compatibility.
 **Tests:** Ran the existing test suite, ensuring `test_autoloader_loads_service_classes` correctly validates the new service class structure. No tests were broken as the API interface remains strictly identical for upstream callers.
+
+## 2026-04-16 - [Detangle System Status Diagnostics]
+**Context:** The AIPS_System_Status class is a God Object handling UI rendering and complex system diagnostic data gathering. Extracting it into a single AIPS_System_Diagnostics_Service created another God Object.
+**Decision:** Introduced a Provider pattern. Created AIPS_System_Diagnostic_Provider_Interface. Extracted diagnostics into cohesive providers (Environment, Scheduler, Queue, Logs). AIPS_System_Diagnostics_Service now acts as an aggregator.
+**Consequence:** High cohesion and loose coupling achieved. AIPS_System_Status delegates to AIPS_System_Diagnostics_Service, which aggregates from modular providers. Backwards compatibility preserved for the output of get_system_info().
+**Tests:** Created tests for AIPS_System_Diagnostics_Service to ensure it accurately aggregates data from providers. Full test suite run successfully.
