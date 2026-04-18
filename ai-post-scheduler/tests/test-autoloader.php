@@ -199,6 +199,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 			'AIPS_AI_Service',
 			'AIPS_Image_Service',
 			'AIPS_Notifications_Event_Handler',
+			'AIPS_System_Diagnostics_Service',
 		);
 		
 		foreach ($services as $class_name) {
