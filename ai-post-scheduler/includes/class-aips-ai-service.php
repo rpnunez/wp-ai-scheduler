@@ -395,7 +395,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             return $error;
         }
 
-        $params = $this->prepare_options($options);
+        $params = $this->prepare_options($options, $prompt);
 
         $log_context = array(
             'model'         => isset($params['model']) ? $params['model'] : '',

@@ -59,8 +59,6 @@
 		 * Bind all UI event listeners.
 		 */
 		bindEvents: function () {
-			var self = this;
-
 			// Tab navigation
 			$(document).on('click', '.aips-tab-link', this.onTabClick.bind(this));
 
@@ -86,23 +84,13 @@
 			$(document).on('click', '.aips-il-edit-anchor-btn', this.onEditAnchorClick.bind(this));
 
 			// Insert Link button (accepted rows)
-			$(document).on('click', '.aips-il-insert-btn', function () {
-				self.openInsertModal($(this).data('id'));
-			});
+			$(document).on('click', '.aips-il-insert-btn', this.onInsertClick.bind(this));
 
 			// Insert modal: Insert button on a single suggestion entry
-			$(document).on('click', '.aips-il-modal-insert-btn', function () {
-				self.findInsertLocations(parseInt($(this).data('id'), 10));
-			});
+			$(document).on('click', '.aips-il-modal-insert-btn', this.onModalInsertClick.bind(this));
 
 			// Insert modal: Apply button on a location result — preview only, no immediate save
-			$(document).on('click', '.aips-il-apply-location-btn', function () {
-				var $btn    = $(this);
-				var sid     = parseInt($btn.data('suggestion-id'), 10);
-				var match   = $btn.data('match');
-				var replace = $btn.data('replace');
-				self.applyInsertionPreview(sid, match, replace, $btn);
-			});
+			$(document).on('click', '.aips-il-apply-location-btn', this.onApplyLocationClick.bind(this));
 
 			// Insert modal: Update Post button — commit all pending insertions to DB
 			$(document).on('click', '#aips-update-post-btn', this.onUpdatePostClick.bind(this));
@@ -264,6 +252,37 @@
 			$('#aips-anchor-modal-context').val('table');
 			$('#aips-anchor-modal').show();
 			$('#aips-anchor-modal-text').focus();
+		},
+
+		/**
+		 * Open the Insert Link modal for the clicked suggestion row.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-insert-btn` element.
+		 */
+		onInsertClick: function (e) {
+			this.openInsertModal($(e.currentTarget).data('id'));
+		},
+
+		/**
+		 * Find insertion locations for the single suggestion inside the Insert modal.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-modal-insert-btn` element.
+		 */
+		onModalInsertClick: function (e) {
+			this.findInsertLocations(parseInt($(e.currentTarget).data('id'), 10));
+		},
+
+		/**
+		 * Preview an insertion at the chosen location without saving to the DB.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-apply-location-btn` element.
+		 */
+		onApplyLocationClick: function (e) {
+			var $btn    = $(e.currentTarget);
+			var sid     = parseInt($btn.data('suggestion-id'), 10);
+			var match   = $btn.data('match');
+			var replace = $btn.data('replace');
+			this.applyInsertionPreview(sid, match, replace, $btn);
 		},
 
 		/**

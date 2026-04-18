@@ -569,8 +569,8 @@ class AIPS_Internal_Links_Controller {
 
 		foreach ($insertions as $ins) {
 			$suggestion_id       = absint(isset($ins['suggestion_id']) ? $ins['suggestion_id'] : 0);
-			$match_snippet       = isset($ins['match_snippet']) ? sanitize_textarea_field(wp_unslash($ins['match_snippet'])) : '';
-			$replacement_snippet = isset($ins['replacement_snippet']) ? sanitize_textarea_field(wp_unslash($ins['replacement_snippet'])) : '';
+			$match_snippet       = isset($ins['match_snippet']) ? wp_unslash($ins['match_snippet']) : '';
+			$replacement_snippet = isset($ins['replacement_snippet']) ? wp_unslash($ins['replacement_snippet']) : '';
 
 			if (!$suggestion_id || empty($match_snippet) || empty($replacement_snippet)) {
 				$errors[] = __('Invalid insertion parameters.', 'ai-post-scheduler');
