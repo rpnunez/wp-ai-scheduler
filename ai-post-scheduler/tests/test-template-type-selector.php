@@ -9,6 +9,7 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 	
 	private $selector;
 	private $structure_repo;
+	private $default_structure_id;
 	
 	public function setUp(): void {
 		parent::setUp();
@@ -19,6 +20,7 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		if (property_exists($wpdb, 'get_col_return_val')) {
 			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
 		}
+		AIPS_Cache_Factory::reset();
 		$this->selector = new AIPS_Template_Type_Selector();
 		$this->structure_repo = new AIPS_Article_Structure_Repository();
 		
@@ -31,6 +33,9 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aips_article_structures';
 		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test Selector%'");
+		delete_option('aips_default_article_structure_id');
+		AIPS_Config::get_instance()->flush_option_cache();
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 	
@@ -41,27 +46,30 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 				'description' => 'First Structure',
 				'structure_data' => wp_json_encode(array('sections' => array('intro'))),
 				'is_active' => 1,
-				'is_default' => 1,
 			),
 			array(
 				'name' => 'Test Selector Structure 2',
 				'description' => 'Second Structure',
 				'structure_data' => wp_json_encode(array('sections' => array('intro'))),
 				'is_active' => 1,
-				'is_default' => 0,
 			),
 			array(
 				'name' => 'Test Selector Structure 3',
 				'description' => 'Third Structure',
 				'structure_data' => wp_json_encode(array('sections' => array('intro'))),
 				'is_active' => 1,
-				'is_default' => 0,
 			),
 		);
 		
-		foreach ($structures as $structure) {
-			$this->structure_repo->create($structure);
+		foreach ($structures as $index => $structure) {
+			$structure_id = $this->structure_repo->create($structure);
+
+			if ($index === 0) {
+				$this->default_structure_id = $structure_id;
+			}
 		}
+
+		AIPS_Config::get_instance()->set_option('aips_default_article_structure_id', $this->default_structure_id);
 	}
 	
 	public function test_select_specific_structure() {
@@ -112,6 +120,25 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		// Should select default structure
 		$default = $this->structure_repo->get_default();
 		$this->assertEquals($default->id, $selected_id);
+	}
+
+	public function test_select_structure_ignores_inactive_explicit_structure() {
+		$inactive_structure_id = $this->structure_repo->create(array(
+			'name' => 'Test Selector Inactive Structure',
+			'description' => 'Inactive Structure',
+			'structure_data' => wp_json_encode(array('sections' => array('intro'))),
+			'is_active' => 0,
+		));
+
+		$schedule = (object) array(
+			'id' => 1,
+			'article_structure_id' => $inactive_structure_id,
+			'rotation_pattern' => null,
+		);
+
+		$selected_id = $this->selector->select_structure($schedule);
+
+		$this->assertSame($this->default_structure_id, $selected_id);
 	}
 	
 	public function test_select_random_structure() {

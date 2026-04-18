@@ -237,6 +237,25 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 		parent::setUp();
 		// Always test with the Array driver for isolation.
 		$this->cache = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+
+		if ( class_exists( 'AIPS_Telemetry' ) ) {
+			$ref = new ReflectionProperty( 'AIPS_Telemetry', 'instance' );
+			$ref->setAccessible( true );
+			$ref->setValue( null, null );
+		}
+	}
+
+	public function tearDown(): void {
+		delete_option( 'aips_enable_telemetry' );
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		if ( class_exists( 'AIPS_Telemetry' ) ) {
+			$ref = new ReflectionProperty( 'AIPS_Telemetry', 'instance' );
+			$ref->setAccessible( true );
+			$ref->setValue( null, null );
+		}
+
+		parent::tearDown();
 	}
 
 	// ------------------------------------------------------------------
@@ -328,6 +347,32 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 	public function test_get_driver_returns_driver_instance() {
 		$driver = $this->cache->get_driver();
 		$this->assertInstanceOf( 'AIPS_Cache_Driver', $driver );
+	}
+
+	public function test_cache_operations_record_telemetry_when_enabled() {
+		if ( ! class_exists( 'AIPS_Telemetry' ) ) {
+			$this->markTestSkipped( 'Telemetry class is unavailable in this limited PHPUnit environment.' );
+		}
+
+		update_option( 'aips_enable_telemetry', 1 );
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->cache->get( 'missing', 'example' );
+		$this->cache->set( 'foo', 'bar', 60, 'example' );
+		$this->cache->get( 'foo', 'example' );
+
+		$telemetry = AIPS_Telemetry::instance();
+		$ref = new ReflectionProperty( 'AIPS_Telemetry', 'events' );
+		$ref->setAccessible( true );
+		$events = $ref->getValue( $telemetry );
+
+		$this->assertNotEmpty( $events );
+		$this->assertSame( 'cache', $events[0]['_bucket'] );
+		$this->assertSame( 'cache_get', $events[0]['type'] );
+		$this->assertFalse( $events[0]['hit'] );
+		$this->assertSame( 'cache_set', $events[1]['type'] );
+		$this->assertSame( 'cache_get', $events[2]['type'] );
+		$this->assertTrue( $events[2]['hit'] );
 	}
 }
 

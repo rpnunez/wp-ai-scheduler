@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2026-04-15
+### Added
+- **Telemetry filters and richer request summaries**: the Telemetry admin page now supports AJAX filtering by request type, event category, request method, page slug search, and issue-only rows.
+- **Cache observability**: all `AIPS_Cache` operations now emit telemetry events so admins can inspect cache activity, hit/miss trends, and cache-heavy requests.
+- **Query diagnostics**: telemetry payloads now summarize slow queries and duplicate queries when `SAVEQUERIES` is available, using `AIPS_TELEMETRY_SLOW_QUERY_MS` and bounded query samples.
+
+### Changed
+- **Telemetry schema**: `aips_telemetry` now stores top-level request type, event categories, cache counters, total event count, and query anomaly counters for server-side filtering and faster list rendering.
+
 ## [2.3.1] - 2026-04-09
 ### Performance
 - **Composite DB indexes on `aips_notifications`**: Added `KEY is_read_created_at (is_read, created_at)` and `KEY dedupe_key_created_at (dedupe_key, created_at)` to eliminate filesorts on the two hottest queries (`get_unread()` / `count_unread()` and `was_recently_sent()`). Schema updated in `AIPS_DB_Manager::get_schema()` and applied via a versioned `AIPS_Upgrades` migration (`migrate_to_2_3_1`).

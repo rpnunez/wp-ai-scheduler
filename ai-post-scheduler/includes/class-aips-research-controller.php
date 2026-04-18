@@ -107,7 +107,9 @@ class AIPS_Research_Controller {
      * Executes AI research and stores results in database.
      */
     public function ajax_research_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -152,7 +154,9 @@ class AIPS_Research_Controller {
      * Retrieves previously researched topics with filtering.
      */
     public function ajax_get_trending_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -208,7 +212,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Delete a trending topic.
      */
     public function ajax_delete_trending_topic() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -233,7 +239,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Bulk delete trending topics.
      */
     public function ajax_delete_trending_topic_bulk() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -268,7 +276,9 @@ class AIPS_Research_Controller {
      * Creates schedules for selected trending topics.
      */
     public function ajax_schedule_trending_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -471,7 +481,9 @@ class AIPS_Research_Controller {
      * Creates posts on-demand from selected trending topics.
      */
     public function ajax_generate_trending_topics_bulk() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -650,7 +662,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Get generated posts linked to a trending topic.
      */
     public function ajax_get_trending_topic_posts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -751,7 +765,9 @@ class AIPS_Research_Controller {
      * AJAX handler: Perform gap analysis.
      */
     public function ajax_perform_gap_analysis() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -781,7 +797,9 @@ class AIPS_Research_Controller {
      * Uses the gap topic as a seed for the standard research service.
      */
     public function ajax_generate_topics_from_gap() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();

@@ -18,11 +18,53 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Capture the request start time as early as possible so AIPS_Telemetry
+// can compute an accurate elapsed-time measurement.
+if (!defined('AIPS_REQUEST_START')) {
+    define('AIPS_REQUEST_START', microtime(true));
+}
+
+// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
+// slow/duplicate query analysis can inspect the collected query log.
+if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
+    define('SAVEQUERIES', true);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
+    define('AIPS_TELEMETRY_SLOW_QUERY_MS', 100);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_REQUEST_MS')) {
+    define('AIPS_TELEMETRY_SLOW_REQUEST_MS', 1500);
+}
+
+if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
+    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
+}
+
 // Define plugin constants
-define('AIPS_VERSION', '2.4.1');
-define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+if (!defined('AIPS_VERSION')) {
+    define('AIPS_VERSION', '2.4.1');
+}
+
+if (!defined('AIPS_PLUGIN_DIR')) {
+    define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_URL')) {
+    define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_BASENAME')) {
+    define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+}
+
+// Prompt-preview logging can expose generated content in logs. Off by default;
+// opt-in by defining the constant to true earlier (e.g. in wp-config.php), or
+// it will automatically enable when WP_DEBUG is true.
+if (!defined('AIPS_AI_DEBUG_LOG_PROMPTS')) {
+    define('AIPS_AI_DEBUG_LOG_PROMPTS', defined('WP_DEBUG') && WP_DEBUG);
+}
 
 final class AI_Post_Scheduler {
     
@@ -335,6 +377,10 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Schedule_Repository::class);
         });
 
+        $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
+            return AIPS_Telemetry_Repository::instance();
+        });
+
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
@@ -419,6 +465,11 @@ final class AI_Post_Scheduler {
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
+        // Boot request-level telemetry if the option is enabled.
+        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+            AIPS_Telemetry::instance()->boot();
+        }
+
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
             'aips_source_group',
@@ -495,6 +546,12 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
+
+        // Internal Links indexing cron — construct the controller lazily only
+        // when the cron hook fires to avoid eager instantiation on every cron boot.
+        add_action('aips_index_posts_batch', function($args) {
+            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
+        }, 10, 1);
     }
 
     /**
@@ -557,6 +614,12 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
+
+        // Internal Links controller must be available globally so the admin-menu
+        // render callback can call $controller->render_page() without reconstructing
+        // the object (which would double-register all AJAX hooks).
+        global $aips_internal_links_controller;
+        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
     }
 
     /**

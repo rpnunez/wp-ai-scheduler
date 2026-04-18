@@ -49,6 +49,22 @@ interface AIPS_History_Repository_Interface {
 	public function get_by_post_id($post_id);
 
 	/**
+	 * Count completed history rows for a schedule.
+	 *
+	 * @param int|object $schedule Schedule ID or object.
+	 * @return int
+	 */
+	public function count_completed_for_schedule($schedule);
+
+	/**
+	 * Invalidate the cached completed-count for a schedule.
+	 *
+	 * @param int $schedule_id Schedule ID.
+	 * @return void
+	 */
+	public function invalidate_schedule_completed_count_cache($schedule_id);
+
+	/**
 	 * Insert a history log entry row.
 	 *
 	 * @param int          $history_id History record ID.

@@ -62,6 +62,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_developer_mode'],
         ));
+        register_setting('aips_settings', 'aips_enable_telemetry', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_enable_telemetry'],
+        ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_retry'],
@@ -317,6 +321,14 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        add_settings_field(
+            'aips_enable_telemetry',
+            __('Enable Telemetry', 'ai-post-scheduler'),
+            array($this->ui, 'enable_telemetry_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
         add_settings_section(
             'aips_resilience_section',
             __('Resilience & Limits', 'ai-post-scheduler'),
@@ -441,6 +453,14 @@ class AIPS_Settings {
             'aips-settings',
             'aips_content_strategy_section'
         );
+
+		add_settings_field(
+			'aips_default_article_structure_id',
+			__('Default Article Structure', 'ai-post-scheduler'),
+			array($this->ui, 'site_default_article_structure_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
         add_settings_field(
             'aips_site_brand_voice',
@@ -631,6 +651,11 @@ class AIPS_Settings {
                 'sanitize_callback' => 'sanitize_textarea_field',
                 'default'           => $config_defaults['aips_site_content_goals'],
             ),
+			'aips_default_article_structure_id' => array(
+				'key'               => 'default_article_structure_id',
+				'sanitize_callback' => 'absint',
+				'default'           => $config_defaults['aips_default_article_structure_id'],
+			),
             'aips_site_brand_voice' => array(
                 'key'               => 'brand_voice',
                 'sanitize_callback' => 'sanitize_text_field',

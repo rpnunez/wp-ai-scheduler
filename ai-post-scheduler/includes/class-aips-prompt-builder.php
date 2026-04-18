@@ -3,17 +3,83 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * AIPS_Prompt_Builder
+ *
+ * Centralized builder for AI prompts used in post generation.
+ *
+ * This class serves as the main entry point for constructing all AI prompts
+ * related to post generation, including content, title, excerpt, and featured
+ * image prompts. It orchestrates the use of dedicated builder classes for each
+ * prompt type and provides shared utilities for consistent prompt construction.
+ * 
+ * This class also centralizes the logic for injecting trusted sources into
+ * content prompts when that feature is enabled. Instead of each prompt
+ * builder handling sources independently, the AIPS_Prompt_Builder registers
+ * a filter that prepends the sources block to the content prompt when needed.
+ * 
+ * This keeps the prompt builders focused on constructing their specific prompts
+ * while still allowing for flexible inclusion of sources based on template or
+ * generation context settings.
+ * 
+ * The build_prompts() method provides a convenient way to generate all related
+ * prompts for a given template configuration in one call, ensuring consistency
+ * across different generation flows (preview vs actual generation).
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.7.3
+ */
 class AIPS_Prompt_Builder {
 
+    /**
+     * @var AIPS_Template_Processor Template processor instance
+     */
 	private $template_processor;
+
+    /**
+     * @var AIPS_Article_Structure_Manager Article structure manager instance
+     */
 	private $structure_manager;
+
+    /**
+     * @var AIPS_Sources_Repository Sources repository instance
+     */
     private $sources_repo;
-	private $post_content_builder;
-	private $post_title_builder;
-	private $post_excerpt_builder;
+	
+    /**
+     * @var AIPS_Post_Content_Builder Post content builder instance
+     */
+    private $post_content_builder;
+	
+    /**
+     * @var AIPS_Post_Title_Builder Post title builder instance
+     */
+    private $post_title_builder;
+	
+    /**
+     * @var AIPS_Post_Excerpt_Builder Post excerpt builder instance
+     */
+    private $post_excerpt_builder;
+
+    /**
+     * @var AIPS_Post_Featured_Image_Builder Post featured image builder instance
+     */
 	private $post_featured_image_builder;
+    
+    /**
+     * @var bool Indicates if the sources filter has been registered
+     */
     private static $sources_filter_registered = false;
 
+    /**
+     * Constructor.
+     *
+     * Initializes dependencies and registers the sources filter if not already registered.
+     *
+     * @param AIPS_Template_Processor|null $template_processor Optional template processor instance.
+     * @param AIPS_Article_Structure_Manager|null $structure_manager Optional article structure manager instance.
+     * @param AIPS_Sources_Repository|null $sources_repo Optional sources repository instance.
+     */
 	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
@@ -194,11 +260,11 @@ class AIPS_Prompt_Builder {
     private function get_output_instructions() {
         return <<<'INSTRUCTIONS'
 CRITICAL INSTRUCTIONS:
-- Output ONLY the article content, nothing else
+- Output ONLY the article content in HTML format, nothing else
 - Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
-- Do NOT use markdown formatting (no ```, no **, no __)
-- Use proper HTML tags: <h2> for section titles, <p> for paragraphs
-- For code samples: wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
+- Do NOT use markdown formatting (no ```, no **, no __, no #)
+- Use proper HTML tags: <h2> for section titles, <p> for paragraphs, <ul>/<li> for lists, <strong> for bold text.
+- For code samples: MUST wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
 - Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
 - Do NOT include markdown code fences like ```html or ```
 - Start directly with the article content (typically an opening paragraph or <h2> heading)
