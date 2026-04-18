@@ -400,6 +400,37 @@ class AIPS_Session_To_JSON {
 	}
 	
 	/**
+	 * Cron handler: clean up old export files and fire the completion action.
+	 *
+	 * Registered on the `aips_cleanup_export_files` cron hook from
+	 * AI_Post_Scheduler::boot_cron(). Removes files older than 24 hours,
+	 * fires `aips_export_cleanup_completed`, and logs the results.
+	 *
+	 * @return void
+	 */
+	public static function handle_export_cleanup() {
+		$result = self::cleanup_old_exports(86400);
+
+		do_action('aips_export_cleanup_completed', array(
+			'deleted' => isset($result['deleted']) ? (int) $result['deleted'] : 0,
+			'errors'  => isset($result['errors']) && is_array($result['errors']) ? count($result['errors']) : 0,
+		));
+
+		$logger = AIPS_Logger::instance();
+		$logger->log(sprintf(
+			'Export files cleanup completed. Deleted: %d files. Errors: %d',
+			$result['deleted'],
+			count($result['errors'])
+		));
+
+		if (!empty($result['errors'])) {
+			foreach ($result['errors'] as $error) {
+				$logger->log('Export cleanup error: ' . $error);
+			}
+		}
+	}
+
+	/**
 	 * Clean up old export files.
 	 *
 	 * Removes files older than the specified age in seconds.
