@@ -116,7 +116,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_suggestions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -151,7 +153,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_generate_suggestions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -202,7 +206,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_update_status() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -230,7 +236,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_update_anchor() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -258,7 +266,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_delete() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -287,7 +297,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_start_indexing() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -310,7 +322,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_status() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -326,7 +340,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_reindex_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -382,7 +398,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_clear_index() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -406,7 +424,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_post_for_insertion() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -461,7 +481,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_find_insert_locations() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -493,7 +515,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_apply_insertion() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
@@ -544,7 +568,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_apply_bulk_insertions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			wp_send_json_error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')), 403);
+		}
 
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);

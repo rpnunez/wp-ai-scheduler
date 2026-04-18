@@ -21,3 +21,7 @@
 ## 2026-04-15 - [PHP 8 Strict Typing with Anonymous Mock Classes]
 **Learning:** Returning anonymous classes (`new class() {}`) that do not explicitly implement required interfaces (like `AIPS_AI_Service_Interface`) will cause fatal `TypeError`s in PHP 8+ when injected into type-hinted constructors. Additionally, if an anonymous class explicitly implements an interface, it must define *all* methods declared in that interface to avoid a fatal "contains abstract methods" error, even if those methods aren't used in the test.
 **Action:** When mocking dependencies for PHPUnit tests, always define explicit standard stub classes (e.g., `class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface`) rather than relying on anonymous classes, and ensure all interface methods have dummy implementations. Use unique class names per test file (e.g. `_For_Suggestions`) if `class_exists` checks cannot be used safely to prevent redeclaration errors.
+
+## 2026-04-18 - [Fix Default wp_die() in check_ajax_referer for internal links and telemetry]
+**Learning:** Always pass `false` as the third parameter to `check_ajax_referer` in AJAX endpoints to prevent `wp_die()` and handle the failure explicitly. This applies to newly added/refactored files like `class-aips-internal-links-controller.php`, `class-aips-telemetry-controller.php`, and `class-aips-system-status-controller.php`.
+**Action:** Used explicit `if (!check_ajax_referer('action', 'nonce', false)) { ... }` checks returning JSON errors consistently across all recent AJAX handlers.
