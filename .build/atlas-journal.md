@@ -1377,7 +1377,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** High cohesion and loose coupling achieved. AIPS_System_Status delegates to AIPS_System_Diagnostics_Service, which aggregates from modular providers. Backwards compatibility preserved for the output of get_system_info().
 **Tests:** Created tests for AIPS_System_Diagnostics_Service to ensure it accurately aggregates data from providers. Full test suite run successfully.
 
-## 2024-04-18 - Refactor AIPS_Admin_Assets God Method
+## 2026-04-18 - [Refactor AIPS_Admin_Assets God Method]
 **Context:** `AIPS_Admin_Assets::enqueue_admin_assets()` was a massive 977-line God method, handling all scripts and localizations for the plugin.
 **Decision:** Extracted all page-specific enqueue logic into individual private methods within the same class to enforce the Single Responsibility Principle.
 **Consequence:** Increased the number of methods in the class, but vastly improved maintainability and readability. No external API changes.
