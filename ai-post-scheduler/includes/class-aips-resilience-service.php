@@ -232,22 +232,24 @@ class AIPS_Resilience_Service {
      * NOT call record_failure() / record_success() inside the $function closure;
      * those side-effects are handled here after the retry loop completes.
      *
-     * @param callable $function Function to execute.  Must return a non-WP_Error value
-     *                           on success, or a WP_Error (with a meaningful error code)
-     *                           on failure.  Must NOT call record_failure/record_success.
-     * @param string   $type     Request type for logging.
-     * @param string   $prompt   Prompt for logging.
-     * @param array    $options  Options for logging.
+     * @param callable   $function Function to execute.  Must return a non-WP_Error value
+     *                             on success, or a WP_Error (with a meaningful error code)
+     *                             on failure.  Must NOT call record_failure/record_success.
+     * @param string     $type     Request type for logging.
+     * @param string     $prompt   Prompt for logging.
+     * @param array      $options  Options for logging.
+     * @param array|null $context  Optional context array for per-object scoping of circuit
+     *                             breaker and rate limiter state. When null, global state is used.
      * @return mixed Function result or WP_Error.
      */
-    public function execute_safely($function, $type, $prompt, $options) {
+    public function execute_safely($function, $type, $prompt, $options, $context = null) {
         // Check circuit breaker
-        if (!$this->check_circuit_breaker()) {
+        if (!$this->check_circuit_breaker($context)) {
             return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
         }
 
         // Check rate limiting
-        if (!$this->check_rate_limit()) {
+        if (!$this->check_rate_limit($context)) {
             return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
         }
 
@@ -260,10 +262,10 @@ class AIPS_Resilience_Service {
         // excluded so that the caller's fallback path can record its own outcome.
         if (is_wp_error($result)) {
             if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
-                $this->record_failure($result->get_error_code());
+                $this->record_failure($result->get_error_code(), $context);
             }
         } else {
-            $this->record_success();
+            $this->record_success($context);
         }
 
         return $result;
@@ -297,37 +299,128 @@ class AIPS_Resilience_Service {
     // Circuit Breaker Pattern
     // ========================================
 
+    // ========================================
+    // Context Helpers
+    // ========================================
+
+    /**
+     * Normalize a context array so keying is stable.
+     *
+     * - Ensures a default global context when none is provided.
+     * - Removes null values.
+     * - Sorts keys for deterministic encoding.
+     *
+     * @param array|null $context Context array.
+     * @return array Normalized context array.
+     */
+    private function normalize_context($context) {
+        if (empty($context) || !is_array($context)) {
+            $context = array(
+                'type' => 'global',
+                'id'   => 'site',
+            );
+        }
+
+        // Remove null values so they don't affect hashing.
+        $context = array_filter($context, function($v) { return $v !== null; });
+
+        // Deterministic ordering for stable hashing.
+        ksort($context);
+
+        return $context;
+    }
+
+    /**
+     * Convert a context array to a stable key suffix.
+     *
+     * @param array|null $context Context array.
+     * @return string Stable hash for transient keys.
+     */
+    private function context_to_hash($context) {
+        $normalized = $this->normalize_context($context);
+
+        // wp_json_encode provides consistent encoding in WP environments.
+        $json = wp_json_encode($normalized);
+
+        // sha256 provides modern collision resistance for transient key scoping.
+        return hash('sha256', (string) $json);
+    }
+
+    /**
+     * Get the transient key for circuit breaker state for a given context.
+     *
+     * @param array|null $context Context array.
+     * @return string Transient key.
+     */
+    private function get_circuit_breaker_transient_key($context) {
+        return 'aips_circuit_breaker_state_' . $this->context_to_hash($context);
+    }
+
+    /**
+     * Get the transient key for rate limiter requests for a given context.
+     *
+     * @param array|null $context Context array.
+     * @return string Transient key.
+     */
+    private function get_rate_limiter_transient_key($context) {
+        return 'aips_rate_limiter_requests_' . $this->context_to_hash($context);
+    }
+
+    // ========================================
+    // Circuit Breaker Pattern
+    // ========================================
+
     /**
      * Load circuit breaker state from transient.
+     *
+     * When no persisted state exists for the given context, the in-memory state
+     * is reset to the default (closed, 0 failures) so that stale state from a
+     * previous context operation is never returned.
+     *
+     * @param array|null $context Context array.
      */
-    private function load_circuit_breaker_state() {
-        $state = get_transient('aips_circuit_breaker_state');
+    private function load_circuit_breaker_state($context = null) {
+        $key   = $this->get_circuit_breaker_transient_key($context);
+        $state = get_transient($key);
         if ($state !== false) {
             $this->circuit_breaker_state = $state;
+        } else {
+            // Reset to default so stale in-memory state from another context is not used.
+            $this->circuit_breaker_state = array(
+                'failures'          => 0,
+                'last_failure_time' => 0,
+                'state'             => 'closed',
+            );
         }
     }
 
     /**
      * Save circuit breaker state to transient.
+     *
+     * @param array|null $context Context array.
      */
-    private function save_circuit_breaker_state() {
-        set_transient('aips_circuit_breaker_state', $this->circuit_breaker_state, HOUR_IN_SECONDS);
+    private function save_circuit_breaker_state($context = null) {
+        $key = $this->get_circuit_breaker_transient_key($context);
+        set_transient($key, $this->circuit_breaker_state, HOUR_IN_SECONDS);
     }
 
     /**
      * Check if circuit breaker allows requests.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return bool True if requests are allowed.
      */
-    public function check_circuit_breaker() {
+    public function check_circuit_breaker($context = null) {
         $cb_config = $this->config->get_circuit_breaker_config();
 
         if (!$cb_config['enabled']) {
             return true;
         }
 
+        // Load state for this specific context.
+        $this->load_circuit_breaker_state($context);
+
         $state = $this->circuit_breaker_state['state'];
-        $failures = $this->circuit_breaker_state['failures'];
         $last_failure = $this->circuit_breaker_state['last_failure_time'];
         $timeout = $cb_config['timeout'];
 
@@ -339,7 +432,7 @@ class AIPS_Resilience_Service {
             if ($time_since_failure >= $timeout) {
                 // Try half-open state
                 $this->circuit_breaker_state['state'] = 'half_open';
-                $this->save_circuit_breaker_state();
+                $this->save_circuit_breaker_state($context);
                 $this->logger->log('Circuit breaker entering half-open state', 'info');
                 return true;
             }
@@ -354,13 +447,18 @@ class AIPS_Resilience_Service {
 
     /**
      * Record a successful request for circuit breaker.
+     *
+     * @param array|null $context Optional context array for per-object scoping.
      */
-    public function record_success() {
+    public function record_success($context = null) {
         $cb_config = $this->config->get_circuit_breaker_config();
 
         if (!$cb_config['enabled']) {
             return;
         }
+
+        // Load state for this specific context before mutating.
+        $this->load_circuit_breaker_state($context);
 
         $state = $this->circuit_breaker_state['state'];
 
@@ -368,28 +466,32 @@ class AIPS_Resilience_Service {
         if ($state === 'half_open') {
             $this->circuit_breaker_state['state'] = 'closed';
             $this->circuit_breaker_state['failures'] = 0;
-            $this->save_circuit_breaker_state();
+            $this->save_circuit_breaker_state($context);
             $this->logger->log('Circuit breaker closed after successful request', 'info');
         } elseif ($state === 'closed') {
             // Reset failure count on success
             $this->circuit_breaker_state['failures'] = 0;
-            $this->save_circuit_breaker_state();
+            $this->save_circuit_breaker_state($context);
         }
     }
 
     /**
      * Record a failed request for circuit breaker.
      *
-     * @param string $error_code Optional. Provider error code.  If this matches one of the
-     *                           IMMEDIATE_OPEN_CODES (e.g. 'insufficient_quota'), the circuit
-     *                           is opened right away without waiting for the failure threshold.
+     * @param string     $error_code Optional. Provider error code.  If this matches one of the
+     *                               IMMEDIATE_OPEN_CODES (e.g. 'insufficient_quota'), the circuit
+     *                               is opened right away without waiting for the failure threshold.
+     * @param array|null $context    Optional context array for per-object scoping.
      */
-    public function record_failure($error_code = '') {
+    public function record_failure($error_code = '', $context = null) {
         $cb_config = $this->config->get_circuit_breaker_config();
 
         if (!$cb_config['enabled']) {
             return;
         }
+
+        // Load state for this specific context before mutating.
+        $this->load_circuit_breaker_state($context);
 
         $threshold = $cb_config['failure_threshold'];
 
@@ -427,21 +529,22 @@ class AIPS_Resilience_Service {
             }
         }
 
-        $this->save_circuit_breaker_state();
+        $this->save_circuit_breaker_state($context);
     }
 
     /**
      * Reset circuit breaker manually.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return bool True on success.
      */
-    public function reset_circuit_breaker() {
+    public function reset_circuit_breaker($context = null) {
         $this->circuit_breaker_state = array(
             'failures' => 0,
             'last_failure_time' => 0,
             'state' => 'closed',
         );
-        $this->save_circuit_breaker_state();
+        $this->save_circuit_breaker_state($context);
         $this->logger->log('Circuit breaker manually reset', 'info');
         return true;
     }
@@ -449,9 +552,11 @@ class AIPS_Resilience_Service {
     /**
      * Get circuit breaker status.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return array Circuit breaker status.
      */
-    public function get_circuit_breaker_status() {
+    public function get_circuit_breaker_status($context = null) {
+        $this->load_circuit_breaker_state($context);
         return $this->circuit_breaker_state;
     }
 
@@ -531,9 +636,10 @@ class AIPS_Resilience_Service {
     /**
      * Check if rate limit allows requests.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return bool True if requests are allowed.
      */
-    public function check_rate_limit() {
+    public function check_rate_limit($context = null) {
         $rl_config = $this->config->get_rate_limit_config();
 
         if (!$rl_config['enabled']) {
@@ -543,9 +649,10 @@ class AIPS_Resilience_Service {
         $max_requests = $rl_config['requests'];
         $period = $rl_config['period'];
         $current_time = time();
+        $key = $this->get_rate_limiter_transient_key($context);
 
         // Load rate limiter state from transient
-        $requests = get_transient('aips_rate_limiter_requests');
+        $requests = get_transient($key);
         if ($requests === false) {
             $requests = array();
         }
@@ -576,7 +683,7 @@ class AIPS_Resilience_Service {
 
         // Add current request
         $requests[] = $current_time;
-        set_transient('aips_rate_limiter_requests', $requests, $period);
+        set_transient($key, $requests, $period);
 
         return true;
     }
@@ -584,11 +691,13 @@ class AIPS_Resilience_Service {
     /**
      * Get rate limiter status.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return array Rate limiter status.
      */
-    public function get_rate_limiter_status() {
+    public function get_rate_limiter_status($context = null) {
         $rl_config = $this->config->get_rate_limit_config();
-        $requests = get_transient('aips_rate_limiter_requests');
+        $key = $this->get_rate_limiter_transient_key($context);
+        $requests = get_transient($key);
 
         if ($requests === false) {
             $requests = array();
@@ -614,10 +723,12 @@ class AIPS_Resilience_Service {
     /**
      * Reset rate limiter manually.
      *
+     * @param array|null $context Optional context array for per-object scoping.
      * @return bool True on success.
      */
-    public function reset_rate_limiter() {
-        delete_transient('aips_rate_limiter_requests');
+    public function reset_rate_limiter($context = null) {
+        $key = $this->get_rate_limiter_transient_key($context);
+        delete_transient($key);
         $this->logger->log('Rate limiter manually reset', 'info');
         return true;
     }
