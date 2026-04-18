@@ -18,7 +18,9 @@ class AIPS_Planner {
     }
 
     public function ajax_generate_topics() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -105,7 +107,9 @@ class AIPS_Planner {
     }
 
     public function ajax_bulk_schedule() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
@@ -142,7 +146,7 @@ class AIPS_Planner {
             );
         }
 
-        $count = $schedule_repository->create_bulk($schedules);
+        $count = $scheduler->save_schedule_bulk($schedules);
 
         if ($count === false || $count === 0) {
             AIPS_Ajax_Response::error(__('Failed to schedule topics.', 'ai-post-scheduler'));
@@ -157,7 +161,9 @@ class AIPS_Planner {
     }
 
     public function ajax_bulk_generate_now() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
