@@ -832,8 +832,8 @@ class AIPS_DB_Manager {
                 $exists = $wpdb->insert_id;
             }
 
-            if ($structure['name'] === 'How-To Guide' && !get_option('aips_default_article_structure_id')) {
-                update_option('aips_default_article_structure_id', (int) $exists);
+            if ($structure['name'] === 'How-To Guide' && false === get_option('aips_default_article_structure_id', null)) {
+                update_option('aips_default_article_structure_id', absint($exists));
             }
         }
     }

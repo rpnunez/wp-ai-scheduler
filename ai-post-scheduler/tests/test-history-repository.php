@@ -45,7 +45,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			$table,
 			array(
 				'template_id' => $this->test_template_id,
-				'name' => 'Test Schedule',
+				'title' => 'Test Schedule',
 				'frequency' => 'daily',
 				'next_run' => current_time('mysql'),
 				'is_active' => 1,

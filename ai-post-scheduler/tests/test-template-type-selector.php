@@ -20,6 +20,7 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		if (property_exists($wpdb, 'get_col_return_val')) {
 			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
 		}
+		AIPS_Cache_Factory::reset();
 		$this->selector = new AIPS_Template_Type_Selector();
 		$this->structure_repo = new AIPS_Article_Structure_Repository();
 		
@@ -34,6 +35,7 @@ class AIPS_Template_Type_Selector_Test extends WP_UnitTestCase {
 		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test Selector%'");
 		delete_option('aips_default_article_structure_id');
 		AIPS_Config::get_instance()->flush_option_cache();
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 	

@@ -74,7 +74,17 @@ class AIPS_Template_Type_Selector {
 		
 		// Fall back to default structure
 		$default = $this->structure_repository->get_default();
-		return $default ? $default->id : null;
+		if ($default) {
+			return $default->id;
+		}
+
+		// Final fallback: use the first active structure when no default is configured
+		$active_structures = $this->structure_repository->get_all(true);
+		if (!empty($active_structures)) {
+			return $active_structures[0]->id;
+		}
+
+		return null;
 	}
 	
 	/**
@@ -303,6 +313,6 @@ class AIPS_Template_Type_Selector {
 	 * @return bool
 	 */
 	private function is_structure_active($structure) {
-		return is_object($structure) && (int) $structure->is_active === 1;
+		return is_object($structure) && isset($structure->is_active) && (int) $structure->is_active === 1;
 	}
 }
