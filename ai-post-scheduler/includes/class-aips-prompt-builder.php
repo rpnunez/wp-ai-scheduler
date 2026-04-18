@@ -194,11 +194,11 @@ class AIPS_Prompt_Builder {
     private function get_output_instructions() {
         return <<<'INSTRUCTIONS'
 CRITICAL INSTRUCTIONS:
-- Output ONLY the article content, nothing else
+- Output ONLY the article content in HTML format, nothing else
 - Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
-- Do NOT use markdown formatting (no ```, no **, no __)
-- Use proper HTML tags: <h2> for section titles, <p> for paragraphs
-- For code samples: wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
+- Do NOT use markdown formatting (no ```, no **, no __, no #)
+- Use proper HTML tags: <h2> for section titles, <p> for paragraphs, <ul>/<li> for lists, <strong> for bold text.
+- For code samples: MUST wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
 - Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
 - Do NOT include markdown code fences like ```html or ```
 - Start directly with the article content (typically an opening paragraph or <h2> heading)

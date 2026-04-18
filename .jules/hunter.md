@@ -32,3 +32,6 @@
 ## 2026-04-04 - [Missing isset on db queries]
 **Learning:** Directly accessing properties of objects returned by database queries like `$wpdb->get_row()` triggers PHP Warnings if the query fails or returns nothing (null) and the code assumes an object structure.
 **Action:** Always wrap direct property access from potentially null query results with an `isset()` check (e.g. `isset($results->count) ? $results->count : 0`) before casting or returning.
+## 2024-04-17 - HTML Output Prompt Enhancement
+**Learning:** AI Engine sometimes disregards markdown exclusions and code block formatting instructions if not explicitly constrained and given strict positive instructions alongside negative ones.
+**Action:** Always provide explicit, strongly-worded positive constraints ("MUST wrap code in `<pre><code>`") alongside exclusions ("no #") to ensure reliable AI output parsing.
