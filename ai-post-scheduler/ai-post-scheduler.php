@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.4.1
+ * Version: 3.0.0
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -24,9 +24,18 @@ if (!defined('AIPS_REQUEST_START')) {
     define('AIPS_REQUEST_START', microtime(true));
 }
 
-// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
-// slow/duplicate query analysis can inspect the collected query log.
-if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
+// Enable SAVEQUERIES only when both telemetry AND explicit query diagnostics
+// are turned on.  SAVEQUERIES tells WordPress to log *every* SQL query into
+// $wpdb->queries for the entire request — across all plugins — which adds
+// significant memory overhead on production sites.  Requiring the second
+// opt-in (aips_telemetry_query_diagnostics) prevents telemetry from silently
+// degrading production performance.
+if (
+    !defined('SAVEQUERIES')
+    && function_exists('get_option')
+    && get_option('aips_enable_telemetry', false)
+    && get_option('aips_telemetry_query_diagnostics', false)
+) {
     define('SAVEQUERIES', true);
 }
 
@@ -44,7 +53,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '2.4.1');
+    define('AIPS_VERSION', '3.0.0');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -280,6 +289,19 @@ final class AI_Post_Scheduler {
         foreach (array_keys(self::get_cron_events()) as $hook) {
             wp_clear_scheduled_hook($hook);
         }
+
+        // Clear single-event cron hooks not listed in get_cron_events().
+        // Use wp_unschedule_hook() so all WP-Cron events are removed, including
+        // those scheduled with arguments.
+        wp_unschedule_hook('aips_process_author_embeddings');
+        wp_unschedule_hook('aips_index_posts_batch');
+
+        // Also clear Action Scheduler jobs when available.
+        if (function_exists('as_unschedule_all_actions')) {
+            as_unschedule_all_actions('aips_process_author_embeddings', null, 'aips-embeddings');
+            as_unschedule_all_actions('aips_index_posts_batch', null, 'aips-internal-links');
+        }
+
         flush_rewrite_rules();
     }
 

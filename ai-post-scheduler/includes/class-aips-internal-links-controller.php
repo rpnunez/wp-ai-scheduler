@@ -440,7 +440,7 @@ class AIPS_Internal_Links_Controller {
 				'id'                => (int) $s->id,
 				'target_post_id'    => (int) $s->target_post_id,
 				'target_post_title' => $target_post ? $target_post->post_title : '#' . $s->target_post_id,
-				'target_url'        => get_permalink($s->target_post_id),
+				'target_url'        => $target_post ? get_permalink( $s->target_post_id ) : '',
 				'anchor_text'       => $s->anchor_text,
 				'similarity_score'  => (float) $s->similarity_score,
 			);

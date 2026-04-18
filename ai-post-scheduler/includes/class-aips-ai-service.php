@@ -190,7 +190,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
 
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, $options, $error);
@@ -317,7 +317,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('json', $prompt, $options, null, wp_json_encode($result));
 
                 return $result;
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 // Extract the provider error code from the message.
                 // If a known provider code is found, propagate it so the retry loop can classify
                 // it (permanent codes abort immediately; others are retried normally).
@@ -652,7 +652,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('image', $prompt, $options, null, $image_url);
 
                 return $image_url;
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
 

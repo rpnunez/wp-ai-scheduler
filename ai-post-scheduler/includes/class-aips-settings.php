@@ -66,6 +66,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_telemetry'],
         ));
+        register_setting('aips_settings', 'aips_telemetry_query_diagnostics', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_telemetry_query_diagnostics'],
+        ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_retry'],
@@ -325,6 +329,14 @@ class AIPS_Settings {
             'aips_enable_telemetry',
             __('Enable Telemetry', 'ai-post-scheduler'),
             array($this->ui, 'enable_telemetry_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_telemetry_query_diagnostics',
+            __('Query Diagnostics', 'ai-post-scheduler'),
+            array($this->ui, 'telemetry_query_diagnostics_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );

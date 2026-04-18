@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2026-04-18
+### Changed
+- **Version bump to 3.0.0** — Gold release milestone for production deployment.
+- **SAVEQUERIES gated behind explicit opt-in**: Enabling telemetry no longer automatically defines `SAVEQUERIES`. A separate `aips_telemetry_query_diagnostics` option (default `false`) must be enabled to activate SQL query diagnostics, preventing unintentional memory overhead on production sites.
+
+### Fixed
+- **Timezone-safe scheduling**: All scheduling, interval calculation, and template statistics code now parses site-local MySQL datetime strings via `wp_timezone()` using `date_create_immutable_from_format()` instead of `strtotime()`, preventing schedule drift on non-UTC sites.
+- **Timezone-safe day boundaries**: Template stats compute "today end", "week end", and "month end" cutoffs using `current_datetime()` with `setTime()`/`modify()` in the site timezone instead of `strtotime('today 23:59:59')` which used PHP's default timezone (UTC).
+- **Deprecated `current_time('timestamp')` replaced** across 12 call sites in scheduling, interval calculation, telemetry, and template statistics with `current_datetime()->getTimestamp()` (WordPress 5.3+).
+- **Orphan cron hooks on deactivation**: `aips_process_author_embeddings` and `aips_index_posts_batch` are now cleared during plugin deactivation using `wp_unschedule_hook()` (handles events with args) and `as_unschedule_all_actions()` for Action Scheduler jobs.
+- **Exception handling widened to `\Throwable`** in `AIPS_Author_Post_Generator` and `AIPS_AI_Service` to catch `TypeError`, `ArgumentCountError`, and other PHP `Error` subclasses in the critical generation pipeline.
+- **Internal links**: `get_permalink()` for deleted target posts now returns empty string instead of potentially invalid URL.
+
+### Added
+- **`uninstall.php`**: Clean uninstall handler that drops all 20 plugin tables (including `aips_post_embeddings` and `aips_internal_links`), removes `aips_*` options, cleans post-meta, clears all cron hooks via `wp_unschedule_hook()`, clears Action Scheduler jobs, deletes transients, removes taxonomy terms, and cleans up export/log directories.
+- **`aips_telemetry_query_diagnostics`** config option (default `false`) in `AIPS_Config::get_default_options()`.
+- **Internal Links feature** (merged from PR #1204): AI-powered internal linking suggestions with post embeddings, similarity scoring, and inline link insertion.
+- **Article Structures improvements** (merged from PR #1324): Default structure support, rotation patterns, and UI refinements.
+
+### Documentation
+- Updated `docs/FEATURE_LIST.md` to remove references to the non-existent `aips_activity` table (removed in a prior release).
+
 ## [2.4.1] - 2026-04-15
 ### Added
 - **Telemetry filters and richer request summaries**: the Telemetry admin page now supports AJAX filtering by request type, event category, request method, page slug search, and issue-only rows.
