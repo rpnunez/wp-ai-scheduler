@@ -196,7 +196,7 @@ class AIPS_Prompt_Builder {
 CRITICAL INSTRUCTIONS:
 - Output ONLY the article content in HTML format, nothing else
 - Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
-- Do NOT use markdown formatting (no ```, no **, no __, no #)
+- Do NOT use markdown formatting in article text (no ```, no **, no __, and no markdown headings starting with # outside code samples)
 - Use proper HTML tags: <h2> for section titles, <p> for paragraphs, <ul>/<li> for lists, <strong> for bold text.
 - For code samples: MUST wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
 - Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
