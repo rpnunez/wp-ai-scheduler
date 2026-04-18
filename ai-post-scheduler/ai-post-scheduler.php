@@ -373,8 +373,16 @@ final class AI_Post_Scheduler {
             return AIPS_Schedule_Repository::instance();
         });
 
+        // When a persistent object-cache drop-in is active, wrap the concrete
+        // implementation in a caching decorator so reads are served from the
+        // persistent cache across requests.  Without a drop-in the concrete
+        // repository already provides an in-request identity-map cache.
         $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
-            return $container->make(AIPS_Schedule_Repository::class);
+            $inner = $container->make(AIPS_Schedule_Repository::class);
+            if ( wp_using_ext_object_cache() ) {
+                return new AIPS_Caching_Schedule_Repository( $inner );
+            }
+            return $inner;
         });
 
         $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
@@ -384,6 +392,16 @@ final class AI_Post_Scheduler {
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
+        });
+
+        // Register AIPS_Template_Repository_Interface with optional persistent cache
+        // decorator when a drop-in object cache is available.
+        $container->singleton(AIPS_Template_Repository_Interface::class, function( $container ) {
+            $inner = $container->make(AIPS_Template_Repository::class);
+            if ( wp_using_ext_object_cache() ) {
+                return new AIPS_Caching_Template_Repository( $inner );
+            }
+            return $inner;
         });
     }
 

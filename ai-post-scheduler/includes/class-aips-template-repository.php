@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for template data access.
  * Encapsulates all database operations related to templates.
  */
-class AIPS_Template_Repository {
+class AIPS_Template_Repository implements AIPS_Template_Repository_Interface {
 
     /**
      * @var self|null Singleton instance.

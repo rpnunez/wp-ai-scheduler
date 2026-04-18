@@ -61,6 +61,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Telemetry_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Template_Repository::class));
+		$this->assertTrue($this->container->has(AIPS_Template_Repository_Interface::class));
 	}
 
 	/**
@@ -141,6 +142,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Telemetry_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Template_Repository::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Template_Repository_Interface::class]);
 	}
 
 	/**
