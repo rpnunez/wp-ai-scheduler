@@ -265,24 +265,43 @@
 }
 
 /* Event Colors - Template-based */
-.aips-calendar-event[data-template-id="1"],
+/* Colours are assigned by JS position-in-unique-template-list, not by raw ID. */
 .aips-calendar-event.color-1 {
 	background-color: #2271b1;
 }
 
-.aips-calendar-event[data-template-id="2"],
 .aips-calendar-event.color-2 {
 	background-color: #d63638;
 }
 
-.aips-calendar-event[data-template-id="3"],
 .aips-calendar-event.color-3 {
 	background-color: #00a32a;
+}
+
+.aips-calendar-event.color-4 {
+	background-color: #9b59b6;
+}
+
+.aips-calendar-event.color-5 {
+	background-color: #1abc9c;
+}
+
+.aips-calendar-event.color-6 {
+	background-color: #e67e22;
 }
 
 .aips-calendar-event.color-default {
 	background-color: #dba617;
 }
+
+/* Legend color swatches — mirror the event chip colours above */
+.aips-calendar-legend-color.color-1 { background-color: #2271b1; }
+.aips-calendar-legend-color.color-2 { background-color: #d63638; }
+.aips-calendar-legend-color.color-3 { background-color: #00a32a; }
+.aips-calendar-legend-color.color-4 { background-color: #9b59b6; }
+.aips-calendar-legend-color.color-5 { background-color: #1abc9c; }
+.aips-calendar-legend-color.color-6 { background-color: #e67e22; }
+.aips-calendar-legend-color.color-default { background-color: #dba617; }
 
 /* Event Modal */
 .aips-calendar-modal {

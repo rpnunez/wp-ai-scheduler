@@ -235,3 +235,29 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+
+## 2026-04-17 - Schedule Calendar Dynamic Legend Optimization
+**Target Feature:** Schedule Calendar
+**Improvement:** Fixed the broken template color-coding and hardcoded legend in the Schedule Calendar.
+
+**Problem discovered:**
+1. The calendar legend showed hardcoded "Template 1", "Template 2", "Template 3" labels that never reflected the actual template names configured on the site.
+2. The JS color-assignment used raw `template_id` values (1, 2, 3) to pick a color class — so any template with ID > 3 (which is virtually every real site) always rendered in the fallback yellow `color-default`, making the color-coding feature completely non-functional.
+3. The CSS used `[data-template-id="1"]` attribute selectors tied to specific integer IDs, compounding the bug.
+4. The `ajax_get_calendar_events` AJAX handler was missing `return;` statements after error responses (executed but non-fatal since `wp_send_json_error` calls `wp_die()`).
+
+**Solution implemented:**
+- **PHP (`class-aips-calendar-controller.php`):** Added `build_template_map()` private method that collects unique templates from the current month's events in first-appearance order, returning `[{id, name}]` pairs. The AJAX handler now includes this `template_map` in its response. Added explicit `return;` after all error responses.
+- **JS (`calendar.js`):** Replaced the broken `templateColors` array + ID-range check with two new methods: `buildTemplateColorMap()` builds a stable `{templateId → {colorClass, name}}` lookup (position 0 → color-1, position 1 → color-2, … up to 6 named slots, then color-default). `renderLegend()` dynamically rebuilds the legend HTML using real template names and matching color swatches, hiding the legend entirely when no active schedules exist.
+- **CSS (`calendar.css`):** Removed broken `[data-template-id="N"]` attribute selectors. Added `color-4`, `color-5`, `color-6` event chip classes (purple, teal, orange). Added `.aips-calendar-legend-color.color-N` selectors so legend swatches use CSS classes instead of inline styles, guaranteeing they match the event chips.
+- **Template (`calendar.php`):** Replaced four hardcoded legend items with an empty `.aips-calendar-legend-items` container (hidden by default, shown/populated dynamically by JS after events load).
+- **Tests (`test-calendar-controller.php`):** Added `template_map` assertion to the existing success test. Added two new tests: `test_ajax_response_includes_template_map_with_correct_entries` (verifies two distinct templates appear in the map) and `test_template_map_deduplicates_same_template` (verifies 28 events from one template produce one legend entry).
+
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-calendar-controller.php`
+- `ai-post-scheduler/assets/js/calendar.js`
+- `ai-post-scheduler/assets/css/calendar.css`
+- `ai-post-scheduler/templates/admin/calendar.php`
+- `ai-post-scheduler/tests/test-calendar-controller.php`
+
+**Outcome:** The Schedule Calendar's color legend is now fully dynamic and functional. Template events are color-coded by first-appearance position (not by raw DB ID), so any combination of templates will receive distinct colors. The legend shows actual template names with matching swatches, is hidden when there are no active schedules, and supports up to 6 distinct color slots (expanding capacity from 3 to 6) before grouping extras under "Other Templates".

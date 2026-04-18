@@ -63,27 +63,10 @@ if (!defined('ABSPATH')) {
 					</div>
 				</div>
 		
-				<!-- Legend -->
-				<div class="aips-calendar-legend">
+				<!-- Legend — populated dynamically by calendar.js after events load -->
+				<div class="aips-calendar-legend" style="display:none;">
 					<h3><?php esc_html_e('Color Coding', 'ai-post-scheduler'); ?></h3>
-					<div class="aips-calendar-legend-items">
-						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #2271b1;"></span>
-							<span><?php esc_html_e('Template 1', 'ai-post-scheduler'); ?></span>
-						</div>
-						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #d63638;"></span>
-							<span><?php esc_html_e('Template 2', 'ai-post-scheduler'); ?></span>
-						</div>
-						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #00a32a;"></span>
-							<span><?php esc_html_e('Template 3', 'ai-post-scheduler'); ?></span>
-						</div>
-						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #dba617;"></span>
-							<span><?php esc_html_e('Other Templates', 'ai-post-scheduler'); ?></span>
-						</div>
-					</div>
+					<div class="aips-calendar-legend-items"></div>
 				</div>
 		
 				<!-- Loading Indicator -->

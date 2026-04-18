@@ -13,8 +13,12 @@
 		selectedDate: new Date()
 	};
 
-	// Template colors mapping
-	var templateColors = ['color-1', 'color-2', 'color-3'];
+	// Template color slots — up to 6 named colours before falling back to default.
+	var MAX_NAMED_COLORS = 6;
+
+	// Maps template_id (int) → { colorClass (string), name (string) }.
+	// Rebuilt by buildTemplateColorMap() every time fresh events are loaded.
+	var templateColorMap = {};
 
 	Object.assign(AIPS, {
 		/**
@@ -181,8 +185,10 @@
 		 *
 		 * Shows the loading indicator, hides the calendar view panels, sends the
 		 * `aips_get_calendar_events` action, and on success stores the returned
-		 * events in `calendarState.events` before calling `renderCalendar`. Re-shows
-		 * the appropriate view panel in the `complete` callback.
+		 * events in `calendarState.events`, builds the dynamic colour map via
+		 * `buildTemplateColorMap`, renders the live legend, and calls
+		 * `renderCalendar`. Re-shows the appropriate view panel in the `complete`
+		 * callback.
 		 */
 		loadCalendarEvents: function() {
 			var self = this;
@@ -202,6 +208,8 @@
 				success: function(response) {
 					if (response.success) {
 						calendarState.events = response.data.events || [];
+						self.buildTemplateColorMap(response.data.template_map || []);
+						self.renderLegend(response.data.template_map || []);
 						self.renderCalendar();
 					} else {
 						AIPS.Utilities.showToast(response.data.message || 'Failed to load calendar events.', 'error');
@@ -223,6 +231,85 @@
 					}
 				}
 			});
+		},
+
+		/**
+		 * Build a stable colour map from the ordered template list returned by
+		 * the server.
+		 *
+		 * Each template receives a colour class based on its position in the
+		 * list (colour-1 through colour-6, then colour-default for extras).
+		 * Because the server orders templates by first appearance in the
+		 * current month's events, the assignment is consistent for the same
+		 * set of active schedules regardless of their database IDs.
+		 *
+		 * @param {Array<{id: number, name: string}>} templateMap Ordered array
+		 *   of unique templates as returned by the `template_map` AJAX key.
+		 * @return {void}
+		 */
+		buildTemplateColorMap: function(templateMap) {
+			templateColorMap = {};
+			if (!templateMap || !templateMap.length) {
+				return;
+			}
+			templateMap.forEach(function(tpl, index) {
+				var slot       = index < MAX_NAMED_COLORS ? (index + 1) : 'default';
+				var colorClass = 'color-' + slot;
+				templateColorMap[tpl.id] = {
+					colorClass: colorClass,
+					name:       tpl.name
+				};
+			});
+		},
+
+		/**
+		 * Dynamically render the calendar legend from the ordered template list.
+		 *
+		 * Each entry shows a colour swatch (matching the event chips) and the
+		 * real template name.  Templates beyond the six named slots are grouped
+		 * under a single "Other Templates" entry.  The entire legend section is
+		 * hidden when there are no active-schedule templates to display.
+		 *
+		 * @param {Array<{id: number, name: string}>} templateMap Ordered array
+		 *   of unique templates as returned by the `template_map` AJAX key.
+		 * @return {void}
+		 */
+		renderLegend: function(templateMap) {
+			var $legend      = $('.aips-calendar-legend');
+			var $legendItems = $legend.find('.aips-calendar-legend-items');
+
+			$legendItems.empty();
+
+			if (!templateMap || !templateMap.length) {
+				$legend.hide();
+				return;
+			}
+
+			templateMap.forEach(function(tpl, index) {
+				if (index >= MAX_NAMED_COLORS) {
+					return; // "Other Templates" catch-all added below.
+				}
+				var colorClass = 'color-' + (index + 1);
+				var $item      = $('<div>').addClass('aips-calendar-legend-item');
+				var $swatch    = $('<span>').addClass('aips-calendar-legend-color ' + colorClass);
+				var $label     = $('<span>').text(tpl.name);
+				$item.append($swatch, $label);
+				$legendItems.append($item);
+			});
+
+			// If more templates exist than named colour slots, add a catch-all row.
+			if (templateMap.length > MAX_NAMED_COLORS) {
+				var $item   = $('<div>').addClass('aips-calendar-legend-item');
+				var $swatch = $('<span>').addClass('aips-calendar-legend-color color-default');
+				var $label  = $('<span>').text(
+					/* translators: catch-all legend entry for templates beyond the 6 named colour slots */
+					'Other Templates'
+				);
+				$item.append($swatch, $label);
+				$legendItems.append($item);
+			}
+
+			$legend.show();
 		},
 
 		/**
@@ -498,29 +585,27 @@
 		/**
 		 * Build a jQuery event chip element for a single calendar event.
 		 *
-		 * Assigns one of three template-based color classes (or a default class)
-		 * based on the event's `template_id`. Stores the full event object as
-		 * jQuery data on the element so `showEventDetails` can read it.
+		 * Assigns one of up to six named colour classes (colour-1 … colour-6)
+		 * or `colour-default` using the `templateColorMap` built by
+		 * `buildTemplateColorMap()`.  Colour assignment is position-based
+		 * (first unique template seen = colour-1, second = colour-2, …) so
+		 * any template ID — not just IDs 1–3 — receives a proper colour.
 		 *
-		 * @param  {Object} event           - Calendar event data object.
-		 * @param  {string} event.start     - Start datetime string (`YYYY-MM-DD HH:MM:SS`).
-		 * @param  {string} event.title     - Display title.
-		 * @param  {number} event.id        - Event ID.
-		 * @param  {number} event.template_id - Template ID used for colour coding.
-		 * @return {jQuery}                 The `.aips-calendar-event` element.
+		 * @param  {Object} event              - Calendar event data object.
+		 * @param  {string} event.start        - Start datetime string (`YYYY-MM-DD HH:MM:SS`).
+		 * @param  {string} event.title        - Display title.
+		 * @param  {number} event.id           - Event ID.
+		 * @param  {number} event.template_id  - Template ID used for colour coding.
+		 * @return {jQuery}                    The `.aips-calendar-event` element.
 		 */
 		createEventElement: function(event) {
 			var time = event.start.split(' ')[1];
 			var shortTime = time ? time.substring(0, 5) : '';
-			
-			// Determine color based on template ID
-			// Only assign specific colors to the first 3 templates; others get default color
+
+			// Look up the colour class from the dynamic map built at load time.
 			var colorClass = 'color-default';
-			if (event.template_id) {
-				var templateId = parseInt(event.template_id, 10);
-				if (!isNaN(templateId) && templateId >= 1 && templateId <= templateColors.length) {
-					colorClass = templateColors[templateId - 1];
-				}
+			if (event.template_id && templateColorMap[event.template_id]) {
+				colorClass = templateColorMap[event.template_id].colorClass;
 			}
 			
 			var $event = $('<div>')

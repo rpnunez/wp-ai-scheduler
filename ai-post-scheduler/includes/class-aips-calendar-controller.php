@@ -194,33 +194,78 @@ class AIPS_Calendar_Controller {
 	}
 	
 	/**
+	 * Build an ordered map of unique templates found in a set of calendar events.
+	 *
+	 * Iterates through the events in appearance order and collects each distinct
+	 * template_id exactly once.  The resulting array is used by the front-end to
+	 * assign stable colour slots and render the dynamic legend.
+	 *
+	 * @param array $events Flat array of calendar event arrays as returned by
+	 *                      {@see get_month_events()}.
+	 * @return array Indexed array of associative arrays, each with keys:
+	 *               - 'id'   (int)    Template database ID.
+	 *               - 'name' (string) Human-readable template name.
+	 */
+	private function build_template_map( $events ) {
+		$seen = array();
+		$map  = array();
+
+		foreach ( $events as $event ) {
+			$id = isset( $event['template_id'] ) ? (int) $event['template_id'] : 0;
+
+			if ( $id > 0 && ! isset( $seen[ $id ] ) ) {
+				$seen[ $id ] = true;
+				$map[]       = array(
+					'id'   => $id,
+					'name' => ! empty( $event['template_name'] )
+						? $event['template_name']
+						: __( 'Unknown Template', 'ai-post-scheduler' ),
+				);
+			}
+		}
+
+		return $map;
+	}
+
+	/**
 	 * AJAX handler to get calendar events.
 	 *
-	 * @return void
+	 * Fetches all scheduled occurrences for the requested month and also
+	 * returns a `template_map` — an ordered list of unique templates present
+	 * in those occurrences.  The front-end uses this map to render a dynamic
+	 * legend and assign consistent colour slots based on position rather than
+	 * raw template ID, so templates with any arbitrary ID get a proper colour.
+	 *
+	 * @return void Terminates via AIPS_Ajax_Response helpers.
 	 */
 	public function ajax_get_calendar_events() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
 		}
-		
+
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
+			return;
 		}
-		
+
 		$year = isset($_POST['year']) ? absint($_POST['year']) : date('Y');
 		$month = isset($_POST['month']) ? absint($_POST['month']) : date('n');
-		
+
 		// Validate month
 		if ($month < 1 || $month > 12) {
 			AIPS_Ajax_Response::error(__('Invalid month.', 'ai-post-scheduler'));
+			return;
 		}
-		
-		$events = $this->get_month_events($year, $month);
-		
+
+		$events       = $this->get_month_events($year, $month);
+		$template_map = $this->build_template_map( $events );
+
 		AIPS_Ajax_Response::success(array(
-			'events' => $events,
-			'year' => $year,
-			'month' => $month,
+			'events'       => $events,
+			'year'         => $year,
+			'month'        => $month,
+			'template_map' => $template_map,
 		));
 	}
 }

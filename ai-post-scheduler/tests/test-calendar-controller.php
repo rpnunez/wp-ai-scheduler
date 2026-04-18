@@ -52,6 +52,8 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$this->assertEquals(2026, $response['data']['year']);
 		$this->assertEquals(2, $response['data']['month']);
 		$this->assertIsArray($response['data']['events']);
+		$this->assertArrayHasKey('template_map', $response['data'], 'AJAX response must include template_map key');
+		$this->assertIsArray($response['data']['template_map']);
 	}
 
 	/**
@@ -301,5 +303,134 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		// Verify author and category are resolved
 		$this->assertEquals('Test Author', $first_event['author']);
 		$this->assertEquals('Test Category', $first_event['category']);
+	}
+
+	/**
+	 * Test that the AJAX response includes a template_map with unique templates.
+	 *
+	 * Creates two active daily schedules backed by two different templates and
+	 * asserts that the returned template_map lists both templates in the order
+	 * they first appear in the event stream, with the correct id and name keys.
+	 */
+	public function test_ajax_response_includes_template_map_with_correct_entries() {
+		global $wpdb;
+
+		// Create two templates with distinct names.
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'           => 'Alpha Template',
+				'content_prompt' => 'Prompt A',
+				'is_active'      => 1,
+			)
+		);
+		$template_id_a = $wpdb->insert_id;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'           => 'Beta Template',
+				'content_prompt' => 'Prompt B',
+				'is_active'      => 1,
+			)
+		);
+		$template_id_b = $wpdb->insert_id;
+
+		// Create two active daily schedules — one per template.
+		$this->schedule_repo->create( array(
+			'template_id' => $template_id_a,
+			'frequency'   => 'daily',
+			'next_run'    => '2026-02-01 08:00:00',
+			'is_active'   => 1,
+		) );
+
+		$this->schedule_repo->create( array(
+			'template_id' => $template_id_b,
+			'frequency'   => 'daily',
+			'next_run'    => '2026-02-01 09:00:00',
+			'is_active'   => 1,
+		) );
+
+		$_POST['year']    = 2026;
+		$_POST['month']   = 2;
+		$_POST['nonce']   = wp_create_nonce( 'aips_ajax_nonce' );
+		$_REQUEST['nonce'] = $_POST['nonce'];
+
+		try {
+			$this->controller->ajax_get_calendar_events();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+
+		$response = json_decode( $this->getActualOutput(), true );
+
+		$this->assertTrue( $response['success'] );
+
+		$template_map = $response['data']['template_map'];
+		$this->assertIsArray( $template_map );
+		$this->assertCount( 2, $template_map, 'template_map should contain exactly two entries' );
+
+		// Both entries must have 'id' and 'name' keys.
+		foreach ( $template_map as $entry ) {
+			$this->assertArrayHasKey( 'id',   $entry );
+			$this->assertArrayHasKey( 'name', $entry );
+		}
+
+		// Collect the returned IDs and names for assertion.
+		$returned_ids   = array_column( $template_map, 'id' );
+		$returned_names = array_column( $template_map, 'name' );
+
+		$this->assertContains( $template_id_a, $returned_ids, 'Alpha Template ID must be in template_map' );
+		$this->assertContains( $template_id_b, $returned_ids, 'Beta Template ID must be in template_map' );
+		$this->assertContains( 'Alpha Template', $returned_names );
+		$this->assertContains( 'Beta Template',  $returned_names );
+	}
+
+	/**
+	 * Test that the template_map contains no duplicate template entries.
+	 *
+	 * A single template with multiple daily occurrences in the month must
+	 * appear only once in the template_map, regardless of how many events
+	 * that template generates.
+	 */
+	public function test_template_map_deduplicates_same_template() {
+		global $wpdb;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'           => 'Repeated Template',
+				'content_prompt' => 'Prompt X',
+				'is_active'      => 1,
+			)
+		);
+		$template_id = $wpdb->insert_id;
+
+		// Single daily schedule generates 28 events in February — all for the
+		// same template.  The map must deduplicate these to one entry.
+		$this->schedule_repo->create( array(
+			'template_id' => $template_id,
+			'frequency'   => 'daily',
+			'next_run'    => '2026-02-01 10:00:00',
+			'is_active'   => 1,
+		) );
+
+		$_POST['year']    = 2026;
+		$_POST['month']   = 2;
+		$_POST['nonce']   = wp_create_nonce( 'aips_ajax_nonce' );
+		$_REQUEST['nonce'] = $_POST['nonce'];
+
+		try {
+			$this->controller->ajax_get_calendar_events();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		}
+
+		$response     = json_decode( $this->getActualOutput(), true );
+		$template_map = $response['data']['template_map'];
+
+		$this->assertCount( 1, $template_map, 'template_map must contain exactly one entry for a single template' );
+		$this->assertEquals( $template_id,       $template_map[0]['id'] );
+		$this->assertEquals( 'Repeated Template', $template_map[0]['name'] );
 	}
 }
