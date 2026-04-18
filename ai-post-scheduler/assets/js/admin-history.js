@@ -58,6 +58,12 @@
 			// Collapsible log-detail sections inside the modal.
 			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
 
+			// Copy log detail to clipboard.
+			$(document).on('click', '.aips-log-copy', this.copyLogDetail.bind(this));
+
+			// Log type filter tabs inside the modal.
+			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
+
 			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
 			$(document).on('click', '#aips-history-logs-modal', this.closeLogsModalOnOverlay.bind(this));
@@ -120,14 +126,13 @@
 				return;
 			}
 
-			var self         = this;
-			var $modal       = $('#aips-history-logs-modal');
-			var $content     = $('#aips-history-logs-content');
-			var $title       = $('#aips-history-logs-modal-title');
-			var detailsTitle = aipsHistoryL10n.historyDetailsTitle || 'History Details';
-			var T            = AIPS.Templates;
+			var self     = this;
+			var $modal   = $('#aips-history-logs-modal');
+			var $content = $('#aips-history-logs-content');
+			var $title   = $('#aips-history-logs-modal-title');
+			var T        = AIPS.Templates;
 
-			//$title.text(detailsTitle);
+			$title.text(aipsHistoryL10n.historyDetailsTitle || 'History Details');
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
 				text: aipsHistoryL10n.loadingLogs || 'Loading logs\u2026'
 			}));
@@ -154,7 +159,15 @@
 					var container = response.data.container;
 					var logs      = response.data.logs;
 
-					//$title.text(detailsTitle);
+					// Set modal title to the generated post title when available.
+					if (container.generated_title) {
+						$title.text(container.generated_title);
+					} else {
+						$title.text(
+							(aipsHistoryL10n.historyDetailsTitle || 'History Details')
+							+ ' #' + container.id
+						);
+					}
 
 					$content.html(self.renderLogsModalContent(container, logs));
 				},
@@ -182,6 +195,73 @@
 
 				$target.slideToggle(150, function () {
 					$button.text($target.is(':visible') ? hideLabel : showLabel);
+				});
+			}
+		},
+
+		/**
+		 * Copy the log detail JSON text to the clipboard.
+		 *
+		 * @param {Event} e - Click event from an `.aips-log-copy` element.
+		 */
+		copyLogDetail: function (e) {
+			e.preventDefault();
+			var $button        = $(e.currentTarget);
+			var targetSelector = $button.data('target');
+			var $target        = $(targetSelector);
+			var text           = $target.find('pre').text();
+
+			if (!text) {
+				return;
+			}
+
+			var copyLabel    = aipsHistoryL10n.copyDetails  || 'Copy';
+			var copiedLabel  = aipsHistoryL10n.copiedDetails || 'Copied!';
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(function () {
+					$button.text(copiedLabel);
+					setTimeout(function () { $button.text(copyLabel); }, 2000);
+				});
+			} else {
+				// Fallback: expose the detail block, select text, copy.
+				var $pre = $target.find('pre');
+				$target.show();
+				var range = document.createRange();
+				range.selectNodeContents($pre[0]);
+				var sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(range);
+				document.execCommand('copy');
+				sel.removeAllRanges();
+				$button.text(copiedLabel);
+				setTimeout(function () { $button.text(copyLabel); }, 2000);
+			}
+		},
+
+		/**
+		 * Filter the visible log rows to only those matching the selected type.
+		 *
+		 * @param {Event} e - Click event from an `.aips-log-type-filter-btn` element.
+		 */
+		filterLogsByType: function (e) {
+			e.preventDefault();
+			var $btn    = $(e.currentTarget);
+			var typeId  = $btn.data('type-id');
+			var $modal  = $('#aips-history-logs-modal');
+
+			$modal.find('.aips-log-type-filter-btn')
+				.removeClass('aips-btn-primary')
+				.addClass('aips-btn-ghost');
+			$btn.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
+
+			var $rows = $modal.find('.aips-history-logs-table tbody tr');
+			if (!typeId || typeId === 'all') {
+				$rows.show();
+			} else {
+				$rows.each(function () {
+					var rowType = $(this).data('type-id');
+					$(this).toggle(String(rowType) === String(typeId));
 				});
 			}
 		},
@@ -219,6 +299,15 @@
 				});
 			}
 
+			if (container.creation_method) {
+				var methodLabel = container.creation_method.replace(/_/g, ' ');
+				methodLabel = methodLabel.charAt(0).toUpperCase() + methodLabel.slice(1);
+				rows += T.render('aips-tmpl-history-summary-row', {
+					label: aipsHistoryL10n.labelCreationMethod || 'Method',
+					value: methodLabel
+				});
+			}
+
 			var statusClass = container.status === 'completed' ? 'aips-badge-success'
 				: (container.status === 'failed' ? 'aips-badge-error' : 'aips-badge-neutral');
 			rows += T.renderRaw('aips-tmpl-history-summary-status-row', {
@@ -239,13 +328,32 @@
 					value: container.completed_at
 				});
 			}
+
+			// Duration row.
+			if (container.duration_seconds !== null && container.duration_seconds !== undefined) {
+				rows += T.render('aips-tmpl-history-summary-duration-row', {
+					label: aipsHistoryL10n.labelDuration || 'Duration',
+					value: self.formatDuration(container.duration_seconds)
+				});
+			}
+
 			if (container.error_message) {
 				rows += T.render('aips-tmpl-history-summary-error-row', {
 					label:   aipsHistoryL10n.labelError || 'Error',
 					message: container.error_message
 				});
 			}
-			if (container.post_id) {
+
+			// Post link row.
+			if (container.post_id && container.post_url) {
+				rows += T.renderRaw('aips-tmpl-history-summary-post-row', {
+					label:     T.escape(aipsHistoryL10n.labelPostId || 'Post'),
+					url:       T.escape(container.post_url),
+					postId:    T.escape(String(container.post_id)),
+					editUrl:   T.escape(container.post_edit_url || ''),
+					editLabel: T.escape(aipsHistoryL10n.editPostLabel || 'Edit')
+				});
+			} else if (container.post_id) {
 				rows += T.render('aips-tmpl-history-summary-row', {
 					label: aipsHistoryL10n.labelPostId || 'Post ID',
 					value: String(container.post_id)
@@ -254,7 +362,47 @@
 
 			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
 
-			// ---- Log entries ----
+			// ---- Log type filter toolbar ----
+			var typeCounts = { all: logs.length };
+			$.each(logs, function (i, log) {
+				var tid = String(log.history_type_id);
+				typeCounts[tid] = (typeCounts[tid] || 0) + 1;
+			});
+
+			if (logs.length > 0) {
+				var filterButtons = '';
+
+				// "All" button.
+				filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
+					typeId:      T.escape('all'),
+					activeClass: T.escape('aips-btn-primary'),
+					label:       T.escape(aipsHistoryL10n.filterAll || 'All'),
+					count:       T.escape(String(typeCounts.all))
+				});
+
+				// Per-type buttons (only types that appear in the log set).
+				var typeOrder = [2, 3, 4, 5, 6, 8, 1, 7, 9, 10];
+				$.each(typeOrder, function (i, tid) {
+					if (!typeCounts[String(tid)]) {
+						return;
+					}
+					var typeLabel = (aipsHistoryL10n.typeLabels && aipsHistoryL10n.typeLabels[tid])
+						|| self.typeLabelFallback(tid);
+					filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
+						typeId:      T.escape(String(tid)),
+						activeClass: T.escape('aips-btn-ghost'),
+						label:       T.escape(typeLabel),
+						count:       T.escape(String(typeCounts[String(tid)]))
+					});
+				});
+
+				html += T.renderRaw('aips-tmpl-history-log-type-filter', {
+					filterLabel: T.escape(aipsHistoryL10n.filterByType || 'Filter:'),
+					buttons:     filterButtons
+				});
+			}
+
+			// ---- Log entries heading ----
 			html += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
 				count:   logs.length
@@ -289,6 +437,7 @@
 					detailsHtml += T.render('aips-tmpl-history-log-detail-block', {
 						rowId:     'aips-log-detail-' + i,
 						showLabel: aipsHistoryL10n.showDetails || 'Show details',
+						copyLabel: aipsHistoryL10n.copyDetails  || 'Copy',
 						details:   JSON.stringify(extra, null, 2)
 					});
 				}
@@ -298,7 +447,8 @@
 					typeClass:   T.escape(typeClass),
 					typeLabel:   T.escape(log.type_label),
 					logType:     T.escape(log.log_type),
-					detailsHtml: detailsHtml
+					detailsHtml: detailsHtml,
+					typeId:      T.escape(String(log.history_type_id))
 				});
 			});
 
@@ -311,6 +461,49 @@
 			});
 
 			return html;
+		},
+
+		/**
+		 * Format a duration in seconds to a human-readable string.
+		 *
+		 * @param {number} seconds Total seconds.
+		 * @return {string} Formatted duration string (e.g. "1m 23s").
+		 */
+		formatDuration: function (seconds) {
+			seconds = parseInt(seconds, 10);
+			if (isNaN(seconds) || seconds < 0) {
+				return '—';
+			}
+			if (seconds < 60) {
+				return seconds + 's';
+			}
+			var m = Math.floor(seconds / 60);
+			var s = seconds % 60;
+			return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+		},
+
+		/**
+		 * Return a fallback human-readable label for a history type ID.
+		 *
+		 * Used when the server-side l10n map is not available for a given type.
+		 *
+		 * @param {number} typeId
+		 * @return {string}
+		 */
+		typeLabelFallback: function (typeId) {
+			var map = {
+				1:  'Log',
+				2:  'Error',
+				3:  'Warning',
+				4:  'Info',
+				5:  'AI Request',
+				6:  'AI Response',
+				7:  'Debug',
+				8:  'Activity',
+				9:  'Session',
+				10: 'Metric'
+			};
+			return map[typeId] || 'Unknown';
 		},
 
 		/**

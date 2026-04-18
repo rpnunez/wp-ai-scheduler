@@ -100,7 +100,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method, t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
             $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";

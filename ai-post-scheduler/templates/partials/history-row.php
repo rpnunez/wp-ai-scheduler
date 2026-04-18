@@ -37,6 +37,9 @@ if (!defined('ABSPATH')) {
             echo '-';
         }
         ?></span>
+        <?php if (!empty($item->creation_method)): ?>
+        <span class="aips-badge aips-badge-neutral aips-creation-method-badge" style="font-size:10px;margin-left:4px;"><?php echo esc_html(ucfirst(str_replace('_', ' ', $item->creation_method))); ?></span>
+        <?php endif; ?>
     </td>
     <td class="column-status">
         <?php

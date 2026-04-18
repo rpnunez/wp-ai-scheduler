@@ -229,9 +229,11 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <!-- History Logs Modal -->
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-        <div id="aips-history-logs-content">
+        <div class="aips-modal-header">
+            <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        </div>
+        <div class="aips-modal-body" id="aips-history-logs-content">
             <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
@@ -319,7 +321,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
-	<tr>
+	<tr data-type-id="{{typeId}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>
@@ -335,7 +337,31 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <!-- Template: collapsible extra-details block inside a log row; use render() for auto-escaping -->
 <script type="text/html" id="aips-tmpl-history-log-detail-block">
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#{{rowId}}" style="font-size:11px;">{{showLabel}}</button>
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-copy" data-target="#{{rowId}}" style="font-size:11px;margin-left:4px;">{{copyLabel}}</button>
 	<div id="{{rowId}}" style="display:none;margin-top:8px;">
 		<pre style="max-height:200px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;">{{details}}</pre>
 	</div>
+</script>
+
+<!-- Template: log type filter toolbar shown above the log entries table -->
+<script type="text/html" id="aips-tmpl-history-log-type-filter">
+	<div class="aips-log-type-filter" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+		<span style="font-size:12px;color:#666;margin-right:4px;">{{filterLabel}}</span>
+		{{buttons}}
+	</div>
+</script>
+
+<!-- Template: a single log type filter button; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-log-type-btn">
+	<button type="button" class="aips-btn aips-btn-sm {{activeClass}} aips-log-type-filter-btn" data-type-id="{{typeId}}" style="font-size:11px;">{{label}} <span class="aips-badge aips-badge-neutral" style="font-size:10px;margin-left:3px;">{{count}}</span></button>
+</script>
+
+<!-- Template: summary row showing the post link; use renderRaw() with pre-escaped values -->
+<script type="text/html" id="aips-tmpl-history-summary-post-row">
+	<tr><th>{{label}}</th><td><a href="{{url}}" target="_blank">{{postId}}</a> &mdash; <a href="{{editUrl}}" target="_blank">{{editLabel}}</a></td></tr>
+</script>
+
+<!-- Template: summary row for duration display -->
+<script type="text/html" id="aips-tmpl-history-summary-duration-row">
+	<tr><th>{{label}}</th><td>{{value}}</td></tr>
 </script>
