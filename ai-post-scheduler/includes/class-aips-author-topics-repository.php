@@ -420,6 +420,38 @@ class AIPS_Author_Topics_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Get per-day topic-creation counts for the last N days.
+	 *
+	 * Returns an array keyed by ISO date string (Y-m-d) with an integer count.
+	 * Days with no records are omitted; callers should fill gaps as needed.
+	 *
+	 * @param int $days Number of calendar days to look back (inclusive today). Default 14.
+	 * @return array<string, int>
+	 */
+	public function get_daily_topic_counts( $days = 14 ) {
+		$days  = max( 1, absint( $days ) );
+		$start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+
+		$results = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT DATE(created_at) AS day, COUNT(*) AS total
+				 FROM {$this->table_name}
+				 WHERE created_at >= %s
+				 GROUP BY DATE(created_at)
+				 ORDER BY day ASC",
+				$start
+			)
+		);
+
+		$data = array();
+		foreach ( $results as $row ) {
+			$data[ $row->day ] = (int) $row->total;
+		}
+
+		return $data;
+	}
 }
 
 

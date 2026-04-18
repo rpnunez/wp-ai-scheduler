@@ -592,6 +592,47 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
+     * Get per-day generation counts for the last N days.
+     *
+     * Returns an array keyed by ISO date string (Y-m-d) where each value is an
+     * associative array with 'completed', 'failed', and 'total' counts.
+     * Days with no records are omitted; callers should fill gaps as needed.
+     *
+     * @param int $days Number of calendar days to look back (inclusive today). Default 14.
+     * @return array<string, array{completed: int, failed: int, total: int}>
+     */
+    public function get_daily_generation_counts( $days = 14 ) {
+        $days  = max( 1, absint( $days ) );
+        $start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+
+        $results = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                    DATE(created_at) AS day,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+                    SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
+                    COUNT(*) AS total
+                 FROM {$this->table_name}
+                 WHERE created_at >= %s
+                 GROUP BY DATE(created_at)
+                 ORDER BY day ASC",
+                $start
+            )
+        );
+
+        $data = array();
+        foreach ( $results as $row ) {
+            $data[ $row->day ] = array(
+                'completed' => (int) $row->completed,
+                'failed'    => (int) $row->failed,
+                'total'     => (int) $row->total,
+            );
+        }
+
+        return $data;
+    }
+
+    /**
      * Get statistics for a specific template.
      *
      * @param int $template_id Template ID.
