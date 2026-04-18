@@ -32,3 +32,6 @@
 ## 2026-04-04 - [Missing isset on db queries]
 **Learning:** Directly accessing properties of objects returned by database queries like `$wpdb->get_row()` triggers PHP Warnings if the query fails or returns nothing (null) and the code assumes an object structure.
 **Action:** Always wrap direct property access from potentially null query results with an `isset()` check (e.g. `isset($results->count) ? $results->count : 0`) before casting or returning.
+## 2024-05-25 - [Missing mock admin menu functions in tests/bootstrap.php]
+**Learning:** When tests simulate admin menu hooks (e.g., `Test_AIPS_Admin_Menu`), functions like `add_menu_page`, `add_submenu_page`, and `wp_list_pluck` cause fatal errors in limited test mode if they are not mocked.
+**Action:** Always add simple mock definitions for WordPress admin hook functions in `tests/bootstrap.php` to allow component tests to proceed without the full WordPress test library.
