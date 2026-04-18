@@ -50,6 +50,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
+        wp_enqueue_style(
+            'aips-admin-components',
+            AIPS_PLUGIN_URL . 'assets/css/admin-components.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
         wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
