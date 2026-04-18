@@ -161,7 +161,7 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 				}
 			}
 
-			$hook_key            = 'cron_hook_' . sanitize_key( $hook );
+			$hook_key            = 'queue_hook_' . sanitize_key( $hook );
 			$checks[ $hook_key ] = array(
 				'label'   => sprintf( __( 'Queue Hook: %s', 'ai-post-scheduler' ), $label ),
 				'value'   => $hook_value,

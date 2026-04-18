@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *                          (requires the ActionScheduler class to be available).
  *
  * @package AI_Post_Scheduler
- * @since   2.4.0
+ * @since   2.3.1
  */
 class AIPS_Queue_Manager {
 
@@ -122,7 +122,7 @@ class AIPS_Queue_Manager {
 		if ( $this->driver === self::DRIVER_ACTION_SCHEDULER ) {
 			$this->as_unschedule_all( $hook, $args );
 		} else {
-			wp_unschedule_hook( $hook );
+			wp_clear_scheduled_hook( $hook, $args );
 		}
 	}
 
@@ -144,14 +144,14 @@ class AIPS_Queue_Manager {
 	}
 
 	/**
-	 * Register cron event handler callbacks for all plugin hooks.
+	 * Register the cron_schedules filter so custom intervals are available to WP-Cron.
 	 *
-	 * For Action Scheduler this is a no-op at the WordPress hook level because
-	 * AS invokes hooks directly via do_action(); the plugin only needs to have
-	 * add_action() calls in place, which boot_cron() already provides.
+	 * For WP-Cron, registers the cron_schedules filter so that plugin-defined
+	 * custom intervals (e.g. 'minutely', 'twicehourly') are available when
+	 * WordPress resolves schedule names.
 	 *
-	 * For WP-Cron, also registers the cron_schedules filter so custom intervals
-	 * are available.
+	 * For Action Scheduler this is a no-op: AS accepts raw seconds, so the
+	 * cron_schedules filter is not required.
 	 *
 	 * @return void
 	 */
@@ -302,6 +302,16 @@ class AIPS_Queue_Manager {
 
 		// Action Scheduler uses a unique group per plugin to aid filtering in its admin UI.
 		$group = 'ai-post-scheduler';
+
+		// Guard against duplicates: AS does not deduplicate automatically.
+		try {
+			$existing = as_next_scheduled_action( $hook, $args, $group );
+			if ( $existing !== false ) {
+				return true;
+			}
+		} catch ( \Exception $e ) {
+			// If the AS tables are not ready yet, fall through and attempt to schedule anyway.
+		}
 
 		try {
 			$action_id = as_schedule_recurring_action( $timestamp, $interval, $hook, $args, $group );

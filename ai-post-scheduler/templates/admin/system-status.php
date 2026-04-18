@@ -114,11 +114,11 @@ if (!defined('ABSPATH')) {
                         ?>
                         <p class="description" style="margin-bottom:8px;">
                             <?php
-                            printf(
+                            echo wp_kses_post( sprintf(
                                 /* translators: %s: active queue driver label */
-                                esc_html__( 'Active Queue Manager: %s', 'ai-post-scheduler' ),
+                                __( 'Active Queue Manager: %s', 'ai-post-scheduler' ),
                                 '<strong>' . esc_html( $active_driver_label ) . '</strong>'
-                            );
+                            ) );
                             ?>
                         </p>
                         <?php
@@ -129,10 +129,10 @@ if (!defined('ABSPATH')) {
                                     <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php
-                                printf(
-                                    esc_html__('Next scheduled check: %s', 'ai-post-scheduler'),
+                                echo wp_kses_post( sprintf(
+                                    __('Next scheduled check: %s', 'ai-post-scheduler'),
                                     '<strong>' . esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_scheduled)) . '</strong>'
-                                );
+                                ) );
                                 ?>
                             </p>
                         <?php else : ?>

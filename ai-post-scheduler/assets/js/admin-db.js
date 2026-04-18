@@ -304,12 +304,12 @@
         },
 
         /**
-         * Flush all plugin WP-Cron events and re-register each exactly once.
+         * Confirm and flush all plugin queue events, then re-register each exactly once.
          *
-         * Shows a confirmation dialog warning that active cron events will be
+         * Shows a confirmation dialog warning that active queue events will be
          * removed and re-scheduled, then sends the `aips_flush_cron_events` AJAX
          * action. Reloads the page after a short delay on success so the updated
-         * cron diagnostics are visible.
+         * queue diagnostics are visible.
          *
          * @param {Event} e - Click event from an `.aips-flush-cron` element.
          */
@@ -319,9 +319,9 @@
             var $result = $('.aips-flush-cron-result');
 
             AIPS.Utilities.confirm(
-                'This will remove ALL registered instances of every plugin WP-Cron event and re-register each one exactly once. ' +
-                'Use this when duplicate cron events have accumulated and are causing excessive AI calls. Continue?',
-                'Flush WP-Cron Events',
+                'This will remove ALL registered instances of every plugin queue event and re-register each one exactly once. ' +
+                'Use this when duplicate events have accumulated and are causing excessive AI calls. Continue?',
+                'Flush Queue Events',
                 [
                     { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                     { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-danger-solid', action: function() {
@@ -353,10 +353,10 @@
                                 }
                             },
                             error: function() {
-                                AIPS.Utilities.showToast('An error occurred while flushing cron events.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while flushing queue events.', 'error');
                             },
                             complete: function() {
-                                $btn.prop('disabled', false).text('Flush WP-Cron Events');
+                                $btn.prop('disabled', false).text('Flush Queue Events');
                             }
                         });
                     } }
