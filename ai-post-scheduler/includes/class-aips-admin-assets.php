@@ -186,8 +186,6 @@ class AIPS_Admin_Assets {
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
-
-        // Enqueue Authors-specific assets
     }
 
     /**
