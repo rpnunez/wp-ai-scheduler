@@ -1,3 +1,13 @@
+# Hunter's Journal — Bug Patterns & Domain Learnings
+
+This file merges two complementary journals:
+- **Part 1 — Domain & Testing Patterns** (originally `.jules/hunter.md`): WordPress domain quirks, PHPUnit gotchas, and testing best practices discovered while hunting bugs.
+- **Part 2 — Security & Error-Handling Patterns** (originally `.build/bug-hunter.md`): Vulnerability fixes, silent failure elimination, and defensive programming patterns.
+
+---
+
+## Part 1 — Domain & Testing Patterns
+
 ## 2024-05-25 - [Schedule Initialization Logic Flaw]
 **Learning:** Using `calculate_next_run(interval, start_time)` for *initial* schedule creation is incorrect because it calculates `start_time + interval`, effectively skipping the first run.
 **Action:** When creating schedules, always treat `start_time` as the explicit *first* execution time (`next_run`), rather than a base for calculation. Only use `calculate_next_run` for subsequent recurring executions.
@@ -29,6 +39,35 @@
 ## 2024-03-31 - [Fix PHP Warning in AIPS_Schedule_Processor and missing mock support in Tests]
 **Learning:** The tests rely on `$wpdb->get_results` properly simulating queries with complex joins, but in limited test mode, a mocked `get_results_return_val` is needed, but missing in `tests/bootstrap.php`. Additionally, `AIPS_Schedule_Processor::execute_schedule_logic()` assumes `$actual_template_model` has a `post_quantity` property, which emits a PHP Warning if the object exists but lacks the property (e.g., from mock environments or incomplete data).
 **Action:** Added `get_results_return_val` to the mock `wpdb` class in `tests/bootstrap.php` and modified `get_results()` to return it if set. Also fixed the PHP Warning in `AIPS_Schedule_Processor` by checking `isset($actual_template_model->post_quantity)`.
+
 ## 2026-04-04 - [Missing isset on db queries]
 **Learning:** Directly accessing properties of objects returned by database queries like `$wpdb->get_row()` triggers PHP Warnings if the query fails or returns nothing (null) and the code assumes an object structure.
 **Action:** Always wrap direct property access from potentially null query results with an `isset()` check (e.g. `isset($results->count) ? $results->count : 0`) before casting or returning.
+
+---
+
+## Part 2 — Security & Error-Handling Patterns
+
+## 2026-04-03 - [Fix Silent Filesystem Errors and Remove @ Suppressions]
+**Learning:** Using `@` to suppress warnings (e.g., `@unlink`, `@chmod`, `@file_put_contents`) masks underlying filesystem failures and violates the "No Silent Failures" rule. Unhandled `unlink` operations can leave zombie files, and missing guards around directory/file creation obscure configuration or permission issues.
+**Action:** Removed `@` suppressions across `AIPS_Session_To_JSON`, added explicit `false` checks for `file_put_contents` and `wp_mkdir_p` with `error_log` fallbacks. Added return value checks to `unlink` in `AIPS_Logger` and `AIPS_Image_Service`, returning `false` or logging warnings appropriately. Added DocBlocks to modified methods to clarify error behavior.
+
+## 2024-04-06 - Fix silent filesystem failures
+**Learning:** Filesystem functions like `filesize()`, `filemtime()`, `glob()`, `fopen()`, and `ftell()` can return `false` on failure. If not checked explicitly, these boolean values can propagate to strict type-expecting functions (e.g. `size_format(filesize($file))`), causing fatal TypeErrors or unexpected application flow. `file_put_contents` needs directory writability checks, not just a false return check.
+**Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values. When dealing with directory modifications, verify `is_writable()` before writing files and verify `is_readable()` before opening files.
+
+## 2024-04-06 - [Fix Silent Filesystem Errors in validate-mcp-bridge.php]
+**Learning:** `filesize()` can return `false` on failure, which causes issues when passed to functions like `number_format()`.
+**Action:** Always verify the return value of filesystem operations using strict equality `=== false`. Provide safe fallback values.
+
+## 2026-04-08 - [Fix Undefined Variable in create_htaccess_protection]
+**Learning:** Using an undefined variable in a conditional check like `is_writable($base_dir)` throws a PHP warning and fails the condition, leading to silent failures when attempting to create protective files.
+**Action:** Replaced the undefined variable with the correct parameter `$dir`. Added regression test to ensure the method executes successfully without warnings.
+
+## 2026-04-15 - [Fix Silent json_decode Failures on Scalar Decodes]
+**Learning:** `json_decode()` can return scalar values (like strings or integers) for valid JSON inputs (e.g. `'"string"'`). Relying solely on `json_last_error() === JSON_ERROR_NONE` or assuming the result is an array can lead to silent TypeErrors or invalid offset accesses when code tries to access keys on a boolean/string/integer.
+**Action:** Always verify that the decoded JSON result is an array (or the expected type) using `is_array($decoded)` before proceeding, and ensure safe fallbacks or explicit error handling if it is not.
+
+## 2026-04-15 - [PHP 8 Strict Typing with Anonymous Mock Classes]
+**Learning:** Returning anonymous classes (`new class() {}`) that do not explicitly implement required interfaces (like `AIPS_AI_Service_Interface`) will cause fatal `TypeError`s in PHP 8+ when injected into type-hinted constructors. Additionally, if an anonymous class explicitly implements an interface, it must define *all* methods declared in that interface to avoid a fatal "contains abstract methods" error, even if those methods aren't used in the test.
+**Action:** When mocking dependencies for PHPUnit tests, always define explicit standard stub classes (e.g., `class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface`) rather than relying on anonymous classes, and ensure all interface methods have dummy implementations. Use unique class names per test file (e.g. `_For_Suggestions`) if `class_exists` checks cannot be used safely to prevent redeclaration errors.
