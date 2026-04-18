@@ -532,11 +532,11 @@ class AIPS_DB_Manager {
     }
 
     /**
-     * AJAX handler: flush all plugin WP-Cron events and re-register each exactly once.
+     * AJAX handler: flush all plugin queue events and re-register each exactly once.
      *
-     * Removes every scheduled instance of every plugin cron hook (handles
-     * cases where duplicate/stacked events have accumulated), then schedules
-     * each hook once with its configured recurrence.
+     * Delegates to AIPS_Queue_Manager::flush_and_reschedule() so the operation
+     * works correctly regardless of whether WP-Cron or Action Scheduler is the
+     * active queue driver.
      *
      * @return void
      */
@@ -548,40 +548,22 @@ class AIPS_DB_Manager {
             AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
         }
 
-        $cron_events    = AI_Post_Scheduler::get_cron_events();
-        $unscheduled    = array();
-        $rescheduled    = array();
-        $failed         = array();
-
-        foreach ($cron_events as $hook => $config) {
-            $schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
-            $label    = isset($config['label']) ? $config['label'] : $hook;
-
-            // Remove all existing instances of this hook from the cron table.
-            wp_unschedule_hook($hook);
-            $unscheduled[] = $label;
-
-            // Re-register exactly once. Use a 60-second offset to avoid an
-            // immediate burst of AI calls right after flushing.
-            $scheduled = wp_schedule_event(time() + 60, $schedule, $hook);
-            if ($scheduled !== false) {
-                $rescheduled[] = $label;
-            } else {
-                $failed[] = $label;
-            }
-        }
+        $queue_manager = new AIPS_Queue_Manager();
+        $results       = $queue_manager->flush_and_reschedule();
+        $rescheduled   = $results['scheduled'];
+        $failed        = $results['failed'];
 
         if (!empty($failed)) {
             AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
                     /* translators: %s: comma-separated hook labels that failed to reschedule */
-                    __('Cron events flushed but some hooks could not be rescheduled: %s', 'ai-post-scheduler'),
+                    __('Queue events flushed but some hooks could not be rescheduled: %s', 'ai-post-scheduler'),
                     implode(', ', $failed)
                 ),
                 'details' => array(
-                    'unscheduled' => $unscheduled,
                     'rescheduled' => $rescheduled,
                     'failed'      => $failed,
+                    'driver'      => $queue_manager->get_driver(),
                 ),
             ));
             return;
@@ -589,18 +571,18 @@ class AIPS_DB_Manager {
 
         AIPS_Ajax_Response::success(array(
             'message' => sprintf(
-                /* translators: %d: number of cron hooks flushed and rescheduled */
+                /* translators: %d: number of queue hooks flushed and rescheduled */
                 _n(
-                    '%d WP-Cron event flushed and rescheduled successfully.',
-                    '%d WP-Cron events flushed and rescheduled successfully.',
+                    '%d queue event flushed and rescheduled successfully.',
+                    '%d queue events flushed and rescheduled successfully.',
                     count($rescheduled),
                     'ai-post-scheduler'
                 ),
                 count($rescheduled)
             ),
             'details' => array(
-                'unscheduled' => $unscheduled,
                 'rescheduled' => $rescheduled,
+                'driver'      => $queue_manager->get_driver(),
             ),
         ));
     }

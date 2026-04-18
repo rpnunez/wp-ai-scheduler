@@ -102,12 +102,26 @@ if (!defined('ABSPATH')) {
                     <div class="aips-panel-header">
                         <h2>
                             <span class="dashicons dashicons-clock"></span>
-                            <?php esc_html_e('Cron Status', 'ai-post-scheduler'); ?>
+                            <?php esc_html_e('Queue Status', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
                     <div class="aips-panel-body">
                         <?php
-                        $next_scheduled = wp_next_scheduled('aips_generate_scheduled_posts');
+                        $queue_manager      = new AIPS_Queue_Manager();
+                        $active_driver      = $queue_manager->get_driver();
+                        $active_driver_label = $queue_manager->get_driver_label();
+                        $next_scheduled      = $queue_manager->next_scheduled( 'aips_generate_scheduled_posts' );
+                        ?>
+                        <p class="description" style="margin-bottom:8px;">
+                            <?php
+                            printf(
+                                /* translators: %s: active queue driver label */
+                                esc_html__( 'Active Queue Manager: %s', 'ai-post-scheduler' ),
+                                '<strong>' . esc_html( $active_driver_label ) . '</strong>'
+                            );
+                            ?>
+                        </p>
+                        <?php
                         if ($next_scheduled) : ?>
                             <p class="aips-status-message aips-status-success">
                                 <span class="aips-badge aips-badge-success">
@@ -127,16 +141,22 @@ if (!defined('ABSPATH')) {
                                     <span class="dashicons dashicons-warning"></span>
                                     <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                 </span>
-                                <?php esc_html_e('Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler'); ?>
+                                <?php
+                                if ( $active_driver === 'action_scheduler' ) {
+                                    esc_html_e( 'No pending Action Scheduler actions found. Try flushing the queue below.', 'ai-post-scheduler' );
+                                } else {
+                                    esc_html_e( 'Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler' );
+                                }
+                                ?>
                             </p>
                         <?php endif; ?>
 
-                        <p><?php esc_html_e('If duplicate or stacked cron events have accumulated (which can trigger excessive AI calls), flush and re-register all plugin events with one click.', 'ai-post-scheduler'); ?></p>
+                        <p><?php esc_html_e('If duplicate or stacked queue events have accumulated (which can trigger excessive AI calls), flush and re-register all plugin events with one click.', 'ai-post-scheduler'); ?></p>
 
                         <div class="aips-btn-group aips-action-group">
                             <button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
                                 <span class="dashicons dashicons-controls-repeat"></span>
-                                <?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
+                                <?php esc_html_e('Flush Queue Events', 'ai-post-scheduler'); ?>
                             </button>
                         </div>
 

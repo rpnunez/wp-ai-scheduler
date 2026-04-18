@@ -32,118 +32,150 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 	}
 
 	/**
-	 * Basic per-hook cron schedule check.
+	 * Per-hook queue schedule check.
+	 *
+	 * Delegates to AIPS_Queue_Manager so the status is accurate regardless of
+	 * whether WP-Cron or Action Scheduler is the active driver.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function check_cron() {
-		$cron_events = AI_Post_Scheduler::get_cron_events();
-		$status      = array();
-
-		foreach ( $cron_events as $event_hook => $event_config ) {
-			$next_run               = wp_next_scheduled( $event_hook );
-			$status[ $event_hook ] = array(
-				'label'  => isset( $event_config['label'] ) ? $event_config['label'] : $event_hook,
-				'value'  => $next_run ? wp_date( 'Y-m-d H:i:s', $next_run ) : __( 'Not Scheduled', 'ai-post-scheduler' ),
-				'status' => $next_run ? 'ok' : 'error',
-			);
-		}
-
-		return $status;
+		$queue_manager = new AIPS_Queue_Manager();
+		return $queue_manager->get_hook_status();
 	}
 
 	/**
-	 * Detailed scheduler health: per-hook cron diagnostics, queue-depth
-	 * surrogates, and 30-day schedule-run success rate.
+	 * Detailed scheduler health: per-hook queue diagnostics (driver-aware),
+	 * queue-depth surrogates, and 30-day schedule-run success rate.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function check_scheduler_health() {
-		$checks = array();
+		$checks        = array();
+		$queue_manager = new AIPS_Queue_Manager();
+		$driver        = $queue_manager->get_driver();
+		$driver_label  = $queue_manager->get_driver_label();
 
-		// --- Per-hook cron diagnostics ---
+		// --- Active driver info ---
+		$checks['queue_driver'] = array(
+			'label'  => __( 'Queue Driver', 'ai-post-scheduler' ),
+			'value'  => $driver_label,
+			'status' => 'info',
+		);
+
+		// --- Per-hook diagnostics ---
 		$cron_events     = AI_Post_Scheduler::get_cron_events();
 		$expected_total  = count( $cron_events );
-		$actual_total    = 0;
 		$hooks_missing   = array();
 		$hooks_duplicate = array();
+		$actual_total    = 0;
 
 		foreach ( $cron_events as $hook => $config ) {
-			$label      = isset( $config['label'] ) ? $config['label'] : $hook;
-			$schedule   = isset( $config['schedule'] ) ? $config['schedule'] : '';
-			$actual     = $this->count_cron_hook_instances( $hook );
-			$timestamps = $this->get_cron_hook_timestamps( $hook );
-			$actual_total += $actual;
+			$label    = isset( $config['label'] )    ? $config['label']    : $hook;
+			$schedule = isset( $config['schedule'] ) ? $config['schedule'] : '';
 
-			if ( $actual === 0 ) {
-				$hooks_missing[] = $label;
-			} elseif ( $actual > 1 ) {
-				$hooks_duplicate[] = $label;
-			}
+			$next_ts = $queue_manager->next_scheduled( $hook );
 
 			$detail_lines   = array();
 			$detail_lines[] = sprintf(
-				__( 'Hook: %s | Expected: 1 | Actual: %d | Schedule: %s', 'ai-post-scheduler' ),
+				__( 'Hook: %s | Driver: %s | Schedule: %s', 'ai-post-scheduler' ),
 				$hook,
-				$actual,
+				$driver_label,
 				$schedule
 			);
 
-			if ( ! empty( $timestamps ) ) {
-				$next           = $timestamps[0];
-				$detail_lines[] = sprintf(
-					__( 'Next run: %s (%s)', 'ai-post-scheduler' ),
-					wp_date( 'Y-m-d H:i:s', $next ),
-					human_time_diff( $next, time() ) . ( $next > time() ? ' from now' : ' ago' )
+			if ( $driver === AIPS_Queue_Manager::DRIVER_WPCRON ) {
+				// For WP-Cron we can count exact instances and detect duplicates.
+				$actual     = $this->count_cron_hook_instances( $hook );
+				$timestamps = $this->get_cron_hook_timestamps( $hook );
+				$actual_total += $actual;
+
+				if ( $actual === 0 ) {
+					$hooks_missing[] = $label;
+				} elseif ( $actual > 1 ) {
+					$hooks_duplicate[] = $label;
+				}
+
+				$detail_lines[0] = sprintf(
+					__( 'Hook: %s | Expected: 1 | Actual: %d | Schedule: %s', 'ai-post-scheduler' ),
+					$hook,
+					$actual,
+					$schedule
 				);
 
-				if ( count( $timestamps ) > 1 ) {
-					$all_times      = array_map( function ( $ts ) {
-						return wp_date( 'Y-m-d H:i:s', $ts );
-					}, $timestamps );
+				if ( ! empty( $timestamps ) ) {
+					$next = $timestamps[0];
 					$detail_lines[] = sprintf(
-						__( 'All scheduled times (%d): %s', 'ai-post-scheduler' ),
-						count( $timestamps ),
-						implode( ', ', $all_times )
+						__( 'Next run: %s (%s)', 'ai-post-scheduler' ),
+						wp_date( 'Y-m-d H:i:s', $next ),
+						human_time_diff( $next, time() ) . ( $next > time() ? ' from now' : ' ago' )
+					);
+					if ( count( $timestamps ) > 1 ) {
+						$all_times      = array_map( function ( $ts ) {
+							return wp_date( 'Y-m-d H:i:s', $ts );
+						}, $timestamps );
+						$detail_lines[] = sprintf(
+							__( 'All scheduled times (%d): %s', 'ai-post-scheduler' ),
+							count( $timestamps ),
+							implode( ', ', $all_times )
+						);
+					}
+				} else {
+					$detail_lines[] = __( 'Not currently scheduled in WP-Cron.', 'ai-post-scheduler' );
+				}
+
+				if ( $actual === 0 ) {
+					$hook_status = 'error';
+					$hook_value  = __( 'Not scheduled', 'ai-post-scheduler' );
+				} elseif ( $actual === 1 ) {
+					$hook_status = 'ok';
+					$hook_value  = empty( $timestamps )
+						? __( 'Scheduled (1)', 'ai-post-scheduler' )
+						: sprintf( __( 'Scheduled (1) — next: %s', 'ai-post-scheduler' ), wp_date( 'Y-m-d H:i:s', $timestamps[0] ) );
+				} else {
+					$hook_status = 'error';
+					$hook_value  = sprintf(
+						__( '%d duplicate events — expected 1. Use "Flush Queue Events" to fix.', 'ai-post-scheduler' ),
+						$actual
 					);
 				}
 			} else {
-				$detail_lines[] = __( 'Not currently scheduled in WP-Cron.', 'ai-post-scheduler' );
+				// Action Scheduler: presence check only (AS deduplicates internally).
+				$actual_total += $next_ts ? 1 : 0;
+				if ( ! $next_ts ) {
+					$hooks_missing[] = $label;
+				}
+
+				if ( $next_ts ) {
+					$detail_lines[] = sprintf(
+						__( 'Next run: %s (%s)', 'ai-post-scheduler' ),
+						wp_date( 'Y-m-d H:i:s', (int) $next_ts ),
+						human_time_diff( (int) $next_ts, time() ) . ( $next_ts > time() ? ' from now' : ' ago' )
+					);
+					$hook_status = 'ok';
+					$hook_value  = sprintf( __( 'Scheduled — next: %s', 'ai-post-scheduler' ), wp_date( 'Y-m-d H:i:s', (int) $next_ts ) );
+				} else {
+					$detail_lines[] = __( 'Not currently scheduled in Action Scheduler.', 'ai-post-scheduler' );
+					$hook_status    = 'error';
+					$hook_value     = __( 'Not scheduled', 'ai-post-scheduler' );
+				}
 			}
 
-			$hook_key = 'cron_hook_' . sanitize_key( $hook );
-			if ( $actual === 0 ) {
-				$hook_status = 'error';
-				$hook_value  = __( 'Not scheduled', 'ai-post-scheduler' );
-			} elseif ( $actual === 1 ) {
-				$hook_status = 'ok';
-				$hook_value  = empty( $timestamps )
-				? __( 'Scheduled (1)', 'ai-post-scheduler' )
-				: sprintf( __( 'Scheduled (1) — next: %s', 'ai-post-scheduler' ), wp_date( 'Y-m-d H:i:s', $timestamps[0] ) );
-			} else {
-				$hook_status = 'error';
-				$hook_value  = sprintf(
-					__( '%d duplicate events — expected 1. Use "Flush WP-Cron Events" to fix.', 'ai-post-scheduler' ),
-					$actual
-				);
-			}
-
+			$hook_key            = 'cron_hook_' . sanitize_key( $hook );
 			$checks[ $hook_key ] = array(
-				'label'   => sprintf( __( 'Cron: %s', 'ai-post-scheduler' ), $label ),
+				'label'   => sprintf( __( 'Queue Hook: %s', 'ai-post-scheduler' ), $label ),
 				'value'   => $hook_value,
 				'status'  => $hook_status,
 				'details' => $detail_lines,
 			);
 		}
 
-		// --- Cron summary ---
-		$summary_status = 'ok';
-		if ( ! empty( $hooks_missing ) || ! empty( $hooks_duplicate ) ) {
-			$summary_status = 'error';
-		}
-		$summary_parts = array(
+		// --- Summary ---
+		$summary_status = ( empty( $hooks_missing ) && empty( $hooks_duplicate ) ) ? 'ok' : 'error';
+		$summary_parts  = array(
+			sprintf( __( 'Driver: %s', 'ai-post-scheduler' ), $driver_label ),
 			sprintf( __( 'Expected: %d', 'ai-post-scheduler' ), $expected_total ),
-			sprintf( __( 'Actual: %d', 'ai-post-scheduler' ), $actual_total ),
+			sprintf( __( 'Scheduled: %d', 'ai-post-scheduler' ), $actual_total ),
 		);
 		if ( ! empty( $hooks_missing ) ) {
 			$summary_parts[] = sprintf( __( 'Missing: %s', 'ai-post-scheduler' ), implode( ', ', $hooks_missing ) );
@@ -153,7 +185,7 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 		}
 
 		$checks['cron_summary'] = array(
-			'label'  => __( 'WP-Cron Event Summary', 'ai-post-scheduler' ),
+			'label'  => __( 'Queue Event Summary', 'ai-post-scheduler' ),
 			'value'  => implode( ' | ', $summary_parts ),
 			'status' => $summary_status,
 		);

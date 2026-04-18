@@ -54,6 +54,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_default_category'],
         ));
+        register_setting('aips_settings', 'aips_queue_manager', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_queue_manager'),
+            'default'           => $defaults['aips_queue_manager'],
+        ));
         register_setting('aips_settings', 'aips_enable_logging', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_logging'],
@@ -161,6 +165,14 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_queue_manager',
+            __('Queue Manager', 'ai-post-scheduler'),
+            array($this->ui, 'queue_manager_field_callback'),
             'aips-settings',
             'aips_general_section'
         );

@@ -189,6 +189,8 @@ class AIPS_Config {
             'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
+            // Queue manager: 'wpcron' (default) or 'action_scheduler'.
+            'aips_queue_manager' => 'wpcron',
         );
     }
     

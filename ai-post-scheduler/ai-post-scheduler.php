@@ -191,28 +191,15 @@ final class AI_Post_Scheduler {
                 ));
             }
         }
-        
-        $crons = self::get_cron_events();
 
-        foreach ($crons as $hook => $cron_config) {
-            $schedule = $cron_config['schedule'];
-            $logger->log("Checking cron: $hook");
+        $queue_manager = new AIPS_Queue_Manager();
+        $results       = $queue_manager->schedule_all_events( false );
 
-            if (!wp_next_scheduled($hook)) {
-                $logger->log("Cron '$hook' not scheduled. Scheduling now with schedule: '$schedule'.");
-
-                wp_schedule_event(time(), $schedule, $hook);
-                
-                $next_run = wp_next_scheduled($hook);
-
-                if ($next_run) {
-                    $logger->log("Successfully scheduled '$hook'. Next run: " . date('Y-m-d H:i:s', $next_run));
-                } else {
-                    $logger->log("Failed to schedule '$hook'. wp_next_scheduled returned false.", 'error');
-                }
-            } else {
-                $logger->log("Cron '$hook' is already scheduled.");
-            }
+        foreach ( $results['scheduled'] as $label ) {
+            $logger->log( "Scheduled queue event: $label" );
+        }
+        foreach ( $results['failed'] as $label ) {
+            $logger->log( "Failed to schedule queue event: $label", 'error' );
         }
         
         flush_rewrite_rules();
@@ -235,9 +222,8 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function deactivate() {
-        foreach (array_keys(self::get_cron_events()) as $hook) {
-            wp_clear_scheduled_hook($hook);
-        }
+        $queue_manager = new AIPS_Queue_Manager();
+        $queue_manager->unschedule_all_events();
         flush_rewrite_rules();
     }
 
@@ -459,12 +445,12 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
+        // Register custom WP-Cron intervals (no-op when Action Scheduler is active).
+        AIPS_Queue_Manager::instance()->register_cron_intervals();
+
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
-        });
-        add_filter('cron_schedules', function($schedules) {
-            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });
 
         // Lazy-resolve the author-topics scheduler only when its hook fires.
