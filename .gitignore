@@ -5,15 +5,11 @@ composer.lock
 # Allow the generated autoloader inside ai-post-scheduler/vendor
 !ai-post-scheduler/vendor/autoload.php
 !ai-post-scheduler/vendor/composer/autoload_classmap.php
-!ai-post-scheduler/vendor/composer/autoload_files.php
 !ai-post-scheduler/vendor/composer/autoload_namespaces.php
 !ai-post-scheduler/vendor/composer/autoload_psr4.php
 !ai-post-scheduler/vendor/composer/autoload_static.php
 !ai-post-scheduler/vendor/composer/autoload_real.php
 !ai-post-scheduler/vendor/composer/ClassLoader.php
-!ai-post-scheduler/vendor/composer/installed.json
-!ai-post-scheduler/vendor/composer/installed.php
-!ai-post-scheduler/vendor/composer/InstalledVersions.php
 !ai-post-scheduler/vendor/composer/LICENSE
 !ai-post-scheduler/vendor/composer/platform_check.php
 

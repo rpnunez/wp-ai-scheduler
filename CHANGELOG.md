@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 ### Fixed
 - Added defensive `is_array` checks after `json_decode` operations across multiple files to prevent silent fatal errors on scalar JSON inputs.
-- **Prompt Builder**: Explicitly instruct AI to output in HTML format instead of markdown and strictly wrap code blocks in `<pre><code>` tags for post content generation.
 
 ### Changed
 - Standardized search and clear button CSS classes across all admin interfaces (`.aips-btn-sm`) for consistent UX.
@@ -79,3 +78,5 @@ All notable changes to this project will be documented in this file.
 - [2024-05-22 10:00:00] Refactored Scheduler: Extracted AJAX handlers to `AIPS_Schedule_Controller`, enhanced `AIPS_Scheduler` with better topic and next_run support, and updated `AIPS_Planner` to use the Scheduler service instead of direct SQL.
 - [2024-05-22 10:00:00] Made generated topic titles editable in the Planner before scheduling.
 
+### Fixed
+* **Prompt Builder**: Explicitly instruct AI to output in HTML format instead of markdown and strictly wrap code blocks in `<pre><code>` tags for post content generation.

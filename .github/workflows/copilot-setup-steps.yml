@@ -13,16 +13,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Ensure default branch is fetched
-        run: |
-          set -euo pipefail
-          DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
-          DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
-          echo "Default branch detected: ${DEFAULT_BRANCH}"
-          git fetch --no-tags origin "${DEFAULT_BRANCH}:${DEFAULT_BRANCH}" || true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -44,8 +34,8 @@ jobs:
             ${{ runner.os }}-composer-copilot-
             ${{ runner.os }}-composer-
 
-      - name: Install Composer dependencies (skip dev)
-        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader
+      - name: Install Composer dependencies
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
       - name: Verify installation
         run: |
