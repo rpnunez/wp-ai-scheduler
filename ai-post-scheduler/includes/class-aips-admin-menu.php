@@ -183,6 +183,17 @@ class AIPS_Admin_Menu {
             array($this, 'render_status_page')
         );
 
+        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+            add_submenu_page(
+                'ai-post-scheduler',
+                __('Telemetry', 'ai-post-scheduler'),
+                __('Telemetry', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-telemetry',
+                array($this, 'render_telemetry_page')
+            );
+        }
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Seeder', 'ai-post-scheduler'),
@@ -382,6 +393,16 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Telemetry page.
+     *
+     * @return void
+     */
+    public function render_telemetry_page() {
+        $controller = new AIPS_Telemetry_Controller();
+        $controller->render_page();
     }
 
     /**
