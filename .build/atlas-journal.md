@@ -1370,7 +1370,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
-  
+
 ## 2026-04-16 - [Detangle System Status Diagnostics]
 **Context:** The AIPS_System_Status class is a God Object handling UI rendering and complex system diagnostic data gathering. Extracting it into a single AIPS_System_Diagnostics_Service created another God Object.
 **Decision:** Introduced a Provider pattern. Created AIPS_System_Diagnostic_Provider_Interface. Extracted diagnostics into cohesive providers (Environment, Scheduler, Queue, Logs). AIPS_System_Diagnostics_Service now acts as an aggregator.
