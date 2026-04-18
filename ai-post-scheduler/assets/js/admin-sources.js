@@ -54,6 +54,9 @@
 			// Toggle active status.
 			$(document).on('click', '.aips-toggle-source', this.toggleSource.bind(this));
 
+			// Fetch content now.
+			$(document).on('click', '.aips-fetch-source-now', this.fetchSourceNow.bind(this));
+
 			// Close modal buttons / overlay.
 			$(document).on('click', '#aips-source-modal .aips-modal-close', this.closeModal.bind(this));
 			$(document).on('click', '#aips-source-modal', this.onOverlayClick.bind(this));
@@ -107,6 +110,7 @@
 			$('#aips-source-label').val($row.data('label'));
 			$('#aips-source-description').val($row.data('description'));
 			$('#aips-source-is-active').prop('checked', parseInt($row.data('active'), 10) === 1);
+			$('#aips-source-fetch-interval').val($row.data('fetch-interval') || '');
 
 			// Restore group checkboxes.
 			var termIds = [];
@@ -158,6 +162,7 @@
 			$('#aips-source-label').val('');
 			$('#aips-source-description').val('');
 			$('#aips-source-is-active').prop('checked', true);
+			$('#aips-source-fetch-interval').val('');
 			$('.aips-source-group-checkbox').prop('checked', false);
 		},
 
@@ -187,13 +192,14 @@
 			});
 
 			var data = {
-				action:    'aips_save_source',
-				nonce:     aipsAjax.nonce,
-				source_id: this.currentSourceId,
-				url:       url,
-				label:     $('#aips-source-label').val().trim(),
-				description: $('#aips-source-description').val().trim(),
-				term_ids:  termIds,
+				action:         'aips_save_source',
+				nonce:          aipsAjax.nonce,
+				source_id:      this.currentSourceId,
+				url:            url,
+				label:          $('#aips-source-label').val().trim(),
+				description:    $('#aips-source-description').val().trim(),
+				term_ids:       termIds,
+				fetch_interval: $('#aips-source-fetch-interval').val(),
 			};
 
 			if ($('#aips-source-is-active').is(':checked')) {
@@ -395,6 +401,48 @@
 				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast('Failed to delete group.', 'error');
+			});
+		},
+
+		// -----------------------------------------------------------------
+		// AJAX – Fetch Now
+		// -----------------------------------------------------------------
+
+		/**
+		 * Trigger an immediate content fetch for a single source.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		fetchSourceNow: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var id   = parseInt($btn.data('id'), 10);
+
+			$btn.prop('disabled', true);
+			var $icon = $btn.find('.dashicons');
+			$icon.removeClass('dashicons-download').addClass('dashicons-update aips-spin');
+
+			var self = this;
+			$.post(aipsAjax.ajaxUrl, {
+				action:    'aips_fetch_source_now',
+				nonce:     aipsAjax.nonce,
+				source_id: id,
+			}, function (response) {
+				$btn.prop('disabled', false);
+				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
+
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || 'Fetch failed.', 'error');
+					return;
+				}
+
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.refreshPage();
+			}).fail(function () {
+				$btn.prop('disabled', false);
+				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
+				AIPS.Utilities.showToast('Fetch failed.', 'error');
 			});
 		},
 

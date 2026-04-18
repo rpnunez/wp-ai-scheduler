@@ -56,6 +56,7 @@ class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 			'AIPS_Author_Topics_Scheduler',
 			'AIPS_Author_Post_Generator',
 			'AIPS_Embeddings_Cron',
+			'AIPS_Sources_Cron',
 			'AIPS_Notifications',
 			'AIPS_Authors_Controller',
 			'AIPS_Author_Topics_Controller',
@@ -193,6 +194,10 @@ class Test_AIPS_Singleton_Instances extends WP_UnitTestCase {
 
 	public function test_embeddings_cron_singleton() {
 		$this->assert_singleton_contract( 'AIPS_Embeddings_Cron' );
+	}
+
+	public function test_sources_cron_singleton() {
+		$this->assert_singleton_contract( 'AIPS_Sources_Cron' );
 	}
 
 	public function test_notifications_singleton() {

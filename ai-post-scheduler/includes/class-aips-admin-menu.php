@@ -442,6 +442,13 @@ class AIPS_Admin_Menu {
         $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
         $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
 
+        // Build source → fetch-data map for the Content status column (latest row per source).
+        $data_repo             = new AIPS_Sources_Data_Repository();
+        $source_fetch_data_map = $data_repo->get_by_source_ids( $all_source_ids );
+
+        // Build source → archived content count map for the Content column badge.
+        $source_content_count_map = $data_repo->get_counts_by_source_ids( $all_source_ids );
+
         include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }
 

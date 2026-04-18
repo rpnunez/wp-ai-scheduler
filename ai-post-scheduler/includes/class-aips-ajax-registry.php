@@ -196,9 +196,11 @@ class AIPS_Ajax_Registry {
 		'aips_save_source'                => 'AIPS_Sources_Controller',
 		'aips_delete_source'              => 'AIPS_Sources_Controller',
 		'aips_toggle_source_active'       => 'AIPS_Sources_Controller',
+		'aips_fetch_source_now'           => 'AIPS_Sources_Controller',
 		'aips_get_source_groups'          => 'AIPS_Sources_Controller',
 		'aips_save_source_group'          => 'AIPS_Sources_Controller',
 		'aips_delete_source_group'        => 'AIPS_Sources_Controller',
+		'aips_research_from_sources'      => 'AIPS_Research_Controller',
 
 		// Onboarding Wizard
 		'aips_onboarding_save_strategy'   => 'AIPS_Onboarding_Wizard',
