@@ -57,6 +57,8 @@ ai-post-scheduler/
 
 ### Quick Start (Docker, Recommended)
 
+> **Requires Bash** — run from Git Bash, WSL2, or a Mac/Linux terminal.
+
 ```bash
 ./start-dev.sh
 ```
@@ -67,6 +69,8 @@ Local URLs:
 - WordPress: http://localhost:8080
 - Admin: http://localhost:8080/wp-admin (admin/admin)
 - phpMyAdmin: http://localhost:8082
+
+See [docs/DEV.md](docs/DEV.md) for full setup details and [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) for a quick-reference card.
 
 ### Daily Workflow
 
@@ -86,7 +90,7 @@ make down
 
 ### Manual/Non-Docker Setup
 
-- See [COPILOT_SETUP_STEPS.md](COPILOT_SETUP_STEPS.md) for local setup options.
+- See [docs/DEV.md](docs/DEV.md) for full PHPUnit / WordPress test library setup without Docker.
 - See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
 
 ### Debugging (VS Code)
@@ -136,12 +140,14 @@ Performance benchmarks run automatically in CI on pull requests and fail PRs whe
 
 ## Documentation
 
-- [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md)
-- [docs/HOOKS.md](docs/HOOKS.md)
+- [docs/FEATURES.MD](docs/FEATURES.MD) — complete feature reference
+- [docs/DEV.md](docs/DEV.md) — developer setup and environment guide
+- [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) — quick-reference cheat sheet
+- [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/SETUP.md](docs/SETUP.md)
 - [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — performance benchmarking and CI integration
-- [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — project-specific coding and architectural guidelines for developers and AI agents
+- [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing

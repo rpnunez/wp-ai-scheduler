@@ -1,5 +1,0 @@
-title,body,labels,assignees,milestone,project
-"Fix dedup in save_research_batch","topic_exists() is not called; repeated cron runs produce duplicate rows.","bug,Phase 1","rpnunez",,
-"Add status column to aips_trending_topics","Add ENUM(pending|approved|dismissed|scheduled) DEFAULT pending.","enhancement,Phase 1,database",,"Sprint 1",3
-"Research Inbox tab","New Inbox tab on Research page with Approve/Dismiss/Generate actions.","enhancement,Phase 2",,"Sprint 2",
-"Introduce AIPS_Research_Source interface","Define interface with get_label() and fetch() for pluggable research sources.","enhancement,Phase 3,architecture",,"Sprint 3",3
