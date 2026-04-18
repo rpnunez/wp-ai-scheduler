@@ -32,3 +32,6 @@
 ## 2026-04-04 - [Missing isset on db queries]
 **Learning:** Directly accessing properties of objects returned by database queries like `$wpdb->get_row()` triggers PHP Warnings if the query fails or returns nothing (null) and the code assumes an object structure.
 **Action:** Always wrap direct property access from potentially null query results with an `isset()` check (e.g. `isset($results->count) ? $results->count : 0`) before casting or returning.
+## 2026-04-18 - [Standardize AJAX Responses]
+**Learning:** Calling `wp_send_json_error()` and `wp_send_json_success()` directly circumvents standard plugin AJAX handling mechanisms, reducing maintainability.
+**Action:** Always use the designated wrapper class `AIPS_Ajax_Response::error()` and `AIPS_Ajax_Response::success()` for returning JSON responses in AJAX endpoints.

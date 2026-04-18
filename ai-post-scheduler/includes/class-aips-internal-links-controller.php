@@ -119,7 +119,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$page     = max(1, absint(isset($_POST['page']) ? wp_unslash($_POST['page']) : 1));
@@ -137,7 +137,7 @@ class AIPS_Internal_Links_Controller {
 			$item->target_url      = get_permalink($item->target_post_id);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'items'       => $items,
 			'total'       => $total,
 			'total_pages' => (int) ceil($total / $per_page),
@@ -154,7 +154,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$post_id_raw = isset($_POST['post_id']) ? wp_unslash($_POST['post_id']) : 0;
@@ -168,20 +168,20 @@ class AIPS_Internal_Links_Controller {
 		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
 		$threshold     = max(0, min(1, $threshold));
 		if (!$post_id) {
-			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
 		}
 
 		if (!$this->embeddings_service_available()) {
-			wp_send_json_error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
 		$ids = $this->service->generate_suggestions_for_post($post_id, $max_suggestions, $threshold);
 
 		if (is_wp_error($ids)) {
-			wp_send_json_error(array('message' => $ids->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $ids->get_error_message()));
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'created' => count($ids),
 			'message' => sprintf(
 				/* translators: %d number of suggestions */
@@ -205,23 +205,23 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$id     = absint(isset($_POST['id']) ? $_POST['id'] : 0);
 		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
 
 		if (!$id || !in_array($status, AIPS_Internal_Links_Repository::VALID_STATUSES, true)) {
-			wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
 		}
 
 		$result = $this->links_repo->update_status($id, $status);
 
 		if ($result === false) {
-			wp_send_json_error(array('message' => __('Failed to update status.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Failed to update status.', 'ai-post-scheduler')));
 		}
 
-		wp_send_json_success(array('message' => __('Status updated.', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array('message' => __('Status updated.', 'ai-post-scheduler')));
 	}
 
 	/**
@@ -233,23 +233,23 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$id          = absint(isset($_POST['id']) ? $_POST['id'] : 0);
 		$anchor_text = isset($_POST['anchor_text']) ? sanitize_text_field(wp_unslash($_POST['anchor_text'])) : '';
 
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid ID.', 'ai-post-scheduler')));
 		}
 
 		$result = $this->links_repo->update_anchor_text($id, $anchor_text);
 
 		if ($result === false) {
-			wp_send_json_error(array('message' => __('Failed to update anchor text.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Failed to update anchor text.', 'ai-post-scheduler')));
 		}
 
-		wp_send_json_success(array('message' => __('Anchor text updated.', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array('message' => __('Anchor text updated.', 'ai-post-scheduler')));
 	}
 
 	/**
@@ -261,22 +261,22 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$id = absint(isset($_POST['id']) ? $_POST['id'] : 0);
 
 		if (!$id) {
-			wp_send_json_error(array('message' => __('Invalid ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid ID.', 'ai-post-scheduler')));
 		}
 
 		$result = $this->links_repo->delete($id);
 
 		if ($result === false) {
-			wp_send_json_error(array('message' => __('Failed to delete suggestion.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Failed to delete suggestion.', 'ai-post-scheduler')));
 		}
 
-		wp_send_json_success(array('message' => __('Suggestion deleted.', 'ai-post-scheduler')));
+		AIPS_Ajax_Response::success(array('message' => __('Suggestion deleted.', 'ai-post-scheduler')));
 	}
 
 	/**
@@ -290,16 +290,16 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		if (!$this->embeddings_service_available()) {
-			wp_send_json_error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
 		$this->schedule_indexing_batch(0);
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
 		));
 	}
@@ -313,11 +313,11 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$summary = $this->service->get_dashboard_summary();
-		wp_send_json_success($summary);
+		AIPS_Ajax_Response::success($summary);
 	}
 
 	/**
@@ -329,30 +329,30 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$post_id = absint(isset($_POST['post_id']) ? $_POST['post_id'] : 0);
 
 		if (!$post_id) {
-			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
 		}
 
 		if (!$this->embeddings_service_available()) {
-			wp_send_json_error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
 		$result = $this->service->index_post($post_id);
 
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
 		$suggestion_ids = $this->service->generate_suggestions_for_post($post_id);
 
 		if (is_wp_error($suggestion_ids)) {
 			// Indexing succeeded even if suggestion generation failed
-			wp_send_json_success(array(
+			AIPS_Ajax_Response::success(array(
 				'message' => sprintf(
 					/* translators: %s error message */
 					__('Post re-indexed but suggestion generation failed: %s', 'ai-post-scheduler'),
@@ -362,7 +362,7 @@ class AIPS_Internal_Links_Controller {
 			return;
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(
 				/* translators: %d number of suggestions */
 				_n(
@@ -385,13 +385,13 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$this->embeddings_repo->delete_all();
 		$this->links_repo->delete_all();
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Index cleared. All embeddings and suggestions have been removed.', 'ai-post-scheduler'),
 		));
 	}
@@ -409,25 +409,25 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
 
 		if (!$suggestion_id) {
-			wp_send_json_error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
 		}
 
 		$suggestion = $this->links_repo->get_by_id($suggestion_id);
 
 		if (!$suggestion) {
-			wp_send_json_error(array('message' => __('Suggestion not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Suggestion not found.', 'ai-post-scheduler')));
 		}
 
 		$source_post = get_post($suggestion->source_post_id);
 
 		if (!$source_post) {
-			wp_send_json_error(array('message' => __('Source post not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Source post not found.', 'ai-post-scheduler')));
 		}
 
 		// Fetch all accepted suggestions for this source post.
@@ -446,7 +446,7 @@ class AIPS_Internal_Links_Controller {
 			);
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'post_id'      => (int) $source_post->ID,
 			'post_title'   => $source_post->post_title,
 			'post_content' => $source_post->post_content,
@@ -464,22 +464,22 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
 
 		if (!$suggestion_id) {
-			wp_send_json_error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid suggestion ID.', 'ai-post-scheduler')));
 		}
 
 		$result = $this->inserter_service->find_insertion_locations($suggestion_id);
 
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'locations'       => isset($result['locations']) ? $result['locations'] : array(),
 			'requested_count' => AIPS_Internal_Link_Inserter_Service::NUM_LOCATIONS_TO_REQUEST,
 			'ai_returned_count' => isset($result['raw_count']) ? (int) $result['raw_count'] : 0,
@@ -496,7 +496,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$suggestion_id       = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
@@ -504,30 +504,30 @@ class AIPS_Internal_Links_Controller {
 		$replacement_snippet = isset($_POST['replacement_snippet']) ? wp_unslash($_POST['replacement_snippet']) : '';
 
 		if (!$suggestion_id || empty($match_snippet) || empty($replacement_snippet)) {
-			wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
 		}
 
 		// Validate that snippets contain no HTML (they must be plain text).
 		if (strpos($match_snippet, '<') !== false || strpos($match_snippet, '>') !== false) {
-			wp_send_json_error(array('message' => __('Invalid match snippet.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid match snippet.', 'ai-post-scheduler')));
 		}
 
 		if (strpos($replacement_snippet, '<') !== false || strpos($replacement_snippet, '>') !== false) {
-			wp_send_json_error(array('message' => __('Invalid replacement snippet.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid replacement snippet.', 'ai-post-scheduler')));
 		}
 
 		// Require exactly one [[...]] link marker in the replacement snippet.
 		if (!preg_match('/\[\[.*?\]\]/s', $replacement_snippet) || preg_match_all('/\[\[.*?\]\]/s', $replacement_snippet) !== 1) {
-			wp_send_json_error(array('message' => __('Replacement snippet must contain exactly one [[link marker]].', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Replacement snippet must contain exactly one [[link marker]].', 'ai-post-scheduler')));
 		}
 
 		$result = $this->inserter_service->apply_insertion($suggestion_id, $match_snippet, $replacement_snippet);
 
 		if (is_wp_error($result)) {
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Link inserted successfully.', 'ai-post-scheduler'),
 		));
 	}
@@ -547,20 +547,20 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
 		}
 
 		$insertions_raw = isset($_POST['insertions']) ? wp_unslash($_POST['insertions']) : '';
 
 		if (empty($insertions_raw)) {
-			wp_send_json_error(array('message' => __('No insertions provided.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('No insertions provided.', 'ai-post-scheduler')));
 			return;
 		}
 
 		$insertions = json_decode($insertions_raw, true);
 
 		if (!is_array($insertions) || empty($insertions)) {
-			wp_send_json_error(array('message' => __('Invalid insertions data.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(array('message' => __('Invalid insertions data.', 'ai-post-scheduler')));
 			return;
 		}
 
@@ -604,14 +604,14 @@ class AIPS_Internal_Links_Controller {
 		}
 
 		if ($applied === 0 && !empty($errors)) {
-			wp_send_json_error(array(
+			AIPS_Ajax_Response::error(array(
 				'message' => implode(' ', $errors),
 				'errors'  => $errors,
 			));
 			return;
 		}
 
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'applied' => $applied,
 			'errors'  => $errors,
 			'message' => sprintf(
