@@ -452,10 +452,7 @@ if (!function_exists('aips_next_run_relative')) {
 					<select id="article_structure_id" name="article_structure_id">
 						<option value=""><?php esc_html_e('Use Default', 'ai-post-scheduler'); ?></option>
 						<?php foreach ($article_structures as $structure): ?>
-						<option value="<?php echo esc_attr($structure->id); ?>">
-							<?php echo esc_html($structure->name); ?>
-							<?php if (!empty($structure->is_default)): ?> (<?php esc_html_e('Default', 'ai-post-scheduler'); ?>)<?php endif; ?>
-						</option>
+						<option value="<?php echo esc_attr($structure->id); ?>"><?php echo esc_html($structure->name); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</div>
