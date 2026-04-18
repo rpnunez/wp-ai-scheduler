@@ -539,7 +539,7 @@
 				}
 
 				return '<table class="' + tableClass + '"><tbody>' + value.map(function(item, index) {
-					return this.renderPayloadRow(String(index), item, depth + 1, true);
+					return this.renderPayloadRow(String(index), item, depth + 1, true, label);
 				}, this).join('') + '</tbody></table>';
 			}
 
@@ -550,7 +550,7 @@
 				}
 
 				return '<table class="' + tableClass + '"><tbody>' + keys.map(function(key) {
-					return this.renderPayloadRow(key, value[key], depth + 1, false);
+					return this.renderPayloadRow(key, value[key], depth + 1, false, label);
 				}, this).join('') + '</tbody></table>';
 			}
 
@@ -564,10 +564,14 @@
 		 * @param {*} value Row value.
 		 * @param {number} depth Nesting depth.
 		 * @param {boolean} useIndexLabel Whether the label is already an index.
+		 * @param {string} groupKey Key of the parent group (used to pick the item label for arrays).
 		 * @return {string}
 		 */
-		renderPayloadRow: function(label, value, depth, useIndexLabel) {
-			var rowLabel = AIPS.Templates.escape(useIndexLabel ? (window.aipsTelemetryL10n.detailsEventItemLabel || 'Item %s').replace('%s', label) : label);
+		renderPayloadRow: function(label, value, depth, useIndexLabel, groupKey) {
+			var itemLabelTemplate = (groupKey === 'events')
+				? (window.aipsTelemetryL10n.detailsEventItemLabel || 'Event %s')
+				: (window.aipsTelemetryL10n.detailsItemLabel || 'Item %s');
+			var rowLabel = AIPS.Templates.escape(useIndexLabel ? itemLabelTemplate.replace('%s', label) : label);
 
 			if (Array.isArray(value) || (value && typeof value === 'object')) {
 				return '<tr><th>' + rowLabel + '</th><td>' + this.renderPayloadNode(value, label, depth) + '</td></tr>';
@@ -826,13 +830,34 @@
 		},
 
 		/**
+		 * Get the locale used for telemetry date/time formatting.
+		 *
+		 * Returns the locale from aipsTelemetryL10n when available, or
+		 * undefined to fall back to the browser default locale.
+		 *
+		 * @return {string|undefined}
+		 */
+		getDateTimeLocale: function() {
+			if (
+				typeof aipsTelemetryL10n !== 'undefined' &&
+				aipsTelemetryL10n &&
+				typeof aipsTelemetryL10n.locale === 'string' &&
+				aipsTelemetryL10n.locale
+			) {
+				return aipsTelemetryL10n.locale;
+			}
+
+			return undefined;
+		},
+
+		/**
 		 * Format an absolute date stamp such as Apr-15-26.
 		 *
 		 * @param {Date} date Timestamp.
 		 * @return {string}
 		 */
 		formatDateStamp: function(date) {
-			var parts = new Intl.DateTimeFormat('en-US', {
+			var parts = new Intl.DateTimeFormat(this.getDateTimeLocale(), {
 				month: 'short',
 				day: '2-digit',
 				year: '2-digit'
@@ -862,10 +887,9 @@
 		 * @return {string}
 		 */
 		formatTimeStamp: function(date) {
-			var parts = new Intl.DateTimeFormat('en-US', {
+			var parts = new Intl.DateTimeFormat(this.getDateTimeLocale(), {
 				hour: 'numeric',
-				minute: '2-digit',
-				hour12: true
+				minute: '2-digit'
 			}).formatToParts(date);
 
 			var hour = '';
@@ -882,7 +906,7 @@
 				}
 			});
 
-			return hour + ':' + minute + dayPeriod;
+			return hour + ':' + minute + (dayPeriod ? dayPeriod : '');
 		},
 
 		/**

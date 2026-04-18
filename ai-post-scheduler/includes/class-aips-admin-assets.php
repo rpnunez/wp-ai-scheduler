@@ -909,6 +909,8 @@ class AIPS_Admin_Assets {
                 'detailsRawPayloadLabel' => __('Raw Payload JSON', 'ai-post-scheduler'),
                 'detailsRawPayloadHelp' => __('Review the structured payload summaries above, or expand the raw JSON below for the original object.', 'ai-post-scheduler'),
                 'detailsEventItemLabel' => __('Event %s', 'ai-post-scheduler'),
+                'detailsItemLabel'      => __('Item %s', 'ai-post-scheduler'),
+                'locale'               => get_locale(),
                 'expandLabel'          => __('Expand', 'ai-post-scheduler'),
                 'collapseLabel'        => __('Collapse', 'ai-post-scheduler'),
                 'insertedJustNow'      => __('just now', 'ai-post-scheduler'),

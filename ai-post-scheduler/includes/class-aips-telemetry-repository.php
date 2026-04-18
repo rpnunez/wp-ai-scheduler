@@ -280,7 +280,9 @@ class AIPS_Telemetry_Repository {
 		}
 
 		if (!empty($filters['issues_only'])) {
-			$where[] = '(slow_query_count > 0 OR duplicate_query_count > 0)';
+			$slow_request_threshold = defined('AIPS_TELEMETRY_SLOW_REQUEST_MS') ? (int) AIPS_TELEMETRY_SLOW_REQUEST_MS : 1000;
+			$where[]                = '(slow_query_count > 0 OR duplicate_query_count > 0 OR elapsed_ms >= %d)';
+			$params[]               = $slow_request_threshold;
 		}
 	}
 

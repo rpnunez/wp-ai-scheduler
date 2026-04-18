@@ -187,7 +187,7 @@ class AIPS_Telemetry {
 		$peak_memory    = memory_get_peak_usage(true);
 		$user_id        = function_exists('is_user_logged_in') && is_user_logged_in() ? (int) get_current_user_id() : 0;
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
-		$request_uri    = isset($_SERVER['REQUEST_URI'])    ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))             : '';
+		$request_uri    = isset($_SERVER['REQUEST_URI']) ? $this->sanitize_request_uri(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))) : '';
 		$request_type   = $this->resolve_request_type();
 		$page           = $this->resolve_page();
 		$query_summary  = $this->build_query_summary(isset($wpdb) ? $wpdb : null);
@@ -282,6 +282,54 @@ class AIPS_Telemetry {
 		}
 
 		return 'frontend';
+	}
+
+	/**
+	 * Strip sensitive query parameters from a request URI before storing.
+	 *
+	 * Removes nonces, tokens, and other secrets so they are not persisted to
+	 * the telemetry table.  Use the `aips_telemetry_redacted_uri_params` filter
+	 * to customise the list of parameters to remove.
+	 *
+	 * @param string $uri Raw request URI.
+	 * @return string Sanitized URI with sensitive params removed.
+	 */
+	private function sanitize_request_uri($uri) {
+		$parsed = wp_parse_url($uri);
+
+		if (!$parsed || empty($parsed['query'])) {
+			return isset($parsed['path']) ? $parsed['path'] : $uri;
+		}
+
+		/**
+		 * Filters the list of query-string parameter names that are removed
+		 * from the request URI before it is stored in telemetry.
+		 *
+		 * @param string[] $params Parameter names to redact.
+		 */
+		$redacted_params = apply_filters('aips_telemetry_redacted_uri_params', array(
+			'_wpnonce',
+			'nonce',
+			'token',
+			'_token',
+			'auth',
+			'key',
+			'secret',
+		));
+
+		parse_str($parsed['query'], $query_params);
+
+		foreach ($redacted_params as $param) {
+			unset($query_params[$param]);
+		}
+
+		$path = isset($parsed['path']) ? $parsed['path'] : '';
+
+		if (!empty($query_params)) {
+			return $path . '?' . http_build_query($query_params);
+		}
+
+		return $path;
 	}
 
 	/**

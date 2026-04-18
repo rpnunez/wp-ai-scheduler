@@ -408,8 +408,8 @@
 	color: #1d2327;
 }
 
-.aips-telemetry-payload-table td:has(> .aips-telemetry-payload-table) {
-	padding: 4px 8px 8px;
+.aips-telemetry-payload-table td > .aips-telemetry-payload-table {
+	margin: -6px -6px -2px;
 }
 
 .aips-telemetry-payload-table tbody td,
