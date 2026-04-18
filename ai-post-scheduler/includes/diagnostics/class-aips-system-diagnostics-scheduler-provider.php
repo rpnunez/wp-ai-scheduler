@@ -136,6 +136,51 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 			);
 		}
 
+		// --- On-demand (single-shot) cron checks ---
+		// These events are only scheduled while work is actively in progress;
+		// 0 instances is normal (idle), not an error.
+		$on_demand_hooks = array(
+			'aips_index_posts_batch'        => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
+			'aips_process_author_embeddings' => __( 'Author Embeddings', 'ai-post-scheduler' ),
+		);
+
+		foreach ( $on_demand_hooks as $hook => $label ) {
+			$actual     = $this->count_cron_hook_instances( $hook );
+			$timestamps = $this->get_cron_hook_timestamps( $hook );
+			$hook_key   = 'cron_hook_' . sanitize_key( $hook );
+
+			if ( $actual === 0 ) {
+				$hook_status = 'info';
+				$hook_value  = __( 'Idle (no active job)', 'ai-post-scheduler' );
+				$detail_lines = array(
+					sprintf( __( 'Hook: %s | This is an on-demand event; idle when no work is queued.', 'ai-post-scheduler' ), $hook ),
+				);
+			} else {
+				$hook_status  = 'ok';
+				$next_ts      = isset( $timestamps[0] ) ? $timestamps[0] : 0;
+				$hook_value   = $next_ts
+					? sprintf( __( 'Active (%d) — next: %s', 'ai-post-scheduler' ), $actual, wp_date( 'Y-m-d H:i:s', $next_ts ) )
+					: sprintf( __( 'Active (%d)', 'ai-post-scheduler' ), $actual );
+				$detail_lines = array(
+					sprintf( __( 'Hook: %s | Queued batches: %d', 'ai-post-scheduler' ), $hook, $actual ),
+				);
+				if ( $next_ts ) {
+					$detail_lines[] = sprintf(
+						__( 'Next run: %s (%s)', 'ai-post-scheduler' ),
+						wp_date( 'Y-m-d H:i:s', $next_ts ),
+						human_time_diff( $next_ts, time() ) . ( $next_ts > time() ? ' from now' : ' ago' )
+					);
+				}
+			}
+
+			$checks[ $hook_key ] = array(
+				'label'   => sprintf( __( 'Cron: %s', 'ai-post-scheduler' ), $label ),
+				'value'   => $hook_value,
+				'status'  => $hook_status,
+				'details' => $detail_lines,
+			);
+		}
+
 		// --- Cron summary ---
 		$summary_status = 'ok';
 		if ( ! empty( $hooks_missing ) || ! empty( $hooks_duplicate ) ) {
