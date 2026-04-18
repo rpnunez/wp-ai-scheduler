@@ -32,7 +32,86 @@ class AIPS_Admin_Assets {
             return;
         }
 
-        wp_enqueue_media();
+        $this->enqueue_global_assets();
+
+        if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
+            $this->enqueue_authors_assets($hook);
+        }
+
+        if (strpos($hook, 'aips-templates') !== false) {
+            $this->enqueue_templates_assets();
+        }
+
+        if (strpos($hook, 'aips-voices') !== false) {
+            $this->enqueue_voices_assets();
+        }
+
+        if (strpos($hook, 'aips-structures') !== false) {
+            $this->enqueue_structures_assets();
+        }
+
+        if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
+            $this->enqueue_schedule_assets($hook);
+        }
+
+        if (strpos($hook, 'aips-research') !== false) {
+            $this->enqueue_research_assets();
+        }
+
+        if (strpos($hook, 'aips-generated-posts') !== false) {
+            $this->enqueue_generated_posts_assets();
+        }
+
+        if (strpos($hook, 'aips-schedule-calendar') !== false) {
+            $this->enqueue_schedule_calendar_assets();
+        }
+
+        if (strpos($hook, 'aips-history') !== false) {
+            $this->enqueue_history_assets();
+        }
+
+        if (strpos($hook, 'aips-onboarding') !== false) {
+            $this->enqueue_onboarding_assets();
+        }
+
+        if (strpos($hook, 'aips-dev-tools') !== false) {
+            $this->enqueue_dev_tools_assets();
+        }
+
+        if (strpos($hook, 'aips-status') !== false) {
+            $this->enqueue_status_1_assets();
+        }
+
+        if (strpos($hook, 'aips-taxonomy') !== false) {
+            $this->enqueue_taxonomy_assets();
+        }
+
+        if (strpos($hook, 'aips-sources') !== false) {
+            $this->enqueue_sources_assets();
+        }
+
+        if (strpos($hook, 'aips-settings') !== false) {
+            $this->enqueue_settings_assets();
+        }
+
+        if (strpos($hook, 'aips-status') !== false) {
+            $this->enqueue_status_2_assets();
+        }
+
+        if (strpos($hook, 'aips-telemetry') !== false) {
+            $this->enqueue_telemetry_assets();
+        }
+
+        if (strpos($hook, 'aips-internal-links') !== false) {
+            $this->enqueue_internal_links_assets();
+        }
+
+    }
+
+    /**
+     * Enqueue global plugin assets.
+     */
+    private function enqueue_global_assets() {
 
         // Global Admin Styles and Scripts
 
@@ -109,7 +188,13 @@ class AIPS_Admin_Assets {
         ));
 
         // Enqueue Authors-specific assets
-        if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
+    }
+
+    /**
+     * Enqueue assets for the authors page.
+     * @param string $hook The current admin page hook.
+     */
+    private function enqueue_authors_assets($hook) {
           wp_enqueue_style(
             'aips-authors-style',
             AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -324,10 +409,12 @@ class AIPS_Admin_Assets {
               AIPS_VERSION,
               true
           );
-        }
+    }
 
-        // Templates Page Scripts
-        if (strpos($hook, 'aips-templates') !== false) {
+    /**
+     * Enqueue assets for the templates page.
+     */
+    private function enqueue_templates_assets() {
             wp_localize_script('aips-admin-script', 'aipsTemplatesL10n', array(
                 // Template wizard validation
                 'templateNameRequired'    => __('Template Name is required.', 'ai-post-scheduler'),
@@ -348,20 +435,24 @@ class AIPS_Admin_Assets {
                 'failedToGeneratePreview' => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
                 'previewNetworkError'     => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Voices Page Scripts
-        if (strpos($hook, 'aips-voices') !== false) {
+    /**
+     * Enqueue assets for the voices page.
+     */
+    private function enqueue_voices_assets() {
             wp_localize_script('aips-admin-script', 'aipsVoicesL10n', array(
                 'addNewVoice'        => __('Add New Voice', 'ai-post-scheduler'),
                 'editVoice'          => __('Edit Voice', 'ai-post-scheduler'),
                 'saveVoice'          => __('Save Voice', 'ai-post-scheduler'),
                 'deleteVoiceConfirm' => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Structures Page Scripts (handles both article structures and prompt sections)
-        if (strpos($hook, 'aips-structures') !== false) {
+    /**
+     * Enqueue assets for the structures page.
+     */
+    private function enqueue_structures_assets() {
             wp_localize_script('aips-admin-script', 'aipsStructuresL10n', array(
                 // Article structure CRUD
                 'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
@@ -374,11 +465,13 @@ class AIPS_Admin_Assets {
                 'loadSectionFailed'      => __('Failed to load prompt section.', 'ai-post-scheduler'),
                 'deleteSectionFailed'    => __('Failed to delete prompt section.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Schedule Page Scripts — the calendar page shares the 'aips-schedule' substring so
-        // it is explicitly excluded; all other 'aips-schedule*' slugs are not currently in use.
-        if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
+    /**
+     * Enqueue assets for the schedule page.
+     * @param string $hook The current admin page hook.
+     */
+    private function enqueue_schedule_assets($hook) {
             wp_localize_script('aips-admin-script', 'aipsScheduleL10n', array(
                 // Run schedule
                 'runScheduleConfirm'             => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
@@ -434,10 +527,12 @@ class AIPS_Admin_Assets {
                 /* translators: %d: number of selected schedules that are not deletable */
                 'deleteSchedulesSkipNotice'      => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Research Page Styles & Scripts
-        if (strpos($hook, 'aips-research') !== false) {
+    /**
+     * Enqueue assets for the research page.
+     */
+    private function enqueue_research_assets() {
           wp_enqueue_style(
             'aips-research-style',
             AIPS_PLUGIN_URL . 'assets/css/research.css',
@@ -510,11 +605,12 @@ class AIPS_Admin_Assets {
               'generatingButton' => __('Generating...', 'ai-post-scheduler'),
               'selectTemplateRequired' => __('Please select a template before generating.', 'ai-post-scheduler'),
           ));
-        }
+    }
 
-
-        // Generated Posts Page Scripts
-        if (strpos($hook, 'aips-generated-posts') !== false) {
+    /**
+     * Enqueue assets for the generated-posts page.
+     */
+    private function enqueue_generated_posts_assets() {
             // Enqueue View Session module (shared functionality)
             wp_enqueue_script(
                 'aips-admin-view-session',
@@ -523,7 +619,7 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-            
+
             // Enqueue Post Review module (for Pending Review tab)
             wp_enqueue_style(
                 'aips-admin-post-review',
@@ -539,7 +635,7 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-            
+
             wp_enqueue_script(
                 'aips-admin-generated-posts',
                 AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
@@ -555,7 +651,7 @@ class AIPS_Admin_Assets {
                 'clientLogThreshold' => $client_threshold,
                 'siteUrl' => home_url(),
             ));
-            
+
             // Localize Post Review script for Pending Review tab
             wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -589,7 +685,7 @@ class AIPS_Admin_Assets {
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
             ));
-            
+
             // AI Edit Modal (for Generated Posts page)
             wp_enqueue_script(
                 'aips-admin-ai-edit',
@@ -598,14 +694,14 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-            
+
             wp_enqueue_style(
                 'aips-admin-ai-edit',
                 AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
                 array('aips-admin-style'),
                 AIPS_VERSION
             );
-            
+
             wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('aips_ajax_nonce'),
@@ -629,10 +725,12 @@ class AIPS_Admin_Assets {
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Calendar Page Scripts
-        if (strpos($hook, 'aips-schedule-calendar') !== false) {
+    /**
+     * Enqueue assets for the schedule-calendar page.
+     */
+    private function enqueue_schedule_calendar_assets() {
             wp_enqueue_style(
                 'aips-calendar-style',
                 AIPS_PLUGIN_URL . 'assets/css/calendar.css',
@@ -647,10 +745,12 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-        }
+    }
 
-        // History Page Scripts (View Session for Processing items)
-        if (strpos($hook, 'aips-history') !== false) {
+    /**
+     * Enqueue assets for the history page.
+     */
+    private function enqueue_history_assets() {
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
@@ -708,9 +808,12 @@ class AIPS_Admin_Assets {
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        if (strpos($hook, 'aips-onboarding') !== false) {
+    /**
+     * Enqueue assets for the onboarding page.
+     */
+    private function enqueue_onboarding_assets() {
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
@@ -722,9 +825,12 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-onboarding', 'aipsOnboardingL10n', array(
                 'confirmSkipOnboarding' => __('Skip the Onboarding Wizard? You can restart it later from System Status.', 'ai-post-scheduler'),
             ));
-        }
-        
-        if (strpos($hook, 'aips-dev-tools') !== false) {
+    }
+
+    /**
+     * Enqueue assets for the dev-tools page.
+     */
+    private function enqueue_dev_tools_assets() {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
                 AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
@@ -732,10 +838,12 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-        }
+    }
 
-        // System Status Page Scripts
-        if (strpos($hook, 'aips-status') !== false) {
+    /**
+     * Enqueue assets for the status_1 page.
+     */
+    private function enqueue_status_1_assets() {
             wp_enqueue_script(
                 'aips-admin-db',
                 AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
@@ -743,9 +851,12 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-        }
+    }
 
-        if (strpos($hook, 'aips-taxonomy') !== false) {
+    /**
+     * Enqueue assets for the taxonomy page.
+     */
+    private function enqueue_taxonomy_assets() {
             wp_enqueue_style(
                 'aips-authors-style',
                 AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -780,9 +891,12 @@ class AIPS_Admin_Assets {
                 'item'                   => __('item', 'ai-post-scheduler'),
                 'items'                  => __('items', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        if (strpos($hook, 'aips-sources') !== false) {
+    /**
+     * Enqueue assets for the sources page.
+     */
+    private function enqueue_sources_assets() {
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
@@ -804,10 +918,12 @@ class AIPS_Admin_Assets {
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Settings Page Scripts
-        if (strpos($hook, 'aips-settings') !== false) {
+    /**
+     * Enqueue assets for the settings page.
+     */
+    private function enqueue_settings_assets() {
             wp_enqueue_script(
                 'aips-admin-settings',
                 AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
@@ -815,10 +931,12 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-        }
+    }
 
-        // System Status Page Scripts
-        if (strpos($hook, 'aips-status') !== false) {
+    /**
+     * Enqueue assets for the status_2 page.
+     */
+    private function enqueue_status_2_assets() {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
@@ -834,9 +952,12 @@ class AIPS_Admin_Assets {
                 'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
                 'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        if (strpos($hook, 'aips-telemetry') !== false) {
+    /**
+     * Enqueue assets for the telemetry page.
+     */
+    private function enqueue_telemetry_assets() {
             wp_enqueue_style(
                 'aips-telemetry-style',
                 AIPS_PLUGIN_URL . 'assets/css/telemetry.css',
@@ -931,10 +1052,12 @@ class AIPS_Admin_Assets {
                 'payloadEmpty'         => __('No payload was stored for this telemetry row.', 'ai-post-scheduler'),
                 'eventsEmpty'          => __('[]', 'ai-post-scheduler'),
             ));
-        }
+    }
 
-        // Internal Links Page Scripts
-        if (strpos($hook, 'aips-internal-links') !== false) {
+    /**
+     * Enqueue assets for the internal-links page.
+     */
+    private function enqueue_internal_links_assets() {
             wp_enqueue_script(
                 'aips-admin-internal-links',
                 AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
@@ -1002,6 +1125,6 @@ class AIPS_Admin_Assets {
                 'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
                 'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
-        }
     }
+
 }
