@@ -32,6 +32,7 @@ class AIPS_Admin_Menu_Helper {
 		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',
 		'system_status'        => 'aips-status',
+		'telemetry'            => 'aips-telemetry',
 		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
 		'history'              => 'aips-history',

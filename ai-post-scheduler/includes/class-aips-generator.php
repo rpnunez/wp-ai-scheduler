@@ -18,12 +18,12 @@ class AIPS_Generator {
     private $logger;
 
     /**
-     * @var AIPS_History_Service History service for unified logging
+     * @var AIPS_History_Service_Interface History service for unified logging
      */
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository History repository for logger
+     * @var AIPS_History_Repository_Interface History repository for logger
      */
     private $history_repository;
 
@@ -58,35 +58,36 @@ class AIPS_Generator {
      * Accepts dependencies for easier testing; falls back to concrete
      * implementations when not provided.
      *
-     * @param object|null $logger
-     * @param object|null $ai_service
+    * @param AIPS_Logger_Interface|null $logger
+    * @param AIPS_AI_Service_Interface|null $ai_service
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
      * @param object|null $post_manager
-     * @param object|null $history_service
+    * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
      */
     public function __construct(
-        $logger = null,
-        $ai_service = null,
+        ?AIPS_Logger_Interface $logger = null,
+        ?AIPS_AI_Service_Interface $ai_service = null,
         $template_processor = null,
         $image_service = null,
         $structure_manager = null,
         $post_manager = null,
-        $history_service = null,
+        ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
         $markdown_parser = null
     ) {
-        $this->logger             = $logger ?: new AIPS_Logger();
-        $this->ai_service         = $ai_service ?: new AIPS_AI_Service();
+        $container = AIPS_Container::get_instance();
+        $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
-        $this->history_service    = $history_service ?: new AIPS_History_Service();
-        $this->history_repository = new AIPS_History_Repository();
+        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
@@ -232,48 +233,160 @@ class AIPS_Generator {
             }
         }
 
-        // Extract AI variables from the title prompt
+        // Avoid building the content context when the title prompt does not
+        // contain any AI variables to resolve.
+        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
+            return array();
+        }
+
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        if (empty($ai_variables)) {
+            return array();
+        }
+
+        // Build context from content prompt and generated content only when AI
+        // variables are present. Use smart truncation to preserve context from
+        // both beginning and end of content.
+        $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
+        $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
+
+        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+    }
+
+    /**
+     * Resolve AI variables for a template string using context text.
+     *
+     * @param string $template_string Template that may include AI variables.
+     * @param string $context_str     Context used to resolve variable values.
+     * @param string $log_type        Log component label for observability.
+     * @return array Associative array of resolved AI variable values.
+     */
+    private function resolve_ai_variables_for_template_string($template_string, $context_str, $log_type = 'ai_variables') {
+        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
+            return array();
+        }
+
+        $ai_variables = $this->template_processor->extract_ai_variables($template_string);
 
         if (empty($ai_variables)) {
             return array();
         }
 
-        // Build context from content prompt and generated content.
-        // Use smart truncation to preserve context from both beginning and end of content.
-        $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
-        $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
-
-        // Build the prompt to resolve AI variables
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
 
-        // Call AI to resolve the variables.
-        $options = array();
-        $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
+        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
+        $options = array('max_tokens' => 200);
+        $result = $this->generate_content($resolve_prompt, $options, $log_type);
 
         if (is_wp_error($result)) {
             $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
 
-        // Parse the AI response to extract variable values
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
 
         if (empty($resolved_values)) {
-            // AI call succeeded but we could not extract any variable values.
-            // This usually indicates invalid JSON or an unexpected response format.
             $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
                 'variables' => $ai_variables,
                 'raw_response' => $result,
+                'component' => $log_type,
             ));
         } else {
             $this->generation_logger->log('Resolved AI variables', 'info', array(
                 'variables' => $ai_variables,
                 'resolved'   => $resolved_values,
+                'component' => $log_type,
             ));
         }
 
         return $resolved_values;
+    }
+
+    /**
+     * Build context text for featured image AI variable resolution.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param string                  $content Generated content.
+     * @param string                  $title   Generated title.
+     * @return string
+     */
+    private function build_featured_image_variable_context($context, $content = '', $title = '') {
+        $context_parts = array();
+
+        if (!empty($context->get_content_prompt())) {
+            $context_parts[] = 'Content Prompt: ' . $context->get_content_prompt();
+        }
+
+        if (!empty($title)) {
+            $context_parts[] = 'Generated Post Title: ' . $title;
+        }
+
+        if (!empty($content)) {
+            $context_parts[] = "Generated Article Content:\n" . $this->smart_truncate_content($content, 1600);
+        }
+
+        if (!empty($context->get_topic())) {
+            $context_parts[] = 'Topic: ' . $context->get_topic();
+        }
+
+        return implode("\n\n", $context_parts);
+    }
+
+    /**
+     * Process featured image prompt with basic template variables and AI variables.
+     *
+     * Resolves any AI variables (custom {{VariableName}} placeholders not in the
+     * system variable list) using the generated content and title as context,
+     * then processes standard template variables such as {{topic}}.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param string                  $content Generated article content.
+     * @param string                  $title   Generated post title.
+     * @return string Processed image prompt with all variables replaced.
+     */
+    public function process_featured_image_prompt($context, $content = '', $title = '') {
+        $image_prompt = $context->get_image_prompt();
+
+        if (empty($image_prompt)) {
+            return '';
+        }
+
+        $topic_str = $context->get_topic();
+        $resolved_ai_variables = array();
+
+        if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
+            $image_context = $this->build_featured_image_variable_context($context, $content, $title);
+            $resolved_ai_variables = $this->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
+        }
+
+        if (method_exists($this->template_processor, 'process_with_ai_variables')) {
+            $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
+        } else {
+            $processed_prompt = $this->template_processor->process($image_prompt, $topic_str);
+        }
+
+        return $this->remove_unresolved_template_placeholders($processed_prompt);
+    }
+
+    /**
+     * Remove any unresolved template placeholders from a processed prompt.
+     *
+     * This is a defensive cleanup step for public featured image prompt
+     * processing so downstream preview and generation paths never receive raw
+     * {{Variable}} tokens when AI-variable resolution is partial.
+     *
+     * @param string $prompt Processed prompt text.
+     * @return string Prompt with unresolved placeholders removed.
+     */
+    private function remove_unresolved_template_placeholders($prompt) {
+        $prompt = (string) $prompt;
+        $prompt = preg_replace('/\{\{[^{}]+\}\}/', '', $prompt);
+
+        if (!is_string($prompt)) {
+            return '';
+        }
+
+        return trim(preg_replace('/\s+/', ' ', $prompt));
     }
 
     /**
@@ -508,7 +621,7 @@ class AIPS_Generator {
         // Handle image preview data (not generation)
         if ($context->should_generate_featured_image()) {
             if ($context->get_featured_image_source() === 'ai_prompt') {
-                $result['image_prompt'] = $this->post_featured_image_prompt_builder->build($context);
+                $result['image_prompt'] = $this->process_featured_image_prompt($context, $content, $title);
             } elseif ($context->get_featured_image_source() === 'unsplash') {
                 $keywords = $context->get_unsplash_keywords();
                 $topic_str = $context->get_topic();
@@ -747,7 +860,7 @@ class AIPS_Generator {
 
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
-        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success);
+        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content);
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
@@ -885,7 +998,7 @@ class AIPS_Generator {
      * @param string                  $title   Title of the generated post, used as image alt text/context.
      * @return int|null ID of the featured image attachment or null on failure/disabled.
      */
-    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null) {
+    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null, $content = '') {
         $featured_image_id = null;
         $featured_image_source = '';
 
@@ -928,7 +1041,7 @@ class AIPS_Generator {
                 $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
-            $processed_image_prompt = $this->post_featured_image_prompt_builder->build($context);
+            $processed_image_prompt = $this->process_featured_image_prompt($context, $content, $title);
 
             // Log AI request for featured image
             if ($this->current_history) {

@@ -24,6 +24,8 @@ class AIPS_DB_Manager {
         'aips_taxonomy',
         'aips_post_embeddings',
         'aips_internal_links',
+        'aips_cache',
+        'aips_telemetry',
     );
 
     public function __construct() {
@@ -75,6 +77,8 @@ class AIPS_DB_Manager {
         $table_taxonomy             = $tables['aips_taxonomy'];
         $table_post_embeddings      = $tables['aips_post_embeddings'];
         $table_internal_links       = $tables['aips_internal_links'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
 
         $sql = array();
 
@@ -345,7 +349,9 @@ class AIPS_DB_Manager {
             KEY level (level),
             KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY is_read_created_at (is_read, created_at),
+            KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sources (
@@ -387,7 +393,7 @@ class AIPS_DB_Manager {
             KEY term_id (term_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-
+        
         $sql[] = "CREATE TABLE $table_post_embeddings (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             post_id bigint(20) NOT NULL,
@@ -414,6 +420,48 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY similarity_score (similarity_score),
             UNIQUE KEY source_target (source_post_id, target_post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            cache_key varchar(191) NOT NULL,
+            cache_group varchar(100) NOT NULL DEFAULT 'default',
+            value longtext NOT NULL,
+            expires_at datetime DEFAULT NULL,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY cache_key_group (cache_key, cache_group),
+            KEY expires_at (expires_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_telemetry (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(50) NOT NULL DEFAULT '',
+            page varchar(191) NOT NULL DEFAULT '',
+            event_categories varchar(191) NOT NULL DEFAULT '',
+            request_method varchar(10) NOT NULL DEFAULT '',
+            user_id bigint(20) NOT NULL DEFAULT 0,
+            num_queries int(11) NOT NULL DEFAULT 0,
+            total_events int(11) NOT NULL DEFAULT 0,
+            cache_calls int(11) NOT NULL DEFAULT 0,
+            cache_hits int(11) NOT NULL DEFAULT 0,
+            cache_misses int(11) NOT NULL DEFAULT 0,
+            slow_query_count int(11) NOT NULL DEFAULT 0,
+            duplicate_query_count int(11) NOT NULL DEFAULT 0,
+            peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
+            elapsed_ms float NOT NULL DEFAULT 0,
+            payload longtext DEFAULT NULL,
+            inserted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY type (type),
+            KEY page (page),
+            KEY request_method (request_method),
+            KEY user_id (user_id),
+            KEY slow_query_count (slow_query_count),
+            KEY duplicate_query_count (duplicate_query_count),
+            KEY cache_hits (cache_hits),
+            KEY cache_misses (cache_misses),
+            KEY inserted_at (inserted_at)
         ) $charset_collate;";
 
         return $sql;
@@ -499,19 +547,23 @@ class AIPS_DB_Manager {
     }
 
     public function ajax_repair_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'Unauthorized'));
+            AIPS_Ajax_Response::error('Unauthorized');
         }
 
         self::install_tables();
-        wp_send_json_success(array('message' => 'Database tables repaired successfully.'));
+        AIPS_Ajax_Response::success(array('message' => 'Database tables repaired successfully.'));
     }
 
     public function ajax_reinstall_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'Unauthorized'));
+            AIPS_Ajax_Response::error('Unauthorized');
         }
 
         $backup = isset($_POST['backup']) && $_POST['backup'] === 'true';
@@ -528,17 +580,19 @@ class AIPS_DB_Manager {
             $this->restore_data($data);
         }
 
-        wp_send_json_success(array('message' => 'Database tables reinstalled successfully.'));
+        AIPS_Ajax_Response::success(array('message' => 'Database tables reinstalled successfully.'));
     }
 
     public function ajax_wipe_db() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'Unauthorized'));
+            AIPS_Ajax_Response::error('Unauthorized');
         }
 
         $this->truncate_tables();
-        wp_send_json_success(array('message' => 'Plugin data wiped successfully.'));
+        AIPS_Ajax_Response::success(array('message' => 'Plugin data wiped successfully.'));
     }
 
     /**
@@ -551,9 +605,11 @@ class AIPS_DB_Manager {
      * @return void
      */
     public function ajax_flush_cron_events() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
         }
 
         $cron_events    = AI_Post_Scheduler::get_cron_events();
@@ -580,7 +636,7 @@ class AIPS_DB_Manager {
         }
 
         if (!empty($failed)) {
-            wp_send_json_error(array(
+            AIPS_Ajax_Response::error(array(
                 'message' => sprintf(
                     /* translators: %s: comma-separated hook labels that failed to reschedule */
                     __('Cron events flushed but some hooks could not be rescheduled: %s', 'ai-post-scheduler'),
@@ -595,7 +651,7 @@ class AIPS_DB_Manager {
             return;
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => sprintf(
                 /* translators: %d: number of cron hooks flushed and rescheduled */
                 _n(

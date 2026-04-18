@@ -29,10 +29,12 @@ class AIPS_Seeder_Admin {
     }
 
     public function ajax_process_seeder() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';
@@ -40,7 +42,7 @@ class AIPS_Seeder_Admin {
         $keywords = isset($_POST['keywords']) ? sanitize_textarea_field(wp_unslash($_POST['keywords'])) : '';
 
         if (empty($type)) {
-            wp_send_json_error(array('message' => __('Missing type.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Missing type.', 'ai-post-scheduler'));
         }
 
         // Increase timeout for AI generation
@@ -58,9 +60,9 @@ class AIPS_Seeder_Admin {
                 'user_id' => get_current_user_id(),
             ));
 
-            wp_send_json_success($result);
+            AIPS_Ajax_Response::success($result);
         } else {
-            wp_send_json_error($result);
+            AIPS_Ajax_Response::error($result);
         }
     }
 }

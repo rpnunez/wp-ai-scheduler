@@ -19,20 +19,48 @@ if (!defined('ABSPATH')) {
  * Provides a unified interface for logging generation activities,
  * managing sessions, and updating history records.
  */
-class AIPS_History_Service {
-	
+class AIPS_History_Service implements AIPS_History_Service_Interface {
+
 	/**
-	 * @var AIPS_History_Repository Repository for database operations
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
+	/**
+	 * @var AIPS_History_Repository_Interface Repository for database operations
 	 */
 	private $repository;
 	
 	/**
 	 * Initialize the service
 	 *
-	 * @param AIPS_History_Repository|null $repository Optional repository instance
+	 * @param AIPS_History_Repository_Interface|null $repository Optional repository instance
 	 */
-	public function __construct($repository = null) {
-		$this->repository = $repository ?: new AIPS_History_Repository();
+	public function __construct(?AIPS_History_Repository_Interface $repository = null) {
+		if ($repository) {
+			$this->repository = $repository;
+			return;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if ($container->has(AIPS_History_Repository_Interface::class)) {
+			$this->repository = $container->make(AIPS_History_Repository_Interface::class);
+			return;
+		}
+
+		$this->repository = AIPS_History_Repository::instance();
 	}
 	
 	/**
@@ -89,5 +117,44 @@ class AIPS_History_Service {
 	 */
 	public function update_history_record($history_id, $data) {
 		return $this->repository->update($history_id, $data);
+	}
+
+	/**
+	 * Find an in-progress history container by type and metadata context.
+	 *
+	 * @param string $type History type label.
+	 * @param array  $metadata Metadata filters.
+	 * @return AIPS_History_Container|null
+	 */
+	public function find_incomplete($type, $metadata = array()) {
+		$args = array(
+			'per_page' => 20,
+			'page' => 1,
+			'status' => 'processing',
+			'orderby' => 'created_at',
+			'order' => 'DESC',
+		);
+
+		if (!empty($metadata['author_id'])) {
+			$args['author_id'] = absint($metadata['author_id']);
+		}
+
+		$history = $this->repository->get_history($args);
+		if (empty($history['items']) || !is_array($history['items'])) {
+			return null;
+		}
+
+		foreach ($history['items'] as $item) {
+			if (!empty($type) && isset($item->creation_method) && !empty($item->creation_method) && $item->creation_method !== $type) {
+				continue;
+			}
+
+			$container = AIPS_History_Container::load_existing($this->repository, $item->id);
+			if ($container) {
+				return $container;
+			}
+		}
+
+		return null;
 	}
 }

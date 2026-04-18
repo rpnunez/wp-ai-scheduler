@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.3.0
+ * Version: 2.4.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -18,13 +18,50 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_AI_DEBUG_LOG_PROMPTS', true);
+// Capture the request start time as early as possible so AIPS_Telemetry
+// can compute an accurate elapsed-time measurement.
+if (!defined('AIPS_REQUEST_START')) {
+    define('AIPS_REQUEST_START', microtime(true));
+}
+
+// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
+// slow/duplicate query analysis can inspect the collected query log.
+if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
+    define('SAVEQUERIES', true);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
+    define('AIPS_TELEMETRY_SLOW_QUERY_MS', 100);
+}
+
+if (!defined('AIPS_TELEMETRY_SLOW_REQUEST_MS')) {
+    define('AIPS_TELEMETRY_SLOW_REQUEST_MS', 1500);
+}
+
+if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
+    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
+}
 
 // Define plugin constants
-define('AIPS_VERSION', '2.3.0');
-define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+if (!defined('AIPS_VERSION')) {
+    define('AIPS_VERSION', '2.4.1');
+}
+
+if (!defined('AIPS_PLUGIN_DIR')) {
+    define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_URL')) {
+    define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+if (!defined('AIPS_PLUGIN_BASENAME')) {
+    define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+}
+
+if (!defined('AIPS_AI_DEBUG_LOG_PROMPTS')) {
+    define('AIPS_AI_DEBUG_LOG_PROMPTS', true);
+}
 
 final class AI_Post_Scheduler {
     
@@ -113,7 +150,15 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Register autoloader
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if ( file_exists( $vendor_autoload ) ) {
+            require_once $vendor_autoload;
+        }
+
+        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
+        // Composer classmap does not resolve (e.g. on installs without a vendor/
+        // directory or after adding a new class before re-running composer dump-autoload).
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
@@ -150,8 +195,8 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         // Detect a prior installation before set_default_options() writes defaults.
-        $previously_installed = get_option('aips_db_version') !== false;
-        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+        $previously_installed = AIPS_Config::get_instance()->has_option('aips_db_version');
+        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
 
         $this->set_default_options();
 
@@ -255,22 +300,172 @@ final class AI_Post_Scheduler {
         $defaults['aips_db_version'] = AIPS_VERSION;
         
         foreach ($defaults as $key => $value) {
-            if (get_option($key) === false) {
+            if (!AIPS_Config::get_instance()->has_option($key)) {
                 add_option($key, $value);
             }
         }
     }
 
     /**
+     * Register initial container bindings for core singletons.
+     *
+     * Phase 1 registration as described in the container architecture plan:
+     * Registers the most-duplicated singletons to validate the container works
+     * correctly before more complex refactors.
+     *
+     * @return void
+     */
+    private function register_container_bindings() {
+        $container = AIPS_Container::get_instance();
+
+        // Register AIPS_Config (uses get_instance() instead of instance())
+        $container->singleton(AIPS_Config::class, function( $container ) {
+            return AIPS_Config::get_instance();
+        });
+
+        // Register AIPS_History_Repository
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
+            return AIPS_History_Repository::instance();
+        });
+
+		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Repository::class);
+		});
+
+        // Register AIPS_History_Service
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
+            return AIPS_History_Service::instance();
+        });
+
+		$container->singleton(AIPS_History_Service_Interface::class, function( $container ) {
+			return $container->make(AIPS_History_Service::class);
+		});
+
+        // Register AIPS_Notifications_Repository
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+            return AIPS_Notifications_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Notifications_Repository::class);
+        });
+
+        $container->singleton(AIPS_Logger::class, function( $container ) {
+            return AIPS_Logger::instance();
+        });
+
+        $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
+            return $container->make(AIPS_Logger::class);
+        });
+
+        $container->singleton(AIPS_AI_Service::class, function( $container ) {
+            return AIPS_AI_Service::instance();
+        });
+
+        $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
+            return $container->make(AIPS_AI_Service::class);
+        });
+
+        $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
+            return AIPS_Schedule_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Schedule_Repository::class);
+        });
+
+        $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
+            return AIPS_Telemetry_Repository::instance();
+        });
+
+        // Register AIPS_Template_Repository
+        $container->singleton(AIPS_Template_Repository::class, function( $container ) {
+            return AIPS_Template_Repository::instance();
+        });
+    }
+
+    /**
+     * Register thin lazy-resolving wp_ajax_* hooks for all actions in the registry.
+     *
+     * Each closure registered at priority 5 removes itself and then constructs the
+     * correct controller (which registers its own handler at the default priority 10).
+     * WordPress continues iterating priorities after priority 5 completes, so the
+     * controller's handler at priority 10 fires automatically on the same request.
+     *
+     * This satisfies WordPress's requirement that wp_ajax_* hooks are added during
+     * the init phase while deferring controller construction to request time, so
+     * only one controller is constructed per AJAX request.
+     *
+     * Used as a fallback in boot_ajax() when an action is not found in the registry.
+     *
+     * @return void
+     */
+    private function register_lazy_ajax_hooks() {
+        foreach (AIPS_Ajax_Registry::all_actions() as $action) {
+            // $resolver is set to null first so the closure can capture it by reference
+            // and call remove_action() on itself — PHP requires the variable to exist
+            // before the closure is assigned.
+            $resolver = null;
+            $resolver = function() use ($action, &$resolver) {
+                // Remove this resolver before constructing the controller so that
+                // if do_action('wp_ajax_' . $action) is re-entered (e.g. via a
+                // recursive call or test scaffolding) the closure does not fire twice.
+                remove_action('wp_ajax_' . $action, $resolver, 5);
+
+                $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
+                if ($controller_class && class_exists($controller_class)) {
+                    // Intentionally not capturing the return value: each controller
+                    // registers its own wp_ajax_{$action} handler at priority 10 as
+                    // a constructor side-effect.  WordPress will invoke that handler
+                    // as the next hook priority in this same wp_ajax_{$action} cycle.
+                    new $controller_class();
+                }
+            };
+            add_action('wp_ajax_' . $action, $resolver, 5);
+        }
+    }
+
+    /**
      * Initialize plugin runtime.
      *
-     * Loads translations, registers taxonomy, instantiates admin controllers,
-     * and boots scheduler/services used in all contexts.
+     * Dispatches to the appropriate context-specific boot method based on the
+     * current request type, ensuring only the subsystems required for that
+     * context are instantiated.
      *
      * @return void
      */
     public function init() {
+        $this->boot_common();
+
+        if (wp_doing_cron()) {
+            $this->boot_cron();
+        } elseif (wp_doing_ajax()) {
+            $this->boot_ajax();
+        } elseif (is_admin()) {
+            $this->boot_admin();
+        } else {
+            $this->boot_frontend();
+        }
+    }
+
+    /**
+     * Boot subsystems required in every request context.
+     *
+     * Loads text domain, registers container bindings, and registers the
+     * Source Group taxonomy. Called before any context-specific boot method.
+     *
+     * @return void
+     */
+    private function boot_common() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+
+        // Register initial container bindings for core singletons.
+        $this->register_container_bindings();
+
+        // Boot request-level telemetry if the option is enabled.
+        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+            AIPS_Telemetry::instance()->boot();
+        }
 
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
@@ -294,75 +489,132 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
-        
-        if (is_admin()) {
-            new AIPS_DB_Manager();
-            new AIPS_Admin_Menu();
-            new AIPS_Settings();
-            new AIPS_Onboarding_Wizard();
-            new AIPS_Admin_Assets();
-            new AIPS_Voices();
-            new AIPS_Templates();
-            new AIPS_Templates_Controller();
-            new AIPS_History();
-            
-            // Initialize Post Review handler globally to avoid duplicate AJAX registration
-            global $aips_post_review_handler;
-            $aips_post_review_handler = new AIPS_Post_Review();
-            
-            new AIPS_Planner();
-            new AIPS_Schedule_Controller();
-            new AIPS_Generated_Posts_Controller();
-            new AIPS_Research_Controller();
-            new AIPS_Seeder_Admin();
-            new AIPS_Data_Management();
-            // Structures admin controller (CRUD endpoints for Article Structures UI)
-            new AIPS_Structures_Controller();
-            // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
+    }
 
-            // Authors feature controllers
-            new AIPS_Authors_Controller();
-            new AIPS_Author_Topics_Controller();
+    /**
+     * Boot subsystems required only during WP-Cron execution.
+     *
+     * Registers cron hook callbacks as closures that resolve the singleton
+     * instance at runtime (when WordPress fires the event). This means that
+     * a cron request dispatched for, say, aips_generate_author_topics will only
+     * ever instantiate AIPS_Author_Topics_Scheduler — the other scheduler
+     * objects are never constructed unless their own hooks fire in the same run.
+     *
+     * Also boots the notification event handler (for generation-failure and quota
+     * alerts fired from cron) and the partial-generation reconciler
+     * (save_post fires when cron creates posts).
+     *
+     * @return void
+     */
+    private function boot_cron() {
+        // Lazy-resolve the main template scheduler only when its hook fires.
+        add_action('aips_generate_scheduled_posts', function() {
+            AIPS_Scheduler::instance()->process();
+        });
+        add_filter('cron_schedules', function($schedules) {
+            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+        });
 
-            // Taxonomy controller (AJAX endpoints for taxonomy generation management)
-            new AIPS_Taxonomy_Controller();
+        // Lazy-resolve the author-topics scheduler only when its hook fires.
+        add_action('aips_generate_author_topics', function() {
+            AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
+        });
 
-            // AI Edit + Calendar controllers (AJAX endpoints)
-            new AIPS_AI_Edit_Controller();
-            new AIPS_Calendar_Controller();
-            // Sources controller (AJAX endpoints for trusted sources management)
-            new AIPS_Sources_Controller();
-            // Dev Tools
-            if (get_option('aips_developer_mode')) {
-                new AIPS_Dev_Tools();
-            }
-        }
-        
-        // Initialize schedulers (both admin and frontend)
-        $aips_scheduler = new AIPS_Scheduler();
-        add_action('aips_generate_scheduled_posts', array($aips_scheduler, 'process'));
-        add_filter('cron_schedules', array($aips_scheduler, 'add_cron_intervals'));
+        // Lazy-resolve the author-post generator only when its hook fires.
+        add_action('aips_generate_author_posts', function() {
+            AIPS_Author_Post_Generator::instance()->process();
+        });
 
-        $aips_author_topics_scheduler = new AIPS_Author_Topics_Scheduler();
-        add_action('aips_generate_author_topics', array($aips_author_topics_scheduler, 'process_topic_generation'));
+        // Lazy-resolve the embeddings worker only when its hook fires.
+        add_action('aips_process_author_embeddings', function($args) {
+            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
+        }, 10, 1);
 
-        $aips_author_post_generator = new AIPS_Author_Post_Generator();
-        add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
+        // Research controller registers the aips_scheduled_research cron hook.
+        new AIPS_Research_Controller();
 
-        // Embeddings background worker
-        $aips_embeddings_cron = new AIPS_Embeddings_Cron();
-        add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+        // Notification event handler receives generation-failure/quota alerts from cron.
+        new AIPS_Notifications();
 
-        // Internal Links controller (registered outside admin-only block so cron callback works)
-        global $aips_internal_links_controller;
+        // Reconciler's save_post hook fires when cron creates or updates posts.
+        new AIPS_Partial_Generation_State_Reconciler();
+      
+        // Internal Links controller
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
         add_action('aips_index_posts_batch', array($aips_internal_links_controller, 'process_indexing_batch_cron'));
+    }
 
+    /**
+     * Boot subsystems required only during an admin AJAX request.
+     *
+     * Resolves and instantiates only the single controller class mapped to the
+     * current AJAX action in the registry.
+     *
+     * For plugin-owned actions (those starting with "aips_") that are not yet
+     * registered in the registry, a lazy-resolving fallback is used so that
+     * newly added controllers are still dispatched correctly.
+     *
+     * Non-plugin actions (from other plugins or WordPress core) are ignored
+     * entirely — registering 100+ wp_ajax_* hooks for an action this plugin does
+     * not own would be a performance regression rather than an improvement.
+     *
+     * @return void
+     */
+    private function boot_ajax() {
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
+
+        $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
+        if ($controller_class && class_exists($controller_class)) {
+            // Constructing the controller registers its wp_ajax_* hooks; WordPress
+            // will dispatch the matching action automatically after init completes.
+            new $controller_class();
+            return;
+        }
+
+        // Only fall back to lazy-hook registration for plugin-owned actions that
+        // are not yet in the registry (e.g. a newly added controller). Actions
+        // from other plugins or WordPress core are ignored.
+        if (strncmp($action, 'aips_', 5) === 0) {
+            $this->register_lazy_ajax_hooks();
+        }
+    }
+
+    /**
+     * Boot subsystems required for admin (non-AJAX) page views.
+     *
+     * Registers the admin menu, enqueues assets, initializes settings and
+     * onboarding, adds the admin toolbar node, and binds the notification event
+     * handler and partial-generation reconciler. All page-specific AJAX
+     * controllers are intentionally omitted here; they are resolved on demand
+     * via boot_ajax() when an AJAX request arrives.
+     *
+     * @return void
+     */
+    private function boot_admin() {
+        new AIPS_Admin_Menu();
+        new AIPS_Admin_Assets();
+        new AIPS_Settings();
+        new AIPS_Onboarding_Wizard();
+
+        // Toolbar node is visible on WP admin pages as well as the frontend.
+        new AIPS_Admin_Bar();
+
+        // Notification event handler listens for plugin-level events on admin pages.
         new AIPS_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
 
-        // Admin toolbar (visible on both admin and frontend for users with manage_options)
+        // Reconciler's save_post hook fires on post-save actions initiated from admin.
+        new AIPS_Partial_Generation_State_Reconciler();
+    }
+
+    /**
+     * Boot subsystems required only for frontend (non-admin) page loads.
+     *
+     * Creates the admin toolbar node for users with manage_options capability.
+     * No schedulers, controllers, or admin-only subsystems are instantiated here.
+     *
+     * @return void
+     */
+    private function boot_frontend() {
         new AIPS_Admin_Bar();
     }
 }
@@ -377,6 +629,65 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+/**
+ * Tell Query Monitor that files under the real (symlink-resolved) plugin
+ * directory belong to this plugin, not WordPress Core.
+ *
+ * When the plugin directory is a symlink, PHP's debug_backtrace() returns the
+ * real path (e.g. C:/Projects/.../ai-post-scheduler) which does not start with
+ * WP_PLUGIN_DIR, so QM falls back to "WordPress Core".
+ *
+ * The three companion filters together register the resolved path and map the
+ * custom key back to TYPE_PLUGIN with the correct plugin-slug context so that
+ * QM shows "Plugin: ai-post-scheduler" in the Component column.
+ */
+add_filter('qm/component_dirs', function( array $dirs ) {
+    $real = realpath( AIPS_PLUGIN_DIR );
+    if ( false === $real ) {
+        return $dirs;
+    }
+
+    $real = rtrim( str_replace( '\\', '/', $real ), '/' );
+
+    // Compare against the canonical WordPress plugins path, not AIPS_PLUGIN_DIR.
+    // In symlinked installs plugin_dir_path(__FILE__) can already be resolved.
+    $expected = rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR . '/ai-post-scheduler' ), '/' );
+
+    // Only add when the real path differs from the canonical WP plugin path
+    // (i.e. a symlink is in use). Using a namespaced key avoids overwriting
+    // QM's built-in 'plugin' entry which is appended after this filter runs.
+    if ( $real !== $expected ) {
+        $dirs['plugin:ai-post-scheduler'] = $real;
+    }
+
+    return $dirs;
+});
+
+// Map the custom dir-key type back to TYPE_PLUGIN so QM shows the correct
+// component class and name rather than falling into the "unknown" branch.
+add_filter('qm/component_type/plugin:ai-post-scheduler', function() {
+    return 'plugin';
+});
+
+// Supply the plugin slug as the context so the component name becomes
+// "Plugin: ai-post-scheduler" instead of "Plugin: plugin:ai-post-scheduler".
+add_filter('qm/component_context/plugin', function( $context, $file ) {
+    $real = realpath( AIPS_PLUGIN_DIR );
+    
+    if ( false === $real || ! is_string( $file ) ) {
+        return $context;
+    }
+
+    $real = rtrim( str_replace( '\\', '/', $real ), '/' );
+    $file = str_replace( '\\', '/', $file );
+
+    if ( 0 === strpos( $file, $real . '/' ) || $file === $real ) {
+        return 'ai-post-scheduler';
+    }
+
+    return $context;
+}, 10, 2);
 
 // Backward-compatibility alias: old review hook now triggers the rollup hook.
 add_action('aips_send_review_notifications', function() {

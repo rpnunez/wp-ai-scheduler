@@ -62,6 +62,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_developer_mode'],
         ));
+        register_setting('aips_settings', 'aips_enable_telemetry', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_enable_telemetry'],
+        ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_retry'],
@@ -317,6 +321,14 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        add_settings_field(
+            'aips_enable_telemetry',
+            __('Enable Telemetry', 'ai-post-scheduler'),
+            array($this->ui, 'enable_telemetry_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
         add_settings_section(
             'aips_resilience_section',
             __('Resilience & Limits', 'ai-post-scheduler'),
@@ -472,6 +484,127 @@ class AIPS_Settings {
             array($this->ui, 'site_excluded_topics_field_callback'),
             'aips-settings',
             'aips_content_strategy_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Cache section: Driver selection + per-driver configuration.
+        // -----------------------------------------------------------------------
+        $defaults = AIPS_Config::get_instance()->get_default_options();
+
+        register_setting('aips_settings', 'aips_cache_driver', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_cache_driver'),
+            'default'           => $defaults['aips_cache_driver'],
+        ));
+        register_setting('aips_settings', 'aips_cache_db_prefix', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_cache_db_prefix'],
+        ));
+        register_setting('aips_settings', 'aips_cache_default_ttl', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_default_ttl'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_host', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_cache_redis_host'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_port', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_redis_port'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_password', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_cache_redis_password'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_db', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_redis_db'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_prefix', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_cache_redis_prefix'],
+        ));
+        register_setting('aips_settings', 'aips_cache_redis_timeout', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_redis_timeout'],
+        ));
+
+        add_settings_section(
+            'aips_cache_section',
+            __('Cache Settings', 'ai-post-scheduler'),
+            array($this->ui, 'cache_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_cache_driver',
+            __('Cache Driver', 'ai-post-scheduler'),
+            array($this->ui, 'cache_driver_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_default_ttl',
+            __('Default TTL (seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'cache_default_ttl_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_db_prefix',
+            __('DB Cache Key Prefix', 'ai-post-scheduler'),
+            array($this->ui, 'cache_db_prefix_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_host',
+            __('Redis Host', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_host_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_port',
+            __('Redis Port', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_port_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_password',
+            __('Redis Password', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_password_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_db',
+            __('Redis Database Index', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_db_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_prefix',
+            __('Redis Key Prefix', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_prefix_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_redis_timeout',
+            __('Redis Connection Timeout (seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'cache_redis_timeout_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
         );
     }
 

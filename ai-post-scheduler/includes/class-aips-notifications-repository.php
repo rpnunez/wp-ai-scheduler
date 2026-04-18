@@ -11,7 +11,24 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
-class AIPS_Notifications_Repository {
+class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Interface {
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
 
 	/**
 	 * @var wpdb WordPress database object.
@@ -139,7 +156,7 @@ class AIPS_Notifications_Repository {
 
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
+				"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
 				$limit
 			)
 		);

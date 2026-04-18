@@ -20,7 +20,24 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to templates.
  */
 class AIPS_Template_Repository {
-    
+
+    /**
+     * @var self|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared singleton instance.
+     *
+     * @return self
+     */
+    public static function instance(): self {
+        if ( self::$instance === null ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     /**
      * @var string The templates table name (with prefix)
      */
@@ -30,6 +47,11 @@ class AIPS_Template_Repository {
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
+
+    /**
+     * @var AIPS_Cache In-request identity-map cache.
+     */
+    private $cache = null;
     
     /**
      * Initialize the repository.
@@ -38,30 +60,52 @@ class AIPS_Template_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
+        $this->cache = AIPS_Cache_Factory::named( 'aips_template_repository' );
     }
     
     /**
      * Get all templates with optional filtering.
      *
+     * Results are cached for the duration of the request using the named
+     * named cache instance so repeat calls within the same request
+     * do not issue additional DB queries.
+     *
      * @param bool $active_only Optional. Return only active templates. Default false.
      * @return array Array of template objects.
      */
     public function get_all($active_only = false) {
-        $where = $active_only ? "WHERE is_active = 1" : "";
-        return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        $key = 'all:' . ( $active_only ? '1' : '0' );
+        if ( $this->cache->has( $key ) ) {
+            return $this->cache->get( $key );
+        }
+        $where  = $active_only ? "WHERE is_active = 1" : "";
+        $result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+        $this->cache->set( $key, $result );
+        return $result;
     }
     
     /**
      * Get a single template by ID.
      *
+     * Non-null results are cached for the duration of the request. Null
+     * results (record not found) are always fetched fresh from the DB.
+     *
      * @param int $id Template ID.
      * @return object|null Template object or null if not found.
      */
     public function get_by_id($id) {
-        return $this->wpdb->get_row($this->wpdb->prepare(
+        $key = 'id:' . (int) $id;
+        if ( $this->cache->has( $key ) ) {
+            return $this->cache->get( $key );
+        }
+        $result = $this->wpdb->get_row( $this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} WHERE id = %d",
             $id
-        ));
+        ) );
+        if ( $result !== null ) {
+            $this->cache->set( $key, $result );
+        }
+        return $result;
     }
     
     /**
@@ -129,6 +173,10 @@ class AIPS_Template_Repository {
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
+        if ( $result ) {
+            $this->cache->flush();
+        }
+
         return $result ? $this->wpdb->insert_id : false;
     }
     
@@ -234,13 +282,19 @@ class AIPS_Template_Repository {
             return false;
         }
         
-        return $this->wpdb->update(
+        $result = $this->wpdb->update(
             $this->table_name,
             $update_data,
             array('id' => $id),
             $format,
             array('%d')
         ) !== false;
+
+        if ( $result ) {
+            $this->cache->flush();
+        }
+
+        return $result;
     }
     
     /**
@@ -250,7 +304,11 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+        $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+        if ( $result ) {
+            $this->cache->flush();
+        }
+        return $result;
     }
     
     /**

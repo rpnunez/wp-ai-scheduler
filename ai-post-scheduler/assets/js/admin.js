@@ -20,6 +20,8 @@
     ];
 
     Object.assign(AIPS, {
+        generatedPostPreviewMap: {},
+
         /**
          * Bootstrap the AIPS admin interface.
          *
@@ -71,6 +73,7 @@
             $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
+            $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
@@ -749,7 +752,7 @@
             // Validate at least name is provided
             var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
             if (nameRule && !$(nameRule.selector).val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n[nameRule.messageKey], 'warning');
+                AIPS.Utilities.showToast(aipsTemplatesL10n[nameRule.messageKey], 'warning');
                 $(nameRule.selector).focus();
                 AIPS.wizardGoToStep(1, $('#aips-template-modal'));
                 return;
@@ -796,7 +799,7 @@
                             AIPS.lastSavedTemplateId = response.data.template_id;
                         }
 
-                        AIPS.Utilities.showToast(aipsAdminL10n.draftSaved, 'success');
+                        AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -826,7 +829,7 @@
             // Validate at least prompt is there
             var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 2; })[0];
             if (promptRule && !$(promptRule.selector).val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
+                AIPS.Utilities.showToast(aipsTemplatesL10n[promptRule.messageKey], 'warning');
                 $(promptRule.selector).focus();
                 return;
             }
@@ -917,14 +920,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success modal instead of alert
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -936,6 +932,111 @@
                     AIPS.Utilities.resetButton($btn);
                 }
             });
+        },
+
+        /**
+         * Render and display the generated-posts success modal.
+         *
+         * Uses server-provided summary text plus the per-post preview payload to
+         * build the modal body with AIPS HTML templates.
+         *
+         * @param {Object} data - AJAX success payload from `aips_run_now`.
+         */
+        showGeneratedPostsModal: function(data) {
+            var generatedCount = parseInt(data && data.generated_count, 10);
+            var posts = $.isArray(data && data.posts) ? data.posts : [];
+            var summaryMessage = data && data.summary_message ? data.summary_message : '';
+            var noticeMessage = data && data.notice_message ? data.notice_message : '';
+            var templateEngine = AIPS.Templates || null;
+            var rowsHtml = '';
+            var tableHtml = '';
+            var $modalTitle = $('#aips-post-success-modal-title');
+            var $summary = $('#aips-success-message');
+            var $notice = $('#aips-success-note');
+            var $results = $('#aips-post-results-container');
+
+            AIPS.generatedPostPreviewMap = {};
+
+            if (isNaN(generatedCount) || generatedCount < 1) {
+                generatedCount = posts.length;
+            }
+
+            if ($modalTitle.length) {
+                $modalTitle.text(
+                    generatedCount === 1
+                        ? ($modalTitle.data('singularTitle') || 'Post Successfully Generated')
+                        : ($modalTitle.data('pluralTitle') || 'Posts Successfully Generated')
+                );
+            }
+
+            if ($summary.length) {
+                $summary.text(summaryMessage || (generatedCount === 1 ? '1 post has been generated.' : generatedCount + ' posts have been generated.'));
+            }
+
+            if ($notice.length) {
+                if (noticeMessage) {
+                    $notice.text(noticeMessage).show();
+                } else {
+                    $notice.text('').hide();
+                }
+            }
+
+            if ($results.length) {
+                $results.empty();
+
+                if (templateEngine && posts.length) {
+                    $.each(posts, function(index, post) {
+                        var postId = parseInt(post.id, 10);
+
+                        if (!isNaN(postId) && postId > 0) {
+                            AIPS.generatedPostPreviewMap[postId] = {
+                                title: post.title || '',
+                                excerpt: post.excerpt || '',
+                                post_content: post.post_content || ''
+                            };
+                        }
+
+                        rowsHtml += templateEngine.render('aips-tmpl-generated-post-row', {
+                            post_id: postId || 0,
+                            title: post.title || '',
+                            excerpt: post.excerpt || '',
+                            content_snippet: post.content_snippet || '',
+                            edit_url: post.edit_url || '',
+                            view_url: post.view_url || ''
+                        });
+                    });
+
+                    tableHtml = templateEngine.renderRaw('aips-tmpl-generated-posts-table', {
+                        rows: rowsHtml
+                    });
+
+                    $results.html(tableHtml);
+                }
+            }
+
+            $('#aips-post-success-modal').show();
+        },
+
+        /**
+         * Open the quick-preview modal for a generated post from the success table.
+         *
+         * @param {Event} e - Click event from `.aips-quick-preview-post`.
+         */
+        openGeneratedPostPreview: function(e) {
+            e.preventDefault();
+
+            var postId = parseInt($(this).data('postId'), 10);
+            var preview = !isNaN(postId) ? AIPS.generatedPostPreviewMap[postId] : null;
+
+            if (!preview) {
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                return;
+            }
+
+            $('#aips-post-preview-title').text(preview.title || '(no title)');
+            $('#aips-post-preview-excerpt').text(preview.excerpt || 'No excerpt available.');
+            $('#aips-post-preview-content').html(preview.post_content || '<p>No content available.</p>');
+            $('#aips-post-quick-preview-modal').show();
         },
 
         /**
@@ -983,7 +1084,7 @@
             e.preventDefault();
             $('#aips-voice-form')[0].reset();
             $('#voice_id').val('');
-            $('#aips-voice-modal-title').text(aipsAdminL10n.addNewVoice);
+            $('#aips-voice-modal-title').text(aipsVoicesL10n.addNewVoice);
             $('#aips-voice-modal').show();
         },
 
@@ -1015,7 +1116,7 @@
                         $('#voice_content_instructions').val(v.content_instructions);
                         $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
                         $('#voice_is_active').prop('checked', v.is_active == 1);
-                        $('#aips-voice-modal-title').text(aipsAdminL10n.editVoice);
+                        $('#aips-voice-modal-title').text(aipsVoicesL10n.editVoice);
                         $('#aips-voice-modal').show();
                     }
                 }
@@ -1035,7 +1136,7 @@
             var $el = $(this);
             var id = $el.data('id');
             var $row = $el.closest('tr');
-            AIPS.Utilities.confirm(aipsAdminL10n.deleteVoiceConfirm, 'Confirm', [
+            AIPS.Utilities.confirm(aipsVoicesL10n.deleteVoiceConfirm, 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
@@ -1151,7 +1252,7 @@
             }
             $('#aips-schedule-wizard-form')[0].reset();
             $('#sw_schedule_id').val('');
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.addNewSchedule || 'Add New Schedule');
+            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
         },
@@ -1221,7 +1322,7 @@
                 }
             }
 
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.editSchedule || 'Edit Schedule');
+            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
         },
@@ -1277,7 +1378,7 @@
             $('#sw_rotation_pattern').val(rotationPattern);
             $('#sw_schedule_start_time').val('');
 
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.cloneSchedule || 'Clone Schedule');
+            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.cloneSchedule || 'Clone Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
         },
@@ -1410,7 +1511,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.scheduleSavedSuccess || 'Schedule saved successfully', 'success');
+                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.scheduleSavedSuccess || 'Schedule saved successfully', 'success');
                         $wizardModal.hide();
 
                         // Dynamically update the schedules table
@@ -1464,7 +1565,7 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
 
-            AIPS.Utilities.confirm(aipsAdminL10n.deleteScheduleConfirm, 'Notice', [
+            AIPS.Utilities.confirm(aipsScheduleL10n.deleteScheduleConfirm, 'Notice', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
@@ -1639,7 +1740,7 @@
                     $loading.hide();
 
                     if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.failedToLoadHistory, 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.failedToLoadHistory, 'error');
                         $modal.hide();
                         return;
                     }
@@ -1798,14 +1899,14 @@
             });
 
             if (ids.length === 0) {
-                AIPS.Utilities.showToast(aipsAdminL10n.selectAtLeastOneSchedule, 'warning');
+                AIPS.Utilities.showToast(aipsScheduleL10n.selectAtLeastOneSchedule, 'warning');
                 return;
             }
 
             if (action === 'delete') {
                 var deleteMsg = ids.length === 1
-                    ? aipsAdminL10n.deleteOneScheduleConfirm
-                    : aipsAdminL10n.deleteMultipleSchedulesConfirm.replace('%d', ids.length);
+                    ? aipsScheduleL10n.deleteOneScheduleConfirm
+                    : aipsScheduleL10n.deleteMultipleSchedulesConfirm.replace('%d', ids.length);
                 AIPS.Utilities.confirm(
                     deleteMsg,
                     'Delete Schedules',
@@ -1831,27 +1932,27 @@
                     success: function(response) {
                         var count = response.success ? (response.data.count || ids.length) : ids.length;
                         var runMsg = count === 1
-                            ? aipsAdminL10n.runPostsConfirmSingular
-                            : aipsAdminL10n.runPostsConfirmPlural.replace('%d', count);
+                            ? aipsScheduleL10n.runPostsConfirmSingular
+                            : aipsScheduleL10n.runPostsConfirmPlural.replace('%d', count);
                         AIPS.Utilities.confirm(
                             runMsg,
-                            aipsAdminL10n.runSchedulesNow,
+                            aipsScheduleL10n.runSchedulesNow,
                             [
-                                { label: aipsAdminL10n.cancel, className: 'aips-btn aips-btn-secondary' },
-                                { label: aipsAdminL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: aipsScheduleL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+                                { label: aipsScheduleL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     },
                     error: function() {
                         var runMsg = ids.length === 1
-                            ? aipsAdminL10n.runOneScheduleConfirm
-                            : aipsAdminL10n.runMultipleSchedulesConfirm.replace('%d', ids.length);
+                            ? aipsScheduleL10n.runOneScheduleConfirm
+                            : aipsScheduleL10n.runMultipleSchedulesConfirm.replace('%d', ids.length);
                         AIPS.Utilities.confirm(
                             runMsg,
-                            aipsAdminL10n.runSchedulesNow,
+                            aipsScheduleL10n.runSchedulesNow,
                             [
-                                { label: aipsAdminL10n.cancel, className: 'aips-btn aips-btn-secondary' },
-                                { label: aipsAdminL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: aipsScheduleL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+                                { label: aipsScheduleL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     }
@@ -1891,7 +1992,7 @@
                         $('#cb-select-all-schedules').prop('checked', false);
                         AIPS.updateScheduleBulkActions();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.failedToDeleteSchedules, 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.failedToDeleteSchedules, 'error');
                     }
                 },
                 error: function() {
@@ -1993,7 +2094,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.bulkRunFailed, 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.bulkRunFailed, 'error');
                     }
                 },
                 error: function() {
@@ -2132,7 +2233,7 @@
 
             var action = $('#aips-unified-bulk-action').val();
             if (!action) {
-                AIPS.Utilities.showToast(aipsAdminL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+                AIPS.Utilities.showToast(aipsScheduleL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
                 return;
             }
 
@@ -2152,19 +2253,19 @@
             });
 
             if (items.length === 0) {
-                AIPS.Utilities.showToast(aipsAdminL10n.selectAtLeastOne || 'Please select at least one schedule.', 'warning');
+                AIPS.Utilities.showToast(aipsScheduleL10n.selectAtLeastOne || 'Please select at least one schedule.', 'warning');
                 return;
             }
 
             if (action === 'run_now') {
                 AIPS.Utilities.confirm(
-                    aipsAdminL10n.runSchedulesNow
-                        ? aipsAdminL10n.runSchedulesNow
+                    aipsScheduleL10n.runSchedulesNow
+                        ? aipsScheduleL10n.runSchedulesNow
                         : 'Run ' + items.length + ' schedule(s) now?',
                     'Run Now',
                     [
-                        { label: aipsAdminL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
-                        { label: aipsAdminL10n.yesRunNow || 'Yes, Run Now', className: 'aips-btn aips-btn-primary', action: function() {
+                        { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                        { label: aipsScheduleL10n.yesRunNow || 'Yes, Run Now', className: 'aips-btn aips-btn-primary', action: function() {
                             AIPS.unifiedBulkRunNow(items);
                         }}
                     ]
@@ -2190,7 +2291,7 @@
 
             if (deletableItems.length === 0) {
                 AIPS.Utilities.showToast(
-                    aipsAdminL10n.noDeletableSchedulesSelected || 'None of the selected schedules can be deleted.',
+                    aipsScheduleL10n.noDeletableSchedulesSelected || 'None of the selected schedules can be deleted.',
                     'warning'
                 );
                 return;
@@ -2200,20 +2301,20 @@
                 return (index + 1) + '. ' + item.title;
             }).join('\n');
 
-            var message = (aipsAdminL10n.deleteSchedulesListIntro || 'The following schedules will be deleted:') +
+            var message = (aipsScheduleL10n.deleteSchedulesListIntro || 'The following schedules will be deleted:') +
                 '\n\n' + listLines;
 
             var skippedCount = items.length - deletableItems.length;
             if (skippedCount > 0) {
-                var skipTemplate = aipsAdminL10n.deleteSchedulesSkipNotice || '%d selected schedule(s) cannot be deleted and will be skipped.';
+                var skipTemplate = aipsScheduleL10n.deleteSchedulesSkipNotice || '%d selected schedule(s) cannot be deleted and will be skipped.';
                 message += '\n\n' + skipTemplate.replace('%d', skippedCount);
             }
 
-            message += '\n\n' + (aipsAdminL10n.deleteSchedulesFinalConfirm || 'This action cannot be undone. Continue?');
+            message += '\n\n' + (aipsScheduleL10n.deleteSchedulesFinalConfirm || 'This action cannot be undone. Continue?');
 
             AIPS.Utilities.confirm(
                 message,
-                aipsAdminL10n.deleteSchedulesHeading || 'Delete Schedules',
+                aipsScheduleL10n.deleteSchedulesHeading || 'Delete Schedules',
                 [
                     { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                     {
@@ -2394,7 +2495,7 @@
 
                         AIPS.Utilities.showToast(data.message || 'Schedules deleted successfully.', 'success');
                     } else {
-                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.failedToDeleteSchedules, 'error');
+                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsScheduleL10n.failedToDeleteSchedules, 'error');
                     }
                 },
                 error: function() {
@@ -3165,7 +3266,7 @@
                         }
                     }
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
+                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveStructureFailed, 'error');
                 }
             }).fail(function(){
                 AIPS.Utilities.resetButton($btn);
@@ -3210,7 +3311,7 @@
                     $('#aips-structure-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
+                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadStructureFailed, 'error');
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
@@ -3230,14 +3331,14 @@
             var $el = $(this);
             var id = $el.data('id');
             var $row = $el.closest('tr');
-            AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+            AIPS.Utilities.confirm(aipsStructuresL10n.deleteStructureConfirm, 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
                         } else {
-                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
+                            AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.deleteStructureFailed, 'error');
                         }
                     }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
                 }}
@@ -3333,7 +3434,7 @@
                         }
                     }
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
+                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveSectionFailed, 'error');
                 }
             }).fail(function(){
                 AIPS.Utilities.resetButton($btn);
@@ -3364,7 +3465,7 @@
                     $('#aips-section-modal-title').text('Edit Prompt Section');
                     $('#aips-section-modal').show();
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
+                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadSectionFailed, 'error');
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
@@ -3384,14 +3485,14 @@
             var $el = $(this);
             var id = $el.data('id');
             var $row = $el.closest('tr');
-            AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+            AIPS.Utilities.confirm(aipsStructuresL10n.deleteSectionConfirm, 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
                         } else {
-                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                            AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.deleteSectionFailed, 'error');
                         }
                     }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
                 }}
@@ -3490,13 +3591,7 @@
                 success: function(response) {
                     if (response.success) {
                         $('#aips-template-modal').hide();
-                        if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
-                        }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showGeneratedPostsModal(response.data);
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -3573,7 +3668,7 @@
                     $('#sw_article_structure_id').val(preselectStructureIdNum);
                 }
 
-                $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.addNewSchedule || 'Add New Schedule');
+                $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
                 AIPS.wizardGoToStep(1, $wizardModal);
                 $wizardModal.show();
             } else {
@@ -3637,6 +3732,10 @@
 
             var totalSteps = parseInt($modal.data('wizard-steps'), 10) ||
                 $modal.find('.aips-wizard-step-content').not('.aips-post-save-step').length;
+
+            // Restore the progress nav and footer in case they were hidden by showPostSaveActions.
+            $modal.find('.aips-wizard-progress').show();
+            $modal.find('.aips-wizard-footer').show();
 
             // Hide all steps, then show the target step
             $modal.find('.aips-wizard-step-content').hide();
@@ -3779,11 +3878,12 @@
             var rules = (modalId === 'aips-schedule-wizard-modal')
                 ? SCHEDULE_WIZARD_REQUIRED_FIELDS
                 : WIZARD_REQUIRED_FIELDS;
+            var L10n = (modalId === 'aips-schedule-wizard-modal') ? aipsScheduleL10n : aipsTemplatesL10n;
 
             for (var i = 0; i < rules.length; i++) {
                 var rule = rules[i];
                 if (!$(rule.selector).val().trim()) {
-                    return { step: rule.step, selector: rule.selector, message: aipsAdminL10n[rule.messageKey] };
+                    return { step: rule.step, selector: rule.selector, message: L10n[rule.messageKey] };
                 }
             }
             return null;
@@ -3806,11 +3906,12 @@
             var rules = (modalId === 'aips-schedule-wizard-modal')
                 ? SCHEDULE_WIZARD_REQUIRED_FIELDS
                 : WIZARD_REQUIRED_FIELDS;
+            var L10n = (modalId === 'aips-schedule-wizard-modal') ? aipsScheduleL10n : aipsTemplatesL10n;
 
             for (var i = 0; i < rules.length; i++) {
                 var rule = rules[i];
                 if (rule.step === step && !$(rule.selector).val().trim()) {
-                    AIPS.Utilities.showToast(aipsAdminL10n[rule.messageKey], 'error');
+                    AIPS.Utilities.showToast(L10n[rule.messageKey], 'error');
                     $(rule.selector).focus();
                     return false;
                 }
@@ -3853,7 +3954,7 @@
             $modal.find('#summary_description').text($('#template_description').val() || '-');
 
             var titlePrompt = $('#title_prompt').val();
-            $modal.find('#summary_title_prompt').text(titlePrompt || aipsAdminL10n.autoGenerateFromContent);
+            $modal.find('#summary_title_prompt').text(titlePrompt || aipsTemplatesL10n.autoGenerateFromContent);
 
             var contentPrompt = $('#prompt_template').val();
             if (contentPrompt.length > 100) {
@@ -3869,9 +3970,9 @@
             var featuredImage = $('#generate_featured_image').is(':checked');
             if (featuredImage) {
                 var source = $('#featured_image_source option:selected').text();
-                $modal.find('#summary_featured_image').text(aipsAdminL10n.featuredImageYes.replace('%s', source));
+                $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageYes.replace('%s', source));
             } else {
-                $modal.find('#summary_featured_image').text(aipsAdminL10n.featuredImageNo);
+                $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageNo);
             }
         },
 
@@ -3895,14 +3996,14 @@
             var rotationText = $('#sw_rotation_pattern option:selected').text();
             var isActive = $('#sw_schedule_is_active').is(':checked');
 
-            $modal.find('#sw_summary_title').text(title || '(' + (aipsAdminL10n.noTitle || 'No title') + ')');
+            $modal.find('#sw_summary_title').text(title || '(' + (aipsScheduleL10n.noTitle || 'No title') + ')');
             $modal.find('#sw_summary_template').text(templateText || '-');
-            $modal.find('#sw_summary_topic').text(topic || aipsAdminL10n.noneOption || '-');
+            $modal.find('#sw_summary_topic').text(topic || aipsScheduleL10n.noneOption || '-');
             $modal.find('#sw_summary_frequency').text(frequencyText || '-');
-            $modal.find('#sw_summary_start_time').text(startTime || aipsAdminL10n.startNow || 'Now');
-            $modal.find('#sw_summary_structure').text(structureText || aipsAdminL10n.useDefault || 'Use Default');
-            $modal.find('#sw_summary_rotation').text(rotationText || aipsAdminL10n.noneOption || '-');
-            $modal.find('#sw_summary_active').text(isActive ? (aipsAdminL10n.yes || 'Yes') : (aipsAdminL10n.no || 'No'));
+            $modal.find('#sw_summary_start_time').text(startTime || aipsScheduleL10n.startNow || 'Now');
+            $modal.find('#sw_summary_structure').text(structureText || aipsScheduleL10n.useDefault || 'Use Default');
+            $modal.find('#sw_summary_rotation').text(rotationText || aipsScheduleL10n.noneOption || '-');
+            $modal.find('#sw_summary_active').text(isActive ? (aipsScheduleL10n.yes || 'Yes') : (aipsScheduleL10n.no || 'No'));
         },
 
         // AI Variables feature methods
@@ -3987,7 +4088,7 @@
             // Build the variable tags
             var html = '';
             variables.forEach(function(varName) {
-                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.Utilities.escapeAttribute(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
+                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.Utilities.escapeAttribute(varName) + '}}" title="' + aipsTemplatesL10n.clickToCopy + '">';
                 html += '<span class="dashicons dashicons-tag"></span>';
                 html += '{{' + AIPS.Utilities.escapeHtml(varName) + '}}';
                 html += '</span>';
@@ -4072,7 +4173,7 @@
                             $('#aips-preview-structure').hide();
                         }
                         
-                        $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsAdminL10n.exampleTopic);
+                        $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
                         
                         // Update prompt sections
                         $('#aips-preview-content-prompt').text(prompts.content || '-');
@@ -4088,13 +4189,13 @@
                         
                         $sections.show();
                     } else {
-                        var errorMsg = response.data.message || aipsAdminL10n.failedToGeneratePreview;
+                        var errorMsg = response.data.message || aipsTemplatesL10n.failedToGeneratePreview;
                         $error.text(errorMsg).show();
                     }
                 },
                 error: function() {
                     $loading.hide();
-                    $error.text(aipsAdminL10n.previewNetworkError).show();
+                    $error.text(aipsTemplatesL10n.previewNetworkError).show();
                 }
             });
         },

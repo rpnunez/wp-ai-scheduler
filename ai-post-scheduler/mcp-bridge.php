@@ -639,12 +639,14 @@ class AIPS_MCP_Bridge {
 	 * Tool: Check upgrades
 	 */
 	private function tool_check_upgrades($params) {
-		$current_version = get_option('aips_db_version', '0');
-		$needs_upgrade = version_compare($current_version, AIPS_VERSION, '<');
-		
+		$config          = AIPS_Config::get_instance();
+		$current_version = $config->get_option('aips_db_version');
+		$needs_upgrade   = version_compare($current_version, AIPS_VERSION, '<');
+
 		if ($params['run'] && $needs_upgrade) {
 			AIPS_Upgrades::check_and_run();
-			$current_version = get_option('aips_db_version');
+			$config->flush_option_cache();
+			$current_version = $config->get_option('aips_db_version');
 		}
 		
 		return array(
@@ -811,24 +813,25 @@ class AIPS_MCP_Bridge {
 	 * Tool: Get plugin info
 	 */
 	private function tool_get_plugin_info($params) {
+		$config = AIPS_Config::get_instance();
 		return array(
 			'success' => true,
 			'plugin' => array(
 				'name' => 'AI Post Scheduler',
 				'version' => AIPS_VERSION,
-				'db_version' => get_option('aips_db_version'),
+				'db_version' => $config->get_option('aips_db_version'),
 				'php_version' => phpversion(),
 				'wp_version' => get_bloginfo('version'),
 				'ai_engine_active' => class_exists('Meow_MWAI_Core'),
 				'settings' => array(
-					'default_post_status' => get_option('aips_default_post_status'),
-					'default_category' => get_option('aips_default_category'),
-					'enable_logging' => get_option('aips_enable_logging'),
-					'retry_max_attempts' => get_option('aips_retry_max_attempts'),
-					'ai_model' => get_option('aips_ai_model'),
-					'developer_mode' => get_option('aips_developer_mode')
-				)
-			)
+					'default_post_status' => $config->get_option('aips_default_post_status'),
+					'default_category'    => $config->get_option('aips_default_category'),
+					'enable_logging'      => $config->get_option('aips_enable_logging'),
+					'retry_max_attempts'  => $config->get_option('aips_retry_max_attempts'),
+					'ai_model'            => $config->get_option('aips_ai_model'),
+					'developer_mode'      => $config->get_option('aips_developer_mode'),
+				),
+			),
 		);
 	}
 	
@@ -1078,7 +1081,10 @@ class AIPS_MCP_Bridge {
 		if (!empty($params['history_id'])) {
 			$history = $history_repo->get_by_id($params['history_id']);
 		} else {
-			$history = $history_repo->get_by_post_id($params['post_id']);
+			// get_by_post_id() returns a lightweight record (no longtext columns).
+			// Resolve to the full record via get_by_id() so generated_content is available.
+			$lightweight = $history_repo->get_by_post_id($params['post_id']);
+			$history = $lightweight ? $history_repo->get_by_id($lightweight->id) : null;
 		}
 		
 		if (!$history) {

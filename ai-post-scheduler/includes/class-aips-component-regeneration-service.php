@@ -385,7 +385,12 @@ class AIPS_Component_Regeneration_Service {
 			return $history_container;
 		}
 		
-		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
+		$current_content = '';
+		if ($post_id > 0) {
+			$current_content = (string) get_post_field('post_content', $post_id);
+		}
+
+		$processed_image_prompt = $this->generator->process_featured_image_prompt($generation_context, $current_content, $title);
 		if (empty($processed_image_prompt)) {
 			$history_container->record(
 				'metric_generation_result',

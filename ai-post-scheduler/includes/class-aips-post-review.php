@@ -19,7 +19,24 @@ if (!defined('ABSPATH')) {
  * Handles post review functionality including bulk operations.
  */
 class AIPS_Post_Review {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_Post_Review_Repository Repository for database operations
 	 */
@@ -51,7 +68,7 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_delete_draft_post', array($this, 'ajax_delete_draft_post'));
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
 		add_action('wp_ajax_aips_bulk_regenerate_posts', array($this, 'ajax_bulk_regenerate_posts'));
-		add_action('wp_ajax_aips_get_draft_post_preview', array($this, 'ajax_get_draft_post_preview'));
+		add_action('wp_ajax_aips_get_post_preview', array($this, 'ajax_get_post_preview'));
 	}
 	
 	/**
@@ -74,25 +91,27 @@ class AIPS_Post_Review {
 	}
 	
 	/**
-	 * AJAX handler to get draft post preview data.
+	 * AJAX handler to get post preview data.
 	 */
-	public function ajax_get_draft_post_preview() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+	public function ajax_get_post_preview() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 
 		if (!$post_id) {
-			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 
 		$post = get_post($post_id);
 
-		if (!$post || $post->post_status !== 'draft') {
-			wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
+		if (!$post) {
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'));
 		}
 
 		// Prepare preview data
@@ -104,17 +123,19 @@ class AIPS_Post_Review {
 			'edit_url' => esc_url_raw(get_edit_post_link($post_id)),
 		);
 
-		wp_send_json_success($data);
+		AIPS_Ajax_Response::success($data);
 	}
 
 	/**
 	 * AJAX handler to get draft posts.
 	 */
 	public function ajax_get_draft_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
@@ -127,14 +148,16 @@ class AIPS_Post_Review {
 			'template_id' => $template_id,
 		));
 		
-		wp_send_json_success($draft_posts);
+		AIPS_Ajax_Response::success($draft_posts);
 	}
 	
 	/**
 	 * AJAX handler to publish a single post.
 	 */
 	public function ajax_publish_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -145,7 +168,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -159,7 +182,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post exists and is a draft managed by this plugin
@@ -173,7 +196,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post is in the review queue (has a history record)
@@ -186,7 +209,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('Post not found in review queue.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
 		}
 		
 		// Check per-post capability
@@ -199,7 +222,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('You do not have permission to publish this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to publish this post.', 'ai-post-scheduler'));
 		}
 		
 		$result = wp_update_post(array(
@@ -216,7 +239,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id, 'error' => $result->get_error_message())
 			);
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
 		// Log the publish activity
@@ -236,7 +259,7 @@ class AIPS_Post_Review {
 		 */
 		do_action('aips_post_review_published', $post_id);
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Post published successfully.', 'ai-post-scheduler'),
 			'post_id' => $post_id,
 		));
@@ -246,7 +269,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to publish multiple posts.
 	 */
 	public function ajax_bulk_publish_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -257,7 +282,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_ids = array();
@@ -280,7 +305,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
 		}
 		
 		$success_count = 0;
@@ -367,7 +392,7 @@ class AIPS_Post_Review {
 			}
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('%d posts published successfully.', 'ai-post-scheduler'), $success_count),
 			'count' => $success_count,
 			'failed' => $failed_count,
@@ -378,23 +403,25 @@ class AIPS_Post_Review {
 	 * AJAX handler to regenerate a post.
 	 */
 	public function ajax_regenerate_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$history_id) {
-			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
 		}
 		
 		// Get the history item
 		$history_item = $this->history_service->get_by_id($history_id);
 		
 		if (!$history_item || !$history_item->template_id) {
-			wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('History item not found or no template associated.', 'ai-post-scheduler'));
 		}
 		
 		// Get the template
@@ -402,14 +429,14 @@ class AIPS_Post_Review {
 		$template = $template_repository->get_by_id($history_item->template_id);
 		
 		if (!$template) {
-			wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
 		}
 		
 		// Delete the existing post if it exists
 		if ($history_item->post_id) {
 			// Verify per-post capability before deleting
 			if (!current_user_can('delete_post', $history_item->post_id)) {
-				wp_send_json_error(array('message' => __('You do not have permission to regenerate this post.', 'ai-post-scheduler')));
+				AIPS_Ajax_Response::error(__('You do not have permission to regenerate this post.', 'ai-post-scheduler'));
 			}
 			wp_delete_post($history_item->post_id, true);
 		}
@@ -436,7 +463,7 @@ class AIPS_Post_Review {
 				array('error' => $result->get_error_message())
 			);
 			
-			wp_send_json_error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 			return;
 		}
 		
@@ -457,7 +484,7 @@ class AIPS_Post_Review {
 		 */
 		do_action('aips_post_review_regenerated', $history_id);
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Post regeneration started successfully.', 'ai-post-scheduler'),
 			'history_id' => $history_id,
 		));
@@ -475,16 +502,18 @@ class AIPS_Post_Review {
 	 * items are processed in one request (soft truncation).
 	 */
 	public function ajax_bulk_regenerate_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? wp_unslash($_POST['items']) : array();
 
 		if (empty($items)) {
-			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
 		}
 
 		$total_requested = count($items);
@@ -650,7 +679,7 @@ class AIPS_Post_Review {
 		);
 
 		if ($result->failed_count > 0) {
-			wp_send_json_error(array(
+			AIPS_Ajax_Response::error(array(
 				'message'       => sprintf(
 					/* translators: 1: number of successful regenerations, 2: number of failures */
 					__('%1$d posts regeneration started successfully, %2$d failed.', 'ai-post-scheduler'),
@@ -661,7 +690,7 @@ class AIPS_Post_Review {
 				'failed_count'  => $result->failed_count,
 			));
 		} else {
-			wp_send_json_success(array(
+			AIPS_Ajax_Response::success(array(
 				'message'       => sprintf(
 					/* translators: %d: number of posts */
 					__('%d posts regeneration started successfully.', 'ai-post-scheduler'),
@@ -677,7 +706,9 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete a draft post.
 	 */
 	public function ajax_delete_draft_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
 			$history = $this->history_service->create('post_review_action', array());
@@ -688,7 +719,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -703,7 +734,7 @@ class AIPS_Post_Review {
 				null,
 				array()
 			);
-			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post exists and is a draft
@@ -717,7 +748,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post is in the review queue
@@ -730,7 +761,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('Post not found in review queue.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
 		}
 		
 		// Check per-post capability
@@ -743,7 +774,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('You do not have permission to delete this post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('You do not have permission to delete this post.', 'ai-post-scheduler'));
 		}
 		
 		// Delete the post
@@ -758,7 +789,7 @@ class AIPS_Post_Review {
 				null,
 				array('post_id' => $post_id)
 			);
-			wp_send_json_error(array('message' => __('Failed to delete post.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('Failed to delete post.', 'ai-post-scheduler'));
 		}
 		
 		// Update history if history_id is provided
@@ -788,7 +819,7 @@ class AIPS_Post_Review {
 			'post_title' => !empty($post->post_title) ? $post->post_title : '',
 		));
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => __('Post deleted successfully.', 'ai-post-scheduler'),
 			'post_id' => $post_id,
 		));
@@ -798,16 +829,18 @@ class AIPS_Post_Review {
 	 * AJAX handler to delete multiple draft posts.
 	 */
 	public function ajax_bulk_delete_draft_posts() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 		
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? $_POST['items'] : array();
 		
 		if (empty($items)) {
-			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
+			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
 		}
 		
 		// Create history container for bulk delete operation
@@ -906,7 +939,7 @@ class AIPS_Post_Review {
 			$history->complete_success(array('deleted_count' => $success_count));
 		}
 		
-		wp_send_json_success(array(
+		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('%d posts deleted successfully.', 'ai-post-scheduler'), $success_count),
 			'count' => $success_count,
 			'failed' => $failed_count,

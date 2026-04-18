@@ -19,7 +19,24 @@ if (!defined('ABSPATH')) {
  * Schedules and executes topic generation for authors.
  */
 class AIPS_Author_Topics_Scheduler {
-	
+
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	/**
 	 * @var AIPS_Authors_Repository Repository for authors
 	 */

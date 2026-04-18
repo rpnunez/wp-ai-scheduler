@@ -349,6 +349,26 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the enable telemetry setting field.
+     *
+     * Displays a checkbox to enable or disable request-level telemetry
+     * recording (staging/dev use only).
+     *
+     * @return void
+     */
+    public function enable_telemetry_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
+        ?>
+        <input type="hidden" name="aips_enable_telemetry" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
@@ -356,7 +376,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function review_notifications_email_field_callback() {
-        $value = get_option('aips_review_notifications_email', get_option('admin_email'));
+        $value = AIPS_Config::get_instance()->get_option('aips_review_notifications_email') ?: get_option('admin_email');
         ?>
         <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'); ?></p>
@@ -380,7 +400,7 @@ class AIPS_Settings_UI {
      */
     public function notification_preference_field_callback($args) {
         $type = isset($args['type']) ? sanitize_key($args['type']) : '';
-        $preferences_stored = get_option('aips_notification_preferences');
+        $preferences_stored = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $preferences = is_array($preferences_stored) ? $preferences_stored : array();
         $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
         $defaults = is_array($defaults) ? $defaults : array();
@@ -633,6 +653,173 @@ class AIPS_Settings_UI {
         <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    // -----------------------------------------------------------------------
+    // Cache Settings fields
+    // -----------------------------------------------------------------------
+
+    /**
+     * Render the description for the Cache settings section.
+     *
+     * @return void
+     */
+    public function cache_section_callback() {
+        echo '<p>' . esc_html__('Configure the caching layer used by the plugin. Choose a driver and supply any required connection details.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the Cache Driver selector.
+     *
+     * @return void
+     */
+    public function cache_driver_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_driver');
+        $drivers = array(
+            'array'           => __('Array (in-memory, request-scoped)', 'ai-post-scheduler'),
+            'session'         => __('Session (PHP session, user-scoped across pages)', 'ai-post-scheduler'),
+            'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
+            'redis'           => __('Redis (persistent, requires PHP redis extension)', 'ai-post-scheduler'),
+            'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_cache_driver" id="aips_cache_driver">
+            <?php foreach ($drivers as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. Session persists across page loads for the current user. DB is persistent for all users. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Default TTL field.
+     *
+     * @return void
+     */
+    public function cache_default_ttl_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_default_ttl');
+        ?>
+        <input type="number" name="aips_cache_default_ttl" value="<?php echo esc_attr($value); ?>" min="0" class="small-text">
+        <p class="description"><?php esc_html_e('Default time-to-live in seconds for cached values. 0 = no expiration. Default: 3600 (1 hour).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the DB Cache Key Prefix field.
+     *
+     * @return void
+     */
+    public function cache_db_prefix_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_db_prefix');
+        ?>
+        <div class="aips-cache-db-fields">
+            <input type="text" name="aips_cache_db_prefix" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('Optional — e.g. mysite', 'ai-post-scheduler'); ?>">
+            <p class="description"><?php esc_html_e('Optional prefix applied to every cache key in the database table. Useful when multiple environments share the same DB.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Host field.
+     *
+     * @return void
+     */
+    public function cache_redis_host_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_host');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="text" name="aips_cache_redis_host" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="127.0.0.1">
+            <p class="description"><?php esc_html_e('Redis server hostname or IP address.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Port field.
+     *
+     * @return void
+     */
+    public function cache_redis_port_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_port');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="number" name="aips_cache_redis_port" value="<?php echo esc_attr($value); ?>" min="1" max="65535" class="small-text">
+            <p class="description"><?php esc_html_e('Redis server port. Default: 6379.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Password field.
+     *
+     * @return void
+     */
+    public function cache_redis_password_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_password');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="password" name="aips_cache_redis_password" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('Leave empty if not required', 'ai-post-scheduler'); ?>" autocomplete="new-password">
+            <p class="description"><?php esc_html_e('Redis authentication password. Leave empty if your Redis server does not require authentication.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Database Index field.
+     *
+     * @return void
+     */
+    public function cache_redis_db_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_db');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="number" name="aips_cache_redis_db" value="<?php echo esc_attr($value); ?>" min="0" max="15" class="small-text">
+            <p class="description"><?php esc_html_e('Redis database index (0–15). Default: 0.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Key Prefix field.
+     *
+     * @return void
+     */
+    public function cache_redis_prefix_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_prefix');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="text" name="aips_cache_redis_prefix" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="aips">
+            <p class="description"><?php esc_html_e('Prefix prepended to every Redis key. Helps avoid collisions with other applications on the same server. Default: aips.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis Connection Timeout field.
+     *
+     * @return void
+     */
+    public function cache_redis_timeout_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_timeout');
+        ?>
+        <div class="aips-cache-redis-fields">
+            <input type="number" name="aips_cache_redis_timeout" value="<?php echo esc_attr($value); ?>" min="1" max="30" class="small-text">
+            <p class="description"><?php esc_html_e('Maximum time in seconds to wait for a Redis connection to be established. Default: 2.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Sanitize and validate the selected cache driver value.
+     *
+     * @param mixed $value Raw input value.
+     * @return string Sanitized driver name, or 'array' as safe fallback.
+     */
+    public function sanitize_cache_driver( $value ) {
+        $allowed = array('array', 'session', 'db', 'redis', 'wp_object_cache');
+        $value   = sanitize_text_field( (string) $value );
+        return in_array($value, $allowed, true) ? $value : 'array';
     }
 
 }

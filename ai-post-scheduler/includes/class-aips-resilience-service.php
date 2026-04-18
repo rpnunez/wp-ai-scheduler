@@ -113,7 +113,7 @@ class AIPS_Resilience_Service {
     );
 
     /**
-     * @var AIPS_Logger Logger instance
+     * @var AIPS_Logger_Interface Logger instance
      */
     private $logger;
 
@@ -134,11 +134,12 @@ class AIPS_Resilience_Service {
     /**
      * Initialize the Resilience Service.
      *
-     * @param AIPS_Logger|null $logger Logger instance.
+     * @param AIPS_Logger_Interface|null $logger Logger instance.
      * @param AIPS_Config|null $config Config instance.
      */
-    public function __construct($logger = null, $config = null) {
-        $this->logger = $logger ?: new AIPS_Logger();
+    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null) {
+        $container = AIPS_Container::get_instance();
+        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->load_circuit_breaker_state();
     }

@@ -40,6 +40,23 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Notifications {
 
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
 	// -----------------------------------------------------------------------
 	// Channel constants
 	// -----------------------------------------------------------------------
@@ -67,7 +84,7 @@ class AIPS_Notifications {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * @var AIPS_Notifications_Repository
+	 * @var AIPS_Notifications_Repository_Interface
 	 */
 	private $repository;
 
@@ -77,7 +94,7 @@ class AIPS_Notifications {
 	private $templates;
 
 	/**
-	 * @var AIPS_History_Service
+	 * @var AIPS_History_Service_Interface
 	 */
 	private $history_service;
 
@@ -101,18 +118,19 @@ class AIPS_Notifications {
 	 * All dependencies are optional and default to their concrete implementations,
 	 * making the class easy to unit-test by passing mocks.
 	 *
-	 * @param AIPS_Notifications_Repository|null $repository      DB notifications repository.
+	 * @param AIPS_Notifications_Repository_Interface|null $repository      DB notifications repository.
 	 * @param AIPS_Notification_Templates|null   $templates       Email template registry.
-	 * @param AIPS_History_Service|null          $history_service History/audit service.
+	 * @param AIPS_History_Service_Interface|null $history_service History/audit service.
 	 */
 	public function __construct(
-		$repository = null,
+		?AIPS_Notifications_Repository_Interface $repository = null,
 		$templates = null,
-		$history_service = null
+		?AIPS_History_Service_Interface $history_service = null
 	) {
-		$this->repository      = $repository      instanceof AIPS_Notifications_Repository ? $repository      : new AIPS_Notifications_Repository();
+		$container = AIPS_Container::get_instance();
+		$this->repository      = $repository      ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : new AIPS_Notifications_Repository());
 		$this->templates       = $templates       instanceof AIPS_Notification_Templates   ? $templates       : new AIPS_Notification_Templates();
-		$this->history_service = $history_service instanceof AIPS_History_Service          ? $history_service : new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 
 		$this->event_handler = new AIPS_Notifications_Event_Handler($this, $this->repository);
 
@@ -618,7 +636,7 @@ class AIPS_Notifications {
 	 */
 	private function parse_notification_emails($emails) {
 		if (empty($emails)) {
-			$stored = get_option('aips_review_notifications_email', '');
+			$stored = AIPS_Config::get_instance()->get_option('aips_review_notifications_email');
 			if (is_string($stored)) {
 				$stored = trim($stored);
 			}

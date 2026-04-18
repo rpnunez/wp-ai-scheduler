@@ -30,6 +30,20 @@ class AIPS_Config {
      * @var array Feature flags cache
      */
     private $feature_flags = array();
+
+    /**
+     * @var AIPS_Cache Per-request cache for get_option() calls.
+     */
+    private $cache = null;
+
+    /**
+     * @var object Sentinel stored in the cache when the resolved option
+     *             value is null. Required because AIPS_Cache::has() uses
+     *             get() !== null internally, so storing a plain null would
+     *             always look like a cache miss. The sentinel lets has()
+     *             return true for genuinely cached null values.
+     */
+    private $null_sentinel = null;
     
     /**
      * Get singleton instance.
@@ -47,7 +61,47 @@ class AIPS_Config {
      * Private constructor to enforce singleton pattern.
      */
     private function __construct() {
+        $this->cache         = AIPS_Cache_Factory::named('aips_config', 'array');
+        $this->null_sentinel = new stdClass();
         $this->load_feature_flags();
+        $this->register_option_cache_hooks();
+    }
+
+    /**
+     * Register WordPress hooks that invalidate specific cache entries
+     * whenever an option is changed outside of set_option().
+     *
+     * This ensures external update_option() / delete_option() calls
+     * (including those in tests) are always reflected on the next read.
+     *
+     * @return void
+     */
+    private function register_option_cache_hooks() {
+        $this->reregister_option_cache_hooks();
+    }
+
+    /**
+     * (Re-)register the option-cache invalidation action callbacks.
+     *
+     * Called once from the constructor and again by the test bootstrap after
+     * each test tears down and resets all hooks, so that the singleton's cache
+     * invalidation keeps working across test methods.
+     *
+     * @return void
+     */
+    public function reregister_option_cache_hooks() {
+        // Registered with the default accepted-args count of 1, so WordPress
+        // passes only $option (the option name) to the callback. The extra
+        // arguments some hooks carry (e.g. $old_value / $value for
+        // updated_option) are never delivered and are not needed here.
+        $invalidate = function($option) {
+            if ($this->cache !== null) {
+                $this->cache->delete($option);
+            }
+        };
+        add_action('updated_option', $invalidate);
+        add_action('added_option',   $invalidate);
+        add_action('deleted_option', $invalidate);
     }
     
     // ========================================
@@ -65,6 +119,11 @@ class AIPS_Config {
 			'generated_posts_log_threshold_tmpfile' => 200,
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
+            // Plugin state / versioning
+            'aips_db_version' => '0',
+            'aips_onboarding_completed' => false,
+            'aips_log_secret' => '',
+            // AI model
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
@@ -72,13 +131,17 @@ class AIPS_Config {
             'aips_max_tokens_excerpt' => 300,
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
+            // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // General
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
+            'aips_topic_similarity_threshold' => 0.8,
+            // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
                 'generation_failed' => 'both',
@@ -92,7 +155,11 @@ class AIPS_Config {
 				'post_rejected' => 'db',
 				'partial_generation_completed' => 'db',
             ),
-            'aips_topic_similarity_threshold' => 0.8,
+            // Notification digest state (runtime markers, not user-configurable)
+            'aips_notif_daily_digest_last_sent' => '',
+            'aips_notif_weekly_summary_last_sent' => '',
+            'aips_notif_monthly_report_last_sent' => '',
+            // Resilience
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
@@ -110,36 +177,129 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            // Cache framework settings.
+            'aips_cache_driver'         => 'array',
+            'aips_cache_db_prefix'      => '',
+            'aips_cache_default_ttl'    => 3600,
+            'aips_cache_redis_host'     => '127.0.0.1',
+            'aips_cache_redis_port'     => 6379,
+            'aips_cache_redis_password' => '',
+            'aips_cache_redis_db'       => 0,
+            'aips_cache_redis_prefix'   => 'aips',
+            'aips_cache_redis_timeout'  => 2,
+            // Research
+            'aips_research_niches' => array(),
+            // Telemetry
+            'aips_enable_telemetry' => false,
         );
     }
     
     /**
      * Get a specific option value with fallback to default.
      *
+     * Resolved values are stored in a per-request in-memory cache so that
+     * repeated reads of the same key within a single request do not trigger
+     * additional get_option() calls.
+     *
+     * When an explicit $default is supplied by the caller the result is NOT
+     * cached (to avoid polluting the cache with ad-hoc fallback values that
+     * differ from the authoritative AIPS_Config defaults).
+     *
      * @param string $option_name Option name.
      * @param mixed  $default     Optional. Default value if option not found.
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
-        $value = get_option($option_name);
-        
-        if ($value === false && $default === null) {
-            $defaults = $this->get_default_options();
-            return isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+        // Use cached value only when no caller-supplied default is in play.
+        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+            $cached = $this->cache->get($option_name);
+            // A stored null sentinel means the resolved value is null.
+            return ($cached === $this->null_sentinel) ? null : $cached;
         }
-        
-        return $value !== false ? $value : $default;
+
+        // Use a sentinel to distinguish "option not in database" from a stored
+        // boolean false — WordPress returns false for both cases with a plain
+        // get_option() call, which would silently override legitimate false values.
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
+
+        $value = get_option($option_name, $not_set);
+
+        if ($value === $not_set) {
+            // Option is not stored in the database.
+            if ($default === null) {
+                $defaults = $this->get_default_options();
+                $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+                // Cache only authoritative defaults; use the null sentinel when
+                // the resolved value is null so that has() returns true next time.
+                if ($this->cache !== null) {
+                    $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
+                }
+            } else {
+                // Caller supplied a fallback — honour it but do NOT cache.
+                $value = $default;
+            }
+        } else {
+            // Option exists in the database — always cache the live value;
+            // use the null sentinel when the DB value is null.
+            if ($this->cache !== null) {
+                $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
+            }
+        }
+
+        return $value;
     }
-    
+
     /**
-     * Set an option value.
+     * Set an option value and invalidate the per-request cache for that key.
      *
-     * @param string $option_name Option name.
-     * @param mixed  $value       Option value.
+     * @param string    $option_name Option name.
+     * @param mixed     $value       Option value.
+     * @param bool|null $autoload    Optional. Whether to load the option when WordPress starts up.
+     *                               Accepts 'yes'|true to enable autoloading, 'no'|false to disable,
+     *                               or null to leave the existing setting unchanged (WordPress default).
      * @return bool True on success, false on failure.
      */
-    public function set_option($option_name, $value) {
-        return update_option($option_name, $value);
+    public function set_option($option_name, $value, $autoload = null) {
+        if ($this->cache !== null) {
+            $this->cache->delete($option_name);
+        }
+        return update_option($option_name, $value, $autoload);
+    }
+
+    /**
+     * Check whether an option key is present in the database.
+     *
+     * Unlike get_option(), this method returns false for any key that has no
+     * stored value — it never falls back to the plugin's registered defaults.
+     * This is useful when you need to distinguish "option not set at all" from
+     * "option set to false/0/empty string".
+     *
+     * @param string $option_name Option name.
+     * @return bool True when the option exists in the database, false otherwise.
+     */
+    public function has_option($option_name) {
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
+        return get_option($option_name, $not_set) !== $not_set;
+    }
+
+    /**
+     * Flush the entire per-request option cache.
+     *
+     * Useful in tests or after a batch of update_option() calls made outside
+     * of set_option() that need to be reflected on the next read.
+     *
+     * @return void
+     */
+    public function flush_option_cache() {
+        if ($this->cache !== null) {
+            $this->cache->flush();
+        }
     }
     
     // ========================================
@@ -152,7 +312,7 @@ class AIPS_Config {
      * @return string Plugin version.
      */
     public function get_version() {
-        return defined('AIPS_VERSION') ? AIPS_VERSION : '1.5.0';
+        return AIPS_VERSION;
     }
     
     /**
@@ -161,7 +321,7 @@ class AIPS_Config {
      * @return string Plugin directory path.
      */
     public function get_plugin_dir() {
-        return defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : plugin_dir_path(__FILE__);
+        return AIPS_PLUGIN_DIR;
     }
     
     /**
@@ -170,7 +330,7 @@ class AIPS_Config {
      * @return string Plugin URL.
      */
     public function get_plugin_url() {
-        return defined('AIPS_PLUGIN_URL') ? AIPS_PLUGIN_URL : plugin_dir_url(__FILE__);
+        return AIPS_PLUGIN_URL;
     }
     
     /**
@@ -185,13 +345,22 @@ class AIPS_Config {
     /**
      * Get AI model configuration.
      *
-     * @return array AI model configuration.
+     * Returns all settings needed to configure an AI generation request,
+     * including the model identifier, optional environment/project ID,
+     * token limit, and temperature.
+     *
+     * @return array AI model configuration with keys:
+     *               'model'            (string) AI model identifier.
+     *               'env_id'           (string) Optional AI Engine environment ID.
+     *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
+     *               'temperature'      (float)  Sampling temperature (creativity).
      */
     public function get_ai_config() {
         return array(
-            'model' => $this->get_option('aips_ai_model'),
+            'model'            => (string) $this->get_option('aips_ai_model'),
+            'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
-            'temperature' => (float) $this->get_option('aips_temperature'),
+            'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
     
@@ -246,6 +415,133 @@ class AIPS_Config {
             'enabled' => (bool) $this->get_option('aips_enable_logging'),
             'retention_days' => (int) $this->get_option('aips_log_retention_days'),
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
+        );
+    }
+
+    /**
+     * Get token limits configuration for AI content generation.
+     *
+     * @return array Token limits configuration.
+     */
+    public function get_token_config() {
+        return array(
+            'max_tokens_limit'   => (int) $this->get_option('aips_max_tokens_limit'),
+            'max_tokens_title'   => (int) $this->get_option('aips_max_tokens_title'),
+            'max_tokens_excerpt' => (int) $this->get_option('aips_max_tokens_excerpt'),
+            'max_tokens_content' => (int) $this->get_option('aips_max_tokens_content'),
+        );
+    }
+
+    /**
+     * Get post creation defaults configuration.
+     *
+     * @return array Post defaults configuration.
+     */
+    public function get_post_defaults_config() {
+        return array(
+            'post_status' => (string) $this->get_option('aips_default_post_status'),
+            'category'    => (int) $this->get_option('aips_default_category'),
+            'post_author' => (int) $this->get_option('aips_default_post_author'),
+        );
+    }
+
+    /**
+     * Get notification configuration.
+     *
+     * @return array Notification configuration.
+     */
+    public function get_notification_config() {
+        $preferences = $this->get_option('aips_notification_preferences');
+        return array(
+            'review_email'  => (string) $this->get_option('aips_review_notifications_email'),
+            'preferences'   => is_array($preferences) ? $preferences : array(),
+        );
+    }
+
+    /**
+     * Get notification digest scheduling markers.
+     *
+     * These runtime markers record the last date/period for which each periodic
+     * summary was sent, allowing cron handlers and the system-status page to
+     * determine whether a summary is due. They are read together in multiple
+     * places and updated individually via set_option().
+     *
+     * @return array Notification digest configuration with keys:
+     *               'daily_last_sent'   (string) ISO date (Y-m-d) of the last daily digest.
+     *               'weekly_last_sent'  (string) ISO year-week (o-W) of the last weekly summary.
+     *               'monthly_last_sent' (string) ISO year-month (Y-m) of the last monthly report.
+     */
+    public function get_notification_digest_config() {
+        return array(
+            'daily_last_sent'   => (string) $this->get_option('aips_notif_daily_digest_last_sent'),
+            'weekly_last_sent'  => (string) $this->get_option('aips_notif_weekly_summary_last_sent'),
+            'monthly_last_sent' => (string) $this->get_option('aips_notif_monthly_report_last_sent'),
+        );
+    }
+
+    /**
+     * Get cache framework configuration.
+     *
+     * Returns all settings that configure the plugin's cache layer, including
+     * driver selection, DB prefix, default TTL, and Redis connection details.
+     *
+     * Note: AIPS_Cache_Factory::make_driver() reads these settings via direct
+     * get_option() calls to avoid a bootstrapping circular dependency (AIPS_Config
+     * internally relies on AIPS_Cache_Factory). All other callers that need these
+     * values should use this accessor instead.
+     *
+     * @return array Cache configuration with keys:
+     *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
+     *               'db_prefix'      (string) Table prefix for the DB driver.
+     *               'default_ttl'    (int)    Default time-to-live in seconds.
+     *               'redis_host'     (string) Redis hostname.
+     *               'redis_port'     (int)    Redis port.
+     *               'redis_password' (string) Redis auth password (empty = no auth).
+     *               'redis_db'       (int)    Redis database index.
+     *               'redis_prefix'   (string) Key prefix for Redis entries.
+     *               'redis_timeout'  (float)  Connection timeout in seconds.
+     */
+    public function get_cache_config() {
+        return array(
+            'driver'         => (string) $this->get_option('aips_cache_driver'),
+            'db_prefix'      => (string) $this->get_option('aips_cache_db_prefix'),
+            'default_ttl'    => (int)    $this->get_option('aips_cache_default_ttl'),
+            'redis_host'     => (string) $this->get_option('aips_cache_redis_host'),
+            'redis_port'     => (int)    $this->get_option('aips_cache_redis_port'),
+            'redis_password' => (string) $this->get_option('aips_cache_redis_password'),
+            'redis_db'       => (int)    $this->get_option('aips_cache_redis_db'),
+            'redis_prefix'   => (string) $this->get_option('aips_cache_redis_prefix'),
+            'redis_timeout'  => (float)  $this->get_option('aips_cache_redis_timeout'),
+        );
+    }
+
+    /**
+     * Get site content strategy configuration.
+     *
+     * @return array Site content strategy configuration.
+     */
+    public function get_site_content_config() {
+        return array(
+            'niche'               => (string) $this->get_option('aips_site_niche'),
+            'target_audience'     => (string) $this->get_option('aips_site_target_audience'),
+            'content_goals'       => (string) $this->get_option('aips_site_content_goals'),
+            'brand_voice'         => (string) $this->get_option('aips_site_brand_voice'),
+            'content_language'    => (string) $this->get_option('aips_site_content_language'),
+            'content_guidelines'  => (string) $this->get_option('aips_site_content_guidelines'),
+            'excluded_topics'     => (string) $this->get_option('aips_site_excluded_topics'),
+        );
+    }
+
+    /**
+     * Get general plugin configuration.
+     *
+     * @return array General configuration.
+     */
+    public function get_general_config() {
+        return array(
+            'developer_mode'           => (bool) $this->get_option('aips_developer_mode'),
+            'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
+            'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
     }
     

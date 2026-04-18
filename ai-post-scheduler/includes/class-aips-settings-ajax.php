@@ -28,10 +28,12 @@ class AIPS_Settings_AJAX {
      * @return void
      */
     public function ajax_test_connection() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
         }
 
         $ai_service = new AIPS_AI_Service();
@@ -43,11 +45,11 @@ class AIPS_Settings_AJAX {
         );
 
         if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         } else {
             // SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
             // Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
-            wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
+            AIPS_Ajax_Response::success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
     }
 
@@ -57,14 +59,16 @@ class AIPS_Settings_AJAX {
      * @return void
      */
     public function ajax_notifications_data_hygiene() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+            AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
         }
 
         $removed_options = 0;
-        if (false !== get_option('aips_review_notifications_enabled', false)) {
+        if (AIPS_Config::get_instance()->has_option('aips_review_notifications_enabled')) {
             delete_option('aips_review_notifications_enabled');
             $removed_options++;
         }
@@ -106,7 +110,7 @@ class AIPS_Settings_AJAX {
             update_option('aips_notification_preferences', $cleaned_preferences, false);
         }
 
-        wp_send_json_success(array(
+        AIPS_Ajax_Response::success(array(
             'message' => __('Notifications hygiene completed successfully.', 'ai-post-scheduler'),
             'details' => array(
                 'removed_options'    => $removed_options,

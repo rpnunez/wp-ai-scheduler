@@ -217,7 +217,7 @@ class AIPS_Session_To_JSON {
 			$details = json_decode($log_entry->details, true);
 			
 			// Handle JSON decode errors
-			if (json_last_error() !== JSON_ERROR_NONE) {
+			if (json_last_error() !== JSON_ERROR_NONE || !is_array($details)) {
 				$details = array(
 					'error' => 'Failed to decode log details',
 					'json_error' => json_last_error_msg(),
@@ -387,13 +387,13 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			if (is_writable($base_dir) && file_put_contents($htaccess_file, $content) === false) {
+			if (is_writable($dir) && file_put_contents($htaccess_file, $content) === false) {
 				$this->logger->log('Failed to create .htaccess file in export directory: ' . $htaccess_file, 'warning');
 			}
 		}
 		
 		if (!file_exists($index_file)) {
-			if (is_writable($base_dir) && file_put_contents($index_file, '<?php // Silence is golden') === false) {
+			if (is_writable($dir) && file_put_contents($index_file, '<?php // Silence is golden') === false) {
 				$this->logger->log('Failed to create index.php file in export directory: ' . $index_file, 'warning');
 			}
 		}

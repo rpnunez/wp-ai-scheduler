@@ -61,8 +61,19 @@
 **Action:** Added a contextual "Clear Filters" ghost button next to the "Filter" submit button in `generated-posts.php` and `post-review.php` that only appears when a filter is actively applied.
 
 ## 2024-04-04 - Search Empty States
-Learning: PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
-Action: Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
+**Learning:** PHP-driven tabs had a generic "No Posts" empty state even when the user performed a search that returned no results, hiding the search context.
+**Action:** Implemented conditional empty states that check `!empty($search_query)` to display a "No Posts Found" message with a "Clear Search" button instead of the generic empty state.
+
 ## 2026-04-06 - Planner Empty State UX Enhancement
-Learning: Improved empty state components significantly enhance UX without modifying core flows.
-Action: Implemented an interactive empty state with an actionable 'Clear Search' button for the Planner topic search.
+**Learning:** Improved empty state components significantly enhance UX without modifying core flows.
+**Action:** Implemented an interactive empty state with an actionable 'Clear Search' button for the Planner topic search.
+
+## 2026-04-09 - Standardize "Clear" Button Styling in Filters
+**Learning:** Found inconsistency in "Clear Search/Filters" buttons across the admin UI using the standard solid secondary button style (`.aips-btn-secondary`), causing visual clutter alongside main action buttons.
+**Action:** Standardized all "Clear" buttons inside `.aips-filter-bar` components to use the ghost button style (`.aips-btn-ghost`) for a cleaner, consistent UI that draws focus to primary actions.
+## 2026-04-16 - Planner Layout Refactor
+**Learning:** Using CSS Grid for 75/25 layouts (`grid-template-columns: 3fr 1fr`) allows us to cleanly split content and sidebars without bloating the DOM structure or requiring float logic. Aligning items properly using `display: flex; flex-direction: column` in sidebar forms guarantees clean, readable inputs regardless of parent width.
+**Action:** Whenever building a review + form submission interface, isolate the configuration into a sticky/separate sidebar to visually detach the actions from the result lists. Keep data tables and list items tight (`padding: 4px 8px`) if the goal is rapid review rather than deep reading.
+## 2026-04-18 - Post Preview Added to Generated Posts and Partial Generations Tabs
+**Learning:** The AJAX-based post preview functionality was already implemented for Pending Review but omitted from the Generated Posts and Partial Generations lists, causing users to have to fully open the WordPress editor to see the generated content.
+**Action:** Reuse the `.aips-preview-post` class and `aips_get_post_preview` AJAX action from `admin-post-review.js` by simply adding the preview button to the other tabs in the Content view.
