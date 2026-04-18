@@ -261,31 +261,30 @@ class Test_AIPS_Generation_Logger extends WP_UnitTestCase {
 		$generation_logger->warning('Warning message', array('context' => 'test'));
 	}
 
-	/**
-	 * Test warning method falls back to log when logger has no warning method.
-	 */
-	public function test_warning_falls_back_to_log_method() {
-		// Create a logger mock without warning method
-		$logger_without_warning = $this->getMockBuilder(stdClass::class)
-			->addMethods(array('log'))
-			->getMock();
+    /**
+     * Test warning method falls back to log when logger has no warning method.
+     */
+    public function test_warning_falls_back_to_log_method() {
+        $logger_without_warning = new class {
+            public array $log_calls = array();
+            public function log($message, $level, $context) {
+                $this->log_calls[] = compact('message', 'level', 'context');
+            }
+        };
 
-		$logger_without_warning->expects($this->once())
-			->method('log')
-			->with(
-				$this->equalTo('Warning message'),
-				$this->equalTo('warning'),
-				$this->equalTo(array('context' => 'test'))
-			);
+        $generation_logger = new AIPS_Generation_Logger(
+            $logger_without_warning,
+            $this->history_repository,
+            $this->session
+        );
 
-		$generation_logger = new AIPS_Generation_Logger(
-			$logger_without_warning,
-			$this->history_repository,
-			$this->session
-		);
+        $generation_logger->warning('Warning message', array('context' => 'test'));
 
-		$generation_logger->warning('Warning message', array('context' => 'test'));
-	}
+        $this->assertCount(1, $logger_without_warning->log_calls, 'log() should be called once');
+        $this->assertEquals('Warning message', $logger_without_warning->log_calls[0]['message']);
+        $this->assertEquals('warning', $logger_without_warning->log_calls[0]['level']);
+        $this->assertEquals(array('context' => 'test'), $logger_without_warning->log_calls[0]['context']);
+    }
 
 	/**
 	 * Test set_history_id properly updates history context.

@@ -36,12 +36,13 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
             ->willReturn(456); // Post ID
 
         try {
+            ob_start();
             $this->controller->ajax_run_now();
         } catch (WPAjaxDieContinueException $e) {
             // Expected
         }
 
-        $output = $this->getActualOutput();
+        $output = ob_get_clean() ?: '';
         $response = json_decode($output, true);
 
         $this->assertTrue($response['success']);
@@ -61,12 +62,13 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
             ->willReturn($error);
 
         try {
+            ob_start();
             $this->controller->ajax_run_now();
         } catch (WPAjaxDieContinueException $e) {
             // Expected
         }
 
-        $output = $this->getActualOutput();
+        $output = ob_get_clean() ?: '';
         $response = json_decode($output, true);
 
         $this->assertFalse($response['success']);

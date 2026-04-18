@@ -113,11 +113,12 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'status' => 'completed',
 		));
 		
-		// Get generation context
-		$context = $this->service->get_generation_context($history_id);
-		
-		$this->assertArrayHasKey('generation_context', $context);
-		$this->assertArrayHasKey('context_type', $context);
+        // Get generation context
+        $context = $this->service->get_generation_context($history_id);
+
+        $this->assertIsArray($context, is_wp_error($context) ? $context->get_error_message() : 'Expected array context');
+        $this->assertArrayHasKey('generation_context', $context);
+        $this->assertArrayHasKey('context_type', $context);
 		$this->assertEquals('template', $context['context_type']);
 		$this->assertInstanceOf('AIPS_Template_Context', $context['generation_context']);
 		

@@ -24,7 +24,7 @@ Runs on:
 - Manual workflow dispatch
 
 Features:
-- Sets up PHP 8.2, MySQL 8.0, and WordPress test environment
+- Sets up PHP 8.3, MySQL 8.0, and WordPress test environment
 - Runs benchmark script and records results
 - Compares against baseline from main branch
 - **Fails PRs** when thresholds are exceeded

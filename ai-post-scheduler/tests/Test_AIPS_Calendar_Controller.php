@@ -40,12 +40,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
 		try {
+		ob_start();
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 
 		$this->assertTrue($response['success']);
@@ -83,12 +84,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
 		try {
+		ob_start();
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 
 		$this->assertFalse($response['success']);
@@ -105,12 +107,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
 		try {
+		ob_start();
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 
 		$this->assertFalse($response['success']);
@@ -357,12 +360,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
 		try {
+		ob_start();
 			$this->controller->ajax_get_calendar_events();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected.
 		}
 
-		$response = json_decode( $this->getActualOutput(), true );
+		$response = json_decode( ob_get_clean() ?: '', true );
 
 		$this->assertTrue( $response['success'] );
 
@@ -421,12 +425,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
 		try {
+		ob_start();
 			$this->controller->ajax_get_calendar_events();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected.
 		}
 
-		$response     = json_decode( $this->getActualOutput(), true );
+		$response     = json_decode( ob_get_clean() ?: '', true );
 		$template_map = $response['data']['template_map'];
 
 		$this->assertCount( 1, $template_map, 'template_map must contain exactly one entry for a single template' );

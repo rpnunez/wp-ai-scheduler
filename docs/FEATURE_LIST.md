@@ -463,7 +463,7 @@ This document provides a comprehensive list of all implemented features in the A
 
 ## Technical Summary
 
-**PHP Version:** 8.2+  
+**PHP Version:** 8.3+  
 **WordPress Version:** 5.8+  
 **Required Plugin:** Meow Apps AI Engine  
 **Code Architecture:** Repository pattern, Service/Controller layers, Template rendering  

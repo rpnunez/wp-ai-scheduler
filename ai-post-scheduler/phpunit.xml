@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.5/phpunit.xsd"
     bootstrap="tests/bootstrap.php"
     colors="true"
     beStrictAboutOutputDuringTests="true"
     failOnRisky="true"
     failOnWarning="true"
-    convertErrorsToExceptions="true"
-    convertNoticesToExceptions="true"
-    convertWarningsToExceptions="true"
-    verbose="true"
 >
     <testsuites>
         <testsuite name="AI Post Scheduler Test Suite">
             <directory suffix=".php">./tests</directory>
+            <exclude>./tests/bootstrap.php</exclude>
+            <exclude>./tests/index.php</exclude>
         </testsuite>
     </testsuites>
 
-    <coverage processUncoveredFiles="true">
+    <source>
         <include>
             <directory suffix=".php">./includes</directory>
         </include>
@@ -26,6 +24,9 @@
             <directory>./tests</directory>
             <directory>./vendor</directory>
         </exclude>
+    </source>
+
+    <coverage includeUncoveredFiles="true">
         <report>
             <html outputDirectory="coverage" lowUpperBound="35" highLowerBound="70"/>
             <text outputFile="php://stdout" showUncoveredFiles="false"/>

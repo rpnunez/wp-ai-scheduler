@@ -70,13 +70,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*structures.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_get_structures();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception from wp_send_json_success
 		}
 		
 		// Verify response
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -95,12 +96,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Permission denied.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_get_structures();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception from wp_send_json_error
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -147,12 +149,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*structure.*/');
 		
 		try {
+		ob_start();
 			$controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -171,12 +174,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Invalid structure ID.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -200,12 +204,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Structure not found.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		global $wpdb;
@@ -243,12 +248,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the request
@@ -273,12 +279,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		// Verify that the controller properly processed the request
@@ -300,12 +307,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Name and prompt template are required.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -331,12 +339,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the sanitization request
@@ -368,6 +377,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_delete_structure();
 		} catch (Exception $e) {
 			// In limited mode, the manager class might throw an error because of DB structure
@@ -386,7 +396,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 			$this->markTestSkipped('Database tests cannot run correctly in limited mode without WP Test Lib.');
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		global $wpdb;
@@ -414,12 +424,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Invalid structure ID.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_delete_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -437,12 +448,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Permission denied.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_delete_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -461,12 +473,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_set_structure_default();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the request
@@ -485,12 +498,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Invalid structure ID.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_set_structure_default();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -508,12 +522,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Permission denied.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_set_structure_default();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -533,12 +548,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the request
@@ -557,12 +573,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Invalid structure ID.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -580,12 +597,13 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->expectOutputRegex('/.*Permission denied.*/');
 		
 		try {
+		ob_start();
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean() ?: '';
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);

@@ -91,12 +91,12 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         // If the crash in Topic 1 stops execution, this expectation will fail (called once)
         $mock_generator->expects($this->exactly(2))
             ->method('generate_post')
-            ->will($this->returnCallback(function($template, $voice, $topic) {
+            ->willReturnCallback(function($template, $voice, $topic) {
                 if ($topic === 'Topic 1') {
                     throw new Exception('Simulated crash!');
                 }
                 return 123; // Success for Topic 2
-            }));
+            });
 
         // 4. Inject the mock generator
         if (method_exists($this->scheduler, 'set_generator')) {

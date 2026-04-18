@@ -94,12 +94,13 @@ $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
 try {
+ob_start();
 $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
 
-$output   = $this->getActualOutput();
+$output   = ob_get_clean() ?: '';
 $response = json_decode( $output, true );
 
 $this->assertTrue( $response['success'] );
@@ -116,12 +117,13 @@ $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
 try {
+ob_start();
 $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
 
-$output   = $this->getActualOutput();
+$output   = ob_get_clean() ?: '';
 $response = json_decode( $output, true );
 
 $this->assertFalse( $response['success'] );
@@ -140,12 +142,13 @@ $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
 try {
+ob_start();
 $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
 
-$output   = $this->getActualOutput();
+$output   = ob_get_clean() ?: '';
 $response = json_decode( $output, true );
 
 $this->assertFalse( $response['success'] );

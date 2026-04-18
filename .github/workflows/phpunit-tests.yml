@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        php: ['8.2']
+        php: ['8.3']
 
     services:
       mysql:
@@ -85,14 +85,14 @@ jobs:
 
       # Code Coverage: Generate & Upload
       - name: Generate code coverage report (PHP 8.2 only)
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.3'
         run: cd ai-post-scheduler && composer test:coverage
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
 
       - name: Upload coverage report
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.3'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-php${{ matrix.php }}

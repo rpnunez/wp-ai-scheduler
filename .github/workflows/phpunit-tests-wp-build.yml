@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        php: ['8.2']
+        php: ['8.3']
 
     services:
       mysql:
@@ -104,7 +104,7 @@ jobs:
         run: composer test -- --testdox
 
       - name: Generate code coverage (PHP 8.2 only)
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.3'
         working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
@@ -112,7 +112,7 @@ jobs:
         run: composer test:coverage
 
       - name: Upload coverage report
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.3'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-wp-installer-php${{ matrix.php }}
