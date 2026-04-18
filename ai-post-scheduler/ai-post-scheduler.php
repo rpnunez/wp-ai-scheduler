@@ -59,6 +59,13 @@ if (!defined('AIPS_PLUGIN_BASENAME')) {
     define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 }
 
+// Prompt-preview logging can expose generated content in logs. Off by default;
+// opt-in by defining the constant to true earlier (e.g. in wp-config.php), or
+// it will automatically enable when WP_DEBUG is true.
+if (!defined('AIPS_AI_DEBUG_LOG_PROMPTS')) {
+    define('AIPS_AI_DEBUG_LOG_PROMPTS', defined('WP_DEBUG') && WP_DEBUG);
+}
+
 final class AI_Post_Scheduler {
     
     /**
@@ -529,11 +536,22 @@ final class AI_Post_Scheduler {
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
 
+        // Sources cron: fetch content for sources that have a fetch_interval configured.
+        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
+        // correct recurrence (every_6_hours) during construction.
+        AIPS_Sources_Cron::instance();
+
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
+
+        // Internal Links indexing cron — construct the controller lazily only
+        // when the cron hook fires to avoid eager instantiation on every cron boot.
+        add_action('aips_index_posts_batch', function($args) {
+            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
+        }, 10, 1);
     }
 
     /**
@@ -596,6 +614,12 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
+
+        // Internal Links controller must be available globally so the admin-menu
+        // render callback can call $controller->render_page() without reconstructing
+        // the object (which would double-register all AJAX hooks).
+        global $aips_internal_links_controller;
+        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
     }
 
     /**

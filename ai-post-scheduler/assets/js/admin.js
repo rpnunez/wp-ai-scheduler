@@ -3226,7 +3226,6 @@
                 prompt_template: $('#prompt_template').val(),
                 sections: $('#structure_sections').val() || [],
                 is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
-                is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
             };
 
             $.post(aipsAjax.ajaxUrl, data, function(response){
@@ -3241,9 +3240,6 @@
                         var activeBadge = structure.is_active == 1
                             ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
                             : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
-                        var defaultBadge = structure.is_default == 1
-                            ? '<span class="aips-badge aips-badge-info">' + T.escape(aipsAdminL10n.defaultLabel) + '</span>'
-                            : '<span class="cell-meta">&mdash;</span>';
                         var scheduleUrl = (aipsAjax.schedulePageUrl || '') + '&schedule_structure=' + T.escape(String(structure.id));
 
                         var rowHtml = T.renderRaw('aips-tmpl-structure-row', {
@@ -3251,7 +3247,6 @@
                             name: T.escape(structure.name || ''),
                             description: T.escape(structure.description || ''),
                             activeBadge: activeBadge,
-                            defaultBadge: defaultBadge,
                             scheduleUrl: scheduleUrl,
                         });
 
@@ -3307,7 +3302,6 @@
                     var sections = structureData.sections || [];
                     $('#structure_sections').val(sections);
                     $('#structure_is_active').prop('checked', s.is_active == 1);
-                    $('#structure_is_default').prop('checked', s.is_default == 1);
                     $('#aips-structure-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {

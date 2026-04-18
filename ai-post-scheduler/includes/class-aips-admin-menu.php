@@ -167,6 +167,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Internal Links', 'ai-post-scheduler'),
+            __('Internal Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-internal-links',
+            array($this, 'render_internal_links_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -433,6 +442,13 @@ class AIPS_Admin_Menu {
         $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
         $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
 
+        // Build source → fetch-data map for the Content status column (latest row per source).
+        $data_repo             = new AIPS_Sources_Data_Repository();
+        $source_fetch_data_map = $data_repo->get_by_source_ids( $all_source_ids );
+
+        // Build source → archived content count map for the Content column badge.
+        $source_content_count_map = $data_repo->get_counts_by_source_ids( $all_source_ids );
+
         include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }
 
@@ -494,5 +510,33 @@ class AIPS_Admin_Menu {
      */
     public function render_taxonomy_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+    }
+
+    /**
+     * Render the Internal Links page.
+     *
+     * Reuses the globally-registered controller instance to avoid
+     * re-registering AJAX hooks.
+     *
+     * @return void
+     */
+    public function render_internal_links_page() {
+        global $aips_internal_links_controller;
+
+        if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
+            try {
+                $aips_internal_links_controller->render_page();
+                return;
+            } catch (Throwable $throwable) {
+                echo '<div class="notice notice-error"><p>' .
+                    esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+                '</p></div>';
+                return;
+            }
+        }
+
+        echo '<div class="notice notice-error"><p>' .
+            esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
+        '</p></div>';
     }
 }

@@ -837,6 +837,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_next_scheduled')) {
+        function wp_next_scheduled($hook, $args = array()) {
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_schedule_event')) {
+        function wp_schedule_event($timestamp, $recurrence, $hook, $args = array(), $wp_error = false) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_clear_scheduled_hook')) {
+        function wp_clear_scheduled_hook($hook, $args = array(), $force = false) {
+            return 0;
+        }
+    }
+
     if (!function_exists('wp_safe_remote_head')) {
         function wp_safe_remote_head($url, $args = array()) {
             if (strpos($url, 'non-existent') !== false) {
@@ -1343,7 +1361,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
+        'class-aips-token-budget.php',
         'class-aips-research-service.php',
+        'class-aips-internal-links-repository.php',
+        'class-aips-internal-link-inserter-service.php',
         'interface-aips-generation-context.php',
         'interface-aips-cron-generation-handler.php',
         'class-aips-template-context.php',
@@ -1397,6 +1418,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
         'class-aips-sources-controller.php',
+        // Sources fetching pipeline
+        'class-aips-sources-data-repository.php',
+        'class-aips-sources-fetcher.php',
+        'class-aips-sources-cron.php',
         // Author-related classes
         'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',

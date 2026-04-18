@@ -21,7 +21,10 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_sources_data',
         'aips_taxonomy',
+        'aips_post_embeddings',
+        'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
     );
@@ -72,7 +75,10 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
         $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_post_embeddings      = $tables['aips_post_embeddings'];
+        $table_internal_links       = $tables['aips_internal_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
 
@@ -191,12 +197,10 @@ class AIPS_DB_Manager {
             description text,
             structure_data longtext NOT NULL,
             is_active tinyint(1) DEFAULT 1,
-            is_default tinyint(1) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            KEY is_active (is_active),
-            KEY is_default (is_default)
+			KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sections (
@@ -356,10 +360,15 @@ class AIPS_DB_Manager {
             label varchar(255) DEFAULT NULL,
             description text DEFAULT NULL,
             is_active tinyint(1) NOT NULL DEFAULT 1,
+            fetch_interval varchar(50) DEFAULT NULL,
+            last_fetched_at datetime DEFAULT NULL,
+            next_fetch_at datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY is_active (is_active),
+            KEY fetch_interval (fetch_interval),
+            KEY next_fetch_at (next_fetch_at),
             KEY created_at (created_at)
         ) $charset_collate;";
 
@@ -371,6 +380,31 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_term (source_id, term_id),
             KEY source_id (source_id),
             KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_sources_data (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) NOT NULL,
+            url varchar(2083) NOT NULL DEFAULT '',
+            page_title varchar(500) DEFAULT NULL,
+            meta_description text DEFAULT NULL,
+            extracted_text longtext DEFAULT NULL,
+            raw_html longtext DEFAULT NULL,
+            char_count int NOT NULL DEFAULT 0,
+            content_hash varchar(64) DEFAULT NULL,
+            num_used int NOT NULL DEFAULT 0,
+            fetch_status varchar(20) NOT NULL DEFAULT 'pending',
+            http_status int DEFAULT NULL,
+            error_message text DEFAULT NULL,
+            fetched_at datetime DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_content_hash (source_id, content_hash),
+            KEY source_id (source_id),
+            KEY fetch_status (fetch_status),
+            KEY fetched_at (fetched_at),
+            KEY num_used (num_used)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_taxonomy (
@@ -388,6 +422,34 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY term_id (term_id),
             KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_embeddings (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            embedding longtext NOT NULL,
+            model varchar(100) DEFAULT '',
+            indexed_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY post_id (post_id),
+            KEY indexed_at (indexed_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_internal_links (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL,
+            similarity_score float NOT NULL DEFAULT 0,
+            anchor_text varchar(500) DEFAULT '',
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY source_post_id (source_post_id),
+            KEY target_post_id (target_post_id),
+            KEY status (status),
+            KEY similarity_score (similarity_score),
+            UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (
@@ -780,7 +842,6 @@ class AIPS_DB_Manager {
                     'sections' => array('introduction', 'prerequisites', 'steps', 'tips', 'troubleshooting', 'conclusion'),
                     'prompt_template' => "Write a comprehensive how-to guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:troubleshooting}}\n\n{{section:conclusion}}",
                 )),
-                'is_default' => 1,
             ),
             array(
                 'name' => 'Tutorial',
@@ -832,6 +893,11 @@ class AIPS_DB_Manager {
 
             if (!$exists) {
                 $wpdb->insert($table_structures, $structure);
+                $exists = $wpdb->insert_id;
+            }
+
+            if ($structure['name'] === 'How-To Guide' && false === get_option('aips_default_article_structure_id', null)) {
+                update_option('aips_default_article_structure_id', absint($exists));
             }
         }
     }
