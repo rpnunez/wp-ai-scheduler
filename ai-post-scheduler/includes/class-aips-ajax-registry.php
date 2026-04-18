@@ -163,7 +163,7 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_publish_posts'         => 'AIPS_Post_Review',
 		'aips_bulk_delete_draft_posts'    => 'AIPS_Post_Review',
 		'aips_bulk_regenerate_posts'      => 'AIPS_Post_Review',
-		'aips_get_draft_post_preview'     => 'AIPS_Post_Review',
+		'aips_get_post_preview'           => 'AIPS_Post_Review',
 		'aips_delete_draft_post'          => 'AIPS_Post_Review',
 
 		// Admin Bar
