@@ -291,7 +291,16 @@ final class AI_Post_Scheduler {
         }
 
         // Clear single-event cron hooks not listed in get_cron_events().
-        wp_clear_scheduled_hook('aips_process_author_embeddings');
+        // Use wp_unschedule_hook() so all WP-Cron events are removed, including
+        // those scheduled with arguments.
+        wp_unschedule_hook('aips_process_author_embeddings');
+        wp_unschedule_hook('aips_index_posts_batch');
+
+        // Also clear Action Scheduler jobs when available.
+        if (function_exists('as_unschedule_all_actions')) {
+            as_unschedule_all_actions('aips_process_author_embeddings', null, 'aips-embeddings');
+            as_unschedule_all_actions('aips_index_posts_batch', null, 'aips-internal-links');
+        }
 
         flush_rewrite_rules();
     }

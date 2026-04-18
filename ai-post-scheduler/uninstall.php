@@ -37,6 +37,8 @@ $plugin_tables = array(
 'aips_sources',
 'aips_source_group_terms',
 'aips_taxonomy',
+'aips_post_embeddings',
+'aips_internal_links',
 'aips_cache',
 'aips_telemetry',
 );
@@ -77,6 +79,9 @@ delete_metadata( 'post', 0, $meta_key, '', true );
 
 // -----------------------------------------------------------------------
 // 4. Clear all plugin cron hooks
+//    Use wp_unschedule_hook() to remove events with args (e.g. embeddings,
+//    indexing batches).  wp_clear_scheduled_hook() only removes events
+//    matching the exact args supplied (default: none).
 // -----------------------------------------------------------------------
 $cron_hooks = array(
 'aips_generate_scheduled_posts',
@@ -87,10 +92,17 @@ $cron_hooks = array(
 'aips_cleanup_export_files',
 'aips_send_review_notifications',
 'aips_process_author_embeddings',
+'aips_index_posts_batch',
 );
 
 foreach ( $cron_hooks as $hook ) {
-wp_clear_scheduled_hook( $hook );
+wp_unschedule_hook( $hook );
+}
+
+// Clear Action Scheduler jobs when available (embeddings + internal links).
+if ( function_exists( 'as_unschedule_all_actions' ) ) {
+as_unschedule_all_actions( 'aips_process_author_embeddings', array(), 'aips-embeddings' );
+as_unschedule_all_actions( 'aips_index_posts_batch', array(), 'aips-internal-links' );
 }
 
 // -----------------------------------------------------------------------

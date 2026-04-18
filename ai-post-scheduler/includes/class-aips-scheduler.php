@@ -174,8 +174,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                 ? $data['start_time']
                 : current_time('mysql');
 
-            // Default behavior: reset next_run to start_time
-            $next_run = wp_date('Y-m-d H:i:s', strtotime($start_time));
+            // Parse site-local datetime in wp_timezone() to get the correct unix
+            // timestamp, then format back into site-tz MySQL datetime via wp_date().
+            $site_tz = wp_timezone();
+            $start_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', $start_time, $site_tz );
+            $next_run = $start_dt ? wp_date( 'Y-m-d H:i:s', $start_dt->getTimestamp() ) : $start_time;
 
             // Hunter: Fix for schedule reset bug.
             // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
@@ -183,8 +186,9 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             if (!empty($data['id'])) {
                 $existing_schedule = $this->repository->get_by_id(absint($data['id']));
                 if ($existing_schedule) {
-                    $start_timestamp = strtotime($start_time);
-                    $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
+                    $start_timestamp = $start_dt ? $start_dt->getTimestamp() : 0;
+                    $existing_next_run_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', $existing_schedule->next_run, $site_tz );
+                    $existing_next_run_timestamp = $existing_next_run_dt ? $existing_next_run_dt->getTimestamp() : 0;
                     $now_timestamp = (int) current_datetime()->getTimestamp();
 
                     // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')

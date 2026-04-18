@@ -97,10 +97,11 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = (int) current_datetime()->getTimestamp();
-        $today_end = strtotime('today 23:59:59', $now);
-        $week_end = strtotime('+7 days', $now);
-        $month_end = strtotime('+30 days', $now);
+        $now_datetime = current_datetime();
+        $now = (int) $now_datetime->getTimestamp();
+        $today_end = (int) ( clone $now_datetime )->setTime( 23, 59, 59 )->getTimestamp();
+        $week_end = (int) ( clone $now_datetime )->modify( '+7 days' )->getTimestamp();
+        $month_end = (int) ( clone $now_datetime )->modify( '+30 days' )->getTimestamp();
 
         foreach ($schedules as $schedule) {
             $cursor = strtotime($schedule->next_run);
@@ -160,10 +161,11 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = (int) current_datetime()->getTimestamp();
-        $today_end = strtotime('today 23:59:59', $now);
-        $week_end = strtotime('+7 days', $now);
-        $month_end = strtotime('+30 days', $now);
+        $now_datetime = current_datetime();
+        $now = (int) $now_datetime->getTimestamp();
+        $today_end = (int) ( clone $now_datetime )->setTime( 23, 59, 59 )->getTimestamp();
+        $week_end = (int) ( clone $now_datetime )->modify( '+7 days' )->getTimestamp();
+        $month_end = (int) ( clone $now_datetime )->modify( '+30 days' )->getTimestamp();
 
         foreach ($schedules as $schedule) {
             $tid = $schedule->template_id;
@@ -210,7 +212,15 @@ class AIPS_Templates {
 
     private function calculate_next_run($frequency, $base_time) {
         $next_run = $this->interval_calculator->calculate_next_run($frequency, wp_date('Y-m-d H:i:s', $base_time));
-        return strtotime($next_run);
+        // Parse the returned site-tz datetime in wp_timezone() so that strtotime()
+        // does not silently re-interpret it in PHP's default tz (UTC).
+        $next_run_datetime = date_create_immutable_from_format( 'Y-m-d H:i:s', $next_run, wp_timezone() );
+
+        if ( $next_run_datetime instanceof DateTimeImmutable ) {
+            return $next_run_datetime->getTimestamp();
+        }
+
+        return (int) $base_time;
     }
     
     public function render_page() {

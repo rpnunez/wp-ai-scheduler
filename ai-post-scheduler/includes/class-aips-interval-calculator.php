@@ -128,8 +128,16 @@ class AIPS_Interval_Calculator {
      */
     public function calculate_next_run($frequency, $start_time = null) {
         $wp_now = (int) current_datetime()->getTimestamp();
-        $base_time = $start_time ? strtotime($start_time) : $wp_now;
         $now = $wp_now;
+
+        if ( $start_time ) {
+            // Parse site-local MySQL datetime in wp_timezone() so the resulting
+            // unix timestamp is correct regardless of PHP's default tz (UTC).
+            $start_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', $start_time, wp_timezone() );
+            $base_time = $start_dt ? (int) $start_dt->getTimestamp() : $wp_now;
+        } else {
+            $base_time = $wp_now;
+        }
         
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
@@ -182,8 +190,11 @@ class AIPS_Interval_Calculator {
      * @return string The next occurrence date string.
      */
     public function calculate_next_occurrence_after($frequency, $last_run, $target_date) {
-        $base_time = strtotime($last_run);
-        $target = strtotime($target_date);
+        $site_tz = wp_timezone();
+        $last_run_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', $last_run, $site_tz );
+        $target_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', $target_date, $site_tz );
+        $base_time = $last_run_dt ? (int) $last_run_dt->getTimestamp() : strtotime( $last_run );
+        $target = $target_dt ? (int) $target_dt->getTimestamp() : strtotime( $target_date );
 
         // If the base time is already after the target, return it
         if ($base_time >= $target) {
