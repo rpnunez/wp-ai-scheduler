@@ -122,6 +122,72 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                     <span class="spinner" style="float: none; margin: 0;"></span>
                 </div>
             </form>
+
+            <?php
+            // Source-based research section — only shown when source groups exist.
+            $research_source_groups = get_terms(array(
+                'taxonomy'   => 'aips_source_group',
+                'hide_empty' => false,
+            ));
+            if (!is_wp_error($research_source_groups) && !empty($research_source_groups)):
+            ?>
+            <hr style="margin: 24px 0;">
+            <h3><?php esc_html_e('Research from Trusted Sources', 'ai-post-scheduler'); ?></h3>
+            <p class="description" style="margin-bottom: 12px;">
+                <?php esc_html_e('Use pre-fetched content from your Trusted Sources to ground AI topic suggestions in real reference material.', 'ai-post-scheduler'); ?>
+            </p>
+            <form id="aips-research-from-sources-form" method="post">
+                <input
+                    type="hidden"
+                    id="aips-source-research-nonce"
+                    name="aips_nonce"
+                    value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>"
+                >
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="source-research-niche"><?php esc_html_e('Niche/Context', 'ai-post-scheduler'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" id="source-research-niche" name="niche" class="regular-text" required
+                                   placeholder="<?php esc_attr_e('e.g., WordPress Development', 'ai-post-scheduler'); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+                        </th>
+                        <td>
+                            <div class="aips-checkbox-group">
+                                <?php foreach ($research_source_groups as $rsg): ?>
+                                    <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                        <input type="checkbox" name="term_ids[]"
+                                               value="<?php echo esc_attr($rsg->term_id); ?>">
+                                        <?php echo esc_html($rsg->name); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="description"><?php esc_html_e('Select which source groups to include as context.', 'ai-post-scheduler'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="source-research-count"><?php esc_html_e('Number of Topics', 'ai-post-scheduler'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" id="source-research-count" name="count" min="1" max="50" value="10" class="small-text">
+                        </td>
+                    </tr>
+                </table>
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                    <button type="submit" class="aips-btn aips-btn-secondary" id="source-research-submit">
+                        <span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
+                        <?php esc_html_e('Research from Sources', 'ai-post-scheduler'); ?>
+                    </button>
+                    <span class="spinner" id="source-research-spinner" style="float: none; margin: 0;"></span>
+                </div>
+            </form>
+            <?php endif; ?>
             
             <div id="research-results" style="display: none; margin-top: 24px;">
                 <h3><?php esc_html_e('Research Results', 'ai-post-scheduler'); ?></h3>

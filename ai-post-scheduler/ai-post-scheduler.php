@@ -558,6 +558,11 @@ final class AI_Post_Scheduler {
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
 
+        // Sources cron: fetch content for sources that have a fetch_interval configured.
+        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
+        // correct recurrence (every_6_hours) during construction.
+        AIPS_Sources_Cron::instance();
+
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();
 

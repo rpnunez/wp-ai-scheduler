@@ -352,4 +352,156 @@ class AIPS_Sources_Repository {
 			array('%d')
 		);
 	}
+
+	// -------------------------------------------------------------------------
+	// Scheduled-fetch helpers (Phase 1.4 / 2.4.0)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Get sources that are due for a fetch run.
+	 *
+	 * Returns active sources that have a fetch_interval configured and whose
+	 * next_fetch_at time has either never been set (NULL) or has already passed.
+	 *
+	 * @param int $limit Maximum number of sources to return. Default 10.
+	 * @return array Array of source objects.
+	 */
+	public function get_due_for_fetch( $limit = 10 ) {
+		$limit        = absint( $limit );
+		$current_time = current_time( 'mysql' );
+
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name}
+				WHERE is_active = 1
+				  AND fetch_interval IS NOT NULL
+				  AND fetch_interval != ''
+				  AND (next_fetch_at IS NULL OR next_fetch_at <= %s)
+				ORDER BY next_fetch_at ASC
+				LIMIT %d",
+				$current_time,
+				$limit
+			)
+		);
+	}
+
+	/**
+	 * Set (or clear) the automatic fetch interval for a source and compute
+	 * the next_fetch_at time.
+	 *
+	 * @param int         $id           Source ID.
+	 * @param string|null $interval_key Interval key from AIPS_Interval_Calculator, or NULL to disable.
+	 * @return bool True on success, false on failure.
+	 */
+	public function set_fetch_schedule( $id, $interval_key ) {
+		$data   = array();
+		$format = array();
+
+		if ( null === $interval_key || '' === $interval_key ) {
+			$data['fetch_interval'] = null;
+			$data['next_fetch_at']  = null;
+			$format                 = array( '%s', '%s' );
+		} else {
+			$interval_key = sanitize_text_field( $interval_key );
+			$calculator   = AIPS_Interval_Calculator::instance();
+
+			if ( ! $calculator->is_valid_frequency( $interval_key ) ) {
+				return false;
+			}
+
+			$next = $calculator->calculate_next_run( $interval_key );
+
+			$data['fetch_interval'] = $interval_key;
+			$data['next_fetch_at']  = $next;
+			$format                 = array( '%s', '%s' );
+		}
+
+		return $this->wpdb->update(
+			$this->table_name,
+			$data,
+			array( 'id' => absint( $id ) ),
+			$format,
+			array( '%d' )
+		) !== false;
+	}
+
+	/**
+	 * Update the source's fetch timestamps after a fetch attempt.
+	 *
+	 * On success: sets last_fetched_at to now and advances next_fetch_at
+	 * by one fetch_interval.
+	 * On failure: only advances next_fetch_at so the cron won't retry
+	 * immediately (uses the same interval progression).
+	 *
+	 * @param int  $id      Source ID.
+	 * @param bool $success Whether the fetch was successful.
+	 * @return void
+	 */
+	public function update_after_fetch( $id, $success ) {
+		$id     = absint( $id );
+		$source = $this->get_by_id( $id );
+
+		if ( ! $source ) {
+			return;
+		}
+
+		$data   = array();
+		$format = array();
+
+		if ( $success ) {
+			$data['last_fetched_at'] = current_time( 'mysql' );
+			$format[]                = '%s';
+		}
+
+		// Advance next_fetch_at if a fetch_interval is set.
+		if ( ! empty( $source->fetch_interval ) ) {
+			$calculator             = AIPS_Interval_Calculator::instance();
+			$data['next_fetch_at']  = $calculator->calculate_next_run( $source->fetch_interval );
+			$format[]               = '%s';
+		}
+
+		if ( empty( $data ) ) {
+			return;
+		}
+
+		$this->wpdb->update(
+			$this->table_name,
+			$data,
+			array( 'id' => $id ),
+			$format,
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Get active source rows (with metadata) belonging to specific source groups.
+	 *
+	 * Unlike get_urls_by_group_term_ids() which returns only URLs, this returns
+	 * full source row objects so callers can access id, label, url together.
+	 *
+	 * @param int[] $term_ids   Term IDs (source group IDs) to filter by.
+	 * @param bool  $active_only Only return active sources. Default true.
+	 * @return object[] Array of source row objects.
+	 */
+	public function get_by_group_term_ids( array $term_ids, $active_only = true ) {
+		if ( empty( $term_ids ) ) {
+			return array();
+		}
+
+		$placeholders  = implode( ',', array_fill( 0, count( $term_ids ), '%d' ) );
+		$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$query = $this->wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT DISTINCT s.* FROM {$this->table_name} s
+			INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
+			WHERE sgt.term_id IN ($placeholders) $active_clause
+			ORDER BY s.created_at ASC",
+			...$term_ids
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		return $this->wpdb->get_results( $query );
+	}
 }
