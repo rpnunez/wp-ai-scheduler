@@ -122,28 +122,30 @@ if (!defined('ABSPATH')) {
 								</td>
 								<td>
 									<div class="cell-actions">
-										<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
+										        data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
+										        title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-edit"></span>
 											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-										</a>
+										</button>
 										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
 										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 										        title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-visibility"></span>
 											<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
 										</button>
-										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
 										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
-								<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
 								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-visibility"></span>
-									<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+											<span class="dashicons dashicons-visibility"></span>
+											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 										</button>
 									</div>
 								</td>

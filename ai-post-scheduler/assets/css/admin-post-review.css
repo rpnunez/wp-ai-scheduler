@@ -1,0 +1,89 @@
+/**
+ * AI Post Scheduler — Post Review & Post Preview Styles
+ *
+ * Covers the Pending Review tab UI and the shared Post Preview modal.
+ * All styles in this file were extracted from admin-post-review.js
+ * and post-preview-modal.php to keep markup and presentation separated.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+/* ==========================================================================
+   Post Preview Modal — sizing overrides
+   ========================================================================== */
+
+#aips-post-preview-modal .aips-modal-content {
+	width: 90%;
+	max-width: 1200px;
+	height: 90vh;
+}
+
+#aips-post-preview-modal .aips-modal-body {
+	height: calc(100% - 60px);
+	padding: 0;
+}
+
+#aips-preview-content-container {
+	padding: 30px;
+	height: 100%;
+	overflow-y: auto;
+	box-sizing: border-box;
+}
+
+#aips-post-preview-iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+
+/* ==========================================================================
+   Post Preview — content regions
+   ========================================================================== */
+
+.aips-preview-title {
+	margin-bottom: 20px;
+	line-height: 1.3;
+}
+
+.aips-preview-image {
+	margin-bottom: 20px;
+}
+
+.aips-preview-image img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 4px;
+}
+
+.aips-preview-excerpt {
+	background: var(--aips-gray-50);
+	padding: 15px;
+	margin-bottom: 20px;
+	border-left: 4px solid #72aee6;
+}
+
+.aips-preview-edit-footer {
+	margin-top: 30px;
+	border-top: 1px solid var(--aips-gray-100);
+	padding-top: 15px;
+}
+
+/* ==========================================================================
+   Post Preview — loading state
+   ========================================================================== */
+
+.aips-preview-loading {
+	padding: 30px;
+	text-align: center;
+}
+
+.aips-preview-spinner {
+	float: none;
+	margin: 0 auto;
+	display: block;
+}
+
+.aips-preview-loading-text {
+	text-align: center;
+	margin-top: 8px;
+}

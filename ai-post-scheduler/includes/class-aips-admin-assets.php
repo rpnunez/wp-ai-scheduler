@@ -525,6 +525,13 @@ class AIPS_Admin_Assets {
             );
             
             // Enqueue Post Review module (for Pending Review tab)
+            wp_enqueue_style(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
