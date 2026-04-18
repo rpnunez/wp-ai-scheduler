@@ -242,20 +242,12 @@ This document provides a comprehensive list of all implemented features in the A
 ---
 
 ### 4.2 Activity Tracking
-**Status:** ✅ 100% Complete
+**Status:** ✅ Merged into History (see 4.1)
 
-**What it does:** Audit trail of all plugin actions
+**What it does:** Activity tracking has been consolidated into the History system. All user actions, automation runs, and AI requests are recorded as structured history events via `AIPS_History_Service`.
 
-**Features:**
-- Track all user actions
-- Activity type filtering
-- User attribution
-- Timestamps
-- Activity details view
-- Publish drafts from activity
-
-**UI Location:** AI Post Scheduler → Activity  
-**Database:** `wp_aips_activity`
+**UI Location:** AI Post Scheduler → History  
+**Database:** `wp_aips_history`, `wp_aips_history_log`
 
 ---
 
@@ -428,7 +420,7 @@ This document provides a comprehensive list of all implemented features in the A
 | `wp_aips_topic_feedback` | Feedback system | ✅ Complete |
 | `wp_aips_history` | Generation history | ✅ Complete |
 | `wp_aips_history_log` | Detailed logs | ✅ Complete |
-| `wp_aips_activity` | Activity tracking | ✅ Complete |
+| `wp_aips_history` / `wp_aips_history_log` | Activity tracking (consolidated into History) | ✅ Complete |
 
 ---
 

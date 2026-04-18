@@ -127,8 +127,9 @@ class AIPS_Interval_Calculator {
      * @return string The next run time in MySQL datetime format (Y-m-d H:i:s).
      */
     public function calculate_next_run($frequency, $start_time = null) {
-        $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
-        $now = current_time('timestamp');
+        $wp_now = (int) current_datetime()->getTimestamp();
+        $base_time = $start_time ? strtotime($start_time) : $wp_now;
+        $now = $wp_now;
         
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
@@ -164,12 +165,12 @@ class AIPS_Interval_Calculator {
                     $base_time = $this->calculate_next_timestamp($frequency, $now);
                 }
             }
-            return date('Y-m-d H:i:s', $base_time);
+            return wp_date('Y-m-d H:i:s', $base_time);
         }
         
         $next = $this->calculate_next_timestamp($frequency, $base_time);
         
-        return date('Y-m-d H:i:s', $next);
+        return wp_date('Y-m-d H:i:s', $next);
     }
 
     /**
@@ -186,7 +187,7 @@ class AIPS_Interval_Calculator {
 
         // If the base time is already after the target, return it
         if ($base_time >= $target) {
-            return date('Y-m-d H:i:s', $base_time);
+            return wp_date('Y-m-d H:i:s', $base_time);
         }
 
         // Iterate with a high limit (e.g. 100,000 iterations covers ~11 years of hourly data)
@@ -198,7 +199,7 @@ class AIPS_Interval_Calculator {
             $limit--;
         }
 
-        return date('Y-m-d H:i:s', $base_time);
+        return wp_date('Y-m-d H:i:s', $base_time);
     }
     
     /**

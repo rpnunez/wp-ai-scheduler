@@ -198,7 +198,7 @@ class AIPS_Schedule_Processor {
                     // For one-time schedules, "claim" it by pushing next_run forward.
                     // If the process crashes it will be retried in 1 hour.
                     // On success it will be deleted by handle_post_execution_cleanup().
-                    $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
+                    $new_next_run = wp_date('Y-m-d H:i:s', (int) current_datetime()->getTimestamp() + HOUR_IN_SECONDS);
                 } else {
                     // Calculate next run using original next_run to preserve phase.
                     $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);

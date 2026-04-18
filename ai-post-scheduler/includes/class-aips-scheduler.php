@@ -175,7 +175,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                 : current_time('mysql');
 
             // Default behavior: reset next_run to start_time
-            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
+            $next_run = wp_date('Y-m-d H:i:s', strtotime($start_time));
 
             // Hunter: Fix for schedule reset bug.
             // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
@@ -185,7 +185,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                 if ($existing_schedule) {
                     $start_timestamp = strtotime($start_time);
                     $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
-                    $now_timestamp = current_time('timestamp');
+                    $now_timestamp = (int) current_datetime()->getTimestamp();
 
                     // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')
                     // and the existing schedule is healthy (next_run is in the future), preserve the existing schedule.

@@ -291,7 +291,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			
 			return $post_id;
 			
-		} catch (Exception $e) {
+		} catch (\Throwable $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
 
 			$payload = array(

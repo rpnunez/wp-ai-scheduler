@@ -186,7 +186,7 @@ class AIPS_Embeddings_Cron {
 			'last_processed_id' => $result['last_processed_id'],
 			'done'              => $result['done'],
 			'processed_count'   => $result['processed_count'],
-			'timestamp'         => current_time('timestamp'),
+			'timestamp'         => (int) current_datetime()->getTimestamp(),
 		);
 
 		set_transient("aips_embeddings_progress_{$author_id}", $progress_data, HOUR_IN_SECONDS);

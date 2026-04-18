@@ -97,7 +97,7 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
+        $now = (int) current_datetime()->getTimestamp();
         $today_end = strtotime('today 23:59:59', $now);
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
@@ -160,7 +160,7 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
+        $now = (int) current_datetime()->getTimestamp();
         $today_end = strtotime('today 23:59:59', $now);
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
@@ -209,7 +209,7 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
+        $next_run = $this->interval_calculator->calculate_next_run($frequency, wp_date('Y-m-d H:i:s', $base_time));
         return strtotime($next_run);
     }
     
