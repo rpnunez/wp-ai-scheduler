@@ -200,42 +200,97 @@
 		},
 
 		/**
-		 * Copy the log detail JSON text to the clipboard.
+		 * Show temporary copied-state feedback on a copy button.
 		 *
-		 * @param {Event} e - Click event from an `.aips-log-copy` element.
+		 * @param {jQuery} $button    Copy button element.
+		 * @param {string} copyLabel   Default button label.
+		 * @param {string} copiedLabel Success button label.
+		 */
+		showCopySuccess: function ($button, copyLabel, copiedLabel) {
+			$button.text(copiedLabel);
+			setTimeout(function () {
+				$button.text(copyLabel);
+			}, 2000);
+		},
+
+		/**
+		 * Copy log detail text using the legacy execCommand fallback.
+		 *
+		 * @param {jQuery} $target Detail container.
+		 * @return {boolean} True when the fallback copy succeeded.
+		 */
+		copyLogDetailFallback: function ($target) {
+			var $pre = $target.find('pre');
+			var range;
+			var sel;
+
+			if (!$pre.length || !$pre[0]) {
+				return false;
+			}
+
+			try {
+				// Fallback: expose the detail block, select text, copy.
+				$target.show();
+				range = document.createRange();
+				range.selectNodeContents($pre[0]);
+				sel = window.getSelection();
+
+				if (!sel) {
+					return false;
+				}
+
+				sel.removeAllRanges();
+				sel.addRange(range);
+
+				if (!document.execCommand('copy')) {
+					sel.removeAllRanges();
+					return false;
+				}
+
+				sel.removeAllRanges();
+
+				return true;
+			} catch (error) {
+				if (sel) {
+					sel.removeAllRanges();
+				}
+
+				return false;
+			}
+		},
+
+		/**
+		 * Copy the full log detail text for a row.
+		 *
+		 * @param {Event} e Click event.
 		 */
 		copyLogDetail: function (e) {
 			e.preventDefault();
+
+			var self           = this;
 			var $button        = $(e.currentTarget);
 			var targetSelector = $button.data('target');
 			var $target        = $(targetSelector);
 			var text           = $target.find('pre').text();
+			var copyLabel      = aipsHistoryL10n.copyDetails || 'Copy';
+			var copiedLabel    = aipsHistoryL10n.copiedDetails || 'Copied!';
 
 			if (!text) {
 				return;
 			}
 
-			var copyLabel    = aipsHistoryL10n.copyDetails  || 'Copy';
-			var copiedLabel  = aipsHistoryL10n.copiedDetails || 'Copied!';
-
 			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text).then(function () {
-					$button.text(copiedLabel);
-					setTimeout(function () { $button.text(copyLabel); }, 2000);
-				});
-			} else {
-				// Fallback: expose the detail block, select text, copy.
-				var $pre = $target.find('pre');
-				$target.show();
-				var range = document.createRange();
-				range.selectNodeContents($pre[0]);
-				var sel = window.getSelection();
-				sel.removeAllRanges();
-				sel.addRange(range);
-				document.execCommand('copy');
-				sel.removeAllRanges();
-				$button.text(copiedLabel);
-				setTimeout(function () { $button.text(copyLabel); }, 2000);
+				navigator.clipboard.writeText(text)
+					.then(function () {
+						self.showCopySuccess($button, copyLabel, copiedLabel);
+					})
+					.catch(function () {
+						if (self.copyLogDetailFallback($target)) {
+							self.showCopySuccess($button, copyLabel, copiedLabel);
+						}
+					});
+			} else if (self.copyLogDetailFallback($target)) {
+				self.showCopySuccess($button, copyLabel, copiedLabel);
 			}
 		},
 
@@ -345,7 +400,7 @@
 			}
 
 			// Post link row.
-			if (container.post_id && container.post_url) {
+			if (container.post_id && container.post_url && container.post_edit_url) {
 				rows += T.renderRaw('aips-tmpl-history-summary-post-row', {
 					label:     T.escape(aipsHistoryL10n.labelPostId || 'Post'),
 					url:       T.escape(container.post_url),

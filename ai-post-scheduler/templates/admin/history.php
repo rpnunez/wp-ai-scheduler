@@ -358,7 +358,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: summary row showing the post link; use renderRaw() with pre-escaped values -->
 <script type="text/html" id="aips-tmpl-history-summary-post-row">
-	<tr><th>{{label}}</th><td><a href="{{url}}" target="_blank">{{postId}}</a> &mdash; <a href="{{editUrl}}" target="_blank">{{editLabel}}</a></td></tr>
+	<tr><th>{{label}}</th><td><a href="{{url}}" target="_blank" rel="noopener noreferrer">{{postId}}</a> &mdash; <a href="{{editUrl}}" target="_blank" rel="noopener noreferrer">{{editLabel}}</a></td></tr>
 </script>
 
 <!-- Template: summary row for duration display -->

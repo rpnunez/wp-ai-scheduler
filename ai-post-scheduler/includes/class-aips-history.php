@@ -272,8 +272,17 @@ class AIPS_History {
         $post_url      = null;
         $post_edit_url = null;
         if ( ! empty( $history_item->post_id ) ) {
-            $post_url      = get_permalink( (int) $history_item->post_id ) ?: null;
-            $post_edit_url = get_edit_post_link( (int) $history_item->post_id, 'raw' ) ?: null;
+            $raw_post_url = get_permalink( (int) $history_item->post_id );
+            if ( ! empty( $raw_post_url ) ) {
+                $sanitized_post_url = esc_url_raw( $raw_post_url );
+                $post_url           = ! empty( $sanitized_post_url ) ? $sanitized_post_url : null;
+            }
+
+            $raw_post_edit_url = get_edit_post_link( (int) $history_item->post_id, 'raw' );
+            if ( ! empty( $raw_post_edit_url ) ) {
+                $sanitized_post_edit_url = esc_url_raw( $raw_post_edit_url );
+                $post_edit_url           = ! empty( $sanitized_post_edit_url ) ? $sanitized_post_edit_url : null;
+            }
         }
 
         AIPS_Ajax_Response::success(array(
