@@ -165,7 +165,6 @@ class AIPS_Dev_Tools {
                 'description' => sanitize_textarea_field($data['article_structure']['description']),
                 'structure_data' => $structure_json_data,
                 'is_active' => 1,
-                'is_default' => 0
             );
 
             $structure_id = $structure_repo->create($structure_db_data);

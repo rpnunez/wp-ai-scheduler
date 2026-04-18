@@ -522,16 +522,20 @@ class Test_Article_Structure_Repository_Cache extends WP_UnitTestCase {
 	}
 
 	public function test_get_default_cached_after_first_call() {
-		$this->mock_wpdb->get_row_return = (object) array( 'id' => 1, 'name' => 'Default', 'is_default' => 1 );
+		AIPS_Config::get_instance()->set_option( 'aips_default_article_structure_id', 1 );
+		$this->mock_wpdb->get_row_return = (object) array( 'id' => 1, 'name' => 'Default', 'is_active' => 1 );
 		$repo = new AIPS_Article_Structure_Repository();
 
 		$repo->get_default();
 		$repo->get_default();
 
 		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls );
+		delete_option( 'aips_default_article_structure_id' );
+		AIPS_Config::get_instance()->flush_option_cache();
 	}
 
 	public function test_get_default_null_not_cached() {
+		AIPS_Config::get_instance()->set_option( 'aips_default_article_structure_id', 99 );
 		$this->mock_wpdb->get_row_return = null;
 		$repo = new AIPS_Article_Structure_Repository();
 
@@ -539,6 +543,8 @@ class Test_Article_Structure_Repository_Cache extends WP_UnitTestCase {
 		$repo->get_default();
 
 		$this->assertEquals( 2, $this->mock_wpdb->get_row_calls );
+		delete_option( 'aips_default_article_structure_id' );
+		AIPS_Config::get_instance()->flush_option_cache();
 	}
 
 	public function test_cache_flushed_after_create() {
@@ -546,7 +552,7 @@ class Test_Article_Structure_Repository_Cache extends WP_UnitTestCase {
 		$repo = new AIPS_Article_Structure_Repository();
 
 		$repo->get_all();
-		$repo->create( array( 'name' => 'New Structure', 'structure_data' => '{}', 'is_active' => 1, 'is_default' => 0 ) );
+		$repo->create( array( 'name' => 'New Structure', 'structure_data' => '{}', 'is_active' => 1 ) );
 		$repo->get_all();
 
 		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );

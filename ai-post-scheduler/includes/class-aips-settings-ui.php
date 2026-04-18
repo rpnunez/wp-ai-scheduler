@@ -579,6 +579,41 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the Default Article Structure field.
+     *
+     * @return void
+     */
+    public function site_default_article_structure_field_callback() {
+        $value = absint(AIPS_Config::get_instance()->get_option('aips_default_article_structure_id'));
+        $repository = new AIPS_Article_Structure_Repository();
+        $structures = $repository->get_all(false);
+        ?>
+        <select name="aips_default_article_structure_id">
+            <option value="0"><?php esc_html_e('Select an article structure', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($structures as $structure) : ?>
+                <?php
+                $structure_id = isset($structure->id) ? absint($structure->id) : 0;
+                $is_active    = true;
+
+                if (isset($structure->is_active)) {
+                    $is_active = (bool) $structure->is_active;
+                }
+
+                $label = $structure->name;
+                if (!$is_active) {
+                    $label .= ' ' . __('(Inactive)', 'ai-post-scheduler');
+                }
+
+                $disabled = (!$is_active && $value !== $structure_id) ? ' disabled="disabled"' : '';
+                ?>
+                <option value="<?php echo esc_attr($structure_id); ?>" <?php selected($value, $structure_id); ?><?php echo $disabled; ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Used as the fallback structure whenever a schedule or generation flow does not specify one explicitly.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the Brand Voice / Tone field.
      *
      * @return void

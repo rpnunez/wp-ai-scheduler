@@ -108,7 +108,6 @@ class AIPS_Ajax_Registry {
 		'aips_get_structure'              => 'AIPS_Structures_Controller',
 		'aips_save_structure'             => 'AIPS_Structures_Controller',
 		'aips_delete_structure'           => 'AIPS_Structures_Controller',
-		'aips_set_structure_default'      => 'AIPS_Structures_Controller',
 		'aips_toggle_structure_active'    => 'AIPS_Structures_Controller',
 
 		// Prompt Sections Controller

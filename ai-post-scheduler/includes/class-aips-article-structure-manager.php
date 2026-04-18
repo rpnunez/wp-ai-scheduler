@@ -73,7 +73,6 @@ class AIPS_Article_Structure_Manager {
 			'sections' => isset($structure_data['sections']) ? $structure_data['sections'] : array(),
 			'prompt_template' => isset($structure_data['prompt_template']) ? $structure_data['prompt_template'] : '',
 			'is_active' => $structure->is_active,
-			'is_default' => $structure->is_default,
 		);
 	}
 	
@@ -105,11 +104,10 @@ class AIPS_Article_Structure_Manager {
 	 * @param array  $sections        Array of section keys.
 	 * @param string $prompt_template Prompt template with section placeholders.
 	 * @param string $description     Structure description.
-	 * @param bool   $is_default      Set as default structure.
 	 * @param bool   $is_active       Set structure as active.
 	 * @return int|WP_Error Structure ID on success or error.
 	 */
-	public function create_structure($name, $sections, $prompt_template, $description = '', $is_default = false, $is_active = true) {
+	public function create_structure($name, $sections, $prompt_template, $description = '', $is_active = true) {
 		// Validate sections exist
 		$available_sections = $this->section_repository->get_by_keys($sections);
 		$missing_sections = array_diff($sections, array_keys($available_sections));
@@ -134,7 +132,6 @@ class AIPS_Article_Structure_Manager {
 			'description' => $description,
 			'structure_data' => wp_json_encode($structure_data),
 			'is_active' => $is_active ? 1 : 0,
-			'is_default' => $is_default ? 1 : 0,
 		);
 		
 		$id = $this->structure_repository->create($data);
@@ -156,11 +153,10 @@ class AIPS_Article_Structure_Manager {
 	 * @param array  $sections        Array of section keys.
 	 * @param string $prompt_template Prompt template with section placeholders.
 	 * @param string $description     Structure description.
-	 * @param bool   $is_default      Set as default structure.
 	 * @param bool   $is_active       Set structure as active.
 	 * @return bool|WP_Error True on success or error.
 	 */
-	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_default = null, $is_active = null) {
+	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_active = null) {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
@@ -191,11 +187,6 @@ class AIPS_Article_Structure_Manager {
 			'description' => $description,
 			'structure_data' => wp_json_encode($structure_data),
 		);
-		
-		// Add is_default if provided
-		if ($is_default !== null) {
-			$data['is_default'] = $is_default ? 1 : 0;
-		}
 		
 		// Add is_active if provided
 		if ($is_active !== null) {
@@ -226,13 +217,23 @@ class AIPS_Article_Structure_Manager {
 			return new WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
 		}
 		
-		// Don't allow deleting the default structure if it's the only one
-		if ($structure->is_default) {
-			$count = $this->structure_repository->count_by_status();
-			if ($count['active'] <= 1) {
+		$default_structure_id = (int) AIPS_Config::get_instance()->get_option('aips_default_article_structure_id');
+		$replacement_default_id = 0;
+
+		if ($default_structure_id === (int) $structure->id) {
+			$active_structures = $this->structure_repository->get_all(true);
+
+			foreach ($active_structures as $active_structure) {
+				if ((int) $active_structure->id !== (int) $structure->id) {
+					$replacement_default_id = (int) $active_structure->id;
+					break;
+				}
+			}
+
+			if ($replacement_default_id < 1) {
 				return new WP_Error(
 					'cannot_delete_default',
-					__('Cannot delete the default article structure. Create another structure first.', 'ai-post-scheduler')
+					__('Cannot delete the default article structure. Create another active structure first.', 'ai-post-scheduler')
 				);
 			}
 		}
@@ -241,6 +242,10 @@ class AIPS_Article_Structure_Manager {
 		
 		if (!$result) {
 			return new WP_Error('delete_failed', __('Failed to delete article structure.', 'ai-post-scheduler'));
+		}
+
+		if ($replacement_default_id > 0) {
+			AIPS_Config::get_instance()->set_option('aips_default_article_structure_id', $replacement_default_id);
 		}
 		
 		do_action('aips_structure_deleted', $structure_id);
