@@ -235,3 +235,11 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+## 2026-04-18 - Template Preview & Testing Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the flow of creating and testing templates by implementing real-time syntax validation. Previously, users could save templates with unclosed AI variables (e.g. `{{topic`), which would only fail later during the actual post generation. Validation logic leveraging `AIPS_Template_Processor` was introduced to `ajax_save_template`, `ajax_test_template`, and `ajax_preview_template_prompts` within `AIPS_Templates_Controller`.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-templates-controller.php`
+- `ai-post-scheduler/tests/test-templates-controller-save.php`
+- `ai-post-scheduler/tests/test-templates-controller-preview.php`
+**Outcome:** Enhances user workflow and error prevention by providing immediate backend error messages on invalid template syntax, ensuring robust generation and reducing debugging overhead.

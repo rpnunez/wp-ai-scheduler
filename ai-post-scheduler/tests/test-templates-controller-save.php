@@ -124,4 +124,45 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame(0, $this->templates_stub->saved_data['generate_featured_image']);
 	}
+
+	public function test_ajax_save_template_validates_prompt_template_syntax() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Invalid Template';
+		$_POST['prompt_template'] = 'Write about {{topic'; // Missing closing braces
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('unclosed', $response['data']['message']);
+	}
+
+	public function test_ajax_save_template_validates_image_prompt_syntax() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Invalid Image Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['generate_featured_image'] = '1';
+		$_POST['featured_image_source'] = 'ai_prompt';
+		$_POST['image_prompt'] = 'Draw a {{topic with no closing braces';
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('unclosed', $response['data']['message']);
+	}
 }
