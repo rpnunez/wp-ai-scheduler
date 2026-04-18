@@ -163,7 +163,7 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_publish_posts'         => 'AIPS_Post_Review',
 		'aips_bulk_delete_draft_posts'    => 'AIPS_Post_Review',
 		'aips_bulk_regenerate_posts'      => 'AIPS_Post_Review',
-		'aips_get_draft_post_preview'     => 'AIPS_Post_Review',
+		'aips_get_post_preview'           => 'AIPS_Post_Review',
 		'aips_delete_draft_post'          => 'AIPS_Post_Review',
 
 		// Admin Bar
@@ -213,6 +213,11 @@ class AIPS_Ajax_Registry {
 
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
+
+		// System Status
+		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
+		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
+		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 	);
 
 	/**
