@@ -119,7 +119,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$page     = max(1, absint(isset($_POST['page']) ? wp_unslash($_POST['page']) : 1));
@@ -154,7 +154,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$post_id_raw = isset($_POST['post_id']) ? wp_unslash($_POST['post_id']) : 0;
@@ -205,7 +205,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id     = absint(isset($_POST['id']) ? $_POST['id'] : 0);
@@ -233,7 +233,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id          = absint(isset($_POST['id']) ? $_POST['id'] : 0);
@@ -261,7 +261,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$id = absint(isset($_POST['id']) ? $_POST['id'] : 0);
@@ -290,7 +290,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		if (!$this->embeddings_service_available()) {
@@ -313,7 +313,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$summary = $this->service->get_dashboard_summary();
@@ -329,7 +329,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$post_id = absint(isset($_POST['post_id']) ? $_POST['post_id'] : 0);
@@ -385,7 +385,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$this->embeddings_repo->delete_all();
@@ -409,7 +409,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
@@ -464,7 +464,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$suggestion_id = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
@@ -496,7 +496,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$suggestion_id       = absint(isset($_POST['suggestion_id']) ? $_POST['suggestion_id'] : 0);
@@ -547,7 +547,7 @@ class AIPS_Internal_Links_Controller {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
 		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::error(array('message' => __('Permission denied.', 'ai-post-scheduler')), 403);
+			AIPS_Ajax_Response::permission_denied();
 		}
 
 		$insertions_raw = isset($_POST['insertions']) ? wp_unslash($_POST['insertions']) : '';
