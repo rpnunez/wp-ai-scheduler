@@ -21,6 +21,29 @@ from collections import defaultdict
 class FeatureScanner:
     """Scans WordPress plugin files to extract features, relationships, and standards compliance."""
 
+    # Classes that own AJAX response logic and should use AIPS_Ajax_Response
+    CONTROLLER_IDENTIFIERS = frozenset([
+        'controller', 'admin_bar', 'planner', 'history', 'post_review',
+        'data_management', 'seeder_admin', 'db_manager', 'voices',
+        'dev_tools', 'onboarding_wizard', 'settings_ajax',
+    ])
+
+    # Infrastructure classes that are themselves exempt from container-DI checks
+    CONTAINER_EXEMPT_CLASSES = frozenset([
+        'AIPS_Container', 'AIPS_Autoloader', 'AIPS_Config',
+        'AIPS_Cache_Factory', 'AIPS_Ajax_Registry', 'AIPS_Ajax_Response',
+        'AIPS_Utilities', 'AIPS_Correlation_ID', 'AIPS_Error_Handler',
+    ])
+
+    # Heavy service classes that should be resolved from the container
+    CONTAINER_MANAGED_SERVICES = frozenset([
+        'AIPS_Logger', 'AIPS_History_Service', 'AIPS_History_Container',
+        'AIPS_Resilience_Service', 'AIPS_AI_Service', 'AIPS_Cache',
+    ])
+
+    # Maximum characters shown for summary text in compact tables
+    MAX_SUMMARY_LENGTH = 60
+
     def __init__(self, plugin_dir: str):
         self.plugin_dir = Path(plugin_dir)
         self.includes_dir = self.plugin_dir / "includes"
@@ -304,7 +327,7 @@ class FeatureScanner:
                 brace_depth -= 1
             pos += 1
         ctor_body = content[ctor_start:pos]
-        ajax_in_ctor = re.findall(r"add_action\s*\(\s*['\"]wp_ajax_(\w+)['\"]", ctor_body)
+        ajax_in_ctor = re.findall(r"add_action\s*\(\s*['\"]wp_ajax_(?:nopriv_)?(\w+)['\"]", ctor_body)
         if ajax_in_ctor:
             self.standards_violations[class_name].append({
                 'rule': 'ajax_registry',
@@ -333,11 +356,7 @@ class FeatureScanner:
     def _check_raw_wp_send_json(self, class_name: str, content: str, feature: Dict):
         """Flag direct wp_send_json calls in controllers instead of AIPS_Ajax_Response."""
         base = class_name.lower()
-        is_controller = any(x in base for x in ['controller', 'admin_bar', 'planner',
-                                                  'history', 'post_review', 'data_management',
-                                                  'seeder_admin', 'db_manager', 'voices',
-                                                  'dev_tools', 'onboarding_wizard',
-                                                  'settings_ajax'])
+        is_controller = any(x in base for x in self.CONTROLLER_IDENTIFIERS)
         if not is_controller:
             return
         if class_name == 'AIPS_Ajax_Response':
@@ -355,20 +374,11 @@ class FeatureScanner:
 
     def _check_container_usage(self, class_name: str, content: str, feature: Dict):
         """Flag classes that instantiate heavy AIPS_ dependencies without using the container."""
-        skip_classes = {
-            'AIPS_Container', 'AIPS_Autoloader', 'AIPS_Config',
-            'AIPS_Cache_Factory', 'AIPS_Ajax_Registry', 'AIPS_Ajax_Response',
-            'AIPS_Utilities', 'AIPS_Correlation_ID', 'AIPS_Error_Handler',
-        }
-        if class_name in skip_classes:
+        if class_name in self.CONTAINER_EXEMPT_CLASSES:
             return
         # Look for `new AIPS_*` that are NOT in the container-resolved set of infra classes
-        infra_classes = {
-            'AIPS_Logger', 'AIPS_History_Service', 'AIPS_History_Container',
-            'AIPS_Resilience_Service', 'AIPS_AI_Service', 'AIPS_Cache',
-        }
         instantiations = re.findall(r'new\s+(AIPS_[\w_]+)\s*\(', content)
-        direct_infra = [c for c in instantiations if c in infra_classes]
+        direct_infra = [c for c in instantiations if c in self.CONTAINER_MANAGED_SERVICES]
         if direct_infra and 'AIPS_Container' not in content:
             unique = sorted(set(direct_infra))
             self.standards_violations[class_name].append({
@@ -917,7 +927,10 @@ class FeatureScanner:
             for iface_name in sorted(self.interfaces.keys()):
                 iface = self.interfaces[iface_name]
                 method_count = len(iface['methods'])
-                summary = iface['summary'][:60] + "..." if len(iface['summary']) > 60 else iface['summary']
+                max_len = self.MAX_SUMMARY_LENGTH
+                summary = (iface['summary'][:max_len] + "..."
+                           if len(iface['summary']) > max_len
+                           else iface['summary'])
                 report_lines.append(
                     f"| `{iface_name}` | `{iface['file']}` | {method_count} | {summary} |\n"
                 )
