@@ -1370,9 +1370,15 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
-  
+
 ## 2026-04-16 - [Detangle System Status Diagnostics]
 **Context:** The AIPS_System_Status class is a God Object handling UI rendering and complex system diagnostic data gathering. Extracting it into a single AIPS_System_Diagnostics_Service created another God Object.
 **Decision:** Introduced a Provider pattern. Created AIPS_System_Diagnostic_Provider_Interface. Extracted diagnostics into cohesive providers (Environment, Scheduler, Queue, Logs). AIPS_System_Diagnostics_Service now acts as an aggregator.
 **Consequence:** High cohesion and loose coupling achieved. AIPS_System_Status delegates to AIPS_System_Diagnostics_Service, which aggregates from modular providers. Backwards compatibility preserved for the output of get_system_info().
 **Tests:** Created tests for AIPS_System_Diagnostics_Service to ensure it accurately aggregates data from providers. Full test suite run successfully.
+
+## 2026-04-18 - [Refactor AIPS_Admin_Assets God Method]
+**Context:** `AIPS_Admin_Assets::enqueue_admin_assets()` was a massive 977-line God method, handling all scripts and localizations for the plugin.
+**Decision:** Extracted all page-specific enqueue logic into individual private methods within the same class to enforce the Single Responsibility Principle.
+**Consequence:** Increased the number of methods in the class, but vastly improved maintainability and readability. No external API changes.
+**Tests:** Ran existing test suite to ensure backwards compatibility. No regressions found.
