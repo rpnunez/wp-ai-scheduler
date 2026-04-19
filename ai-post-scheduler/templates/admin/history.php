@@ -9,29 +9,6 @@ $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['pa
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
-if (isset($history_handler)) {
-    if (!isset($history) || !is_array($history)) {
-        $history = $history_handler->get_history(array(
-            'page'   => $current_page,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
-        ));
-    }
-    if (!isset($stats)) {
-        $stats = $history_handler->get_stats();
-    }
-}
-
-if (!isset($stats) || !is_array($stats)) {
-    $stats = array(
-        'total' => 0,
-        'completed' => 0,
-        'failed' => 0,
-        'success_rate' => 0,
-    );
-}
-
 $items       = isset($history['items']) ? $history['items'] : array();
 $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 ?>
@@ -49,46 +26,6 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <span class="dashicons dashicons-download"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats Summary -->
-        <div class="aips-stats-grid aips-grid-4">
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon">
-                    <span class="dashicons dashicons-backup"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-total"><?php echo esc_html(number_format($stats['total'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Total Generated', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-success">
-                    <span class="dashicons dashicons-yes-alt"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-completed"><?php echo esc_html(number_format($stats['completed'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-error">
-                    <span class="dashicons dashicons-dismiss"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-failed"><?php echo esc_html(number_format($stats['failed'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-info">
-                    <span class="dashicons dashicons-chart-line"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-success-rate"><?php echo esc_html($stats['success_rate']); ?>%</div>
-                    <div class="aips-stat-label"><?php esc_html_e('Success Rate', 'ai-post-scheduler'); ?></div>
                 </div>
             </div>
         </div>
@@ -132,7 +69,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
-                <div class="aips-toolbar-right">
+                <div class="aips-toolbar-right aips-history-pagination-cell">
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
                         <span class="dashicons dashicons-dismiss"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
@@ -141,6 +78,11 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>
+                    <?php if (isset($history_handler)): ?>
+                        <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
+                    <?php elseif ($total_items > 0): ?>
+                        <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -181,19 +123,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                             </tr>
                         <?php endif; ?>
                     </tbody>
-                    <tfoot>
-                        <tr class="aips-history-pagination-row">
-                            <td colspan="6" class="aips-history-pagination-cell">
-                                <?php if (isset($history_handler)): ?>
-                                    <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
-                                <?php else: ?>
-                                    <div class="aips-history-pagination">
-                                        <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    </tfoot>
+
                 </table>
 
                 <!-- No Search Results State (client-side live filter) -->
