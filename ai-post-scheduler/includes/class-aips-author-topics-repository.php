@@ -81,6 +81,10 @@ class AIPS_Author_Topics_Repository {
 	 * @return int|false The ID of the created topic or false on failure.
 	 */
 	public function create($data) {
+		if (!isset($data['generated_at'])) {
+			$data['generated_at'] = AIPS_DateTime::now()->timestamp();
+		}
+
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
@@ -120,9 +124,9 @@ class AIPS_Author_Topics_Repository {
 				isset($topic['status']) ? $topic['status'] : 'pending',
 				isset($topic['score']) ? (int) $topic['score'] : 50,
 				isset($topic['metadata']) ? $topic['metadata'] : '',
-				isset($topic['generated_at']) ? $topic['generated_at'] : current_time('mysql')
+				isset($topic['generated_at']) ? absint($topic['generated_at']) : AIPS_DateTime::now()->timestamp()
 			);
-			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %s)";
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %d)";
 		}
 
 		// If no valid topics remain after validation, do not attempt the insert.
@@ -147,9 +151,8 @@ class AIPS_Author_Topics_Repository {
 	 *
 	 * @param int        $author_id        Author ID.
 	 * @param int        $limit            Number of topics to retrieve.
-	 * @param string|nil $generated_after  Optional. ISO datetime or MySQL datetime
-	 *                                     string to filter topics generated on or
-	 *                                     after this timestamp. Default null.
+	 * @param int|null   $generated_after  Optional. Timestamp used as a lower bound
+	 *                                     for generated_at. Default null.
 	 * @param array|null $titles           Optional. Array of topic_title strings
 	 *                                     to limit results to. If provided and not
 	 *                                     empty, this takes precedence over
@@ -167,8 +170,8 @@ class AIPS_Author_Topics_Repository {
 			$params       = array_merge( $params, $titles );
 		} elseif ( null !== $generated_after ) {
 			// Otherwise, if a lower-bound timestamp is provided, use it.
-			$query   .= " AND generated_at >= %s";
-			$params[] = $generated_after;
+			$query   .= " AND generated_at >= %d";
+			$params[] = absint($generated_after);
 		}
 
 		$query   .= " ORDER BY id DESC LIMIT %d";
@@ -205,7 +208,7 @@ class AIPS_Author_Topics_Repository {
 	public function update_status($id, $status, $user_id = null) {
 		$data = array(
 			'status' => $status,
-			'reviewed_at' => current_time('mysql')
+			'reviewed_at' => AIPS_DateTime::now()->timestamp()
 		);
 		
 		if ($user_id) {
