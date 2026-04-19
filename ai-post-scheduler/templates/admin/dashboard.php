@@ -55,13 +55,56 @@ $schedule_type_labels = array(
             </div>
         </div>
 
+        <!-- Compact Stats List (full width, above tables) -->
+        <div class="aips-content-panel">
+            <div class="aips-panel-body" style="padding: 0 4px;">
+                <ul class="aips-dashboard-stats-list">
+
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-stat-link">
+                        <span class="dashicons dashicons-edit aips-stat-icon" style="color:var(--aips-primary);"></span>
+                        <span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
+                        <strong class="aips-stat-value"><?php echo esc_html($total_generated); ?></strong>
+                    </a></li>
+
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-stat-link">
+                        <span class="dashicons dashicons-visibility aips-stat-icon"></span>
+                        <span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+                        <strong class="aips-stat-value"><?php echo esc_html($pending_reviews); ?></strong>
+                    </a></li>
+
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-stat-link">
+                        <span class="dashicons dashicons-list-view aips-stat-icon"></span>
+                        <span class="aips-stat-label"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
+                        <strong class="aips-stat-value"><?php echo esc_html($topics_in_queue); ?></strong>
+                    </a></li>
+
+                    <?php if ($partial_generations > 0): ?>
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'partial'))); ?>" class="aips-stat-link">
+                        <span class="dashicons dashicons-warning aips-stat-icon" style="color:var(--aips-warning);"></span>
+                        <span class="aips-stat-label"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></span>
+                        <strong class="aips-stat-value" style="color:var(--aips-warning);"><?php echo esc_html($partial_generations); ?></strong>
+                    </a></li>
+                    <?php endif; ?>
+
+                    <?php if ($failed_count > 0): ?>
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'failed'))); ?>" class="aips-stat-link">
+                        <span class="dashicons dashicons-dismiss aips-stat-icon" style="color:var(--aips-error);"></span>
+                        <span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
+                        <strong class="aips-stat-value" style="color:var(--aips-error);"><?php echo esc_html($failed_count); ?></strong>
+                    </a></li>
+                    <?php endif; ?>
+
+                </ul>
+            </div>
+        </div>
+
         <!-- Main 50/50 Grid -->
         <div class="aips-grid aips-grid-cols-2">
 
             <!-- Left: Upcoming Scheduled Activity -->
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
-                    <h2 class="aips-panel-title"><?php esc_html_e('Upcoming Scheduled Activity', 'ai-post-scheduler'); ?></h2>
+                    <h2 class="aips-panel-title"><?php esc_html_e('Upcoming Activity', 'ai-post-scheduler'); ?></h2>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
                         <?php esc_html_e('View All', 'ai-post-scheduler'); ?> &rarr;
                     </a>
@@ -92,7 +135,7 @@ $schedule_type_labels = array(
                                     ?>
                                     <span class="aips-badge aips-badge-neutral"><?php echo esc_html($type_label); ?></span>
                                 </td>
-                                <td><?php echo esc_html(!empty($item['next_run']) ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item['next_run'])) : __('—', 'ai-post-scheduler')); ?></td>
+                                <td><?php echo esc_html( isset( $item['next_run_formatted'] ) ? $item['next_run_formatted'] : '—' ); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -113,66 +156,8 @@ $schedule_type_labels = array(
                 </div>
             </div>
 
-            <!-- Right: Compact Stats + Recent Activity (stacked) -->
-            <div>
-
-                <!-- Compact Stats List -->
-                <div class="aips-content-panel" style="margin-bottom: 20px;">
-                    <div class="aips-panel-body" style="padding: 12px 20px;">
-                        <ul class="aips-dashboard-stats-list" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;">
-
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-edit" style="color:var(--aips-primary);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-gray-900);"><?php echo esc_html($total_generated); ?></strong>
-                            </a></li>
-
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-visibility" style="color:var(--aips-gray-500);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Pending Reviews', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-gray-900);"><?php echo esc_html($pending_reviews); ?></strong>
-                            </a></li>
-
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-clock" style="color:var(--aips-gray-500);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Active Schedules', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-gray-900);"><?php echo esc_html($pending_scheduled); ?></strong>
-                            </a></li>
-
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-media-document" style="color:var(--aips-gray-500);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Active Templates', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-gray-900);"><?php echo esc_html($total_templates); ?></strong>
-                            </a></li>
-
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-list-view" style="color:var(--aips-gray-500);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-gray-900);"><?php echo esc_html($topics_in_queue); ?></strong>
-                            </a></li>
-
-                            <?php if ($partial_generations > 0): ?>
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'partial'))); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-warning" style="color:var(--aips-warning);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-warning);"><?php echo esc_html($partial_generations); ?></strong>
-                            </a></li>
-                            <?php endif; ?>
-
-                            <?php if ($failed_count > 0): ?>
-                            <li><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'failed'))); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:4px 0;">
-                                <span class="dashicons dashicons-dismiss" style="color:var(--aips-error);font-size:18px;width:20px;height:20px;"></span>
-                                <span style="flex:1;font-size:13px;"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
-                                <strong style="font-size:15px;color:var(--aips-error);"><?php echo esc_html($failed_count); ?></strong>
-                            </a></li>
-                            <?php endif; ?>
-
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div class="aips-content-panel">
+            <!-- Right: Recent Activity -->
+            <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2 class="aips-panel-title"><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></h2>
                         <?php if (!empty($recent_posts)): ?>
@@ -241,8 +226,6 @@ $schedule_type_labels = array(
                         </div>
                         <?php endif; ?>
                     </div>
-                </div>
-
             </div>
         </div>
 
@@ -254,7 +237,7 @@ $schedule_type_labels = array(
                     <h2 class="aips-panel-title"><?php esc_html_e('Post Generations by Day', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="position:relative;height:220px;">
+                    <div class="aips-dashboard-chart-wrap" style="height:220px;">
                         <canvas id="aips-chart-posts-by-day" aria-label="<?php esc_attr_e('Post Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>
@@ -265,7 +248,7 @@ $schedule_type_labels = array(
                     <h2 class="aips-panel-title"><?php esc_html_e('Topic Generations by Day', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="position:relative;height:220px;">
+                    <div class="aips-dashboard-chart-wrap" style="height:220px;">
                         <canvas id="aips-chart-topics-by-day" aria-label="<?php esc_attr_e('Topic Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>
@@ -280,7 +263,7 @@ $schedule_type_labels = array(
                     <h2 class="aips-panel-title"><?php esc_html_e('AI Error Rate (%)', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="position:relative;height:200px;">
+                    <div class="aips-dashboard-chart-wrap" style="height:200px;">
                         <canvas id="aips-chart-error-rate" aria-label="<?php esc_attr_e('AI Error Rate', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>

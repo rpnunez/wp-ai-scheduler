@@ -97,6 +97,107 @@ class AIPS_Dashboard_Controller {
             'topics'    => $chart_topics,
         );
 
+        // Pre-format next_run for each upcoming item using relative time.
+        // get_option() is called once here, not inside the template loop.
+        $date_format = get_option( 'date_format' );
+        $time_format = get_option( 'time_format' );
+        foreach ( $upcoming as &$item ) {
+            $item['next_run_formatted'] = $this->format_next_run(
+                isset( $item['next_run'] ) ? $item['next_run'] : '',
+                $date_format,
+                $time_format
+            );
+        }
+        unset( $item );
+
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+    }
+
+    /**
+     * Format a next_run MySQL datetime as a human-readable relative string.
+     *
+     * Returns a relative label ("in 2 hours", "in 1 day and 3 hours", etc.) for
+     * events within the next 30 days, and an absolute date/time string otherwise.
+     *
+     * @param string $next_run    MySQL datetime string (site-local).
+     * @param string $date_format WordPress date_format option value.
+     * @param string $time_format WordPress time_format option value.
+     * @return string
+     */
+    private function format_next_run( $next_run, $date_format, $time_format ) {
+        if ( empty( $next_run ) ) {
+            return '—';
+        }
+
+        $run_ts = strtotime( $next_run );
+        if ( false === $run_ts ) {
+            return '—';
+        }
+
+        $now_ts = current_time( 'timestamp' );
+        $diff   = $run_ts - $now_ts;
+
+        // Already in the past or within a minute — show absolute.
+        if ( $diff <= 60 ) {
+            return date_i18n( $date_format . ' ' . $time_format, $run_ts );
+        }
+
+        $minutes = (int) floor( $diff / 60 );
+        $hours   = (int) floor( $diff / HOUR_IN_SECONDS );
+        $days    = (int) floor( $diff / DAY_IN_SECONDS );
+
+        // More than 30 days: show absolute.
+        if ( $days >= 30 ) {
+            return date_i18n( $date_format . ' ' . $time_format, $run_ts );
+        }
+
+        // 2+ days.
+        if ( $days >= 2 ) {
+            $rem_hours = (int) floor( ( $diff - $days * DAY_IN_SECONDS ) / HOUR_IN_SECONDS );
+            if ( $rem_hours > 0 ) {
+                /* translators: 1: number of days, 2: number of hours */
+                return sprintf( __( 'in %1$d days and %2$d hours', 'ai-post-scheduler' ), $days, $rem_hours );
+            }
+            /* translators: %d: number of days */
+            return sprintf( __( 'in %d days', 'ai-post-scheduler' ), $days );
+        }
+
+        // Exactly 1 day range (24–47 hours).
+        if ( $hours >= 24 ) {
+            $rem_hours = (int) floor( ( $diff - DAY_IN_SECONDS ) / HOUR_IN_SECONDS );
+            if ( $rem_hours > 0 ) {
+                /* translators: %d: number of hours */
+                return sprintf( __( 'in 1 day and %d hours', 'ai-post-scheduler' ), $rem_hours );
+            }
+            return __( 'in 1 day', 'ai-post-scheduler' );
+        }
+
+        // 2+ hours.
+        if ( $hours >= 2 ) {
+            $rem_mins = (int) floor( ( $diff - $hours * HOUR_IN_SECONDS ) / 60 );
+            if ( $rem_mins >= 15 ) {
+                /* translators: 1: number of hours, 2: number of minutes */
+                return sprintf( __( 'in %1$d hours and %2$d minutes', 'ai-post-scheduler' ), $hours, $rem_mins );
+            }
+            /* translators: %d: number of hours */
+            return sprintf( __( 'in %d hours', 'ai-post-scheduler' ), $hours );
+        }
+
+        // 1 hour range.
+        if ( $hours === 1 ) {
+            $rem_mins = $minutes - 60;
+            if ( $rem_mins >= 15 ) {
+                /* translators: %d: number of minutes */
+                return sprintf( __( 'in 1 hour and %d minutes', 'ai-post-scheduler' ), $rem_mins );
+            }
+            return __( 'in 1 hour', 'ai-post-scheduler' );
+        }
+
+        // Under 1 hour.
+        if ( $minutes === 1 ) {
+            return __( 'in 1 minute', 'ai-post-scheduler' );
+        }
+        /* translators: %d: number of minutes */
+        return sprintf( __( 'in %d minutes', 'ai-post-scheduler' ), $minutes );
     }
 }
