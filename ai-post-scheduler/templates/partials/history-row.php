@@ -10,7 +10,9 @@ if (!defined('ABSPATH')) {
 ?>
 <tr>
     <th scope="row" class="check-column">
-        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
+        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
+            <?php esc_html_e('Select Item', 'ai-post-scheduler'); ?>
+        </label>
         <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>">
     </th>
     <td class="column-title">
@@ -36,7 +38,8 @@ if (!defined('ABSPATH')) {
         } else {
             echo '-';
         }
-        ?></span>
+        ?>
+        </span>
     </td>
     <td class="column-status">
         <?php
@@ -65,34 +68,35 @@ if (!defined('ABSPATH')) {
         </span>
     </td>
     <td class="column-date">
-        <span class="aips-meta-text"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?></span>
+        <span class="aips-meta-text"><?php echo esc_html($item->formatted_date); ?></span>
     </td>
     <td class="column-actions">
         <div class="aips-btn-group aips-btn-group-inline">
-
-        <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
-            <span class="dashicons dashicons-list-view"></span>
-            <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
-        </button>
-
-        <?php if ($item->post_id): ?>
-            <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
-                <span class="dashicons dashicons-external"></span>
-                <?php esc_html_e('View', 'ai-post-scheduler'); ?>
-            </a>
-        <?php elseif ($item->status === 'processing'): ?>
-            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-                <span class="dashicons dashicons-visibility"></span>
-                <?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+            <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
+                <span class="dashicons dashicons-list-view"></span>
+                <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
             </button>
-        <?php endif; ?>
 
-        <?php if ($item->status === 'failed' && $item->template_id): ?>
-            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
-                <span class="dashicons dashicons-update"></span>
-                <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
-            </button>
-        <?php endif; ?>
+            <?php if (!empty($item->template_id) || !empty($item->topic_id)): ?>
+                <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-visibility"></span>
+                    <?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+                </button>
+            <?php endif; ?>
+
+            <?php if ($item->post_id): ?>
+                <button class="aips-btn aips-btn-sm aips-btn-secondary" onclick="window.open('<?php echo esc_js(get_permalink($item->post_id)); ?>', '_blank')" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-external"></span>
+                    <?php esc_html_e('View', 'ai-post-scheduler'); ?>
+                </button>
+            <?php endif; ?>
+
+            <?php if ($item->status === 'failed' && $item->template_id): ?>
+                <button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-update"></span>
+                    <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
+                </button>
+            <?php endif; ?>
 
         </div>
     </td>
