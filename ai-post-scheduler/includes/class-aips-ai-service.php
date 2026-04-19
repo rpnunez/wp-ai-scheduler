@@ -575,6 +575,8 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string
      */
     private function sanitize_json_candidate($candidate) {
+        $candidate = preg_replace('/,\s*([\]\}])/', '$1', (string) $candidate);
+
         return preg_replace_callback(
             '/"((?:[^"\\\\]|\\\\.)*)"/',
             function ($m) {
