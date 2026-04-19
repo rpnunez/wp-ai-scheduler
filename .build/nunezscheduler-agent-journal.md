@@ -235,3 +235,8 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+## 2026-04-19 - Sources Optimization
+**Target Feature:** Trusted Sources / Prompt Builder
+**Improvement:** Allowed bulk addition of URLs in the Add Source modal UI. Optimized how source content is injected by introducing a setting for 'intelligent' summarization to save context limits and improve factual retention.
+**Files Modified:** ai-post-scheduler/includes/class-aips-sources-controller.php, ai-post-scheduler/includes/class-aips-ajax-registry.php, ai-post-scheduler/templates/admin/sources.php, ai-post-scheduler/assets/js/admin-sources.js, ai-post-scheduler/includes/class-aips-settings.php, ai-post-scheduler/includes/class-aips-settings-ui.php, ai-post-scheduler/includes/class-aips-prompt-builder.php
+**Outcome:** Users can now copy/paste multiple URLs to add them as sources simultaneously, improving onboarding. Furthermore, using the intelligent summarization feature condenses lengthy articles to key facts before passing them to the content generation prompt.
