@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-copilot/update-system-status-scheduler-health',
-        'version' => 'dev-copilot/update-system-status-scheduler-health',
-        'reference' => '2bd6cd8af57589a3965b751622b5ffee651cd108',
+        'pretty_version' => 'dev-jules-palette-ux-consistency-11161266233440414639',
+        'version' => 'dev-jules-palette-ux-consistency-11161266233440414639',
+        'reference' => '7ae35139772cd932ee4d0d38c0b30763d22a22de',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-copilot/update-system-status-scheduler-health',
-            'version' => 'dev-copilot/update-system-status-scheduler-health',
-            'reference' => '2bd6cd8af57589a3965b751622b5ffee651cd108',
+            'pretty_version' => 'dev-jules-palette-ux-consistency-11161266233440414639',
+            'version' => 'dev-jules-palette-ux-consistency-11161266233440414639',
+            'reference' => '7ae35139772cd932ee4d0d38c0b30763d22a22de',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
