@@ -206,6 +206,24 @@ class AIPS_Prompt_Template_Group_Repository {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * Demote any currently-default group to non-default.
+	 *
+	 * Called before promoting a new group to default so there is never more
+	 * than one group with is_default = 1 at a time.
+	 *
+	 * @return void
+	 */
+	private function demote_existing_default() {
+		$this->wpdb->update(
+			$this->groups_table,
+			array( 'is_default' => 0 ),
+			array( 'is_default' => 1 ),
+			array( '%d' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Get all prompt template groups.
 	 *
 	 * @return object[] Array of group objects.
@@ -274,15 +292,8 @@ class AIPS_Prompt_Template_Group_Repository {
 			return false;
 		}
 
-		// Demote any existing default group if this one is being set as default.
 		if ( $is_default ) {
-			$this->wpdb->update(
-				$this->groups_table,
-				array( 'is_default' => 0 ),
-				array( 'is_default' => 1 ),
-				array( '%d' ),
-				array( '%d' )
-			);
+			$this->demote_existing_default();
 		}
 
 		$result = $this->wpdb->insert(
@@ -336,13 +347,7 @@ class AIPS_Prompt_Template_Group_Repository {
 			$format[]             = '%d';
 
 			if ( $new_default === 1 ) {
-				$this->wpdb->update(
-					$this->groups_table,
-					array( 'is_default' => 0 ),
-					array( 'is_default' => 1 ),
-					array( '%d' ),
-					array( '%d' )
-				);
+				$this->demote_existing_default();
 			}
 		}
 
@@ -394,14 +399,7 @@ class AIPS_Prompt_Template_Group_Repository {
 	public function set_default_group( $id ) {
 		$id = (int) $id;
 
-		// Demote existing default.
-		$this->wpdb->update(
-			$this->groups_table,
-			array( 'is_default' => 0 ),
-			array( 'is_default' => 1 ),
-			array( '%d' ),
-			array( '%d' )
-		);
+		$this->demote_existing_default();
 
 		$result = $this->wpdb->update(
 			$this->groups_table,

@@ -47,7 +47,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-filter-bar">
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-pt-search"><?php esc_html_e( 'Search Groups:', 'ai-post-scheduler' ); ?></label>
-						<input type="search" id="aips-pt-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search groups\xe2\x80\xa6', 'ai-post-scheduler' ); ?>">
+				<input type="search" id="aips-pt-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search groups&hellip;', 'ai-post-scheduler' ); ?>">
 					</div>
 				</div>
 
@@ -176,7 +176,7 @@ if (!defined('ABSPATH')) {
 					<?php esc_html_e( 'Description', 'ai-post-scheduler' ); ?>
 				</label>
 				<textarea id="aips-pt-modal-description" class="aips-form-textarea" rows="2"
-					placeholder="<?php esc_attr_e( 'Optional description of this group\xe2\x80\xa6', 'ai-post-scheduler' ); ?>"></textarea>
+					placeholder="<?php esc_attr_e( 'Optional description of this group&hellip;', 'ai-post-scheduler' ); ?>"></textarea>
 			</div>
 
 			<div class="aips-form-row">
@@ -198,9 +198,9 @@ if (!defined('ABSPATH')) {
 			<div id="aips-pt-components-container">
 				<!-- Populated by JS -->
 				<div class="aips-loading-spinner">
-					<span class="spinner is-active"></span>
-					<?php esc_html_e( 'Loading\xe2\x80\xa6', 'ai-post-scheduler' ); ?>
-				</div>
+				<span class="spinner is-active"></span>
+				<?php esc_html_e( 'Loading&hellip;', 'ai-post-scheduler' ); ?>
+			</div>
 			</div>
 
 		</div><!-- .aips-modal-body -->

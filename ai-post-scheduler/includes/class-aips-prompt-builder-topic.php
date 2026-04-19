@@ -167,7 +167,7 @@ class AIPS_Prompt_Builder_Topic {
 		$repo             = AIPS_Prompt_Template_Group_Repository::instance();
 		$requirements_tpl = $repo->get_prompt_for_component( 'author_topic' );
 		// Replace {niche} placeholder with the actual niche value.
-		$requirements_tpl = str_replace( '{niche}', $author->field_niche, $requirements_tpl );
+		$requirements_tpl = str_replace( '{niche}', sanitize_text_field( $author->field_niche ), $requirements_tpl );
 		$prompt .= $requirements_tpl . "\n\n";
 
 		$prompt .= "Return a JSON array of objects. Each object must have:\n";
