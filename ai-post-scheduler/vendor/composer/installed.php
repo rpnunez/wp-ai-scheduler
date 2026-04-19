@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => 'e4ab52eda63e2dd83bad2c3a0d10a2089007597e',
+        'pretty_version' => 'dev-copilot/refactor-action-registration',
+        'version' => 'dev-copilot/refactor-action-registration',
+        'reference' => '24d86268c0393ebd86d8e4c9f0bf20a48fff31d2',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => 'e4ab52eda63e2dd83bad2c3a0d10a2089007597e',
+            'pretty_version' => 'dev-copilot/refactor-action-registration',
+            'version' => 'dev-copilot/refactor-action-registration',
+            'reference' => '24d86268c0393ebd86d8e4c9f0bf20a48fff31d2',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
