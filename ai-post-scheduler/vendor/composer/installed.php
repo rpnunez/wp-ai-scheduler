@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => '9e5bcbcdda6c7c3a09e6624e73c9bd0e7af6ecdc',
+        'pretty_version' => 'dev-fix/history-enhance',
+        'version' => 'dev-fix/history-enhance',
+        'reference' => '7ba7018cc5a7c8bd0bb64e95a5d09dc3dc75a4bd',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => '9e5bcbcdda6c7c3a09e6624e73c9bd0e7af6ecdc',
+            'pretty_version' => 'dev-fix/history-enhance',
+            'version' => 'dev-fix/history-enhance',
+            'reference' => '7ba7018cc5a7c8bd0bb64e95a5d09dc3dc75a4bd',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

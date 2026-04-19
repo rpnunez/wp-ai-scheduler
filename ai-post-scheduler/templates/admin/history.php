@@ -70,6 +70,14 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     </button>
                 </div>
                 <div class="aips-toolbar-right aips-history-pagination-cell">
+                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
+                        <span class="dashicons dashicons-dismiss"></span>
+                        <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
+                    </button>
                     <?php if (isset($history_handler)): ?>
                         <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
                     <?php elseif ($total_items > 0): ?>

@@ -187,7 +187,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Exclude schedule lifecycle containers: new ones tagged with creation_method = 'schedule_lifecycle',
         // and legacy orphaned containers that have no template, topic, post, author, or creation_method set.
-        $where_clauses[] = "NOT (h.creation_method = 'schedule_lifecycle' OR (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL))";
+        // Use COALESCE to handle NULL creation_method safely (NULL = 'schedule_lifecycle' evaluates to NULL, not FALSE).
+        $where_clauses[] = "COALESCE(h.creation_method, '') <> 'schedule_lifecycle'";
+        $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
         
         if (!empty($args['status'])) {
             $where_clauses[] = "h.status = %s";
@@ -576,7 +578,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
                 SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
             FROM {$this->table_name}
-            WHERE NOT (creation_method = 'schedule_lifecycle' OR (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL))
+            WHERE COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
         ");
 
         $stats = array(

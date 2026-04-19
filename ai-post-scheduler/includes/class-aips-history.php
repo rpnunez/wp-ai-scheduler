@@ -317,6 +317,7 @@ class AIPS_History {
             'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
             'paged'           => $paged,
+            'stats'           => $this->get_stats(),
         ));
     }
 

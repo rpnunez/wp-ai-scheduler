@@ -85,10 +85,10 @@ if (!defined('ABSPATH')) {
             <?php endif; ?>
 
             <?php if ($item->post_id): ?>
-                <button class="aips-btn aips-btn-sm aips-btn-secondary" onclick="window.open('<?php echo esc_js(get_permalink($item->post_id)); ?>', '_blank')" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
+                <a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url(get_permalink($item->post_id)); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
                     <span class="dashicons dashicons-external"></span>
                     <?php esc_html_e('View', 'ai-post-scheduler'); ?>
-                </button>
+                </a>
             <?php endif; ?>
 
             <?php if ($item->status === 'failed' && $item->template_id): ?>
