@@ -50,6 +50,100 @@ class Test_Session_To_JSON extends WP_UnitTestCase {
 		}
 	}
 
+	// -----------------------------------------------------------------------
+	// handle_export_cleanup() tests
+	// -----------------------------------------------------------------------
+
+	/**
+	 * handle_export_cleanup() fires aips_export_cleanup_completed with correct
+	 * payload when no files exist (deleted = 0, errors = 0).
+	 */
+	public function test_handle_export_cleanup_fires_action_with_zero_counts_when_no_files() {
+		$received = null;
+		add_action('aips_export_cleanup_completed', function( $payload ) use ( &$received ) {
+			$received = $payload;
+		});
+
+		AIPS_Session_To_JSON::handle_export_cleanup();
+
+		$this->assertNotNull($received, 'aips_export_cleanup_completed action was not fired.');
+		$this->assertArrayHasKey('deleted', $received);
+		$this->assertArrayHasKey('errors', $received);
+		$this->assertSame(0, $received['deleted']);
+		$this->assertSame(0, $received['errors']);
+	}
+
+	/**
+	 * handle_export_cleanup() fires aips_export_cleanup_completed with a
+	 * positive deleted count when old export files are present.
+	 */
+	public function test_handle_export_cleanup_fires_action_with_deleted_count() {
+		if (!$this->upload_dir || !isset($this->upload_dir['basedir'])) {
+			$this->markTestSkipped('upload_dir could not be set up properly.');
+		}
+
+		$base_dir = rtrim($this->upload_dir['basedir'], '/\\') . '/aips-exports';
+		if (!file_exists($base_dir)) {
+			mkdir($base_dir, 0777, true);
+		}
+
+		// Create a file that appears older than DAY_IN_SECONDS.
+		$file_path = $base_dir . '/aips-session-999-20000101-000000-testtoken.json';
+		file_put_contents($file_path, '{"test":true}');
+		touch($file_path, time() - (DAY_IN_SECONDS + 60));
+
+		$received = null;
+		add_action('aips_export_cleanup_completed', function( $payload ) use ( &$received ) {
+			$received = $payload;
+		});
+
+		AIPS_Session_To_JSON::handle_export_cleanup();
+
+		$this->assertNotNull($received, 'aips_export_cleanup_completed action was not fired.');
+		$this->assertSame(1, $received['deleted'], 'Expected one file to be reported as deleted.');
+		$this->assertSame(0, $received['errors']);
+	}
+
+	/**
+	 * handle_export_cleanup() fires aips_export_cleanup_completed with a
+	 * positive errors count when a file cannot be deleted.
+	 */
+	public function test_handle_export_cleanup_fires_action_with_error_count() {
+		if (!$this->upload_dir || !isset($this->upload_dir['basedir'])) {
+			$this->markTestSkipped('upload_dir could not be set up properly.');
+		}
+
+		$base_dir = rtrim($this->upload_dir['basedir'], '/\\') . '/aips-exports';
+		if (!file_exists($base_dir)) {
+			mkdir($base_dir, 0777, true);
+		}
+
+		// Create an old file and make it unwritable so cleanup_old_exports
+		// cannot delete it and records an error instead.
+		$file_path = $base_dir . '/aips-session-888-20000101-000000-errtoken.json';
+		file_put_contents($file_path, '{"test":true}');
+		touch($file_path, time() - (DAY_IN_SECONDS + 60));
+		chmod($file_path, 0444);
+
+		$received = null;
+		add_action('aips_export_cleanup_completed', function( $payload ) use ( &$received ) {
+			$received = $payload;
+		});
+
+		AIPS_Session_To_JSON::handle_export_cleanup();
+
+		// Restore permissions before assertions so tear_down can clean up.
+		chmod($file_path, 0666);
+
+		$this->assertNotNull($received, 'aips_export_cleanup_completed action was not fired.');
+		$this->assertSame(0, $received['deleted']);
+		$this->assertGreaterThan(0, $received['errors'], 'Expected at least one error to be reported.');
+	}
+
+	// -----------------------------------------------------------------------
+	// cleanup_old_exports() tests
+	// -----------------------------------------------------------------------
+
 	/**
 	 * Test cleanup_old_exports correctly handles unwritable files
 	 */
