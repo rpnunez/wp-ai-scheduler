@@ -104,6 +104,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_fetch_sources' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -552,6 +556,9 @@ final class AI_Post_Scheduler {
         add_action('aips_index_posts_batch', function($args) {
             (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
         }, 10, 1);
+
+        // Export-file cleanup cron handler.
+        add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
     }
 
     /**
@@ -704,45 +711,6 @@ add_filter('qm/component_context/plugin', function( $context, $file ) {
 
     return $context;
 }, 10, 2);
-
-// Backward-compatibility alias: old review hook now triggers the rollup hook.
-add_action('aips_send_review_notifications', function() {
-    do_action('aips_notification_rollups');
-}, 1);
-
-// Register cleanup cron handler
-add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
-
-/**
- * Cron handler to clean up old export files
- * 
- * Runs daily to remove session export files older than 24 hours.
- */
-function aips_cleanup_export_files_handler() {
-	// Clean up files older than 24 hours (86400 seconds)
-	$result = AIPS_Session_To_JSON::cleanup_old_exports(86400);
-
-    do_action('aips_export_cleanup_completed', array(
-        'deleted' => isset($result['deleted']) ? (int) $result['deleted'] : 0,
-        'errors'  => isset($result['errors']) && is_array($result['errors']) ? count($result['errors']) : 0,
-    ));
-	
-	// Log the cleanup results
-	if (class_exists('AIPS_Logger')) {
-		$logger = new AIPS_Logger();
-		$logger->log(sprintf(
-			'Export files cleanup completed. Deleted: %d files. Errors: %d',
-			$result['deleted'],
-			count($result['errors'])
-		));
-		
-		if (!empty($result['errors'])) {
-			foreach ($result['errors'] as $error) {
-				$logger->log('Export cleanup error: ' . $error);
-			}
-		}
-	}
-}
 
 /**
  * Activation hook callback.

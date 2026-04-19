@@ -582,6 +582,31 @@
 	vertical-align: middle;
 }
 
+/* History table column widths */
+.aips-history-table .column-title {
+	width: 28%;
+}
+
+.aips-history-table .column-actions {
+	width: 340px;
+	min-width: 300px;
+	white-space: nowrap;
+}
+
+.aips-history-table .column-actions .aips-btn-group {
+	flex-wrap: nowrap;
+}
+
+/* Pagination in toolbar-right: let it fill the available space */
+.aips-toolbar-right.aips-history-pagination-cell {
+	flex: 1;
+	justify-content: flex-end;
+}
+
+.aips-toolbar-right.aips-history-pagination-cell .aips-history-pagination {
+	justify-content: flex-end;
+}
+
 .aips-history-pagination {
 	display: flex;
 	align-items: center;

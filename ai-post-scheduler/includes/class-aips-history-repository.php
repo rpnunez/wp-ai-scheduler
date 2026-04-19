@@ -172,7 +172,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method, t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
             $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
@@ -184,6 +184,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Build where clauses
         $where_clauses = array("1=1");
         $where_args = array();
+
+        // Exclude schedule lifecycle containers: new ones tagged with creation_method = 'schedule_lifecycle',
+        // and legacy orphaned containers that have no template, topic, post, author, or creation_method set.
+        // Use COALESCE to handle NULL creation_method safely (NULL = 'schedule_lifecycle' evaluates to NULL, not FALSE).
+        $where_clauses[] = "COALESCE(h.creation_method, '') <> 'schedule_lifecycle'";
+        $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
         
         if (!empty($args['status'])) {
             $where_clauses[] = "h.status = %s";
@@ -572,6 +578,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
                 SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
             FROM {$this->table_name}
+            WHERE COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
         ");
 
         $stats = array(
