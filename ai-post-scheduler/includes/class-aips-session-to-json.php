@@ -409,7 +409,7 @@ class AIPS_Session_To_JSON {
 	 * @return void
 	 */
 	public static function handle_export_cleanup() {
-		$result = self::cleanup_old_exports(86400);
+		$result = self::cleanup_old_exports(DAY_IN_SECONDS);
 
 		do_action('aips_export_cleanup_completed', array(
 			'deleted' => isset($result['deleted']) ? (int) $result['deleted'] : 0,
