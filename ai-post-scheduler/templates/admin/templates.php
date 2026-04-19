@@ -403,7 +403,7 @@ if (!defined('ABSPATH')) {
                                 <option value="ru"><?php esc_html_e('Russian', 'ai-post-scheduler'); ?></option>
                                 <option value="ja"><?php esc_html_e('Japanese', 'ai-post-scheduler'); ?></option>
                                 <option value="ko"><?php esc_html_e('Korean', 'ai-post-scheduler'); ?></option>
-                                <option value="zh"><?php esc_html_e('Simplified Chinese', 'ai-post-scheduler'); ?></option>
+                                <option value="zh"><?php esc_html_e('Chinese (Simplified)', 'ai-post-scheduler'); ?></option>
                                 <option value="ar"><?php esc_html_e('Arabic', 'ai-post-scheduler'); ?></option>
                                 <option value="hi"><?php esc_html_e('Hindi', 'ai-post-scheduler'); ?></option>
                                 <option value="tr"><?php esc_html_e('Turkish', 'ai-post-scheduler'); ?></option>

@@ -575,7 +575,33 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string
      */
     private function sanitize_json_candidate($candidate) {
-        $candidate = preg_replace('/,\s*([\]\}])/', '$1', (string) $candidate);
+        $candidate = (string) $candidate;
+
+        // Remove trailing commas before ] or } in a string-boundary-aware manner.
+        // We do this by temporarily masking all quoted string values with a placeholder,
+        // applying the trailing-comma regex only to structural tokens, and then
+        // restoring the masked strings. This prevents false matches inside values
+        // such as `"foo,}"` being rewritten to `"foo}"`.
+        $strings = array();
+        $masked = preg_replace_callback(
+            '/"((?:[^"\\\\]|\\\\.)*)"/',
+            function ($m) use (&$strings) {
+                $placeholder = "\x00STR" . count($strings) . "\x00";
+                $strings[] = $m[0];
+                return $placeholder;
+            },
+            $candidate
+        );
+
+        if ($masked !== null) {
+            $masked = preg_replace('/,\s*([\]\}])/', '$1', $masked);
+
+            // Restore masked strings.
+            foreach ($strings as $i => $original) {
+                $masked = str_replace("\x00STR{$i}\x00", $original, $masked);
+            }
+            $candidate = $masked;
+        }
 
         return preg_replace_callback(
             '/"((?:[^"\\\\]|\\\\.)*)"/',
@@ -588,7 +614,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
                 return '"' . $inner . '"';
             },
-            (string) $candidate
+            $candidate
         );
     }
 

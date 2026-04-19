@@ -211,7 +211,7 @@ class AIPS_Prompt_Builder {
             'ru' => 'Russian',
             'ja' => 'Japanese',
             'ko' => 'Korean',
-            'zh' => 'Simplified Chinese',
+            'zh' => 'Chinese (Simplified)',
             'ar' => 'Arabic',
             'hi' => 'Hindi',
             'tr' => 'Turkish',
