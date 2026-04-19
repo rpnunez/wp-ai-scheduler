@@ -179,6 +179,16 @@ Fires immediately before the content prompt is constructed.
 
 ### Prompt Builder
 
+#### `aips_author_topics_prompt`
+Filters the prompt used for author topic generation before it is sent to the AI service.
+
+*   **Arguments:**
+    *   `string $prompt`: The constructed prompt string.
+    *   `object $author`: The author object.
+    *   `array $approved_topics`: Summary array of previously approved topics.
+    *   `array $rejected_topics`: Summary array of previously rejected topics.
+    *   `string $feedback_guidance`: Additional qualitative feedback text based on administrative review patterns.
+
 #### `aips_content_prompt`
 Filters the final content prompt before it is sent to the AI service.
 
@@ -186,6 +196,14 @@ Filters the final content prompt before it is sent to the AI service.
     *   `string $content_prompt`: The constructed prompt string.
     *   `object $template`: The template object.
     *   `string $topic`: The topic being processed.
+
+#### `aips_author_post_generation_context`
+Filters the context object used for author post generation before it is passed to the generator.
+
+*   **Arguments:**
+    *   `AIPS_Topic_Context $context`: The generated context object.
+    *   `object $topic`: The topic object from the database.
+    *   `object $author`: The author object from the database.
 
 ---
 
