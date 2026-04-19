@@ -2182,14 +2182,12 @@
 							this.renderSuggestedAuthors(response.data.suggestions);
 							$('#aips-suggest-authors-results').show();
 						} else {
-							$('#aips-suggest-authors-cards').html(
-								'<div class="aips-empty-state">' +
-								'<div class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></div>' +
-								'<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noSuggestionsTitle || 'No Suggestions Found') + '</h3>' +
-								'<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noSuggestions || 'We could not generate any suggestions for those criteria. Try adjusting your goals or target audience.') + '</p>' +
-								'<div class="aips-empty-state-actions"></div>' +
-								'</div>'
-							);
+							var $emptyState = $('<div class="aips-empty-state"></div>');
+							$('<div class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></div>').appendTo($emptyState);
+							$('<h3 class="aips-empty-state-title"></h3>').text(aipsAuthorsL10n.noSuggestionsTitle || 'No Suggestions Found').appendTo($emptyState);
+							$('<p class="aips-empty-state-description"></p>').text(aipsAuthorsL10n.noSuggestions || 'We could not generate any suggestions for those criteria. Try adjusting your goals or target audience.').appendTo($emptyState);
+							$('<div class="aips-empty-state-actions"></div>').appendTo($emptyState);
+							$('#aips-suggest-authors-cards').empty().append($emptyState);
 							$('#aips-suggest-authors-results').show();
 						}
 					} else {

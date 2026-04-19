@@ -157,6 +157,11 @@ All notable changes to this project will be documented in this file.
 
 ## [1.4.0] - 2025-12-21
 - Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.
+## [palette-ux-consistency] - 2026-04-19
+### Fixed
+- Fixed an issue where author suggestions empty states lacked the standard empty state visual formatting structure.
+- Standardized filter and search "Clear" buttons across the admin interface to utilize the consistent ghost style.
+
 ## [sentinel-secure-urls-template-controller] - 2024-05-23
 ### Security
 - [2024-05-23] Fixed a potential XSS vulnerability in `AIPS_Templates_Controller::ajax_get_template_posts` by escaping URLs using `esc_url()`.
@@ -164,11 +169,3 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
-
-### Fixed
-- Fixed an issue where author suggestions empty states lacked the standard empty state visual formatting structure.
-- Standardized filter and search "Clear" buttons across the admin interface to utilize the consistent ghost style.
-
-### Fixed
-- Fixed an issue where author suggestions empty states lacked the standard empty state visual formatting structure.
-- Standardized filter and search "Clear" buttons across the admin interface to utilize the consistent ghost style.
