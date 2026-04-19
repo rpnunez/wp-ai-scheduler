@@ -104,6 +104,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_fetch_sources' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
+            ),
         );
     }
 
