@@ -236,6 +236,8 @@ class AIPS_Upgrades {
         if ( ! $has_num_used_key ) {
             $wpdb->query( "ALTER TABLE `{$table}` ADD KEY num_used (num_used)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         }
+    }
+    
     /**
      * Migration for version 2.5.0.
      *
