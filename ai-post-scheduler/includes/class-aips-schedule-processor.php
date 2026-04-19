@@ -442,7 +442,7 @@ class AIPS_Schedule_Processor {
                         'error_message' => $result->get_error_message(),
                         'completed'     => $completed_so_far,
                         'total'         => $post_quantity,
-                        'timestamp'     => gmdate('c'),
+                        'timestamp'     => AIPS_DateTime::now()->toIso8601(),
                     ));
                 }
                 // Stop the batch so batch_progress is preserved for resumption.
@@ -481,7 +481,7 @@ class AIPS_Schedule_Processor {
                     'status'    => 'success',
                     'completed' => $total_completed,
                     'total'     => $post_quantity,
-                    'timestamp' => gmdate('c'),
+                    'timestamp' => AIPS_DateTime::now()->toIso8601(),
                 ));
             }
         }

@@ -672,7 +672,11 @@
 				}
 
 				var rawGeneratedAt = topic.generated_at || '';
-				var formattedGeneratedAt = this.formatTopicDate(rawGeneratedAt) || rawGeneratedAt;
+				var dtL10n = {
+					today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
+					yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
+				};
+				var formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
 
 				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
 					id: topic.id,
@@ -854,87 +858,6 @@
 			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + AIPS.Utilities.escapeAttribute(label) + '">' +
 				iconHtml + AIPS.Utilities.escapeHtml(label) +
 			'</span>';
-		},
-
-		/**
-		 * Format a topic generated_at timestamp into a friendly string.
-		 *
-		 * - Today:     "Today, 2:32pm"
-		 * - Yesterday: "Yesterday, 2:32pm"
-		 * - Otherwise: "March 26, 2026 2:32pm"
-		 *
-		 * Month names, "Today", "Yesterday", and am/pm labels are pulled from
-		 * the server-side aipsAuthorsL10n object so non-English sites are
-		 * supported without hard-coding English strings.
-		 *
-		 * @param {string} raw - Datetime string (YYYY-MM-DD HH:MM:SS).
-		 * @returns {string} Formatted date string.
-		 */
-		formatTopicDate: function (raw) {
-			if (!raw || typeof raw !== 'string') {
-				return raw;
-			}
-
-			// Parse "YYYY-MM-DD HH:MM:SS" into a local Date.
-			var parts = raw.split(' ');
-			if (parts.length < 2) {
-				return raw;
-			}
-			var dateParts = parts[0].split('-');
-			var timeParts = parts[1].split(':');
-			if (dateParts.length < 3 || timeParts.length < 2) {
-				return raw;
-			}
-
-			var year = parseInt(dateParts[0], 10);
-			var monthIndex = parseInt(dateParts[1], 10) - 1; // 0-based
-			var day = parseInt(dateParts[2], 10);
-			var hour = parseInt(timeParts[0], 10);
-			var minute = parseInt(timeParts[1], 10);
-
-			if (isNaN(year) || isNaN(monthIndex) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
-				return raw;
-			}
-
-			var d = new Date(year, monthIndex, day, hour, minute, 0);
-			var now = new Date();
-			var isToday = d.getFullYear() === now.getFullYear() &&
-				d.getMonth() === now.getMonth() &&
-				d.getDate() === now.getDate();
-
-			var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-			var isYesterday = d.getFullYear() === yesterday.getFullYear() &&
-				d.getMonth() === yesterday.getMonth() &&
-				d.getDate() === yesterday.getDate();
-
-			// Use localized strings from aipsAuthorsL10n when available.
-			var l10n        = (typeof aipsAuthorsL10n !== 'undefined') ? aipsAuthorsL10n : {};
-			var labelToday  = l10n.dateToday     || 'Today';
-			var labelYday   = l10n.dateYesterday || 'Yesterday';
-			var labelAM     = l10n.dateAM        || 'am';
-			var labelPM     = l10n.datePM        || 'pm';
-			var monthNames  = (l10n.dateMonthNames && l10n.dateMonthNames.length === 12)
-				? l10n.dateMonthNames
-				: [
-					'January', 'February', 'March', 'April', 'May', 'June',
-					'July', 'August', 'September', 'October', 'November', 'December'
-				];
-
-			var hours12    = d.getHours() % 12 || 12;
-			var minutesStr = minute < 10 ? '0' + minute : String(minute);
-			var ampm       = d.getHours() >= 12 ? labelPM : labelAM;
-			var timeStr    = hours12 + ':' + minutesStr + ampm;
-
-			if (isToday) {
-				return labelToday + ', ' + timeStr;
-			}
-
-			if (isYesterday) {
-				return labelYday + ', ' + timeStr;
-			}
-
-			var monthName = monthNames[monthIndex] || (monthIndex + 1);
-			return monthName + ' ' + day + ', ' + year + ' ' + timeStr;
 		},
 
 		/**
