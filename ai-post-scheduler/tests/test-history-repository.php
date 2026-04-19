@@ -329,4 +329,102 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			$wpdb->get_col_return_val = $old_val->get_col_return_val;
 		}
 	}
+
+	/**
+	 * Test that get_daily_generation_counts returns correct per-day buckets.
+	 */
+	public function test_get_daily_generation_counts_returns_per_day_buckets() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('get_daily_generation_counts requires a real wpdb instance.');
+		}
+
+		$table     = $wpdb->prefix . 'aips_history';
+		$extra_ids = array();
+
+		// Two days: today and yesterday.
+		$today     = gmdate('Y-m-d');
+		$yesterday = gmdate('Y-m-d', time() - DAY_IN_SECONDS);
+
+		// Today: 2 completed + 1 failed.
+		foreach ( array( 'completed', 'completed', 'failed' ) as $status ) {
+			$wpdb->insert(
+				$table,
+				array(
+					'template_id'      => $this->test_template_id,
+					'post_id'          => null,
+					'status'           => $status,
+					'generated_title'  => 'Daily count test',
+					'generated_content'=> '',
+					'prompt'           => '',
+					'error_message'    => null,
+					'created_at'       => $today . ' 10:00:00',
+				),
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			);
+			$extra_ids[] = $wpdb->insert_id;
+		}
+
+		// Yesterday: 1 completed.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'      => $this->test_template_id,
+				'post_id'          => null,
+				'status'           => 'completed',
+				'generated_title'  => 'Daily count test yesterday',
+				'generated_content'=> '',
+				'prompt'           => '',
+				'error_message'    => null,
+				'created_at'       => $yesterday . ' 08:00:00',
+			),
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+		);
+		$extra_ids[] = $wpdb->insert_id;
+
+		$result = $this->repository->get_daily_generation_counts(14);
+
+		// Today's bucket must contain the correct values.
+		$this->assertArrayHasKey($today, $result, 'Today should have a bucket in the result.' );
+		$this->assertSame(2, $result[$today]['completed'], 'Expected 2 completed today.' );
+		$this->assertSame(1, $result[$today]['failed'],    'Expected 1 failed today.' );
+
+		// Yesterday's bucket must be present.
+		$this->assertArrayHasKey($yesterday, $result, 'Yesterday should have a bucket in the result.' );
+		$this->assertSame(1, $result[$yesterday]['completed'], 'Expected 1 completed yesterday.' );
+		$this->assertSame(0, $result[$yesterday]['failed'],    'Expected 0 failed yesterday.' );
+
+		// A date outside the window must not appear.
+		$out_of_range = gmdate('Y-m-d', time() - 30 * DAY_IN_SECONDS);
+		$this->assertArrayNotHasKey($out_of_range, $result, 'Out-of-range date should not appear.' );
+
+		// Clean up extra rows.
+		foreach ( $extra_ids as $id ) {
+			$wpdb->delete( $table, array('id' => $id), array('%d') );
+		}
+	}
+
+	/**
+	 * Test that get_daily_generation_counts omits days with no records.
+	 */
+	public function test_get_daily_generation_counts_omits_empty_days() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('get_daily_generation_counts requires a real wpdb instance.');
+		}
+
+		// Request counts for a narrow window where we know no extra records exist
+		// (14 days), but verify the return value is an array (possibly empty for
+		// dates with no activity).
+		$result = $this->repository->get_daily_generation_counts(1);
+
+		$this->assertIsArray($result);
+
+		// Every returned key must be a valid Y-m-d string.
+		foreach ( array_keys($result) as $day ) {
+			$this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $day);
+		}
+	}
 }

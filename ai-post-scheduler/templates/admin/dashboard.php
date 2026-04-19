@@ -68,7 +68,7 @@ $schedule_type_labels = array(
 
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-stat-link">
                         <span class="dashicons dashicons-visibility aips-stat-icon"></span>
-                        <span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+                        <span class="aips-stat-label"><?php echo esc_html( _n( 'Pending Review', 'Pending Reviews', $pending_reviews, 'ai-post-scheduler' ) ); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($pending_reviews); ?></strong>
                     </a></li>
 
@@ -269,31 +269,31 @@ $schedule_type_labels = array(
                 </div>
             </div>
 
-            <div class="aips-content-panel" style="display:flex;flex-direction:column;">
+            <div class="aips-content-panel aips-dashboard-overview-panel">
                 <div class="aips-panel-header">
                     <h2 class="aips-panel-title"><?php esc_html_e('Generation Overview (14 days)', 'ai-post-scheduler'); ?></h2>
                 </div>
-                <div class="aips-panel-body" style="padding:0;flex:1;display:flex;flex-direction:column;">
+                <div class="aips-panel-body aips-dashboard-overview-body">
                     <?php
                     $total_in_period = array_sum($chart_completed) + array_sum($chart_failed);
                     $success_pct     = $total_in_period > 0 ? round((array_sum($chart_completed) / $total_in_period) * 100) : 100;
                     ?>
-                    <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;flex:1;min-height:240px;">
-                        <li style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border-right:1px solid var(--aips-border);border-bottom:1px solid var(--aips-border);">
-                            <div style="font-size:32px;font-weight:600;color:var(--aips-gray-900);line-height:1;"><?php echo esc_html(array_sum($chart_completed)); ?></div>
-                            <div style="font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;"><?php esc_html_e('Posts Completed', 'ai-post-scheduler'); ?></div>
+                    <ul class="aips-dashboard-overview-grid">
+                        <li class="aips-overview-cell aips-overview-cell--top-left">
+                            <div class="aips-overview-stat-number"><?php echo esc_html(array_sum($chart_completed)); ?></div>
+                            <div class="aips-overview-stat-label"><?php esc_html_e('Posts Completed', 'ai-post-scheduler'); ?></div>
                         </li>
-                        <li style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border-bottom:1px solid var(--aips-border);">
-                            <div style="font-size:32px;font-weight:600;color:var(--aips-error);line-height:1;"><?php echo esc_html(array_sum($chart_failed)); ?></div>
-                            <div style="font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;"><?php esc_html_e('Posts Failed', 'ai-post-scheduler'); ?></div>
+                        <li class="aips-overview-cell aips-overview-cell--top-right">
+                            <div class="aips-overview-stat-number aips-overview-stat-number--error"><?php echo esc_html(array_sum($chart_failed)); ?></div>
+                            <div class="aips-overview-stat-label"><?php esc_html_e('Posts Failed', 'ai-post-scheduler'); ?></div>
                         </li>
-                        <li style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border-right:1px solid var(--aips-border);">
-                            <div style="font-size:32px;font-weight:600;color:var(--aips-success);line-height:1;"><?php echo esc_html(array_sum($chart_topics)); ?></div>
-                            <div style="font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;"><?php esc_html_e('Topics Created', 'ai-post-scheduler'); ?></div>
+                        <li class="aips-overview-cell aips-overview-cell--bottom-left">
+                            <div class="aips-overview-stat-number aips-overview-stat-number--success"><?php echo esc_html(array_sum($chart_topics)); ?></div>
+                            <div class="aips-overview-stat-label"><?php esc_html_e('Topics Created', 'ai-post-scheduler'); ?></div>
                         </li>
-                        <li style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
-                            <div style="font-size:32px;font-weight:600;color:var(--aips-primary);line-height:1;"><?php echo esc_html($success_pct); ?>%</div>
-                            <div style="font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;"><?php esc_html_e('Success Rate', 'ai-post-scheduler'); ?></div>
+                        <li class="aips-overview-cell">
+                            <div class="aips-overview-stat-number aips-overview-stat-number--primary"><?php echo esc_html($success_pct); ?>%</div>
+                            <div class="aips-overview-stat-label"><?php esc_html_e('Success Rate', 'ai-post-scheduler'); ?></div>
                         </li>
                     </ul>
                 </div>

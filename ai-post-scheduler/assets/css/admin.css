@@ -3581,21 +3581,7 @@ margin-right: 5px;
 font-size: 13px;
 }
 
-/* Dashboard stats bar: stack vertically on mobile */
-@media (max-width: 782px) {
-.aips-dashboard-stats-list {
-flex-direction: column !important;
-}
-.aips-dashboard-stats-list > li {
-border-right: none !important;
-border-bottom: 1px solid var(--aips-border);
-min-width: 0 !important;
-padding: 8px 0 !important;
-}
-.aips-dashboard-stats-list > li:last-child {
-border-bottom: none;
-}
-}
+/* Dashboard stats bar: stack vertically on mobile — see consolidated @media below */
 
 /* Dashboard stats bar */
 .aips-dashboard-stats-list {
@@ -3657,17 +3643,17 @@ color: var(--aips-gray-900, #1d2327);
 margin-left: 2px;
 }
 
+/* Dashboard stats bar: consolidated mobile overrides */
 @media (max-width: 782px) {
 .aips-dashboard-stats-list {
 flex-direction: column;
 }
 .aips-stat-item {
 justify-content: flex-start;
-border-left: none !important;
+border-left: none;
+border-right: none;
 border-bottom: 1px solid var(--aips-border);
-}
-.aips-stat-item:nth-child(even) {
-background: var(--aips-gray-50, #f7f8fa);
+min-width: 0;
 }
 .aips-stat-item:last-child {
 border-bottom: none;
@@ -3675,6 +3661,68 @@ border-bottom: none;
 .aips-stat-link {
 padding: 8px 4px;
 }
+}
+
+/* Dashboard Generation Overview panel */
+.aips-dashboard-overview-panel {
+display: flex;
+flex-direction: column;
+}
+.aips-dashboard-overview-body {
+padding: 0;
+flex: 1;
+display: flex;
+flex-direction: column;
+}
+.aips-dashboard-overview-grid {
+list-style: none;
+margin: 0;
+padding: 0;
+display: grid;
+grid-template-columns: 1fr 1fr;
+grid-template-rows: 1fr 1fr;
+gap: 0;
+flex: 1;
+min-height: 240px;
+}
+.aips-overview-cell {
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 20px;
+}
+.aips-overview-cell--top-left {
+border-right: 1px solid var(--aips-border);
+border-bottom: 1px solid var(--aips-border);
+}
+.aips-overview-cell--top-right {
+border-bottom: 1px solid var(--aips-border);
+}
+.aips-overview-cell--bottom-left {
+border-right: 1px solid var(--aips-border);
+}
+.aips-overview-stat-number {
+font-size: 32px;
+font-weight: 600;
+color: var(--aips-gray-900, #1d2327);
+line-height: 1;
+}
+.aips-overview-stat-number--error {
+color: var(--aips-error);
+}
+.aips-overview-stat-number--success {
+color: var(--aips-success);
+}
+.aips-overview-stat-number--primary {
+color: var(--aips-primary);
+}
+.aips-overview-stat-label {
+font-size: 11px;
+color: var(--aips-gray-500);
+text-transform: uppercase;
+letter-spacing: .05em;
+margin-top: 6px;
 }
 
 /* Keep System Status table columns aligned across all sections */

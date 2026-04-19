@@ -52,8 +52,10 @@ class AIPS_Dashboard_Controller {
         $recent_posts = $recent_posts_data['items'];
 
         // Upcoming Scheduled Activity — sourced from all schedule types, matching Schedules page.
+        // Pass include_stats=false to skip expensive aggregate COUNT queries since the dashboard
+        // only needs schedule metadata (title, type, next_run) for the upcoming list.
         $unified_service  = new AIPS_Unified_Schedule_Service();
-        $all_schedules    = $unified_service->get_all();
+        $all_schedules    = $unified_service->get_all( '', false );
         $upcoming         = array_slice( array_filter( $all_schedules, function ( $s ) {
             return ! empty( $s['is_active'] );
         } ), 0, 7 );
@@ -78,15 +80,15 @@ class AIPS_Dashboard_Controller {
 
             $chart_labels[]  = $day_label;
 
-            $gen     = isset( $daily_generations[ $day_key ] ) ? $daily_generations[ $day_key ] : array( 'completed' => 0, 'failed' => 0, 'total' => 0 );
-            $total   = max( 1, (int) $gen['total'] );
+            $gen       = isset( $daily_generations[ $day_key ] ) ? $daily_generations[ $day_key ] : array( 'completed' => 0, 'failed' => 0, 'total' => 0 );
             $completed = (int) $gen['completed'];
             $failed    = (int) $gen['failed'];
+            $total     = max( 1, $completed + $failed );
 
-            $chart_completed[] = $completed;
-            $chart_failed[]    = $failed;
+            $chart_completed[]  = $completed;
+            $chart_failed[]     = $failed;
             $chart_error_rate[] = round( ( $failed / $total ) * 100, 1 );
-            $chart_topics[]    = isset( $daily_topics[ $day_key ] ) ? (int) $daily_topics[ $day_key ] : 0;
+            $chart_topics[]     = isset( $daily_topics[ $day_key ] ) ? (int) $daily_topics[ $day_key ] : 0;
         }
 
         $chart_data = array(
