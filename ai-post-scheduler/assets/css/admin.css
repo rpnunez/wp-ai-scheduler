@@ -3671,3 +3671,17 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
+
+/* Fix for empty state layout */
+.aips-empty-state-actions .aips-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--aips-space-2) var(--aips-space-4);
+}
+
+.aips-empty-state-actions .dashicons {
+	margin-right: 4px;
+	vertical-align: middle;
+	display: inline-block;
+}

@@ -2511,6 +2511,7 @@
 					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
 					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found') + '</h3>'
 					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>'
+					+ '<div class="aips-empty-state-actions"></div>'
 					+ '</div></div>'
 				);
 				$('#aips-queue-tablenav').hide();
