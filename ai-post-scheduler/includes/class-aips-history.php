@@ -258,16 +258,47 @@ class AIPS_History {
             );
         }
 
+        // Calculate duration between created_at and completed_at.
+        $duration_seconds = null;
+        if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
+            $start = strtotime( $history_item->created_at );
+            $end   = strtotime( $history_item->completed_at );
+            if ( $start && $end && $end >= $start ) {
+                $duration_seconds = $end - $start;
+            }
+        }
+
+        // Build post URLs when a post is linked.
+        $post_url      = null;
+        $post_edit_url = null;
+        if ( ! empty( $history_item->post_id ) ) {
+            $raw_post_url = get_permalink( (int) $history_item->post_id );
+            if ( ! empty( $raw_post_url ) ) {
+                $sanitized_post_url = esc_url_raw( $raw_post_url );
+                $post_url           = ! empty( $sanitized_post_url ) ? $sanitized_post_url : null;
+            }
+
+            $raw_post_edit_url = get_edit_post_link( (int) $history_item->post_id, 'raw' );
+            if ( ! empty( $raw_post_edit_url ) ) {
+                $sanitized_post_edit_url = esc_url_raw( $raw_post_edit_url );
+                $post_edit_url           = ! empty( $sanitized_post_edit_url ) ? $sanitized_post_edit_url : null;
+            }
+        }
+
         AIPS_Ajax_Response::success(array(
             'container' => array(
-                'id'              => (int) $history_item->id,
-                'status'          => $history_item->status,
-                'generated_title' => $history_item->generated_title,
-                'template_name'   => isset($history_item->template_name) ? $history_item->template_name : '',
-                'created_at'      => $history_item->created_at,
-                'completed_at'    => $history_item->completed_at,
-                'error_message'   => $history_item->error_message,
-                'post_id'         => $history_item->post_id ? (int) $history_item->post_id : null,
+                'id'               => (int) $history_item->id,
+                'status'           => $history_item->status,
+                'generated_title'  => $history_item->generated_title,
+                'template_name'    => isset( $history_item->template_name ) ? $history_item->template_name : '',
+                'created_at'       => $history_item->created_at,
+                'completed_at'     => $history_item->completed_at,
+                'error_message'    => $history_item->error_message,
+                'post_id'          => $history_item->post_id ? (int) $history_item->post_id : null,
+                'post_url'         => $post_url,
+                'post_edit_url'    => $post_edit_url,
+                'creation_method'  => isset( $history_item->creation_method ) ? $history_item->creation_method : null,
+                'duration_seconds' => $duration_seconds,
             ),
             'logs'      => $logs,
         ));
@@ -293,13 +324,13 @@ class AIPS_History {
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
-            'page' => $paged,
+            'page'   => $paged,
             'status' => $status_filter,
             'search' => $search_query,
             'fields' => 'list',
         ));
 
-        $stats = $this->get_stats();
+        $this->prepare_items_for_display($history['items']);
 
         ob_start();
         if (!empty($history['items'])) {
@@ -314,15 +345,10 @@ class AIPS_History {
         $pagination_html = ob_get_clean();
 
         AIPS_Ajax_Response::success(array(
-            'items_html' => $items_html,
+            'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
-            'paged' => $paged,
-            'stats' => array(
-                'total' => (int) $stats['total'],
-                'completed' => (int) $stats['completed'],
-                'failed' => (int) $stats['failed'],
-                'success_rate' => (float) $stats['success_rate'],
-            ),
+            'paged'           => $paged,
+            'stats'           => $this->get_stats(),
         ));
     }
 
@@ -467,19 +493,38 @@ class AIPS_History {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
-        
+
         $history = $this->get_history(array(
-            'page' => $current_page,
+            'page'   => $current_page,
             'status' => $status_filter,
             'search' => $search_query,
             'fields' => 'list',
         ));
-        
-        $stats = $this->get_stats();
-        
+
+        $this->prepare_items_for_display($history['items']);
+
         // Pass handler to template for helper methods
         $history_handler = $this;
 
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
+    }
+
+    /**
+     * Enrich a list of history items with display-ready fields.
+     *
+     * Calls get_option() once per request so per-row template code does not
+     * repeat the call for every item in the list.
+     *
+     * @param array $items Array of history item objects (passed by reference).
+     * @return void
+     */
+    private function prepare_items_for_display( array &$items ) {
+        $date_format = get_option('date_format');
+        $time_format = get_option('time_format');
+        $format      = $date_format . ' ' . $time_format;
+
+        foreach ($items as $item) {
+            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+        }
     }
 }

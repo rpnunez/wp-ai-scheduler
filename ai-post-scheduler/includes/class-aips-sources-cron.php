@@ -37,7 +37,7 @@ class AIPS_Sources_Cron {
 	 *
 	 * @var string
 	 */
-	const DISPATCHER_RECURRENCE = 'every_6_hours';
+	const DISPATCHER_RECURRENCE = 'daily';
 
 	/**
 	 * Maximum sources processed per cron run to prevent timeouts.

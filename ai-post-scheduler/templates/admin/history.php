@@ -9,29 +9,6 @@ $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['pa
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
-if (isset($history_handler)) {
-    if (!isset($history) || !is_array($history)) {
-        $history = $history_handler->get_history(array(
-            'page'   => $current_page,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
-        ));
-    }
-    if (!isset($stats)) {
-        $stats = $history_handler->get_stats();
-    }
-}
-
-if (!isset($stats) || !is_array($stats)) {
-    $stats = array(
-        'total' => 0,
-        'completed' => 0,
-        'failed' => 0,
-        'success_rate' => 0,
-    );
-}
-
 $items       = isset($history['items']) ? $history['items'] : array();
 $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 ?>
@@ -49,46 +26,6 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <span class="dashicons dashicons-download"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats Summary -->
-        <div class="aips-stats-grid aips-grid-4">
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon">
-                    <span class="dashicons dashicons-backup"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-total"><?php echo esc_html(number_format($stats['total'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Total Generated', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-success">
-                    <span class="dashicons dashicons-yes-alt"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-completed"><?php echo esc_html(number_format($stats['completed'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-error">
-                    <span class="dashicons dashicons-dismiss"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-failed"><?php echo esc_html(number_format($stats['failed'])); ?></div>
-                    <div class="aips-stat-label"><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></div>
-                </div>
-            </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-info">
-                    <span class="dashicons dashicons-chart-line"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value" id="aips-stat-success-rate"><?php echo esc_html($stats['success_rate']); ?>%</div>
-                    <div class="aips-stat-label"><?php esc_html_e('Success Rate', 'ai-post-scheduler'); ?></div>
                 </div>
             </div>
         </div>
@@ -132,7 +69,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
-                <div class="aips-toolbar-right">
+                <div class="aips-toolbar-right aips-history-pagination-cell">
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
                         <span class="dashicons dashicons-dismiss"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
@@ -141,6 +78,11 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>
+                    <?php if (isset($history_handler)): ?>
+                        <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
+                    <?php elseif ($total_items > 0): ?>
+                        <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -181,19 +123,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                             </tr>
                         <?php endif; ?>
                     </tbody>
-                    <tfoot>
-                        <tr class="aips-history-pagination-row">
-                            <td colspan="6" class="aips-history-pagination-cell">
-                                <?php if (isset($history_handler)): ?>
-                                    <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
-                                <?php else: ?>
-                                    <div class="aips-history-pagination">
-                                        <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    </tfoot>
+
                 </table>
 
                 <!-- No Search Results State (client-side live filter) -->
@@ -229,9 +159,11 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <!-- History Logs Modal -->
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-        <div id="aips-history-logs-content">
+        <div class="aips-modal-header">
+            <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        </div>
+        <div class="aips-modal-body" id="aips-history-logs-content">
             <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
@@ -319,7 +251,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
-	<tr>
+	<tr data-type-id="{{typeId}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>
@@ -335,7 +267,31 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <!-- Template: collapsible extra-details block inside a log row; use render() for auto-escaping -->
 <script type="text/html" id="aips-tmpl-history-log-detail-block">
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#{{rowId}}" style="font-size:11px;">{{showLabel}}</button>
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-copy" data-target="#{{rowId}}" style="font-size:11px;margin-left:4px;">{{copyLabel}}</button>
 	<div id="{{rowId}}" style="display:none;margin-top:8px;">
 		<pre style="max-height:200px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;">{{details}}</pre>
 	</div>
+</script>
+
+<!-- Template: log type filter toolbar shown above the log entries table -->
+<script type="text/html" id="aips-tmpl-history-log-type-filter">
+	<div class="aips-log-type-filter" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+		<span style="font-size:12px;color:#666;margin-right:4px;">{{filterLabel}}</span>
+		{{buttons}}
+	</div>
+</script>
+
+<!-- Template: a single log type filter button; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-log-type-btn">
+	<button type="button" class="aips-btn aips-btn-sm {{activeClass}} aips-log-type-filter-btn" data-type-id="{{typeId}}" style="font-size:11px;">{{label}} <span class="aips-badge aips-badge-neutral" style="font-size:10px;margin-left:3px;">{{count}}</span></button>
+</script>
+
+<!-- Template: summary row showing the post link; use renderRaw() with pre-escaped values -->
+<script type="text/html" id="aips-tmpl-history-summary-post-row">
+	<tr><th>{{label}}</th><td><a href="{{url}}" target="_blank" rel="noopener noreferrer">{{postId}}</a> &mdash; <a href="{{editUrl}}" target="_blank" rel="noopener noreferrer">{{editLabel}}</a></td></tr>
+</script>
+
+<!-- Template: summary row for duration display -->
+<script type="text/html" id="aips-tmpl-history-summary-duration-row">
+	<tr><th>{{label}}</th><td>{{value}}</td></tr>
 </script>
