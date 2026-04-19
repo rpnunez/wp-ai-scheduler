@@ -151,6 +151,8 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Prompt_Builder_Topic' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-topic.php',
         'AIPS_Prompt_Section_Repository' => __DIR__ . '/../..' . '/includes/class-aips-prompt-section-repository.php',
         'AIPS_Prompt_Sections_Controller' => __DIR__ . '/../..' . '/includes/class-aips-prompt-sections-controller.php',
+        'AIPS_Prompt_Template_Group_Repository' => __DIR__ . '/../..' . '/includes/class-aips-prompt-template-group-repository.php',
+        'AIPS_Prompt_Templates_Controller' => __DIR__ . '/../..' . '/includes/class-aips-prompt-templates-controller.php',
         'AIPS_Repository_Refactoring_Test' => __DIR__ . '/../..' . '/tests/test-repository-refactoring.php',
         'AIPS_Research_Controller' => __DIR__ . '/../..' . '/includes/class-aips-research-controller.php',
         'AIPS_Research_Service' => __DIR__ . '/../..' . '/includes/class-aips-research-service.php',

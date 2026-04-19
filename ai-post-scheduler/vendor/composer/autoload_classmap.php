@@ -121,6 +121,8 @@ return array(
     'AIPS_Prompt_Builder_Topic' => $baseDir . '/includes/class-aips-prompt-builder-topic.php',
     'AIPS_Prompt_Section_Repository' => $baseDir . '/includes/class-aips-prompt-section-repository.php',
     'AIPS_Prompt_Sections_Controller' => $baseDir . '/includes/class-aips-prompt-sections-controller.php',
+    'AIPS_Prompt_Template_Group_Repository' => $baseDir . '/includes/class-aips-prompt-template-group-repository.php',
+    'AIPS_Prompt_Templates_Controller' => $baseDir . '/includes/class-aips-prompt-templates-controller.php',
     'AIPS_Repository_Refactoring_Test' => $baseDir . '/tests/test-repository-refactoring.php',
     'AIPS_Research_Controller' => $baseDir . '/includes/class-aips-research-controller.php',
     'AIPS_Research_Service' => $baseDir . '/includes/class-aips-research-service.php',

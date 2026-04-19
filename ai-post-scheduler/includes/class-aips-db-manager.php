@@ -27,6 +27,8 @@ class AIPS_DB_Manager {
         'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
+        'aips_prompt_template_groups',
+        'aips_prompt_template_items',
     );
 
     public function __construct() {
@@ -77,10 +79,12 @@ class AIPS_DB_Manager {
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_sources_data         = $tables['aips_sources_data'];
         $table_taxonomy             = $tables['aips_taxonomy'];
-        $table_post_embeddings      = $tables['aips_post_embeddings'];
-        $table_internal_links       = $tables['aips_internal_links'];
-        $table_cache                = $tables['aips_cache'];
-        $table_telemetry            = $tables['aips_telemetry'];
+        $table_post_embeddings         = $tables['aips_post_embeddings'];
+        $table_internal_links          = $tables['aips_internal_links'];
+        $table_cache                   = $tables['aips_cache'];
+        $table_telemetry               = $tables['aips_telemetry'];
+        $table_prompt_template_groups  = $tables['aips_prompt_template_groups'];
+        $table_prompt_template_items   = $tables['aips_prompt_template_items'];
 
         $sql = array();
 
@@ -492,6 +496,30 @@ class AIPS_DB_Manager {
             KEY cache_hits (cache_hits),
             KEY cache_misses (cache_misses),
             KEY inserted_at (inserted_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_prompt_template_groups (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            is_default tinyint(1) NOT NULL DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY is_default (is_default)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_prompt_template_items (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            group_id bigint(20) NOT NULL,
+            component_key varchar(100) NOT NULL,
+            prompt_text text NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY group_component (group_id, component_key),
+            KEY group_id (group_id),
+            KEY component_key (component_key)
         ) $charset_collate;";
 
         return $sql;
