@@ -145,6 +145,7 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            language varchar(10) DEFAULT 'en',
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

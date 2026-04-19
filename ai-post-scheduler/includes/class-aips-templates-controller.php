@@ -50,6 +50,7 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'language' => isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : 'en',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
