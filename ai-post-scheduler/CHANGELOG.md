@@ -164,3 +164,11 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+
+### Fixed
+- Fixed an issue where author suggestions empty states lacked the standard empty state visual formatting structure.
+- Standardized filter and search "Clear" buttons across the admin interface to utilize the consistent ghost style.
+
+### Fixed
+- Fixed an issue where author suggestions empty states lacked the standard empty state visual formatting structure.
+- Standardized filter and search "Clear" buttons across the admin interface to utilize the consistent ghost style.

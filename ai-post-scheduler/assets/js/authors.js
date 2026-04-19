@@ -2177,9 +2177,21 @@
 					count: $('#aips-suggest-count').val()
 				},
 				success: (response) => {
-					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
-						this.renderSuggestedAuthors(response.data.suggestions);
-						$('#aips-suggest-authors-results').show();
+					if (response.success) {
+						if (response.data.suggestions && response.data.suggestions.length > 0) {
+							this.renderSuggestedAuthors(response.data.suggestions);
+							$('#aips-suggest-authors-results').show();
+						} else {
+							$('#aips-suggest-authors-cards').html(
+								'<div class="aips-empty-state">' +
+								'<div class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></div>' +
+								'<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noSuggestionsTitle || 'No Suggestions Found') + '</h3>' +
+								'<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noSuggestions || 'We could not generate any suggestions for those criteria. Try adjusting your goals or target audience.') + '</p>' +
+								'<div class="aips-empty-state-actions"></div>' +
+								'</div>'
+							);
+							$('#aips-suggest-authors-results').show();
+						}
 					} else {
 						const msg = (response.data && response.data.message)
 							? response.data.message
