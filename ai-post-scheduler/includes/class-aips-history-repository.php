@@ -43,6 +43,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     private $table_name;
     private $table_name_log;
+	private $schedule_table;
     
     /**
      * @var wpdb WordPress database abstraction object
@@ -57,6 +58,77 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
+        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+    }
+
+    /**
+     * Count completed generations for a schedule.
+     *
+     * @param int|object $schedule Schedule ID or schedule object.
+     * @return int
+     */
+    public function count_completed_for_schedule($schedule) {
+        if (is_numeric($schedule)) {
+            $schedule_id = absint($schedule);
+            if (!$schedule_id) {
+                return 0;
+            }
+
+            $schedule = $this->wpdb->get_row($this->wpdb->prepare(
+                "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
+                $schedule_id
+            ));
+        } else {
+            if (!is_object($schedule) || empty($schedule->id)) {
+                return 0;
+            }
+
+            $schedule_id = absint($schedule->id);
+
+            if (empty($schedule->template_id)) {
+                $schedule = $this->wpdb->get_row($this->wpdb->prepare(
+                    "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
+                    $schedule_id
+                ));
+            }
+        }
+
+        if (!$schedule || empty($schedule->template_id)) {
+            return 0;
+        }
+
+        $cache_key = 'aips_schedule_completed_count_' . $schedule_id;
+        $cached_count = get_transient($cache_key);
+
+        if ($cached_count !== false) {
+            return (int) $cached_count;
+        }
+
+        $count = (int) $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_name}
+            WHERE template_id = %d
+            AND status = %s
+            AND created_at >= (
+                SELECT created_at FROM {$this->schedule_table} WHERE id = %d
+            )",
+            (int) $schedule->template_id,
+            'completed',
+            $schedule_id
+        ));
+
+        set_transient($cache_key, $count, DAY_IN_SECONDS);
+
+        return $count;
+    }
+
+    /**
+     * Invalidate the cached completed-count for a schedule.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return void
+     */
+    public function invalidate_schedule_completed_count_cache($schedule_id) {
+        delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
     }
     
     /**
@@ -100,7 +172,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method, t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
             $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
@@ -112,6 +184,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Build where clauses
         $where_clauses = array("1=1");
         $where_args = array();
+
+        // Exclude schedule lifecycle containers: new ones tagged with creation_method = 'schedule_lifecycle',
+        // and legacy orphaned containers that have no template, topic, post, author, or creation_method set.
+        // Use COALESCE to handle NULL creation_method safely (NULL = 'schedule_lifecycle' evaluates to NULL, not FALSE).
+        $where_clauses[] = "COALESCE(h.creation_method, '') <> 'schedule_lifecycle'";
+        $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
         
         if (!empty($args['status'])) {
             $where_clauses[] = "h.status = %s";
@@ -500,6 +578,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
                 SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
             FROM {$this->table_name}
+            WHERE COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
         ");
 
         $stats = array(

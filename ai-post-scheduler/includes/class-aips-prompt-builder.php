@@ -3,17 +3,83 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * AIPS_Prompt_Builder
+ *
+ * Centralized builder for AI prompts used in post generation.
+ *
+ * This class serves as the main entry point for constructing all AI prompts
+ * related to post generation, including content, title, excerpt, and featured
+ * image prompts. It orchestrates the use of dedicated builder classes for each
+ * prompt type and provides shared utilities for consistent prompt construction.
+ * 
+ * This class also centralizes the logic for injecting trusted sources into
+ * content prompts when that feature is enabled. Instead of each prompt
+ * builder handling sources independently, the AIPS_Prompt_Builder registers
+ * a filter that prepends the sources block to the content prompt when needed.
+ * 
+ * This keeps the prompt builders focused on constructing their specific prompts
+ * while still allowing for flexible inclusion of sources based on template or
+ * generation context settings.
+ * 
+ * The build_prompts() method provides a convenient way to generate all related
+ * prompts for a given template configuration in one call, ensuring consistency
+ * across different generation flows (preview vs actual generation).
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.7.3
+ */
 class AIPS_Prompt_Builder {
 
+    /**
+     * @var AIPS_Template_Processor Template processor instance
+     */
 	private $template_processor;
+
+    /**
+     * @var AIPS_Article_Structure_Manager Article structure manager instance
+     */
 	private $structure_manager;
+
+    /**
+     * @var AIPS_Sources_Repository Sources repository instance
+     */
     private $sources_repo;
-	private $post_content_builder;
-	private $post_title_builder;
-	private $post_excerpt_builder;
+	
+    /**
+     * @var AIPS_Post_Content_Builder Post content builder instance
+     */
+    private $post_content_builder;
+	
+    /**
+     * @var AIPS_Post_Title_Builder Post title builder instance
+     */
+    private $post_title_builder;
+	
+    /**
+     * @var AIPS_Post_Excerpt_Builder Post excerpt builder instance
+     */
+    private $post_excerpt_builder;
+
+    /**
+     * @var AIPS_Post_Featured_Image_Builder Post featured image builder instance
+     */
 	private $post_featured_image_builder;
+    
+    /**
+     * @var bool Indicates if the sources filter has been registered
+     */
     private static $sources_filter_registered = false;
 
+    /**
+     * Constructor.
+     *
+     * Initializes dependencies and registers the sources filter if not already registered.
+     *
+     * @param AIPS_Template_Processor|null $template_processor Optional template processor instance.
+     * @param AIPS_Article_Structure_Manager|null $structure_manager Optional article structure manager instance.
+     * @param AIPS_Sources_Repository|null $sources_repo Optional sources repository instance.
+     */
 	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
@@ -194,11 +260,11 @@ class AIPS_Prompt_Builder {
     private function get_output_instructions() {
         return <<<'INSTRUCTIONS'
 CRITICAL INSTRUCTIONS:
-- Output ONLY the article content, nothing else
+- Output ONLY the article content in HTML format, nothing else
 - Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
-- Do NOT use markdown formatting (no ```, no **, no __)
-- Use proper HTML tags: <h2> for section titles, <p> for paragraphs
-- For code samples: wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
+- Do NOT use markdown formatting (no ```, no **, no __, no #)
+- Use proper HTML tags: <h2> for section titles, <p> for paragraphs, <ul>/<li> for lists, <strong> for bold text.
+- For code samples: MUST wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
 - Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
 - Do NOT include markdown code fences like ```html or ```
 - Start directly with the article content (typically an opening paragraph or <h2> heading)
@@ -264,9 +330,10 @@ INSTRUCTIONS;
     /**
      * Build a trusted sources block for inclusion in AI prompts.
      *
-     * Fetches active source URLs from the given source group term IDs and
-     * formats them into a prompt instruction block. Returns an empty string
-     * when no matching sources are found.
+     * When extracted text is available in aips_sources_data the block includes
+     * a snippet of the fetched content alongside the URL, giving the model
+     * real reference material to draw from.  Sources that have not yet been
+     * fetched fall back gracefully to URL-only entries.
      *
      * @param int[] $term_ids Source group term IDs to fetch sources from.
      * @return string Formatted sources block, or empty string.
@@ -276,18 +343,61 @@ INSTRUCTIONS;
             return '';
         }
 
-        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+        $source_rows = $this->sources_repo->get_by_group_term_ids($term_ids, true);
 
-        if (empty($source_urls)) {
+        if (empty($source_rows)) {
             return '';
         }
 
-        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
-        foreach ($source_urls as $url) {
-            $block .= '  - ' . $url . "\n";
+        // Bulk-load the next-to-use archive row for each source (round-robin via num_used).
+        $source_ids  = array_map(function ($s) { return (int) $s->id; }, $source_rows);
+        $data_repo   = new AIPS_Sources_Data_Repository();
+        $content_map = $data_repo->pick_next_for_prompt_bulk($source_ids);
+
+        $snippet_max = absint(get_option('aips_source_snippet_max_chars', AIPS_Sources_Fetcher::DEFAULT_PROMPT_SNIPPET_CHARS));
+        if ($snippet_max < 100) {
+            $snippet_max = AIPS_Sources_Fetcher::DEFAULT_PROMPT_SNIPPET_CHARS;
         }
 
-        return $block . "\n";
+        $block = "Trusted Sources (use the following content and URLs as factual references):\n\n";
+
+        $used_row_ids = array();
+
+        foreach ($source_rows as $source) {
+            $sid   = (int) $source->id;
+            $label = !empty($source->label) ? $source->label : $source->url;
+
+            $block .= sprintf("--- Source: %s (%s) ---\n", $label, $source->url);
+
+            if (isset($content_map[$sid])) {
+                $row     = $content_map[$sid];
+                $snippet = $row->extracted_text;
+                if (mb_strlen($snippet) > $snippet_max) {
+                    $snippet = mb_substr($snippet, 0, $snippet_max) . '…';
+                }
+                $block .= $snippet . "\n";
+                $used_row_ids[] = (int) $row->id;
+            } else {
+                $block .= "[Content not yet fetched — reference this URL where relevant]\n";
+            }
+
+            $block .= "\n";
+        }
+
+        // Advance the round-robin counter for every archive row used in this prompt.
+        foreach ($used_row_ids as $row_id) {
+            $data_repo->increment_num_used($row_id);
+        }
+
+        /**
+         * Filters the formatted sources block before it is injected into a prompt.
+         *
+         * @since 2.4.0
+         * @param string   $block       The formatted sources block.
+         * @param int[]    $term_ids    Source group term IDs that were queried.
+         * @param object[] $source_rows Source row objects that were found.
+         */
+        return apply_filters('aips_sources_block', $block, $term_ids, $source_rows);
     }
 
     /**

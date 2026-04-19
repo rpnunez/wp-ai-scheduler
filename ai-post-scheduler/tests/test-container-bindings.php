@@ -59,6 +59,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_AI_Service_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository_Interface::class));
+		$this->assertTrue($this->container->has(AIPS_Telemetry_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Template_Repository::class));
 	}
 
@@ -102,6 +103,12 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$template_b = $this->container->make(AIPS_Template_Repository::class);
 		$this->assertSame($template_a, $template_b);
 		$this->assertSame(AIPS_Template_Repository::instance(), $template_a);
+
+		// Test AIPS_Telemetry_Repository
+		$telemetry_a = $this->container->make(AIPS_Telemetry_Repository::class);
+		$telemetry_b = $this->container->make(AIPS_Telemetry_Repository::class);
+		$this->assertSame($telemetry_a, $telemetry_b);
+		$this->assertSame(AIPS_Telemetry_Repository::instance(), $telemetry_a);
 	}
 
 	/**
@@ -132,6 +139,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_AI_Service_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository_Interface::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Telemetry_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Template_Repository::class]);
 	}
 
@@ -149,9 +157,9 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 14 singleton bindings and no transient bindings
+		// Should have 15 singleton bindings and no transient bindings
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(14, $counts['singleton']);
-		$this->assertEquals(14, $counts['total']);
+		$this->assertEquals(15, $counts['singleton']);
+		$this->assertEquals(15, $counts['total']);
 	}
 }

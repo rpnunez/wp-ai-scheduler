@@ -60,7 +60,6 @@ if (!isset($sections) || !is_array($sections)) {
 						<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
 						<th class="column-description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
 						<th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
-						<th class="column-default"><?php esc_html_e('Default', 'ai-post-scheduler'); ?></th>
 						<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 					</tr>
 				</thead>
@@ -74,13 +73,6 @@ if (!isset($sections) || !is_array($sections)) {
 								<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
 							<?php else: ?>
 								<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
-							<?php endif; ?>
-						</td>
-						<td class="column-default">
-							<?php if ($structure->is_default): ?>
-								<span class="aips-badge aips-badge-info"><?php esc_html_e('Default', 'ai-post-scheduler'); ?></span>
-							<?php else: ?>
-								<span class="cell-meta">—</span>
 							<?php endif; ?>
 						</td>
 						<td class="column-actions">
@@ -285,13 +277,6 @@ if (!isset($sections) || !is_array($sections)) {
 							<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 						</label>
 					</div>
-
-					<div class="aips-form-row">
-						<label class="aips-checkbox-label">
-							<input type="checkbox" id="structure_is_default" name="is_default" value="1">
-							<?php esc_html_e('Set as Default', 'ai-post-scheduler'); ?>
-						</label>
-					</div>
 				</form>
 			</div>
 			<div class="aips-modal-footer">
@@ -356,7 +341,6 @@ if (!isset($sections) || !is_array($sections)) {
 	<td class="column-name cell-primary">{{name}}</td>
 	<td class="column-description">{{description}}</td>
 	<td class="column-active">{{activeBadge}}</td>
-	<td class="column-default">{{defaultBadge}}</td>
 	<td class="column-actions">
 		<div class="aips-action-buttons">
 			<button class="aips-btn aips-btn-sm aips-edit-structure" data-id="{{id}}" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">

@@ -235,6 +235,28 @@
 - ai-post-scheduler/templates/admin/templates.php
 - ai-post-scheduler/assets/js/admin.js
 **Outcome:** Streamlined user workflow by reducing the wizard to 4 steps instead of 5, lowering friction during initial template creation.
+## 2026-04-18 - History & View Logs Modal Optimization
+**Target Feature:** History
+**Improvement:** Significantly enhanced the History page and View Logs modal with multiple power-user features:
+
+1. **Dynamic modal title** — Fixed the commented-out title assignment so the modal header now shows the generated post title (or "History Details #ID" as fallback) instead of a static label.
+2. **Generation duration** — `ajax_get_history_logs()` now computes `duration_seconds` from `created_at`/`completed_at` and returns it; the modal summary shows it as a formatted human-readable string (e.g. "1m 23s").
+3. **Post links in modal** — The AJAX response now includes `post_url` and `post_edit_url`; when a post is linked, the modal summary shows both "View" and "Edit" links instead of just the bare numeric ID.
+4. **Creation method row** — `creation_method` added to the `list` query fields in `AIPS_History_Repository::get_history()` and shown as a small badge next to the template name in each history-table row. Also surfaced in the modal summary.
+5. **Log type filter tabs** — A dynamic filter toolbar renders above the log entries table in the modal. It counts occurrences of each type in the loaded log set and renders type-specific toggle buttons. Clicking a type button hides/shows only matching rows (`data-type-id` attribute on each `<tr>`).
+6. **Copy-to-clipboard for log details** — Each expandable "Show details" block now has a companion "Copy" button that writes the raw JSON to the clipboard (with Clipboard API + `execCommand` fallback) and gives visual "Copied!" feedback.
+7. **Modal structure fix** — Wrapped the close button and title in a proper `.aips-modal-header` div and moved the modal body content into `.aips-modal-body`, matching the existing modal design system.
+
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-history-repository.php`
+- `ai-post-scheduler/includes/class-aips-history.php`
+- `ai-post-scheduler/templates/partials/history-row.php`
+- `ai-post-scheduler/templates/admin/history.php`
+- `ai-post-scheduler/assets/js/admin-history.js`
+- `ai-post-scheduler/includes/class-aips-admin-assets.php`
+
+**Outcome:** The History page is now a genuine audit and debugging tool. Users can instantly see how long a generation took, jump directly to the published post or its editor, filter dense log output down to just errors or AI calls, and copy raw JSON details to their clipboard — all without leaving the modal.
+
 ## 2026-04-18 - Template Preview & Testing Optimization
 **Target Feature:** Template Wizard
 **Improvement:** Optimized the flow of creating and testing templates by implementing real-time syntax validation. Previously, users could save templates with unclosed AI variables (e.g. `{{topic`), which would only fail later during the actual post generation. Validation logic leveraging `AIPS_Template_Processor` was introduced to `ajax_save_template`, `ajax_test_template`, and `ajax_preview_template_prompts` within `AIPS_Templates_Controller`.

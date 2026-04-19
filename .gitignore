@@ -1,19 +1,27 @@
-# Composer
+# Composer — only ai-post-scheduler/ is the canonical plugin root
 ai-post-scheduler/vendor/**
-composer.lock
+/composer.json
+/composer.lock
+/vendor/
 
 # Allow the generated autoloader inside ai-post-scheduler/vendor
 !ai-post-scheduler/vendor/autoload.php
 !ai-post-scheduler/vendor/composer/autoload_classmap.php
+!ai-post-scheduler/vendor/composer/autoload_files.php
 !ai-post-scheduler/vendor/composer/autoload_namespaces.php
 !ai-post-scheduler/vendor/composer/autoload_psr4.php
 !ai-post-scheduler/vendor/composer/autoload_static.php
 !ai-post-scheduler/vendor/composer/autoload_real.php
 !ai-post-scheduler/vendor/composer/ClassLoader.php
+!ai-post-scheduler/vendor/composer/installed.json
+!ai-post-scheduler/vendor/composer/installed.php
+!ai-post-scheduler/vendor/composer/InstalledVersions.php
 !ai-post-scheduler/vendor/composer/LICENSE
 !ai-post-scheduler/vendor/composer/platform_check.php
 
-# PHPUnit
+# PHPUnit — only ai-post-scheduler/phpunit.xml is canonical
+/phpunit.xml
+/.phpunit.result.cache
 ai-post-scheduler/coverage/
 ai-post-scheduler/.phpunit.result.cache
 coverage/

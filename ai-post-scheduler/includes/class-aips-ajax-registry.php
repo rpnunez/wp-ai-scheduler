@@ -108,7 +108,6 @@ class AIPS_Ajax_Registry {
 		'aips_get_structure'              => 'AIPS_Structures_Controller',
 		'aips_save_structure'             => 'AIPS_Structures_Controller',
 		'aips_delete_structure'           => 'AIPS_Structures_Controller',
-		'aips_set_structure_default'      => 'AIPS_Structures_Controller',
 		'aips_toggle_structure_active'    => 'AIPS_Structures_Controller',
 
 		// Prompt Sections Controller
@@ -163,7 +162,7 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_publish_posts'         => 'AIPS_Post_Review',
 		'aips_bulk_delete_draft_posts'    => 'AIPS_Post_Review',
 		'aips_bulk_regenerate_posts'      => 'AIPS_Post_Review',
-		'aips_get_draft_post_preview'     => 'AIPS_Post_Review',
+		'aips_get_post_preview'           => 'AIPS_Post_Review',
 		'aips_delete_draft_post'          => 'AIPS_Post_Review',
 
 		// Admin Bar
@@ -197,9 +196,11 @@ class AIPS_Ajax_Registry {
 		'aips_save_source'                => 'AIPS_Sources_Controller',
 		'aips_delete_source'              => 'AIPS_Sources_Controller',
 		'aips_toggle_source_active'       => 'AIPS_Sources_Controller',
+		'aips_fetch_source_now'           => 'AIPS_Sources_Controller',
 		'aips_get_source_groups'          => 'AIPS_Sources_Controller',
 		'aips_save_source_group'          => 'AIPS_Sources_Controller',
 		'aips_delete_source_group'        => 'AIPS_Sources_Controller',
+		'aips_research_from_sources'      => 'AIPS_Research_Controller',
 
 		// Onboarding Wizard
 		'aips_onboarding_save_strategy'   => 'AIPS_Onboarding_Wizard',
@@ -213,6 +214,26 @@ class AIPS_Ajax_Registry {
 
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
+
+		// System Status
+		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
+		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
+		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
+
+		// Internal Links Controller
+		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_generate_suggestions'   => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_update_status'          => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_update_anchor'          => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_delete'                 => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_clear_index'            => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_get_post_for_insertion' => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
 	);
 
 	/**

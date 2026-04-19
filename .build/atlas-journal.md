@@ -1352,8 +1352,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
 
-## 2026-03-08 - Extract Notifications Event Handler
-
+## 2026-03-08 - [Extract Notifications Event Handler]
 **Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
 **Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
 **Consequence:**
@@ -1363,8 +1362,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
 **Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
 
-## 2026-03-08 - Extract Settings Callbacks and UI rendering
-
+## 2026-03-08 - [Extract Settings Callbacks and UI rendering]
 **Context:** The `AIPS_Settings` class had grown to over 1100 lines and acted as a "God Object", handling settings registration (`register_setting`), rendering sections and fields callbacks, sanitizing inputs, and processing AJAX endpoints (`ajax_test_connection`, `ajax_notifications_data_hygiene`). This violated the Single Responsibility Principle, tightly coupling data structure initialization with UI rendering and request handling.
 **Decision:** Applied "Separation of Concerns". Created `AIPS_Settings_UI` (to house all `_callback` methods and `sanitize_` routines) and `AIPS_Settings_AJAX` (to house the `wp_ajax_` handlers). The `AIPS_Settings` class now cleanly instantiates these helper classes inside its constructor and focuses purely on `register_settings` and schema definitions.
 **Consequence:**
@@ -1372,3 +1370,65 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Makes `AIPS_Settings_UI` easier to test for HTML rendering logic independently.
 * Maintains 100% backward compatibility for existing settings data and hooks.
 **Tests:** Added `AIPS_Settings_UI` and `AIPS_Settings_AJAX` to the autoloader test suite array (`test_autoloader_loads_controller_classes`). Ran `composer test` and validated the new classes are fully loaded and verified via `php -l`.
+
+## 2026-04-16 - [Detangle System Status Diagnostics]
+**Context:** The AIPS_System_Status class is a God Object handling UI rendering and complex system diagnostic data gathering. Extracting it into a single AIPS_System_Diagnostics_Service created another God Object.
+**Decision:** Introduced a Provider pattern. Created AIPS_System_Diagnostic_Provider_Interface. Extracted diagnostics into cohesive providers (Environment, Scheduler, Queue, Logs). AIPS_System_Diagnostics_Service now acts as an aggregator.
+**Consequence:** High cohesion and loose coupling achieved. AIPS_System_Status delegates to AIPS_System_Diagnostics_Service, which aggregates from modular providers. Backwards compatibility preserved for the output of get_system_info().
+**Tests:** Created tests for AIPS_System_Diagnostics_Service to ensure it accurately aggregates data from providers. Full test suite run successfully.
+
+## 2026-04-18 - [Refactor AIPS_Admin_Assets God Method]
+**Context:** `AIPS_Admin_Assets::enqueue_admin_assets()` was a massive 977-line God method, handling all scripts and localizations for the plugin.
+**Decision:** Extracted all page-specific enqueue logic into individual private methods within the same class to enforce the Single Responsibility Principle.
+**Consequence:** Increased the number of methods in the class, but vastly improved maintainability and readability. No external API changes.
+**Tests:** Ran existing test suite to ensure backwards compatibility. No regressions found.
+# Atlas Journal - Architectural Decision Records
+
+## 2024-05-22 - Extract Schedule Controller
+**Context:** The `AIPS_Scheduler` class violates the Single Responsibility Principle by mixing domain logic (schedule processing, interval calculation), data persistence (SQL queries), and HTTP transport logic (AJAX handlers). Additionally, `AIPS_Planner` accesses the database directly because `AIPS_Scheduler` lacks the necessary flexibility (handling `topic` and explicit `next_run`), creating a Leaky Abstraction.
+**Decision:** Extract the AJAX handling logic into a new `AIPS_Schedule_Controller` class. Enhance `AIPS_Scheduler` to act as a proper Service/Repository, accepting `topic` and `next_run` overrides. Refactor `AIPS_Planner` to delegate persistence to `AIPS_Scheduler`.
+**Consequence:**
+- **Positive:** clearer separation of concerns; `AIPS_Scheduler` becomes a pure domain/service class; `AIPS_Planner` no longer depends on DB schema details.
+- **Negative:** Increased file count (1 new file); slight overhead in `AIPS_Planner` due to object instantiation (negligible).
+
+## 2024-05-23 - [JS Modularization]
+**Context:** The 'admin.js' file was a 'God Object' (1100+ lines) handling distinct domains like Planner, DB Management, and core UI, making maintenance difficult.
+**Decision:** Split 'admin.js' into feature-specific files ('admin-planner.js', 'admin-db.js') using 'window.AIPS' as a shared namespace and 'Object.assign' for extension.
+**Consequence:** Improved separation of concerns and file readability, but introduced a dependency on load order (admin.js must load before modules), managed via 'wp_enqueue_script' dependencies.
+
+## 2024-05-24 - [Extract Post Creator & Use History Repository]
+**Context:** `AIPS_Generator` was a 'God Class' violating SRP by mixing AI orchestration, direct database queries for history, and WordPress post creation logic. 
+**Decision:** Extracted post creation logic into `AIPS_Post_Creator` service. Refactored `AIPS_Generator` to use `AIPS_Post_Creator` and the existing `AIPS_History_Repository`, removing direct `$wpdb` and `wp_insert_post` dependencies.
+**Consequence:** Improved testability and separation of concerns. `AIPS_Generator` now focuses solely on orchestration. Increased file count by 1.
+
+## 2024-05-25 - [Extract Resilience Service]
+**Context:** `AIPS_AI_Service` was violating SRP by handling core AI orchestration alongside resilience concerns (Circuit Breaker, Rate Limiting, Retry Logic).
+**Decision:** Extracted resilience logic into a dedicated `AIPS_Resilience_Service` class. Refactored `AIPS_AI_Service` to delegate resilience checks to this new service.
+**Consequence:** Improved separation of concerns; `AIPS_AI_Service` is now cleaner and focused on AI interactions. Increased file count by 1.
+
+## 2024-05-25 - Bulk Insert Architecture
+**Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
+**Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
+**Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - Extract Dashboard Controller
+**Context:** The `AIPS_Settings` class was a 'God Class' violating the Single Responsibility Principle by mixing settings registration with view rendering logic for the dashboard.
+**Decision:** Extracted the dashboard rendering logic into a new `AIPS_Dashboard_Controller` class.
+**Consequence:** Improved separation of concerns. `AIPS_Settings` now focuses on configuration, while `AIPS_Dashboard_Controller` handles the dashboard view.
+
+## 2024-05-26 - Extract Voices Repository
+**Context:** `AIPS_Voices` was violating Separation of Concerns by mixing database queries, AJAX handling, and view logic, unlike other components which use Repositories.
+**Decision:** Extracted `AIPS_Voices_Repository` to handle database operations. Refactored `AIPS_Voices` to use the repository.
+**Consequence:** Improved consistency with the rest of the application and enabled proper unit testing for Voices data access.
+
+## 2024-05-26 - [Extract Admin Assets Manager]
+**Context:** `AIPS_Settings` was a 'God Object' (700+ lines) handling menu registration, settings, rendering, and asset management. The `enqueue_admin_assets` method was bloated with localization logic.
+**Decision:** Extracted asset management into a new `AIPS_Admin_Assets` class.
+**Consequence:** `AIPS_Settings` is now more focused on configuration; asset management is centralized; cleaner separation of concerns.
+
+## 2026-05-27 - Extract Schedule Processor
+**Context:** `AIPS_Scheduler` was violating the Single Responsibility Principle by handling CRUD operations, Cron hooks, and the complex business logic of executing schedules (locking, logging, generation).
+**Decision:** Extracted the execution logic into a new `AIPS_Schedule_Processor` class. `AIPS_Scheduler` remains as the high-level orchestrator and entry point for hooks.
+**Consequence:**
+- **Positive:** clearer separation of concerns; `AIPS_Scheduler` is now a thin coordinator; `AIPS_Schedule_Processor` encapsulates the "how" of execution; improved testability of execution logic.
+- **Negative:** Increased file count (1 new file).

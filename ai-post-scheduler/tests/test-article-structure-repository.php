@@ -19,6 +19,8 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aips_article_structures';
 		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test%'");
+		delete_option('aips_default_article_structure_id');
+		AIPS_Config::get_instance()->flush_option_cache();
 		parent::tearDown();
 	}
 	
@@ -28,7 +30,6 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 			'description' => 'Test Description',
 			'structure_data' => wp_json_encode(array('sections' => array('intro', 'body', 'conclusion'))),
 			'is_active' => 1,
-			'is_default' => 0,
 		);
 		
 		$id = $this->repository->create($data);
@@ -88,55 +89,32 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 	}
 	
 	public function test_get_default_structure() {
-		// First unset any existing defaults
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'aips_article_structures';
-		$wpdb->query("UPDATE $table_name SET is_default = 0");
-		
 		$data = array(
 			'name' => 'Test Default Structure',
 			'description' => 'Test Default',
 			'structure_data' => wp_json_encode(array('sections' => array('intro'))),
 			'is_active' => 1,
-			'is_default' => 1,
 		);
 		
 		$id = $this->repository->create($data);
+		AIPS_Config::get_instance()->set_option('aips_default_article_structure_id', $id);
 		$default = $this->repository->get_default();
 		
 		$this->assertNotNull($default);
-		$this->assertEquals(1, $default->is_default);
+		$this->assertEquals($id, $default->id);
 	}
 	
-	public function test_set_default_unsets_others() {
-		// Create two structures
+	public function test_get_default_returns_null_for_inactive_structure_setting() {
 		$data1 = array(
 			'name' => 'Test Structure Default 1',
 			'description' => 'First Default',
 			'structure_data' => wp_json_encode(array('sections' => array('intro'))),
-			'is_active' => 1,
-			'is_default' => 1,
+			'is_active' => 0,
 		);
-		
-		$data2 = array(
-			'name' => 'Test Structure Default 2',
-			'description' => 'Second Default',
-			'structure_data' => wp_json_encode(array('sections' => array('intro'))),
-			'is_active' => 1,
-		);
-		
 		$id1 = $this->repository->create($data1);
-		$id2 = $this->repository->create($data2);
-		
-		// Set second as default
-		$this->repository->set_default($id2);
-		
-		// Check that first is no longer default
-		$structure1 = $this->repository->get_by_id($id1);
-		$structure2 = $this->repository->get_by_id($id2);
-		
-		$this->assertEquals(0, $structure1->is_default);
-		$this->assertEquals(1, $structure2->is_default);
+		AIPS_Config::get_instance()->set_option('aips_default_article_structure_id', $id1);
+
+		$this->assertNull($this->repository->get_default());
 	}
 	
 	public function test_update_structure() {

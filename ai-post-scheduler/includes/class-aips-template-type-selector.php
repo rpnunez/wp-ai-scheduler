@@ -31,11 +31,16 @@ class AIPS_Template_Type_Selector {
 	private $schedule_repository;
 
 	/**
-	 * Cache active structures to prevent N+1 queries.
-	 *
-	 * @var array|null
+	 * @var AIPS_History_Repository_Interface
 	 */
-	private $active_structures_cache = null;
+	private $history_repository;
+
+	/**
+	 * Request-scoped cache.
+	 *
+	 * @var AIPS_Cache
+	 */
+	private $cache;
 	
 	/**
 	 * Initialize the selector.
@@ -43,6 +48,8 @@ class AIPS_Template_Type_Selector {
 	public function __construct() {
 		$this->structure_repository = new AIPS_Article_Structure_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
+		$this->history_repository = new AIPS_History_Repository();
+		$this->cache = AIPS_Config::get_instance()->get_runtime_cache('aips_template_type_selector', 'array');
 	}
 	
 	/**
@@ -55,7 +62,7 @@ class AIPS_Template_Type_Selector {
 		// If specific structure is set, use it
 		if (!empty($schedule->article_structure_id)) {
 			$structure = $this->structure_repository->get_by_id($schedule->article_structure_id);
-			if ($structure && !empty($structure->is_active)) {
+			if ($this->is_structure_active($structure)) {
 				return $structure->id;
 			}
 		}
@@ -67,7 +74,17 @@ class AIPS_Template_Type_Selector {
 		
 		// Fall back to default structure
 		$default = $this->structure_repository->get_default();
-		return $default ? $default->id : null;
+		if ($default) {
+			return $default->id;
+		}
+
+		// Final fallback: use the first active structure when no default is configured
+		$active_structures = $this->structure_repository->get_all(true);
+		if (!empty($active_structures)) {
+			return $active_structures[0]->id;
+		}
+
+		return null;
 	}
 	
 	/**
@@ -77,12 +94,7 @@ class AIPS_Template_Type_Selector {
 	 * @return int|null Structure ID or null.
 	 */
 	private function select_by_pattern($schedule) {
-		// Use cached structures if available, otherwise fetch and cache
-		if ($this->active_structures_cache === null) {
-			$this->active_structures_cache = $this->structure_repository->get_all(true);
-		}
-
-		$active_structures = $this->active_structures_cache;
+		$active_structures = $this->get_active_structures();
 		
 		if (empty($active_structures)) {
 			return null;
@@ -145,9 +157,11 @@ class AIPS_Template_Type_Selector {
 	private function select_weighted($active_structures) {
 		// Build weighted array (default structures have 2x weight)
 		$weighted = array();
+		$default_structure = $this->structure_repository->get_default();
+		$default_structure_id = $default_structure ? (int) $default_structure->id : 0;
 		
 		foreach ($active_structures as $structure) {
-			$weight = !empty($structure->is_default) ? 2 : 1;
+			$weight = ((int) $structure->id === $default_structure_id) ? 2 : 1;
 			for ($i = 0; $i < $weight; $i++) {
 				$weighted[] = $structure->id;
 			}
@@ -194,48 +208,7 @@ class AIPS_Template_Type_Selector {
 	 * @return int Execution count.
 	 */
 	private function get_schedule_execution_count($schedule) {
-		global $wpdb;
-		$table_history = $wpdb->prefix . 'aips_history';
-		$table_schedule = $wpdb->prefix . 'aips_schedule';
-		
-		// Handle ID or Object input to allow avoiding N+1 queries
-		if (is_numeric($schedule)) {
-			$schedule_id = (int) $schedule;
-			$schedule = $this->schedule_repository->get_by_id($schedule_id);
-		} else {
-			$schedule_id = $schedule->id;
-		}
-		
-		if (!$schedule) {
-			return 0;
-		}
-		
-		// Check transient cache to prevent N+1 queries during batch processing
-		// Bolt Optimization (Cache for 24 hours, invalidated on run)
-		$cache_key = 'aips_sched_cnt_' . $schedule_id;
-		$cached_count = get_transient($cache_key);
-
-		if ($cached_count !== false) {
-			return (int) $cached_count;
-		}
-
-		// Count completed generations for this template
-		// Note: We use template_id since history doesn't directly link to schedule
-		$count = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM $table_history 
-			WHERE template_id = %d 
-			AND status = 'completed' 
-			AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)",
-			$schedule->template_id,
-			$schedule_id
-		));
-		
-		$count = (int) $count;
-
-		// Cache the result
-		set_transient($cache_key, $count, DAY_IN_SECONDS);
-
-		return $count;
+		return $this->history_repository->count_completed_for_schedule($schedule);
 	}
 
 	/**
@@ -247,7 +220,7 @@ class AIPS_Template_Type_Selector {
 	 * @return void
 	 */
 	public function invalidate_count_cache($schedule_id) {
-		delete_transient('aips_sched_cnt_' . $schedule_id);
+		$this->history_repository->invalidate_schedule_completed_count_cache($schedule_id);
 	}
 	
 	/**
@@ -258,7 +231,7 @@ class AIPS_Template_Type_Selector {
 	 * @return array|null Structure info or null.
 	 */
 	public function preview_next_structure($pattern, $execution_count = 0) {
-		$active_structures = $this->structure_repository->get_all(true);
+		$active_structures = $this->get_active_structures();
 		
 		if (empty($active_structures)) {
 			return null;
@@ -278,12 +251,9 @@ class AIPS_Template_Type_Selector {
 				break;
 			
 			case 'weighted':
-				// For preview, just show the default or first
-				foreach ($active_structures as $structure) {
-					if (!empty($structure->is_default)) {
-						$structure_id = $structure->id;
-						break;
-					}
+				$default_structure = $this->structure_repository->get_default();
+				if ($default_structure && $this->is_structure_active($default_structure)) {
+					$structure_id = $default_structure->id;
 				}
 				if (!$structure_id) {
 					$structure_id = $active_structures[0]->id;
@@ -319,5 +289,30 @@ class AIPS_Template_Type_Selector {
 			'weighted' => __('Weighted (Favor Default)', 'ai-post-scheduler'),
 			'alternating' => __('Alternating (Between Two)', 'ai-post-scheduler'),
 		);
+	}
+
+	/**
+	 * Get the cached list of active structures for the current request.
+	 *
+	 * @return array
+	 */
+	private function get_active_structures() {
+		$cache_key = 'active_structures';
+
+		if (!$this->cache->has($cache_key)) {
+			$this->cache->set($cache_key, $this->structure_repository->get_all(true));
+		}
+
+		return $this->cache->get($cache_key);
+	}
+
+	/**
+	 * Check whether a structure row is active.
+	 *
+	 * @param object|null $structure Structure row.
+	 * @return bool
+	 */
+	private function is_structure_active($structure) {
+		return is_object($structure) && isset($structure->is_active) && (int) $structure->is_active === 1;
 	}
 }

@@ -469,4 +469,132 @@ class AIPS_Research_Service {
 
         return $keywords1 <=> $keywords2;
     }
+
+    /**
+     * Research topics using pre-fetched source content as context.
+     *
+     * Combines scraped content from source URLs with AI research to produce
+     * topic ideas that are specifically grounded in the source material.
+     *
+     * @param int[]  $term_ids   Source group term IDs to include.
+     * @param string $niche      Niche or topic area to guide the research.
+     * @param int    $count      Number of topics to generate (default 10).
+     * @param array  $keywords   Optional focus keywords.
+     * @return array|WP_Error  Array of topic objects, or WP_Error on failure.
+     */
+    public function research_from_sources( array $term_ids, $niche, $count = 10, $keywords = array() ) {
+        if ( empty( $term_ids ) ) {
+            return new WP_Error( 'no_term_ids', __( 'At least one source group is required.', 'ai-post-scheduler' ) );
+        }
+
+        if ( empty( $niche ) ) {
+            return new WP_Error( 'missing_niche', __( 'Niche parameter is required for source-based research.', 'ai-post-scheduler' ) );
+        }
+
+        if ( ! $this->ai_service->is_available() ) {
+            return new WP_Error( 'ai_unavailable', __( 'AI Engine is not available for research.', 'ai-post-scheduler' ) );
+        }
+
+        $count = max( 1, min( 50, absint( $count ) ) );
+
+        // Fetch source rows and any scraped content.
+        $sources_repo = new AIPS_Sources_Repository();
+        $data_repo    = new AIPS_Sources_Data_Repository();
+
+        $source_rows = $sources_repo->get_by_group_term_ids( $term_ids, true );
+        if ( empty( $source_rows ) ) {
+            return new WP_Error( 'no_sources', __( 'No active sources found for the selected groups.', 'ai-post-scheduler' ) );
+        }
+
+        $source_ids  = array_map( function ( $s ) { return (int) $s->id; }, $source_rows );
+        $content_map = $data_repo->get_extracted_texts_by_source_ids( $source_ids );
+
+        // Build a context block from whatever content is available.
+        $source_context = '';
+        foreach ( $source_rows as $source ) {
+            $sid   = (int) $source->id;
+            $label = ! empty( $source->label ) ? $source->label : $source->url;
+            $source_context .= sprintf( "--- Source: %s (%s) ---\n", $label, $source->url );
+            if ( isset( $content_map[$sid] ) ) {
+                $snippet = $content_map[$sid]->extracted_text;
+                if ( mb_strlen( $snippet ) > 1500 ) {
+                    $snippet = mb_substr( $snippet, 0, 1500 ) . '…';
+                }
+                $source_context .= $snippet . "\n";
+            } else {
+                $source_context .= "[No fetched content available]\n";
+            }
+            $source_context .= "\n";
+        }
+
+        $prompt = $this->build_source_research_prompt( $niche, $count, $keywords, $source_context );
+
+        $this->logger->log(
+            sprintf( 'AIPS_Research_Service: source-based research for niche "%s" with %d source(s).', $niche, count( $source_rows ) ),
+            'info'
+        );
+
+        $result = $this->ai_service->generate_text( $prompt, array( 'temperature' => 0.7 ) );
+
+        if ( is_wp_error( $result ) ) {
+            $this->logger->log( 'Source-based research failed: ' . $result->get_error_message(), 'error' );
+            return $result;
+        }
+
+        $topics = $this->validate_and_normalize_topics( $result, $count );
+
+        if ( is_wp_error( $topics ) && $topics->get_error_code() === 'invalid_format' ) {
+            $text_response = is_string( $result ) ? $result : wp_json_encode( $result );
+            if ( ! empty( $text_response ) ) {
+                $fallback = $this->parse_research_response( $text_response, $count );
+                if ( ! is_wp_error( $fallback ) && ! empty( $fallback ) ) {
+                    $topics = $fallback;
+                }
+            }
+        }
+
+        if ( is_wp_error( $topics ) ) {
+            return $topics;
+        }
+
+        return $topics;
+    }
+
+    /**
+     * Build the AI prompt for source-grounded research.
+     *
+     * @param string $niche          The niche context.
+     * @param int    $count          Number of topics to produce.
+     * @param array  $keywords       Optional focus keywords.
+     * @param string $source_context Scraped source content block.
+     * @return string Formatted prompt.
+     */
+    private function build_source_research_prompt( $niche, $count, $keywords, $source_context ) {
+        $current_date = current_time( 'F j, Y' );
+
+        $prompt  = "You are a content research expert. Using the source material below as your primary reference, ";
+        $prompt .= "identify {$count} specific, high-value blog post topics for the '{$niche}' niche as of {$current_date}.\n\n";
+
+        if ( ! empty( $keywords ) ) {
+            $keyword_list = implode( ', ', (array) $keywords );
+            $prompt .= "Additional focus keywords: {$keyword_list}\n\n";
+        }
+
+        $prompt .= "SOURCE MATERIAL:\n";
+        $prompt .= $source_context . "\n";
+
+        $prompt .= "Instructions:\n";
+        $prompt .= "- Ground your topic suggestions in the specific facts, trends, and insights from the sources above.\n";
+        $prompt .= "- Prefer specific, actionable topics over generic ones.\n";
+        $prompt .= "- Consider gaps or follow-up angles suggested by the source content.\n\n";
+
+        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
+        $prompt .= "- \"topic\": The topic/title (string)\n";
+        $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
+        $prompt .= "- \"reason\": Why it's relevant to the source material (max 100 chars, string)\n";
+        $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
+        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
+
+        return $prompt;
+    }
 }
