@@ -606,12 +606,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * associative array with 'completed', 'failed', and 'total' counts.
      * Days with no records are omitted; callers should fill gaps as needed.
      *
+     * Applies the same row-exclusion filters as get_stats() so that
+     * schedule-lifecycle rows and empty-shell records are not counted.
+     *
      * @param int $days Number of calendar days to look back (inclusive today). Default 14.
      * @return array<string, array{completed: int, failed: int, total: int}>
      */
     public function get_daily_generation_counts( $days = 14 ) {
         $days  = max( 1, absint( $days ) );
-        $start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+        $start = wp_date( 'Y-m-d', current_time( 'timestamp', true ) - ( ( $days - 1 ) * DAY_IN_SECONDS ), wp_timezone() );
 
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
@@ -622,6 +625,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     COUNT(*) AS total
                  FROM {$this->table_name}
                  WHERE created_at >= %s
+                   AND COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
                  GROUP BY DATE(created_at)
                  ORDER BY day ASC",
                 $start

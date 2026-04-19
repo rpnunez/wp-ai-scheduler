@@ -422,6 +422,28 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
+	 * Get total topic counts keyed by author ID.
+	 *
+	 * Returns an associative array of author_id => count for all authors that have
+	 * at least one topic row, used by schedule listing to show per-author stats
+	 * without running individual COUNT queries in a loop.
+	 *
+	 * @return array<int, int> Map of author_id => topic count.
+	 */
+	public function get_counts_grouped_by_author() {
+		$results = $this->wpdb->get_results(
+			"SELECT author_id, COUNT(*) AS cnt FROM {$this->table_name} GROUP BY author_id"
+		);
+
+		$counts = array();
+		foreach ( $results as $row ) {
+			$counts[ (int) $row->author_id ] = (int) $row->cnt;
+		}
+
+		return $counts;
+	}
+
+	/**
 	 * Get per-day topic-creation counts for the last N days.
 	 *
 	 * Returns an array keyed by ISO date string (Y-m-d) with an integer count.

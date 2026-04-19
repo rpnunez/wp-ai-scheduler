@@ -66,28 +66,31 @@ class AIPS_Dashboard_Controller {
         $daily_topics      = $author_topics_repo->get_daily_topic_counts( $days );
 
         // Build a complete ordered label set for the date range.
-        $now_ts      = current_time( 'timestamp' );
-        $chart_labels       = array();
-        $chart_completed    = array();
-        $chart_failed       = array();
-        $chart_error_rate   = array();
-        $chart_topics       = array();
+        // Use UTC-based timestamps with wp_date()/wp_timezone() so day boundaries
+        // are calculated in the site timezone, matching DATE(created_at) SQL buckets.
+        $now_ts           = current_time( 'timestamp', true );
+        $timezone         = wp_timezone();
+        $chart_labels     = array();
+        $chart_completed  = array();
+        $chart_failed     = array();
+        $chart_error_rate = array();
+        $chart_topics     = array();
 
         for ( $i = $days - 1; $i >= 0; $i-- ) {
-            $day_ts   = $now_ts - ( $i * DAY_IN_SECONDS );
-            $day_key  = date( 'Y-m-d', $day_ts );
-            $day_label = date_i18n( 'M j', $day_ts );
+            $day_ts    = $now_ts - ( $i * DAY_IN_SECONDS );
+            $day_key   = wp_date( 'Y-m-d', $day_ts, $timezone );
+            $day_label = wp_date( 'M j', $day_ts, $timezone );
 
             $chart_labels[]  = $day_label;
 
             $gen       = isset( $daily_generations[ $day_key ] ) ? $daily_generations[ $day_key ] : array( 'completed' => 0, 'failed' => 0, 'total' => 0 );
             $completed = (int) $gen['completed'];
             $failed    = (int) $gen['failed'];
-            $total     = max( 1, $completed + $failed );
+            $total     = isset( $gen['total'] ) ? (int) $gen['total'] : 0;
 
             $chart_completed[]  = $completed;
             $chart_failed[]     = $failed;
-            $chart_error_rate[] = round( ( $failed / $total ) * 100, 1 );
+            $chart_error_rate[] = $total > 0 ? round( ( $failed / $total ) * 100, 1 ) : 0;
             $chart_topics[]     = isset( $daily_topics[ $day_key ] ) ? (int) $daily_topics[ $day_key ] : 0;
         }
 
@@ -121,6 +124,11 @@ class AIPS_Dashboard_Controller {
      * Returns a relative label ("in 2 hours", "in 1 day and 3 hours", etc.) for
      * events within the next 30 days, and an absolute date/time string otherwise.
      *
+     * next_run is stored as a site-local MySQL datetime.  We convert it to a UTC
+     * timestamp via get_gmt_from_date() so that subsequent comparisons with
+     * current_time('timestamp', true) are consistent, and wp_date() output
+     * correctly applies the site timezone offset once (not twice).
+     *
      * @param string $next_run    MySQL datetime string (site-local).
      * @param string $date_format WordPress date_format option value.
      * @param string $time_format WordPress time_format option value.
@@ -131,17 +139,19 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        $run_ts = strtotime( $next_run );
+        // Convert site-local datetime to a true UTC timestamp.
+        $next_run_gmt = get_gmt_from_date( $next_run );
+        $run_ts       = strtotime( $next_run_gmt );
         if ( false === $run_ts ) {
             return '—';
         }
 
-        $now_ts = current_time( 'timestamp' );
+        $now_ts = current_time( 'timestamp', true ); // UTC
         $diff   = $run_ts - $now_ts;
 
         // Already in the past or within a minute — show absolute.
         if ( $diff <= 60 ) {
-            return date_i18n( $date_format . ' ' . $time_format, $run_ts );
+            return wp_date( $date_format . ' ' . $time_format, $run_ts );
         }
 
         $minutes = (int) floor( $diff / 60 );
@@ -150,7 +160,7 @@ class AIPS_Dashboard_Controller {
 
         // More than 30 days: show absolute.
         if ( $days >= 30 ) {
-            return date_i18n( $date_format . ' ' . $time_format, $run_ts );
+            return wp_date( $date_format . ' ' . $time_format, $run_ts );
         }
 
         // 2+ days.

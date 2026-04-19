@@ -66,9 +66,11 @@
 					$(this)
 						.empty()
 						.append(
-							$('<p></p>')
-								.addClass('aips-telemetry-loading')
-								.text(chartUnavailableMessage)
+							$('<div></div>')
+								.addClass('notice notice-warning inline')
+								.append(
+									$('<p></p>').text(chartUnavailableMessage)
+								)
 						);
 				});
 				return;
