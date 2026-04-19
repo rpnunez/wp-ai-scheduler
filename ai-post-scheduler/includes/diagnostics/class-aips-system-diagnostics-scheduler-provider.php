@@ -168,7 +168,9 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 					$detail_lines[] = sprintf(
 						__( 'Next run: %s (%s)', 'ai-post-scheduler' ),
 						wp_date( 'Y-m-d H:i:s', $next_ts ),
-						human_time_diff( $next_ts, time() ) . ( $next_ts > time() ? ' from now' : ' ago' )
+						$next_ts > time()
+							? sprintf( __( '%s from now', 'ai-post-scheduler' ), human_time_diff( time(), $next_ts ) )
+							: sprintf( __( '%s ago', 'ai-post-scheduler' ), human_time_diff( $next_ts, time() ) )
 					);
 				}
 			}
