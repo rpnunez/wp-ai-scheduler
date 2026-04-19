@@ -28,18 +28,24 @@ if (!defined('ABSPATH')) {
         <?php endif; ?>
     </td>
     <td class="column-template">
-        <span class="aips-meta-text"><?php
-        if (!empty($item->template_name)) {
-            echo esc_html($item->template_name);
-        } elseif (!empty($item->template_id)) {
-            echo esc_html(sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), $item->template_id));
-        } elseif (!empty($item->topic_id)) {
-            echo esc_html__('From Topic', 'ai-post-scheduler');
-        } else {
-            echo '-';
-        }
-        ?>
+        <span class="aips-meta-text">
+          <?php
+          if (!empty($item->template_name)) {
+              echo esc_html($item->template_name);
+          } elseif (!empty($item->template_id)) {
+              echo esc_html(sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), $item->template_id));
+          } elseif (!empty($item->topic_id)) {
+              echo esc_html__('From Topic', 'ai-post-scheduler');
+          } else {
+              echo '-';
+          }
+          ?>
         </span>
+        <?php if (!empty($item->creation_method)): ?>
+        <span class="aips-badge aips-badge-neutral aips-creation-method-badge" style="font-size:10px;margin-left:4px;">
+            <?php echo esc_html(ucfirst(str_replace('_', ' ', $item->creation_method))); ?>
+        </span>
+        <?php endif; ?>
     </td>
     <td class="column-status">
         <?php

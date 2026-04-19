@@ -258,16 +258,47 @@ class AIPS_History {
             );
         }
 
+        // Calculate duration between created_at and completed_at.
+        $duration_seconds = null;
+        if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
+            $start = strtotime( $history_item->created_at );
+            $end   = strtotime( $history_item->completed_at );
+            if ( $start && $end && $end >= $start ) {
+                $duration_seconds = $end - $start;
+            }
+        }
+
+        // Build post URLs when a post is linked.
+        $post_url      = null;
+        $post_edit_url = null;
+        if ( ! empty( $history_item->post_id ) ) {
+            $raw_post_url = get_permalink( (int) $history_item->post_id );
+            if ( ! empty( $raw_post_url ) ) {
+                $sanitized_post_url = esc_url_raw( $raw_post_url );
+                $post_url           = ! empty( $sanitized_post_url ) ? $sanitized_post_url : null;
+            }
+
+            $raw_post_edit_url = get_edit_post_link( (int) $history_item->post_id, 'raw' );
+            if ( ! empty( $raw_post_edit_url ) ) {
+                $sanitized_post_edit_url = esc_url_raw( $raw_post_edit_url );
+                $post_edit_url           = ! empty( $sanitized_post_edit_url ) ? $sanitized_post_edit_url : null;
+            }
+        }
+
         AIPS_Ajax_Response::success(array(
             'container' => array(
-                'id'              => (int) $history_item->id,
-                'status'          => $history_item->status,
-                'generated_title' => $history_item->generated_title,
-                'template_name'   => isset($history_item->template_name) ? $history_item->template_name : '',
-                'created_at'      => $history_item->created_at,
-                'completed_at'    => $history_item->completed_at,
-                'error_message'   => $history_item->error_message,
-                'post_id'         => $history_item->post_id ? (int) $history_item->post_id : null,
+                'id'               => (int) $history_item->id,
+                'status'           => $history_item->status,
+                'generated_title'  => $history_item->generated_title,
+                'template_name'    => isset( $history_item->template_name ) ? $history_item->template_name : '',
+                'created_at'       => $history_item->created_at,
+                'completed_at'     => $history_item->completed_at,
+                'error_message'    => $history_item->error_message,
+                'post_id'          => $history_item->post_id ? (int) $history_item->post_id : null,
+                'post_url'         => $post_url,
+                'post_edit_url'    => $post_edit_url,
+                'creation_method'  => isset( $history_item->creation_method ) ? $history_item->creation_method : null,
+                'duration_seconds' => $duration_seconds,
             ),
             'logs'      => $logs,
         ));
