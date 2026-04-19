@@ -528,6 +528,9 @@
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
 
+                        // Restore language setting.
+                        $('#template_language').val(t.language || 'en');
+
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');

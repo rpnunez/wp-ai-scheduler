@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-copilot/update-system-status-scheduler-health',
-        'version' => 'dev-copilot/update-system-status-scheduler-health',
-        'reference' => '2bd6cd8af57589a3965b751622b5ffee651cd108',
+        'pretty_version' => 'dev-copilot/add-multi-language-content-generation',
+        'version' => 'dev-copilot/add-multi-language-content-generation',
+        'reference' => 'fe2e456610912f56b8f9a4703717ef142758e11a',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-copilot/update-system-status-scheduler-health',
-            'version' => 'dev-copilot/update-system-status-scheduler-health',
-            'reference' => '2bd6cd8af57589a3965b751622b5ffee651cd108',
+            'pretty_version' => 'dev-copilot/add-multi-language-content-generation',
+            'version' => 'dev-copilot/add-multi-language-content-generation',
+            'reference' => 'fe2e456610912f56b8f9a4703717ef142758e11a',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

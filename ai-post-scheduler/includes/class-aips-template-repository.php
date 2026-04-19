@@ -166,10 +166,11 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'language' => isset($data['language']) ? sanitize_text_field($data['language']) : 'en',
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -270,6 +271,11 @@ class AIPS_Template_Repository {
 
         if (isset($data['source_group_ids'])) {
             $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['language'])) {
+            $update_data['language'] = sanitize_text_field($data['language']);
             $format[] = '%s';
         }
         

@@ -124,4 +124,76 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame(0, $this->templates_stub->saved_data['generate_featured_image']);
 	}
+
+	/**
+	 * Test that a valid language code is forwarded to the save payload.
+	 */
+	public function test_ajax_save_template_persists_valid_language_code() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Spanish Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['language'] = 'es';
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame('es', $this->templates_stub->saved_data['language']);
+	}
+
+	/**
+	 * Test that the language defaults to 'en' when not provided.
+	 */
+	public function test_ajax_save_template_language_defaults_to_english_when_absent() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Default Language Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		// Intentionally omit language field.
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame('en', $this->templates_stub->saved_data['language']);
+	}
+
+	/**
+	 * Test that an invalid (non-allowlisted) language code is normalized to 'en'.
+	 */
+	public function test_ajax_save_template_rejects_invalid_language_code() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Bad Language Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['language'] = 'xx-INJECTION';
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame('en', $this->templates_stub->saved_data['language']);
+	}
 }

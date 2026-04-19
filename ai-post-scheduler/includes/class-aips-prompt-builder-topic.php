@@ -117,10 +117,11 @@ class AIPS_Prompt_Builder_Topic {
 			$prompt .= "Preferred post length: {$length_label}\n\n";
 		}
 
-		// Language (only explicit when non-English)
+		// Language instruction (only injected for non-English to keep prompts lean)
 		$lang = !empty($author->language) ? $author->language : 'en';
 		if ($lang !== 'en') {
-			$prompt .= "Generate topics in language code: {$lang}\n\n";
+			$lang_name = AIPS_Prompt_Builder::get_language_name($lang);
+			$prompt .= "LANGUAGE REQUIREMENT: You must generate all topics in {$lang_name}. Do not use English or any other language.\n\n";
 		}
 
 		// ---- Excluded topics (merge site-wide + author-level) ----

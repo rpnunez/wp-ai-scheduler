@@ -50,6 +50,7 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'language' => isset($_POST['language']) ? $this->normalize_language_code(sanitize_text_field(wp_unslash($_POST['language']))) : 'en',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -374,5 +375,24 @@ class AIPS_Templates_Controller {
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+    }
+
+    /**
+     * Validate a language code against the supported allowlist.
+     *
+     * Compares the given code against the same set of codes offered in the
+     * template language dropdown. Returns 'en' if the code is not recognized
+     * to prevent arbitrary strings from being interpolated into AI prompts.
+     *
+     * @param string $code Language code to validate.
+     * @return string Validated language code or 'en' as fallback.
+     */
+    private function normalize_language_code($code) {
+        $allowed = array(
+            'en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru',
+            'ja', 'ko', 'zh', 'ar', 'hi', 'tr', 'sv', 'da', 'fi', 'nb',
+        );
+
+        return in_array($code, $allowed, true) ? $code : 'en';
     }
 }
