@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2025-06-25 - [Extract DB queries from AIPS_Unified_Schedule_Service]
+**Context:** AIPS_Unified_Schedule_Service contained hardcoded SQL queries using global $wpdb for topic and post counts.
+**Decision:** Extracted the queries to AIPS_Author_Topics_Repository and AIPS_Author_Topic_Logs_Repository.
+**Consequence:** Improved separation of concerns and encapsulation.
+**Tests:** Existing test suite executes properly.

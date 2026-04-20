@@ -420,6 +420,17 @@ class AIPS_Author_Topics_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Get topic counts per author.
+	 *
+	 * @return array Array of objects with author_id and cnt.
+	 */
+	public function get_topic_counts_per_author() {
+		return $this->wpdb->get_results(
+			"SELECT author_id, COUNT(*) AS cnt FROM {$this->table_name} GROUP BY author_id"
+		);
+	}
 }
 
 
