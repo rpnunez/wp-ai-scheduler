@@ -42,12 +42,24 @@ class AIPS_Unified_Schedule_Service {
 	private $history_repository;
 
 	/**
+	 * @var AIPS_Author_Topics_Repository
+	 */
+	private $author_topics_repository;
+
+	/**
+	 * @var AIPS_Author_Topic_Logs_Repository
+	 */
+	private $author_topic_logs_repository;
+
+	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->authors_repository  = new AIPS_Authors_Repository();
-		$this->history_repository  = new AIPS_History_Repository();
+		$this->schedule_repository          = new AIPS_Schedule_Repository();
+		$this->authors_repository           = new AIPS_Authors_Repository();
+		$this->history_repository           = new AIPS_History_Repository();
+		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
+		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
 	}
 
 	/**
@@ -318,17 +330,12 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function get_author_topic_schedules() {
-		global $wpdb;
-
-		$authors            = $this->authors_repository->get_all();
-		$result             = array();
-		$author_topics_tbl  = $wpdb->prefix . 'aips_author_topics';
+		$authors = $this->authors_repository->get_all();
+		$result  = array();
 
 		// Batch fetch topic counts per author.
-		$topic_counts_raw = $wpdb->get_results(
-			"SELECT author_id, COUNT(*) AS cnt FROM {$author_topics_tbl} GROUP BY author_id"
-		);
-		$topic_counts = array();
+		$topic_counts_raw = $this->author_topics_repository->get_topic_counts_per_author();
+		$topic_counts     = array();
 		foreach ($topic_counts_raw as $row) {
 			$topic_counts[$row->author_id] = (int) $row->cnt;
 		}
@@ -382,22 +389,12 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function get_author_post_schedules() {
-		global $wpdb;
-
-		$authors              = $this->authors_repository->get_all();
-		$result               = array();
-		$topic_logs_tbl       = $wpdb->prefix . 'aips_author_topic_logs';
-		$author_topics_tbl    = $wpdb->prefix . 'aips_author_topics';
+		$authors = $this->authors_repository->get_all();
+		$result  = array();
 
 		// Batch fetch post-generation counts per author.
-		$post_counts_raw = $wpdb->get_results(
-			"SELECT at.author_id, COUNT(*) AS cnt
-			 FROM {$topic_logs_tbl} atl
-			 INNER JOIN {$author_topics_tbl} at ON atl.author_topic_id = at.id
-			 WHERE atl.action = 'post_generated'
-			 GROUP BY at.author_id"
-		);
-		$post_counts = array();
+		$post_counts_raw = $this->author_topic_logs_repository->get_post_counts_per_author();
+		$post_counts     = array();
 		foreach ($post_counts_raw as $row) {
 			$post_counts[$row->author_id] = (int) $row->cnt;
 		}
