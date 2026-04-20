@@ -630,6 +630,37 @@
                 .replace(/\b\w/g, function(letter) {
                     return letter.toUpperCase();
                 });
+        },
+
+        /**
+         * Apply alpha transparency to a hex colour string.
+         *
+         * @param {string} hex   Six-digit hex colour with leading '#' (e.g. '#2271b1').
+         * @param {number} alpha Opacity between 0 and 1.
+         * @return {string} rgba() CSS colour string, or 'rgba(0,0,0,0)' for invalid input.
+         */
+        toAlpha: function(hex, alpha) {
+            var normalizedAlpha;
+            var r;
+            var g;
+            var b;
+
+            if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) {
+                return 'rgba(0,0,0,0)';
+            }
+
+            normalizedAlpha = Number(alpha);
+
+            if (!isFinite(normalizedAlpha)) {
+                return 'rgba(0,0,0,0)';
+            }
+
+            normalizedAlpha = Math.max(0, Math.min(1, normalizedAlpha));
+            r = parseInt(hex.slice(1, 3), 16);
+            g = parseInt(hex.slice(3, 5), 16);
+            b = parseInt(hex.slice(5, 7), 16);
+
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + normalizedAlpha + ')';
         }
     };
 
