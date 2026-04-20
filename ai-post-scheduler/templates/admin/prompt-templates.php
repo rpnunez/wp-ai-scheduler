@@ -128,9 +128,9 @@ if (!defined('ABSPATH')) {
 		$components_for_js = array();
 		foreach ( $components as $key => $def ) {
 			$components_for_js[] = array(
-				'key'            => esc_attr( $def['key'] ),
-				'label'          => esc_html( $def['label'] ),
-				'description'    => esc_html( $def['description'] ),
+				'key'            => $def['key'],
+				'label'          => $def['label'],
+				'description'    => $def['description'],
 				'default_prompt' => $def['default_prompt'],
 			);
 		}
@@ -140,6 +140,79 @@ if (!defined('ABSPATH')) {
 
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
+
+<!-- ============================================================
+	 JS Templates — consumed by AIPS.Templates.render/renderRaw
+	 ============================================================ -->
+
+<!-- Groups table row -->
+<script type="text/html" id="aips-tmpl-pt-group-row">
+<tr data-group-id="{{id}}">
+	<td class="column-name cell-primary"><strong>{{name}}</strong></td>
+	<td class="column-description cell-meta">{{description}}</td>
+	<td class="column-status">{{statusBadge}}</td>
+	<td class="column-actions"><div class="aips-action-buttons">{{actions}}</div></td>
+</tr>
+</script>
+
+<!-- Status badges -->
+<script type="text/html" id="aips-tmpl-pt-badge-default">
+<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> {{label}}</span>
+</script>
+
+<script type="text/html" id="aips-tmpl-pt-badge-inactive">
+<span class="aips-badge aips-badge-neutral">{{label}}</span>
+</script>
+
+<!-- Action buttons -->
+<script type="text/html" id="aips-tmpl-pt-action-edit">
+<button class="aips-btn aips-btn-sm aips-pt-edit-group" data-id="{{id}}" title="{{editTitle}}" aria-label="{{editTitle}}">
+	<span class="dashicons dashicons-edit"></span>
+	<span class="screen-reader-text">{{editLabel}}</span>
+</button>
+</script>
+
+<script type="text/html" id="aips-tmpl-pt-action-set-default">
+<button class="aips-btn aips-btn-sm aips-btn-secondary aips-pt-set-default" data-id="{{id}}" title="{{setDefaultTitle}}" aria-label="{{setDefaultTitle}}">
+	<span class="dashicons dashicons-yes"></span> {{setDefaultLabel}}
+</button>
+</script>
+
+<script type="text/html" id="aips-tmpl-pt-action-delete">
+<button class="aips-btn aips-btn-sm aips-btn-danger aips-pt-delete-group" data-id="{{id}}" data-name="{{name}}" title="{{deleteTitle}}" aria-label="{{deleteTitle}}">
+	<span class="dashicons dashicons-trash"></span>
+	<span class="screen-reader-text">{{deleteLabel}}</span>
+</button>
+</script>
+
+<!-- Component textarea field -->
+<script type="text/html" id="aips-tmpl-pt-component-field">
+<div class="aips-pt-component aips-form-row" data-key="{{key}}">
+	<div class="aips-pt-component-header">
+		<label for="aips-pt-comp-{{key}}" class="aips-form-label">{{label}}</label>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-pt-reset-component" data-key="{{key}}" title="{{resetTitle}}">
+			<span class="dashicons dashicons-undo"></span> {{resetLabel}}
+		</button>
+	</div>
+	{{description}}
+	<textarea id="aips-pt-comp-{{key}}" class="aips-form-textarea aips-pt-comp-textarea" rows="4" data-key="{{key}}" placeholder="{{placeholder}}">{{savedText}}</textarea>
+</div>
+</script>
+
+<!-- Optional component description paragraph -->
+<script type="text/html" id="aips-tmpl-pt-component-description">
+<p class="aips-form-help">{{description}}</p>
+</script>
+
+<!-- Loading spinner (shown while fetching group data) -->
+<script type="text/html" id="aips-tmpl-pt-loading">
+<div class="aips-loading-spinner"><span class="spinner is-active"></span> {{message}}</div>
+</script>
+
+<!-- Empty-components notice -->
+<script type="text/html" id="aips-tmpl-pt-no-components">
+<p>{{message}}</p>
+</script>
 
 
 <!-- ============================================================
