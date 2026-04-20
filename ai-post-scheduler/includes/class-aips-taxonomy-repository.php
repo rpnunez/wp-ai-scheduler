@@ -98,7 +98,7 @@ class AIPS_Taxonomy_Repository {
 			'status'            => 'pending',
 			'base_post_ids'     => '',
 			'generation_prompt' => '',
-			'created_at'        => current_time('mysql'),
+			'created_at'        => AIPS_DateTime::now()->timestamp(),
 		);
 
 		$allowed_columns = array(
@@ -107,7 +107,7 @@ class AIPS_Taxonomy_Repository {
 			'status'            => '%s',
 			'base_post_ids'     => '%s',
 			'generation_prompt' => '%s',
-			'created_at'        => '%s',
+			'created_at'        => '%d',
 		);
 
 		$data   = wp_parse_args($data, $defaults);
@@ -131,6 +131,10 @@ class AIPS_Taxonomy_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function update($id, $data) {
+		if (!isset($data['updated_at'])) {
+			$data['updated_at'] = AIPS_DateTime::now()->timestamp();
+		}
+
 		return (bool) $this->wpdb->update(
 			$this->table_name,
 			$data,
@@ -150,7 +154,7 @@ class AIPS_Taxonomy_Repository {
 	public function update_status($id, $status) {
 		return $this->update($id, array(
 			'status'     => $status,
-			'updated_at' => current_time('mysql'),
+			'updated_at' => AIPS_DateTime::now()->timestamp(),
 		));
 	}
 

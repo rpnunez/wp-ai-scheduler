@@ -58,6 +58,7 @@ return array(
     'AIPS_Data_Management_Import' => $baseDir . '/includes/class-aips-data-management-import.php',
     'AIPS_Data_Management_Import_JSON' => $baseDir . '/includes/class-aips-data-management-import-json.php',
     'AIPS_Data_Management_Import_MySQL' => $baseDir . '/includes/class-aips-data-management-import-mysql.php',
+    'AIPS_DateTime' => $baseDir . '/includes/class-aips-date-time.php',
     'AIPS_Dev_Tools' => $baseDir . '/includes/class-aips-dev-tools.php',
     'AIPS_Embeddings_Cron' => $baseDir . '/includes/class-aips-embeddings-cron.php',
     'AIPS_Embeddings_Service' => $baseDir . '/includes/class-aips-embeddings-service.php',

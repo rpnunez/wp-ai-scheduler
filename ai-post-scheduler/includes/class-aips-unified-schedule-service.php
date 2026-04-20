@@ -76,13 +76,13 @@ class AIPS_Unified_Schedule_Service {
 		// 1) active upcoming schedules (soonest first)
 		// 2) active past-due schedules (least overdue first)
 		// 3) inactive/unscheduled rows (last)
-		$now_ts = current_time('timestamp');
+		$now_ts = AIPS_DateTime::now()->timestamp();
 		usort($schedules, function ($a, $b) use ($now_ts) {
 			$a_active = !empty($a['is_active']);
 			$b_active = !empty($b['is_active']);
 
-			$a_ts = !empty($a['next_run']) ? strtotime($a['next_run']) : false;
-			$b_ts = !empty($b['next_run']) ? strtotime($b['next_run']) : false;
+			$a_ts = !empty($a['next_run']) ? (int) $a['next_run'] : false;
+			$b_ts = !empty($b['next_run']) ? (int) $b['next_run'] : false;
 
 			$a_group = 2;
 			if ($a_active && $a_ts !== false) {
