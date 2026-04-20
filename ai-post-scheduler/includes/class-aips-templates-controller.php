@@ -61,6 +61,20 @@ class AIPS_Templates_Controller {
             AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
         }
 
+        $processor = new AIPS_Template_Processor();
+
+        $validation = $processor->validate_template($data['prompt_template']);
+        if (is_wp_error($validation)) {
+            AIPS_Ajax_Response::error($validation->get_error_message());
+        }
+
+        if ($data['generate_featured_image'] && $data['featured_image_source'] === 'ai_prompt' && !empty($data['image_prompt'])) {
+            $validation = $processor->validate_template($data['image_prompt']);
+            if (is_wp_error($validation)) {
+                AIPS_Ajax_Response::error($validation->get_error_message());
+            }
+        }
+
         if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
             $data['post_quantity'] = 1;
         }
@@ -240,6 +254,20 @@ class AIPS_Templates_Controller {
             AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
         }
 
+        $processor = new AIPS_Template_Processor();
+
+        $validation = $processor->validate_template($data['prompt_template']);
+        if (is_wp_error($validation)) {
+            AIPS_Ajax_Response::error($validation->get_error_message());
+        }
+
+        if ($data['generate_featured_image'] && $data['featured_image_source'] === 'ai_prompt' && !empty($data['image_prompt'])) {
+            $validation = $processor->validate_template($data['image_prompt']);
+            if (is_wp_error($validation)) {
+                AIPS_Ajax_Response::error($validation->get_error_message());
+            }
+        }
+
         // Convert to object for context
         $template = (object) $data;
 
@@ -304,6 +332,20 @@ class AIPS_Templates_Controller {
 
         if (empty(trim($template_data->prompt_template))) {
             AIPS_Ajax_Response::error(__('Please enter a content prompt to generate the preview.', 'ai-post-scheduler'));
+        }
+
+        $processor = new AIPS_Template_Processor();
+
+        $validation = $processor->validate_template($template_data->prompt_template);
+        if (is_wp_error($validation)) {
+            AIPS_Ajax_Response::error($validation->get_error_message());
+        }
+
+        if ($template_data->generate_featured_image && $template_data->featured_image_source === 'ai_prompt' && !empty($template_data->image_prompt)) {
+            $validation = $processor->validate_template($template_data->image_prompt);
+            if (is_wp_error($validation)) {
+                AIPS_Ajax_Response::error($validation->get_error_message());
+            }
         }
 
         // Use Prompt Builder to build all prompts
