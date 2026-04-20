@@ -117,7 +117,14 @@ this.currentGroup = null;
 this.resetModal();
 
 $('#aips-pt-modal-title').text(aipsPTL10n.add_group);
-this.renderComponentFields(null);
+
+// Pre-fill each component with its built-in default prompt so
+// the new group starts with meaningful content rather than blank fields.
+var defaultItemMap = {};
+$.each(this.components, function (i, comp) {
+    defaultItemMap[comp.key] = comp.default_prompt || '';
+});
+this.renderComponentFields(defaultItemMap);
 this.showModal();
 },
 

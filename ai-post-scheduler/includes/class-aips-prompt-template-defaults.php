@@ -100,33 +100,53 @@ class AIPS_Prompt_Template_Defaults {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return the default group definition.
+	 * Return the default group definition with translated user-facing strings.
 	 *
 	 * @return array{name:string,description:string,is_default:int}
 	 */
 	public static function get_default_group() {
-		return self::$default_group;
+		return array(
+			'name'        => __( 'Default', 'ai-post-scheduler' ),
+			'description' => __( 'Built-in default prompt template group shipped with the plugin.', 'ai-post-scheduler' ),
+			'is_default'  => self::$default_group['is_default'],
+		);
 	}
 
 	/**
-	 * Return all built-in component definitions.
+	 * Return all built-in component definitions with translated labels and descriptions.
 	 *
 	 * @return array<string,array>
 	 */
 	public static function get_components() {
-		return self::$default_components;
+		$components = array();
+		foreach ( self::$default_components as $key => $comp ) {
+			$components[ $key ] = array(
+				'key'            => $comp['key'],
+				'label'          => __( $comp['label'], 'ai-post-scheduler' ),
+				'description'    => __( $comp['description'], 'ai-post-scheduler' ),
+				'default_prompt' => $comp['default_prompt'],
+			);
+		}
+		return $components;
 	}
 
 	/**
-	 * Return the definition for a single component, or null if unknown.
+	 * Return the definition for a single component with translated strings, or null if unknown.
 	 *
 	 * @param string $component_key Component key.
 	 * @return array|null
 	 */
 	public static function get_component( $component_key ) {
-		return isset( self::$default_components[ $component_key ] )
-			? self::$default_components[ $component_key ]
-			: null;
+		if ( ! isset( self::$default_components[ $component_key ] ) ) {
+			return null;
+		}
+		$comp = self::$default_components[ $component_key ];
+		return array(
+			'key'            => $comp['key'],
+			'label'          => __( $comp['label'], 'ai-post-scheduler' ),
+			'description'    => __( $comp['description'], 'ai-post-scheduler' ),
+			'default_prompt' => $comp['default_prompt'],
+		);
 	}
 
 	/**

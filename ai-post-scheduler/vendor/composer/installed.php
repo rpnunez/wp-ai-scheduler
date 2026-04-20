@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-copilot/add-admin-editable-prompt-templates',
         'version' => 'dev-copilot/add-admin-editable-prompt-templates',
-        'reference' => 'cc6811ea4faa961f979f9ed94af9ad8283e36e92',
+        'reference' => 'f3f2270f30f3d7ac850366497abcb04cb525b4e7',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -103,7 +103,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-copilot/add-admin-editable-prompt-templates',
             'version' => 'dev-copilot/add-admin-editable-prompt-templates',
-            'reference' => 'cc6811ea4faa961f979f9ed94af9ad8283e36e92',
+            'reference' => 'f3f2270f30f3d7ac850366497abcb04cb525b4e7',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

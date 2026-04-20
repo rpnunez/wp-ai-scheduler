@@ -17,6 +17,9 @@ class Test_AIPS_Prompt_Template_Item_Repository extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		if ( function_exists( 'dbDelta' ) ) {
+			AIPS_DB_Manager::install_tables();
+		}
 		$this->resetSingleton();
 		$this->repo = new AIPS_Prompt_Template_Item_Repository();
 	}
