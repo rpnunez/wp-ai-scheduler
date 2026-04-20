@@ -96,7 +96,8 @@ class AIPS_Prompt_Builder_Post_Title {
 	 * @return string
 	 */
 	private function build_base_prompt($title_instructions, $content) {
-		$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
+		$repo   = AIPS_Prompt_Template_Group_Repository::instance();
+		$prompt = $repo->get_prompt_for_component( 'post_title' );
 
 		if (!empty($title_instructions)) {
 			$prompt .= " Here are your instructions:\n\n" . $title_instructions;

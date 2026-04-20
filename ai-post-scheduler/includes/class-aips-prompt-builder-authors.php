@@ -56,8 +56,12 @@ class AIPS_Prompt_Builder_Authors {
 		$brand_voice     = isset($inputs['brand_voice']) ? sanitize_text_field($inputs['brand_voice']) : '';
 		$site_url        = isset($inputs['site_url']) ? esc_url_raw($inputs['site_url']) : '';
 
-		$prompt  = "You are an expert content strategist.\n\n";
-		$prompt .= "A blog or website needs {$count} distinct AI author persona(s) to produce varied, high-quality content.\n\n";
+		// Resolve the intro block via Prompt Templates, falling back to built-in default.
+		$repo      = AIPS_Prompt_Template_Group_Repository::instance();
+		$intro_tpl = $repo->get_prompt_for_component( 'author_suggestions' );
+		// Replace {count} placeholder with the requested number.
+		$prompt  = str_replace( '{count}', (string) (int) $count, $intro_tpl ) . "\n\n";
+
 		$prompt .= "Site niche / primary topic: {$site_niche}\n";
 
 		if (!empty($target_audience)) {
