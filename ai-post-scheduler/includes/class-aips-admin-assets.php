@@ -134,8 +134,9 @@ class AIPS_Admin_Assets {
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
 			array('jquery', 'aips-datetime-script'),
-            true
-        );
+			AIPS_VERSION,
+			true
+		);
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),

@@ -129,8 +129,8 @@ class AIPS_Interval_Calculator {
      * @return int UTC Unix timestamp for the next run.
      */
     public function calculate_next_run($frequency, $start_time = null) {
-        $base_time = is_int($start_time) && $start_time > 0
-            ? $start_time
+        $base_time = is_numeric($start_time) && (int) $start_time > 0
+            ? (int) $start_time
             : AIPS_DateTime::now()->timestamp();
         $now = AIPS_DateTime::now()->timestamp();
         
@@ -185,8 +185,8 @@ class AIPS_Interval_Calculator {
      * @return int UTC Unix timestamp.
      */
     public function calculate_next_occurrence_after($frequency, $last_run, $target_date) {
-        $base_time = is_int($last_run) ? $last_run : 0;
-        $target    = is_int($target_date) ? $target_date : 0;
+        $base_time = is_numeric($last_run) ? (int) $last_run : 0;
+        $target    = is_numeric($target_date) ? (int) $target_date : 0;
 
         // If the base time is already after the target, return it
         if ($base_time >= $target) {

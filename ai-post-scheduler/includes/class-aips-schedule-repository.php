@@ -147,7 +147,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id
             WHERE s.is_active = 1 
-            AND s.next_run <= %s
+            AND s.next_run <= %d
             AND t.is_active = 1
             ORDER BY s.next_run ASC
             LIMIT %d
