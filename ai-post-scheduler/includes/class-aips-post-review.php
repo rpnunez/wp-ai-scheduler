@@ -451,30 +451,31 @@ class AIPS_Post_Review {
 		// Trigger regeneration using the generator (same API as history retry)
 		$generator = new AIPS_Generator();
 		$result = $generator->generate_post($template);
-		
-		if (is_wp_error($result)) {
+
+		if ($result->is_failure()) {
 			// Log the regeneration failure
 			$history = $this->history_service->create('post_review_action', array());
+			$error_msg = !empty($result->errors) ? implode(', ', $result->errors) : __('Generation failed', 'ai-post-scheduler');
 			$history->record(
 				'activity',
-				sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $result->get_error_message()),
+				sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $error_msg),
 				array('event_type' => 'post_regenerated', 'event_status' => 'failed'),
 				null,
-				array('error' => $result->get_error_message())
+				array('error' => $error_msg)
 			);
-			
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+
+			AIPS_Ajax_Response::error(array('message' => $error_msg));
 			return;
 		}
-		
+
 		// Log the regeneration success
-		$history = $this->history_service->create('post_review_action', array('post_id' => $result));
+		$history = $this->history_service->create('post_review_action', array('post_id' => $result->post_id));
 		$history->record(
 			'activity',
 			__('Post regenerated from review queue', 'ai-post-scheduler'),
 			array('event_type' => 'post_regenerated', 'event_status' => 'success'),
 			null,
-			array('post_id' => $result)
+			array('post_id' => $result->post_id)
 		);
 		
 		/**
@@ -647,8 +648,9 @@ class AIPS_Post_Review {
 
 				$regen_result = $generator->generate_post($template);
 
-				if (is_wp_error($regen_result)) {
-					return $regen_result;
+				if ($regen_result->is_failure()) {
+					$error_msg = !empty($regen_result->errors) ? implode(', ', $regen_result->errors) : __('Generation failed', 'ai-post-scheduler');
+					return new WP_Error('generation_failed', $error_msg);
 				}
 
 				/**
@@ -658,7 +660,7 @@ class AIPS_Post_Review {
 				 */
 				do_action('aips_post_review_regenerated', $history_id);
 
-				return $regen_result;
+				return $regen_result->post_id;
 			},
 			array(
 				'limit_filter' => 'aips_post_review_bulk_regenerate_max_batch',

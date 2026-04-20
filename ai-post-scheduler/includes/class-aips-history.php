@@ -387,14 +387,14 @@ class AIPS_History {
         
         $generator = new AIPS_Generator();
         $result = $generator->generate_post($template);
-        
-        if (is_wp_error($result) && !is_int($result)) {
-            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+
+        if ($result->is_failure()) {
+            AIPS_Ajax_Response::error(array('message' => !empty($result->errors) ? implode(', ', $result->errors) : __('Generation failed', 'ai-post-scheduler')));
         }
-        
+
         AIPS_Ajax_Response::success(array(
             'message' => __('Post regenerated successfully!', 'ai-post-scheduler'),
-            'post_id' => $result
+            'post_id' => $result->post_id
         ));
     }
 

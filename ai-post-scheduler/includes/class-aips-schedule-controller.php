@@ -268,10 +268,10 @@ class AIPS_Schedule_Controller {
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
 
-            if ($result instanceof WP_Error) {
-                $errors[] = $result->get_error_message();
+            if ($result->is_failure()) {
+                $errors[] = !empty($result->errors) ? implode(', ', $result->errors) : __('Generation failed', 'ai-post-scheduler');
             } else {
-                $post_ids[] = $result;
+                $post_ids[] = $result->post_id;
             }
         }
 

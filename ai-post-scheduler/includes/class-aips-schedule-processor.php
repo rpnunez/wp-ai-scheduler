@@ -438,16 +438,18 @@ class AIPS_Schedule_Processor {
 
         for ($i = $start_index; $i < $post_quantity; $i++) {
             $result = $this->generator->generate_post($context);
-            if (is_wp_error($result)) {
-                $errors[] = $result;
+            if ($result->is_failure()) {
+                $error_msg = !empty($result->errors) ? implode(', ', $result->errors) : __('Generation failed', 'ai-post-scheduler');
+                $wp_err = new WP_Error('generation_failed', $error_msg);
+                $errors[] = $wp_err;
                 // Persist the current run state so operators and future
                 // circuit-breaker logic can inspect what happened.
                 if (!$is_manual) {
                     $completed_so_far = $prior_completed + count($successful_post_ids);
                     $this->repository->update_run_state($schedule->schedule_id, array(
                         'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
-                        'error_code'    => $result->get_error_code(),
-                        'error_message' => $result->get_error_message(),
+                        'error_code'    => 'generation_failed',
+                        'error_message' => $error_msg,
                         'completed'     => $completed_so_far,
                         'total'         => $post_quantity,
                         'timestamp'     => gmdate('c'),
@@ -456,7 +458,7 @@ class AIPS_Schedule_Processor {
                 // Stop the batch so batch_progress is preserved for resumption.
                 break;
             } else {
-                $successful_post_ids[] = $result;
+                $successful_post_ids[] = $result->post_id;
                 // Persist progress after every successful generation so that a
                 // mid-batch crash still records how far we got.  Storing the
                 // accumulated post IDs makes the cursor atomic with creation:
