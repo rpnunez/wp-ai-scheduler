@@ -639,67 +639,66 @@ class AIPS_Schedule_Processor {
         }
 
         // ── Large-batch queue dispatch ──────────────────────────────────────────
-        // When the requested quantity meets the large-batch threshold AND this is
-        // an automated (cron) run, dispatch the work as a set of time-spread
-        // single cron events rather than generating all posts synchronously here.
-        // Manual runs always execute synchronously regardless of post_quantity.
-        if (!$is_manual) {
-            $batch_service = $this->get_batch_queue_service();
-            if ($batch_service->needs_batch_queue($post_quantity)) {
-                if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
-                    return;
-                }
-
-                $now            = AIPS_DateTime::now()->timestamp();
-                $correlation_id = (string) AIPS_Correlation_ID::get();
-
-                $dispatch_summary = $batch_service->dispatch(
-                    (int) $schedule->schedule_id,
-                    $post_quantity,
-                    $now,
-                    $correlation_id
-                );
-
-                // Persist batch-queued state so the guard above works on the next
-                // cron tick and the admin can see the schedule is actively running.
-                $this->repository->update_run_state($schedule->schedule_id, array(
-                    'status'        => 'batch_queued',
-                    'total'         => $post_quantity,
-                    'num_batches'   => $dispatch_summary['num_batches'],
-                    'dispatched_at' => $now,
-                    'timestamp'     => AIPS_DateTime::now()->toIso8601(),
-                ));
-
-                if ($history) {
-                    $history->record(
-                        'activity',
-                        sprintf(
-                            /* translators: 1: number of batch jobs, 2: total posts, 3: spread window in seconds */
-                            __('Large batch detected (%2$d posts): dispatched %1$d batch jobs spread across %3$d seconds.', 'ai-post-scheduler'),
-                            $dispatch_summary['num_batches'],
-                            $post_quantity,
-                            $dispatch_summary['window_seconds']
-                        ),
-                        array(
-                            'event_type'   => 'batch_queue_dispatched',
-                            'event_status' => 'success',
-                        ),
-                        null,
-                        array(
-                            'schedule_id'     => $schedule->schedule_id,
-                            'post_quantity'   => $post_quantity,
-                            'num_batches'     => $dispatch_summary['num_batches'],
-                            'posts_per_batch' => $dispatch_summary['posts_per_batch'],
-                            'window_seconds'  => $dispatch_summary['window_seconds'],
-                        )
-                    );
-                }
-
-                // Return early — the result_handler is NOT called for the dispatch path.
-                // next_run was already advanced by claim-first locking in
-                // execute_schedule_with_lock before this method was invoked.
+        // When the requested quantity meets the large-batch threshold, dispatch
+        // the work as a set of time-spread single cron events rather than
+        // generating all posts synchronously here.  This applies to both
+        // automated (cron) and manual runs.
+        $batch_service = $this->get_batch_queue_service();
+        if ($batch_service->needs_batch_queue($post_quantity)) {
+            if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
                 return;
             }
+
+            $now            = AIPS_DateTime::now()->timestamp();
+            $correlation_id = (string) AIPS_Correlation_ID::get();
+
+            $dispatch_summary = $batch_service->dispatch(
+                (int) $schedule->schedule_id,
+                $post_quantity,
+                $now,
+                $correlation_id
+            );
+
+            // Persist batch-queued state so the guard above works on the next
+            // cron tick (or a repeated manual trigger) and the admin can see
+            // the schedule is actively running.
+            $this->repository->update_run_state($schedule->schedule_id, array(
+                'status'        => 'batch_queued',
+                'total'         => $post_quantity,
+                'num_batches'   => $dispatch_summary['num_batches'],
+                'dispatched_at' => $now,
+                'timestamp'     => AIPS_DateTime::now()->toIso8601(),
+            ));
+
+            if ($history) {
+                $history->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: number of batch jobs, 2: total posts, 3: spread window in seconds */
+                        __('Large batch detected (%2$d posts): dispatched %1$d batch jobs spread across %3$d seconds.', 'ai-post-scheduler'),
+                        $dispatch_summary['num_batches'],
+                        $post_quantity,
+                        $dispatch_summary['window_seconds']
+                    ),
+                    array(
+                        'event_type'   => 'batch_queue_dispatched',
+                        'event_status' => 'success',
+                    ),
+                    null,
+                    array(
+                        'schedule_id'     => $schedule->schedule_id,
+                        'post_quantity'   => $post_quantity,
+                        'num_batches'     => $dispatch_summary['num_batches'],
+                        'posts_per_batch' => $dispatch_summary['posts_per_batch'],
+                        'window_seconds'  => $dispatch_summary['window_seconds'],
+                    )
+                );
+            }
+
+            // Return early — the result_handler is NOT called for the dispatch path.
+            // For automated runs next_run was already advanced by claim-first
+            // locking in execute_schedule_with_lock before this method was invoked.
+            return;
         }
         // ── End large-batch check ─────────────────────────────────────────────
 
