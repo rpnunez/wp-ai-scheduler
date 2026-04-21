@@ -227,8 +227,13 @@ class Test_AIPS_Batch_Queue_Service extends WP_UnitTestCase {
 
 		$this->assertCount(2, $found, '4 posts should produce 2 batch events.');
 
-		// Sort by start_index (arg[1]).
-		usort($found, function($a, $b) { return $a[1] <=> $b[1]; });
+		// Sort by start_index (arg[1]) using explicit comparison for WP coding standards compatibility.
+		usort($found, function($a, $b) {
+			if ($a[1] === $b[1]) {
+				return 0;
+			}
+			return ($a[1] < $b[1]) ? -1 : 1;
+		});
 
 		// Batch 0: start_index=0, batch_size=2, total=4, corr_id='abc-123'
 		$this->assertSame($schedule_id, $found[0][0]);

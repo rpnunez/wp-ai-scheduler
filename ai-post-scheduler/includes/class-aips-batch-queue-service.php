@@ -106,6 +106,18 @@ class AIPS_Batch_Queue_Service {
 	}
 
 	/**
+	 * Return the configured batch queue window in seconds.
+	 *
+	 * Centralises the aips_batch_queue_window_seconds filter so callers
+	 * do not need to duplicate the apply_filters() call.
+	 *
+	 * @return int Spread window in seconds (minimum 0).
+	 */
+	public function get_window_seconds(): int {
+		return max(0, (int) apply_filters('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS));
+	}
+
+	/**
 	 * Calculate the batch configuration for a given post quantity.
 	 *
 	 * Returns an array describing how to split $post_quantity into jobs and
@@ -121,7 +133,7 @@ class AIPS_Batch_Queue_Service {
 	 */
 	public function calculate_config(int $post_quantity): array {
 		$max_batches    = max(1, (int) apply_filters('aips_batch_max_jobs', self::DEFAULT_MAX_BATCHES));
-		$window_seconds = max(0, (int) apply_filters('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS));
+		$window_seconds = $this->get_window_seconds();
 
 		// Aim for ~2 posts per job, but never exceed max_batches.
 		$num_batches     = min($max_batches, (int) ceil($post_quantity / 2));
@@ -174,11 +186,9 @@ class AIPS_Batch_Queue_Service {
 
 		for ($batch = 0; $batch < $num_batches; $batch++) {
 			$start_index     = $batch * $posts_per_batch;
+			// min() ensures the last batch does not exceed the total when
+			// post_quantity is not evenly divisible by posts_per_batch.
 			$this_batch_size = min($posts_per_batch, $post_quantity - $start_index);
-
-			if ($this_batch_size <= 0) {
-				break;
-			}
 
 			// Batch 0 fires at base_timestamp (immediately); subsequent batches
 			// are staggered by interval_seconds each.

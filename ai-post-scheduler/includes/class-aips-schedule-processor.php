@@ -280,11 +280,12 @@ class AIPS_Schedule_Processor {
 
             // Persist incremental progress so a crash mid-slice is visible.
             // At this point count($successful_post_ids) >= 1, so last_index is always >= 0.
+            $completed_so_far = $start_index + count($successful_post_ids);
             $this->repository->update_batch_progress(
                 $schedule_id,
-                $start_index + count($successful_post_ids),
+                $completed_so_far,
                 $total_quantity,
-                $start_index + count($successful_post_ids) - 1,
+                $completed_so_far - 1,
                 $successful_post_ids
             );
         }
@@ -405,7 +406,7 @@ class AIPS_Schedule_Processor {
         }
 
         // Retrieve the configured window once to avoid duplicate filter calls.
-        $window = max(0, (int) apply_filters('aips_batch_queue_window_seconds', AIPS_Batch_Queue_Service::DEFAULT_WINDOW_SECONDS));
+        $window = $batch_service->get_window_seconds();
         $age    = AIPS_DateTime::now()->timestamp() - (int) $existing_state['dispatched_at'];
 
         // Allow a grace period beyond the declared window before allowing re-dispatch.
