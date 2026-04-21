@@ -53,12 +53,12 @@ class AIPS_AI_Assistance_Controller {
 	 */
 	public function ajax_field_assist() {
 		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
-			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'ai-post-scheduler' ) ) );
+			AIPS_Ajax_Response::error( __( 'Security check failed.', 'ai-post-scheduler' ), 'security_check_failed', 403 );
 			return;
 		}
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'ai-post-scheduler' ) ) );
+			AIPS_Ajax_Response::permission_denied();
 			return;
 		}
 
@@ -78,18 +78,18 @@ class AIPS_AI_Assistance_Controller {
 		$user_id    = get_current_user_id();
 
 		if ( empty( $field_config['form_field_id'] ) || empty( $field_config['form_context'] ) || empty( $field_config['field_name'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Required field parameters are missing.', 'ai-post-scheduler' ) ) );
+			AIPS_Ajax_Response::invalid_request( __( 'Required field parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}
 
 		$result = $this->service->get_field_suggestion( $field_config, $session_id, $user_id );
 
 		if ( is_wp_error( $result ) ) {
-			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			AIPS_Ajax_Response::error( $result->get_error_message() );
 			return;
 		}
 
-		wp_send_json_success( array(
+		AIPS_Ajax_Response::success( array(
 			'response'  => $result['response'],
 			'record_id' => $result['record_id'],
 		) );
@@ -104,12 +104,12 @@ class AIPS_AI_Assistance_Controller {
 	 */
 	public function ajax_get_field_assist_history() {
 		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
-			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'ai-post-scheduler' ) ) );
+			AIPS_Ajax_Response::error( __( 'Security check failed.', 'ai-post-scheduler' ), 'security_check_failed', 403 );
 			return;
 		}
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'ai-post-scheduler' ) ) );
+			AIPS_Ajax_Response::permission_denied();
 			return;
 		}
 
@@ -120,7 +120,7 @@ class AIPS_AI_Assistance_Controller {
 		$session_records = $this->repository->get_by_session_and_field( $session_id, $form_context, $field_key );
 		$alltime_records = $this->repository->get_by_field( $form_context, $field_key, 15 );
 
-		wp_send_json_success( array(
+		AIPS_Ajax_Response::success( array(
 			'session' => $session_records,
 			'alltime' => $alltime_records,
 		) );
