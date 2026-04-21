@@ -659,9 +659,9 @@ class AIPS_Schedule_Processor {
                 $correlation_id
             );
 
-            // Persist batch-queued state so the guard above works on the next
-            // cron tick (or a repeated manual trigger) and the admin can see
-            // the schedule is actively running.
+            // Persist batch-queued state so the re-dispatch guard above fires
+            // if the cron fires again (or the user clicks "Run now" again)
+            // while the batched events are still in flight.
             $this->repository->update_run_state($schedule->schedule_id, array(
                 'status'        => 'batch_queued',
                 'total'         => $post_quantity,
@@ -696,8 +696,9 @@ class AIPS_Schedule_Processor {
             }
 
             // Return early — the result_handler is NOT called for the dispatch path.
-            // For automated runs next_run was already advanced by claim-first
-            // locking in execute_schedule_with_lock before this method was invoked.
+            // Automated runs: next_run was already advanced by claim-first locking
+            // in execute_schedule_with_lock before this method was invoked.
+            // Manual runs: next_run is not modified; the batch events handle generation.
             return;
         }
         // ── End large-batch check ─────────────────────────────────────────────
