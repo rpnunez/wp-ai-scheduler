@@ -279,18 +279,14 @@ class AIPS_Schedule_Processor {
             $successful_post_ids[] = $result;
 
             // Persist incremental progress so a crash mid-slice is visible.
-            // Guard the last_index so it is never negative (avoids issues when
-            // start_index is 0 and this is the very first post).
-            $last_success_index = $start_index + count($successful_post_ids) - 1;
-            if ($last_success_index >= 0) {
-                $this->repository->update_batch_progress(
-                    $schedule_id,
-                    $start_index + count($successful_post_ids),
-                    $total_quantity,
-                    $last_success_index,
-                    $successful_post_ids
-                );
-            }
+            // At this point count($successful_post_ids) >= 1, so last_index is always >= 0.
+            $this->repository->update_batch_progress(
+                $schedule_id,
+                $start_index + count($successful_post_ids),
+                $total_quantity,
+                $start_index + count($successful_post_ids) - 1,
+                $successful_post_ids
+            );
         }
 
         $completed_in_slice = count($successful_post_ids);
@@ -412,8 +408,8 @@ class AIPS_Schedule_Processor {
         $window = max(0, (int) apply_filters('aips_batch_queue_window_seconds', AIPS_Batch_Queue_Service::DEFAULT_WINDOW_SECONDS));
         $age    = AIPS_DateTime::now()->timestamp() - (int) $existing_state['dispatched_at'];
 
-        // Allow a 2-minute grace period beyond the declared window.
-        if ($age >= ($window + 120)) {
+        // Allow a grace period beyond the declared window before allowing re-dispatch.
+        if ($age >= ($window + AIPS_Batch_Queue_Service::REDISPATCH_GRACE_SECONDS)) {
             return false;
         }
 

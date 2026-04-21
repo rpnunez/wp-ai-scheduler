@@ -66,6 +66,17 @@ class AIPS_Batch_Queue_Service {
 	const DEFAULT_WINDOW_SECONDS = 600;
 
 	/**
+	 * Grace period (seconds) added to the window when checking whether a
+	 * previously dispatched batch queue is still considered "in flight".
+	 *
+	 * This ensures the hourly cron worker does not re-dispatch if the last
+	 * batch job is still running just after the window expires.
+	 *
+	 * @var int
+	 */
+	const REDISPATCH_GRACE_SECONDS = 120;
+
+	/**
 	 * WordPress cron action hook name for individual batch jobs.
 	 *
 	 * @var string

@@ -17,6 +17,8 @@ class Test_AIPS_Batch_Queue_Service extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		// Ensure the single-event store is clean before each test.
+		unset($GLOBALS['aips_test_single_events']);
 		$this->service = new AIPS_Batch_Queue_Service();
 	}
 
