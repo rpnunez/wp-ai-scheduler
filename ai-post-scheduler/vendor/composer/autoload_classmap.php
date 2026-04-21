@@ -34,6 +34,8 @@ return array(
     'AIPS_Autoloader' => $baseDir . '/includes/class-aips-autoloader.php',
     'AIPS_Autoloader_Test' => $baseDir . '/tests/test-autoloader.php',
     'AIPS_Batch_Queue_Service' => $baseDir . '/includes/class-aips-batch-queue-service.php',
+    'AIPS_Bulk_Batch_Job_Store' => $baseDir . '/includes/class-aips-bulk-batch-job-store.php',
+    'AIPS_Bulk_Batch_Processor' => $baseDir . '/includes/class-aips-bulk-batch-processor.php',
     'AIPS_Bulk_Generation_Result' => $baseDir . '/includes/class-aips-bulk-generator-service.php',
     'AIPS_Bulk_Generator_Service' => $baseDir . '/includes/class-aips-bulk-generator-service.php',
     'AIPS_Cache' => $baseDir . '/includes/class-aips-cache.php',

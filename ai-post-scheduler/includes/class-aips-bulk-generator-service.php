@@ -89,14 +89,34 @@ class AIPS_Bulk_Generation_Result {
 	public readonly int $max_bulk;
 
 	/**
+	 * True when the batch was large enough to be dispatched to the async
+	 * batch queue rather than processed synchronously.
+	 *
+	 * Controllers should return an immediate "queued" response to the user
+	 * and let the cron workers deliver results asynchronously.
+	 *
+	 * @var bool
+	 */
+	public readonly bool $was_queued;
+
+	/**
+	 * The job UUID when was_queued is true, or null for synchronous runs.
+	 *
+	 * @var string|null
+	 */
+	public readonly ?string $job_id;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param int      $success_count Number of successful generations.
-	 * @param int      $failed_count  Number of failures.
-	 * @param string[] $errors        Per-item error strings.
-	 * @param int[]    $post_ids      IDs of generated posts.
-	 * @param bool     $was_limited   Whether the batch limit was hit.
-	 * @param int      $max_bulk      Effective limit that was applied.
+	 * @param int         $success_count Number of successful generations.
+	 * @param int         $failed_count  Number of failures.
+	 * @param string[]    $errors        Per-item error strings.
+	 * @param int[]       $post_ids      IDs of generated posts.
+	 * @param bool        $was_limited   Whether the batch limit was hit.
+	 * @param int         $max_bulk      Effective limit that was applied.
+	 * @param bool        $was_queued    Whether the batch was queued async.
+	 * @param string|null $job_id        Async job UUID when was_queued is true.
 	 */
 	public function __construct(
 		int $success_count,
@@ -104,7 +124,9 @@ class AIPS_Bulk_Generation_Result {
 		array $errors,
 		array $post_ids,
 		bool $was_limited,
-		int $max_bulk
+		int $max_bulk,
+		bool $was_queued = false,
+		?string $job_id = null
 	) {
 		$this->success_count = $success_count;
 		$this->failed_count  = $failed_count;
@@ -112,6 +134,8 @@ class AIPS_Bulk_Generation_Result {
 		$this->post_ids      = $post_ids;
 		$this->was_limited   = $was_limited;
 		$this->max_bulk      = $max_bulk;
+		$this->was_queued    = $was_queued;
+		$this->job_id        = $job_id;
 	}
 }
 
@@ -131,8 +155,9 @@ class AIPS_Bulk_Generation_Result {
  *     $items,
  *     function( $item ) { return $generator->generate_post( $template, null, $item ); },
  *     array(
- *         'history_type' => 'bulk_generate_now',
- *         'trigger_name' => 'ajax_bulk_generate_now',
+ *         'history_type'   => 'bulk_generate_now',
+ *         'trigger_name'   => 'ajax_bulk_generate_now',
+ *         'queue_job_type' => 'planner_post',   // enables async queuing
  *     )
  * );
  * ```
@@ -142,9 +167,17 @@ class AIPS_Bulk_Generation_Result {
  *   limit_filter   string   Filter name for the max-items limit.
  *                           Default: 'aips_bulk_run_now_limit'.
  *   limit_default  int      Fallback limit when filter returns 0.
- *                           Default: 5.
+ *                           Default: AIPS_Bulk_Generator_Service::DEFAULT_LIMIT (5).
  *   limit_mode     string   'hard' (reject request) or 'soft' (truncate items).
  *                           Default: 'hard'.
+ *                           Note: when queue_job_type is provided and the batch is
+ *                           large enough, the request is queued async regardless of
+ *                           limit_mode, so no items are rejected or truncated.
+ *   queue_job_type string   When set, large batches (≥ aips_large_batch_threshold)
+ *                           are persisted to AIPS_Bulk_Batch_Job_Store and dispatched
+ *                           as a series of cron events instead of running synchronously.
+ *                           The strategy for this job_type must be registered in
+ *                           AIPS_Bulk_Batch_Processor before the cron fires.
  *   history_type   string   History container type string.
  *   history_meta   array    Extra metadata merged into the history container.
  *   trigger_name   string   Identifies the calling handler in history.
@@ -161,18 +194,70 @@ class AIPS_Bulk_Generation_Result {
 class AIPS_Bulk_Generator_Service {
 
 	/**
+	 * Default item limit when no limit_default option and no filter override are given.
+	 *
+	 * Exposed as a class constant so callers can reference it without magic numbers.
+	 * Use the 'aips_bulk_run_now_limit' filter to override at runtime.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_LIMIT = 5;
+
+	/**
 	 * @var AIPS_History_Service_Interface
 	 */
 	private $history_service;
 
 	/**
+	 * @var AIPS_Bulk_Batch_Job_Store|null Lazy-loaded job store.
+	 */
+	private $job_store;
+
+	/**
+	 * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
+	 */
+	private $batch_queue_service;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_History_Service_Interface|null $history_service Injectable for testing.
+	 * @param AIPS_Bulk_Batch_Job_Store|null      $job_store       Injectable for testing.
+	 * @param AIPS_Batch_Queue_Service|null       $batch_queue_service Injectable for testing.
 	 */
-	public function __construct( ?AIPS_History_Service_Interface $history_service = null ) {
+	public function __construct(
+		?AIPS_History_Service_Interface $history_service     = null,
+		?AIPS_Bulk_Batch_Job_Store      $job_store           = null,
+		?AIPS_Batch_Queue_Service       $batch_queue_service = null
+	) {
 		$container = AIPS_Container::get_instance();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service     = $history_service     ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->job_store           = $job_store;
+		$this->batch_queue_service = $batch_queue_service;
+	}
+
+	/**
+	 * Lazy-load the job store.
+	 *
+	 * @return AIPS_Bulk_Batch_Job_Store
+	 */
+	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
+		if ( $this->job_store === null ) {
+			$this->job_store = new AIPS_Bulk_Batch_Job_Store();
+		}
+		return $this->job_store;
+	}
+
+	/**
+	 * Lazy-load the batch queue service.
+	 *
+	 * @return AIPS_Batch_Queue_Service
+	 */
+	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
+		if ( $this->batch_queue_service === null ) {
+			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+		}
+		return $this->batch_queue_service;
 	}
 
 	/**
@@ -191,8 +276,9 @@ class AIPS_Bulk_Generator_Service {
 		// 1. Resolve and apply the batch limit
 		// ------------------------------------------------------------------
 		$limit_filter  = isset( $options['limit_filter'] )  ? (string) $options['limit_filter']  : 'aips_bulk_run_now_limit';
-		$limit_default = isset( $options['limit_default'] ) ? (int)    $options['limit_default'] : 5;
+		$limit_default = isset( $options['limit_default'] ) ? (int)    $options['limit_default'] : self::DEFAULT_LIMIT;
 		$limit_mode    = isset( $options['limit_mode'] )    ? (string) $options['limit_mode']    : 'hard';
+		$queue_job_type = isset( $options['queue_job_type'] ) ? (string) $options['queue_job_type'] : '';
 
 		$max_bulk = absint( apply_filters( $limit_filter, $limit_default ) );
 		if ( $max_bulk < 1 ) {
@@ -200,6 +286,22 @@ class AIPS_Bulk_Generator_Service {
 		}
 
 		$was_limited = false;
+
+		// ------------------------------------------------------------------
+		// 1a. Large-batch async queuing (when queue_job_type is provided)
+		//
+		// When the caller has opted in to async queuing (by providing a
+		// queue_job_type) and the item count meets the large-batch threshold,
+		// persist the job and dispatch cron events instead of running
+		// synchronously.  This bypasses the hard/soft limit entirely —
+		// the whole point is to generate *all* requested items eventually.
+		// ------------------------------------------------------------------
+		if ( $queue_job_type !== '' ) {
+			$batch_service = $this->get_batch_queue_service();
+			if ( $batch_service->needs_batch_queue( count( $items ) ) ) {
+				return $this->dispatch_async( $items, $options, $queue_job_type, $max_bulk, $batch_service );
+			}
+		}
 
 		if ( count( $items ) > $max_bulk ) {
 			if ( $limit_mode === 'soft' ) {
@@ -329,6 +431,115 @@ class AIPS_Bulk_Generator_Service {
 			$post_ids,
 			$was_limited,
 			$max_bulk
+		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Private helpers
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Persist a large-batch job and dispatch async cron events.
+	 *
+	 * Called from run() when queue_job_type is set and the item count meets
+	 * the large-batch threshold.
+	 *
+	 * @param array                  $items          Items to queue.
+	 * @param array                  $options        Raw options from run() caller.
+	 * @param string                 $queue_job_type Strategy key.
+	 * @param int                    $max_bulk       Effective per-request limit.
+	 * @param AIPS_Batch_Queue_Service $batch_service Batch queue service instance.
+	 * @return AIPS_Bulk_Generation_Result Result with was_queued = true.
+	 */
+	private function dispatch_async(
+		array $items,
+		array $options,
+		string $queue_job_type,
+		int $max_bulk,
+		AIPS_Batch_Queue_Service $batch_service
+	): AIPS_Bulk_Generation_Result {
+
+		$job_store = $this->get_job_store();
+
+		// Persist serialisable options (strip closures automatically).
+		$job_id = $job_store->create( $queue_job_type, $items, $options );
+
+		if ( is_wp_error( $job_id ) ) {
+			// Job store failure: fall back gracefully to the synchronous path.
+			// Callers should not have to handle this edge case differently.
+			return new AIPS_Bulk_Generation_Result(
+				0,
+				count( $items ),
+				array( $job_id->get_error_message() ),
+				array(),
+				false,
+				$max_bulk
+			);
+		}
+
+		$correlation_id = (string) AIPS_Correlation_ID::get();
+		$now            = time();
+
+		$dispatch_summary = $batch_service->dispatch_generic(
+			AIPS_Bulk_Batch_Processor::HOOK,
+			count( $items ),
+			$now,
+			array( $job_id ),
+			$correlation_id
+		);
+
+		// Log the dispatch to history.
+		$history_type = isset( $options['history_type'] ) ? (string) $options['history_type'] : 'bulk_generation';
+		$history_meta = isset( $options['history_meta'] ) ? (array)  $options['history_meta'] : array();
+		$trigger_name = isset( $options['trigger_name'] ) ? (string) $options['trigger_name'] : 'bulk_generator_service';
+		$user_action  = isset( $options['user_action'] )  ? (string) $options['user_action']  : 'bulk_generate';
+		$user_message = isset( $options['user_message'] ) ? (string) $options['user_message']
+			/* translators: %d: number of items */
+			: sprintf( __( 'User initiated bulk generation for %d items', 'ai-post-scheduler' ), count( $items ) );
+
+		$meta = array_merge(
+			array(
+				'user_id'    => get_current_user_id(),
+				'source'     => 'manual_ui',
+				'trigger'    => $trigger_name,
+				'item_count' => count( $items ),
+				'job_id'     => $job_id,
+			),
+			$history_meta
+		);
+
+		$history = $this->history_service->create( $history_type, $meta );
+		$history->record_user_action( $user_action, $user_message, array( 'item_count' => count( $items ) ) );
+		$history->record(
+			'activity',
+			sprintf(
+				/* translators: 1: number of batch jobs, 2: total items, 3: spread window in seconds */
+				__( 'Large batch detected (%2$d items): queued %1$d batch jobs spread across %3$d seconds.', 'ai-post-scheduler' ),
+				$dispatch_summary['num_batches'],
+				count( $items ),
+				$dispatch_summary['window_seconds']
+			),
+			null,
+			null,
+			array(
+				'job_id'          => $job_id,
+				'job_type'        => $queue_job_type,
+				'num_batches'     => $dispatch_summary['num_batches'],
+				'posts_per_batch' => $dispatch_summary['posts_per_batch'],
+				'window_seconds'  => $dispatch_summary['window_seconds'],
+			)
+		);
+		$history->complete_success( array( 'queued' => true, 'item_count' => count( $items ) ) );
+
+		return new AIPS_Bulk_Generation_Result(
+			0,
+			0,
+			array(),
+			array(),
+			false,
+			$max_bulk,
+			true,
+			$job_id
 		);
 	}
 }

@@ -177,25 +177,6 @@ class AIPS_Planner {
             AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
         }
 
-        // Enforce the bulk limit BEFORE the expensive template lookup so the
-        // error is returned immediately (this also preserves original method ordering
-        // that existing tests depend on).
-        $max_bulk = absint(apply_filters('aips_bulk_run_now_limit', 5));
-        if ($max_bulk < 1) {
-            $max_bulk = 5;
-        }
-        if (count($topics) > $max_bulk) {
-            AIPS_Ajax_Response::error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: max allowed */
-                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
-                    count($topics),
-                    $max_bulk
-                ),
-            ));
-            return;
-        }
-
         $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
@@ -208,14 +189,16 @@ class AIPS_Planner {
             AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
 
-        // Pass a matching limit so the service never rejects (pre-check already done above).
+        // Delegate limit enforcement and async queuing to the service.
+        // When the item count is large, the service will queue the job and return
+        // was_queued = true instead of running synchronously.
         $result = $this->bulk_generator_service->run(
             $topics,
             function ( $topic ) use ( $generator, $template ) {
                 return $generator->generate_post($template, null, $topic);
             },
             array(
-                'limit_default'   => $max_bulk,
+                'queue_job_type'  => 'planner_post',
                 'history_type'    => 'bulk_generate_now',
                 'trigger_name'    => 'ajax_bulk_generate_now',
                 'user_action'     => 'bulk_generate_now',
@@ -224,12 +207,30 @@ class AIPS_Planner {
                     __('User initiated bulk generation for %d topics', 'ai-post-scheduler'),
                     count($topics)
                 ),
+                // Pass template_id so the cron strategy can reconstruct the generator context.
+                'history_meta'    => array( 'template_id' => $template_id ),
                 'error_formatter' => function ( $topic, $msg ) {
                     /* translators: 1: topic string, 2: error message */
                     return sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $msg);
                 },
             )
         );
+
+        // Async queued path: large batch dispatched to cron workers.
+        if ( $result->was_queued ) {
+            AIPS_Ajax_Response::success(array(
+                'message'  => sprintf(
+                    /* translators: %d: number of topics */
+                    __('Bulk generation queued for %d topics. Posts will be created in the background.', 'ai-post-scheduler'),
+                    count($topics)
+                ),
+                'queued'   => true,
+                'job_id'   => $result->job_id,
+                'post_ids' => array(),
+                'errors'   => array(),
+            ));
+            return;
+        }
 
         if (empty($result->post_ids) && !empty($result->errors)) {
             AIPS_Ajax_Response::error(array(

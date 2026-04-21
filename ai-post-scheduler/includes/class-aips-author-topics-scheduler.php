@@ -21,6 +21,24 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Topics_Scheduler {
 
 	/**
+	 * WordPress cron hook name for per-author topic-generation slices.
+	 *
+	 * @var string
+	 */
+	const SLICE_HOOK = 'aips_process_author_topics_slice';
+
+	/**
+	 * Default minimum number of due authors that triggers per-author batching.
+	 *
+	 * When more than this many authors are due, individual single events are
+	 * dispatched for each author rather than processing all of them inline.
+	 * Override via the 'aips_author_topics_batch_threshold' filter.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_THRESHOLD = 3;
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;
@@ -68,6 +86,11 @@ class AIPS_Author_Topics_Scheduler {
 	private $notifications;
 
 	/**
+	 * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
+	 */
+	private $batch_queue_service;
+
+	/**
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
@@ -78,9 +101,26 @@ class AIPS_Author_Topics_Scheduler {
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
 	}
+
+	/**
+	 * Lazy-load the batch queue service.
+	 *
+	 * @return AIPS_Batch_Queue_Service
+	 */
+	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
+		if ( $this->batch_queue_service === null ) {
+			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+		}
+		return $this->batch_queue_service;
+	}
 	
 	/**
 	 * Process topic generation for all due authors.
+	 *
+	 * When the number of due authors meets or exceeds the configured threshold
+	 * (aips_author_topics_batch_threshold), individual single cron events are
+	 * dispatched for each author instead of processing all of them inline.
+	 * This prevents PHP timeout issues when many authors are due simultaneously.
 	 *
 	 * This is called by WordPress cron on the scheduled interval.
 	 */
@@ -94,11 +134,19 @@ class AIPS_Author_Topics_Scheduler {
 			$this->logger->log('No authors due for topic generation', 'info');
 			return;
 		}
+
+		$author_count = count($due_authors);
+		$this->logger->log("Found {$author_count} authors due for topic generation", 'info');
+
+		// Determine whether to dispatch per-author slices.
+		$threshold = max(1, (int) apply_filters('aips_author_topics_batch_threshold', self::DEFAULT_BATCH_THRESHOLD));
+
+		if ( $author_count >= $threshold ) {
+			$this->dispatch_author_slices( $due_authors );
+			return;
+		}
 		
-		$this->logger->log('Found ' . count($due_authors) . ' authors due for topic generation', 'info');
-		
-		// Process each author, scoping a unique correlation ID to each author's
-		// generation run so the full chain (scheduler → topics → history) is traceable.
+		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
 			AIPS_Correlation_ID::generate();
 			try {
@@ -109,6 +157,76 @@ class AIPS_Author_Topics_Scheduler {
 		}
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');
+	}
+
+	/**
+	 * Dispatch one `aips_process_author_topics_slice` single event per due author.
+	 *
+	 * Each event fires shortly after the current time (staggered by a few seconds
+	 * to avoid hammering the AI service simultaneously) and calls
+	 * process_author_slice() for a single author.
+	 *
+	 * @param object[] $due_authors Array of author objects from the repository.
+	 */
+	private function dispatch_author_slices( array $due_authors ): void {
+		$now            = time();
+		$correlation_id = (string) AIPS_Correlation_ID::get();
+
+		// Stagger each author's event by 10 seconds to avoid simultaneous AI requests.
+		$stagger_seconds = (int) apply_filters('aips_author_topics_slice_stagger_seconds', 10);
+		$stagger_seconds = max(0, $stagger_seconds);
+
+		$i = 0;
+		foreach ( $due_authors as $author ) {
+			$fire_at = $now + ($i * $stagger_seconds);
+			wp_schedule_single_event(
+				$fire_at,
+				self::SLICE_HOOK,
+				array( (int) $author->id, $correlation_id )
+			);
+			$i++;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Dispatched %d author-topics slice events (stagger: %ds each).',
+				count($due_authors),
+				$stagger_seconds
+			),
+			'info'
+		);
+	}
+
+	/**
+	 * Process topic generation for a single author slice.
+	 *
+	 * This is the callback for the `aips_process_author_topics_slice` cron hook.
+	 * It loads the author by ID and calls generate_topics_for_author().
+	 *
+	 * @param int    $author_id      ID of the author to process.
+	 * @param string $correlation_id Correlation ID for tracing.
+	 */
+	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::set( $correlation_id );
+		} else {
+			AIPS_Correlation_ID::generate();
+		}
+
+		try {
+			$author = $this->authors_repository->get_by_id( $author_id );
+			if ( ! $author ) {
+				$this->logger->log(
+					"Author topics slice: author {$author_id} not found — skipping.",
+					'warning'
+				);
+				return;
+			}
+
+			$this->generate_topics_for_author( $author );
+		} finally {
+			AIPS_Correlation_ID::reset();
+		}
 	}
 	
 	/**

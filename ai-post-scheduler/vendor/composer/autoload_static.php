@@ -64,6 +64,8 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Autoloader' => __DIR__ . '/../..' . '/includes/class-aips-autoloader.php',
         'AIPS_Autoloader_Test' => __DIR__ . '/../..' . '/tests/test-autoloader.php',
         'AIPS_Batch_Queue_Service' => __DIR__ . '/../..' . '/includes/class-aips-batch-queue-service.php',
+        'AIPS_Bulk_Batch_Job_Store' => __DIR__ . '/../..' . '/includes/class-aips-bulk-batch-job-store.php',
+        'AIPS_Bulk_Batch_Processor' => __DIR__ . '/../..' . '/includes/class-aips-bulk-batch-processor.php',
         'AIPS_Bulk_Generation_Result' => __DIR__ . '/../..' . '/includes/class-aips-bulk-generator-service.php',
         'AIPS_Bulk_Generator_Service' => __DIR__ . '/../..' . '/includes/class-aips-bulk-generator-service.php',
         'AIPS_Cache' => __DIR__ . '/../..' . '/includes/class-aips-cache.php',

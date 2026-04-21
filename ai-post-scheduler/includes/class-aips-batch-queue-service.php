@@ -179,7 +179,48 @@ class AIPS_Batch_Queue_Service {
 		int $base_timestamp,
 		string $correlation_id = ''
 	): array {
-		$config           = $this->calculate_config($post_quantity);
+		return $this->dispatch_generic(
+			self::HOOK,
+			$post_quantity,
+			$base_timestamp,
+			array( $schedule_id ),
+			$correlation_id
+		);
+	}
+
+	/**
+	 * Generic batch dispatcher usable by any generation type.
+	 *
+	 * Splits $item_count into batches, spreads them across the configured time
+	 * window, and registers a wp_schedule_single_event per batch.
+	 *
+	 * The args array passed to each cron event is:
+	 *   [ ...$prefix_args, start_index, batch_size, total_quantity, correlation_id ]
+	 *
+	 * This layout mirrors the existing schedule-batch convention so that hook
+	 * callbacks can always find start_index, batch_size, and total_quantity at
+	 * predictable offsets after any caller-specific prefix arguments.
+	 *
+	 * @param string   $hook           WordPress cron hook to schedule.
+	 * @param int      $item_count     Total items to process.
+	 * @param int      $base_timestamp Unix timestamp for the first batch.
+	 * @param array    $prefix_args    Caller-specific args prepended to each event's args array.
+	 *                                 Must be serialisable (no closures).
+	 * @param string   $correlation_id Correlation ID for tracing (may be empty string).
+	 * @return array{
+	 *   num_batches: int,
+	 *   posts_per_batch: int,
+	 *   window_seconds: int
+	 * } Dispatch summary suitable for history logging.
+	 */
+	public function dispatch_generic(
+		string $hook,
+		int $item_count,
+		int $base_timestamp,
+		array $prefix_args = array(),
+		string $correlation_id = ''
+	): array {
+		$config           = $this->calculate_config($item_count);
 		$num_batches      = $config['num_batches'];
 		$posts_per_batch  = $config['posts_per_batch'];
 		$interval_seconds = $config['interval_seconds'];
@@ -187,8 +228,8 @@ class AIPS_Batch_Queue_Service {
 		for ($batch = 0; $batch < $num_batches; $batch++) {
 			$start_index     = $batch * $posts_per_batch;
 			// min() ensures the last batch does not exceed the total when
-			// post_quantity is not evenly divisible by posts_per_batch.
-			$this_batch_size = min($posts_per_batch, $post_quantity - $start_index);
+			// item_count is not evenly divisible by posts_per_batch.
+			$this_batch_size = min($posts_per_batch, $item_count - $start_index);
 
 			// Batch 0 fires at base_timestamp (immediately); subsequent batches
 			// are staggered by interval_seconds each.
@@ -197,13 +238,15 @@ class AIPS_Batch_Queue_Service {
 
 			wp_schedule_single_event(
 				$fire_at,
-				self::HOOK,
-				array(
-					$schedule_id,
-					$start_index,
-					$this_batch_size,
-					$post_quantity,
-					$correlation_id,
+				$hook,
+				array_merge(
+					$prefix_args,
+					array(
+						$start_index,
+						$this_batch_size,
+						$item_count,
+						$correlation_id,
+					)
 				)
 			);
 		}
