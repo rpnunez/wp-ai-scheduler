@@ -490,9 +490,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'log_type' => $log_type,
             'history_type_id' => $history_type_id,
             'details' => wp_json_encode($details),
+            'timestamp' => AIPS_DateTime::now()->timestamp(),
         );
         
-        $format = array('%d', '%s', '%d', '%s');
+        $format = array('%d', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
         
@@ -878,6 +879,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        if (!isset($data['created_at'])) {
+            $data['created_at'] = AIPS_DateTime::now()->timestamp();
+        }
+
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
@@ -891,9 +896,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'created_at' => absint($data['created_at']),
         );
         
-        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -956,8 +962,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
         
         if (isset($data['completed_at'])) {
-            $update_data['completed_at'] = sanitize_text_field($data['completed_at']);
-            $format[] = '%s';
+            $update_data['completed_at'] = absint($data['completed_at']);
+            $format[] = '%d';
         }
         
         if (empty($update_data)) {
@@ -1071,8 +1077,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         // Add age filter if specified
         if ($args['older_than_days'] > 0) {
-            $date = date('Y-m-d H:i:s', strtotime("-{$args['older_than_days']} days"));
-            $where[] = "created_at < %s";
+			$date = AIPS_DateTime::now()->timestamp() - (absint($args['older_than_days']) * DAY_IN_SECONDS);
+			$where[] = "created_at < %d";
             $query_args[] = $date;
         }
         
