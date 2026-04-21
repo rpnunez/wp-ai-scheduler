@@ -279,14 +279,18 @@ class AIPS_Schedule_Processor {
             $successful_post_ids[] = $result;
 
             // Persist incremental progress so a crash mid-slice is visible.
-            $completed_so_far = $start_index + count($successful_post_ids);
-            $this->repository->update_batch_progress(
-                $schedule_id,
-                $completed_so_far,
-                $total_quantity,
-                $start_index + count($successful_post_ids) - 1,
-                $successful_post_ids
-            );
+            // Guard the last_index so it is never negative (avoids issues when
+            // start_index is 0 and this is the very first post).
+            $last_success_index = $start_index + count($successful_post_ids) - 1;
+            if ($last_success_index >= 0) {
+                $this->repository->update_batch_progress(
+                    $schedule_id,
+                    $start_index + count($successful_post_ids),
+                    $total_quantity,
+                    $last_success_index,
+                    $successful_post_ids
+                );
+            }
         }
 
         $completed_in_slice = count($successful_post_ids);
@@ -376,6 +380,49 @@ class AIPS_Schedule_Processor {
         }
     }
 
+
+    /**
+     * Determine whether a new batch queue dispatch should be skipped.
+     *
+     * Returns true when a batch queue was recently dispatched for this schedule
+     * and the time since dispatch is still within the window plus a grace period.
+     * This prevents the hourly cron worker from re-dispatching while the
+     * previously scheduled batch events are still in flight.
+     *
+     * @param object                   $schedule      Schedule row (expects run_state, schedule_id).
+     * @param AIPS_Batch_Queue_Service $batch_service The batch queue service instance.
+     * @return bool True when re-dispatch should be skipped.
+     */
+    private function should_skip_batch_redispatch(object $schedule, AIPS_Batch_Queue_Service $batch_service): bool {
+        if (empty($schedule->run_state)) {
+            return false;
+        }
+
+        $existing_state = json_decode($schedule->run_state, true);
+
+        if (
+            !is_array($existing_state) ||
+            !isset($existing_state['status'], $existing_state['dispatched_at']) ||
+            $existing_state['status'] !== 'batch_queued'
+        ) {
+            return false;
+        }
+
+        // Retrieve the configured window once to avoid duplicate filter calls.
+        $window = max(0, (int) apply_filters('aips_batch_queue_window_seconds', AIPS_Batch_Queue_Service::DEFAULT_WINDOW_SECONDS));
+        $age    = AIPS_DateTime::now()->timestamp() - (int) $existing_state['dispatched_at'];
+
+        // Allow a 2-minute grace period beyond the declared window.
+        if ($age >= ($window + 120)) {
+            return false;
+        }
+
+        $this->logger->log(
+            'Batch queue already pending for schedule ' . $schedule->schedule_id . '; skipping re-dispatch.',
+            'info'
+        );
+        return true;
+    }
 
     /**
      * Process all schedules that are due to run.
@@ -602,27 +649,8 @@ class AIPS_Schedule_Processor {
         if (!$is_manual) {
             $batch_service = $this->get_batch_queue_service();
             if ($batch_service->needs_batch_queue($post_quantity)) {
-                // Guard: skip re-dispatch when a batch queue is already pending for
-                // this schedule (i.e. the hourly cron worker fired again while the
-                // previously dispatched batch events are still in flight).
-                if (!empty($schedule->run_state)) {
-                    $existing_state = json_decode($schedule->run_state, true);
-                    if (
-                        is_array($existing_state) &&
-                        isset($existing_state['status'], $existing_state['dispatched_at']) &&
-                        $existing_state['status'] === 'batch_queued'
-                    ) {
-                        $window     = max(0, (int) apply_filters('aips_batch_queue_window_seconds', AIPS_Batch_Queue_Service::DEFAULT_WINDOW_SECONDS));
-                        $age        = AIPS_DateTime::now()->timestamp() - (int) $existing_state['dispatched_at'];
-                        // Allow a 2-minute grace period beyond the declared window.
-                        if ($age < ($window + 120)) {
-                            $this->logger->log(
-                                'Batch queue already pending for schedule ' . $schedule->schedule_id . '; skipping re-dispatch.',
-                                'info'
-                            );
-                            return;
-                        }
-                    }
+                if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
+                    return;
                 }
 
                 $now            = AIPS_DateTime::now()->timestamp();

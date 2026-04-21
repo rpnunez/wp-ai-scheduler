@@ -173,7 +173,9 @@ class Test_AIPS_Batch_Queue_Service extends WP_UnitTestCase {
 	public function test_dispatch_first_batch_fires_immediately() {
 		$schedule_id   = 99;
 		$post_quantity = 10;
-		$base_ts       = time() + 60; // 1 minute in the future so it's deterministic
+		// Use a fixed future timestamp to make the assertion deterministic
+		// regardless of when the test runs.
+		$base_ts = mktime(12, 0, 0, 1, 1, 2030); // 2030-01-01 12:00:00 UTC
 
 		$this->service->dispatch($schedule_id, $post_quantity, $base_ts);
 
@@ -193,8 +195,8 @@ class Test_AIPS_Batch_Queue_Service extends WP_UnitTestCase {
 		}
 
 		$this->assertNotNull($first_ts, 'First batch event not found.');
-		// Allow WordPress to snap the timestamp to the nearest minute (WP cron precision).
-		$this->assertLessThanOrEqual($base_ts + 60, $first_ts);
+		// Batch 0 should fire at exactly $base_ts (no delay); check it matches.
+		$this->assertSame($base_ts, $first_ts, 'First batch event should fire at base_timestamp.');
 	}
 
 	/** Batch args include schedule_id, start_index, batch_size, total, correlation_id. */
