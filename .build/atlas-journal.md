@@ -1432,3 +1432,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:**
 - **Positive:** clearer separation of concerns; `AIPS_Scheduler` is now a thin coordinator; `AIPS_Schedule_Processor` encapsulates the "how" of execution; improved testability of execution logic.
 - **Negative:** Increased file count (1 new file).
+
+## 2024-05-28 - [Extract Schedule Result Handler]
+**Context:** The `AIPS_Schedule_Processor` was violating the Single Responsibility Principle by handling execution flow, data mapping, logging, and history management.
+**Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
+**Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
+**Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
