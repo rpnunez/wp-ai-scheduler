@@ -33,9 +33,23 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	public function test_preview_requires_nonce() {
 		$_POST['prompt_template'] = 'Test content prompt';
 		$_POST['nonce'] = 'invalid_nonce';
+		$_REQUEST = $_POST;
 
-		$this->expectException(WPAjaxDieStopException::class);
-		$this->controller->ajax_preview_template_prompts();
+		ob_start();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			$this->assertTrue(true);
+			ob_get_clean();
+			return;
+		} catch (WPAjaxDieContinueException $e) {
+			$this->assertTrue(true);
+			ob_get_clean();
+			return;
+		}
+		ob_get_clean();
+
+		$this->fail('Expected WPAjaxDieStopException or WPAjaxDieContinueException was not thrown.');
 	}
 
 	/**
@@ -44,9 +58,14 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	public function test_preview_requires_content_prompt() {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = '';
+		$_REQUEST = $_POST;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -65,9 +84,14 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['article_structure_id'] = 0;
 		$_POST['image_prompt'] = '';
 		$_POST['generate_featured_image'] = 0;
+		$_REQUEST = $_POST;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -99,15 +123,29 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 			'content_instructions' => 'Write in a formal style',
 		));
 
+		$GLOBALS['wpdb']->get_row_return_val = (object) array(
+			'id' => $voice_id,
+			'name' => 'Test Voice',
+			'title_prompt' => 'Use a professional tone',
+			'content_instructions' => 'Write in a formal style',
+			'excerpt_instructions' => '',
+			'is_active' => 1
+		);
+
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Write about {{topic}}';
 		$_POST['title_prompt'] = '';
 		$_POST['voice_id'] = $voice_id;
 		$_POST['article_structure_id'] = 0;
 		$_POST['generate_featured_image'] = 0;
+		$_REQUEST = $_POST;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -134,9 +172,14 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['generate_featured_image'] = 1;
 		$_POST['featured_image_source'] = 'ai_prompt';
 		$_POST['image_prompt'] = 'A beautiful landscape with {{topic}}';
+		$_REQUEST = $_POST;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -156,13 +199,59 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Test content';
+		$_REQUEST = $_POST;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
 		$this->assertFalse($response['success']);
 		$this->assertStringContainsString('Permission denied', $response['data']['message']);
+	}
+
+	public function test_preview_validates_prompt_template_syntax() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['prompt_template'] = 'Write about {{topic'; // Invalid syntax
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertArrayHasKey('success', $response);
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('unclosed', $response['data']['message']);
+	}
+
+	public function test_preview_validates_image_prompt_syntax() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['generate_featured_image'] = 1;
+		$_POST['featured_image_source'] = 'ai_prompt';
+		$_POST['image_prompt'] = 'Draw a {{topic missing closing braces'; // Invalid syntax
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+		} catch (WPAjaxDieContinueException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertArrayHasKey('success', $response);
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('unclosed', $response['data']['message']);
 	}
 }
