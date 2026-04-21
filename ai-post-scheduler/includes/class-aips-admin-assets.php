@@ -417,6 +417,7 @@ class AIPS_Admin_Assets {
 
           wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
               'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+              'loading'         => __('Loading...', 'ai-post-scheduler'),
               'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
               'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
               'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),

@@ -82,7 +82,7 @@ class AIPS_AI_Assistance_Repository {
 	public function get_by_session_and_field( string $session_id, string $form_context, string $field_key ): array {
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name}
+				"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
 				WHERE session_id = %s
 				AND form_context = %s
 				AND field_key = %s
@@ -105,7 +105,7 @@ class AIPS_AI_Assistance_Repository {
 	public function get_by_field( string $form_context, string $field_key, int $limit = 20 ): array {
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name}
+				"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
 				WHERE form_context = %s
 				AND field_key = %s
 				ORDER BY created_at DESC

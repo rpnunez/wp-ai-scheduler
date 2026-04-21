@@ -77,6 +77,11 @@ class AIPS_AI_Assistance_Controller {
 		$session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
 		$user_id    = get_current_user_id();
 
+		if ( empty( $field_config['form_field_id'] ) || empty( $field_config['form_context'] ) || empty( $field_config['field_name'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Required field parameters are missing.', 'ai-post-scheduler' ) ) );
+			return;
+		}
+
 		$result = $this->service->get_field_suggestion( $field_config, $session_id, $user_id );
 
 		if ( is_wp_error( $result ) ) {

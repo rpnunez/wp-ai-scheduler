@@ -115,7 +115,9 @@
 		 * @return {void}
 		 */
 		init: function () {
-			this.sessionId = Date.now() + Math.random().toString(36).substr(2, 9);
+			this.sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+			? crypto.randomUUID()
+			: Date.now() + Math.random().toString(36).slice(2, 11);
 			this.injectButtons();
 			this.bindEvents();
 		},
@@ -289,8 +291,8 @@
 			var $modal = $('#aips-ai-assist-history-modal');
 			$modal.show();
 			$('#aips-ai-assist-history-field-label').text(fieldName);
-			$('#aips-ai-assist-history-session').html('<p class="description">Loading\u2026</p>');
-			$('#aips-ai-assist-history-alltime').html('<p class="description">Loading\u2026</p>');
+			$('#aips-ai-assist-history-session').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
+			$('#aips-ai-assist-history-alltime').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
 
 			// Reset tabs
 			$('.aips-tab-link[data-assist-tab="session"]').addClass('active');
