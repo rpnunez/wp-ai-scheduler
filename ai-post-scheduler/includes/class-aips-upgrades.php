@@ -34,6 +34,10 @@ class AIPS_Upgrades {
             $this->migrate_to_2_4_1();
         }
 
+        if (version_compare($from_version, '2.5.0', '<')) {
+            $this->migrate_to_2_5_0();
+        }
+
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates
         $result = AIPS_DB_Manager::install_tables();
@@ -232,6 +236,182 @@ class AIPS_Upgrades {
         if ( ! $has_num_used_key ) {
             $wpdb->query( "ALTER TABLE `{$table}` ADD KEY num_used (num_used)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         }
+    }
+    
+    /**
+     * Migration for version 2.5.0.
+     *
+     * Converts every DATETIME column in the plugin schema to BIGINT UNSIGNED
+     * storing Unix timestamps.  This standardises all date/time handling on a
+     * single UTC-based integer representation so the new AIPS_DateTime class is
+     * the single entry point for all date/time operations.
+     *
+     * Strategy per column:
+     *   1. ADD a temporary BIGINT column after the original.
+     *   2. UPDATE the temp column with UNIX_TIMESTAMP(original) for non-NULL rows.
+     *   3. DROP the original DATETIME column.
+     *   4. CHANGE the temp column to the original name.
+     *
+     * Each column migration is guarded with a SHOW COLUMNS check so the ALTER
+     * is a no-op on fresh installs (where dbDelta has already created BIGINT).
+     */
+    private function migrate_to_2_5_0() {
+        global $wpdb;
+
+        // Map: table slug => array of column definitions.
+        // Each column: [ name, nullable (bool) ]
+        // "nullable" only affects whether we use DEFAULT 0 or DEFAULT NULL
+        // in the temp column — but since 2.5.0 schema uses DEFAULT 0 for all
+        // we unify on NOT NULL DEFAULT 0.
+        $table_columns = array(
+            'aips_history' => array(
+                array( 'created_at', false ),
+                array( 'completed_at', false ),
+            ),
+            'aips_history_log' => array(
+                array( 'timestamp', false ),
+            ),
+            'aips_templates' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_schedule' => array(
+                array( 'next_run', false ),
+                array( 'last_run', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_voices' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_article_structures' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_prompt_sections' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_trending_topics' => array(
+                array( 'researched_at', false ),
+            ),
+            'aips_authors' => array(
+                array( 'topic_generation_next_run', false ),
+                array( 'topic_generation_last_run', false ),
+                array( 'post_generation_next_run', false ),
+                array( 'post_generation_last_run', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_author_topics' => array(
+                array( 'generated_at', false ),
+                array( 'reviewed_at', false ),
+            ),
+            'aips_author_topic_logs' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_topic_feedback' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_notifications' => array(
+                array( 'read_at', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_sources' => array(
+                array( 'last_fetched_at', false ),
+                array( 'next_fetch_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_sources_data' => array(
+                array( 'fetched_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_taxonomy' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_embeddings' => array(
+                array( 'indexed_at', false ),
+            ),
+            'aips_internal_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_cache' => array(
+                array( 'expires_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_telemetry' => array(
+                array( 'inserted_at', false ),
+            ),
+        );
+
+        foreach ( $table_columns as $table_slug => $columns ) {
+            $table = $wpdb->prefix . $table_slug;
+
+            // Skip tables that don't exist yet (fresh install — dbDelta handles it).
+            $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+            if ( $table_exists !== $table ) {
+                continue;
+            }
+
+            foreach ( $columns as $col_def ) {
+                $col_name = $col_def[0];
+                $this->convert_datetime_to_bigint( $table, $col_name );
+            }
+        }
+    }
+
+    /**
+     * Convert a single DATETIME column to BIGINT UNSIGNED on an existing table.
+     *
+     * If the column is already BIGINT (e.g. fresh install), this is a no-op.
+     *
+     * @param string $table    Full table name (with prefix).
+     * @param string $col_name Column name to convert.
+     */
+    private function convert_datetime_to_bigint( $table, $col_name ) {
+        global $wpdb;
+
+        // Check current column type.
+        $col_info = $wpdb->get_row( $wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $col_name
+        ) );
+
+        if ( ! $col_info ) {
+            return; // Column doesn't exist; dbDelta will create it.
+        }
+
+        $type_lower = strtolower( $col_info->Type );
+
+        // Already BIGINT — nothing to do.
+        if ( strpos( $type_lower, 'bigint' ) !== false || strpos( $type_lower, 'int' ) !== false ) {
+            // Verify it really is bigint (not tinyint, etc.).
+            if ( strpos( $type_lower, 'bigint' ) !== false ) {
+                return;
+            }
+        }
+
+        // Only convert DATETIME/TIMESTAMP columns.
+        if ( strpos( $type_lower, 'datetime' ) === false && strpos( $type_lower, 'timestamp' ) === false ) {
+            return;
+        }
+
+        $tmp_col = $col_name . '_ts_tmp';
+
+        // 1. Add temporary BIGINT column.
+        $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$tmp_col}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 2. Populate from the existing DATETIME.
+        $wpdb->query( "UPDATE `{$table}` SET `{$tmp_col}` = IFNULL(UNIX_TIMESTAMP(`{$col_name}`), 0)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 3. Drop the original DATETIME column.
+        $wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$col_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 4. Rename temp column to the original name.
+        $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
     }
 }
 ?>

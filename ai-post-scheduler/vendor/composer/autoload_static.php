@@ -89,6 +89,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Data_Management_Import' => __DIR__ . '/../..' . '/includes/class-aips-data-management-import.php',
         'AIPS_Data_Management_Import_JSON' => __DIR__ . '/../..' . '/includes/class-aips-data-management-import-json.php',
         'AIPS_Data_Management_Import_MySQL' => __DIR__ . '/../..' . '/includes/class-aips-data-management-import-mysql.php',
+        'AIPS_DateTime' => __DIR__ . '/../..' . '/includes/class-aips-date-time.php',
         'AIPS_Dev_Tools' => __DIR__ . '/../..' . '/includes/class-aips-dev-tools.php',
         'AIPS_Embeddings_Cron' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-cron.php',
         'AIPS_Embeddings_Service' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-service.php',
