@@ -127,12 +127,20 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
-            'aips-utilities-script',
-            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery'),
-            AIPS_VERSION,
-            true
-        );
+			'aips-datetime-script',
+			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-utilities-script',
+			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+			array('jquery', 'aips-datetime-script'),
+			AIPS_VERSION,
+			true
+		);
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
@@ -1016,7 +1024,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-telemetry-script',
                 AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
-                array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs'),
+				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script'),
                 AIPS_VERSION,
                 true
             );

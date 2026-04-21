@@ -1,9 +1,21 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
+<<<<<<< copilot/add-disable-cache-option
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
         'reference' => 'a3ca24a92af620b2723830687e5f5589bc149b56',
+=======
+<<<<<<< copilot/standardize-date-time-operations
+        'pretty_version' => 'dev-copilot/standardize-date-time-operations',
+        'version' => 'dev-copilot/standardize-date-time-operations',
+        'reference' => '13990520a4f512287dded9968f40defcdfc916cd',
+=======
+        'pretty_version' => 'dev-feature/make-dashboard-better',
+        'version' => 'dev-feature/make-dashboard-better',
+        'reference' => '2f42ff288bb1bc6bbdaf30640cc791eb9ec59f1a',
+>>>>>>> main
+>>>>>>> main
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +113,21 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
+<<<<<<< copilot/add-disable-cache-option
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
             'reference' => 'a3ca24a92af620b2723830687e5f5589bc149b56',
+=======
+<<<<<<< copilot/standardize-date-time-operations
+            'pretty_version' => 'dev-copilot/standardize-date-time-operations',
+            'version' => 'dev-copilot/standardize-date-time-operations',
+            'reference' => '13990520a4f512287dded9968f40defcdfc916cd',
+=======
+            'pretty_version' => 'dev-feature/make-dashboard-better',
+            'version' => 'dev-feature/make-dashboard-better',
+            'reference' => '2f42ff288bb1bc6bbdaf30640cc791eb9ec59f1a',
+>>>>>>> main
+>>>>>>> main
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
