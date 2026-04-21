@@ -233,6 +233,17 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the language code for content generation.
+	 *
+	 * Falls back to 'en' when the template does not have a language set.
+	 *
+	 * @return string Language code (e.g. 'en', 'es').
+	 */
+	public function get_language() {
+		return !empty($this->template->language) ? $this->template->language : 'en';
+	}
+
+	/**
 	 * Check whether sources should be injected into the content prompt.
 	 *
 	 * @return bool True if the template has include_sources enabled.

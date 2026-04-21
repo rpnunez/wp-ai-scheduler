@@ -260,6 +260,17 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the language code for content generation.
+	 *
+	 * Reads the author's configured language, falling back to 'en'.
+	 *
+	 * @return string Language code (e.g. 'en', 'es').
+	 */
+	public function get_language() {
+		return !empty($this->author->language) ? $this->author->language : 'en';
+	}
+
+	/**
 	 * Whether source injection is enabled for this topic's author.
 	 *
 	 * Reads the include_sources flag directly from the author row. When the

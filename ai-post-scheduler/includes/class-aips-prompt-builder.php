@@ -136,6 +136,13 @@ class AIPS_Prompt_Builder {
             }
             
             $context_parts[] = $this->get_output_instructions();
+
+            // Inject language instruction when a non-English language is configured.
+            $lang = $context->get_language();
+            if (!empty($lang) && $lang !== 'en') {
+                $lang_name = self::get_language_name($lang);
+                $context_parts[] = "LANGUAGE REQUIREMENT: You must write the entire response in {$lang_name}. Do not use English or any other language.";
+            }
             
             /**
              * Filter the context sent to AI Engine for content generation.
@@ -179,6 +186,42 @@ class AIPS_Prompt_Builder {
         );
 
         return implode("\n\n", $context_parts);
+    }
+
+    /**
+     * Return the full English name for a BCP 47-style language code.
+     *
+     * Used when building language-requirement instructions for AI prompts.
+     * Falls back to the raw language code when no mapping is defined so that
+     * prompts remain functional even for codes not yet listed here.
+     *
+     * @param string $code Language code (e.g. 'es', 'fr').
+     * @return string Full language name (e.g. 'Spanish', 'French').
+     */
+    public static function get_language_name($code) {
+        $map = array(
+            'en' => 'English',
+            'es' => 'Spanish',
+            'fr' => 'French',
+            'de' => 'German',
+            'it' => 'Italian',
+            'pt' => 'Portuguese',
+            'nl' => 'Dutch',
+            'pl' => 'Polish',
+            'ru' => 'Russian',
+            'ja' => 'Japanese',
+            'ko' => 'Korean',
+            'zh' => 'Chinese (Simplified)',
+            'ar' => 'Arabic',
+            'hi' => 'Hindi',
+            'tr' => 'Turkish',
+            'sv' => 'Swedish',
+            'da' => 'Danish',
+            'fi' => 'Finnish',
+            'nb' => 'Norwegian',
+        );
+
+        return isset($map[$code]) ? $map[$code] : $code;
     }
 
     /**

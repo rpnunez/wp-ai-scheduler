@@ -228,4 +228,197 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that Template Context returns 'en' as the default language.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_get_language_defaults_to_english() {
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Template',
+			'prompt_template' => 'Write',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$this->assertSame('en', $context->get_language());
+	}
+
+	/**
+	 * Test that Template Context returns the configured language code.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_get_language_returns_configured_language() {
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Template',
+			'prompt_template' => 'Write',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+			'language' => 'es',
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$this->assertSame('es', $context->get_language());
+	}
+
+	/**
+	 * Test that Topic Context returns 'en' as the default language when author has no language.
+	 *
+	 * @return void
+	 */
+	public function test_topic_context_get_language_defaults_to_english() {
+		$author = (object) array(
+			'id' => 1,
+			'name' => 'Author',
+			'field_niche' => 'Tech',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+		);
+		$topic = (object) array(
+			'id' => 10,
+			'topic_title' => 'A Topic',
+			'author_id' => 1,
+		);
+
+		$context = new AIPS_Topic_Context($author, $topic);
+		$this->assertSame('en', $context->get_language());
+	}
+
+	/**
+	 * Test that Topic Context returns the author's configured language.
+	 *
+	 * @return void
+	 */
+	public function test_topic_context_get_language_returns_author_language() {
+		$author = (object) array(
+			'id' => 1,
+			'name' => 'Author',
+			'field_niche' => 'Tech',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+			'language' => 'fr',
+		);
+		$topic = (object) array(
+			'id' => 10,
+			'topic_title' => 'A Topic',
+			'author_id' => 1,
+		);
+
+		$context = new AIPS_Topic_Context($author, $topic);
+		$this->assertSame('fr', $context->get_language());
+	}
+
+	/**
+	 * Test that get_language_name returns the full English name for known codes.
+	 *
+	 * @return void
+	 */
+	public function test_prompt_builder_get_language_name_known_codes() {
+		$this->assertSame('English', AIPS_Prompt_Builder::get_language_name('en'));
+		$this->assertSame('Spanish', AIPS_Prompt_Builder::get_language_name('es'));
+		$this->assertSame('French', AIPS_Prompt_Builder::get_language_name('fr'));
+		$this->assertSame('German', AIPS_Prompt_Builder::get_language_name('de'));
+		$this->assertSame('Japanese', AIPS_Prompt_Builder::get_language_name('ja'));
+	}
+
+	/**
+	 * Test that get_language_name falls back to the raw code for unknown codes.
+	 *
+	 * @return void
+	 */
+	public function test_prompt_builder_get_language_name_unknown_code() {
+		$this->assertSame('xx', AIPS_Prompt_Builder::get_language_name('xx'));
+	}
+
+	/**
+	 * Test that build_content_context injects a language instruction for non-English Template contexts.
+	 *
+	 * @return void
+	 */
+	public function test_build_content_context_injects_language_instruction_for_spanish_template() {
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Template',
+			'prompt_template' => 'Write',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+			'language' => 'es',
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$builder = new AIPS_Prompt_Builder();
+		$result  = $builder->build_content_context($context);
+
+		$this->assertStringContainsString('Spanish', $result);
+		$this->assertStringContainsString('You must write the entire response in Spanish', $result);
+	}
+
+	/**
+	 * Test that build_content_context does NOT inject a language instruction for English.
+	 *
+	 * @return void
+	 */
+	public function test_build_content_context_no_language_instruction_for_english() {
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Template',
+			'prompt_template' => 'Write',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+			'language' => 'en',
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$builder = new AIPS_Prompt_Builder();
+		$result  = $builder->build_content_context($context);
+
+		$this->assertStringNotContainsString('LANGUAGE REQUIREMENT', $result);
+	}
+
+	/**
+	 * Test that build_content_context injects a language instruction for non-English Topic contexts.
+	 *
+	 * @return void
+	 */
+	public function test_build_content_context_injects_language_instruction_for_french_topic() {
+		$author = (object) array(
+			'id' => 1,
+			'name' => 'Author',
+			'field_niche' => 'Tech',
+			'post_status' => 'draft',
+			'post_category' => 0,
+			'post_tags' => '',
+			'post_author' => 1,
+			'language' => 'fr',
+		);
+		$topic = (object) array(
+			'id' => 10,
+			'topic_title' => 'A Topic',
+			'author_id' => 1,
+		);
+
+		$context = new AIPS_Topic_Context($author, $topic);
+		$builder = new AIPS_Prompt_Builder();
+		$result  = $builder->build_content_context($context);
+
+		$this->assertStringContainsString('French', $result);
+		$this->assertStringContainsString('You must write the entire response in French', $result);
+	}
 }

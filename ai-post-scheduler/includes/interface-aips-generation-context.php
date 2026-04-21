@@ -152,6 +152,16 @@ interface AIPS_Generation_Context {
 	public function get_creation_method();
 
 	/**
+	 * Get the language code for content generation.
+	 *
+	 * Returns the BCP 47-style language code (e.g. 'en', 'es', 'fr').
+	 * Defaults to 'en' when no language has been explicitly configured.
+	 *
+	 * @return string Language code (e.g. 'en', 'es').
+	 */
+	public function get_language();
+
+	/**
 	 * Check whether sources should be injected into the content prompt.
 	 *
 	 * @return bool True if sources should be included.
