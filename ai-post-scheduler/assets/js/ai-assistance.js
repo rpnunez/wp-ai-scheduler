@@ -16,6 +16,15 @@
 	var AIPS = window.AIPS;
 
 	/**
+	 * In-memory cache mapping record IDs to their raw AI response text.
+	 * Populated by renderHistoryTab(); used by useHistoryValue() to avoid
+	 * storing unescaped AI content in DOM attributes.
+	 *
+	 * @type {Object<string, string>}
+	 */
+	var _historyRecordCache = {};
+
+	/**
 	 * Field maps for AI assistance, keyed by form context.
 	 * Each entry maps a field's HTML id to its metadata.
 	 *
@@ -178,16 +187,6 @@
 			$(document).on('click', '.aips-ai-assist-history-btn', this.onHistoryClick.bind(this));
 			$(document).on('click', '#aips-ai-assist-history-modal .aips-modal-close', this.closeHistoryModal.bind(this));
 			$(document).on('click', '.aips-ai-assist-history-use', this.useHistoryValue.bind(this));
-
-			// Tab switching inside the history modal
-			$(document).on('click', '.aips-tab-link[data-assist-tab]', function (e) {
-				e.preventDefault();
-				var tab = $(this).data('assist-tab');
-				$('.aips-tab-link[data-assist-tab]').removeClass('active');
-				$(this).addClass('active');
-				$('.aips-ai-assist-tab-content').hide();
-				$('#aips-ai-assist-history-' + tab).show();
-			});
 		},
 
 		/**
@@ -300,14 +299,14 @@
 			var $modal = $('#aips-ai-assist-history-modal');
 			$modal.show();
 			$('#aips-ai-assist-history-field-label').text(fieldName);
-			$('#aips-ai-assist-history-session').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
-			$('#aips-ai-assist-history-alltime').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
+			$('#aips-ai-assist-history-session-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
+			$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
 
 			// Reset tabs
-			$('.aips-tab-link[data-assist-tab="session"]').addClass('active');
-			$('.aips-tab-link[data-assist-tab="alltime"]').removeClass('active');
-			$('#aips-ai-assist-history-session').show();
-			$('#aips-ai-assist-history-alltime').hide();
+			$modal.find('.aips-tab-link[data-tab="aips-ai-assist-history-session"]').addClass('active');
+			$modal.find('.aips-tab-link[data-tab="aips-ai-assist-history-alltime"]').removeClass('active');
+			$('#aips-ai-assist-history-session-tab').show();
+			$('#aips-ai-assist-history-alltime-tab').hide();
 
 			$.post(
 				ajaxurl,
@@ -320,23 +319,28 @@
 				},
 				function (response) {
 					if (response.success && response.data) {
-						self.renderHistoryTab( '#aips-ai-assist-history-session', response.data.session, fieldId );
-						self.renderHistoryTab( '#aips-ai-assist-history-alltime', response.data.alltime, fieldId );
+						self.renderHistoryTab( '#aips-ai-assist-history-session-tab', response.data.session, fieldId );
+						self.renderHistoryTab( '#aips-ai-assist-history-alltime-tab', response.data.alltime, fieldId );
 					} else {
 						var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
-						$('#aips-ai-assist-history-session').html('<p class="description">' + noHistoryMsg + '</p>');
-						$('#aips-ai-assist-history-alltime').html('<p class="description">' + noHistoryMsg + '</p>');
+						$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
+						$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 					}
 				}
 			).fail(function () {
 				var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
-				$('#aips-ai-assist-history-session').html('<p class="description">' + noHistoryMsg + '</p>');
-				$('#aips-ai-assist-history-alltime').html('<p class="description">' + noHistoryMsg + '</p>');
+				$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
+				$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 			});
 		},
 
 		/**
 		 * Render a list of suggestion records into a history tab container.
+		 *
+		 * Uses AIPS.Templates.render() (HTML-escaped) for safe display of AI
+		 * response text. The raw response is stored in _historyRecordCache keyed
+		 * by record ID so it can be applied to the field without embedding
+		 * unescaped content in DOM attributes.
 		 *
 		 * @param {string} selector CSS selector for the tab content element.
 		 * @param {Array}  records  Array of record objects from the server.
@@ -354,7 +358,12 @@
 
 			var html = '';
 			$.each(records, function (i, record) {
-				html += AIPS.Templates.renderRaw('aips-tmpl-ai-assist-history-item', {
+				// Cache raw response by record ID to avoid embedding unescaped
+				// AI content in DOM attributes.
+				_historyRecordCache[record.id] = record.response;
+
+				html += AIPS.Templates.render('aips-tmpl-ai-assist-history-item', {
+					id:         record.id,
 					response:   record.response,
 					created_at: record.created_at,
 					fieldId:    fieldId,
@@ -366,14 +375,19 @@
 		/**
 		 * Apply a value from the history modal to the target field.
 		 *
+		 * Reads the record ID from `data-record-id` and retrieves the raw
+		 * response text from _historyRecordCache to avoid relying on
+		 * unescaped content stored in DOM attributes.
+		 *
 		 * @param {jQuery.Event} e Click event on a "Use This Value" button.
 		 * @return {void}
 		 */
 		useHistoryValue: function (e) {
 			e.preventDefault();
-			var $btn    = $(e.currentTarget);
-			var fieldId = $btn.data('field-id');
-			var value   = $btn.data('value');
+			var $btn     = $(e.currentTarget);
+			var fieldId  = $btn.data('field-id');
+			var recordId = $btn.data('record-id');
+			var value    = _historyRecordCache[recordId] || '';
 
 			$('#' + fieldId).val(value).trigger('change');
 			this.closeHistoryModal();

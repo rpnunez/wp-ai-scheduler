@@ -926,13 +926,13 @@ $site_ctx = AIPS_Site_Context::get();
 			<h2 id="aips-ai-assist-history-modal-title"><?php esc_html_e( 'AI Suggestion History', 'ai-post-scheduler' ); ?></h2>
 			<p id="aips-ai-assist-history-field-label" class="description"></p>
 			<div class="aips-tab-nav" id="aips-ai-assist-history-tabs">
-				<a href="#" class="aips-tab-link active" data-assist-tab="session"><?php esc_html_e( 'This Session', 'ai-post-scheduler' ); ?></a>
-				<a href="#" class="aips-tab-link" data-assist-tab="alltime"><?php esc_html_e( 'All Time', 'ai-post-scheduler' ); ?></a>
+				<a href="#" class="aips-tab-link active" data-tab="aips-ai-assist-history-session"><?php esc_html_e( 'This Session', 'ai-post-scheduler' ); ?></a>
+				<a href="#" class="aips-tab-link" data-tab="aips-ai-assist-history-alltime"><?php esc_html_e( 'All Time', 'ai-post-scheduler' ); ?></a>
 			</div>
-			<div id="aips-ai-assist-history-session" class="aips-ai-assist-tab-content">
+			<div id="aips-ai-assist-history-session-tab" class="aips-tab-content">
 				<p class="description"><?php esc_html_e( 'Loading...', 'ai-post-scheduler' ); ?></p>
 			</div>
-			<div id="aips-ai-assist-history-alltime" class="aips-ai-assist-tab-content" style="display:none;">
+			<div id="aips-ai-assist-history-alltime-tab" class="aips-tab-content" style="display:none;">
 				<p class="description"><?php esc_html_e( 'Loading...', 'ai-post-scheduler' ); ?></p>
 			</div>
 		</div>
@@ -945,7 +945,7 @@ $site_ctx = AIPS_Site_Context::get();
 		<div class="aips-ai-assist-history-meta">{{created_at}}</div>
 		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-assist-history-use"
 			data-field-id="{{fieldId}}"
-			data-value="{{response}}">
+			data-record-id="{{id}}">
 			<?php esc_html_e( 'Use This Value', 'ai-post-scheduler' ); ?>
 		</button>
 	</div>

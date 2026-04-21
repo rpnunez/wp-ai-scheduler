@@ -78,6 +78,13 @@ class AIPS_AI_Assistance_Service {
 			'response'       => $response,
 		) );
 
+		if ( $record_id === false ) {
+			return new WP_Error(
+				'db_insert_failed',
+				__( 'AI suggestion was generated but could not be saved to history.', 'ai-post-scheduler' )
+			);
+		}
+
 		return array(
 			'response'  => $response,
 			'record_id' => $record_id,

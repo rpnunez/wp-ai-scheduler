@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-copilot/add-ai-assistance-feature',
         'version' => 'dev-copilot/add-ai-assistance-feature',
-        'reference' => '5a9c58f9d1d973d25499a75fa039e1a8879edd3d',
+        'reference' => '5da892653b2960765430d7f443e30248b4009a0f',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -103,7 +103,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-copilot/add-ai-assistance-feature',
             'version' => 'dev-copilot/add-ai-assistance-feature',
-            'reference' => '5a9c58f9d1d973d25499a75fa039e1a8879edd3d',
+            'reference' => '5da892653b2960765430d7f443e30248b4009a0f',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

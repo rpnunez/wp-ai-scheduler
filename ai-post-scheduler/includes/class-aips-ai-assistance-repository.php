@@ -72,24 +72,27 @@ class AIPS_AI_Assistance_Repository {
 	}
 
 	/**
-	 * Get all AI suggestions for a given session and field, newest first.
+	 * Get AI suggestions for a given session and field, newest first.
 	 *
 	 * @param string $session_id   Browser session identifier.
 	 * @param string $form_context Form identifier.
 	 * @param string $field_key    Field HTML ID.
+	 * @param int    $limit        Maximum number of records to return. Default 15.
 	 * @return array Array of record objects.
 	 */
-	public function get_by_session_and_field( string $session_id, string $form_context, string $field_key ): array {
+	public function get_by_session_and_field( string $session_id, string $form_context, string $field_key, int $limit = 15 ): array {
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
 				WHERE session_id = %s
 				AND form_context = %s
 				AND field_key = %s
-				ORDER BY created_at DESC",
+				ORDER BY created_at DESC
+				LIMIT %d",
 				$session_id,
 				$form_context,
-				$field_key
+				$field_key,
+				$limit
 			)
 		);
 	}

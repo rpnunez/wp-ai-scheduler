@@ -117,6 +117,11 @@ class AIPS_AI_Assistance_Controller {
 		$field_key    = sanitize_text_field( wp_unslash( $_POST['field_key'] ?? '' ) );
 		$session_id   = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
 
+		if ( empty( $form_context ) || empty( $field_key ) || empty( $session_id ) ) {
+			AIPS_Ajax_Response::invalid_request( __( 'Required parameters are missing.', 'ai-post-scheduler' ) );
+			return;
+		}
+
 		$session_records = $this->repository->get_by_session_and_field( $session_id, $form_context, $field_key );
 		$alltime_records = $this->repository->get_by_field( $form_context, $field_key, 15 );
 
