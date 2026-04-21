@@ -345,7 +345,7 @@ if (!function_exists('aips_next_run_relative')) {
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
+						<button type="button" class="aips-btn aips-btn-ghost aips-clear-unified-search-btn">
 							<span class="dashicons dashicons-dismiss"></span>
 							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 						</button>

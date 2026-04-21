@@ -2177,9 +2177,19 @@
 					count: $('#aips-suggest-count').val()
 				},
 				success: (response) => {
-					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
-						this.renderSuggestedAuthors(response.data.suggestions);
-						$('#aips-suggest-authors-results').show();
+					if (response.success) {
+						if (response.data.suggestions && response.data.suggestions.length > 0) {
+							this.renderSuggestedAuthors(response.data.suggestions);
+							$('#aips-suggest-authors-results').show();
+						} else {
+							var $emptyState = $('<div class="aips-empty-state"></div>');
+							$('<div class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></div>').appendTo($emptyState);
+							$('<h3 class="aips-empty-state-title"></h3>').text(aipsAuthorsL10n.noSuggestionsTitle || 'No Suggestions Found').appendTo($emptyState);
+							$('<p class="aips-empty-state-description"></p>').text(aipsAuthorsL10n.noSuggestions || 'We could not generate any suggestions for those criteria. Try adjusting your goals or target audience.').appendTo($emptyState);
+							$('<div class="aips-empty-state-actions"></div>').appendTo($emptyState);
+							$('#aips-suggest-authors-cards').empty().append($emptyState);
+							$('#aips-suggest-authors-results').show();
+						}
 					} else {
 						const msg = (response.data && response.data.message)
 							? response.data.message
