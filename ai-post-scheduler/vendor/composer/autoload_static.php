@@ -36,6 +36,9 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
     );
 
     public static $classMap = array (
+        'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
+        'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
+        'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
         'AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-edit-controller.php',
         'AIPS_AI_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-service.php',
         'AIPS_AI_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-ai-service-interface.php',
@@ -160,6 +163,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Schedule_Processor' => __DIR__ . '/../..' . '/includes/class-aips-schedule-processor.php',
         'AIPS_Schedule_Repository' => __DIR__ . '/../..' . '/includes/class-aips-schedule-repository.php',
         'AIPS_Schedule_Repository_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-schedule-repository-interface.php',
+        'AIPS_Schedule_Result_Handler' => __DIR__ . '/../..' . '/includes/class-aips-schedule-result-handler.php',
         'AIPS_Scheduler' => __DIR__ . '/../..' . '/includes/class-aips-scheduler.php',
         'AIPS_Seeder_Admin' => __DIR__ . '/../..' . '/includes/class-aips-seeder-admin.php',
         'AIPS_Seeder_Service' => __DIR__ . '/../..' . '/includes/class-aips-seeder-service.php',
@@ -1787,6 +1791,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_Query_Collision' => __DIR__ . '/../..' . '/tests/test-query-collision.php',
         'Test_Research_Service' => __DIR__ . '/../..' . '/tests/test-research-service.php',
         'Test_Schedule_Repository_Cache' => __DIR__ . '/../..' . '/tests/test-repository-identity-map-cache.php',
+        'Test_Schedule_Result_Handler' => __DIR__ . '/../..' . '/tests/test-schedule-result-handler.php',
         'Test_Session_To_JSON' => __DIR__ . '/../..' . '/tests/test-session-to-json.php',
         'Test_Stub_History_Container' => __DIR__ . '/../..' . '/tests/test-bulk-generator-service.php',
         'Test_Stub_History_Service' => __DIR__ . '/../..' . '/tests/test-bulk-generator-service.php',

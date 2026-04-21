@@ -234,6 +234,10 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
+
+		// AI Assistance Controller
+		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
+		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 	);
 
 	/**

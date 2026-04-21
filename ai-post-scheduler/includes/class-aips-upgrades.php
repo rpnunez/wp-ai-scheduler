@@ -34,6 +34,10 @@ class AIPS_Upgrades {
             $this->migrate_to_2_4_1();
         }
 
+        if (version_compare($from_version, '2.4.2', '<')) {
+            $this->migrate_to_2_4_2();
+        }
+
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates
         $result = AIPS_DB_Manager::install_tables();
@@ -232,6 +236,17 @@ class AIPS_Upgrades {
         if ( ! $has_num_used_key ) {
             $wpdb->query( "ALTER TABLE `{$table}` ADD KEY num_used (num_used)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         }
+    }
+
+    /**
+     * Migration for version 2.4.2.
+     *
+     * Adds the aips_ai_assistance table for storing AI field suggestion history.
+     * The actual table creation is handled by dbDelta in install_tables().
+     * This method exists for logging consistency.
+     */
+    private function migrate_to_2_4_2() {
+        $this->logger->log( 'Running migration to 2.4.2: AI Assistance table will be created by dbDelta.', 'info' );
     }
 }
 ?>
