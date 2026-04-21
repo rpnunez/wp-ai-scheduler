@@ -213,6 +213,29 @@ class AIPS_Generation_Result {
 	}
 
 	// -----------------------------------------------------------------------
+	// Array conversion
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Convert this result to an associative array.
+	 *
+	 * Provided for backward compatibility with code that previously consumed
+	 * the ad-hoc arrays returned by the generator.  New code should read the
+	 * typed properties directly.
+	 *
+	 * @return array{post_id: int|null, status: string, errors: string[], component_statuses: array<string, bool>, generation_time: float}
+	 */
+	public function toArray(): array {
+		return array(
+			'post_id'            => $this->post_id,
+			'status'             => $this->status,
+			'errors'             => $this->errors,
+			'component_statuses' => $this->component_statuses,
+			'generation_time'    => $this->generation_time,
+		);
+	}
+
+	// -----------------------------------------------------------------------
 	// Status helpers
 	// -----------------------------------------------------------------------
 
