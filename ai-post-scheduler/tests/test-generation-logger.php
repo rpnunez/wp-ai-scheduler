@@ -265,10 +265,9 @@ class Test_AIPS_Generation_Logger extends WP_UnitTestCase {
 	 * Test warning method falls back to log when logger has no warning method.
 	 */
 	public function test_warning_falls_back_to_log_method() {
-		// Create a logger mock without warning method
-		$logger_without_warning = $this->getMockBuilder(stdClass::class)
-			->addMethods(array('log'))
-			->getMock();
+		// Create a logger mock from the interface - interface has only log() and addSeparator(),
+		// so this mock has no warning() method, exercising the fallback path.
+		$logger_without_warning = $this->createMock(AIPS_Logger_Interface::class);
 
 		$logger_without_warning->expects($this->once())
 			->method('log')

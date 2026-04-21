@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Generation_Context_Factory {
 
 	/**
-	 * @var AIPS_History_Repository
+	 * @var AIPS_History_Repository_Interface
 	 */
 	private $history_repository;
 
@@ -49,8 +49,9 @@ class AIPS_Generation_Context_Factory {
 	/**
 	 * Constructor.
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
+	public function __construct(?AIPS_History_Repository_Interface $history_repository = null) {
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->template_repository = new AIPS_Template_Repository();
 		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
 		$this->authors_repository = new AIPS_Authors_Repository();

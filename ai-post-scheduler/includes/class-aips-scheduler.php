@@ -51,12 +51,12 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     private $template_repository;
     
     /**
-     * @var AIPS_History_Service Service for history logging
+     * @var AIPS_History_Service_Interface Service for history logging
      */
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository Repository for history operations
+     * @var AIPS_History_Repository_Interface Repository for history operations
      */
     private $history_repository;
 
@@ -65,15 +65,21 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      */
     private $processor;
     
-    public function __construct() {
+    public function __construct(
+        ?AIPS_Schedule_Repository_Interface $repository = null,
+        ?AIPS_History_Repository_Interface $history_repository = null,
+        ?AIPS_History_Service_Interface $history_service = null
+    ) {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
+
+        $container = AIPS_Container::get_instance();
+        $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
         $this->template_repository = new AIPS_Template_Repository();
-        $this->history_repository = new AIPS_History_Repository();
-        $this->history_service = new AIPS_History_Service($this->history_repository);
+        $this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+        $this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service($this->history_repository));
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
         // Instantiate the processor with dependencies

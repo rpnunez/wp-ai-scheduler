@@ -103,7 +103,7 @@ class AIPS_Generator {
         }
 
         // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
+        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_repository, new AIPS_Generation_Session() );
     }
 
     /**

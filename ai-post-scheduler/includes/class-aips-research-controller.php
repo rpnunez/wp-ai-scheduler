@@ -48,12 +48,12 @@ class AIPS_Research_Controller {
     private $repository;
     
     /**
-     * @var AIPS_Logger Logger instance
+     * @var AIPS_Logger_Interface Logger instance
      */
     private $logger;
 
     /**
-     * @var AIPS_History_Service History service instance
+     * @var AIPS_History_Service_Interface History service instance
      */
     private $history_service;
 
@@ -70,11 +70,12 @@ class AIPS_Research_Controller {
     /**
      * Initialize the controller.
      */
-    public function __construct() {
+    public function __construct(?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
         $this->research_service       = new AIPS_Research_Service();
         $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
+        $container = AIPS_Container::get_instance();
+        $this->logger                 = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
         $this->content_auditor        = new AIPS_Content_Auditor();
         $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
         

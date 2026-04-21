@@ -52,7 +52,7 @@ class AIPS_Component_Regeneration_Service {
 	private $image_service;
 	
 	/**
-	 * @var AIPS_History_Repository History repository
+	 * @var AIPS_History_Repository_Interface History repository
 	 */
 	private $history_repository;
 
@@ -74,14 +74,15 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Constructor
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
+	public function __construct(?AIPS_History_Repository_Interface $history_repository = null, ?AIPS_AI_Service_Interface $ai_service = null) {
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
 		
 		// Initialize AI services
-		$ai_service = new AIPS_AI_Service();
+		$ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
