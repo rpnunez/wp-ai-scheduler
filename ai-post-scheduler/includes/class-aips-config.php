@@ -508,6 +508,7 @@ class AIPS_Config {
      * values should use this accessor instead.
      *
      * @return array Cache configuration with keys:
+     *               'enabled'        (bool)   Whether the cache system is enabled.
      *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
      *               'db_prefix'      (string) Table prefix for the DB driver.
      *               'default_ttl'    (int)    Default time-to-live in seconds.
