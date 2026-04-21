@@ -34,6 +34,10 @@ class AIPS_Admin_Assets {
 
         $this->enqueue_global_assets();
 
+        if (strpos($hook, 'toplevel_page_ai-post-scheduler') !== false) {
+            $this->enqueue_dashboard_assets();
+        }
+
         if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
             $this->enqueue_authors_assets($hook);
         }
@@ -958,6 +962,41 @@ class AIPS_Admin_Assets {
                 'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
                 'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the main dashboard page.
+     */
+    private function enqueue_dashboard_assets() {
+        wp_enqueue_script(
+            'aips-chartjs',
+            apply_filters(
+                'aips_chartjs_src',
+                AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+            ),
+            array(),
+            '4.4.2',
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-dashboard-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
+            array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-dashboard-script', 'aipsDashboardL10n', array(
+            'chartPostsTitle'      => __('Post Generations by Day', 'ai-post-scheduler'),
+            'chartTopicsTitle'     => __('Topic Generations by Day', 'ai-post-scheduler'),
+            'chartErrorRateTitle'  => __('AI Error Rate (%)', 'ai-post-scheduler'),
+            'chartCompletedLabel'  => __('Completed', 'ai-post-scheduler'),
+            'chartFailedLabel'     => __('Failed', 'ai-post-scheduler'),
+            'chartTopicsLabel'     => __('Topics Generated', 'ai-post-scheduler'),
+            'chartErrorRateLabel'  => __('Error Rate (%)', 'ai-post-scheduler'),
+            'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+        ));
     }
 
     /**

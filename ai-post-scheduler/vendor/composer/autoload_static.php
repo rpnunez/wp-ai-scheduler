@@ -56,6 +56,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Author_Topics_Generator' => __DIR__ . '/../..' . '/includes/class-aips-author-topics-generator.php',
         'AIPS_Author_Topics_Logs_Test' => __DIR__ . '/../..' . '/tests/test-author-topics-logs.php',
         'AIPS_Author_Topics_Repository' => __DIR__ . '/../..' . '/includes/class-aips-author-topics-repository.php',
+        'AIPS_Author_Topics_Repository_Test' => __DIR__ . '/../..' . '/tests/test-author-topics-repository.php',
         'AIPS_Author_Topics_Scheduler' => __DIR__ . '/../..' . '/includes/class-aips-author-topics-scheduler.php',
         'AIPS_Authors_Controller' => __DIR__ . '/../..' . '/includes/class-aips-authors-controller.php',
         'AIPS_Authors_Controller_Save_Test' => __DIR__ . '/../..' . '/tests/test-authors-controller-save.php',
