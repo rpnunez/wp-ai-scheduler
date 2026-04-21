@@ -43,8 +43,9 @@ class AIPS_Telemetry_Controller {
 			wp_die(esc_html__('Telemetry is currently disabled.', 'ai-post-scheduler'));
 		}
 
-		$end_date   = date_i18n('Y-m-d', current_time('timestamp'));
-		$start_date = date_i18n('Y-m-d', strtotime('-29 days', current_time('timestamp')));
+		$now_ts     = (int) current_datetime()->getTimestamp();
+		$end_date   = date_i18n('Y-m-d', $now_ts);
+		$start_date = date_i18n('Y-m-d', strtotime('-29 days', $now_ts));
 		$per_page   = 25;
 		$filter_options = $this->get_filter_options();
 
@@ -67,10 +68,11 @@ class AIPS_Telemetry_Controller {
 			AIPS_Ajax_Response::error(__('Telemetry is disabled.', 'ai-post-scheduler'));
 		}
 
-		$today      = date_i18n('Y-m-d', current_time('timestamp'));
+		$now_ts     = (int) current_datetime()->getTimestamp();
+		$today      = date_i18n('Y-m-d', $now_ts);
 		$start_date = $this->sanitize_date(
 			isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '',
-			date_i18n('Y-m-d', strtotime('-29 days', current_time('timestamp')))
+			date_i18n('Y-m-d', strtotime('-29 days', $now_ts))
 		);
 		$end_date   = $this->sanitize_date(
 			isset($_POST['end_date']) ? sanitize_text_field(wp_unslash($_POST['end_date'])) : '',

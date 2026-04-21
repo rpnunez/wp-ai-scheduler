@@ -369,6 +369,27 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the telemetry query diagnostics setting field.
+     *
+     * Displays a checkbox to enable SAVEQUERIES when telemetry is active.
+     * Requires telemetry to be enabled first. SAVEQUERIES logs every SQL
+     * query across all plugins and has significant memory overhead.
+     *
+     * @return void
+     */
+    public function telemetry_query_diagnostics_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_telemetry_query_diagnostics');
+        ?>
+        <input type="hidden" name="aips_telemetry_query_diagnostics" value="0">
+        <label>
+            <input type="checkbox" name="aips_telemetry_query_diagnostics" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable SQL query logging (SAVEQUERIES)', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled alongside telemetry, WordPress will log every SQL query for diagnostics. This adds significant memory overhead — only use in development or staging environments.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
