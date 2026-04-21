@@ -593,6 +593,15 @@ final class AI_Post_Scheduler {
         // Register bulk-batch strategies for each supported job type.
         // These closures are only constructed at runtime (not serialised), so
         // they can safely reference singletons.
+        //
+        // NOTE on incomplete strategies:
+        // 'planner_post' and 'trending_topic_post' require per-job context
+        // (template_id, template object) that cannot be reconstructed from the
+        // item alone.  They are registered here as documented stubs so that:
+        //   a) the HOOK is always fired (avoiding a "no strategy" log warning),
+        //   b) callers can override them by calling register() again after boot.
+        // Any async queue dispatch for these job types should be accompanied by
+        // an override that reads the template from the job's stored options.
         add_action('init', function() {
             $processor = AIPS_Bulk_Batch_Processor::instance();
 
@@ -603,41 +612,33 @@ final class AI_Post_Scheduler {
                 }
             );
 
+            // TODO(2.7.0): Complete this strategy by reading template_id from the stored job options
+            // via AIPS_Bulk_Batch_Job_Store::get( $job_id )->options['history_meta']['template_id'].
+            // Until then, any 'planner_post' async job will fail with a WP_Error and be marked failed.
             $processor->register(
                 'planner_post',
                 function( $item ) {
-                    // Item is a topic string; job options store the template_id.
-                    // The processor passes the raw item — we reconstruct the
-                    // generator + template inline.  template_id may be an array
-                    // element when items are arrays (for forward compat).
-                    $topic = is_array( $item ) ? ( $item['topic'] ?? '' ) : (string) $item;
-                    // Planner bulk-generate requires a template — we cannot
-                    // reconstruct it without a template_id stored in the job.
-                    // The cron callback will have to be extended by a higher-level
-                    // service that accesses the job options.  For now, log and skip.
+                    $topic = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
                     return new WP_Error(
-                        'planner_post_strategy_incomplete',
-                        sprintf( 'planner_post strategy requires a template_id. Item: %s', wp_json_encode( $topic ) )
+                        'planner_post_requires_template',
+                        /* translators: %s: topic string */
+                        sprintf( __( 'planner_post cron strategy is not yet complete — template_id must be provided. Topic: %s', 'ai-post-scheduler' ), $topic )
                     );
                 }
             );
 
+            // TODO(2.7.0): Complete this strategy by reading template_id from job options.
+            // Until then, any 'trending_topic_post' async job will fail with a WP_Error.
             $processor->register(
                 'trending_topic_post',
                 function( $item ) {
-                    // Item is a topic data array (keys: id, topic, niche, ...).
-                    // The research controller's generate_fn updates status after
-                    // generation; the batch strategy does the generation only.
                     if ( ! is_array( $item ) || empty( $item['id'] ) ) {
-                        return new WP_Error( 'invalid_trending_topic_item', 'Item must be an array with an id key.' );
+                        return new WP_Error( 'invalid_trending_topic_item', __( 'Item must be an array with an id key.', 'ai-post-scheduler' ) );
                     }
-                    // We cannot generate the post without a template here — the
-                    // template was determined at AJAX request time.  Mark as
-                    // deferred; callers that need full support should override
-                    // this strategy after boot.
                     return new WP_Error(
-                        'trending_topic_post_strategy_incomplete',
-                        sprintf( 'trending_topic_post strategy requires a template. Item ID: %d', (int) $item['id'] )
+                        'trending_topic_post_requires_template',
+                        /* translators: %d: topic ID */
+                        sprintf( __( 'trending_topic_post cron strategy is not yet complete — template_id must be provided. Topic ID: %d', 'ai-post-scheduler' ), (int) $item['id'] )
                     );
                 }
             );

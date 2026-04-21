@@ -269,14 +269,14 @@ class AIPS_Bulk_Batch_Processor {
 					);
 				} else {
 					$success_count++;
-					$post_id = is_array( $result ) ? $result : (int) $result;
+					$post_result = is_array( $result ) ? $result : (int) $result;
 					$history->record(
 						'activity',
 						/* translators: %s: post ID */
-						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id ) ? implode( ',', $post_id ) : $post_id ),
+						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_result ) ? implode( ',', $post_result ) : $post_result ),
 						null,
 						null,
-						array( 'item' => $item, 'post_id' => $post_id )
+						array( 'item' => $item, 'post_id' => $post_result )
 					);
 				}
 			} catch ( Throwable $e ) {
@@ -299,8 +299,10 @@ class AIPS_Bulk_Batch_Processor {
 		$this->job_store->increment_processed( $job_id, count( $items_slice ) );
 
 		// Determine whether this was the last slice and mark the job accordingly.
-		$processed_total = $start_index + count( $items_slice );
-		$is_last_slice   = ( $processed_total >= $total_quantity );
+		// Use $start_index + $batch_size (the declared slice size) rather than
+		// count($items_slice) to guard against edge cases where the actual slice
+		// was smaller than requested (e.g. the job had fewer items remaining).
+		$is_last_slice = ( $start_index + $batch_size >= $total_quantity );
 
 		if ( $is_last_slice ) {
 			$final_status = ( $failed_count === 0 )
