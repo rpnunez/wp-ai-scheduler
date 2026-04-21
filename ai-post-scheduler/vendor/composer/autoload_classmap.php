@@ -26,6 +26,7 @@ return array(
     'AIPS_Author_Topics_Generator' => $baseDir . '/includes/class-aips-author-topics-generator.php',
     'AIPS_Author_Topics_Logs_Test' => $baseDir . '/tests/test-author-topics-logs.php',
     'AIPS_Author_Topics_Repository' => $baseDir . '/includes/class-aips-author-topics-repository.php',
+    'AIPS_Author_Topics_Repository_Test' => $baseDir . '/tests/test-author-topics-repository.php',
     'AIPS_Author_Topics_Scheduler' => $baseDir . '/includes/class-aips-author-topics-scheduler.php',
     'AIPS_Authors_Controller' => $baseDir . '/includes/class-aips-authors-controller.php',
     'AIPS_Authors_Controller_Save_Test' => $baseDir . '/tests/test-authors-controller-save.php',
