@@ -522,6 +522,24 @@ final class AI_Post_Scheduler {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });
 
+        // Batch-queue single events: each call processes one slice of a large schedule.
+        // Args: schedule_id, start_index, batch_size, total_quantity, correlation_id.
+        add_action('aips_process_schedule_batch', function(
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id = ''
+        ) {
+            AIPS_Scheduler::instance()->process_batch(
+                (int) $schedule_id,
+                (int) $start_index,
+                (int) $batch_size,
+                (int) $total_quantity,
+                (string) $correlation_id
+            );
+        }, 10, 5);
+
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
             AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
