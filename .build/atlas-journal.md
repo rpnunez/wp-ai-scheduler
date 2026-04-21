@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-18 - Singleton Refactor: AIPS_Generator
+**Context:** AIPS_Generator was a God Object frequently instantiated directly via new AIPS_Generator() across many files, leading to performance overhead and tight coupling to concrete implementation.
+**Decision:** Registered AIPS_Generator as a singleton in the AIPS_Container dependency injection container and replaced all direct instantiations with AIPS_Generator::instance().
+**Consequence:** Improved performance by reducing object creation overhead. Facilitates better testing and dependency injection.
+**Tests:** Ran existing test suite via composer test to ensure no regressions.
