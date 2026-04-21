@@ -115,9 +115,18 @@
 		 * @return {void}
 		 */
 		init: function () {
-			this.sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-			? crypto.randomUUID()
-			: Date.now() + Math.random().toString(36).slice(2, 11);
+			if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+				this.sessionId = crypto.randomUUID();
+			} else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+				var buf = new Uint8Array(16);
+				crypto.getRandomValues(buf);
+				this.sessionId = Array.prototype.map.call(buf, function (b) {
+					return ('0' + b.toString(16)).slice(-2);
+				}).join('');
+			} else {
+				// Last-resort fallback (non-security context: session grouping only).
+				this.sessionId = Date.now().toString(36) + Date.now().toString(36);
+			}
 			this.injectButtons();
 			this.bindEvents();
 		},
