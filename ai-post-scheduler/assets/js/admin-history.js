@@ -388,7 +388,7 @@
 			if (container.duration_seconds !== null && container.duration_seconds !== undefined) {
 				rows += T.render('aips-tmpl-history-summary-duration-row', {
 					label: aipsHistoryL10n.labelDuration || 'Duration',
-					value: AIPS.DateTime.formatDuration(container.duration_seconds)
+					value: self.formatDuration(container.duration_seconds)
 				});
 			}
 
@@ -516,6 +516,25 @@
 			});
 
 			return html;
+		},
+
+		/**
+		 * Format a duration in seconds to a human-readable string.
+		 *
+		 * @param {number} seconds Total seconds.
+		 * @return {string} Formatted duration string (e.g. "1m 23s").
+		 */
+		formatDuration: function (seconds) {
+			seconds = parseInt(seconds, 10);
+			if (isNaN(seconds) || seconds < 0) {
+				return '—';
+			}
+			if (seconds < 60) {
+				return seconds + 's';
+			}
+			var m = Math.floor(seconds / 60);
+			var s = seconds % 60;
+			return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
 		},
 
 		/**

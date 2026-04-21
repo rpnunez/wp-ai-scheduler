@@ -801,7 +801,7 @@ class AIPS_Generator {
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
 
-            $title = $base_title . ' - ' . AIPS_DateTime::now()->toDisplay();
+            $title = $base_title . ' - ' . date('Y-m-d H:i:s');
             $component_statuses['post_title'] = false;
         } else {
             $component_statuses['post_title'] = true;

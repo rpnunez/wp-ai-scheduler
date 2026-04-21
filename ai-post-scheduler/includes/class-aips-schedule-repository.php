@@ -126,15 +126,14 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * scheduler within the same request correctly picks up the updated
      * next_run timestamps.
      *
-     * @param int  $current_time Optional. UTC Unix timestamp. Default current time.
-     * @param int  $limit        Optional. Maximum number of schedules to retrieve. Default 5.
+     * @param string $current_time Optional. Current time in MySQL format. Default current time.
+     * @param int    $limit        Optional. Maximum number of schedules to retrieve. Default 5.
      * @return array Array of schedule objects that should run now.
      */
     public function get_due_schedules($current_time = null, $limit = 5) {
         if ($current_time === null) {
-            $current_time = AIPS_DateTime::now()->timestamp();
+            $current_time = current_time('mysql');
         }
-        $current_time = (int) $current_time;
         $key = 'due:' . $current_time . ':' . (int) $limit;
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
@@ -147,7 +146,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id
             WHERE s.is_active = 1 
-            AND s.next_run <= %d
+            AND s.next_run <= %s
             AND t.is_active = 1
             ORDER BY s.next_run ASC
             LIMIT %d
@@ -401,27 +400,27 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     /**
      * Update the last_run timestamp for a schedule.
      *
-     * @param int      $id        Schedule ID.
-     * @param int|null $timestamp Optional. UTC Unix timestamp. Default current time.
+     * @param int    $id        Schedule ID.
+     * @param string $timestamp Optional. Timestamp in MySQL format. Default current time.
      * @return bool True on success, false on failure.
      */
     public function update_last_run($id, $timestamp = null) {
         if ($timestamp === null) {
-            $timestamp = AIPS_DateTime::now()->timestamp();
+            $timestamp = current_time('mysql');
         }
         
-        return $this->update($id, array('last_run' => (int) $timestamp));
+        return $this->update($id, array('last_run' => $timestamp));
     }
     
     /**
      * Update the next_run timestamp for a schedule.
      *
-     * @param int $id        Schedule ID.
-     * @param int $timestamp UTC Unix timestamp.
+     * @param int    $id        Schedule ID.
+     * @param string $timestamp Timestamp in MySQL format.
      * @return bool True on success, false on failure.
      */
     public function update_next_run($id, $timestamp) {
-        return $this->update($id, array('next_run' => (int) $timestamp));
+        return $this->update($id, array('next_run' => $timestamp));
     }
     
     /**

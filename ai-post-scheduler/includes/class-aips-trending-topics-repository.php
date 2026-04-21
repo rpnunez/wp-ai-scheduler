@@ -95,8 +95,7 @@ class AIPS_Trending_Topics_Repository {
         
         // Filter fresh topics only (researched within last 7 days)
         if ($args['fresh_only']) {
-            $where[] = 'researched_at >= %d';
-            $prepare_values[] = AIPS_DateTime::now()->timestamp() - (7 * DAY_IN_SECONDS);
+            $where[] = 'researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
         }
         
         // Filter by status
@@ -231,16 +230,14 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of topic records.
      */
     public function get_by_niche($niche, $limit = 20, $days = 30) {
-        $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
-
         $query = $this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} 
             WHERE niche = %s 
-            AND researched_at >= %d
+            AND researched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
             ORDER BY score DESC, researched_at DESC 
             LIMIT %d",
             $niche,
-            $cutoff,
+            $days,
             $limit
         );
         
@@ -255,14 +252,12 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of top topic records.
      */
     public function get_top_topics($count = 10, $days = 7) {
-        $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
-
         $query = $this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} 
-            WHERE researched_at >= %d
+            WHERE researched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
             ORDER BY score DESC, researched_at DESC 
             LIMIT %d",
-            $cutoff,
+            $days,
             $count
         );
         
@@ -327,9 +322,9 @@ class AIPS_Trending_Topics_Repository {
             $this->wpdb->prepare(
                 "SELECT topic FROM {$this->table_name}
                 WHERE niche = %s
-                AND researched_at >= %d
+                AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
                 AND topic IN ({$placeholders})",
-                array_merge(array($niche, AIPS_DateTime::now()->timestamp() - (7 * DAY_IN_SECONDS)), $candidate_titles)
+                array_merge(array($niche), $candidate_titles)
             )
         );
         $existing_lower = $existing_rows
@@ -366,7 +361,7 @@ class AIPS_Trending_Topics_Repository {
                 'reason' => isset($topic['reason']) ? $topic['reason'] : '',
                 'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
                 'status' => isset($topic['status']) ? $topic['status'] : 'new',
-                'researched_at' => isset($topic['researched_at']) ? absint($topic['researched_at']) : AIPS_DateTime::now()->timestamp(),
+                'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
             );
         }
 
@@ -423,7 +418,7 @@ class AIPS_Trending_Topics_Repository {
                     $status = $sanitized_status;
                 }
             }
-            $researched_at = isset($data['researched_at']) ? absint($data['researched_at']) : AIPS_DateTime::now()->timestamp();
+            $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
 
             array_push(
                 $values,
@@ -435,7 +430,7 @@ class AIPS_Trending_Topics_Repository {
                 $status,
                 $researched_at
             );
-            $placeholders[] = "(%s, %s, %d, %s, %s, %s, %d)";
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s, %s)";
         }
 
         if (empty($placeholders)) {
@@ -472,7 +467,7 @@ class AIPS_Trending_Topics_Repository {
             'reason' => '',
             'keywords' => array(),
             'status' => 'new',
-            'researched_at' => AIPS_DateTime::now()->timestamp(),
+            'researched_at' => current_time('mysql'),
         );
         
         $data = wp_parse_args($data, $defaults);
@@ -502,9 +497,9 @@ class AIPS_Trending_Topics_Repository {
                 'reason' => sanitize_text_field($data['reason']),
                 'keywords' => $keywords_json,
                 'status' => $status_value,
-                'researched_at' => absint($data['researched_at']),
+                'researched_at' => $data['researched_at'],
             ),
-            array('%s', '%s', '%d', '%s', '%s', '%s', '%d')
+            array('%s', '%s', '%d', '%s', '%s', '%s', '%s')
         );
         
         if ($result === false) {
@@ -690,13 +685,9 @@ class AIPS_Trending_Topics_Repository {
         $stats['avg_score'] = round(floatval($avg), 2);
         
         // Recent research (last 7 days)
-        $recent_cutoff = AIPS_DateTime::now()->timestamp() - (7 * DAY_IN_SECONDS);
         $recent = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} 
-                WHERE researched_at >= %d",
-                $recent_cutoff
-            )
+            "SELECT COUNT(*) FROM {$this->table_name}
+            WHERE researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
         );
         $stats['recent_research_count'] = absint($recent);
         
@@ -735,16 +726,14 @@ class AIPS_Trending_Topics_Repository {
      * @return bool True if exists, false otherwise.
      */
     public function topic_exists($topic, $niche, $days = 7) {
-        $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
-
         $query = $this->wpdb->prepare(
             "SELECT COUNT(*) FROM {$this->table_name} 
             WHERE topic = %s 
             AND niche = %s
-            AND researched_at >= %d",
+            AND researched_at >= DATE_SUB(NOW(), INTERVAL %d DAY)",
             $topic,
             $niche,
-            $cutoff
+            $days
         );
         
         $count = $this->wpdb->get_var($query);

@@ -170,35 +170,27 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
             // Use start_time as the initial run time if provided, otherwise start now.
-				$start_time_raw = isset($data['start_time']) && !empty($data['start_time'])
-					? sanitize_text_field($data['start_time'])
-					: '';
+            $start_time = isset($data['start_time']) && !empty($data['start_time'])
+                ? $data['start_time']
+                : current_time('mysql');
 
-				// Parse start_time from datetime-local input (YYYY-MM-DDTHH:MM) or fallback to now.
-				if (!empty($start_time_raw)) {
-					$start_timestamp = (int) strtotime($start_time_raw);
-					if ($start_timestamp <= 0) {
-						$start_timestamp = AIPS_DateTime::now()->timestamp();
-					}
-				} else {
-					$start_timestamp = AIPS_DateTime::now()->timestamp();
-				}
+            // Default behavior: reset next_run to start_time
+            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
 
-				// Default behaviour: reset next_run to start_time.
-				$next_run = $start_timestamp;
             // Hunter: Fix for schedule reset bug.
             // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
             // and the schedule is already running in the future, we should NOT reset the timeline to the past.
             if (!empty($data['id'])) {
                 $existing_schedule = $this->repository->get_by_id(absint($data['id']));
                 if ($existing_schedule) {
-                    $existing_next_run_timestamp = (int) $existing_schedule->next_run;
-                    $now_timestamp = AIPS_DateTime::now()->timestamp();
+                    $start_timestamp = strtotime($start_time);
+                    $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
+                    $now_timestamp = current_time('timestamp');
 
                     // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')
                     // and the existing schedule is healthy (next_run is in the future), preserve the existing schedule.
                     if ($start_timestamp < ($now_timestamp - 60) && $existing_next_run_timestamp > $now_timestamp) {
-                        $next_run = $existing_next_run_timestamp;
+                        $next_run = $existing_schedule->next_run;
                     }
                 }
             }

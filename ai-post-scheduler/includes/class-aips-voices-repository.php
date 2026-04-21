@@ -110,18 +110,15 @@ class AIPS_Voices_Repository {
      * @return int|false Inserted ID or false on failure.
      */
     public function create($data) {
-        $now = AIPS_DateTime::now()->timestamp();
-
         $insert_data = array(
             'name' => isset($data['name']) ? sanitize_text_field($data['name']) : '',
             'title_prompt' => isset($data['title_prompt']) ? wp_kses_post($data['title_prompt']) : '',
             'content_instructions' => isset($data['content_instructions']) ? wp_kses_post($data['content_instructions']) : '',
             'excerpt_instructions' => isset($data['excerpt_instructions']) ? wp_kses_post($data['excerpt_instructions']) : '',
             'is_active' => !empty($data['is_active']) ? 1 : 0,
-            'created_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%s', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 

@@ -352,6 +352,33 @@
             var lastAnnounceTime = 0;
             var ANNOUNCE_INTERVAL_MS = 5000; // announce to screen readers at most every 5 s
 
+            /**
+             * Format seconds into a human-readable string using l10n keys when
+             * available, falling back to bare English.
+             * @param  {number} secs
+             * @returns {string}
+             */
+            function formatTime(secs) {
+                secs = Math.max(0, Math.round(secs));
+                if (secs < 60) {
+                    return secs + ' ' + (l10n.seconds || 'seconds');
+                }
+                var m = Math.floor(secs / 60);
+                var s = secs % 60;
+                if (s === 0) {
+                    if (m === 1) {
+                        return l10n.minute || '1 minute';
+                    }
+                    var mTpl = l10n.minutes || '%d minutes';
+                    return mTpl.replace('%d', m);
+                }
+                var msTpl = l10n.minutesSeconds || '%dm %ds';
+                // Replace each %d placeholder in order (minutes first, seconds second).
+                var msParts = [m, s];
+                var msIdx   = 0;
+                return msTpl.replace(/%d/g, function() { return msParts[msIdx++]; });
+            }
+
             function tick() {
                 if (closed) { return; }
 
@@ -379,7 +406,7 @@
                 $barFill.css('width', pct + '%').attr('aria-valuenow', Math.round(progress));
 
                 var tpl      = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
-                var timeText = tpl.replace('%s', AIPS.DateTime.formatCountdown(remaining, l10n));
+                var timeText = tpl.replace('%s', formatTime(remaining));
 
                 // Update the visible countdown on every tick.
                 $statusLine.text(timeText);
@@ -603,37 +630,6 @@
                 .replace(/\b\w/g, function(letter) {
                     return letter.toUpperCase();
                 });
-        },
-
-        /**
-         * Apply alpha transparency to a hex colour string.
-         *
-         * @param {string} hex   Six-digit hex colour with leading '#' (e.g. '#2271b1').
-         * @param {number} alpha Opacity between 0 and 1.
-         * @return {string} rgba() CSS colour string, or 'rgba(0,0,0,0)' for invalid input.
-         */
-        toAlpha: function(hex, alpha) {
-            var normalizedAlpha;
-            var r;
-            var g;
-            var b;
-
-            if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) {
-                return 'rgba(0,0,0,0)';
-            }
-
-            normalizedAlpha = Number(alpha);
-
-            if (!isFinite(normalizedAlpha)) {
-                return 'rgba(0,0,0,0)';
-            }
-
-            normalizedAlpha = Math.max(0, Math.min(1, normalizedAlpha));
-            r = parseInt(hex.slice(1, 3), 16);
-            g = parseInt(hex.slice(3, 5), 16);
-            b = parseInt(hex.slice(5, 7), 16);
-
-            return 'rgba(' + r + ',' + g + ',' + b + ',' + normalizedAlpha + ')';
         }
     };
 

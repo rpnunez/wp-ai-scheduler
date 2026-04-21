@@ -104,18 +104,14 @@ class AIPS_Sources_Repository {
 	 * @return int|false Inserted ID on success, false on failure.
 	 */
 	public function create($data) {
-		$now = AIPS_DateTime::now()->timestamp();
-
 		$insert_data = array(
 			'url'         => esc_url_raw($data['url']),
 			'label'       => isset($data['label']) ? sanitize_text_field($data['label']) : '',
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'is_active'   => isset($data['is_active']) ? (int) $data['is_active'] : 1,
-			'created_at'  => $now,
-			'updated_at'  => $now,
 		);
 
-		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 
@@ -156,9 +152,6 @@ class AIPS_Sources_Repository {
 		if (empty($update_data)) {
 			return false;
 		}
-
-		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
-		$format[]                  = '%d';
 
 		return $this->wpdb->update(
 			$this->table_name,
@@ -375,7 +368,7 @@ class AIPS_Sources_Repository {
 	 */
 	public function get_due_for_fetch( $limit = 10 ) {
 		$limit        = absint( $limit );
-		$current_time = AIPS_DateTime::now()->timestamp();
+		$current_time = current_time( 'mysql' );
 
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
@@ -383,7 +376,7 @@ class AIPS_Sources_Repository {
 				WHERE is_active = 1
 				  AND fetch_interval IS NOT NULL
 				  AND fetch_interval != ''
-				  AND (next_fetch_at IS NULL OR next_fetch_at <= %d)
+				  AND (next_fetch_at IS NULL OR next_fetch_at <= %s)
 				ORDER BY next_fetch_at ASC
 				LIMIT %d",
 				$current_time,
@@ -407,7 +400,7 @@ class AIPS_Sources_Repository {
 		if ( null === $interval_key || '' === $interval_key ) {
 			$data['fetch_interval'] = null;
 			$data['next_fetch_at']  = null;
-			$format                 = array( '%s', '%d' );
+			$format                 = array( '%s', '%s' );
 		} else {
 			$interval_key = sanitize_text_field( $interval_key );
 			$calculator   = AIPS_Interval_Calculator::instance();
@@ -420,11 +413,8 @@ class AIPS_Sources_Repository {
 
 			$data['fetch_interval'] = $interval_key;
 			$data['next_fetch_at']  = $next;
-			$format                 = array( '%s', '%d' );
+			$format                 = array( '%s', '%s' );
 		}
-
-		$data['updated_at'] = AIPS_DateTime::now()->timestamp();
-		$format[]           = '%d';
 
 		return $this->wpdb->update(
 			$this->table_name,
@@ -459,19 +449,16 @@ class AIPS_Sources_Repository {
 		$format = array();
 
 		if ( $success ) {
-			$data['last_fetched_at'] = AIPS_DateTime::now()->timestamp();
-			$format[]                = '%d';
+			$data['last_fetched_at'] = current_time( 'mysql' );
+			$format[]                = '%s';
 		}
 
 		// Advance next_fetch_at if a fetch_interval is set.
 		if ( ! empty( $source->fetch_interval ) ) {
 			$calculator             = AIPS_Interval_Calculator::instance();
 			$data['next_fetch_at']  = $calculator->calculate_next_run( $source->fetch_interval );
-			$format[]               = '%d';
+			$format[]               = '%s';
 		}
-
-		$data['updated_at'] = AIPS_DateTime::now()->timestamp();
-		$format[]           = '%d';
 
 		if ( empty( $data ) ) {
 			return;

@@ -256,7 +256,6 @@
 		 */
 		renderRows: function(rows) {
 			var $tbody = $('#aips-telemetry-tbody');
-			var dtL10n = this._buildL10n();
 
 			$tbody.empty();
 			if (!rows || !rows.length) {
@@ -265,9 +264,9 @@
 			}
 
 			$tbody.html(rows.map(function(row) {
-				var insertedAt = AIPS.DateTime.formatRelative(row.inserted_at, dtL10n);
+				var insertedAt = this.formatInsertedAt(row.inserted_at);
 				var categoriesHtml = this.formatCategories(row.event_categories);
-				var elapsedSeconds = AIPS.DateTime.formatElapsedSeconds(row.elapsed_ms);
+				var elapsedSeconds = this.formatElapsedSeconds(row.elapsed_ms);
 
 				return AIPS.Templates.renderRaw('aips-tmpl-telemetry-data-row', {
 					raw_id: AIPS.Templates.escape(this.displayValue(row.id)),
@@ -340,7 +339,6 @@
 		 */
 		renderDetailsModal: function(data) {
 			var row = data.row || {};
-			var dtL10n = this._buildL10n();
 			var detailRows = [
 				{ label: window.aipsTelemetryL10n.detailsIdLabel || 'ID', value: this.displayValue(row.id) },
 				{ label: window.aipsTelemetryL10n.detailsTypeLabel || 'Type', value: this.displayValue(row.type) },
@@ -355,9 +353,9 @@
 				{ label: window.aipsTelemetryL10n.detailsQueriesLabel || 'Queries', value: this.displayValue(row.num_queries) },
 				{ label: window.aipsTelemetryL10n.detailsSlowQueriesLabel || 'Slow Queries', value: this.displayValue(row.slow_query_count) },
 				{ label: window.aipsTelemetryL10n.detailsDuplicateQueriesLabel || 'Duplicate Queries', value: this.displayValue(row.duplicate_query_count) },
-				{ label: window.aipsTelemetryL10n.detailsPeakMemoryLabel || 'Peak Memory', value: AIPS.DateTime.formatMemory(row.peak_memory_bytes) + ' (' + this.displayValue(row.peak_memory_bytes) + ' bytes)' },
-				{ label: window.aipsTelemetryL10n.detailsElapsedLabel || 'Elapsed', value: AIPS.DateTime.formatElapsed(row.elapsed_ms) },
-				{ label: window.aipsTelemetryL10n.detailsInsertedLabel || 'Inserted At', value: AIPS.DateTime.formatRelative(row.inserted_at, dtL10n) }
+				{ label: window.aipsTelemetryL10n.detailsPeakMemoryLabel || 'Peak Memory', value: this.formatMemory(row.peak_memory_bytes) + ' (' + this.displayValue(row.peak_memory_bytes) + ' bytes)' },
+				{ label: window.aipsTelemetryL10n.detailsElapsedLabel || 'Elapsed', value: this.formatElapsed(row.elapsed_ms) },
+				{ label: window.aipsTelemetryL10n.detailsInsertedLabel || 'Inserted At', value: this.formatInsertedAt(row.inserted_at) }
 			];
 
 			var detailRowsHtml = this.renderDetailRows(detailRows);
@@ -632,25 +630,25 @@
 		},
 
 		/**
-		 * Build a standard AIPS.DateTime l10n map from aipsTelemetryL10n.
+		 * Format a timestamp for the Inserted At column.
 		 *
-		 * Maps telemetry-specific key names to the generic AIPS.DateTime keys.
-		 *
-		 * @return {Object}
+		 * @param {*} value Timestamp value.
+		 * @return {string}
 		 */
-		_buildL10n: function() {
-			var t = window.aipsTelemetryL10n || {};
-			return {
-				justNow:         t.insertedJustNow         || undefined,
-				minuteAgo:       t.insertedMinuteAgo        || undefined,
-				minutesAgo:      t.insertedMinutesAgo       || undefined,
-				hourAgo:         t.insertedHourAgo          || undefined,
-				hoursAgo:        t.insertedHoursAgo         || undefined,
-				hoursMinutesAgo: t.insertedHoursMinutesAgo  || undefined,
-				yesterdayAt:     t.insertedYesterdayAt      || undefined,
-				absoluteDate:    t.insertedAbsoluteDate     || undefined,
-				locale:          t.locale                   || undefined
-			};
+		formatInsertedAt: function(value) {
+			if (value === null || value === undefined || value === '') {
+				return '—';
+			}
+
+			var raw = String(value);
+			var normalized = raw.replace(' ', 'T');
+			var date = new Date(normalized);
+
+			if (isNaN(date.getTime())) {
+				return this.displayValue(value);
+			}
+
+			return this.formatRelativeTimestamp(date);
 		},
 
 		/**
@@ -745,6 +743,171 @@
 			return category || 'general';
 		},
 
+		/**
+		 * Format a timestamp relative to the current time.
+		 *
+		 * @param {Date} date Timestamp.
+		 * @return {string}
+		 */
+		formatRelativeTimestamp: function(date) {
+			var now = new Date();
+			var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			var startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+			var timePart = this.formatTimeStamp(date);
+
+			if (date >= startOfToday) {
+				return this.formatDurationSince(date, now);
+			}
+
+			if (date >= startOfYesterday && date < startOfToday) {
+				if (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedYesterdayAt) {
+					return window.aipsTelemetryL10n.insertedYesterdayAt.replace('%s', timePart);
+				}
+
+				return 'yesterday at ' + timePart;
+			}
+
+			if (date < startOfYesterday) {
+				if (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedAbsoluteDate) {
+					return window.aipsTelemetryL10n.insertedAbsoluteDate
+						.replace('%1$s', this.formatDateStamp(date))
+						.replace('%2$s', timePart);
+				}
+
+				return this.formatDateStamp(date) + ' ' + timePart;
+			}
+
+			return this.formatDateStamp(date) + ' ' + timePart;
+		},
+
+		/**
+		 * Format a same-day relative duration.
+		 *
+		 * @param {Date} date Source timestamp.
+		 * @param {Date} now Current timestamp.
+		 * @return {string}
+		 */
+		formatDurationSince: function(date, now) {
+			var diffMinutes = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 60000));
+			if (diffMinutes < 1) {
+				return (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedJustNow) ? window.aipsTelemetryL10n.insertedJustNow : 'just now';
+			}
+
+			if (diffMinutes < 60) {
+				if (diffMinutes === 1) {
+					return (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedMinuteAgo) ? window.aipsTelemetryL10n.insertedMinuteAgo : '1 minute ago';
+				}
+
+				if (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedMinutesAgo) {
+					return window.aipsTelemetryL10n.insertedMinutesAgo.replace('%s', diffMinutes);
+				}
+
+				return diffMinutes + ' minutes ago';
+			}
+
+			var hours = Math.floor(diffMinutes / 60);
+			var minutes = diffMinutes % 60;
+
+			if (minutes === 0) {
+				if (hours === 1) {
+					return (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedHourAgo) ? window.aipsTelemetryL10n.insertedHourAgo : '1 hour ago';
+				}
+
+				if (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedHoursAgo) {
+					return window.aipsTelemetryL10n.insertedHoursAgo.replace('%s', hours);
+				}
+
+				return hours + ' hours ago';
+			}
+
+			if (window.aipsTelemetryL10n && window.aipsTelemetryL10n.insertedHoursMinutesAgo) {
+				return window.aipsTelemetryL10n.insertedHoursMinutesAgo
+					.replace('%1$s', hours)
+					.replace('%2$s', minutes);
+			}
+
+			return hours + ' hours and ' + minutes + ' minutes ago';
+		},
+
+		/**
+		 * Get the locale used for telemetry date/time formatting.
+		 *
+		 * Returns the locale from aipsTelemetryL10n when available, or
+		 * undefined to fall back to the browser default locale.
+		 *
+		 * @return {string|undefined}
+		 */
+		getDateTimeLocale: function() {
+			if (
+				typeof aipsTelemetryL10n !== 'undefined' &&
+				aipsTelemetryL10n &&
+				typeof aipsTelemetryL10n.locale === 'string' &&
+				aipsTelemetryL10n.locale
+			) {
+				return aipsTelemetryL10n.locale;
+			}
+
+			return undefined;
+		},
+
+		/**
+		 * Format an absolute date stamp such as Apr-15-26.
+		 *
+		 * @param {Date} date Timestamp.
+		 * @return {string}
+		 */
+		formatDateStamp: function(date) {
+			var parts = new Intl.DateTimeFormat(this.getDateTimeLocale(), {
+				month: 'short',
+				day: '2-digit',
+				year: '2-digit'
+			}).formatToParts(date);
+
+			var month = '';
+			var day = '';
+			var year = '';
+
+			parts.forEach(function(part) {
+				if (part.type === 'month') {
+					month = part.value;
+				} else if (part.type === 'day') {
+					day = part.value;
+				} else if (part.type === 'year') {
+					year = part.value;
+				}
+			});
+
+			return month + '-' + day + '-' + year;
+		},
+
+		/**
+		 * Format a timestamp time component without a space before AM/PM.
+		 *
+		 * @param {Date} date Timestamp.
+		 * @return {string}
+		 */
+		formatTimeStamp: function(date) {
+			var parts = new Intl.DateTimeFormat(this.getDateTimeLocale(), {
+				hour: 'numeric',
+				minute: '2-digit'
+			}).formatToParts(date);
+
+			var hour = '';
+			var minute = '';
+			var dayPeriod = '';
+
+			parts.forEach(function(part) {
+				if (part.type === 'hour') {
+					hour = part.value;
+				} else if (part.type === 'minute') {
+					minute = part.value;
+				} else if (part.type === 'dayPeriod') {
+					dayPeriod = part.value.replace('.', '').toUpperCase();
+				}
+			});
+
+			return hour + ':' + minute + (dayPeriod ? dayPeriod : '');
+		},
 
 		/**
 		 * Update count and pagination labels.
@@ -912,6 +1075,46 @@
 					}
 				}
 			});
+		},
+
+		/**
+		 * Format a peak-memory value.
+		 *
+		 * @param {*} value Bytes value.
+		 * @return {string}
+		 */
+		formatMemory: function(value) {
+			if (value === null || value === undefined || value === '') {
+				return '—';
+			}
+			return (parseFloat(value) / 1048576).toFixed(2) + ' MB';
+		},
+
+		/**
+		 * Format an elapsed-ms value.
+		 *
+		 * @param {*} value Milliseconds value.
+		 * @return {string}
+		 */
+		formatElapsed: function(value) {
+			if (value === null || value === undefined || value === '') {
+				return '—';
+			}
+			return parseFloat(value).toFixed(2) + ' ms';
+		},
+
+		/**
+		 * Format elapsed milliseconds as seconds with three decimal places.
+		 *
+		 * @param {*} value Milliseconds value.
+		 * @return {string}
+		 */
+		formatElapsedSeconds: function(value) {
+			if (value === null || value === undefined || value === '') {
+				return '—';
+			}
+
+			return (parseFloat(value) / 1000).toFixed(3) + ' s';
 		},
 
 		/**

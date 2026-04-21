@@ -82,7 +82,7 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			'dedupe_key' => '',
 			'is_read'    => 0,
 			'read_at'    => null,
-			'created_at' => AIPS_DateTime::now()->timestamp(),
+			'created_at' => current_time('mysql', true),
 		);
 
 		$data = wp_parse_args($data, $defaults);
@@ -103,10 +103,10 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 				'meta'       => $meta_json,
 				'dedupe_key' => sanitize_text_field($data['dedupe_key']),
 				'is_read'    => absint($data['is_read']) ? 1 : 0,
-				'read_at'    => !empty($data['read_at']) ? absint($data['read_at']) : null,
-				'created_at' => !empty($data['created_at']) ? absint($data['created_at']) : AIPS_DateTime::now()->timestamp(),
+				'read_at'    => !empty($data['read_at']) ? $data['read_at'] : null,
+				'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql', true),
 			),
-			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d')
+			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s')
 		);
 
 		if ($result === false) {
@@ -126,7 +126,6 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	public function was_recently_sent($dedupe_key, $window_seconds = 3600) {
 		$dedupe_key = sanitize_text_field($dedupe_key);
 		$window_seconds = absint($window_seconds);
-		$cutoff_timestamp = AIPS_DateTime::now()->timestamp() - $window_seconds;
 
 		if ('' === $dedupe_key || $window_seconds < 1) {
 			return false;
@@ -134,9 +133,9 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		$count = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table} WHERE dedupe_key = %s AND created_at >= %d",
+				"SELECT COUNT(*) FROM {$this->table} WHERE dedupe_key = %s AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d SECOND)",
 				$dedupe_key,
-				$cutoff_timestamp
+				$window_seconds
 			)
 		);
 
@@ -185,10 +184,10 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			$this->table,
 			array(
 				'is_read' => 1,
-				'read_at' => AIPS_DateTime::now()->timestamp(),
+				'read_at' => current_time('mysql', true),
 			),
 			array('id' => absint($id)),
-			array('%d', '%d'),
+			array('%d', '%s'),
 			array('%d')
 		);
 
@@ -205,10 +204,10 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			$this->table,
 			array(
 				'is_read' => 1,
-				'read_at' => AIPS_DateTime::now()->timestamp(),
+				'read_at' => current_time('mysql', true),
 			),
 			array('is_read' => 0),
-			array('%d', '%d'),
+			array('%d', '%s'),
 			array('%d')
 		);
 
@@ -226,12 +225,11 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 		if ($days < 1) {
 			$days = 30;
 		}
-		$cutoff_timestamp = AIPS_DateTime::now()->timestamp() - ($days * DAY_IN_SECONDS);
 
 		return (int) $this->wpdb->query(
 			$this->wpdb->prepare(
-				"DELETE FROM {$this->table} WHERE is_read = 1 AND created_at < %d",
-				$cutoff_timestamp
+				"DELETE FROM {$this->table} WHERE is_read = 1 AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				$days
 			)
 		);
 	}
@@ -245,14 +243,13 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 */
 	public function get_type_counts_for_window($seconds, array $types = array()) {
 		$seconds = absint($seconds);
-		$cutoff_timestamp = AIPS_DateTime::now()->timestamp() - $seconds;
 
 		if ($seconds < 1) {
 			return array();
 		}
 
-		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= %d";
-		$params = array($cutoff_timestamp);
+		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d SECOND)";
+		$params = array($seconds);
 
 		if (!empty($types)) {
 			$types = array_values(array_filter(array_map('sanitize_key', $types)));

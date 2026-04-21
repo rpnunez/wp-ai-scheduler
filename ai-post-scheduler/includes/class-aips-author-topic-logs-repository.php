@@ -208,31 +208,20 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 
 	/**
-	 * Get generated-post counts keyed by author ID.
+	 * Get post generation counts per author.
 	 *
-	 * Returns an associative array of author_id => count for all authors that
-	 * have at least one 'post_generated' log entry.  Used by schedule listing to
-	 * show per-author stats without issuing a separate query per author.
-	 *
-	 * @return array<int, int> Map of author_id => post count.
+	 * @return array Array of objects with author_id and cnt.
 	 */
-	public function get_post_generation_counts_grouped_by_author() {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+	public function get_post_counts_per_author() {
+		$author_topics_tbl = $this->wpdb->prefix . 'aips_author_topics';
 
-		$results = $this->wpdb->get_results(
+		return $this->wpdb->get_results(
 			"SELECT at.author_id, COUNT(*) AS cnt
 			 FROM {$this->table_name} atl
-			 INNER JOIN {$topics_table} at ON atl.author_topic_id = at.id
+			 INNER JOIN {$author_topics_tbl} at ON atl.author_topic_id = at.id
 			 WHERE atl.action = 'post_generated'
 			 GROUP BY at.author_id"
 		);
-
-		$counts = array();
-		foreach ( $results as $row ) {
-			$counts[ (int) $row->author_id ] = (int) $row->cnt;
-		}
-
-		return $counts;
 	}
 }
 

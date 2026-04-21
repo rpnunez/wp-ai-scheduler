@@ -68,35 +68,33 @@ class AIPS_Unified_Schedule_Service {
 	 * Each element of the returned array is a normalised associative array
 	 * (see private helpers for structure).
 	 *
-	 * @param string $type_filter   Optional type constant to restrict results.
-	 * @param bool   $include_stats Whether to run aggregate stats queries. Set to false
-	 *                              for lightweight listings that don't display stats.
+	 * @param string $type_filter Optional type constant to restrict results.
 	 * @return array Sorted, normalised schedule rows.
 	 */
-	public function get_all($type_filter = '', $include_stats = true) {
+	public function get_all($type_filter = '') {
 		$schedules = array();
 
 		if (empty($type_filter) || $type_filter === self::TYPE_TEMPLATE) {
-			$schedules = array_merge($schedules, $this->get_template_schedules($include_stats));
+			$schedules = array_merge($schedules, $this->get_template_schedules());
 		}
 		if (empty($type_filter) || $type_filter === self::TYPE_AUTHOR_TOPIC) {
-			$schedules = array_merge($schedules, $this->get_author_topic_schedules($include_stats));
+			$schedules = array_merge($schedules, $this->get_author_topic_schedules());
 		}
 		if (empty($type_filter) || $type_filter === self::TYPE_AUTHOR_POST) {
-			$schedules = array_merge($schedules, $this->get_author_post_schedules($include_stats));
+			$schedules = array_merge($schedules, $this->get_author_post_schedules());
 		}
 
 		// Sort by run proximity for better operator UX:
 		// 1) active upcoming schedules (soonest first)
 		// 2) active past-due schedules (least overdue first)
 		// 3) inactive/unscheduled rows (last)
-		$now_ts = AIPS_DateTime::now()->timestamp();
+		$now_ts = current_time('timestamp');
 		usort($schedules, function ($a, $b) use ($now_ts) {
 			$a_active = !empty($a['is_active']);
 			$b_active = !empty($b['is_active']);
 
-			$a_ts = !empty($a['next_run']) ? (int) $a['next_run'] : false;
-			$b_ts = !empty($b['next_run']) ? (int) $b['next_run'] : false;
+			$a_ts = !empty($a['next_run']) ? strtotime($a['next_run']) : false;
+			$b_ts = !empty($b['next_run']) ? strtotime($b['next_run']) : false;
 
 			$a_group = 2;
 			if ($a_active && $a_ts !== false) {
@@ -276,24 +274,20 @@ class AIPS_Unified_Schedule_Service {
 	/**
 	 * Normalise template-based schedules.
 	 *
-	 * @param bool $include_stats Whether to run the aggregate stats query.
 	 * @return array
 	 */
-	private function get_template_schedules($include_stats = true) {
+	private function get_template_schedules() {
 		$raw    = $this->schedule_repository->get_all();
 		$result = array();
 
 		// Batch-fetch generated-post counts by schedule history container.
-		$schedule_stats = array();
-		if ($include_stats) {
-			$history_ids = array();
-			foreach ($raw as $schedule) {
-				if (!empty($schedule->schedule_history_id)) {
-					$history_ids[] = absint($schedule->schedule_history_id);
-				}
+		$history_ids = array();
+		foreach ($raw as $schedule) {
+			if (!empty($schedule->schedule_history_id)) {
+				$history_ids[] = absint($schedule->schedule_history_id);
 			}
-			$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
 		}
+		$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
 
 		foreach ($raw as $schedule) {
 			$schedule_history_id = !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : 0;
@@ -333,17 +327,17 @@ class AIPS_Unified_Schedule_Service {
 	 *
 	 * Each active author with `topic_generation_next_run` set appears as one row.
 	 *
-	 * @param bool $include_stats Whether to run the aggregate topic-count query.
 	 * @return array
 	 */
-	private function get_author_topic_schedules($include_stats = true) {
-		$authors      = $this->authors_repository->get_all();
-		$result       = array();
+	private function get_author_topic_schedules() {
+		$authors = $this->authors_repository->get_all();
+		$result  = array();
 
-		// Batch fetch topic counts per author using the repository.
-		$topic_counts = array();
-		if ($include_stats) {
-			$topic_counts = $this->author_topics_repository->get_counts_grouped_by_author();
+		// Batch fetch topic counts per author.
+		$topic_counts_raw = $this->author_topics_repository->get_topic_counts_per_author();
+		$topic_counts     = array();
+		foreach ($topic_counts_raw as $row) {
+			$topic_counts[$row->author_id] = (int) $row->cnt;
 		}
 
 		foreach ($authors as $author) {
@@ -392,17 +386,17 @@ class AIPS_Unified_Schedule_Service {
 	 *
 	 * Each active author with `post_generation_next_run` set appears as one row.
 	 *
-	 * @param bool $include_stats Whether to run the aggregate post-count query.
 	 * @return array
 	 */
-	private function get_author_post_schedules($include_stats = true) {
-		$authors     = $this->authors_repository->get_all();
-		$result      = array();
+	private function get_author_post_schedules() {
+		$authors = $this->authors_repository->get_all();
+		$result  = array();
 
-		// Batch fetch post-generation counts per author using the repository.
-		$post_counts = array();
-		if ($include_stats) {
-			$post_counts = $this->author_topic_logs_repository->get_post_generation_counts_grouped_by_author();
+		// Batch fetch post-generation counts per author.
+		$post_counts_raw = $this->author_topic_logs_repository->get_post_counts_per_author();
+		$post_counts     = array();
+		foreach ($post_counts_raw as $row) {
+			$post_counts[$row->author_id] = (int) $row->cnt;
 		}
 
 		foreach ($authors as $author) {

@@ -151,18 +151,14 @@ class AIPS_Article_Structure_Repository {
 	 * @return int|false The inserted ID on success, false on failure.
 	 */
 	public function create($data) {
-		$now = AIPS_DateTime::now()->timestamp();
-
 		$insert_data = array(
 			'name' => sanitize_text_field($data['name']),
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'structure_data' => $data['structure_data'],
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
-			'created_at' => $now,
-			'updated_at' => $now,
 		);
 		
-		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%d');
 		
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
@@ -207,9 +203,6 @@ class AIPS_Article_Structure_Repository {
 		if (empty($update_data)) {
 			return false;
 		}
-
-		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
-		$format[] = '%d';
 		
 		$result = $this->wpdb->update(
 			$this->table_name,

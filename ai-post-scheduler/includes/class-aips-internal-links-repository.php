@@ -214,8 +214,6 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Inserted row ID or false on failure.
 	 */
 	public function insert($source_post_id, $target_post_id, $similarity_score, $anchor_text = '') {
-		$now = AIPS_DateTime::now()->timestamp();
-
 		$result = $this->wpdb->insert(
 			$this->table,
 			array(
@@ -224,10 +222,10 @@ class AIPS_Internal_Links_Repository {
 				'similarity_score' => (float) $similarity_score,
 				'anchor_text'      => sanitize_text_field($anchor_text),
 				'status'           => 'pending',
-				'created_at'       => $now,
-				'updated_at'       => $now,
+				'created_at'       => current_time('mysql'),
+				'updated_at'       => current_time('mysql'),
 			),
-			array('%d', '%d', '%f', '%s', '%s', '%d', '%d')
+			array('%d', '%d', '%f', '%s', '%s', '%s', '%s')
 		);
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -249,10 +247,10 @@ class AIPS_Internal_Links_Repository {
 			$this->table,
 			array(
 				'status'     => $status,
-				'updated_at' => AIPS_DateTime::now()->timestamp(),
+				'updated_at' => current_time('mysql'),
 			),
 			array('id' => absint($id)),
-			array('%s', '%d'),
+			array('%s', '%s'),
 			array('%d')
 		);
 	}
@@ -269,10 +267,10 @@ class AIPS_Internal_Links_Repository {
 			$this->table,
 			array(
 				'anchor_text' => sanitize_text_field($anchor_text),
-				'updated_at'  => AIPS_DateTime::now()->timestamp(),
+				'updated_at'  => current_time('mysql'),
 			),
 			array('id' => absint($id)),
-			array('%s', '%d'),
+			array('%s', '%s'),
 			array('%d')
 		);
 	}

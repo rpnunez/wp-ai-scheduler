@@ -184,7 +184,7 @@ class AIPS_Post_Embeddings_Repository {
 	 */
 	public function upsert($post_id, array $embedding, $model = '') {
 		$post_id = absint($post_id);
-		$now     = AIPS_DateTime::now()->timestamp();
+		$now     = current_time('mysql');
 
 		$existing = $this->get_by_post_id($post_id);
 
@@ -197,7 +197,7 @@ class AIPS_Post_Embeddings_Repository {
 					'indexed_at' => $now,
 				),
 				array('post_id' => $post_id),
-				array('%s', '%s', '%d'),
+				array('%s', '%s', '%s'),
 				array('%d')
 			);
 		}
@@ -210,7 +210,7 @@ class AIPS_Post_Embeddings_Repository {
 				'model'      => sanitize_text_field($model),
 				'indexed_at' => $now,
 			),
-			array('%d', '%s', '%s', '%d')
+			array('%d', '%s', '%s', '%s')
 		);
 	}
 
