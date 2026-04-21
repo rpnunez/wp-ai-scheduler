@@ -1462,6 +1462,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generation-result.php',
         'class-aips-schedule-entry.php',
         'class-aips-template-data.php',
+        'class-aips-template-entry.php',
     ];
     
     foreach ($files as $file) {

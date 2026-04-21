@@ -234,20 +234,12 @@ class AIPS_Schedule_Processor {
 
         $article_structure_id = $this->template_type_selector->select_structure($schedule_obj);
 
-        // Build the template object that the generator expects.
-        $template = (object) array(
-            'id'                      => $schedule->template_id,
-            'name'                    => $actual_template_model->name,
-            'prompt_template'         => isset($actual_template_model->prompt_template) ? $actual_template_model->prompt_template : '',
-            'title_prompt'            => isset($actual_template_model->title_prompt) ? $actual_template_model->title_prompt : '',
-            'post_status'             => isset($actual_template_model->post_status) ? $actual_template_model->post_status : 'draft',
-            'post_category'           => isset($actual_template_model->post_category) ? $actual_template_model->post_category : null,
-            'post_tags'               => isset($actual_template_model->post_tags) ? $actual_template_model->post_tags : '',
-            'post_author'             => isset($actual_template_model->post_author) ? $actual_template_model->post_author : null,
-            'post_quantity'           => $total_quantity,
-            'generate_featured_image' => isset($actual_template_model->generate_featured_image) ? $actual_template_model->generate_featured_image : 0,
-            'image_prompt'            => isset($actual_template_model->image_prompt) ? $actual_template_model->image_prompt : '',
-            'article_structure_id'    => $article_structure_id,
+        // Build the typed generator-facing template entry for this batch slice.
+        $template = AIPS_Template_Entry::from_template_and_overrides(
+            (int) $schedule->template_id,
+            $actual_template_model,
+            $total_quantity,
+            $article_structure_id
         );
 
         $topic   = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
@@ -703,26 +695,13 @@ class AIPS_Schedule_Processor {
         }
         // ── End large-batch check ─────────────────────────────────────────────
 
-        // Construct Template Object for Generator
-        // The generator expects an object with specific properties
-        $template = (object) array(
-            'id' => $schedule->template_id,
-            'name' => $schedule->name,
-            'prompt_template' => isset($schedule->prompt_template) ? $schedule->prompt_template : '',
-            'title_prompt' => isset($schedule->title_prompt) ? $schedule->title_prompt : '',
-            'post_status' => isset($schedule->post_status) ? $schedule->post_status : 'draft',
-            'post_category' => isset($schedule->post_category) ? $schedule->post_category : null,
-            'post_tags' => isset($schedule->post_tags) ? $schedule->post_tags : '',
-            'post_author' => isset($schedule->post_author) ? $schedule->post_author : null,
-            'post_quantity' => $post_quantity,
-            'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
-            'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
-            'article_structure_id' => $article_structure_id,
+        // Build the typed generator-facing template entry for this execution.
+        $template = AIPS_Template_Entry::from_template_and_overrides(
+            (int) $schedule->template_id,
+            $schedule,
+            $post_quantity,
+            $article_structure_id
         );
-
-        // Allow schedule to override certain template properties if they exist in schedule object (from join)
-        // Currently the schedule table doesn't have post_status etc override columns, but if it did, they would be in $schedule
-        // The only override is 'topic'
 
         $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
