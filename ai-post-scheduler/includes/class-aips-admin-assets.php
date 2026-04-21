@@ -110,6 +110,10 @@ class AIPS_Admin_Assets {
             $this->enqueue_internal_links_assets();
         }
 
+        if (strpos($hook, 'aips-prompt-templates') !== false) {
+            $this->enqueue_prompt_templates_assets();
+        }
+
     }
 
     /**
@@ -1162,6 +1166,43 @@ class AIPS_Admin_Assets {
                 'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
                 'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the Prompt Templates page.
+     *
+     * @return void
+     */
+    private function enqueue_prompt_templates_assets() {
+        wp_enqueue_script(
+            'aips-prompt-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-prompt-templates.js',
+            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-prompt-templates-script', 'aipsPTL10n', array(
+            'nonce'                  => wp_create_nonce('aips_prompt_templates_nonce'),
+            'add_group'              => __('Add Prompt Template Group', 'ai-post-scheduler'),
+            'edit_group'             => __('Edit Prompt Template Group', 'ai-post-scheduler'),
+            'loading'                => __('Loading…', 'ai-post-scheduler'),
+            'saved'                  => __('Saved successfully.', 'ai-post-scheduler'),
+            'deleted'                => __('Group deleted.', 'ai-post-scheduler'),
+            'name_required'          => __('Group name is required.', 'ai-post-scheduler'),
+            'error_generic'          => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            'confirm_delete'         => __('Are you sure you want to delete the group "{name}"? This cannot be undone.', 'ai-post-scheduler'),
+            'delete_confirm_heading' => __('Delete Group', 'ai-post-scheduler'),
+            'cancel_label'           => __('Cancel', 'ai-post-scheduler'),
+            'reset_default'          => __('Reset to Default', 'ai-post-scheduler'),
+            'no_components'          => __('No components available.', 'ai-post-scheduler'),
+            'component_placeholder'  => __('Leave blank to use the built-in default.', 'ai-post-scheduler'),
+            'set_default'            => __('Set Default', 'ai-post-scheduler'),
+            'edit'                   => __('Edit', 'ai-post-scheduler'),
+            'delete_label'           => __('Delete', 'ai-post-scheduler'),
+            'badge_default'          => __('Default', 'ai-post-scheduler'),
+            'badge_inactive'         => __('Inactive', 'ai-post-scheduler'),
+        ));
     }
 
 }

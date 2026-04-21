@@ -76,6 +76,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Prompt Templates', 'ai-post-scheduler'),
+            __('Prompt Templates', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-prompt-templates',
+            array($this, 'render_prompt_templates_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
             'manage_options',
@@ -268,6 +277,18 @@ class AIPS_Admin_Menu {
      */
     public function render_dashboard_page() {
         $controller = new AIPS_Dashboard_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Prompt Templates management page.
+     *
+     * Delegates rendering to AIPS_Prompt_Templates_Controller.
+     *
+     * @return void
+     */
+    public function render_prompt_templates_page() {
+        $controller = new AIPS_Prompt_Templates_Controller();
         $controller->render_page();
     }
 
