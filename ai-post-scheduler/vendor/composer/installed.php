@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-copilot/add-ai-assistance-feature',
-        'version' => 'dev-copilot/add-ai-assistance-feature',
-        'reference' => '5da892653b2960765430d7f443e30248b4009a0f',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '32a894ad60a27de0861bfe98cdfbed713336b8f5',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-copilot/add-ai-assistance-feature',
-            'version' => 'dev-copilot/add-ai-assistance-feature',
-            'reference' => '5da892653b2960765430d7f443e30248b4009a0f',
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '32a894ad60a27de0861bfe98cdfbed713336b8f5',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

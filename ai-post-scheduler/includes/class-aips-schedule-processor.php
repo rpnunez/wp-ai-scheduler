@@ -128,7 +128,7 @@ class AIPS_Schedule_Processor {
         $this->logger->log('Starting scheduled post generation', 'info');
 
         // Use the updated repository method that handles the join and limit
-        $due_schedules = $this->repository->get_due_schedules(current_time('mysql'), 5);
+        $due_schedules = $this->repository->get_due_schedules(AIPS_DateTime::now()->timestamp(), 5);
 
         if (empty($due_schedules)) {
             $this->logger->log('No scheduled posts due', 'info');
@@ -206,10 +206,10 @@ class AIPS_Schedule_Processor {
                     // For one-time schedules, "claim" it by pushing next_run forward.
                     // If the process crashes it will be retried in 1 hour.
                     // On success it will be deleted by handle_post_execution_cleanup().
-                    $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
+                    $new_next_run = AIPS_DateTime::now()->addSeconds(HOUR_IN_SECONDS)->timestamp();
                 } else {
                     // Calculate next run using original next_run to preserve phase.
-                    $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);
+                    $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, (int) $original_next_run);
                 }
 
                 // Update next_run immediately to lock this schedule from concurrent runs.
@@ -450,7 +450,7 @@ class AIPS_Schedule_Processor {
                         'error_message' => $result->get_error_message(),
                         'completed'     => $completed_so_far,
                         'total'         => $post_quantity,
-                        'timestamp'     => gmdate('c'),
+                        'timestamp'     => AIPS_DateTime::now()->toIso8601(),
                     ));
                 }
                 // Stop the batch so batch_progress is preserved for resumption.
@@ -489,7 +489,7 @@ class AIPS_Schedule_Processor {
                     'status'    => 'success',
                     'completed' => $total_completed,
                     'total'     => $post_quantity,
-                    'timestamp' => gmdate('c'),
+                    'timestamp' => AIPS_DateTime::now()->toIso8601(),
                 ));
             }
         }
@@ -541,7 +541,7 @@ class AIPS_Schedule_Processor {
             // For once-schedules, also deactivate: next_run is still in the past
             // so the cron would otherwise fire it again on the next trigger.
             if (!is_wp_error($overall_result)) {
-                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                $this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
                 if ($schedule->frequency === 'once') {
                     $this->repository->update($schedule->schedule_id, array(
                         'is_active' => 0,
