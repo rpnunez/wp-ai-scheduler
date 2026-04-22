@@ -886,6 +886,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
+            'parent_id' => isset($data['parent_id']) && $data['parent_id'] ? absint($data['parent_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
@@ -899,7 +900,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'created_at' => absint($data['created_at']),
         );
         
-        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -1227,5 +1228,176 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $revisions;
+    }
+
+    /**
+     * Get all child history containers for a given parent.
+     *
+     * @param int $parent_id Parent history ID.
+     * @return object[] Array of history row objects.
+     */
+    public function get_children($parent_id) {
+        $parent_id = absint($parent_id);
+        if (!$parent_id) {
+            return array();
+        }
+
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT h.id, h.uuid, h.correlation_id, h.parent_id, h.post_id, h.template_id,
+                    h.author_id, h.topic_id, h.status, h.generated_title, h.error_message,
+                    h.created_at, h.completed_at, h.creation_method,
+                    t.name as template_name
+             FROM {$this->table_name} h
+             LEFT JOIN {$templates_table} t ON h.template_id = t.id
+             WHERE h.parent_id = %d
+             ORDER BY h.created_at ASC",
+            $parent_id
+        ));
+    }
+
+    /**
+     * Get paginated top-level (parent) history containers.
+     *
+     * Returns only rows where parent_id IS NULL. Does NOT filter out
+     * schedule_lifecycle containers (unlike get_history()).
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page       Number of items per page. Default 20.
+     *     @type int    $page           Current page number. Default 1.
+     *     @type string $status         Filter by status. Default empty.
+     *     @type string $search         Search term for generated_title. Default empty.
+     *     @type string $operation_type Filter by creation_method. Default empty.
+     *     @type string $orderby        Column to order by. Default 'created_at'.
+     *     @type string $order          Order direction (ASC/DESC). Default 'DESC'.
+     * }
+     * @return array {
+     *     @type object[] $items        Array of history items.
+     *     @type int      $total        Total number of items.
+     *     @type int      $pages        Total number of pages.
+     *     @type int      $current_page Current page number.
+     * }
+     */
+    public function get_top_level($args = array()) {
+        $defaults = array(
+            'per_page'       => 20,
+            'page'           => 1,
+            'status'         => '',
+            'search'         => '',
+            'operation_type' => '',
+            'orderby'        => 'created_at',
+            'order'          => 'DESC',
+        );
+
+        $args   = wp_parse_args($args, $defaults);
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $fields_sql = "h.id, h.uuid, h.correlation_id, h.parent_id, h.post_id, h.template_id,
+                       h.author_id, h.topic_id, h.status, h.generated_title, h.error_message,
+                       h.created_at, h.completed_at, h.creation_method,
+                       t.name as template_name";
+
+        $where_clauses = array('h.parent_id IS NULL');
+        $where_args    = array();
+
+        if (!empty($args['status'])) {
+            $where_clauses[] = 'h.status = %s';
+            $where_args[]    = $args['status'];
+        }
+
+        if (!empty($args['operation_type'])) {
+            $where_clauses[] = 'h.creation_method = %s';
+            $where_args[]    = $args['operation_type'];
+        }
+
+        if (!empty($args['search'])) {
+            $where_clauses[] = 'h.generated_title LIKE %s';
+            $where_args[]    = '%' . $this->wpdb->esc_like($args['search']) . '%';
+        }
+
+        $where_sql = implode(' AND ', $where_clauses);
+        $orderby   = in_array($args['orderby'], array('created_at', 'completed_at', 'status'), true) ? $args['orderby'] : 'created_at';
+        $order     = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
+
+        $query_args   = $where_args;
+        $query_args[] = $args['per_page'];
+        $query_args[] = $offset;
+
+        $results = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT $fields_sql
+             FROM {$this->table_name} h
+             LEFT JOIN {$templates_table} t ON h.template_id = t.id
+             WHERE $where_sql
+             ORDER BY h.{$orderby} {$order}
+             LIMIT %d OFFSET %d",
+            $query_args
+        ));
+
+        if (!empty($where_args)) {
+            $total = (int) $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                $where_args
+            ));
+        } else {
+            $total = (int) $this->wpdb->get_var(
+                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql"
+            );
+        }
+
+        return array(
+            'items'        => $results,
+            'total'        => $total,
+            'pages'        => $args['per_page'] > 0 ? (int) ceil($total / $args['per_page']) : 1,
+            'current_page' => $args['page'],
+        );
+    }
+
+    /**
+     * Get aggregate stats for all children of a parent history container.
+     *
+     * @param int $parent_id Parent history ID.
+     * @return object {
+     *     @type int      $total             Total child count.
+     *     @type int      $completed_count   Number of completed children.
+     *     @type int      $failed_count      Number of failed children.
+     *     @type int      $processing_count  Number of processing/pending children.
+     *     @type int|null $last_completed    Timestamp of the most recently completed child.
+     * }
+     */
+    public function get_child_summary($parent_id) {
+        $parent_id = absint($parent_id);
+        if (!$parent_id) {
+            return (object) array(
+                'total'            => 0,
+                'completed_count'  => 0,
+                'failed_count'     => 0,
+                'processing_count' => 0,
+                'last_completed'   => null,
+            );
+        }
+
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+                SUM(CASE WHEN status NOT IN ('completed', 'failed') THEN 1 ELSE 0 END) AS processing_count,
+                MAX(completed_at) AS last_completed
+             FROM {$this->table_name}
+             WHERE parent_id = %d",
+            $parent_id
+        ));
+
+        return (object) array(
+            'total'            => isset($row->total) ? (int) $row->total : 0,
+            'completed_count'  => isset($row->completed_count) ? (int) $row->completed_count : 0,
+            'failed_count'     => isset($row->failed_count) ? (int) $row->failed_count : 0,
+            'processing_count' => isset($row->processing_count) ? (int) $row->processing_count : 0,
+            'last_completed'   => isset($row->last_completed) && $row->last_completed ? (int) $row->last_completed : null,
+        );
     }
 }

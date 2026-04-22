@@ -150,6 +150,18 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		}
 		
 		// Below threshold — process inline (original behaviour).
+		$batch_parent = $this->history_service->create(
+			AIPS_History_Operation_Type::POST_GENERATION_BATCH,
+			array(
+				'trigger_name'    => 'cron',
+				'creation_method' => AIPS_History_Operation_Type::POST_GENERATION_BATCH,
+				'meta'            => array( 'author_count' => $author_count ),
+			)
+		);
+		if ($batch_parent && $batch_parent->get_id()) {
+			AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
+		}
+
 		foreach ($due_authors as $author) {
 			$this->runner->run(
 				function() use ($author) {
@@ -158,6 +170,11 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 				'author_post_generation',
 				array('author_id' => $author->id)
 			);
+		}
+
+		AIPS_Correlation_ID::set_parent_history_id(null);
+		if ($batch_parent) {
+			$batch_parent->complete_success(array('author_count' => $author_count));
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');

@@ -3831,3 +3831,127 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
+
+/* =========================================================================
+   History v2 — Hierarchical / Operations View
+   ========================================================================= */
+
+/* View mode toggle buttons */
+.aips-view-mode-toggle {
+display: inline-flex;
+gap: 6px;
+margin-right: 8px;
+}
+
+/* Operations table shared */
+.aips-history-operations-table {
+width: 100%;
+}
+.aips-history-parent-row td,
+.aips-history-child-row td {
+vertical-align: middle;
+}
+
+/* Toggle expand/collapse button */
+.aips-toggle-children {
+padding: 0;
+background: none;
+border: none;
+cursor: pointer;
+color: #2271b1;
+}
+.aips-toggle-children .dashicons {
+font-size: 18px;
+width: 18px;
+height: 18px;
+transition: transform 0.15s ease;
+}
+
+/* Indent child rows */
+.aips-cell-indent {
+padding-left: 28px !important;
+}
+
+/* Status badges */
+.aips-status-badge {
+display: inline-block;
+padding: 2px 8px;
+border-radius: 10px;
+font-size: 11px;
+font-weight: 600;
+text-transform: uppercase;
+letter-spacing: 0.03em;
+}
+.aips-status-completed { background: #d7f5d5; color: #176215; }
+.aips-status-error     { background: #fce0df; color: #8a1a18; }
+.aips-status-processing { background: #e8f0fb; color: #1d4289; }
+
+/* Child rows — subtle background */
+.aips-history-child-row {
+background: #f9fafb;
+}
+.aips-history-child-row:hover {
+background: #f2f4f7;
+}
+
+/* Summary stat cards for parent operations */
+.aips-history-summary-cards {
+display: flex;
+gap: 12px;
+flex-wrap: wrap;
+margin: 12px 0;
+}
+.aips-history-summary-card {
+flex: 1 1 80px;
+min-width: 80px;
+background: #f6f7f7;
+border: 1px solid #dde0e4;
+border-radius: 6px;
+padding: 10px 14px;
+text-align: center;
+}
+.aips-history-summary-card--success { border-color: #81c784; background: #f1faf1; }
+.aips-history-summary-card--error   { border-color: #e57373; background: #fff5f5; }
+.aips-history-summary-card--processing { border-color: #64b5f6; background: #f0f6ff; }
+.aips-history-summary-card__value {
+display: block;
+font-size: 22px;
+font-weight: 700;
+color: #1d2327;
+}
+.aips-history-summary-card__label {
+display: block;
+font-size: 11px;
+color: #646970;
+margin-top: 2px;
+}
+
+/* Modal tabs */
+.aips-history-modal-tabs {
+display: flex;
+gap: 2px;
+border-bottom: 1px solid #dde0e4;
+margin-bottom: 16px;
+}
+.aips-history-tab-btn {
+padding: 7px 16px;
+background: none;
+border: none;
+border-bottom: 2px solid transparent;
+cursor: pointer;
+font-size: 13px;
+color: #50575e;
+transition: border-color 0.15s, color 0.15s;
+}
+.aips-history-tab-btn:hover {
+color: #2271b1;
+}
+.aips-history-tab-btn--active {
+border-bottom-color: #2271b1;
+color: #2271b1;
+font-weight: 600;
+}
+
+/* Log row colour coding */
+tr.aips-log-row-error td { background: #fff5f5; }
+tr.aips-log-row-warning td { background: #fffbea; }
