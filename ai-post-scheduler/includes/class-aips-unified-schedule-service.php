@@ -42,24 +42,12 @@ class AIPS_Unified_Schedule_Service {
 	private $history_repository;
 
 	/**
-	 * @var AIPS_Author_Topics_Repository
-	 */
-	private $author_topics_repository;
-
-	/**
-	 * @var AIPS_Author_Topic_Logs_Repository
-	 */
-	private $author_topic_logs_repository;
-
-	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
-		$this->schedule_repository          = new AIPS_Schedule_Repository();
-		$this->authors_repository           = new AIPS_Authors_Repository();
-		$this->history_repository           = new AIPS_History_Repository();
-		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
-		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
+		$this->schedule_repository = new AIPS_Schedule_Repository();
+		$this->authors_repository  = new AIPS_Authors_Repository();
+		$this->history_repository  = new AIPS_History_Repository();
 	}
 
 	/**
@@ -343,7 +331,7 @@ class AIPS_Unified_Schedule_Service {
 		// Batch fetch topic counts per author using the repository.
 		$topic_counts = array();
 		if ($include_stats) {
-			$topic_counts = $this->author_topics_repository->get_counts_grouped_by_author();
+			$topic_counts = $this->schedule_repository->get_author_topic_counts_by_author();
 		}
 
 		foreach ($authors as $author) {
@@ -402,7 +390,7 @@ class AIPS_Unified_Schedule_Service {
 		// Batch fetch post-generation counts per author using the repository.
 		$post_counts = array();
 		if ($include_stats) {
-			$post_counts = $this->author_topic_logs_repository->get_post_generation_counts_grouped_by_author();
+			$post_counts = $this->schedule_repository->get_author_post_counts_by_author();
 		}
 
 		foreach ($authors as $author) {

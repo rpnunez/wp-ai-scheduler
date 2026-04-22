@@ -47,7 +47,17 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @var string The templates table name (with prefix)
      */
     private $templates_table;
-    
+
+    /**
+     * @var string The author_topics table name (with prefix)
+     */
+    private $author_topics_table;
+
+    /**
+     * @var string The author_topic_logs table name (with prefix)
+     */
+    private $author_topic_logs_table;
+
     /**
      * @var wpdb WordPress database abstraction object
      */
@@ -64,8 +74,10 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        $this->schedule_table          = $wpdb->prefix . 'aips_schedule';
+        $this->templates_table         = $wpdb->prefix . 'aips_templates';
+        $this->author_topics_table     = $wpdb->prefix . 'aips_author_topics';
+        $this->author_topic_logs_table = $wpdb->prefix . 'aips_author_topic_logs';
         $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository' );
     }
     
@@ -714,5 +726,57 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             'total' => isset($results->total) ? (int) $results->total : 0,
             'active' => isset($results->active) ? (int) $results->active : 0,
         );
+    }
+
+    /**
+     * Get per-author topic counts across all authors.
+     *
+     * Returns an associative array of author_id => total topic count for every
+     * author that has at least one topic row.  Used by the unified schedule
+     * listing to display per-author stats without issuing individual COUNT
+     * queries in a loop.
+     *
+     * @return array<int, int> Map of author_id => topic count.
+     */
+    public function get_author_topic_counts_by_author() {
+        $results = $this->wpdb->get_results(
+            "SELECT author_id, COUNT(*) AS cnt FROM {$this->author_topics_table} GROUP BY author_id"
+        );
+
+        $counts = array();
+        foreach ( $results as $row ) {
+            $counts[ (int) $row->author_id ] = (int) $row->cnt;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Get per-author post-generation counts across all authors.
+     *
+     * Returns an associative array of author_id => number of posts generated
+     * from that author's topics.  Used by the unified schedule listing to
+     * show per-author stats without issuing individual COUNT queries in a loop.
+     *
+     * @return array<int, int> Map of author_id => generated post count.
+     */
+    public function get_author_post_counts_by_author() {
+        $results = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT at.author_id, COUNT(*) AS cnt
+                 FROM {$this->author_topic_logs_table} atl
+                 INNER JOIN {$this->author_topics_table} at ON atl.author_topic_id = at.id
+                 WHERE atl.action = %s
+                 GROUP BY at.author_id",
+                'post_generated'
+            )
+        );
+
+        $counts = array();
+        foreach ( $results as $row ) {
+            $counts[ (int) $row->author_id ] = (int) $row->cnt;
+        }
+
+        return $counts;
     }
 }
