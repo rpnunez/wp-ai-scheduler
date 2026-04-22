@@ -704,6 +704,45 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the Enable Cache System radio field.
+     *
+     * @return void
+     */
+    public function enable_cache_system_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_cache_system');
+        // Normalise: treat anything except a stored '0' or 0 as enabled.
+        $enabled = ($value !== '0' && $value !== 0 && $value !== false);
+        ?>
+        <fieldset>
+            <label>
+                <input type="radio" name="aips_enable_cache_system" value="1" <?php checked($enabled, true); ?>>
+                <?php esc_html_e('Yes', 'ai-post-scheduler'); ?>
+            </label>
+            &nbsp;&nbsp;
+            <label>
+                <input type="radio" name="aips_enable_cache_system" value="0" <?php checked($enabled, false); ?>>
+                <?php esc_html_e('No', 'ai-post-scheduler'); ?>
+            </label>
+        </fieldset>
+        <p class="description">
+            <?php esc_html_e('Enable the plugin\'s internal cache layer to improve performance. When enabled, the cache stores repeated database reads, compiled template data, and other expensive computations in memory (or another backend) so they are not recalculated on every page load or cron run. This can significantly reduce database queries and speed up content generation, admin pages, and scheduled tasks. When disabled, every operation reads directly from the database and no data is stored in cache — useful for debugging or troubleshooting cache-related issues.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Sanitize the Enable Cache System value.
+     *
+     * Accepts '1'/'0', 1/0, true/false. Returns '1' or '0'.
+     *
+     * @param mixed $value Raw input value.
+     * @return string '1' when enabled, '0' when disabled.
+     */
+    public function sanitize_enable_cache_system( $value ) {
+        return ($value === '1' || $value === 1 || $value === true) ? '1' : '0';
+    }
+
+    /**
      * Render the Cache Driver selector.
      *
      * @return void
@@ -711,19 +750,21 @@ class AIPS_Settings_UI {
     public function cache_driver_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_cache_driver');
         $drivers = array(
-            'array'           => __('Array (in-memory, request-scoped)', 'ai-post-scheduler'),
+            'array'           => __('Array (in-memory, request-scoped) (default)', 'ai-post-scheduler'),
             'session'         => __('Session (PHP session, user-scoped across pages)', 'ai-post-scheduler'),
             'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
             'redis'           => __('Redis (persistent, requires PHP redis extension)', 'ai-post-scheduler'),
             'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
         );
         ?>
-        <select name="aips_cache_driver" id="aips_cache_driver">
-            <?php foreach ($drivers as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. Session persists across page loads for the current user. DB is persistent for all users. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
+        <div class="aips-cache-system-fields">
+            <select name="aips_cache_driver" id="aips_cache_driver">
+                <?php foreach ($drivers as $key => $label) : ?>
+                    <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. Session persists across page loads for the current user. DB is persistent for all users. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
+        </div>
         <?php
     }
 
@@ -735,8 +776,10 @@ class AIPS_Settings_UI {
     public function cache_default_ttl_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_cache_default_ttl');
         ?>
-        <input type="number" name="aips_cache_default_ttl" value="<?php echo esc_attr($value); ?>" min="0" class="small-text">
-        <p class="description"><?php esc_html_e('Default time-to-live in seconds for cached values. 0 = no expiration. Default: 3600 (1 hour).', 'ai-post-scheduler'); ?></p>
+        <div class="aips-cache-system-fields">
+            <input type="number" name="aips_cache_default_ttl" value="<?php echo esc_attr($value); ?>" min="0" class="small-text">
+            <p class="description"><?php esc_html_e('Default time-to-live in seconds for cached values. 0 = no expiration. Default: 3600 (1 hour).', 'ai-post-scheduler'); ?></p>
+        </div>
         <?php
     }
 

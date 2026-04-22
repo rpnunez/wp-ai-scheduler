@@ -29,6 +29,16 @@ class AIPS_Cache {
 	private $driver;
 
 	/**
+	 * Per-request memoised result of the system-enabled check.
+	 *
+	 * Null means "not yet read". Populated on the first call to
+	 * is_system_enabled() and reset by reset_system_enabled_flag().
+	 *
+	 * @var bool|null
+	 */
+	private static $system_enabled = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Cache_Driver|null $driver Optional driver. When null, the
@@ -47,7 +57,42 @@ class AIPS_Cache {
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Whether the plugin cache system is currently enabled.
+	 *
+	 * Reads the 'aips_enable_cache_system' WordPress option directly (without
+	 * going through AIPS_Config) to avoid a bootstrapping circular dependency,
+	 * and memoises the result for the duration of the request.
+	 *
+	 * @return bool True when the cache system is enabled.
+	 */
+	private static function is_system_enabled() {
+		if (self::$system_enabled === null) {
+			// Use get_option() directly — not AIPS_Config — to avoid circular
+			// dependency (AIPS_Config itself uses AIPS_Cache internally).
+			// Default to enabled (true) when the option has never been saved.
+			$raw                 = get_option( 'aips_enable_cache_system', '1' );
+			self::$system_enabled = ($raw !== '0' && $raw !== 0 && $raw !== false);
+		}
+		return self::$system_enabled;
+	}
+
+	/**
+	 * Reset the memoised system-enabled flag.
+	 *
+	 * Must be called after updating the 'aips_enable_cache_system' option so
+	 * that subsequent calls to is_system_enabled() re-read the stored value.
+	 * Also useful in test suites that change the option between test methods.
+	 *
+	 * @return void
+	 */
+	public static function reset_system_enabled_flag() {
+		self::$system_enabled = null;
+	}
+
+	/**
 	 * Retrieve a value from the cache.
+	 *
+	 * Returns $default immediately when the cache system is disabled.
 	 *
 	 * @param string $key     Cache key.
 	 * @param string $group   Cache group. Default 'default'.
@@ -55,6 +100,9 @@ class AIPS_Cache {
 	 * @return mixed Cached value or $default.
 	 */
 	public function get( $key, $group = 'default', $default = null ) {
+		if (!self::is_system_enabled()) {
+			return $default;
+		}
 		$value = $this->driver->get( $key, $group );
 		$this->record_cache_event(
 			'get',
@@ -70,6 +118,8 @@ class AIPS_Cache {
 	/**
 	 * Store a value in the cache.
 	 *
+	 * Returns true immediately (no-op) when the cache system is disabled.
+	 *
 	 * @param string $key   Cache key.
 	 * @param mixed  $value Value to store.
 	 * @param int    $ttl   Time-to-live in seconds. 0 = no expiration. Default 0.
@@ -77,6 +127,9 @@ class AIPS_Cache {
 	 * @return bool True on success.
 	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return true;
+		}
 		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
 		$this->record_cache_event(
 			'set',
@@ -93,11 +146,16 @@ class AIPS_Cache {
 	/**
 	 * Remove a value from the cache.
 	 *
+	 * Returns true immediately (no-op) when the cache system is disabled.
+	 *
 	 * @param string $key   Cache key.
 	 * @param string $group Cache group. Default 'default'.
 	 * @return bool True on success.
 	 */
 	public function delete( $key, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return true;
+		}
 		$result = $this->driver->delete( $key, $group );
 		$this->record_cache_event(
 			'delete',
@@ -113,11 +171,16 @@ class AIPS_Cache {
 	/**
 	 * Check whether a key exists in the cache.
 	 *
+	 * Returns false immediately when the cache system is disabled.
+	 *
 	 * @param string $key   Cache key.
 	 * @param string $group Cache group. Default 'default'.
 	 * @return bool True if the key exists and has not expired.
 	 */
 	public function has( $key, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return false;
+		}
 		$result = $this->driver->has( $key, $group );
 		$this->record_cache_event(
 			'has',
@@ -133,9 +196,14 @@ class AIPS_Cache {
 	/**
 	 * Flush all values from the cache.
 	 *
+	 * Returns true immediately (no-op) when the cache system is disabled.
+	 *
 	 * @return bool True on success.
 	 */
 	public function flush() {
+		if (!self::is_system_enabled()) {
+			return true;
+		}
 		$result = $this->driver->flush();
 		$this->record_cache_event(
 			'flush',
@@ -153,6 +221,10 @@ class AIPS_Cache {
 	/**
 	 * Get a cached value, computing and storing it on a cache miss.
 	 *
+	 * When the cache system is disabled the callback is always invoked and
+	 * its result is returned directly without reading from or writing to
+	 * any cache storage.
+	 *
 	 * @param string   $key      Cache key.
 	 * @param int      $ttl      Time-to-live in seconds.
 	 * @param callable $callback Callable that returns the value to cache.
@@ -160,6 +232,9 @@ class AIPS_Cache {
 	 * @return mixed Cached or freshly computed value.
 	 */
 	public function remember( $key, $ttl, $callback, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return $callback();
+		}
 		if ($this->has( $key, $group )) {
 			$this->record_cache_event(
 				'remember',
@@ -194,12 +269,18 @@ class AIPS_Cache {
 	 * If the key does not exist, it is initialised to 0 before incrementing.
 	 * Note: counters are always stored with TTL=0 (no expiration).
 	 *
+	 * When the cache system is disabled, no read or write is performed and
+	 * the method returns 0 + $step (as if starting from zero).
+	 *
 	 * @param string $key   Cache key.
 	 * @param int    $step  Amount to add. Default 1.
 	 * @param string $group Cache group. Default 'default'.
 	 * @return int New value.
 	 */
 	public function increment( $key, $step = 1, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return (int) $step;
+		}
 		$value = (int) $this->get( $key, $group, 0 );
 		$value += (int) $step;
 		$this->set( $key, $value, 0, $group );
@@ -221,12 +302,18 @@ class AIPS_Cache {
 	 * If the key does not exist, it is initialised to 0 before decrementing.
 	 * Note: counters are always stored with TTL=0 (no expiration).
 	 *
+	 * When the cache system is disabled, no read or write is performed and
+	 * the method returns 0 - $step (as if starting from zero).
+	 *
 	 * @param string $key   Cache key.
 	 * @param int    $step  Amount to subtract. Default 1.
 	 * @param string $group Cache group. Default 'default'.
 	 * @return int New value.
 	 */
 	public function decrement( $key, $step = 1, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return -(int) $step;
+		}
 		$value = (int) $this->get( $key, $group, 0 );
 		$value -= (int) $step;
 		$this->set( $key, $value, 0, $group );
