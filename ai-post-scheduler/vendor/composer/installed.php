@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-copilot/add-disable-cache-option',
-        'version' => 'dev-copilot/add-disable-cache-option',
-        'reference' => 'c4b3015a5f1b531bb89ff43be4bda019b83a3733',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'efd5925af45b494b364bf469cbb9406805cc80e5',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-copilot/add-disable-cache-option',
-            'version' => 'dev-copilot/add-disable-cache-option',
-            'reference' => 'c4b3015a5f1b531bb89ff43be4bda019b83a3733',
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'efd5925af45b494b364bf469cbb9406805cc80e5',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
