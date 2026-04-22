@@ -733,11 +733,15 @@
 		/**
 		 * Retry a failed history entry via the `aips_retry_generation` AJAX action.
 		 *
+		 * Refreshes the table via AJAX using self.reload() upon success to avoid
+		 * a full page reload and preserve context.
+		 *
 		 * @param {Event} e - Click event from an `.aips-retry-generation` element.
 		 */
 		retryGeneration: function (e) {
 			e.preventDefault();
 
+			var self     = this;
 			var id       = $(e.currentTarget).data('id');
 			var $btn     = $(e.currentTarget);
 			var origHtml = $btn.html();
@@ -757,7 +761,7 @@
 				success: function (response) {
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message, 'success');
-						location.reload();
+						self.reload();
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
 						$btn.prop('disabled', false).html(origHtml);
