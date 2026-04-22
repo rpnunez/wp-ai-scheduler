@@ -281,6 +281,7 @@ class AIPS_Upgrades {
         }
     }
 
+
     
     /**
      * Migration for version 2.5.0.
@@ -457,6 +458,7 @@ class AIPS_Upgrades {
         // 4. Rename temp column to the original name.
         $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
     }
+
 
 }
 ?>

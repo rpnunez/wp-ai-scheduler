@@ -36,9 +36,6 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
     );
 
     public static $classMap = array (
-        'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
-        'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
-        'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
         'AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-edit-controller.php',
         'AIPS_AI_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-service.php',
         'AIPS_AI_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-ai-service-interface.php',
@@ -1704,7 +1701,9 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Array_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Db_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
+        'Test_AIPS_Cache_Disabled' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Factory' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
+        'Test_AIPS_Cache_Factory_Disabled' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Factory_Named' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Factory_Named_Guard' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Redis_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',

@@ -258,6 +258,11 @@
 
 **Outcome:** The History page is now a genuine audit and debugging tool. Users can instantly see how long a generation took, jump directly to the published post or its editor, filter dense log output down to just errors or AI calls, and copy raw JSON details to their clipboard — all without leaving the modal.
 
+## 2026-04-21 - History Optimization
+**Target Feature:** History
+**Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
+**Files Modified:** ai-post-scheduler/assets/js/admin-history.js
+**Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
 ## 2026-04-21 - AI Assistance Feature Implementation
 **Target Feature:** AI Field Assistance (Authors Form Pilot)
 **Improvement:** Added a reusable ✨ sparkle-button AI field-assist system to the Authors form. Each text/textarea field now has a button that, on click, calls the AI engine with a structured prompt and fills the field with the suggestion. A history icon appears after the first suggestion, opening a modal with session and all-time suggestion history.

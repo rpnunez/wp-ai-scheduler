@@ -6,9 +6,6 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
-    'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
-    'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
     'AIPS_AI_Edit_Controller' => $baseDir . '/includes/class-aips-ai-edit-controller.php',
     'AIPS_AI_Service' => $baseDir . '/includes/class-aips-ai-service.php',
     'AIPS_AI_Service_Interface' => $baseDir . '/includes/interface-aips-ai-service-interface.php',
@@ -1674,7 +1671,9 @@ return array(
     'Test_AIPS_Cache' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Array_Driver' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Db_Driver' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
+    'Test_AIPS_Cache_Disabled' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Factory' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
+    'Test_AIPS_Cache_Factory_Disabled' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Factory_Named' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Factory_Named_Guard' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Redis_Driver' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
