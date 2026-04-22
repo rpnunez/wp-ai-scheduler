@@ -15,8 +15,8 @@
  *
  *   AIPS_Bulk_Batch_Processor::instance()->register(
  *       'author_topic_post',
- *       function( $topic_id ) {
- *           return AIPS_Author_Post_Generator::instance()->generate_now( $topic_id );
+ *       function( $topic_id, $job_id, $job ) {
+ *           return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
  *       }
  *   );
  *
@@ -116,12 +116,17 @@ class AIPS_Bulk_Batch_Processor {
 	/**
 	 * Register a strategy callable for a given job type.
 	 *
-	 * The callable receives one argument — a single item from the stored
-	 * items array — and must return an int (post ID) or WP_Error.
+	 * The callable receives three arguments:
+	 *   - $item    — a single item from the stored items array
+	 *   - $job_id  — UUID string of the parent job
+	 *   - $job     — the full job object from AIPS_Bulk_Batch_Job_Store::get()
+	 *                (includes $job->options for reading per-job context like template_id)
+	 *
+	 * It must return an int (post ID) or WP_Error.
 	 *
 	 * @param string   $job_type Strategy key; must match the `job_type` used
 	 *                           when creating the job via AIPS_Bulk_Batch_Job_Store.
-	 * @param callable $handler  fn( $item ): int|WP_Error
+	 * @param callable $handler  fn( $item, string $job_id, object $job ): int|WP_Error
 	 * @return void
 	 */
 	public function register( string $job_type, callable $handler ): void {
@@ -256,7 +261,7 @@ class AIPS_Bulk_Batch_Processor {
 
 		foreach ( $items_slice as $item ) {
 			try {
-				$result = call_user_func( $strategy, $item );
+				$result = call_user_func( $strategy, $item, $job_id, $job );
 
 				if ( is_wp_error( $result ) ) {
 					$failed_count++;
