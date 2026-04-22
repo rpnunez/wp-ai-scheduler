@@ -157,6 +157,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
 					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+				<label id="aips-hide-generated-label" class="aips-filter-checkbox-label aips-filter-label-inline hidden">
+						<input type="checkbox" id="aips-hide-generated-posts" checked>
+						<?php esc_html_e('Hide topics with generated posts', 'ai-post-scheduler'); ?>
+					</label>
 				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
