@@ -257,7 +257,8 @@
 - `ai-post-scheduler/includes/class-aips-admin-assets.php`
 
 **Outcome:** The History page is now a genuine audit and debugging tool. Users can instantly see how long a generation took, jump directly to the published post or its editor, filter dense log output down to just errors or AI calls, and copy raw JSON details to their clipboard — all without leaving the modal.
-## 2025-04-21 - History Optimization
+
+## 2026-04-21 - History Optimization
 **Target Feature:** History
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
