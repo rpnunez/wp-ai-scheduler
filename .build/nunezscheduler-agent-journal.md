@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2025-02-18 - Onboarding Wizard Optimization
+**Target Feature:** Onboarding Wizard
+**Improvement:** Removed raw AJAX hooks from the constructor to rely on AIPS_Ajax_Registry, improving standard compliance and reducing direct coupling.
+**Files Modified:** ai-post-scheduler/includes/class-aips-onboarding-wizard.php
+**Outcome:** Reduces memory overhead on non-AJAX requests and strictly adheres to the plugin's centralized AJAX routing mechanism.

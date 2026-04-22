@@ -43,15 +43,6 @@ class AIPS_Onboarding_Wizard {
 		add_filter('parent_file', array($this, 'fix_parent_file'));
 		add_filter('submenu_file', array($this, 'fix_submenu_file'));
 
-		// AJAX endpoints.
-		add_action('wp_ajax_aips_onboarding_save_strategy', array($this, 'ajax_save_strategy'));
-		add_action('wp_ajax_aips_onboarding_create_author', array($this, 'ajax_create_author'));
-		add_action('wp_ajax_aips_onboarding_create_template', array($this, 'ajax_create_template'));
-		add_action('wp_ajax_aips_onboarding_generate_topics', array($this, 'ajax_generate_topics'));
-		add_action('wp_ajax_aips_onboarding_generate_post', array($this, 'ajax_generate_post'));
-		add_action('wp_ajax_aips_onboarding_reset', array($this, 'ajax_reset'));
-		add_action('wp_ajax_aips_onboarding_complete', array($this, 'ajax_complete'));
-		add_action('wp_ajax_aips_onboarding_skip', array($this, 'ajax_skip'));
 	}
 
 	public function register_page() {
