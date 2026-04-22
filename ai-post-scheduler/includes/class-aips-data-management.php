@@ -96,7 +96,7 @@ class AIPS_Data_Management {
 			$exporter->do_export();
 			// Script will exit after sending download
 		} catch (Exception $e) {
-			error_log('AIPS Export Error: ' . $e->getMessage());
+			AIPS_Logger::instance()->error('AIPS Export Error: ' . $e->getMessage());
 			AIPS_Ajax_Response::error(__('An error occurred during export. Please check server logs.', 'ai-post-scheduler'));
 		}
 	}

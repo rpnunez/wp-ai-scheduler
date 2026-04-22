@@ -490,9 +490,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'log_type' => $log_type,
             'history_type_id' => $history_type_id,
             'details' => wp_json_encode($details),
+            'timestamp' => AIPS_DateTime::now()->timestamp(),
         );
         
-        $format = array('%d', '%s', '%d', '%s');
+        $format = array('%d', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
         
@@ -597,6 +598,52 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
         
         return $stats;
+    }
+
+    /**
+     * Get per-day generation counts for the last N days.
+     *
+     * Returns an array keyed by ISO date string (Y-m-d) where each value is an
+     * associative array with 'completed', 'failed', and 'total' counts.
+     * Days with no records are omitted; callers should fill gaps as needed.
+     *
+     * Applies the same row-exclusion filters as get_stats() so that
+     * schedule-lifecycle rows and empty-shell records are not counted.
+     *
+     * @param int $days Number of calendar days to look back (inclusive today). Default 14.
+     * @return array<string, array{completed: int, failed: int, total: int}>
+     */
+    public function get_daily_generation_counts( $days = 14 ) {
+        $days  = max( 1, absint( $days ) );
+        $start = wp_date( 'Y-m-d', current_time( 'timestamp', true ) - ( ( $days - 1 ) * DAY_IN_SECONDS ), wp_timezone() );
+
+        $results = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                    DATE(created_at) AS day,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+                    SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
+                    COUNT(*) AS total
+                 FROM {$this->table_name}
+                 WHERE created_at >= %s
+                   AND COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
+                 GROUP BY DATE(created_at)
+                 ORDER BY day ASC",
+                $start
+            )
+        );
+
+        $data = array();
+        foreach ( $results as $row ) {
+            $data[ $row->day ] = array(
+                'completed' => (int) $row->completed,
+                'failed'    => (int) $row->failed,
+                'total'     => (int) $row->total,
+            );
+        }
+
+        return $data;
     }
 
     /**
@@ -832,6 +879,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        if (!isset($data['created_at'])) {
+            $data['created_at'] = AIPS_DateTime::now()->timestamp();
+        }
+
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
@@ -845,9 +896,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'created_at' => absint($data['created_at']),
         );
         
-        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -910,8 +962,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
         
         if (isset($data['completed_at'])) {
-            $update_data['completed_at'] = sanitize_text_field($data['completed_at']);
-            $format[] = '%s';
+            $update_data['completed_at'] = absint($data['completed_at']);
+            $format[] = '%d';
         }
         
         if (empty($update_data)) {
@@ -1025,8 +1077,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         // Add age filter if specified
         if ($args['older_than_days'] > 0) {
-            $date = date('Y-m-d H:i:s', strtotime("-{$args['older_than_days']} days"));
-            $where[] = "created_at < %s";
+			$date = AIPS_DateTime::now()->timestamp() - (absint($args['older_than_days']) * DAY_IN_SECONDS);
+			$where[] = "created_at < %d";
             $query_args[] = $date;
         }
         
