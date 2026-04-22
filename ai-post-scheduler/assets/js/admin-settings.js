@@ -108,8 +108,34 @@
 	});
 
 	// -----------------------------------------------------------------------
-	// Cache settings — show/hide driver-specific rows
+	// Cache settings — show/hide enable/disable and driver-specific rows
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Toggle visibility of cache-system-specific setting rows.
+	 *
+	 * Rows containing .aips-cache-system-fields are only shown when the cache
+	 * system is enabled (i.e. the "Yes" radio is selected).
+	 *
+	 * @return {void}
+	 */
+	function updateCacheSystemFields() {
+		var enabled = $('input[name="aips_enable_cache_system"]:checked').val() === '1';
+
+		$('.aips-cache-system-fields').each(function() {
+			$(this).closest('tr').toggle(enabled);
+		});
+
+		// When the cache system is enabled also apply the driver-specific toggle.
+		if (enabled) {
+			updateCacheDriverFields();
+		} else {
+			// Hide all driver-specific rows when the whole system is off.
+			$('.aips-cache-redis-fields, .aips-cache-db-fields').each(function() {
+				$(this).closest('tr').hide();
+			});
+		}
+	}
 
 	/**
 	 * Toggle visibility of driver-specific cache setting rows.
@@ -139,9 +165,14 @@
 			AIPS.initSettingsPage();
 		}
 
+		// Cache system enable/disable radio may be present on the settings page.
+		if ($('input[name="aips_enable_cache_system"]').length) {
+			updateCacheSystemFields();
+			$(document).on('change', 'input[name="aips_enable_cache_system"]', updateCacheSystemFields);
+		}
+
 		// Cache driver field may be present on the settings page.
 		if ($('#aips_cache_driver').length) {
-			updateCacheDriverFields();
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
 		}
 	});
