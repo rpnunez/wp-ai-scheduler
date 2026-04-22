@@ -29,7 +29,9 @@ class AIPS_System_Status_Controller {
 	 * @return void
 	 */
 	public function ajax_reset_circuit_breaker() {
-		check_ajax_referer('aips_reset_circuit_breaker', 'nonce');
+		if ( ! check_ajax_referer('aips_reset_circuit_breaker', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(array('message' => __('Invalid nonce.', 'ai-post-scheduler')));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
