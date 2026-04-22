@@ -199,14 +199,36 @@ The following hooks have been removed or deprecated in recent versions:
 
 ## Batch Queue &amp; Async Generation Filters (added in 2.6.0)
 
-### `aips_bulk_queue_threshold`
+### `aips_large_batch_threshold`
 
-Filters the minimum item count that triggers async batch-queue dispatch in the bulk generator service. When `queue_job_type` is set in `AIPS_Bulk_Generator_Service::run()` and the item count is at or above this value, the job is persisted to `AIPS_Bulk_Batch_Job_Store` and dispatched as a series of cron events instead of running synchronously.
+Filters the minimum item count that triggers async batch-queue dispatch. When `queue_job_type` is set in `AIPS_Bulk_Generator_Service::run()` and the item count is at or above this value, the job is persisted to `AIPS_Bulk_Batch_Job_Store` and dispatched as a series of cron events instead of running synchronously. Also used by `AIPS_Batch_Queue_Service::should_dispatch_as_batch()`.
 
 *   **Type:** `filter`
 *   **Default:** `5`
 *   **Arguments:**
     *   `int $threshold` The minimum item count threshold.
+
+---
+
+### `aips_batch_max_jobs`
+
+Filters the maximum number of individual cron events that `AIPS_Batch_Queue_Service` will schedule per large-batch run. Capped at `ceil(quantity / 2)` so there is always at least one item per event.
+
+*   **Type:** `filter`
+*   **Default:** `10`
+*   **Arguments:**
+    *   `int $max_jobs` Maximum number of batch cron events.
+
+---
+
+### `aips_batch_queue_window_seconds`
+
+Filters the total time window (in seconds) over which `AIPS_Batch_Queue_Service` staggers the scheduled cron events of a large-batch run. Events are spread evenly across this window to reduce simultaneous AI load.
+
+*   **Type:** `filter`
+*   **Default:** `600` (10 minutes)
+*   **Arguments:**
+    *   `int $seconds` Total spread window in seconds.
 
 ---
 

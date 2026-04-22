@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-copilot/implement-batch-queue-system',
         'version' => 'dev-copilot/implement-batch-queue-system',
-        'reference' => '9c442e81250c202d236809ad8328b2af767a6fb3',
+        'reference' => 'e1ea676e4951d08bb3f88c35d2d3fff07f2f8005',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -103,7 +103,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-copilot/implement-batch-queue-system',
             'version' => 'dev-copilot/implement-batch-queue-system',
-            'reference' => '9c442e81250c202d236809ad8328b2af767a6fb3',
+            'reference' => 'e1ea676e4951d08bb3f88c35d2d3fff07f2f8005',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

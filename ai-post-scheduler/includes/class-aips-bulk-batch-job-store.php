@@ -166,6 +166,44 @@ class AIPS_Bulk_Batch_Job_Store {
 	}
 
 	/**
+	 * Mark a job as failed immediately, overriding whatever status it currently holds.
+	 *
+	 * Call this as soon as any slice reports failures so that the final
+	 * completion step cannot accidentally revert the job to 'completed'.
+	 *
+	 * @param string $job_id UUID of the job to fail.
+	 * @return bool True on success, false on failure.
+	 */
+	public function mark_failed( string $job_id ): bool {
+		return $this->update_status( $job_id, self::STATUS_FAILED );
+	}
+
+	/**
+	 * Mark a job as completed, but only if it is still in 'processing' state.
+	 *
+	 * The conditional WHERE clause ensures that a job already marked 'failed'
+	 * by an earlier slice is never overwritten with 'completed'.
+	 *
+	 * @param string $job_id UUID of the job to complete.
+	 * @return bool True when the row was updated, false when not (e.g. already failed).
+	 */
+	public function mark_completed( string $job_id ): bool {
+		global $wpdb;
+
+		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				self::STATUS_COMPLETED,
+				time(),
+				$job_id,
+				self::STATUS_PROCESSING
+			)
+		);
+
+		return $result !== false && $result > 0;
+	}
+
+	/**
 	 * Update a job's status and optionally its processed count.
 	 *
 	 * @param string   $job_id    UUID of the job to update.

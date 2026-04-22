@@ -465,8 +465,10 @@ class AIPS_Bulk_Generator_Service {
 		$job_id = $job_store->create( $queue_job_type, $items, $options );
 
 		if ( is_wp_error( $job_id ) ) {
-			// Job store failure: fall back gracefully to the synchronous path.
-			// Callers should not have to handle this edge case differently.
+			// Job store failure: cannot dispatch async — return an all-failed result so
+			// the caller knows the items were not processed and can surface the error.
+			// A synchronous fallback is not possible here because dispatch_async() does
+			// not hold a reference to the per-item $generate_fn closure passed to run().
 			return new AIPS_Bulk_Generation_Result(
 				0,
 				count( $items ),

@@ -303,17 +303,19 @@ class AIPS_Bulk_Batch_Processor {
 		// Increment the processed counter atomically.
 		$this->job_store->increment_processed( $job_id, count( $items_slice ) );
 
-		// Determine whether this was the last slice and mark the job accordingly.
+		// Determine whether this was the last slice and update job status.
 		// Use $start_index + $batch_size (the declared slice size) rather than
 		// count($items_slice) to guard against edge cases where the actual slice
 		// was smaller than requested (e.g. the job had fewer items remaining).
 		$is_last_slice = ( $start_index + $batch_size >= $total_quantity );
 
-		if ( $is_last_slice ) {
-			$final_status = ( $failed_count === 0 )
-				? AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED
-				: AIPS_Bulk_Batch_Job_Store::STATUS_FAILED;
-			$this->job_store->update_status( $job_id, $final_status );
+		if ( $failed_count > 0 ) {
+			// Mark the job failed immediately. The conditional mark_completed() below
+			// will not overwrite this because it only transitions from 'processing'.
+			$this->job_store->mark_failed( $job_id );
+		} elseif ( $is_last_slice ) {
+			// Only promote to completed if no earlier slice already marked it failed.
+			$this->job_store->mark_completed( $job_id );
 		}
 
 		// Complete the history container for this slice.
