@@ -84,6 +84,11 @@ class AIPS_DB_Manager {
 
         $sql = array();
 
+        // NOTE: Composite indexes on aips_history (status_created, template_created) are
+        // intentionally excluded from this schema and handled via migration in
+        // AIPS_Upgrades::ensure_history_composite_indexes() due to known dbDelta
+        // limitations with detecting existing composite indexes.
+        
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
@@ -109,8 +114,6 @@ class AIPS_DB_Manager {
             KEY topic_id (topic_id),
             KEY status (status),
             KEY created_at (created_at),
-            KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
