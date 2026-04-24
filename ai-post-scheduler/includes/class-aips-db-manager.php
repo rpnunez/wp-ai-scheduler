@@ -31,6 +31,7 @@ class AIPS_DB_Manager {
 
     public function __construct() {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
+        add_action('wp_ajax_aips_fix_datetime_values', array($this, 'ajax_fix_datetime_values'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
         add_action('wp_ajax_aips_wipe_db', array($this, 'ajax_wipe_db'));
         add_action('wp_ajax_aips_flush_cron_events', array($this, 'ajax_flush_cron_events'));
@@ -521,6 +522,97 @@ class AIPS_DB_Manager {
         return true;
     }
 
+    /**
+     * Return the plugin-wide map of datetime/timestamp-backed columns.
+     *
+     * @return array
+     */
+    public static function get_datetime_column_map() {
+        return array(
+            'aips_history' => array(
+                array( 'created_at', false ),
+                array( 'completed_at', false ),
+            ),
+            'aips_history_log' => array(
+                array( 'timestamp', false ),
+            ),
+            'aips_templates' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_schedule' => array(
+                array( 'next_run', false ),
+                array( 'last_run', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_voices' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_article_structures' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_prompt_sections' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_trending_topics' => array(
+                array( 'researched_at', false ),
+            ),
+            'aips_authors' => array(
+                array( 'topic_generation_next_run', false ),
+                array( 'topic_generation_last_run', false ),
+                array( 'post_generation_next_run', false ),
+                array( 'post_generation_last_run', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_author_topics' => array(
+                array( 'generated_at', false ),
+                array( 'reviewed_at', false ),
+            ),
+            'aips_author_topic_logs' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_topic_feedback' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_notifications' => array(
+                array( 'read_at', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_sources' => array(
+                array( 'last_fetched_at', false ),
+                array( 'next_fetch_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_sources_data' => array(
+                array( 'fetched_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_taxonomy' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_embeddings' => array(
+                array( 'indexed_at', false ),
+            ),
+            'aips_internal_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_cache' => array(
+                array( 'expires_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_telemetry' => array(
+                array( 'inserted_at', false ),
+            ),
+        );
+    }
+
     public function drop_tables() {
         global $wpdb;
         $tables = self::get_full_table_names();
@@ -586,6 +678,29 @@ class AIPS_DB_Manager {
 
         self::install_tables();
         AIPS_Ajax_Response::success(array('message' => 'Database tables repaired successfully.'));
+    }
+
+    /**
+     * AJAX: Normalize legacy date/time storage and backfill missing next-run values.
+     *
+     * @return void
+     */
+    public function ajax_fix_datetime_values() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::error('Unauthorized');
+        }
+
+        $summary = ( new AIPS_Date_Time_DB_Repair() )->run();
+
+        AIPS_Ajax_Response::success(
+            array(
+                'message' => __('Date/time values repaired successfully.', 'ai-post-scheduler'),
+                'details' => $summary,
+            )
+        );
     }
 
     public function ajax_reinstall_db() {
