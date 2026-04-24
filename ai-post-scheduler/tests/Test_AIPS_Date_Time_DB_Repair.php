@@ -61,6 +61,50 @@ class Test_AIPS_Date_Time_DB_Repair extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( 1, $summary['fixed_schedule_next_runs'] );
 	}
 
+	public function test_repair_zeroes_implausibly_small_timestamp_values() {
+		global $wpdb;
+
+		$template_table = $wpdb->prefix . 'aips_templates';
+		$schedule_table = $wpdb->prefix . 'aips_schedule';
+
+		$wpdb->insert(
+			$template_table,
+			array(
+				'name'            => 'Broken Timestamp Template',
+				'prompt_template' => 'Write about broken timestamps',
+				'is_active'       => 1,
+			)
+		);
+
+		$template_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$schedule_table,
+			array(
+				'template_id' => $template_id,
+				'frequency'   => 'daily',
+				'next_run'    => 1777081914,
+				'last_run'    => 2026,
+				'is_active'   => 1,
+			),
+			array( '%d', '%s', '%d', '%d', '%d' )
+		);
+
+		$schedule_id = (int) $wpdb->insert_id;
+
+		( new AIPS_Date_Time_DB_Repair() )->run();
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT last_run FROM {$schedule_table} WHERE id = %d",
+				$schedule_id
+			)
+		);
+
+		$this->assertNotNull( $row );
+		$this->assertSame( 0, (int) $row->last_run );
+	}
+
 	public function test_repair_backfills_missing_next_run_for_active_author_schedules() {
 		global $wpdb;
 

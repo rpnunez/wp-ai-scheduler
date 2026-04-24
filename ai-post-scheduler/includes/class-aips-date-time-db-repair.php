@@ -17,6 +17,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AIPS_Date_Time_DB_Repair {
 
 	/**
+	 * Lowest plausible Unix timestamp for plugin-managed date/time values.
+	 *
+	 * Values like "2026" appear in some migrated rows and should be treated as
+	 * corrupted legacy data rather than as real 1970-era timestamps.
+	 */
+	const MIN_VALID_TIMESTAMP = 946684800; // 2000-01-01 00:00:00 UTC.
+
+	/**
 	 * @var wpdb
 	 */
 	private $wpdb;
@@ -107,7 +115,7 @@ class AIPS_Date_Time_DB_Repair {
 				}
 
 				$result = $this->wpdb->query(
-					"UPDATE `{$table}` SET `{$col_name}` = 0 WHERE `{$col_name}` IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					"UPDATE `{$table}` SET `{$col_name}` = 0 WHERE `{$col_name}` IS NULL OR (`{$col_name}` > 0 AND `{$col_name}` < " . self::MIN_VALID_TIMESTAMP . ')' // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				);
 
 				if ( is_numeric( $result ) ) {
@@ -390,7 +398,11 @@ class AIPS_Date_Time_DB_Repair {
 		}
 
 		if ( is_numeric( $value ) ) {
-			return max( 0, (int) $value );
+			$timestamp = max( 0, (int) $value );
+			if ( $timestamp > 0 && $timestamp < self::MIN_VALID_TIMESTAMP ) {
+				return 0;
+			}
+			return $timestamp;
 		}
 
 		$parsed = AIPS_DateTime::fromMysqlOrNull( (string) $value );

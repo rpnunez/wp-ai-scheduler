@@ -94,7 +94,11 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		}
 
 		if (is_numeric($value)) {
-			return AIPS_DateTime::fromTimestampOrNull((int) $value);
+			$timestamp = (int) $value;
+			if ($timestamp > 0 && $timestamp < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP) {
+				return null;
+			}
+			return AIPS_DateTime::fromTimestampOrNull($timestamp);
 		}
 
 		return AIPS_DateTime::fromMysqlOrNull((string) $value);
