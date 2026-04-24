@@ -37,7 +37,7 @@
 
 This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **146 core classes** and **10 interfaces** organized into **18 functional categories**.
 
-- **Total Lines of Code**: 51,343
+- **Total Lines of Code**: 51,483
 - **Total Classes**: 146
 - **Total Interfaces**: 10
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, AI Integration, Infrastructure & DI, Caching, Telemetry & Observability, Notifications, Sources & Research, Internal Links & Embeddings, Resilience & Reliability, User Interface & Admin, Data Management, Database & Repositories, Diagnostics, Configuration & Settings, Onboarding, Utilities
@@ -1014,12 +1014,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 1121
+**Lines of Code**: 1129
 
 **Technical Details**:
 
 - **Public Methods** (2): `__construct()`, `enqueue_admin_assets()`
-- **Dependencies** (2): `AIPS_Admin_Menu_Helper`, `AIPS_Config`
+- **Dependencies** (3): `AIPS_Admin_Menu_Helper`, `AIPS_Config`, `AIPS_History_Type`
 - **Action Hooks** (1): `admin_enqueue_scripts`
 - **Filter Hooks** (1): `aips_chartjs_src`
 - **WordPress APIs Used**: Options
@@ -1029,7 +1029,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1121 lines (may violate SRP)
+1. Consider refactoring — class has 1129 lines (may violate SRP)
 2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -2317,7 +2317,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History`
 
-**Lines of Code**: 486
+**Lines of Code**: 531
 
 **Technical Details**:
 
@@ -2334,6 +2334,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
+2. Consider refactoring — class has 531 lines (may violate SRP)
 
 ---
 
@@ -2366,7 +2367,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Repository`
 
-**Lines of Code**: 1172
+**Lines of Code**: 1180
 
 **Implements**: `AIPS_History_Repository_Interface`
 
@@ -2381,7 +2382,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1172 lines (may violate SRP)
+1. Consider refactoring — class has 1180 lines (may violate SRP)
 2. High method count (26+ methods) — consider splitting responsibilities
 
 ---
@@ -2503,12 +2504,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Technical Details**:
 
 - **Public Methods** (16): `__construct()`, `render_page()`, `ajax_get_suggestions()`, `ajax_generate_suggestions()`, `ajax_update_status()`, `ajax_update_anchor()`, `ajax_delete()`, `ajax_start_indexing()`, `ajax_get_status()`, `ajax_reindex_post()`, ... and 6 more
-- **Dependencies** (6): `AIPS_Embeddings_Service`, `AIPS_Internal_Link_Inserter_Service`, `AIPS_Internal_Links_Repository`, `AIPS_Internal_Links_Service`, `AIPS_Logger`, `AIPS_Post_Embeddings_Repository`
+- **Dependencies** (7): `AIPS_Ajax_Response`, `AIPS_Embeddings_Service`, `AIPS_Internal_Link_Inserter_Service`, `AIPS_Internal_Links_Repository`, `AIPS_Internal_Links_Service`, `AIPS_Logger`, `AIPS_Post_Embeddings_Repository`
 - **Action Hooks** (13): `wp_ajax_aips_internal_links_delete`, `wp_ajax_aips_internal_links_generate_suggestions`, `wp_ajax_aips_internal_links_get_suggestions`, `wp_ajax_aips_internal_links_update_anchor`, `wp_ajax_aips_internal_links_update_status`, ... and 8 more
 - **AJAX Handlers**: `wp_ajax_aips_internal_links_get_suggestions`, `wp_ajax_aips_internal_links_generate_suggestions`, `wp_ajax_aips_internal_links_update_status`, `wp_ajax_aips_internal_links_update_anchor`, `wp_ajax_aips_internal_links_delete`, `wp_ajax_aips_internal_links_start_indexing`, `wp_ajax_aips_internal_links_get_status`, `wp_ajax_aips_internal_links_reindex_post`, `wp_ajax_aips_internal_links_clear_index`, `wp_ajax_aips_internal_links_get_post_for_insertion`, `wp_ajax_aips_internal_links_find_insert_locations`, `wp_ajax_aips_internal_links_apply_insertion`, `wp_ajax_aips_internal_links_apply_bulk_insertions`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Cron
-- **Infrastructure**: Logger
+- **Infrastructure**: Ajax Response, Logger
 
 **Missing Functionality**:
 
@@ -2517,10 +2518,9 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_internal_links_get_suggestions, aips_internal_links_generate_suggestions, aips_internal_links_update_status, aips_internal_links_update_anchor, aips_internal_links_delete
-2. [INFO] Uses raw wp_send_json*() 53 time(s) — prefer AIPS_Ajax_Response::success()/error()
-3. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
-4. Consider refactoring — class has 706 lines (may violate SRP)
-5. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+2. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+3. Consider refactoring — class has 706 lines (may violate SRP)
+4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
 
@@ -3447,7 +3447,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Processor`
 
-**Lines of Code**: 759
+**Lines of Code**: 760
 
 **Technical Details**:
 
@@ -3461,7 +3461,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 759 lines (may violate SRP)
+1. Consider refactoring — class has 760 lines (may violate SRP)
 2. High coupling — depends on 18 classes
 3. Document custom hooks in HOOKS.md for third-party developers
 
@@ -3590,12 +3590,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Session_To_JSON`
 
-**Lines of Code**: 485
+**Lines of Code**: 516
 
 **Technical Details**:
 
-- **Public Methods** (5): `__construct()`, `generate_session_json()`, `generate_json_to_tempfile()`, `cleanup_old_exports()`, `generate_json_string()`
+- **Public Methods** (6): `__construct()`, `generate_session_json()`, `generate_json_to_tempfile()`, `handle_export_cleanup()`, `cleanup_old_exports()`, `generate_json_string()`
 - **Dependencies** (3): `AIPS_History_Repository`, `AIPS_History_Type`, `AIPS_Logger`
+- **Action Hooks** (1): `aips_export_cleanup_completed`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Post Meta
 - **Infrastructure**: Logger
@@ -3605,6 +3606,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+2. Consider refactoring — class has 516 lines (may violate SRP)
+3. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -3964,7 +3967,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_System_Diagnostics_Scheduler_Provider`
 
-**Lines of Code**: 251
+**Lines of Code**: 298
 
 **Implements**: `AIPS_System_Diagnostic_Provider_Interface`
 
@@ -4697,11 +4700,7 @@ This section reports on adherence to the project's architectural standards.
 
 **Standard**: AJAX endpoints should use AIPS_Ajax_Response::success()/error() instead of raw wp_send_json*() calls.
 
-**Status**: ⚠️ 1 finding(s)
-
-| Class | Severity | Details |
-|-------|----------|---------|
-| `AIPS_Internal_Links_Controller` | info | Uses raw wp_send_json*() 53 time(s) — prefer AIPS_Ajax_Response::success()/error() |
+**Status**: ✅ PASS
 
 ### Dependencies via AIPS_Container
 
@@ -4773,7 +4772,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 | AIPS_Container (DI) | 24 | 16% |
 | AIPS_Config | 30 | 21% |
 | AIPS_Cache | 10 | 7% |
-| AIPS_Ajax_Response | 26 | 18% |
+| AIPS_Ajax_Response | 27 | 18% |
 | AIPS_Logger | 27 | 18% |
 | AIPS_Telemetry | 7 | 5% |
 | AIPS_Correlation_ID | 6 | 4% |
@@ -4787,7 +4786,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 |---------|-----------------|-------|
 | Raw get_option() | 31 | Should use AIPS_Config |
 | Raw error_log() | 4 | Should use AIPS_Logger |
-| Raw wp_send_json*() | 2 | Should use AIPS_Ajax_Response |
+| Raw wp_send_json*() | 1 | Should use AIPS_Ajax_Response |
 
 ## Summary Statistics
 
@@ -4818,9 +4817,9 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 
 | Class | Lines | File |
 |-------|-------|------|
-| History Repository | 1172 | `class-aips-history-repository.php` |
+| History Repository | 1180 | `class-aips-history-repository.php` |
 | Generator | 1154 | `class-aips-generator.php` |
-| Admin Assets | 1121 | `class-aips-admin-assets.php` |
+| Admin Assets | 1129 | `class-aips-admin-assets.php` |
 | Author Topics Controller | 1085 | `class-aips-author-topics-controller.php` |
 | Ai Service | 1042 | `class-aips-ai-service.php` |
 | Post Review | 949 | `class-aips-post-review.php` |
