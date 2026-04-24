@@ -83,6 +83,27 @@ if (!function_exists('aips_next_run_relative')) {
 		return sprintf(__('In %s', 'ai-post-scheduler'), human_time_diff(time(), $timestamp));
 	}
 }
+
+/**
+ * Helper: normalize a DB date/time value to an AIPS_DateTime instance.
+ */
+if (!function_exists('aips_datetime_from_db_value')) {
+	function aips_datetime_from_db_value($value) {
+		if (empty($value) || '0000-00-00 00:00:00' === $value) {
+			return null;
+		}
+
+		if (is_numeric($value)) {
+			$timestamp = (int) $value;
+			if ($timestamp > 0 && $timestamp < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP) {
+				return null;
+			}
+			return AIPS_DateTime::fromTimestampOrNull($timestamp);
+		}
+
+		return AIPS_DateTime::fromMysqlOrNull((string) $value);
+	}
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -180,8 +201,10 @@ if (!function_exists('aips_next_run_relative')) {
 					</thead>
 					<tbody>
 					<?php foreach ($all_schedules as $sched):
-						$next_run_ts = !empty($sched['next_run']) ? strtotime($sched['next_run']) : 0;
-						$last_run_ts = !empty($sched['last_run']) ? strtotime($sched['last_run']) : 0;
+						$next_run_dt = aips_datetime_from_db_value($sched['next_run']);
+						$last_run_dt = aips_datetime_from_db_value($sched['last_run']);
+						$next_run_ts = $next_run_dt ? $next_run_dt->timestamp() : 0;
+						$last_run_ts = $last_run_dt ? $last_run_dt->timestamp() : 0;
 						$is_active   = $sched['is_active'];
 						$status      = $sched['status'];
 
