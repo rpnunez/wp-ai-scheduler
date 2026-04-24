@@ -27,6 +27,7 @@ class AIPS_DB_Manager {
         'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
+        'aips_bulk_batch_jobs',
     );
 
     public function __construct() {
@@ -82,6 +83,7 @@ class AIPS_DB_Manager {
         $table_internal_links       = $tables['aips_internal_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
 
         $sql = array();
 
@@ -493,6 +495,23 @@ class AIPS_DB_Manager {
             KEY cache_hits (cache_hits),
             KEY cache_misses (cache_misses),
             KEY inserted_at (inserted_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
+            job_id varchar(36) NOT NULL,
+            job_type varchar(100) NOT NULL,
+            items_json longtext NOT NULL,
+            options_json longtext NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (job_id),
+            KEY job_type (job_type),
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY status_updated (status, updated_at)
         ) $charset_collate;";
 
         return $sql;
