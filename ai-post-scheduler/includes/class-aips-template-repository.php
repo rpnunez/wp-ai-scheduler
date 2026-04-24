@@ -146,6 +146,8 @@ class AIPS_Template_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        $now = AIPS_DateTime::now()->timestamp();
+
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
         $source = isset($data['featured_image_source']) ? sanitize_text_field($data['featured_image_source']) : 'ai_prompt';
 
@@ -167,9 +169,11 @@ class AIPS_Template_Repository {
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'is_active' => isset($data['is_active']) ? 1 : 0,
+            'created_at' => $now,
+            'updated_at' => $now,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -281,6 +285,9 @@ class AIPS_Template_Repository {
         if (empty($update_data)) {
             return false;
         }
+
+        $update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
+        $format[] = '%d';
         
         $result = $this->wpdb->update(
             $this->table_name,
