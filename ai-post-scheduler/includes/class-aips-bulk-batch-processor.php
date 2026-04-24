@@ -194,6 +194,14 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED ) {
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: job %s already completed; skipping duplicate slice.', $job_id ),
+				'warning'
+			);
+			return;
+		}
+
 		// Look up the registered strategy.
 		$job_type = $job->job_type;
 		if ( ! $this->has_strategy( $job_type ) ) {
@@ -218,9 +226,12 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
-		// Mark job as processing on first batch (start_index == 0).
-		if ( $start_index === 0 ) {
-			$this->job_store->update_status( $job_id, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING );
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PENDING ) {
+			$this->job_store->start_processing( $job_id );
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: job %s transitioned from pending to processing.', $job_id ),
+				'info'
+			);
 		}
 
 		// Create a history container for this slice.
@@ -302,20 +313,34 @@ class AIPS_Bulk_Batch_Processor {
 
 		// Increment the processed counter atomically.
 		$this->job_store->increment_processed( $job_id, count( $items_slice ) );
-
-		// Determine whether this was the last slice and update job status.
-		// Use $start_index + $batch_size (the declared slice size) rather than
-		// count($items_slice) to guard against edge cases where the actual slice
-		// was smaller than requested (e.g. the job had fewer items remaining).
-		$is_last_slice = ( $start_index + $batch_size >= $total_quantity );
+		$job_after_slice = $this->job_store->get( $job_id );
+		$processed_total = $job_after_slice ? (int) $job_after_slice->processed : 0;
+		$total_items     = $job_after_slice ? (int) $job_after_slice->total : $total_quantity;
 
 		if ( $failed_count > 0 ) {
-			// Mark the job failed immediately. The conditional mark_completed() below
-			// will not overwrite this because it only transitions from 'processing'.
 			$this->job_store->mark_failed( $job_id );
-		} elseif ( $is_last_slice ) {
-			// Only promote to completed if no earlier slice already marked it failed.
+			$this->logger->log(
+				sprintf(
+					'Bulk batch processor: job %s marked failed after slice [%d, +%d]. processed=%d/%d',
+					$job_id,
+					$start_index,
+					$batch_size,
+					$processed_total,
+					$total_items
+				),
+				'warning'
+			);
+		} elseif ( $processed_total >= $total_items && $total_items > 0 ) {
 			$this->job_store->mark_completed( $job_id );
+			$this->logger->log(
+				sprintf(
+					'Bulk batch processor: job %s completed after processed count reached %d/%d.',
+					$job_id,
+					$processed_total,
+					$total_items
+				),
+				'info'
+			);
 		}
 
 		// Complete the history container for this slice.

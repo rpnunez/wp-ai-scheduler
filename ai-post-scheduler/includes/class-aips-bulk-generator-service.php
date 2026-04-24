@@ -490,6 +490,18 @@ class AIPS_Bulk_Generator_Service {
 			$correlation_id
 		);
 
+		if ( is_wp_error( $dispatch_summary ) ) {
+			$job_store->mark_failed( $job_id );
+			return new AIPS_Bulk_Generation_Result(
+				0,
+				count( $items ),
+				array( $dispatch_summary->get_error_message() ),
+				array(),
+				false,
+				$max_bulk
+			);
+		}
+
 		// Log the dispatch to history.
 		$history_type = isset( $options['history_type'] ) ? (string) $options['history_type'] : 'bulk_generation';
 		$history_meta = isset( $options['history_meta'] ) ? (array)  $options['history_meta'] : array();
@@ -527,6 +539,7 @@ class AIPS_Bulk_Generator_Service {
 				'job_id'          => $job_id,
 				'job_type'        => $queue_job_type,
 				'num_batches'     => $dispatch_summary['num_batches'],
+				'scheduled_batches' => $dispatch_summary['scheduled_batches'],
 				'posts_per_batch' => $dispatch_summary['posts_per_batch'],
 				'window_seconds'  => $dispatch_summary['window_seconds'],
 			)
