@@ -265,38 +265,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $template_complete ? '1' : '0.6'; ?>;">
 			<div class="aips-panel-header">
 				<h2>
-					<?php esc_html_e('4) Generate Author Topics', 'ai-post-scheduler'); ?>
-					<?php if ($topics_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
-					<?php endif; ?>
-				</h2>
-			</div>
-			<div class="aips-panel-body">
-				<?php if ($topics_complete) : ?>
-					<p>
-						<?php esc_html_e('Topics generated. The wizard will use the first topic to generate a sample post.', 'ai-post-scheduler'); ?>
-						<?php if (!empty($state['first_topic'])) : ?>
-							<br><strong><?php esc_html_e('First topic:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html($state['first_topic']); ?>
-						<?php endif; ?>
-					</p>
-				<?php else : ?>
-					<p class="description"><?php esc_html_e('This will generate topic ideas for your onboarding author.', 'ai-post-scheduler'); ?></p>
-					<p>
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-topics" <?php disabled(!$template_complete || !$ai_engine_active); ?>>
-							<span class="dashicons dashicons-lightbulb"></span>
-							<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
-						</button>
-						<span class="spinner" id="aips-onboarding-topics-spinner" style="float:none;"></span>
-					</p>
-					<div id="aips-onboarding-topics-preview" style="display:none;"></div>
-				<?php endif; ?>
-			</div>
-		</div>
-
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $topics_complete ? '1' : '0.6'; ?>;">
-			<div class="aips-panel-header">
-				<h2>
-					<?php esc_html_e('5) Generate Your First Post', 'ai-post-scheduler'); ?>
+					<?php esc_html_e('4) Generate Your First Post', 'ai-post-scheduler'); ?>
 					<?php if ($post_complete) : ?>
 						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
@@ -310,19 +279,33 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						<a href="<?php echo esc_url(get_permalink((int) $state['post_id'])); ?>" style="margin-left: 8px;"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
 					</p>
 				<?php else : ?>
-					<p class="description"><?php esc_html_e('Generate a post using the onboarding template, with the first generated topic as {{topic}}.', 'ai-post-scheduler'); ?></p>
-					<p>
-						<label for="aips-onboarding-topic" style="display:block; font-weight:600; margin-bottom:6px;"><?php esc_html_e('Topic to Use', 'ai-post-scheduler'); ?></label>
-						<input type="text" class="regular-text" id="aips-onboarding-topic" value="<?php echo esc_attr(!empty($state['first_topic']) ? $state['first_topic'] : ''); ?>" <?php disabled(!$topics_complete); ?>>
-					</p>
-					<p>
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-post" <?php disabled(!$topics_complete || !$ai_engine_active); ?>>
-							<span class="dashicons dashicons-edit"></span>
-							<?php esc_html_e('Generate Post', 'ai-post-scheduler'); ?>
-						</button>
-						<span class="spinner" id="aips-onboarding-post-spinner" style="float:none;"></span>
-					</p>
-					<div id="aips-onboarding-post-result" style="display:none;"></div>
+					<div id="aips-onboarding-step-topics" style="display: <?php echo $topics_complete ? 'none' : 'block'; ?>;">
+						<p class="description"><?php esc_html_e('First, let\'s generate some topic ideas for your onboarding author.', 'ai-post-scheduler'); ?></p>
+						<p>
+							<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-topics" <?php disabled(!$template_complete || !$ai_engine_active); ?>>
+								<span class="dashicons dashicons-lightbulb"></span>
+								<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
+							</button>
+							<span class="spinner" id="aips-onboarding-topics-spinner" style="float:none;"></span>
+						</p>
+						<div id="aips-onboarding-topics-preview" style="display:none; margin-bottom: 20px;"></div>
+					</div>
+
+					<div id="aips-onboarding-step-post" style="display: <?php echo $topics_complete ? 'block' : 'none'; ?>; border-top: 1px solid #c3c4c7; padding-top: 15px; margin-top: 15px;">
+						<p class="description"><?php esc_html_e('Now, generate a post using the onboarding template, with the selected topic as {{topic}}.', 'ai-post-scheduler'); ?></p>
+						<p>
+							<label for="aips-onboarding-topic" style="display:block; font-weight:600; margin-bottom:6px;"><?php esc_html_e('Topic to Use', 'ai-post-scheduler'); ?></label>
+							<input type="text" class="regular-text" id="aips-onboarding-topic" value="<?php echo esc_attr(!empty($state['first_topic']) ? $state['first_topic'] : ''); ?>">
+						</p>
+						<p>
+							<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-post" <?php disabled(!$ai_engine_active); ?>>
+								<span class="dashicons dashicons-edit"></span>
+								<?php esc_html_e('Generate Post', 'ai-post-scheduler'); ?>
+							</button>
+							<span class="spinner" id="aips-onboarding-post-spinner" style="float:none;"></span>
+						</p>
+						<div id="aips-onboarding-post-result" style="display:none;"></div>
+					</div>
 				<?php endif; ?>
 			</div>
 		</div>

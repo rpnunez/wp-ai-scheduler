@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2026-05-15 - Onboarding Wizard Optimization
+**Target Feature:** Onboarding Wizard
+**Improvement:** Merged the "Generate Author Topics" and "Generate Your First Post" steps into a single unified step in the Onboarding Wizard to reduce the number of clicks required and improve the flow. Replaced the disruptive page reload after generating topics with an AJAX-driven UI update that immediately reveals the post generation button pre-filled with the first topic.
+**Files Modified:** ai-post-scheduler/templates/admin/onboarding.php, ai-post-scheduler/assets/js/onboarding.js
+**Outcome:** Streamlined the onboarding process by reducing the wizard to 4 steps instead of 5, providing a smoother user experience.
