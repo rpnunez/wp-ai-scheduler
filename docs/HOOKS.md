@@ -212,3 +212,116 @@ Filters the context object used for author post generation before it is passed t
 The following hooks have been removed or deprecated in recent versions:
 
 *   `aips_post_generation_completed` (Removed in v1.7.0) - Use `aips_post_generated` instead.
+
+---
+
+## Batch Queue &amp; Async Generation Filters (added in 2.6.0)
+
+### `aips_large_batch_threshold`
+
+Filters the minimum item count that triggers async batch-queue dispatch. When `queue_job_type` is set in `AIPS_Bulk_Generator_Service::run()` and the item count is at or above this value, the job is persisted to `AIPS_Bulk_Batch_Job_Store` and dispatched as a series of cron events instead of running synchronously. Also used by `AIPS_Batch_Queue_Service::should_dispatch_as_batch()`.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $threshold` The minimum item count threshold.
+
+---
+
+### `aips_batch_max_jobs`
+
+Filters the maximum number of individual cron events that `AIPS_Batch_Queue_Service` will schedule per large-batch run. Capped at `ceil(quantity / 2)` so there is always at least one item per event.
+
+*   **Type:** `filter`
+*   **Default:** `10`
+*   **Arguments:**
+    *   `int $max_jobs` Maximum number of batch cron events.
+
+---
+
+### `aips_batch_queue_window_seconds`
+
+Filters the total time window (in seconds) over which `AIPS_Batch_Queue_Service` staggers the scheduled cron events of a large-batch run. Events are spread evenly across this window to reduce simultaneous AI load.
+
+*   **Type:** `filter`
+*   **Default:** `600` (10 minutes)
+*   **Arguments:**
+    *   `int $seconds` Total spread window in seconds.
+
+---
+
+### `aips_author_topics_batch_threshold`
+
+Filters the minimum number of due authors that triggers per-author batching in `AIPS_Author_Topics_Scheduler`. When this many or more authors are due for topic generation, individual `aips_process_author_topics_slice` single events are dispatched instead of processing all authors inline.
+
+*   **Type:** `filter`
+*   **Default:** `3`
+*   **Arguments:**
+    *   `int $threshold` The minimum due-author count.
+
+---
+
+### `aips_author_topics_slice_stagger_seconds`
+
+Filters the number of seconds between each staggered `aips_process_author_topics_slice` single event. Increase this value to spread AI requests out over a wider window and reduce simultaneous load.
+
+*   **Type:** `filter`
+*   **Default:** `10`
+*   **Arguments:**
+    *   `int $seconds` Seconds between consecutive author slice events.
+
+---
+
+### `aips_author_post_batch_threshold`
+
+Filters the minimum number of due authors that triggers per-author batching in `AIPS_Author_Post_Generator`. When this many or more authors are due for post generation, individual `aips_process_author_post_slice` single events are dispatched instead of processing all authors inline.
+
+*   **Type:** `filter`
+*   **Default:** `3`
+*   **Arguments:**
+    *   `int $threshold` The minimum due-author count.
+
+---
+
+### `aips_author_post_slice_stagger_seconds`
+
+Filters the number of seconds between each staggered `aips_process_author_post_slice` single event.
+
+*   **Type:** `filter`
+*   **Default:** `15`
+*   **Arguments:**
+    *   `int $seconds` Seconds between consecutive author post-slice events.
+
+---
+
+### `aips_default_topic_quantity`
+
+Filters the fallback topic-generation quantity used by `AIPS_Prompt_Builder_Topic` when an author's `topic_generation_quantity` value is unset or less than 1.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $quantity` The fallback quantity.
+
+---
+
+### `aips_sources_cron_max_per_run`
+
+Filters the maximum number of source-index rows processed per `AIPS_Sources_Cron` run. Increase this to process more sources per invocation when server resources allow; decrease it to avoid HTTP timeouts on shared hosting.
+
+*   **Type:** `filter`
+*   **Default:** `10` (`AIPS_Sources_Cron::MAX_PER_RUN`)
+*   **Arguments:**
+    *   `int $max` The maximum number of sources per run.
+
+---
+
+### `aips_topic_expansion_context_limit`
+
+Filters the maximum number of similar approved topics used as expanded context when `AIPS_Author_Post_Generator` generates a post from an author topic via `AIPS_Topic_Expansion_Service::get_expanded_context()`.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $limit` Maximum context topics.
+
