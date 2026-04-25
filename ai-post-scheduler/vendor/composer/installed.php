@@ -1,15 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-<<<<<<< copilot/standardize-date-time-operations
-        'pretty_version' => 'dev-copilot/standardize-date-time-operations',
-        'version' => 'dev-copilot/standardize-date-time-operations',
-        'reference' => '13990520a4f512287dded9968f40defcdfc916cd',
-=======
-        'pretty_version' => 'dev-feature/make-dashboard-better',
-        'version' => 'dev-feature/make-dashboard-better',
-        'reference' => '2f42ff288bb1bc6bbdaf30640cc791eb9ec59f1a',
->>>>>>> main
+        'pretty_version' => 'dev-copilot/implement-batch-queue-system',
+        'version' => 'dev-copilot/implement-batch-queue-system',
+        'reference' => 'e1ea676e4951d08bb3f88c35d2d3fff07f2f8005',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -107,15 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-<<<<<<< copilot/standardize-date-time-operations
-            'pretty_version' => 'dev-copilot/standardize-date-time-operations',
-            'version' => 'dev-copilot/standardize-date-time-operations',
-            'reference' => '13990520a4f512287dded9968f40defcdfc916cd',
-=======
-            'pretty_version' => 'dev-feature/make-dashboard-better',
-            'version' => 'dev-feature/make-dashboard-better',
-            'reference' => '2f42ff288bb1bc6bbdaf30640cc791eb9ec59f1a',
->>>>>>> main
+            'pretty_version' => 'dev-copilot/implement-batch-queue-system',
+            'version' => 'dev-copilot/implement-batch-queue-system',
+            'reference' => 'e1ea676e4951d08bb3f88c35d2d3fff07f2f8005',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

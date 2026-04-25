@@ -57,7 +57,9 @@ class AIPS_Telemetry_Controller {
 	 * @return void
 	 */
 	public function ajax_get_telemetry() {
-		check_ajax_referer('aips_get_telemetry', 'nonce');
+		if ( ! check_ajax_referer('aips_get_telemetry', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -117,7 +119,9 @@ class AIPS_Telemetry_Controller {
 	 * @return void
 	 */
 	public function ajax_get_telemetry_details() {
-		check_ajax_referer('aips_get_telemetry_details', 'nonce');
+		if ( ! check_ajax_referer('aips_get_telemetry_details', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

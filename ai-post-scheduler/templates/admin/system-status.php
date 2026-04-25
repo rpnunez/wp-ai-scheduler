@@ -207,6 +207,11 @@ if (!defined('ABSPATH')) {
                                 <?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
                             </button>
 
+                            <button type="button" class="aips-btn aips-btn-secondary aips-fix-datetime-db">
+                                <span class="dashicons dashicons-clock"></span>
+                                <?php esc_html_e('Fix Date/Time Values in DB', 'ai-post-scheduler'); ?>
+                            </button>
+
                             <button type="button" class="aips-btn aips-btn-secondary aips-reinstall-db">
                                 <span class="dashicons dashicons-update"></span>
                                 <?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?>
