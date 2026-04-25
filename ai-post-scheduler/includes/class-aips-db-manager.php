@@ -27,10 +27,12 @@ class AIPS_DB_Manager {
         'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
+        'aips_bulk_batch_jobs',
     );
 
     public function __construct() {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
+        add_action('wp_ajax_aips_fix_datetime_values', array($this, 'ajax_fix_datetime_values'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
         add_action('wp_ajax_aips_wipe_db', array($this, 'ajax_wipe_db'));
         add_action('wp_ajax_aips_flush_cron_events', array($this, 'ajax_flush_cron_events'));
@@ -81,6 +83,7 @@ class AIPS_DB_Manager {
         $table_internal_links       = $tables['aips_internal_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
 
         $sql = array();
 
@@ -99,8 +102,8 @@ class AIPS_DB_Manager {
             generated_content longtext,
             generation_log longtext,
             error_message text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            completed_at datetime DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
@@ -119,7 +122,7 @@ class AIPS_DB_Manager {
             history_id bigint(20) NOT NULL,
             log_type varchar(50) NOT NULL,
             history_type_id int DEFAULT 1,
-            timestamp datetime DEFAULT CURRENT_TIMESTAMP,
+            timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,
             PRIMARY KEY  (id),
             KEY history_id (history_id),
@@ -146,8 +149,8 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id)
         ) $charset_collate;";
 
@@ -159,8 +162,8 @@ class AIPS_DB_Manager {
             rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
             topic TEXT DEFAULT NULL,
-            next_run datetime NOT NULL,
-            last_run datetime DEFAULT NULL,
+            next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             status varchar(20) DEFAULT 'active',
             schedule_history_id bigint(20) DEFAULT NULL,
@@ -168,7 +171,7 @@ class AIPS_DB_Manager {
             circuit_state varchar(20) NOT NULL DEFAULT 'closed',
             run_state text DEFAULT NULL,
             batch_progress longtext DEFAULT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
@@ -187,7 +190,7 @@ class AIPS_DB_Manager {
             content_instructions text NOT NULL,
             excerpt_instructions text,
             is_active tinyint(1) DEFAULT 1,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id)
         ) $charset_collate;";
 
@@ -197,8 +200,8 @@ class AIPS_DB_Manager {
             description text,
             structure_data longtext NOT NULL,
             is_active tinyint(1) DEFAULT 1,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
 			KEY is_active (is_active)
         ) $charset_collate;";
@@ -210,8 +213,8 @@ class AIPS_DB_Manager {
             section_key varchar(100) NOT NULL,
             content text NOT NULL,
             is_active tinyint(1) DEFAULT 1,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY section_key (section_key),
             KEY is_active (is_active)
@@ -225,7 +228,7 @@ class AIPS_DB_Manager {
             reason text DEFAULT NULL,
             keywords text DEFAULT NULL,
             status varchar(20) NOT NULL DEFAULT 'new',
-            researched_at datetime NOT NULL,
+            researched_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY niche_idx (niche),
             KEY score_idx (score),
@@ -244,12 +247,12 @@ class AIPS_DB_Manager {
             topic_generation_prompt text,
             topic_generation_frequency varchar(50) DEFAULT 'weekly',
             topic_generation_quantity int DEFAULT 5,
-            topic_generation_next_run datetime DEFAULT NULL,
-            topic_generation_last_run datetime DEFAULT NULL,
+            topic_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            topic_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             topic_generation_is_active tinyint(1) DEFAULT 1,
             post_generation_frequency varchar(50) DEFAULT 'daily',
-            post_generation_next_run datetime DEFAULT NULL,
-            post_generation_last_run datetime DEFAULT NULL,
+            post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_is_active tinyint(1) DEFAULT 1,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
@@ -269,8 +272,8 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY article_structure_id (article_structure_id),
             KEY is_active (is_active),
@@ -286,8 +289,8 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
-            generated_at datetime DEFAULT CURRENT_TIMESTAMP,
-            reviewed_at datetime DEFAULT NULL,
+            generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY author_id (author_id),
@@ -305,7 +308,7 @@ class AIPS_DB_Manager {
             user_id bigint(20) DEFAULT NULL,
             notes text,
             metadata longtext,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY author_topic_id (author_topic_id),
             KEY post_id (post_id),
@@ -322,7 +325,7 @@ class AIPS_DB_Manager {
             reason_category varchar(50) DEFAULT 'other',
             source varchar(50) DEFAULT 'UI',
             notes text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY author_topic_id (author_topic_id),
             KEY action (action),
@@ -342,8 +345,8 @@ class AIPS_DB_Manager {
             meta longtext DEFAULT NULL,
             dedupe_key varchar(191) DEFAULT NULL,
             is_read tinyint(1) NOT NULL DEFAULT 0,
-            read_at datetime DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY type (type),
             KEY level (level),
@@ -361,10 +364,10 @@ class AIPS_DB_Manager {
             description text DEFAULT NULL,
             is_active tinyint(1) NOT NULL DEFAULT 1,
             fetch_interval varchar(50) DEFAULT NULL,
-            last_fetched_at datetime DEFAULT NULL,
-            next_fetch_at datetime DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            last_fetched_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            next_fetch_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY is_active (is_active),
             KEY fetch_interval (fetch_interval),
@@ -396,9 +399,9 @@ class AIPS_DB_Manager {
             fetch_status varchar(20) NOT NULL DEFAULT 'pending',
             http_status int DEFAULT NULL,
             error_message text DEFAULT NULL,
-            fetched_at datetime DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            fetched_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY source_content_hash (source_id, content_hash),
             KEY source_id (source_id),
@@ -415,8 +418,8 @@ class AIPS_DB_Manager {
             base_post_ids text DEFAULT NULL,
             generation_prompt text DEFAULT NULL,
             term_id bigint(20) DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY taxonomy_type (taxonomy_type),
             KEY status (status),
@@ -429,7 +432,7 @@ class AIPS_DB_Manager {
             post_id bigint(20) NOT NULL,
             embedding longtext NOT NULL,
             model varchar(100) DEFAULT '',
-            indexed_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            indexed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY post_id (post_id),
             KEY indexed_at (indexed_at)
@@ -442,8 +445,8 @@ class AIPS_DB_Manager {
             similarity_score float NOT NULL DEFAULT 0,
             anchor_text varchar(500) DEFAULT '',
             status varchar(20) NOT NULL DEFAULT 'pending',
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY source_post_id (source_post_id),
             KEY target_post_id (target_post_id),
@@ -457,8 +460,8 @@ class AIPS_DB_Manager {
             cache_key varchar(191) NOT NULL,
             cache_group varchar(100) NOT NULL DEFAULT 'default',
             value longtext NOT NULL,
-            expires_at datetime DEFAULT NULL,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY cache_key_group (cache_key, cache_group),
             KEY expires_at (expires_at)
@@ -481,7 +484,7 @@ class AIPS_DB_Manager {
             peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
             elapsed_ms float NOT NULL DEFAULT 0,
             payload longtext DEFAULT NULL,
-            inserted_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            inserted_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY type (type),
             KEY page (page),
@@ -492,6 +495,23 @@ class AIPS_DB_Manager {
             KEY cache_hits (cache_hits),
             KEY cache_misses (cache_misses),
             KEY inserted_at (inserted_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
+            job_id varchar(36) NOT NULL,
+            job_type varchar(100) NOT NULL,
+            items_json longtext NOT NULL,
+            options_json longtext NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (job_id),
+            KEY job_type (job_type),
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY status_updated (status, updated_at)
         ) $charset_collate;";
 
         return $sql;
@@ -519,6 +539,97 @@ class AIPS_DB_Manager {
         update_option('aips_db_version', AIPS_VERSION);
 
         return true;
+    }
+
+    /**
+     * Return the plugin-wide map of datetime/timestamp-backed columns.
+     *
+     * @return array
+     */
+    public static function get_datetime_column_map() {
+        return array(
+            'aips_history' => array(
+                array( 'created_at', false ),
+                array( 'completed_at', false ),
+            ),
+            'aips_history_log' => array(
+                array( 'timestamp', false ),
+            ),
+            'aips_templates' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_schedule' => array(
+                array( 'next_run', false ),
+                array( 'last_run', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_voices' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_article_structures' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_prompt_sections' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_trending_topics' => array(
+                array( 'researched_at', false ),
+            ),
+            'aips_authors' => array(
+                array( 'topic_generation_next_run', false ),
+                array( 'topic_generation_last_run', false ),
+                array( 'post_generation_next_run', false ),
+                array( 'post_generation_last_run', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_author_topics' => array(
+                array( 'generated_at', false ),
+                array( 'reviewed_at', false ),
+            ),
+            'aips_author_topic_logs' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_topic_feedback' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_notifications' => array(
+                array( 'read_at', false ),
+                array( 'created_at', false ),
+            ),
+            'aips_sources' => array(
+                array( 'last_fetched_at', false ),
+                array( 'next_fetch_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_sources_data' => array(
+                array( 'fetched_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_taxonomy' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_embeddings' => array(
+                array( 'indexed_at', false ),
+            ),
+            'aips_internal_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_cache' => array(
+                array( 'expires_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_telemetry' => array(
+                array( 'inserted_at', false ),
+            ),
+        );
     }
 
     public function drop_tables() {
@@ -586,6 +697,29 @@ class AIPS_DB_Manager {
 
         self::install_tables();
         AIPS_Ajax_Response::success(array('message' => 'Database tables repaired successfully.'));
+    }
+
+    /**
+     * AJAX: Normalize legacy date/time storage and backfill missing next-run values.
+     *
+     * @return void
+     */
+    public function ajax_fix_datetime_values() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::error('Unauthorized');
+        }
+
+        $summary = ( new AIPS_Date_Time_DB_Repair() )->run();
+
+        AIPS_Ajax_Response::success(
+            array(
+                'message' => __('Date/time values repaired successfully.', 'ai-post-scheduler'),
+                'details' => $summary,
+            )
+        );
     }
 
     public function ajax_reinstall_db() {

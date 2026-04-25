@@ -124,7 +124,7 @@ class AIPS_Metrics_Repository {
 			'generation'   => $this->get_generation_metrics( $window_days ),
 			'queue_depth'  => $this->get_queue_depth_metrics(),
 			'queue_health' => $this->get_queue_health_metrics(),
-			'collected_at' => gmdate( 'Y-m-d\TH:i:s\Z' ),
+			'collected_at' => AIPS_DateTime::now()->toIso8601(),
 		);
 	}
 
@@ -250,6 +250,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	public function get_queue_health_metrics() {
+				$now_ts = AIPS_DateTime::now()->timestamp();
+
 		$cached = get_transient( self::TRANSIENT_QUEUE_HEALTH );
 		if ( $cached !== false ) {
 			return $cached;
@@ -269,24 +271,25 @@ class AIPS_Metrics_Repository {
 			$this->wpdb->prepare(
 				"SELECT COUNT(*) FROM {$this->table_history}
 				WHERE status IN ('pending','partial')
-				  AND created_at <= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d MINUTE)",
-				self::STUCK_JOB_THRESHOLD_MINUTES
+				  AND created_at <= %d",
+				$now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS )
 			)
 		);
 
 		$oldest_stuck_age_minutes = null;
 		if ( $stuck_count > 0 ) {
+			$stuck_cutoff = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
 			$age_raw = $this->wpdb->get_var(
 				$this->wpdb->prepare(
-					"SELECT TIMESTAMPDIFF(MINUTE, MIN(created_at), CURRENT_TIMESTAMP())
+					"SELECT MIN(created_at)
 					FROM {$this->table_history}
 					WHERE status IN ('pending','partial')
-					  AND created_at <= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d MINUTE)",
-					self::STUCK_JOB_THRESHOLD_MINUTES
+					  AND created_at <= %d",
+					$stuck_cutoff
 				)
 			);
 			if ( $age_raw !== null ) {
-				$oldest_stuck_age_minutes = (int) $age_raw;
+				$oldest_stuck_age_minutes = (int) floor( ( $now_ts - (int) $age_raw ) / MINUTE_IN_SECONDS );
 			}
 		}
 
@@ -298,8 +301,8 @@ class AIPS_Metrics_Repository {
 				"SELECT COUNT(*) FROM {$this->table_history}
 				WHERE status = 'failed'
 				  AND completed_at IS NOT NULL
-				  AND completed_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
-				self::RETRY_WINDOW_HOURS
+				  AND completed_at >= %d",
+				$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
 			)
 		);
 
@@ -316,8 +319,8 @@ class AIPS_Metrics_Repository {
 				FROM {$this->table_history}
 				WHERE status IN ('completed','failed')
 				  AND completed_at IS NOT NULL
-				  AND completed_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
-				self::RETRY_WINDOW_HOURS
+				  AND completed_at >= %d",
+				$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
 			)
 		);
 
@@ -431,6 +434,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_generation_counts( $window_days ) {
+		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
@@ -439,8 +444,8 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
 					SUM(CASE WHEN status = 'partial'   THEN 1 ELSE 0 END) AS partial
 				FROM {$this->table_history}
-				WHERE created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
-				$window_days
+				WHERE created_at >= %d",
+				$cutoff
 			)
 		);
 
@@ -472,17 +477,19 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_duration_percentiles( $window_days ) {
+		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+
 		// Fetch all durations so we can compute percentiles in PHP without
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
 		$rows = $this->wpdb->get_col(
 			$this->wpdb->prepare(
-				"SELECT TIMESTAMPDIFF(SECOND, created_at, completed_at) AS duration
+				"SELECT (completed_at - created_at) AS duration
 				FROM {$this->table_history}
 				WHERE status = 'completed'
 				  AND completed_at IS NOT NULL
-				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)
+				  AND created_at >= %d
 				ORDER BY duration ASC",
-				$window_days
+				$cutoff
 			)
 		);
 
@@ -534,6 +541,8 @@ class AIPS_Metrics_Repository {
 	 * @return float Average count (0.0 if no data).
 	 */
 	private function get_avg_ai_calls_per_post( $window_days ) {
+		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+
 		// Compute average AI request entries per completed history record,
 		// including posts with zero AI requests (counted as 0).
 		$row = $this->wpdb->get_row(
@@ -553,9 +562,9 @@ class AIPS_Metrics_Repository {
 						ON hl.history_id = h.id
 						AND hl.log_type = 'ai_request'
 					WHERE h.status = 'completed'
-					  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)
+					  AND h.created_at >= %d
 				) AS stats",
-				$window_days
+				$cutoff
 			)
 		);
 
@@ -582,6 +591,8 @@ class AIPS_Metrics_Repository {
 	 * @return float Failure rate as a percentage (0–100), or -1.0 if no data.
 	 */
 	private function get_image_failure_rate( $window_days ) {
+		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+
 		// Total image-generation attempts within the window.
 		// The generator records "image_attempted":true only when
 		// context->should_generate_featured_image() is true.
@@ -592,10 +603,10 @@ class AIPS_Metrics_Repository {
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
 				WHERE hl.log_type = %s
 				  AND hl.details LIKE %s
-				  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND h.created_at >= %d",
 				'metric_generation_result',
 				'%"image_attempted":true%',
-				$window_days
+				$cutoff
 			)
 		);
 
@@ -612,11 +623,11 @@ class AIPS_Metrics_Repository {
 				WHERE hl.log_type = %s
 				  AND hl.details LIKE %s
 				  AND hl.details LIKE %s
-				  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND h.created_at >= %d",
 				'metric_generation_result',
 				'%"image_attempted":true%',
 				'%"image_success":false%',
-				$window_days
+				$cutoff
 			)
 		);
 
@@ -634,6 +645,8 @@ class AIPS_Metrics_Repository {
 	 * @return float Success rate as a percentage (0–100), or -1 if no data.
 	 */
 	private function get_schedule_success_rate( $window_days ) {
+		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
@@ -641,9 +654,9 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
 				FROM {$this->table_history}
 				WHERE creation_method = %s
-				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND created_at >= %d",
 				'scheduled',
-				$window_days
+				$cutoff
 			)
 		);
 
@@ -665,7 +678,7 @@ class AIPS_Metrics_Repository {
 		$rows  = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT id, status, creation_method, created_at,
-				        TIMESTAMPDIFF(SECOND, created_at, completed_at) AS duration_seconds,
+				        (completed_at - created_at) AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
 				ORDER BY created_at DESC
