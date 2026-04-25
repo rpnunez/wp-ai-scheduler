@@ -162,19 +162,26 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
 		}
 
-		foreach ($due_authors as $author) {
-			$this->runner->run(
-				function() use ($author) {
-					$this->generate_post_for_author($author);
-				},
-				'author_post_generation',
-				array('author_id' => $author->id)
-			);
-		}
+		try {
+			foreach ($due_authors as $author) {
+				if ($batch_parent && $batch_parent->get_id()) {
+					AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
+				}
 
-		AIPS_Correlation_ID::set_parent_history_id(null);
-		if ($batch_parent) {
-			$batch_parent->complete_success(array('author_count' => $author_count));
+				$this->runner->run(
+					function() use ($author) {
+						$this->generate_post_for_author($author);
+					},
+					'author_post_generation',
+					array('author_id' => $author->id)
+				);
+			}
+
+			if ($batch_parent) {
+				$batch_parent->complete_success(array('author_count' => $author_count));
+			}
+		} finally {
+			AIPS_Correlation_ID::set_parent_history_id(null);
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');

@@ -531,7 +531,8 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
-            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $timestamp = isset($item->created_at) ? absint($item->created_at) : 0;
+            $item->formatted_date = $timestamp > 0 ? date_i18n($format, $timestamp) : '';
         }
     }
 
@@ -554,6 +555,8 @@ class AIPS_History {
         $args = array(
             'page'     => isset($_POST['paged']) ? absint($_POST['paged']) : 1,
             'per_page' => 20,
+            'status'   => isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '',
+            'search'   => isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '',
         );
 
         if (!empty($_POST['operation_type'])) {
@@ -577,11 +580,17 @@ class AIPS_History {
             );
         }
 
+        ob_start();
+        $this->render_pagination_html($result, $args['status'], $args['search']);
+        $pagination_html = ob_get_clean();
+
         AIPS_Ajax_Response::success(array(
-            'items'      => $items,
-            'total'      => isset($result['total']) ? (int) $result['total'] : 0,
-            'page'       => (int) $args['page'],
-            'per_page'   => (int) $args['per_page'],
+            'items'           => $items,
+            'total'           => isset($result['total']) ? (int) $result['total'] : 0,
+            'page'            => (int) $args['page'],
+            'per_page'        => (int) $args['per_page'],
+            'pagination_html' => $pagination_html,
+            'stats'           => $this->get_stats(),
         ));
     }
 
@@ -628,6 +637,7 @@ class AIPS_History {
 
             $items[] = array(
                 'id'               => (int) $child->id,
+                'parent_id'        => isset($child->parent_id) ? (int) $child->parent_id : 0,
                 'status'           => $child->status,
                 'generated_title'  => $child->generated_title,
                 'creation_method'  => isset($child->creation_method) ? $child->creation_method : '',

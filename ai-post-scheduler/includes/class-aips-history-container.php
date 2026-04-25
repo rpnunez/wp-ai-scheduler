@@ -417,7 +417,7 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
@@ -452,7 +452,7 @@ class AIPS_History_Container {
 		return $this->repository->update($this->history_id, array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
 		)) !== false;
 	}
 	
@@ -487,6 +487,9 @@ class AIPS_History_Container {
 	 */
 	public function create_child($type, $metadata = array()) {
 		$metadata['parent_id'] = $this->history_id;
+		if ($this->correlation_id && empty($metadata['correlation_id'])) {
+			$metadata['correlation_id'] = $this->correlation_id;
+		}
 		return new self($this->repository, $type, $metadata);
 	}
 
@@ -498,10 +501,11 @@ class AIPS_History_Container {
 	 * @return bool
 	 */
 	private function _is_parent_type($data) {
-		if (!isset($data['creation_method']) || empty($data['creation_method'])) {
-			return false;
-		}
 		$parent_types = AIPS_History_Operation_Type::get_parent_types();
-		return in_array($data['creation_method'], $parent_types, true);
+		$creation_method = isset($data['creation_method']) ? $data['creation_method'] : '';
+		if (!empty($creation_method) && in_array($creation_method, $parent_types, true)) {
+			return true;
+		}
+		return in_array($this->type, $parent_types, true);
 	}
 }
