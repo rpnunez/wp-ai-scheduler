@@ -1,0 +1,352 @@
+<?php
+/**
+ * Batch Queue Service
+ *
+ * Detects "large" scheduled batches and dispatches them as a series of
+ * time-spread WordPress single-cron events instead of attempting all posts
+ * in one synchronous cron execution.
+ *
+ * Algorithm
+ * ---------
+ * A batch is "large" when post_quantity >= aips_large_batch_threshold (default 5).
+ *
+ * The number of batch jobs is min( aips_batch_max_jobs, ceil(quantity / 2) ),
+ * capped so each job generates at least 2 posts where possible.
+ *
+ * Jobs are spread evenly over aips_batch_queue_window_seconds (default 600 = 10 min).
+ * Batch 0 fires immediately; each subsequent job fires approximately
+ * (window / (batches - 1)) seconds later.
+ *
+ * Filters
+ * -------
+ * aips_large_batch_threshold    int  Minimum post_quantity to trigger splitting. Default 5.
+ * aips_batch_max_jobs           int  Maximum number of batch jobs per run. Default 10.
+ * aips_batch_queue_window_seconds int  Seconds across which jobs are spread. Default 600.
+ *
+ * @package AI_Post_Scheduler
+ * @since   2.6.0
+ */
+
+if (!defined('ABSPATH')) {
+	exit;
+}
+
+/**
+ * Class AIPS_Batch_Queue_Service
+ *
+ * Responsible for large-batch detection, batch-configuration calculation,
+ * and dispatching individual wp_schedule_single_event calls spread across
+ * a configurable time window.
+ */
+class AIPS_Batch_Queue_Service {
+
+	/**
+	 * Default minimum post_quantity that triggers the batch queue.
+	 *
+	 * At this quantity and above, generation is split across multiple cron events
+	 * instead of running synchronously in one cron callback.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_THRESHOLD = 5;
+
+	/**
+	 * Default maximum number of batch jobs created per schedule run.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_MAX_BATCHES = 10;
+
+	/**
+	 * Default time window (seconds) across which batch jobs are spread.
+	 * 600 seconds = 10 minutes.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_WINDOW_SECONDS = 600;
+
+	/**
+	 * Grace period (seconds) added to the window when checking whether a
+	 * previously dispatched batch queue is still considered "in flight".
+	 *
+	 * This ensures the hourly cron worker does not re-dispatch if the last
+	 * batch job is still running just after the window expires.
+	 *
+	 * @var int
+	 */
+	const REDISPATCH_GRACE_SECONDS = 120;
+
+	/**
+	 * WordPress cron action hook name for individual batch jobs.
+	 *
+	 * @var string
+	 */
+	const HOOK = 'aips_process_schedule_batch';
+
+	/**
+	 * @var AIPS_Logger
+	 */
+	private $logger;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Logger|null $logger Optional logger for dispatch diagnostics.
+	 */
+	public function __construct( ?AIPS_Logger $logger = null ) {
+		$this->logger = $logger ?: new AIPS_Logger();
+	}
+
+	// -----------------------------------------------------------------------
+	// Public API
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Determine whether a post quantity qualifies as a large batch.
+	 *
+	 * Returns true when $post_quantity is at or above the configured threshold,
+	 * meaning that the caller should dispatch() the work rather than running all
+	 * posts synchronously.
+	 *
+	 * The threshold is enforced to be at least 2 so a single-post schedule is
+	 * never accidentally routed through the batch queue.
+	 *
+	 * @param int $post_quantity Total posts the schedule wants to generate.
+	 * @return bool True when batch queue should be used.
+	 */
+	public function needs_batch_queue(int $post_quantity): bool {
+		$threshold = max(2, (int) apply_filters('aips_large_batch_threshold', self::DEFAULT_THRESHOLD));
+		return $post_quantity >= $threshold;
+	}
+
+	/**
+	 * Return the configured batch queue window in seconds.
+	 *
+	 * Centralises the aips_batch_queue_window_seconds filter so callers
+	 * do not need to duplicate the apply_filters() call.
+	 *
+	 * @return int Spread window in seconds (minimum 0).
+	 */
+	public function get_window_seconds(): int {
+		return max(0, (int) apply_filters('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS));
+	}
+
+	/**
+	 * Calculate the batch configuration for a given post quantity.
+	 *
+	 * Returns an array describing how to split $post_quantity into jobs and
+	 * how to space those jobs across the configured window.
+	 *
+	 * @param int $post_quantity Total posts to generate.
+	 * @return array{
+	 *   num_batches: int,
+	 *   posts_per_batch: int,
+	 *   window_seconds: int,
+	 *   interval_seconds: float
+	 * }
+	 */
+	public function calculate_config(int $post_quantity): array {
+		$max_batches    = max(1, (int) apply_filters('aips_batch_max_jobs', self::DEFAULT_MAX_BATCHES));
+		$window_seconds = $this->get_window_seconds();
+
+		// Aim for ~2 posts per job, but never exceed max_batches.
+		$num_batches     = min($max_batches, (int) ceil($post_quantity / 2));
+		$num_batches     = max(1, $num_batches);
+		$posts_per_batch = (int) ceil($post_quantity / $num_batches);
+
+		// Spread jobs evenly across the window.
+		// If only 1 batch, no spread is needed.
+		$interval_seconds = ($num_batches > 1)
+			? (float) ($window_seconds / ($num_batches - 1))
+			: 0.0;
+
+		return array(
+			'num_batches'      => $num_batches,
+			'posts_per_batch'  => $posts_per_batch,
+			'window_seconds'   => $window_seconds,
+			'interval_seconds' => $interval_seconds,
+		);
+	}
+
+	/**
+	 * Dispatch batch jobs for a large schedule run.
+	 *
+	 * Registers one wp_schedule_single_event per batch, spread evenly across
+	 * the configured time window starting from $base_timestamp.
+	 *
+	 * Each event fires the HOOK action with args:
+	 *   [ schedule_id, start_index, batch_size, total_quantity, correlation_id ]
+	 *
+	 * @param int    $schedule_id    Schedule ID.
+	 * @param int    $post_quantity  Total posts the schedule should generate.
+	 * @param int    $base_timestamp Unix timestamp when the schedule was triggered.
+	 * @param string $correlation_id Correlation ID for tracing (may be empty string).
+	 * @return array|WP_Error{
+	 *   num_batches: int,
+	 *   posts_per_batch: int,
+	 *   window_seconds: int,
+	 *   scheduled_batches: int
+	 * } Dispatch summary suitable for history logging.
+	 */
+	public function dispatch(
+		int $schedule_id,
+		int $post_quantity,
+		int $base_timestamp,
+		string $correlation_id = ''
+	): array {
+		return $this->dispatch_generic(
+			self::HOOK,
+			$post_quantity,
+			$base_timestamp,
+			array( $schedule_id ),
+			$correlation_id
+		);
+	}
+
+	/**
+	 * Generic batch dispatcher usable by any generation type.
+	 *
+	 * Splits $item_count into batches, spreads them across the configured time
+	 * window, and registers a wp_schedule_single_event per batch.
+	 *
+	 * The args array passed to each cron event is:
+	 *   [ ...$prefix_args, start_index, batch_size, total_quantity, correlation_id ]
+	 *
+	 * This layout mirrors the existing schedule-batch convention so that hook
+	 * callbacks can always find start_index, batch_size, and total_quantity at
+	 * predictable offsets after any caller-specific prefix arguments.
+	 *
+	 * @param string   $hook           WordPress cron hook to schedule.
+	 * @param int      $item_count     Total items to process.
+	 * @param int      $base_timestamp Unix timestamp for the first batch.
+	 * @param array    $prefix_args    Caller-specific args prepended to each event's args array.
+	 *                                 Must be serialisable (no closures).
+	 * @param string   $correlation_id Correlation ID for tracing (may be empty string).
+	 * @return array|WP_Error{
+	 *   num_batches: int,
+	 *   posts_per_batch: int,
+	 *   window_seconds: int,
+	 *   scheduled_batches: int
+	 * } Dispatch summary suitable for history logging.
+	 */
+	public function dispatch_generic(
+		string $hook,
+		int $item_count,
+		int $base_timestamp,
+		array $prefix_args = array(),
+		string $correlation_id = ''
+	): array {
+		if ( $item_count < 1 ) {
+			return new WP_Error(
+				'aips_invalid_batch_item_count',
+				__( 'Batch queue dispatch requires at least one item.', 'ai-post-scheduler' )
+			);
+		}
+
+		$config            = $this->calculate_config($item_count);
+		$num_batches      = $config['num_batches'];
+		$posts_per_batch  = $config['posts_per_batch'];
+		$interval_seconds = $config['interval_seconds'];
+		$scheduled_batches = 0;
+
+		for ($batch = 0; $batch < $num_batches; $batch++) {
+			$start_index     = $batch * $posts_per_batch;
+			// min() ensures the last batch does not exceed the total when
+			// item_count is not evenly divisible by posts_per_batch.
+			$this_batch_size = min($posts_per_batch, $item_count - $start_index);
+
+			// Batch 0 fires at base_timestamp (immediately); subsequent batches
+			// are staggered by interval_seconds each.
+			$delay   = (int) round($batch * $interval_seconds);
+			$fire_at = $base_timestamp + $delay;
+
+			$args = array_merge(
+				$prefix_args,
+				array(
+					$start_index,
+					$this_batch_size,
+					$item_count,
+					$correlation_id,
+				)
+			);
+
+			$existing_timestamp = wp_next_scheduled( $hook, $args );
+			if ( false !== $existing_timestamp ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch: hook %s slice start=%d size=%d already scheduled for %d; reusing existing event.',
+						$hook,
+						$start_index,
+						$this_batch_size,
+						(int) $existing_timestamp
+					),
+					'warning'
+				);
+				$scheduled_batches++;
+				continue;
+			}
+
+			$schedule_result = wp_schedule_single_event(
+				$fire_at,
+				$hook,
+				$args,
+				true
+			);
+
+			if ( is_wp_error( $schedule_result ) ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch failed for hook %s slice start=%d size=%d: %s',
+						$hook,
+						$start_index,
+						$this_batch_size,
+						$schedule_result->get_error_message()
+					),
+					'error'
+				);
+				return new WP_Error(
+					'aips_batch_queue_schedule_failed',
+					sprintf(
+						/* translators: 1: hook name, 2: start index, 3: batch size, 4: error message */
+						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d): %4$s', 'ai-post-scheduler' ),
+						$hook,
+						$start_index,
+						$this_batch_size,
+						$schedule_result->get_error_message()
+					)
+				);
+			}
+
+			if ( false === $schedule_result ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch failed for hook %s slice start=%d size=%d: wp_schedule_single_event returned false.',
+						$hook,
+						$start_index,
+						$this_batch_size
+					),
+					'error'
+				);
+				return new WP_Error(
+					'aips_batch_queue_schedule_failed',
+					sprintf(
+						/* translators: 1: hook name, 2: start index, 3: batch size */
+						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d).', 'ai-post-scheduler' ),
+						$hook,
+						$start_index,
+						$this_batch_size
+					)
+				);
+			}
+
+			$scheduled_batches++;
+		}
+
+		return array(
+			'num_batches'       => $num_batches,
+			'posts_per_batch'   => $posts_per_batch,
+			'window_seconds'    => $config['window_seconds'],
+			'scheduled_batches' => $scheduled_batches,
+		);
+	}
+}

@@ -314,7 +314,7 @@
                         score: esc(topic.score),
                         niche: esc(topic.niche),
                         keywords_html: keywordsHtml,
-                        researched_at: esc(new Date(topic.researched_at).toLocaleDateString()),
+                        researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
                         delete_label: esc(aipsResearchL10n.delete)
                     });
                 }).join('');
