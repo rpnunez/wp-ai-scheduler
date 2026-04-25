@@ -449,4 +449,34 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     public function process(): void {
         $this->processor->process_due_schedules();
     }
+
+    /**
+     * Process a single batch slice dispatched by the large-batch queue.
+     *
+     * Called by WordPress cron on the aips_process_schedule_batch hook.
+     * Each invocation generates a specific slice of posts defined by
+     * $start_index and $batch_size within a larger $total_quantity run.
+     *
+     * @param int    $schedule_id    Schedule ID.
+     * @param int    $start_index    Zero-based index of the first post in this slice.
+     * @param int    $batch_size     Number of posts to generate in this slice.
+     * @param int    $total_quantity Total posts the schedule should generate overall.
+     * @param string $correlation_id Correlation ID for distributed tracing.
+     * @return void
+     */
+    public function process_batch(
+        int $schedule_id,
+        int $start_index,
+        int $batch_size,
+        int $total_quantity,
+        string $correlation_id = ''
+    ): void {
+        $this->processor->process_batch_slice(
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id
+        );
+    }
 }
