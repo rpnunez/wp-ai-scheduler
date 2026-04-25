@@ -9,6 +9,33 @@ $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['pa
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
+// Handle legacy cases where $history might be passed as an AIPS_History object
+if (isset($history) && is_object($history)) {
+    if (method_exists($history, 'get_history')) {
+        $history = $history->get_history(array(
+            'page'   => $current_page,
+            'status' => $status_filter,
+            'search' => $search_query,
+            'fields' => 'list'
+        ));
+    } else {
+        $history = array();
+    }
+} elseif (!isset($history) && isset($history_handler) && is_object($history_handler) && method_exists($history_handler, 'get_history')) {
+    // If $history isn't passed but $history_handler is available, fetch the history
+    $history = $history_handler->get_history(array(
+        'page'   => $current_page,
+        'status' => $status_filter,
+        'search' => $search_query,
+        'fields' => 'list'
+    ));
+}
+
+// Ensure $history is an array to prevent TypeError in PHP 8+ when accessing keys
+if (!isset($history) || !is_array($history)) {
+    $history = array();
+}
+
 $items       = isset($history['items']) ? $history['items'] : array();
 $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 ?>
