@@ -53,9 +53,9 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     <!-- Operation Type filter (operations view only) -->
                     <select id="aips-filter-operation-type" class="aips-form-select" style="display:none;">
                         <option value=""><?php esc_html_e( 'All Operation Types', 'ai-post-scheduler' ); ?></option>
-                        <?php foreach ( AIPS_History_Operation_Type::get_all_types() as $type_key ) : ?>
+                        <?php foreach ( AIPS_History_Operation_Type::get_all_types() as $type_key => $type_label ) : ?>
                             <option value="<?php echo esc_attr( $type_key ); ?>">
-                                <?php echo esc_html( AIPS_History_Operation_Type::get_label( $type_key ) ); ?>
+                                <?php echo esc_html( $type_label ); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

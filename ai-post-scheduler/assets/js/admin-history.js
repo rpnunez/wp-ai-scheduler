@@ -134,7 +134,7 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var historyId = $(e.currentTarget).data('id');
+			var historyId = $(e.currentTarget).data('id') || $(e.currentTarget).data('history-id');
 			if (!historyId) {
 				return;
 			}
@@ -387,13 +387,13 @@
 			if (container.created_at) {
 				rows += T.render('aips-tmpl-history-summary-row', {
 					label: aipsHistoryL10n.labelCreated || 'Created',
-					value: container.created_at
+					value: this.formatTimestamp(container.created_at)
 				});
 			}
 			if (container.completed_at) {
 				rows += T.render('aips-tmpl-history-summary-row', {
 					label: aipsHistoryL10n.labelCompleted || 'Completed',
-					value: container.completed_at
+					value: this.formatTimestamp(container.completed_at)
 				});
 			}
 
@@ -511,7 +511,7 @@
 				}
 
 				rowsHtml += T.renderRaw('aips-tmpl-history-log-row', {
-					timestamp:   T.escape(log.timestamp),
+					timestamp:   T.escape(self.formatTimestamp(log.timestamp)),
 					typeClass:   T.escape(typeClass),
 					typeLabel:   T.escape(log.type_label),
 					logType:     T.escape(log.log_type),
@@ -529,6 +529,20 @@
 			});
 
 			return html;
+		},
+
+		/**
+		 * Format a Unix timestamp for display.
+		 *
+		 * @param {number|string} timestamp
+		 * @return {string}
+		 */
+		formatTimestamp: function (timestamp) {
+			var ts = parseInt(timestamp, 10);
+			if (isNaN(ts) || ts <= 0) {
+				return '';
+			}
+			return new Date(ts * 1000).toLocaleString();
 		},
 
 		/**
@@ -865,6 +879,11 @@
 		reload: function (paged) {
 			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
 
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(paged);
+				return;
+			}
+
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
 			var $pagCell   = $('.aips-history-pagination-cell');
@@ -968,6 +987,10 @@
 			if (!page) {
 				return;
 			}
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(parseInt(page, 10));
+				return;
+			}
 			this.reload(parseInt(page, 10));
 		},
 
@@ -992,6 +1015,11 @@
 			url.searchParams.delete('paged');
 			window.history.pushState({}, '', url.toString());
 
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(1);
+				return;
+			}
+
 			this.reload(1);
 		},
 
@@ -1010,7 +1038,11 @@
 			var lowerQuery = rawQuery.toLowerCase().trim();
 			var hasResults = false;
 
-			$('#aips-history-tbody tr').each(function () {
+			var $rows = this.currentViewMode === 'operations'
+				? $('#aips-history-operations-tbody tr')
+				: $('#aips-history-tbody tr');
+
+			$rows.each(function () {
 				if (!lowerQuery || $(this).text().toLowerCase().indexOf(lowerQuery) !== -1) {
 					$(this).show();
 					hasResults = true;
@@ -1041,6 +1073,11 @@
 				url.searchParams.delete('paged');
 				window.history.pushState({}, '', url.toString());
 
+				if (this.currentViewMode === 'operations') {
+					this.loadOperationsView(1);
+					return;
+				}
+
 				this.reload(1);
 			}
 		},
@@ -1058,7 +1095,13 @@
 			this.searchQuery = '';
 			this.syncSearchClearButton();
 			$('#aips-history-search-no-results').hide();
-			$('#aips-history-tbody tr').show();
+			$('#aips-history-tbody tr, #aips-history-operations-tbody tr').show();
+
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(1);
+				return;
+			}
+
 			this.reload(1);
 		},
 
@@ -1170,7 +1213,9 @@
 					action:         'aips_get_history_top_level',
 					nonce:          aipsAjax.nonce,
 					paged:          paged,
-					operation_type: $('#aips-filter-operation-type').val() || ''
+					operation_type: $('#aips-filter-operation-type').val() || '',
+					status:         self.statusFilter,
+					search:         self.searchQuery
 				},
 				success: function (response) {
 					if (!response.success) {
@@ -1193,6 +1238,25 @@
 						html += self.renderParentRow(item);
 					});
 					$tbody.html(html);
+
+					if (response.data.pagination_html !== undefined) {
+						$('.aips-history-pagination-cell').html(response.data.pagination_html);
+					}
+
+					if (response.data.stats) {
+						$('#aips-stat-total').text(response.data.stats.total);
+						$('#aips-stat-completed').text(response.data.stats.completed);
+						$('#aips-stat-failed').text(response.data.stats.failed);
+						$('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
+					}
+
+					var url = new URL(window.location.href);
+					if (paged > 1) {
+						url.searchParams.set('paged', paged);
+					} else {
+						url.searchParams.delete('paged');
+					}
+					window.history.replaceState({}, '', url.toString());
 				},
 				error: function () {
 					$tbody.html(T.render('aips-tmpl-history-operations-empty', {
@@ -1248,7 +1312,7 @@
 			}
 
 			var date = item.created_at
-				? new Date(parseInt(item.created_at, 10) * 1000).toLocaleString()
+				? this.formatTimestamp(item.created_at)
 				: '\u2014';
 
 			return T.renderRaw('aips-tmpl-history-parent-row', {
@@ -1307,6 +1371,7 @@
 					var children = response.data.children;
 					var childHtml = '';
 					$.each(children, function (i, child) {
+						child.parent_id = child.parent_id || id;
 						childHtml += self.renderChildRow(child);
 					});
 					$row.after(childHtml);
