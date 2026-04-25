@@ -83,6 +83,20 @@ class AIPS_Batch_Queue_Service {
 	 */
 	const HOOK = 'aips_process_schedule_batch';
 
+	/**
+	 * @var AIPS_Logger
+	 */
+	private $logger;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Logger|null $logger Optional logger for dispatch diagnostics.
+	 */
+	public function __construct( ?AIPS_Logger $logger = null ) {
+		$this->logger = $logger ?: new AIPS_Logger();
+	}
+
 	// -----------------------------------------------------------------------
 	// Public API
 	// -----------------------------------------------------------------------
@@ -167,10 +181,11 @@ class AIPS_Batch_Queue_Service {
 	 * @param int    $post_quantity  Total posts the schedule should generate.
 	 * @param int    $base_timestamp Unix timestamp when the schedule was triggered.
 	 * @param string $correlation_id Correlation ID for tracing (may be empty string).
-	 * @return array{
+	 * @return array|WP_Error{
 	 *   num_batches: int,
 	 *   posts_per_batch: int,
-	 *   window_seconds: int
+	 *   window_seconds: int,
+	 *   scheduled_batches: int
 	 * } Dispatch summary suitable for history logging.
 	 */
 	public function dispatch(
@@ -207,10 +222,11 @@ class AIPS_Batch_Queue_Service {
 	 * @param array    $prefix_args    Caller-specific args prepended to each event's args array.
 	 *                                 Must be serialisable (no closures).
 	 * @param string   $correlation_id Correlation ID for tracing (may be empty string).
-	 * @return array{
+	 * @return array|WP_Error{
 	 *   num_batches: int,
 	 *   posts_per_batch: int,
-	 *   window_seconds: int
+	 *   window_seconds: int,
+	 *   scheduled_batches: int
 	 * } Dispatch summary suitable for history logging.
 	 */
 	public function dispatch_generic(
@@ -220,10 +236,18 @@ class AIPS_Batch_Queue_Service {
 		array $prefix_args = array(),
 		string $correlation_id = ''
 	): array {
-		$config           = $this->calculate_config($item_count);
+		if ( $item_count < 1 ) {
+			return new WP_Error(
+				'aips_invalid_batch_item_count',
+				__( 'Batch queue dispatch requires at least one item.', 'ai-post-scheduler' )
+			);
+		}
+
+		$config            = $this->calculate_config($item_count);
 		$num_batches      = $config['num_batches'];
 		$posts_per_batch  = $config['posts_per_batch'];
 		$interval_seconds = $config['interval_seconds'];
+		$scheduled_batches = 0;
 
 		for ($batch = 0; $batch < $num_batches; $batch++) {
 			$start_index     = $batch * $posts_per_batch;
@@ -236,25 +260,93 @@ class AIPS_Batch_Queue_Service {
 			$delay   = (int) round($batch * $interval_seconds);
 			$fire_at = $base_timestamp + $delay;
 
-			wp_schedule_single_event(
-				$fire_at,
-				$hook,
-				array_merge(
-					$prefix_args,
-					array(
-						$start_index,
-						$this_batch_size,
-						$item_count,
-						$correlation_id,
-					)
+			$args = array_merge(
+				$prefix_args,
+				array(
+					$start_index,
+					$this_batch_size,
+					$item_count,
+					$correlation_id,
 				)
 			);
+
+			$existing_timestamp = wp_next_scheduled( $hook, $args );
+			if ( false !== $existing_timestamp ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch: hook %s slice start=%d size=%d already scheduled for %d; reusing existing event.',
+						$hook,
+						$start_index,
+						$this_batch_size,
+						(int) $existing_timestamp
+					),
+					'warning'
+				);
+				$scheduled_batches++;
+				continue;
+			}
+
+			$schedule_result = wp_schedule_single_event(
+				$fire_at,
+				$hook,
+				$args,
+				true
+			);
+
+			if ( is_wp_error( $schedule_result ) ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch failed for hook %s slice start=%d size=%d: %s',
+						$hook,
+						$start_index,
+						$this_batch_size,
+						$schedule_result->get_error_message()
+					),
+					'error'
+				);
+				return new WP_Error(
+					'aips_batch_queue_schedule_failed',
+					sprintf(
+						/* translators: 1: hook name, 2: start index, 3: batch size, 4: error message */
+						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d): %4$s', 'ai-post-scheduler' ),
+						$hook,
+						$start_index,
+						$this_batch_size,
+						$schedule_result->get_error_message()
+					)
+				);
+			}
+
+			if ( false === $schedule_result ) {
+				$this->logger->log(
+					sprintf(
+						'Batch queue dispatch failed for hook %s slice start=%d size=%d: wp_schedule_single_event returned false.',
+						$hook,
+						$start_index,
+						$this_batch_size
+					),
+					'error'
+				);
+				return new WP_Error(
+					'aips_batch_queue_schedule_failed',
+					sprintf(
+						/* translators: 1: hook name, 2: start index, 3: batch size */
+						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d).', 'ai-post-scheduler' ),
+						$hook,
+						$start_index,
+						$this_batch_size
+					)
+				);
+			}
+
+			$scheduled_batches++;
 		}
 
 		return array(
-			'num_batches'     => $num_batches,
-			'posts_per_batch' => $posts_per_batch,
-			'window_seconds'  => $config['window_seconds'],
+			'num_batches'       => $num_batches,
+			'posts_per_batch'   => $posts_per_batch,
+			'window_seconds'    => $config['window_seconds'],
+			'scheduled_batches' => $scheduled_batches,
 		);
 	}
 }

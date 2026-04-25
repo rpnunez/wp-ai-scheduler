@@ -83,6 +83,27 @@ if (!function_exists('aips_next_run_relative')) {
 		return sprintf(__('In %s', 'ai-post-scheduler'), human_time_diff(time(), $timestamp));
 	}
 }
+
+/**
+ * Helper: normalize a DB date/time value to an AIPS_DateTime instance.
+ */
+if (!function_exists('aips_datetime_from_db_value')) {
+	function aips_datetime_from_db_value($value) {
+		if (empty($value) || '0000-00-00 00:00:00' === $value) {
+			return null;
+		}
+
+		if (is_numeric($value)) {
+			$timestamp = (int) $value;
+			if ($timestamp > 0 && $timestamp < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP) {
+				return null;
+			}
+			return AIPS_DateTime::fromTimestampOrNull($timestamp);
+		}
+
+		return AIPS_DateTime::fromMysqlOrNull((string) $value);
+	}
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -180,8 +201,10 @@ if (!function_exists('aips_next_run_relative')) {
 					</thead>
 					<tbody>
 					<?php foreach ($all_schedules as $sched):
-						$next_run_ts = !empty($sched['next_run']) ? strtotime($sched['next_run']) : 0;
-						$last_run_ts = !empty($sched['last_run']) ? strtotime($sched['last_run']) : 0;
+						$next_run_dt = aips_datetime_from_db_value($sched['next_run']);
+						$last_run_dt = aips_datetime_from_db_value($sched['last_run']);
+						$next_run_ts = $next_run_dt ? $next_run_dt->timestamp() : 0;
+						$last_run_ts = $last_run_dt ? $last_run_dt->timestamp() : 0;
 						$is_active   = $sched['is_active'];
 						$status      = $sched['status'];
 
@@ -213,7 +236,13 @@ if (!function_exists('aips_next_run_relative')) {
 						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
-						data-schedule-id="<?php echo esc_attr($sched['id']); ?>">
+						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
+						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
+						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
 								class="aips-unified-checkbox"
@@ -308,6 +337,9 @@ if (!function_exists('aips_next_run_relative')) {
 									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
+									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+									data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+									data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
 									data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
 									data-is-active="<?php echo esc_attr($is_active); ?>">
 									<span class="dashicons dashicons-edit"></span>

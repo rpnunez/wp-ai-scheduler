@@ -32,7 +32,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1121 lines (may violate SRP)
+    1. Consider refactoring — class has 1129 lines (may violate SRP)
     2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -577,6 +577,7 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [WARNING] Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
+    2. Consider refactoring — class has 531 lines (may violate SRP)
 
 ---
 
@@ -595,7 +596,7 @@
 * **Implements**: `AIPS_History_Repository_Interface`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1172 lines (may violate SRP)
+    1. Consider refactoring — class has 1180 lines (may violate SRP)
     2. High method count (26+ methods) — consider splitting responsibilities
 
 ---
@@ -650,10 +651,9 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [WARNING] Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_internal_links_get_suggestions, aips_internal_links_generate_suggestions, aips_internal_links_update_status, aips_internal_links_update_anchor, aips_internal_links_delete
-    2. [INFO] Uses raw wp_send_json*() 53 time(s) — prefer AIPS_Ajax_Response::success()/error()
-    3. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
-    4. Consider refactoring — class has 706 lines (may violate SRP)
-    5. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+    2. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+    3. Consider refactoring — class has 706 lines (may violate SRP)
+    4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
 
@@ -1046,7 +1046,7 @@
 * **Class**: `AIPS_Schedule_Processor`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 759 lines (may violate SRP)
+    1. Consider refactoring — class has 760 lines (may violate SRP)
     2. High coupling — depends on 18 classes
     3. Document custom hooks in HOOKS.md for third-party developers
 
@@ -1110,6 +1110,8 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+    2. Consider refactoring — class has 516 lines (may violate SRP)
+    3. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 

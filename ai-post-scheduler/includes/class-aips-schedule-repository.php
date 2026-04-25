@@ -263,7 +263,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @param array $data Data to update (same structure as create).
      * @return bool True on success, false on failure.
      */
-    public function update($id, $data) {
+	public function update($id, $data) {
         $update_data = array();
         $format = array();
         
@@ -361,8 +361,43 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             $this->cache->flush();
         }
 
-        return $result !== false;
-    }
+		return $result !== false;
+	}
+
+	/**
+	 * Atomically claim a due schedule by advancing next_run only when the row
+	 * still has the expected due timestamp.
+	 *
+	 * This acts as a compare-and-swap lock for cron workers: only the first
+	 * worker that updates the matching row gets to process the schedule.
+	 *
+	 * @param int $id Schedule ID.
+	 * @param int $expected_next_run Previously-read next_run timestamp.
+	 * @param int $new_next_run New next_run timestamp.
+	 * @return bool True when the schedule was claimed, false otherwise.
+	 */
+	public function claim_due_schedule($id, $expected_next_run, $new_next_run) {
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->schedule_table}
+				SET next_run = %d
+				WHERE id = %d
+				AND is_active = 1
+				AND next_run = %d",
+				(int) $new_next_run,
+				(int) $id,
+				(int) $expected_next_run
+			)
+		);
+
+		if ($result !== false && $result > 0) {
+			delete_transient('aips_pending_schedule_stats');
+			$this->cache->flush();
+			return true;
+		}
+
+		return false;
+	}
     
     /**
      * Delete a schedule by ID.
