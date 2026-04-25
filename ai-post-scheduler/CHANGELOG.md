@@ -164,3 +164,4 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+- Fixed `TypeError` in history template causing "Cannot use object of type ... as array" errors in PHP 8.
