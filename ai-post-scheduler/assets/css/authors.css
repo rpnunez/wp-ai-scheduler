@@ -446,8 +446,24 @@
 	width: 190px;
 }
 
+.aips-topics-table .column-dates {
+	white-space: nowrap;
+	width: 200px;
+}
+
+.aips-topics-table .column-post-status {
+	white-space: nowrap;
+	width: 120px;
+}
+
 .aips-topics-table .column-actions {
 	width: 340px;
+}
+
+/* Narrower actions column on the Posts Generated tab */
+table.aips-topics-table th.column-actions:has(~ .column-post-status),
+.aips-topics-table tr[data-status="posts_generated"] .column-actions {
+	width: 100px;
 }
 
 .aips-topics-table .column-topic,
@@ -461,6 +477,31 @@
 
 .aips-feedback-table .column-user {
 	width: 160px;
+}
+
+/* Posts Generated tab: clickable title cell */
+.aips-topics-table tr[data-status="posts_generated"] .topic-title-cell {
+	cursor: pointer;
+}
+
+/* Dates cell rows */
+.aips-dates-row {
+	margin-bottom: 3px;
+	font-size: 13px;
+	color: #50575e;
+}
+
+.aips-dates-row:last-child {
+	margin-bottom: 0;
+}
+
+/* Post status cell items */
+.aips-post-status-item {
+	margin-bottom: 3px;
+}
+
+.aips-post-status-item:last-child {
+	margin-bottom: 0;
 }
 
 .aips-topic-row {
