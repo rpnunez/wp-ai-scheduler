@@ -40,6 +40,13 @@ class AIPS_Correlation_ID {
 	private static $current_id = null;
 
 	/**
+	 * The active parent history ID for the current run.
+	 *
+	 * @var int|null
+	 */
+	private static $parent_history_id = null;
+
+	/**
 	 * Generate a new correlation ID and make it the active one.
 	 *
 	 * Calling this at the start of a scheduler run, manual generation, or any
@@ -83,7 +90,27 @@ class AIPS_Correlation_ID {
 	 * @return void
 	 */
 	public static function reset() {
-		self::$current_id = null;
+		self::$current_id        = null;
+		self::$parent_history_id = null;
+	}
+
+	/**
+	 * Set the active parent history ID for the current execution context.
+	 *
+	 * @param int|null $id Parent history ID, or null to clear.
+	 * @return void
+	 */
+	public static function set_parent_history_id($id) {
+		self::$parent_history_id = $id ? absint($id) : null;
+	}
+
+	/**
+	 * Get the active parent history ID.
+	 *
+	 * @return int|null Parent history ID or null if none set.
+	 */
+	public static function get_parent_history_id() {
+		return self::$parent_history_id;
 	}
 
 }

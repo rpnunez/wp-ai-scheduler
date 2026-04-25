@@ -147,13 +147,39 @@ class AIPS_Author_Topics_Scheduler {
 		}
 		
 		// Below threshold — process inline (original behaviour).
-		foreach ($due_authors as $author) {
-			AIPS_Correlation_ID::generate();
-			try {
-				$this->generate_topics_for_author($author);
-			} finally {
-				AIPS_Correlation_ID::reset();
+		$batch_parent = $this->history_service->create(
+			AIPS_History_Operation_Type::TOPIC_GENERATION_BATCH,
+			array(
+				'trigger_name'    => 'cron',
+				'creation_method' => AIPS_History_Operation_Type::TOPIC_GENERATION_BATCH,
+				'meta'            => array(
+					'author_count' => $author_count,
+				),
+			)
+		);
+		if ($batch_parent && $batch_parent->get_id()) {
+			AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
+		}
+
+		try {
+			foreach ($due_authors as $author) {
+				AIPS_Correlation_ID::generate();
+				try {
+					$this->generate_topics_for_author($author);
+				} finally {
+					AIPS_Correlation_ID::reset();
+					// Re-register the parent for subsequent iterations.
+					if ($batch_parent && $batch_parent->get_id()) {
+						AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
+					}
+				}
 			}
+
+			if ($batch_parent) {
+				$batch_parent->complete_success(array('author_count' => $author_count));
+			}
+		} finally {
+			AIPS_Correlation_ID::set_parent_history_id(null);
 		}
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');

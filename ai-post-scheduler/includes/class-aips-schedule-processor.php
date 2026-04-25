@@ -733,6 +733,14 @@ class AIPS_Schedule_Processor {
             }
         }
 
+        // Register this lifecycle container as the ambient parent so all child
+        // generation containers created during this run automatically inherit parent_id.
+        if ($history && $history->get_id()) {
+            AIPS_Correlation_ID::set_parent_history_id($history->get_id());
+        }
+
+        try {
+
         // ── Large-batch queue dispatch ──────────────────────────────────────────
         // When the requested quantity meets the large-batch threshold, dispatch
         // the work as a set of time-spread single cron events rather than
@@ -1067,7 +1075,12 @@ class AIPS_Schedule_Processor {
             $this->result_handler->handle_execution_success($schedule, $overall_result, $history, $is_manual);
         }
 
-        return $overall_result;
+            return $overall_result;
+        } finally {
+            // Clear the ambient parent history ID so it does not bleed into the
+            // next schedule processed in the same cron pass.
+            AIPS_Correlation_ID::set_parent_history_id(null);
+        }
     }
 
 }

@@ -201,7 +201,17 @@ class AIPS_History_Container {
 			),
 			$this->metadata
 		);
-		
+
+		// Inherit parent_id from the static correlation manager if not already set
+		// via metadata. This allows child containers created during a batch run
+		// to automatically link to the parent container.
+		if (!isset($data['parent_id']) || !$data['parent_id']) {
+			$ambient_parent = AIPS_Correlation_ID::get_parent_history_id();
+			if ($ambient_parent && !$this->_is_parent_type($data)) {
+				$data['parent_id'] = $ambient_parent;
+			}
+		}
+
 		$this->history_id = $this->repository->create($data);
 		
 		if ($this->history_id) {
@@ -407,7 +417,7 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
@@ -442,7 +452,7 @@ class AIPS_History_Container {
 		return $this->repository->update($this->history_id, array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
 		)) !== false;
 	}
 	
@@ -466,5 +476,36 @@ class AIPS_History_Container {
 	 */
 	public function get_session() {
 		return $this->session;
+	}
+
+	/**
+	 * Create a child history container parented to this container.
+	 *
+	 * @param string $type     History type / creation_method for the child.
+	 * @param array  $metadata Optional metadata array.
+	 * @return AIPS_History_Container New child container instance.
+	 */
+	public function create_child($type, $metadata = array()) {
+		$metadata['parent_id'] = $this->history_id;
+		if ($this->correlation_id && empty($metadata['correlation_id'])) {
+			$metadata['correlation_id'] = $this->correlation_id;
+		}
+		return new self($this->repository, $type, $metadata);
+	}
+
+	/**
+	 * Determine whether the given data represents a parent-level (batch/run)
+	 * history container that should NOT itself be nested under another parent.
+	 *
+	 * @param array $data Data array being persisted.
+	 * @return bool
+	 */
+	private function _is_parent_type($data) {
+		$parent_types = AIPS_History_Operation_Type::get_parent_types();
+		$creation_method = isset($data['creation_method']) ? $data['creation_method'] : '';
+		if (!empty($creation_method) && in_array($creation_method, $parent_types, true)) {
+			return true;
+		}
+		return in_array($this->type, $parent_types, true);
 	}
 }

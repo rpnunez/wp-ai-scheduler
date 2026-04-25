@@ -31,6 +31,8 @@ class AIPS_History {
         add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
+        add_action('wp_ajax_aips_get_history_top_level', array($this, 'ajax_get_history_top_level'));
+        add_action('wp_ajax_aips_get_operation_children', array($this, 'ajax_get_operation_children'));
     }
 
     /**
@@ -259,11 +261,12 @@ class AIPS_History {
         }
 
         // Calculate duration between created_at and completed_at.
+        // created_at and completed_at are stored as Unix timestamps (bigint).
         $duration_seconds = null;
         if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
-            $start = strtotime( $history_item->created_at );
-            $end   = strtotime( $history_item->completed_at );
-            if ( $start && $end && $end >= $start ) {
+            $start = (int) $history_item->created_at;
+            $end   = (int) $history_item->completed_at;
+            if ( $start > 0 && $end >= $start ) {
                 $duration_seconds = $end - $start;
             }
         }
@@ -299,6 +302,10 @@ class AIPS_History {
                 'post_edit_url'    => $post_edit_url,
                 'creation_method'  => isset( $history_item->creation_method ) ? $history_item->creation_method : null,
                 'duration_seconds' => $duration_seconds,
+                'parent_id'        => isset( $history_item->parent_id ) ? ( $history_item->parent_id ? (int) $history_item->parent_id : null ) : null,
+                'is_parent'        => isset( $history_item->parent_id ) ? ( is_null($history_item->parent_id) && in_array(isset($history_item->creation_method) ? $history_item->creation_method : '', AIPS_History_Operation_Type::get_parent_types(), true) ) : false,
+                'operation_label'  => isset( $history_item->creation_method ) ? AIPS_History_Operation_Type::get_label( $history_item->creation_method ) : '',
+                'child_summary'    => $this->repository->get_child_summary( $history_id ),
             ),
             'logs'      => $logs,
         ));
@@ -524,7 +531,126 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
-            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $timestamp = isset($item->created_at) ? absint($item->created_at) : 0;
+            $item->formatted_date = $timestamp > 0 ? date_i18n($format, $timestamp) : '';
         }
+    }
+
+    /**
+     * AJAX handler to retrieve top-level (parent) history operations.
+     *
+     * Supports optional `operation_type` and `paged` filters.
+     *
+     * @return void
+     */
+    public function ajax_get_history_top_level() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $args = array(
+            'page'     => isset($_POST['paged']) ? absint($_POST['paged']) : 1,
+            'per_page' => 20,
+            'status'   => isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '',
+            'search'   => isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '',
+        );
+
+        if (!empty($_POST['operation_type'])) {
+            $args['operation_type'] = sanitize_text_field(wp_unslash($_POST['operation_type']));
+        }
+
+        $result = $this->repository->get_top_level($args);
+
+        $items = array();
+        foreach ($result['items'] as $item) {
+            $child_summary = $this->repository->get_child_summary((int) $item->id);
+            $items[] = array(
+                'id'              => (int) $item->id,
+                'status'          => $item->status,
+                'creation_method' => isset($item->creation_method) ? $item->creation_method : '',
+                'operation_label' => AIPS_History_Operation_Type::get_label(isset($item->creation_method) ? $item->creation_method : ''),
+                'trigger_name'    => isset($item->trigger_name) ? $item->trigger_name : '',
+                'created_at'      => $item->created_at,
+                'completed_at'    => $item->completed_at,
+                'child_summary'   => $child_summary,
+            );
+        }
+
+        ob_start();
+        $this->render_pagination_html($result, $args['status'], $args['search']);
+        $pagination_html = ob_get_clean();
+
+        AIPS_Ajax_Response::success(array(
+            'items'           => $items,
+            'total'           => isset($result['total']) ? (int) $result['total'] : 0,
+            'page'            => (int) $args['page'],
+            'per_page'        => (int) $args['per_page'],
+            'pagination_html' => $pagination_html,
+            'stats'           => $this->get_stats(),
+        ));
+    }
+
+    /**
+     * AJAX handler to retrieve child history items for a parent operation.
+     *
+     * @return void
+     */
+    public function ajax_get_operation_children() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+
+        if (!$history_id) {
+            AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
+        }
+
+        $children = $this->repository->get_children($history_id);
+
+        $items = array();
+        foreach ($children as $child) {
+            $duration_seconds = null;
+            if (!empty($child->created_at) && !empty($child->completed_at)) {
+                $start = (int) $child->created_at;
+                $end   = (int) $child->completed_at;
+                if ($start > 0 && $end >= $start) {
+                    $duration_seconds = $end - $start;
+                }
+            }
+
+            $post_url = null;
+            if (!empty($child->post_id)) {
+                $raw_url = get_permalink((int) $child->post_id);
+                if ($raw_url) {
+                    $post_url = esc_url_raw($raw_url);
+                }
+            }
+
+            $items[] = array(
+                'id'               => (int) $child->id,
+                'parent_id'        => isset($child->parent_id) ? (int) $child->parent_id : 0,
+                'status'           => $child->status,
+                'generated_title'  => $child->generated_title,
+                'creation_method'  => isset($child->creation_method) ? $child->creation_method : '',
+                'template_name'    => isset($child->template_name) ? $child->template_name : '',
+                'created_at'       => $child->created_at,
+                'completed_at'     => $child->completed_at,
+                'error_message'    => $child->error_message,
+                'post_id'          => $child->post_id ? (int) $child->post_id : null,
+                'post_url'         => $post_url,
+                'duration_seconds' => $duration_seconds,
+            );
+        }
+
+        AIPS_Ajax_Response::success(array('children' => $items));
     }
 }

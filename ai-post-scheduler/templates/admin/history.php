@@ -39,6 +39,26 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <div class="aips-filter-left">
+                    <!-- View Mode Toggle -->
+                    <div class="aips-view-mode-toggle">
+                        <button type="button" class="aips-view-mode-btn aips-btn aips-btn-sm aips-btn-primary" data-view-mode="operations">
+                            <span class="dashicons dashicons-list-view"></span>
+                            <?php esc_html_e( 'Operations View', 'ai-post-scheduler' ); ?>
+                        </button>
+                        <button type="button" class="aips-view-mode-btn aips-btn aips-btn-sm aips-btn-secondary" data-view-mode="all">
+                            <span class="dashicons dashicons-editor-ul"></span>
+                            <?php esc_html_e( 'All Items', 'ai-post-scheduler' ); ?>
+                        </button>
+                    </div>
+                    <!-- Operation Type filter (operations view only) -->
+                    <select id="aips-filter-operation-type" class="aips-form-select" style="display:none;">
+                        <option value=""><?php esc_html_e( 'All Operation Types', 'ai-post-scheduler' ); ?></option>
+                        <?php foreach ( AIPS_History_Operation_Type::get_all_types() as $type_key => $type_label ) : ?>
+                            <option value="<?php echo esc_attr( $type_key ); ?>">
+                                <?php echo esc_html( $type_label ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                     <select id="aips-filter-status" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
@@ -124,6 +144,29 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <?php endif; ?>
                     </tbody>
 
+                </table>
+
+                <!-- Operations View Table (hierarchical) -->
+                <table class="aips-table aips-history-table aips-history-operations-table" id="aips-history-operations-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th class="aips-col-toggle" style="width:28px;"></th>
+                            <th class="aips-col-operation"><?php esc_html_e( 'Operation', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-children"><?php esc_html_e( 'Children', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-status"><?php esc_html_e( 'Status', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-trigger"><?php esc_html_e( 'Triggered', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-date"><?php esc_html_e( 'Date', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-duration"><?php esc_html_e( 'Duration', 'ai-post-scheduler' ); ?></th>
+                            <th class="aips-col-actions"><?php esc_html_e( 'Actions', 'ai-post-scheduler' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="aips-history-operations-tbody">
+                        <tr>
+                            <td colspan="8" style="text-align:center;padding:20px;">
+                                <?php esc_html_e( 'Loading operations…', 'ai-post-scheduler' ); ?>
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
 
                 <!-- No Search Results State (client-side live filter) -->
@@ -294,4 +337,77 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <!-- Template: summary row for duration display -->
 <script type="text/html" id="aips-tmpl-history-summary-duration-row">
 	<tr><th>{{label}}</th><td>{{value}}</td></tr>
+</script>
+
+<!-- Template: operations view parent row; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-parent-row">
+	<tr class="aips-history-parent-row aips-history-status-{{status}}" data-id="{{id}}" data-expanded="0">
+		<td class="aips-col-toggle">{{toggleBtn}}</td>
+		<td class="aips-col-operation"><strong>{{operationLabel}}</strong></td>
+		<td class="aips-col-children">{{childrenText}}</td>
+		<td class="aips-col-status"><span class="aips-status-badge aips-status-{{status}}">{{statusLabel}}</span></td>
+		<td class="aips-col-trigger">{{triggerLabel}}</td>
+		<td class="aips-col-date">{{date}}</td>
+		<td class="aips-col-duration">{{duration}}</td>
+		<td class="aips-col-actions"><button class="button-link aips-view-history-logs" data-history-id="{{id}}">View</button></td>
+	</tr>
+</script>
+
+<!-- Template: operations view child row; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-child-row">
+	<tr class="aips-history-child-row aips-history-status-{{status}}" data-parent-id="{{parentId}}" style="display:none;">
+		<td class="aips-col-toggle"></td>
+		<td class="aips-col-operation aips-cell-indent">{{title}}</td>
+		<td class="aips-col-children">—</td>
+		<td class="aips-col-status"><span class="aips-status-badge aips-status-{{status}}">{{statusLabel}}</span></td>
+		<td class="aips-col-trigger">—</td>
+		<td class="aips-col-date">—</td>
+		<td class="aips-col-duration">{{duration}}</td>
+		<td class="aips-col-actions">
+			<button class="button-link aips-view-history-logs" data-history-id="{{id}}">View</button>
+			{{postLink}}
+		</td>
+	</tr>
+</script>
+
+<!-- Template: operations view loading placeholder -->
+<script type="text/html" id="aips-tmpl-history-operations-loading">
+	<tr><td colspan="8" style="text-align:center;padding:20px;">{{text}}</td></tr>
+</script>
+
+<!-- Template: operations view empty state -->
+<script type="text/html" id="aips-tmpl-history-operations-empty">
+	<tr><td colspan="8" style="text-align:center;padding:40px;">{{message}}</td></tr>
+</script>
+
+<!-- Template: modal tab bar for history details; use renderRaw() -->
+<script type="text/html" id="aips-tmpl-history-modal-tabs">
+	<div class="aips-history-modal-tabs">
+		<button type="button" class="aips-history-tab-btn aips-history-tab-btn--active" data-tab="summary">{{summaryLabel}}</button>
+		<button type="button" class="aips-history-tab-btn" data-tab="logs">{{logsLabel}}</button>
+	</div>
+	<div id="aips-history-tab-summary" class="aips-history-tab-panel"></div>
+	<div id="aips-history-tab-logs" class="aips-history-tab-panel" style="display:none;"></div>
+</script>
+
+<!-- Template: child summary stat cards for parent operations -->
+<script type="text/html" id="aips-tmpl-history-summary-cards">
+	<div class="aips-history-summary-cards">
+		<div class="aips-history-summary-card">
+			<span class="aips-history-summary-card__value">{{total}}</span>
+			<span class="aips-history-summary-card__label">{{totalLabel}}</span>
+		</div>
+		<div class="aips-history-summary-card aips-history-summary-card--success">
+			<span class="aips-history-summary-card__value">{{completed}}</span>
+			<span class="aips-history-summary-card__label">{{completedLabel}}</span>
+		</div>
+		<div class="aips-history-summary-card aips-history-summary-card--error">
+			<span class="aips-history-summary-card__value">{{failed}}</span>
+			<span class="aips-history-summary-card__label">{{failedLabel}}</span>
+		</div>
+		<div class="aips-history-summary-card aips-history-summary-card--processing">
+			<span class="aips-history-summary-card__value">{{processing}}</span>
+			<span class="aips-history-summary-card__label">{{processingLabel}}</span>
+		</div>
+	</div>
 </script>
