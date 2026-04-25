@@ -66,6 +66,11 @@ class AIPS_Schedule_Processor {
     private $result_handler;
 
     /**
+     * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
+     */
+    private $batch_queue_service;
+
+    /**
      * Constructor.
      *
      * @param AIPS_Schedule_Repository_Interface|null $repository
@@ -117,6 +122,393 @@ class AIPS_Schedule_Processor {
 
     public function set_runner($runner) {
         $this->runner = $runner;
+    }
+
+    /**
+     * Set a custom batch queue service (for testing / dependency injection).
+     *
+     * @param AIPS_Batch_Queue_Service $service
+     */
+    public function set_batch_queue_service(AIPS_Batch_Queue_Service $service) {
+        $this->batch_queue_service = $service;
+    }
+
+    /**
+     * Lazy-load the batch queue service.
+     *
+     * @return AIPS_Batch_Queue_Service
+     */
+    private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
+        if ($this->batch_queue_service === null) {
+            $this->batch_queue_service = new AIPS_Batch_Queue_Service();
+        }
+        return $this->batch_queue_service;
+    }
+
+    /**
+     * Process a specific slice of posts for a scheduled batch job.
+     *
+     * Called by the aips_process_schedule_batch cron hook for each individual
+     * batch segment dispatched by the large-batch queue system.
+     *
+     * Each slice knows its own position within the overall batch via
+     * $start_index and $total_quantity; it does not rely on the batch_progress
+     * resume cursor used by the normal (non-batch-queue) synchronous path.
+     *
+     * @param int    $schedule_id    Schedule ID.
+     * @param int    $start_index    Zero-based index of the first post in this slice.
+     * @param int    $batch_size     Number of posts to generate in this slice.
+     * @param int    $total_quantity Total posts the schedule should generate overall.
+     * @param string $correlation_id Correlation ID for tracing (may be empty string).
+     * @return void
+     */
+    public function process_batch_slice(
+        int $schedule_id,
+        int $start_index,
+        int $batch_size,
+        int $total_quantity,
+        string $correlation_id = ''
+    ): void {
+        if ($correlation_id !== '') {
+            AIPS_Correlation_ID::set($correlation_id);
+        } else {
+            AIPS_Correlation_ID::generate();
+        }
+
+        try {
+            $this->do_process_batch_slice($schedule_id, $start_index, $batch_size, $total_quantity);
+        } finally {
+            AIPS_Correlation_ID::reset();
+        }
+    }
+
+    /**
+     * Internal implementation of process_batch_slice.
+     *
+     * @param int $schedule_id
+     * @param int $start_index
+     * @param int $batch_size
+     * @param int $total_quantity
+     */
+    private function do_process_batch_slice(
+        int $schedule_id,
+        int $start_index,
+        int $batch_size,
+        int $total_quantity
+    ): void {
+        $this->logger->log(
+            sprintf(
+                'Batch slice: schedule %d, posts %d-%d of %d',
+                $schedule_id,
+                $start_index + 1,
+                min($start_index + $batch_size, $total_quantity),
+                $total_quantity
+            ),
+            'info'
+        );
+
+        $schedule = $this->repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            $this->logger->log('Batch slice: schedule ' . $schedule_id . ' not found — skipping.', 'error');
+            return;
+        }
+
+        $current_run_state = $this->get_decoded_run_state($schedule);
+        if ($this->should_skip_batch_slice($schedule_id, $current_run_state)) {
+            return;
+        }
+
+        // Guard: respect deactivation that may have happened after the batch was dispatched.
+        if (isset($schedule->is_active) && !(bool) $schedule->is_active) {
+            $this->logger->log('Batch slice: schedule ' . $schedule_id . ' is inactive — skipping.', 'info');
+            return;
+        }
+
+        $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
+
+        if (!$actual_template_model) {
+            $this->logger->log('Batch slice: template not found for schedule ' . $schedule_id . ' — skipping.', 'error');
+            return;
+        }
+
+        // Select article structure (honours rotation_pattern set on the schedule).
+        $schedule_obj = (object) array_merge((array) $actual_template_model, (array) $schedule);
+        $schedule_obj->schedule_id = $schedule->id;
+        $schedule_obj->name        = $actual_template_model->name;
+
+        $article_structure_id = $this->template_type_selector->select_structure($schedule_obj);
+
+        // Build the typed generator-facing template entry for this batch slice.
+        $template = AIPS_Template_Entry::from_template_and_overrides(
+            (int) $schedule->template_id,
+            $actual_template_model,
+            $total_quantity,
+            $article_structure_id
+        );
+
+        $topic   = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
+        $context = new AIPS_Template_Context($template, null, $topic, 'scheduled');
+
+        // Load (or create) the schedule's persistent lifecycle history container.
+        $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
+
+        $this->repository->update_run_state($schedule_id, array(
+            'status'         => 'batch_processing',
+            'total'          => $total_quantity,
+            'completed'      => max(0, $start_index),
+            'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
+            'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+            'timestamp'      => AIPS_DateTime::now()->toIso8601(),
+        ));
+
+        $successful_post_ids = array();
+        $errors              = array();
+
+        for ($i = 0; $i < $batch_size; $i++) {
+            $result = $this->generator->generate_post($context);
+
+            if (is_wp_error($result)) {
+                $errors[] = $result;
+                $this->logger->log(
+                    sprintf(
+                        'Batch slice error at post %d for schedule %d: %s',
+                        $start_index + $i + 1,
+                        $schedule_id,
+                        $result->get_error_message()
+                    ),
+                    'error'
+                );
+                break;
+            }
+
+            $successful_post_ids[] = $result;
+
+            // Persist incremental progress so a crash mid-slice is visible.
+            // At this point count($successful_post_ids) >= 1, so last_index is always >= 0.
+            $completed_so_far = $start_index + count($successful_post_ids);
+            $this->repository->update_batch_progress(
+                $schedule_id,
+                $completed_so_far,
+                $total_quantity,
+                $completed_so_far - 1,
+                $successful_post_ids
+            );
+        }
+
+        $completed_in_slice = count($successful_post_ids);
+        $total_completed    = $start_index + $completed_in_slice;
+        $all_done           = empty($errors) && ($total_completed >= $total_quantity);
+
+        // Update run_state to reflect this slice's outcome.
+        if (!empty($errors)) {
+            $this->repository->update_run_state($schedule_id, array(
+                'status'        => $total_completed > 0 ? 'partial' : 'failed',
+                'error_code'    => $errors[0]->get_error_code(),
+                'error_message' => $errors[0]->get_error_message(),
+                'completed'     => $total_completed,
+                'total'         => $total_quantity,
+                'dispatched_at' => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : 0,
+                'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                'timestamp'     => AIPS_DateTime::now()->toIso8601(),
+            ));
+            $this->logger->log(
+                sprintf(
+                    'Batch slice marked schedule %d as %s after error at slice start=%d. completed=%d/%d, error=%s',
+                    $schedule_id,
+                    $total_completed > 0 ? 'partial' : 'failed',
+                    $start_index,
+                    $total_completed,
+                    $total_quantity,
+                    $errors[0]->get_error_message()
+                ),
+                'warning'
+            );
+        } elseif ($all_done) {
+            $latest_schedule  = $this->repository->get_by_id($schedule_id);
+            $latest_run_state = $latest_schedule ? $this->get_decoded_run_state($latest_schedule) : array();
+
+            if (isset($latest_run_state['status']) && in_array($latest_run_state['status'], array('partial', 'failed'), true)) {
+                $this->logger->log(
+                    sprintf(
+                        'Batch slice finalization skipped success for schedule %d because run_state is already terminal (%s).',
+                        $schedule_id,
+                        (string) $latest_run_state['status']
+                    ),
+                    'warning'
+                );
+                return;
+            }
+
+            $this->repository->clear_batch_progress($schedule_id);
+            $this->repository->update_run_state($schedule_id, array(
+                'status'         => 'success',
+                'completed'      => $total_completed,
+                'total'          => $total_quantity,
+                'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : 0,
+                'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                'timestamp'      => AIPS_DateTime::now()->toIso8601(),
+            ));
+
+            // Clean up one-time schedules now that all posts have been generated.
+            if (isset($schedule->frequency) && $schedule->frequency === 'once') {
+                $this->repository->delete($schedule_id);
+                $this->logger->log('Batch-queued one-time schedule completed and deleted: ' . $schedule_id, 'info');
+            } else {
+                $this->repository->update_last_run($schedule_id, AIPS_DateTime::now()->timestamp());
+            }
+
+            $this->logger->log(
+                sprintf(
+                    'Batch queue completed schedule %d successfully with %d/%d posts generated.',
+                    $schedule_id,
+                    $total_completed,
+                    $total_quantity
+                ),
+                'info'
+            );
+
+            do_action('aips_schedule_execution_completed', $schedule_id, $successful_post_ids, $schedule_obj);
+        }
+
+        // History logging.
+        if ($history) {
+            if (!empty($errors)) {
+                $history->record(
+                    'warning',
+                    sprintf(
+                        /* translators: 1: 1-based slice start position, 2: total posts, 3: error message */
+                        __('Batch slice starting at post %1$d/%2$d failed: %3$s', 'ai-post-scheduler'),
+                        $start_index + 1,
+                        $total_quantity,
+                        $errors[0]->get_error_message()
+                    ),
+                    array(
+                        'event_type'   => 'batch_slice_failed',
+                        'event_status' => 'failed',
+                    ),
+                    null,
+                    array(
+                        'schedule_id'  => $schedule_id,
+                        'start_index'  => $start_index,
+                        'batch_size'   => $batch_size,
+                        'completed'    => $completed_in_slice,
+                        'total'        => $total_quantity,
+                    )
+                );
+            } else {
+                $history->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: 1-based slice start, 2: 1-based slice end, 3: overall total */
+                        __('Batch slice completed: posts %1$d–%2$d of %3$d generated.', 'ai-post-scheduler'),
+                        $start_index + 1,
+                        $total_completed,
+                        $total_quantity
+                    ),
+                    array(
+                        'event_type'   => 'batch_slice_completed',
+                        'event_status' => 'success',
+                    ),
+                    null,
+                    array(
+                        'schedule_id'  => $schedule_id,
+                        'start_index'  => $start_index,
+                        'batch_size'   => $batch_size,
+                        'completed'    => $total_completed,
+                        'total'        => $total_quantity,
+                        'post_ids'     => $successful_post_ids,
+                    )
+                );
+            }
+        }
+    }
+
+
+    /**
+     * Determine whether a new batch queue dispatch should be skipped.
+     *
+     * Returns true when a batch queue was recently dispatched for this schedule
+     * and the time since dispatch is still within the window plus a grace period.
+     * This prevents the hourly cron worker from re-dispatching while the
+     * previously scheduled batch events are still in flight.
+     *
+     * @param object                   $schedule      Schedule row (expects run_state, schedule_id).
+     * @param AIPS_Batch_Queue_Service $batch_service The batch queue service instance.
+     * @return bool True when re-dispatch should be skipped.
+     */
+    private function should_skip_batch_redispatch(object $schedule, AIPS_Batch_Queue_Service $batch_service): bool {
+        if (empty($schedule->run_state)) {
+            return false;
+        }
+
+        $existing_state = json_decode($schedule->run_state, true);
+
+        if (
+            !is_array($existing_state) ||
+            !isset($existing_state['status'], $existing_state['dispatched_at']) ||
+            $existing_state['status'] !== 'batch_queued'
+        ) {
+            return false;
+        }
+
+        // Retrieve the configured window once to avoid duplicate filter calls.
+        $window = $batch_service->get_window_seconds();
+        $age    = AIPS_DateTime::now()->timestamp() - (int) $existing_state['dispatched_at'];
+
+        // Allow a grace period beyond the declared window before allowing re-dispatch.
+        if ($age >= ($window + AIPS_Batch_Queue_Service::REDISPATCH_GRACE_SECONDS)) {
+            return false;
+        }
+
+        $this->logger->log(
+            'Batch queue already pending for schedule ' . $schedule->schedule_id . '; skipping re-dispatch. age=' . $age . 's window=' . $window . 's',
+            'info'
+        );
+        return true;
+    }
+
+    /**
+     * Decode the JSON run_state payload into an array.
+     *
+     * @param object $schedule Schedule row.
+     * @return array
+     */
+    private function get_decoded_run_state(object $schedule): array {
+        if (empty($schedule->run_state)) {
+            return array();
+        }
+
+        $decoded = json_decode($schedule->run_state, true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    /**
+     * Determine whether a batch slice should be skipped because the run already
+     * reached a terminal state.
+     *
+     * @param int   $schedule_id Schedule ID.
+     * @param array $run_state Decoded run_state payload.
+     * @return bool
+     */
+    private function should_skip_batch_slice(int $schedule_id, array $run_state): bool {
+        if (empty($run_state['status'])) {
+            return false;
+        }
+
+        if (in_array($run_state['status'], array('partial', 'failed', 'success'), true)) {
+            $this->logger->log(
+                sprintf(
+                    'Batch slice: skipping schedule %d because run_state is already terminal (%s).',
+                    $schedule_id,
+                    (string) $run_state['status']
+                ),
+                'warning'
+            );
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -213,28 +605,33 @@ class AIPS_Schedule_Processor {
                 }
 
                 // Update next_run immediately to lock this schedule from concurrent runs.
-                $lock_result = $this->repository->update($schedule->schedule_id, array(
-                    'next_run' => $new_next_run
-                ));
+                $lock_result = $this->repository->claim_due_schedule(
+                    (int) $schedule->schedule_id,
+                    (int) $original_next_run,
+                    (int) $new_next_run
+                );
 
                 if ($lock_result === false) {
-                    $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                    do_action('aips_scheduler_error', array(
-                        'schedule_id'     => $schedule->schedule_id,
-                        'template_id'     => $schedule->template_id,
-                        'schedule_name'   => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
-                        'error_code'      => 'lock_acquisition_failed',
-                        'error_message'   => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
-                        'frequency'       => $schedule->frequency,
-                        'creation_method' => 'scheduled',
-                        'correlation_id'  => AIPS_Correlation_ID::get(),
-                        'url'             => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-                        'dedupe_key'      => 'scheduler_lock_' . absint($schedule->schedule_id),
-                        'dedupe_window'   => 900,
-                    ));
-                    // Early return; the runner's finally block will reset the correlation ID.
+                    $this->logger->log(
+                        'Schedule ' . $schedule->schedule_id . ' was already claimed by another worker; skipping duplicate execution.',
+                        'info',
+                        array(
+                            'expected_next_run' => (int) $original_next_run,
+                            'attempted_next_run' => (int) $new_next_run,
+                        )
+                    );
                     return;
                 }
+
+                $this->logger->log(
+                    'Claimed schedule ' . $schedule->schedule_id . ' for execution.',
+                    'info',
+                    array(
+                        'expected_next_run' => (int) $original_next_run,
+                        'new_next_run' => (int) $new_next_run,
+                        'frequency' => $schedule->frequency,
+                    )
+                );
 
                 $this->execute_schedule_logic($schedule, false);
             },
@@ -336,26 +733,138 @@ class AIPS_Schedule_Processor {
             }
         }
 
-        // Construct Template Object for Generator
-        // The generator expects an object with specific properties
-        $template = (object) array(
-            'id' => $schedule->template_id,
-            'name' => $schedule->name,
-            'prompt_template' => isset($schedule->prompt_template) ? $schedule->prompt_template : '',
-            'title_prompt' => isset($schedule->title_prompt) ? $schedule->title_prompt : '',
-            'post_status' => isset($schedule->post_status) ? $schedule->post_status : 'draft',
-            'post_category' => isset($schedule->post_category) ? $schedule->post_category : null,
-            'post_tags' => isset($schedule->post_tags) ? $schedule->post_tags : '',
-            'post_author' => isset($schedule->post_author) ? $schedule->post_author : null,
-            'post_quantity' => $post_quantity,
-            'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
-            'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
-            'article_structure_id' => $article_structure_id,
-        );
+        // ── Large-batch queue dispatch ──────────────────────────────────────────
+        // When the requested quantity meets the large-batch threshold, dispatch
+        // the work as a set of time-spread single cron events rather than
+        // generating all posts synchronously here.  This applies to both
+        // automated (cron) and manual runs.
+        $batch_service = $this->get_batch_queue_service();
+        if ($batch_service->needs_batch_queue($post_quantity)) {
+            if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
+                return;
+            }
 
-        // Allow schedule to override certain template properties if they exist in schedule object (from join)
-        // Currently the schedule table doesn't have post_status etc override columns, but if it did, they would be in $schedule
-        // The only override is 'topic'
+            $now            = AIPS_DateTime::now()->timestamp();
+            $correlation_id = (string) AIPS_Correlation_ID::get();
+
+            $dispatch_summary = $batch_service->dispatch(
+                (int) $schedule->schedule_id,
+                $post_quantity,
+                $now,
+                $correlation_id
+            );
+
+            if (is_wp_error($dispatch_summary)) {
+                $this->repository->update_run_state($schedule->schedule_id, array(
+                    'status'         => 'failed',
+                    'error_code'     => $dispatch_summary->get_error_code(),
+                    'error_message'  => $dispatch_summary->get_error_message(),
+                    'completed'      => 0,
+                    'total'          => $post_quantity,
+                    'correlation_id' => $correlation_id,
+                    'timestamp'      => AIPS_DateTime::now()->toIso8601(),
+                ));
+
+                $this->logger->log(
+                    'Batch queue dispatch failed for schedule ' . $schedule->schedule_id . ': ' . $dispatch_summary->get_error_message(),
+                    'error'
+                );
+
+                if ($history) {
+                    $history->record(
+                        'warning',
+                        $dispatch_summary->get_error_message(),
+                        array(
+                            'event_type'   => 'batch_queue_dispatch_failed',
+                            'event_status' => 'failed',
+                        ),
+                        null,
+                        array(
+                            'schedule_id'   => $schedule->schedule_id,
+                            'post_quantity' => $post_quantity,
+                            'error_code'    => $dispatch_summary->get_error_code(),
+                        )
+                    );
+                }
+
+                if ($is_manual) {
+                    return $dispatch_summary;
+                }
+
+                $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary);
+                $this->result_handler->handle_execution_failure($schedule, $dispatch_summary, $history, false);
+                return;
+            }
+
+            // Persist batch-queued state so the re-dispatch guard above fires
+            // if the cron fires again (or the user clicks "Run now" again)
+            // while the batched events are still in flight.
+            $this->repository->update_run_state($schedule->schedule_id, array(
+                'status'            => 'batch_queued',
+                'total'             => $post_quantity,
+                'completed'         => 0,
+                'num_batches'       => $dispatch_summary['num_batches'],
+                'scheduled_batches' => $dispatch_summary['scheduled_batches'],
+                'dispatched_at'     => $now,
+                'correlation_id'    => $correlation_id,
+                'timestamp'         => AIPS_DateTime::now()->toIso8601(),
+            ));
+
+            $this->logger->log(
+                sprintf(
+                    'Dispatched batch queue for schedule %d: requested_batches=%d scheduled_batches=%d posts_per_batch=%d window=%ds correlation=%s',
+                    (int) $schedule->schedule_id,
+                    (int) $dispatch_summary['num_batches'],
+                    (int) $dispatch_summary['scheduled_batches'],
+                    (int) $dispatch_summary['posts_per_batch'],
+                    (int) $dispatch_summary['window_seconds'],
+                    (string) $correlation_id
+                ),
+                'info'
+            );
+
+            if ($history) {
+                $history->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: number of batch jobs, 2: total posts, 3: spread window in seconds */
+                        __('Large batch detected (%2$d posts): dispatched %1$d batch jobs spread across %3$d seconds.', 'ai-post-scheduler'),
+                        $dispatch_summary['num_batches'],
+                        $post_quantity,
+                        $dispatch_summary['window_seconds']
+                    ),
+                    array(
+                        'event_type'   => 'batch_queue_dispatched',
+                        'event_status' => 'success',
+                    ),
+                    null,
+                    array(
+                        'schedule_id'     => $schedule->schedule_id,
+                        'post_quantity'   => $post_quantity,
+                        'num_batches'     => $dispatch_summary['num_batches'],
+                        'scheduled_batches' => $dispatch_summary['scheduled_batches'],
+                        'posts_per_batch' => $dispatch_summary['posts_per_batch'],
+                        'window_seconds'  => $dispatch_summary['window_seconds'],
+                        'correlation_id'  => $correlation_id,
+                    )
+                );
+            }
+
+            // Return early — the result_handler is NOT called for the dispatch path.
+            // Automated runs: next_run was already advanced by claim-first locking
+            // in execute_schedule_with_lock before this method was invoked.
+            // Manual runs: next_run is not modified; the batch events handle generation.
+            return;
+        }
+        // ── End large-batch check ─────────────────────────────────────────────
+
+        // Build the typed generator-facing template entry for this execution.
+        $template = AIPS_Template_Entry::from_template_and_overrides(
+            (int) $schedule->template_id,
+            $schedule,
+            $post_quantity,
+            $article_structure_id
+        );
 
         $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
