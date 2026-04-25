@@ -34,6 +34,10 @@ class AIPS_Upgrades {
             $this->migrate_to_2_4_1();
         }
 
+        if (version_compare($from_version, '2.4.2', '<')) {
+            $this->migrate_to_2_4_2();
+        }
+
         if (version_compare($from_version, '2.5.0', '<')) {
             $this->migrate_to_2_5_0();
         }
@@ -237,6 +241,47 @@ class AIPS_Upgrades {
             $wpdb->query( "ALTER TABLE `{$table}` ADD KEY num_used (num_used)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         }
     }
+
+    /**
+     * Migration for version 2.4.2.
+     *
+     * Adds the aips_ai_assistance table for storing AI field suggestion history.
+     * The actual table creation is handled by dbDelta in install_tables().
+     * This method exists for logging consistency.
+     */
+    private function migrate_to_2_4_2() {
+        global $wpdb;
+        
+        $this->logger->log( 'Running migration to 2.4.2: AI Assistance table will be created by dbDelta.', 'info' );
+        
+        // Extend varchar columns for AI-generated suggestions
+        // voice_tone and writing_style were varchar(100) but AI suggestions can be longer
+        $table = $wpdb->prefix . 'aips_authors';
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        
+        if ( $table_exists === $table ) {
+            // Check if columns need to be extended
+            $columns_to_check = array(
+                'voice_tone'     => 500,
+                'writing_style'  => 500,
+            );
+            
+            foreach ( $columns_to_check as $column_name => $new_length ) {
+                $column_info = $wpdb->get_row( $wpdb->prepare(
+                    "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                    $column_name
+                ) );
+                
+                if ( $column_info && strpos( $column_info->Type, "varchar({$new_length})" ) === false ) {
+                    // Column exists but is not the correct length, alter it
+                    $wpdb->query( "ALTER TABLE `{$table}` MODIFY COLUMN `{$column_name}` varchar({$new_length}) DEFAULT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                    $this->logger->log( "Extended {$column_name} to varchar({$new_length}) in {$table}", 'info' );
+                }
+            }
+        }
+    }
+
+
     
     /**
      * Migration for version 2.5.0.
@@ -331,5 +376,7 @@ class AIPS_Upgrades {
         // 4. Rename temp column to the original name.
         $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
     }
+
+
 }
 ?>

@@ -27,6 +27,7 @@ class AIPS_DB_Manager {
         'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
+        'aips_ai_assistance',
         'aips_bulk_batch_jobs',
     );
 
@@ -83,6 +84,7 @@ class AIPS_DB_Manager {
         $table_internal_links       = $tables['aips_internal_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
 
         $sql = array();
@@ -260,8 +262,8 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             generate_featured_image tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
-            voice_tone varchar(100) DEFAULT NULL,
-            writing_style varchar(100) DEFAULT NULL,
+            voice_tone varchar(500) DEFAULT NULL,
+            writing_style varchar(500) DEFAULT NULL,
             target_audience varchar(500) DEFAULT NULL,
             expertise_level varchar(50) DEFAULT NULL,
             content_goals text DEFAULT NULL,
@@ -497,6 +499,23 @@ class AIPS_DB_Manager {
             KEY inserted_at (inserted_at)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_ai_assistance (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            session_id varchar(64) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            form_context varchar(100) NOT NULL,
+            field_key varchar(100) NOT NULL,
+            request_object longtext NOT NULL,
+            prompt text NOT NULL,
+            response longtext NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY session_id (session_id),
+            KEY form_context_field (form_context, field_key),
+            KEY user_id (user_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+      
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,
