@@ -99,6 +99,19 @@ class AIPS_Author_Topics_Generator {
 		$feedback_guidance = $this->build_feedback_guidance_section($author);
 
 		$prompt = $this->prompt_builder->build($author, $approved_topics, $rejected_topics, $feedback_guidance);
+
+		/**
+		 * Filter the prompt used for author topic generation before sending to AI.
+		 *
+		 * @since 1.8.0
+		 *
+		 * @param string $prompt            The built prompt string.
+		 * @param object $author            The author object.
+		 * @param array  $approved_topics   Summary array of approved topics.
+		 * @param array  $rejected_topics   Summary array of rejected topics.
+		 * @param string $feedback_guidance Additional qualitative feedback text.
+		 */
+		$prompt = apply_filters('aips_author_topics_prompt', $prompt, $author, $approved_topics, $rejected_topics, $feedback_guidance);
 		
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
