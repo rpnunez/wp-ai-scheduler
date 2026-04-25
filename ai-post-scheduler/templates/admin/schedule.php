@@ -236,7 +236,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
-						data-schedule-id="<?php echo esc_attr($sched['id']); ?>">
+						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
+						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
+						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
 								class="aips-unified-checkbox"
@@ -331,6 +337,9 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
+									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+									data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+									data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
 									data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
 									data-is-active="<?php echo esc_attr($is_active); ?>">
 									<span class="dashicons dashicons-edit"></span>
