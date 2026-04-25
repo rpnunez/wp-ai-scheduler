@@ -1037,9 +1037,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return 0;
         }
 
-        $ids_sql = implode(',', $ids);
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
 
-        $result = $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
+        $query = $this->wpdb->prepare(
+            "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
+            $ids
+        );
+
+        $result = $this->wpdb->query($query);
 
         if ($result !== false) {
             delete_transient('aips_history_stats');

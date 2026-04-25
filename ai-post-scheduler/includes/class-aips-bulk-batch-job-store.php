@@ -204,6 +204,31 @@ class AIPS_Bulk_Batch_Job_Store {
 	}
 
 	/**
+	 * Transition a job from pending to processing.
+	 *
+	 * Safe to call from every slice; only the first pending slice actually
+	 * changes the row and later slices simply observe the existing state.
+	 *
+	 * @param string $job_id UUID of the job to start.
+	 * @return bool True on success, false on DB failure.
+	 */
+	public function start_processing( string $job_id ): bool {
+		global $wpdb;
+
+		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				self::STATUS_PROCESSING,
+				time(),
+				$job_id,
+				self::STATUS_PENDING
+			)
+		);
+
+		return $result !== false;
+	}
+
+	/**
 	 * Update a job's status and optionally its processed count.
 	 *
 	 * @param string   $job_id    UUID of the job to update.

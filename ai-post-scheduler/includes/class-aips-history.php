@@ -96,7 +96,7 @@ class AIPS_History {
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(__('Permission denied.', 'ai-post-scheduler'));
+            AIPS_Ajax_Response::permission_denied();
         }
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
@@ -119,7 +119,7 @@ class AIPS_History {
 
         $output = fopen('php://output', 'w');
         if ($output === false) {
-            wp_die(__('Failed to open output stream for CSV export.', 'ai-post-scheduler'));
+            AIPS_Ajax_Response::error(__('Failed to open output stream for CSV export.', 'ai-post-scheduler'));
         }
 
         if (!headers_sent()) {
