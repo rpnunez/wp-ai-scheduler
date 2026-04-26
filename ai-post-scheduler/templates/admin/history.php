@@ -9,8 +9,19 @@ $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['pa
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
-$items       = isset($history['items']) ? $history['items'] : array();
-$total_items = isset($history['total']) ? (int) $history['total'] : 0;
+if (isset($history) && is_object($history)) {
+    if (method_exists($history, 'get_history')) {
+        $history = $history->get_history(array(
+            'page'   => $current_page,
+            'status' => $status_filter,
+            'search' => $search_query,
+            'fields' => 'list',
+        ));
+    }
+}
+
+$items       = isset($history) && is_array($history) && isset($history['items']) ? $history['items'] : array();
+$total_items = isset($history) && is_array($history) && isset($history['total']) ? (int) $history['total'] : 0;
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
