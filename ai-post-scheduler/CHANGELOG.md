@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Fixed
+- Fixed fatal error in `history.php` template when `$history` variable was passed as an `AIPS_History` object instead of an array.
+
 ## [2.4.1] - 2026-04-15
 ### Added
 - **Telemetry filters and richer request summaries**: the Telemetry admin page now supports AJAX filtering by request type, event category, request method, page slug search, and issue-only rows.
