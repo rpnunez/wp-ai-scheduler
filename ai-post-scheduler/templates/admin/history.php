@@ -9,8 +9,22 @@ $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['pa
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
-$items       = isset($history['items']) ? $history['items'] : array();
-$total_items = isset($history['total']) ? (int) $history['total'] : 0;
+$items       = array();
+$total_items = 0;
+
+if (is_object($history)) {
+    if ($history instanceof ArrayAccess) {
+        $items       = isset($history['items']) ? $history['items'] : array();
+        $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+    } elseif (method_exists($history, 'get_history')) {
+        $history_data = $history->get_history();
+        $items        = isset($history_data['items']) ? $history_data['items'] : array();
+        $total_items  = isset($history_data['total']) ? (int) $history_data['total'] : 0;
+    }
+} elseif (is_array($history)) {
+    $items       = isset($history['items']) ? $history['items'] : array();
+    $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+}
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
