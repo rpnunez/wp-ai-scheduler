@@ -263,3 +263,27 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2026-04-21 - AI Assistance Feature Implementation
+**Target Feature:** AI Field Assistance (Authors Form Pilot)
+**Improvement:** Added a reusable ✨ sparkle-button AI field-assist system to the Authors form. Each text/textarea field now has a button that, on click, calls the AI engine with a structured prompt and fills the field with the suggestion. A history icon appears after the first suggestion, opening a modal with session and all-time suggestion history.
+**Files Modified:**
+- ai-post-scheduler.php (version bump to 2.4.2)
+- includes/class-aips-db-manager.php (new aips_ai_assistance table)
+- includes/class-aips-upgrades.php (2.4.2 migration)
+- includes/class-aips-ajax-registry.php (registered new actions)
+- includes/class-aips-admin-assets.php (enqueued ai-assistance assets)
+- templates/admin/authors.php (added HTML templates and modal)
+**Files Created:**
+- includes/class-aips-ai-assistance-repository.php
+- includes/class-aips-ai-assistance-service.php
+- includes/class-aips-ai-assistance-controller.php
+- assets/js/ai-assistance.js
+- assets/css/ai-assistance.css
+**Outcome:** Authors can now get AI-generated suggestions for any author persona field directly within the form, dramatically reducing the cognitive load of creating detailed author profiles and improving the quality of AI-generated content.
+
+## 2026-04-21 - History Optimization
+**Target Feature:** History
+**Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
+**Files Modified:** ai-post-scheduler/assets/js/admin-history.js
+**Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+
