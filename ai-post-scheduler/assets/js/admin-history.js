@@ -34,6 +34,9 @@
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
 
+		/** @type {string} Current view mode: 'operations' or 'all' */
+		currentViewMode: 'operations',
+
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
 		/* ------------------------------------------------------------------ */
@@ -46,6 +49,7 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.switchViewMode('operations');
 		},
 
 		/**
@@ -106,6 +110,15 @@
 
 			// Export CSV.
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+
+			// View mode toggle (Operations / All Items).
+			$(document).on('click', '.aips-view-mode-btn', this.onViewModeClick.bind(this));
+
+			// Operation type filter (operations view).
+			$(document).on('change', '#aips-filter-operation-type', this.onOperationTypeFilter.bind(this));
+
+			// Expand/collapse child rows in operations view.
+			$(document).on('click', '#aips-history-operations-tbody .aips-toggle-children', this.onToggleChildren.bind(this));
 		},
 
 		/* ------------------------------------------------------------------ */
@@ -121,7 +134,7 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var historyId = $(e.currentTarget).data('id');
+			var historyId = $(e.currentTarget).data('id') || $(e.currentTarget).data('history-id');
 			if (!historyId) {
 				return;
 			}
@@ -374,13 +387,13 @@
 			if (container.created_at) {
 				rows += T.render('aips-tmpl-history-summary-row', {
 					label: aipsHistoryL10n.labelCreated || 'Created',
-					value: container.created_at
+					value: this.formatTimestamp(container.created_at)
 				});
 			}
 			if (container.completed_at) {
 				rows += T.render('aips-tmpl-history-summary-row', {
 					label: aipsHistoryL10n.labelCompleted || 'Completed',
-					value: container.completed_at
+					value: this.formatTimestamp(container.completed_at)
 				});
 			}
 
@@ -498,7 +511,7 @@
 				}
 
 				rowsHtml += T.renderRaw('aips-tmpl-history-log-row', {
-					timestamp:   T.escape(log.timestamp),
+					timestamp:   T.escape(self.formatTimestamp(log.timestamp)),
 					typeClass:   T.escape(typeClass),
 					typeLabel:   T.escape(log.type_label),
 					logType:     T.escape(log.log_type),
@@ -516,6 +529,20 @@
 			});
 
 			return html;
+		},
+
+		/**
+		 * Format a Unix timestamp for display.
+		 *
+		 * @param {number|string} timestamp
+		 * @return {string}
+		 */
+		formatTimestamp: function (timestamp) {
+			var ts = parseInt(timestamp, 10);
+			if (isNaN(ts) || ts <= 0) {
+				return '';
+			}
+			return new Date(ts * 1000).toLocaleString();
 		},
 
 		/**
@@ -852,6 +879,11 @@
 		reload: function (paged) {
 			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
 
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(paged);
+				return;
+			}
+
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
 			var $pagCell   = $('.aips-history-pagination-cell');
@@ -955,6 +987,10 @@
 			if (!page) {
 				return;
 			}
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(parseInt(page, 10));
+				return;
+			}
 			this.reload(parseInt(page, 10));
 		},
 
@@ -979,6 +1015,11 @@
 			url.searchParams.delete('paged');
 			window.history.pushState({}, '', url.toString());
 
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(1);
+				return;
+			}
+
 			this.reload(1);
 		},
 
@@ -997,7 +1038,11 @@
 			var lowerQuery = rawQuery.toLowerCase().trim();
 			var hasResults = false;
 
-			$('#aips-history-tbody tr').each(function () {
+			var $rows = this.currentViewMode === 'operations'
+				? $('#aips-history-operations-tbody tr')
+				: $('#aips-history-tbody tr');
+
+			$rows.each(function () {
 				if (!lowerQuery || $(this).text().toLowerCase().indexOf(lowerQuery) !== -1) {
 					$(this).show();
 					hasResults = true;
@@ -1028,6 +1073,11 @@
 				url.searchParams.delete('paged');
 				window.history.pushState({}, '', url.toString());
 
+				if (this.currentViewMode === 'operations') {
+					this.loadOperationsView(1);
+					return;
+				}
+
 				this.reload(1);
 			}
 		},
@@ -1045,7 +1095,13 @@
 			this.searchQuery = '';
 			this.syncSearchClearButton();
 			$('#aips-history-search-no-results').hide();
-			$('#aips-history-tbody tr').show();
+			$('#aips-history-tbody tr, #aips-history-operations-tbody tr').show();
+
+			if (this.currentViewMode === 'operations') {
+				this.loadOperationsView(1);
+				return;
+			}
+
 			this.reload(1);
 		},
 
@@ -1077,6 +1133,294 @@
 			$('body').append(form);
 			form.submit();
 			form.remove();
+		},
+
+		/* ------------------------------------------------------------------ */
+		/* Operations (hierarchical) view                                      */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Handle a view mode toggle button click.
+		 *
+		 * @param {Event} e
+		 */
+		onViewModeClick: function (e) {
+			e.preventDefault();
+			var mode = $(e.currentTarget).data('view-mode');
+			if (mode) {
+				this.switchViewMode(mode);
+			}
+		},
+
+		/**
+		 * Switch between 'operations' and 'all' views.
+		 *
+		 * @param {string} mode 'operations' or 'all'
+		 */
+		switchViewMode: function (mode) {
+			this.currentViewMode = mode;
+
+			var $opTable   = $('#aips-history-operations-table');
+			var $allTable  = $('.aips-history-table:not(#aips-history-operations-table)');
+			var $opFilter  = $('#aips-filter-operation-type');
+			var $allFilter = $('#aips-filter-status');
+
+			$('.aips-view-mode-btn').removeClass('aips-btn-primary').addClass('aips-btn-secondary');
+			$('.aips-view-mode-btn[data-view-mode="' + mode + '"]')
+				.removeClass('aips-btn-secondary').addClass('aips-btn-primary');
+
+			if (mode === 'operations') {
+				$opTable.show();
+				$allTable.hide();
+				$opFilter.show();
+				this.loadOperationsView(1);
+			} else {
+				$opTable.hide();
+				$allTable.show();
+				$opFilter.hide();
+				this.reload(1);
+			}
+		},
+
+		/**
+		 * Handle operation type filter changes (operations view).
+		 */
+		onOperationTypeFilter: function () {
+			this.loadOperationsView(1);
+		},
+
+		/**
+		 * Load top-level operation containers via AJAX into the operations tbody.
+		 *
+		 * @param {number} [paged=1]
+		 */
+		loadOperationsView: function (paged) {
+			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+
+			var self   = this;
+			var $tbody = $('#aips-history-operations-tbody');
+			var T      = AIPS.Templates;
+
+			$tbody.html(T.render('aips-tmpl-history-operations-loading', {
+				text: aipsHistoryL10n.loading || 'Loading\u2026'
+			}));
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action:         'aips_get_history_top_level',
+					nonce:          aipsAjax.nonce,
+					paged:          paged,
+					operation_type: $('#aips-filter-operation-type').val() || '',
+					status:         self.statusFilter,
+					search:         self.searchQuery
+				},
+				success: function (response) {
+					if (!response.success) {
+						$tbody.html(T.render('aips-tmpl-history-operations-empty', {
+							message: aipsHistoryL10n.noResultsFound || 'No operations found.'
+						}));
+						return;
+					}
+
+					var items = response.data.items;
+					if (!items || items.length === 0) {
+						$tbody.html(T.render('aips-tmpl-history-operations-empty', {
+							message: aipsHistoryL10n.noOperationsFound || 'No operations found.'
+						}));
+						return;
+					}
+
+					var html = '';
+					$.each(items, function (i, item) {
+						html += self.renderParentRow(item);
+					});
+					$tbody.html(html);
+
+					if (response.data.pagination_html !== undefined) {
+						$('.aips-history-pagination-cell').html(response.data.pagination_html);
+					}
+
+					if (response.data.stats) {
+						$('#aips-stat-total').text(response.data.stats.total);
+						$('#aips-stat-completed').text(response.data.stats.completed);
+						$('#aips-stat-failed').text(response.data.stats.failed);
+						$('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
+					}
+
+					var url = new URL(window.location.href);
+					if (paged > 1) {
+						url.searchParams.set('paged', paged);
+					} else {
+						url.searchParams.delete('paged');
+					}
+					window.history.replaceState({}, '', url.toString());
+				},
+				error: function () {
+					$tbody.html(T.render('aips-tmpl-history-operations-empty', {
+						message: aipsHistoryL10n.errorReloading || 'Failed to load operations.'
+					}));
+				}
+			});
+		},
+
+		/**
+		 * Render a parent (operation) row from template.
+		 *
+		 * @param  {Object} item
+		 * @return {string} HTML
+		 */
+		renderParentRow: function (item) {
+			var T     = AIPS.Templates;
+			var cs    = item.child_summary || {};
+			var total = cs.total || 0;
+
+			// Roll-up status.
+			var status      = item.status || 'processing';
+			var statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+			if (cs.failed_count > 0) {
+				status      = 'error';
+				statusLabel = aipsHistoryL10n.statusPartialError || 'Partial/Error';
+			} else if (status === 'completed') {
+				statusLabel = aipsHistoryL10n.statusCompleted || 'Completed';
+			} else if (status === 'processing') {
+				statusLabel = aipsHistoryL10n.statusProcessing || 'In Progress';
+			}
+
+			var toggleBtn = '';
+			if (total > 0) {
+				toggleBtn = '<button class="aips-toggle-children button-link" aria-label="Expand">'
+					+ '<span class="dashicons dashicons-arrow-right"></span></button>';
+			}
+
+			var childrenText = total > 0
+				? ((cs.completed_count || 0) + ' / ' + total)
+				: '\u2014';
+
+			var triggerLabel = item.trigger_name === 'cron'
+				? (aipsHistoryL10n.triggerScheduled || 'Scheduled')
+				: (aipsHistoryL10n.triggerManual || 'Manual');
+
+			var duration = '\u2014';
+			if (item.created_at && item.completed_at) {
+				var secs = parseInt(item.completed_at, 10) - parseInt(item.created_at, 10);
+				if (!isNaN(secs) && secs >= 0) {
+					duration = AIPS.DateTime ? AIPS.DateTime.formatDuration(secs) : (secs + 's');
+				}
+			}
+
+			var date = item.created_at
+				? this.formatTimestamp(item.created_at)
+				: '\u2014';
+
+			return T.renderRaw('aips-tmpl-history-parent-row', {
+				id:             T.escape(String(item.id)),
+				status:         T.escape(status),
+				operationLabel: T.escape(item.operation_label || item.creation_method || ''),
+				childrenText:   T.escape(childrenText),
+				statusLabel:    T.escape(statusLabel),
+				triggerLabel:   T.escape(triggerLabel),
+				date:           T.escape(date),
+				duration:       T.escape(duration),
+				toggleBtn:      toggleBtn
+			});
+		},
+
+		/**
+		 * Handle expand/collapse of child rows for a parent row.
+		 *
+		 * @param {Event} e
+		 */
+		onToggleChildren: function (e) {
+			e.preventDefault();
+			var $btn    = $(e.currentTarget);
+			var $row    = $btn.closest('tr');
+			var id      = $row.data('id');
+			var isOpen  = $row.data('expanded') === 1 || $row.data('expanded') === '1';
+
+			if (isOpen) {
+				// Collapse: hide and remove child rows.
+				$('#aips-history-operations-tbody tr.aips-history-child-row[data-parent-id="' + id + '"]').remove();
+				$row.data('expanded', 0);
+				$btn.find('.dashicons').removeClass('dashicons-arrow-down').addClass('dashicons-arrow-right');
+				return;
+			}
+
+			// Expand: fetch children via AJAX.
+			var self = this;
+			var T    = AIPS.Templates;
+
+			$row.data('expanded', 1);
+			$btn.find('.dashicons').removeClass('dashicons-arrow-right').addClass('dashicons-arrow-down');
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action:     'aips_get_operation_children',
+					nonce:      aipsAjax.nonce,
+					history_id: id
+				},
+				success: function (response) {
+					if (!response.success) {
+						return;
+					}
+					var children = response.data.children;
+					var childHtml = '';
+					$.each(children, function (i, child) {
+						child.parent_id = child.parent_id || id;
+						childHtml += self.renderChildRow(child);
+					});
+					$row.after(childHtml);
+					$('#aips-history-operations-tbody tr.aips-history-child-row[data-parent-id="' + id + '"]').show();
+				}
+			});
+		},
+
+		/**
+		 * Render a child row from template.
+		 *
+		 * @param  {Object} child
+		 * @return {string} HTML
+		 */
+		renderChildRow: function (child) {
+			var T      = AIPS.Templates;
+			var status = child.status || 'processing';
+			if (status === 'failed') {
+				status = 'error';
+			}
+			var statusLabel = status === 'completed'
+				? (aipsHistoryL10n.statusCompleted || 'Completed')
+				: (status === 'error' ? (aipsHistoryL10n.statusError || 'Error') : (aipsHistoryL10n.statusProcessing || 'Processing'));
+
+			var title = child.generated_title || child.template_name || '(' + (aipsHistoryL10n.noTitle || 'no title') + ')';
+
+			var duration = '\u2014';
+			if (child.created_at && child.completed_at) {
+				var secs = parseInt(child.completed_at, 10) - parseInt(child.created_at, 10);
+				if (!isNaN(secs) && secs >= 0) {
+					duration = AIPS.DateTime ? AIPS.DateTime.formatDuration(secs) : (secs + 's');
+				}
+			}
+
+			var postLink = '';
+			if (child.post_id && child.post_url) {
+				postLink = ' <a href="' + T.escape(child.post_url) + '" class="button-link" target="_blank">'
+					+ T.escape(aipsHistoryL10n.editPostLabel || 'Edit Post') + '</a>';
+			}
+
+			return T.renderRaw('aips-tmpl-history-child-row', {
+				id:          T.escape(String(child.id)),
+				parentId:    T.escape(String(child.parent_id || '')),
+				status:      T.escape(status),
+				statusLabel: T.escape(statusLabel),
+				title:       T.escape(title),
+				duration:    T.escape(duration),
+				postLink:    postLink
+			});
 		},
 
 	};

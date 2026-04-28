@@ -952,6 +952,25 @@ class AIPS_Author_Topics_Controller {
 			$options
 		);
 
+		// Determine operation type for the parent history container.
+		$is_from_queue  = isset($options['trigger_name']) && $options['trigger_name'] === 'ajax_bulk_generate_from_queue';
+		$operation_type = $is_from_queue
+			? AIPS_History_Operation_Type::BULK_GENERATE_FROM_QUEUE
+			: AIPS_History_Operation_Type::BULK_GENERATE_TOPICS;
+
+		// Create a parent history container so child generation containers link up.
+		$batch_parent = $this->history_service->create(
+			$operation_type,
+			array(
+				'trigger_name'    => isset($options['trigger_name']) ? $options['trigger_name'] : 'ajax',
+				'creation_method' => $operation_type,
+				'meta'            => array( 'topic_count' => count($topic_ids) ),
+			)
+		);
+		if ($batch_parent && $batch_parent->get_id()) {
+			AIPS_Correlation_ID::set_parent_history_id($batch_parent->get_id());
+		}
+
 		$result = $this->bulk_generator_service->run(
 			$topic_ids,
 			function ( $topic_id ) use ( $post_generator ) {
@@ -959,6 +978,18 @@ class AIPS_Author_Topics_Controller {
 			},
 			$options
 		);
+
+		AIPS_Correlation_ID::set_parent_history_id(null);
+		if ($batch_parent) {
+			if (isset($result->failed_count) && $result->failed_count > 0 && (!isset($result->success_count) || $result->success_count === 0)) {
+				$batch_parent->complete_failure('Bulk generation failed');
+			} else {
+				$batch_parent->complete_success(array(
+					'success_count' => isset($result->success_count) ? $result->success_count : 0,
+					'failed_count'  => isset($result->failed_count) ? $result->failed_count : 0,
+				));
+			}
+		}
 
 		// Async queued path: large batch dispatched to cron workers.
 		if ( $result->was_queued ) {

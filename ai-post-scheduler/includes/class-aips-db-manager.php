@@ -91,11 +91,12 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
             correlation_id varchar(36) DEFAULT NULL,
+            parent_id bigint(20) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
-            creation_method varchar(20) DEFAULT NULL,
+            creation_method varchar(50) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -114,7 +115,9 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
-            KEY correlation_id (correlation_id)
+            KEY correlation_id (correlation_id),
+            KEY parent_id (parent_id),
+            KEY parent_id_created (parent_id, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (

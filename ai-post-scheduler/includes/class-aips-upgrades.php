@@ -38,6 +38,10 @@ class AIPS_Upgrades {
             $this->migrate_to_2_5_0();
         }
 
+        if (version_compare($from_version, '2.6.0', '<')) {
+            $this->migrate_to_2_6_0();
+        }
+
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates
         $result = AIPS_DB_Manager::install_tables();
@@ -289,6 +293,62 @@ class AIPS_Upgrades {
      * @param string $table    Full table name (with prefix).
      * @param string $col_name Column name to convert.
      */
+    /**
+     * Migration for version 2.6.0.
+     *
+     * Adds parent_id column to aips_history for hierarchical history support.
+     * Extends creation_method from varchar(20) to varchar(50) to accommodate
+     * longer operation type strings like 'topic_generation_batch' (22 chars).
+     * Adds indexes: parent_id and parent_id_created.
+     *
+     * Each ALTER is guarded with SHOW COLUMNS / SHOW INDEX so it is a no-op
+     * on fresh installs where dbDelta has already applied the new schema.
+     */
+    private function migrate_to_2_6_0() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'aips_history';
+
+        // Only proceed if the history table exists.
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        if ( $table_exists !== $table ) {
+            return;
+        }
+
+        // Add parent_id column if not present.
+        $has_parent_id = $wpdb->get_row( $wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            'parent_id'
+        ) );
+        if ( ! $has_parent_id ) {
+            $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN parent_id bigint(20) DEFAULT NULL AFTER correlation_id" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        }
+
+        // Extend creation_method from varchar(20) to varchar(50) if needed.
+        $col_info = $wpdb->get_row( $wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            'creation_method'
+        ) );
+        if ( $col_info && strtolower( $col_info->Type ) === 'varchar(20)' ) {
+            $wpdb->query( "ALTER TABLE `{$table}` MODIFY COLUMN creation_method varchar(50) DEFAULT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        }
+
+        // Add parent_id index if not present.
+        $has_parent_idx = $wpdb->get_row(
+            "SHOW INDEX FROM `{$table}` WHERE Key_name = 'parent_id'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+        if ( ! $has_parent_idx ) {
+            $wpdb->query( "ALTER TABLE `{$table}` ADD KEY parent_id (parent_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        }
+
+        // Add parent_id_created composite index if not present.
+        $has_composite_idx = $wpdb->get_row(
+            "SHOW INDEX FROM `{$table}` WHERE Key_name = 'parent_id_created'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+        if ( ! $has_composite_idx ) {
+            $wpdb->query( "ALTER TABLE `{$table}` ADD KEY parent_id_created (parent_id, created_at)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        }
+    }
+
     private function convert_datetime_to_bigint( $table, $col_name ) {
         global $wpdb;
 
