@@ -6,6 +6,9 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
+    'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
+    'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
     'AIPS_AI_Edit_Controller' => $baseDir . '/includes/class-aips-ai-edit-controller.php',
     'AIPS_AI_Service' => $baseDir . '/includes/class-aips-ai-service.php',
     'AIPS_AI_Service_Interface' => $baseDir . '/includes/interface-aips-ai-service-interface.php',
@@ -63,6 +66,7 @@ return array(
     'AIPS_Data_Management_Import_JSON' => $baseDir . '/includes/class-aips-data-management-import-json.php',
     'AIPS_Data_Management_Import_MySQL' => $baseDir . '/includes/class-aips-data-management-import-mysql.php',
     'AIPS_DateTime' => $baseDir . '/includes/class-aips-date-time.php',
+    'AIPS_Date_Time_DB_Repair' => $baseDir . '/includes/class-aips-date-time-db-repair.php',
     'AIPS_Dev_Tools' => $baseDir . '/includes/class-aips-dev-tools.php',
     'AIPS_Embeddings_Cron' => $baseDir . '/includes/class-aips-embeddings-cron.php',
     'AIPS_Embeddings_Service' => $baseDir . '/includes/class-aips-embeddings-service.php',
@@ -1692,6 +1696,7 @@ return array(
     'Test_AIPS_Context_Boot' => $baseDir . '/tests/Test_AIPS_Context_Boot.php',
     'Test_AIPS_Correlation_ID' => $baseDir . '/tests/Test_AIPS_Correlation_ID.php',
     'Test_AIPS_DB_Schema' => $baseDir . '/tests/Test_AIPS_DB_Schema.php',
+    'Test_AIPS_Date_Time_DB_Repair' => $baseDir . '/tests/Test_AIPS_Date_Time_DB_Repair.php',
     'Test_AIPS_Generate_Now_Timing' => $baseDir . '/tests/Test_AIPS_Generate_Now_Timing.php',
     'Test_AIPS_Generation_Context' => $baseDir . '/tests/Test_AIPS_Generation_Context.php',
     'Test_AIPS_Generation_Logger' => $baseDir . '/tests/Test_AIPS_Generation_Logger.php',

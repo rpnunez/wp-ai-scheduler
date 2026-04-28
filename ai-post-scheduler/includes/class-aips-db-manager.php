@@ -508,7 +508,7 @@ class AIPS_DB_Manager {
             request_object longtext NOT NULL,
             prompt text NOT NULL,
             response longtext NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY session_id (session_id),
             KEY form_context_field (form_context, field_key),
