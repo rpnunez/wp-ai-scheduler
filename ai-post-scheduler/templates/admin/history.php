@@ -12,18 +12,25 @@ $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? san
 $items       = array();
 $total_items = 0;
 
+$history = isset($history) ? $history : array();
+
 if (is_object($history)) {
     if ($history instanceof ArrayAccess) {
         $items       = isset($history['items']) ? $history['items'] : array();
         $total_items = isset($history['total']) ? (int) $history['total'] : 0;
     } elseif (method_exists($history, 'get_history')) {
-        $history_data = $history->get_history();
-        $items        = isset($history_data['items']) ? $history_data['items'] : array();
-        $total_items  = isset($history_data['total']) ? (int) $history_data['total'] : 0;
+        $history     = $history->get_history();
+        $history     = is_array($history) ? $history : array();
+        $items       = isset($history['items']) ? $history['items'] : array();
+        $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+    } else {
+        $history = array();
     }
 } elseif (is_array($history)) {
     $items       = isset($history['items']) ? $history['items'] : array();
     $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+} else {
+    $history = array();
 }
 ?>
 <div class="wrap aips-wrap">
