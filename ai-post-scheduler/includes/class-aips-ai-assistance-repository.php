@@ -65,8 +65,9 @@ class AIPS_AI_Assistance_Repository {
 				'request_object' => isset( $data['request_object'] ) ? $data['request_object'] : '',
 				'prompt'         => $data['prompt'],
 				'response'       => $data['response'],
+				'created_at'     => AIPS_DateTime::now()->timestamp(),
 			),
-			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
 		);
 		return $result ? $this->wpdb->insert_id : false;
 	}

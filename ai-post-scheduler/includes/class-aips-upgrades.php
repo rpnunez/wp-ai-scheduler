@@ -34,12 +34,12 @@ class AIPS_Upgrades {
             $this->migrate_to_2_4_1();
         }
 
-        if (version_compare($from_version, '2.4.2', '<')) {
-            $this->migrate_to_2_4_2();
-        }
-
         if (version_compare($from_version, '2.5.0', '<')) {
             $this->migrate_to_2_5_0();
+        }
+
+        if (version_compare($from_version, '2.5.1', '<')) {
+            $this->migrate_to_2_5_1();
         }
 
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
@@ -243,16 +243,16 @@ class AIPS_Upgrades {
     }
 
     /**
-     * Migration for version 2.4.2.
+     * Migration for version 2.5.1.
      *
      * Adds the aips_ai_assistance table for storing AI field suggestion history.
      * The actual table creation is handled by dbDelta in install_tables().
      * This method exists for logging consistency.
      */
-    private function migrate_to_2_4_2() {
+    private function migrate_to_2_5_1() {
         global $wpdb;
         
-        $this->logger->log( 'Running migration to 2.4.2: AI Assistance table will be created by dbDelta.', 'info' );
+        $this->logger->log( 'Running migration to 2.5.1: AI Assistance table will be created by dbDelta.', 'info' );
         
         // Extend varchar columns for AI-generated suggestions
         // voice_tone and writing_style were varchar(100) but AI suggestions can be longer
@@ -376,7 +376,5 @@ class AIPS_Upgrades {
         // 4. Rename temp column to the original name.
         $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
     }
-
-
 }
 ?>

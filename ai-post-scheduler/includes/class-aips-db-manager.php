@@ -637,6 +637,9 @@ class AIPS_DB_Manager {
             'aips_post_embeddings' => array(
                 array( 'indexed_at', false ),
             ),
+            'aips_ai_assistance' => array(
+                array( 'created_at', false ),
+            ),
             'aips_internal_links' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),

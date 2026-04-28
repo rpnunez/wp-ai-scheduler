@@ -125,6 +125,17 @@ class AIPS_AI_Assistance_Controller {
 		$session_records = $this->repository->get_by_session_and_field( $session_id, $form_context, $field_key );
 		$alltime_records = $this->repository->get_by_field( $form_context, $field_key, 15 );
 
+		$format_record = function( $record ) {
+			if ( ! empty( $record->created_at ) ) {
+				$dt = AIPS_DateTime::fromTimestampOrNull( (int) $record->created_at );
+				$record->created_at = $dt ? $dt->toDisplay() : '';
+			}
+			return $record;
+		};
+
+		$session_records = array_map( $format_record, $session_records );
+		$alltime_records = array_map( $format_record, $alltime_records );
+
 		AIPS_Ajax_Response::success( array(
 			'session' => $session_records,
 			'alltime' => $alltime_records,
