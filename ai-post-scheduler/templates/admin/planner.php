@@ -146,7 +146,7 @@ $default_planner_frequency = 'daily';
     <h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Found', 'ai-post-scheduler'); ?></h3>
     <p class="aips-empty-state-description"><?php esc_html_e('No topics match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
     <div class="aips-empty-state-actions">
-        <button type="button" class="aips-btn aips-btn-primary aips-clear-topic-search-btn">
+        <button type="button" class="aips-btn aips-btn-ghost aips-clear-topic-search-btn">
             <span class="dashicons dashicons-dismiss" aria-hidden="true"></span> <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
         </button>
     </div>
