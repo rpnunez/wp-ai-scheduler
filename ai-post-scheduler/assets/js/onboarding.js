@@ -101,10 +101,14 @@ jQuery(document).ready(function ($) {
 				});
 				html += '</ul>';
 				$('#aips-onboarding-topics-preview').html(html).show();
+				$('#aips-onboarding-topic').val(titles[0]);
 			}
 
-			showNotice('success', out.message || 'Topics generated.');
-			window.location.reload();
+			showNotice('success', out.message || 'Topics generated. You can now generate your first post.');
+
+			// Show the next part of the step
+			$('#aips-onboarding-step-topics').hide();
+			$('#aips-onboarding-step-post').show();
 		});
 	});
 
