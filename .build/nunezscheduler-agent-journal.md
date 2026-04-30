@@ -258,6 +258,12 @@
 
 **Outcome:** The History page is now a genuine audit and debugging tool. Users can instantly see how long a generation took, jump directly to the published post or its editor, filter dense log output down to just errors or AI calls, and copy raw JSON details to their clipboard — all without leaving the modal.
 
+## 2026-04-19 - Author Post & Topics Generator Optimization
+**Target Feature:** Author Post Generator / Author Topics Generator
+**Improvement:** Extracted duplicate error logging logic into `log_generation_error` to clean up try-catch blocks (Campground Rule) and introduced new action (`aips_author_post_generated`) and filters (`aips_author_topics_prompt`, `aips_author_post_generation_context`) to improve extensibility per feature-report recommendations.
+**Files Modified:** ai-post-scheduler/includes/class-aips-author-topics-generator.php, ai-post-scheduler/includes/class-aips-author-post-generator.php, docs/HOOKS.md
+**Outcome:** Third-party developers can now hook into the author topic and post generation flows, and error handling is centralized and robust.
+
 ## 2026-04-21 - History Optimization
 **Target Feature:** History
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.

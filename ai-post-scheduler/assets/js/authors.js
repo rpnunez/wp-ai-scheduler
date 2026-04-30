@@ -81,6 +81,9 @@
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
 
+			// "Hide topics with generated posts" filter on the Approved tab
+			$(document).on('change', '#aips-hide-generated-posts', this.onHideGeneratedChange.bind(this));
+
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
 			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
@@ -488,6 +491,8 @@
 			// Immediately show a loading skeleton while the AJAX request is in flight.
 			this.showTopicsLoading();
 
+			var hideGenerated = (status === 'approved' && $('#aips-hide-generated-posts').prop('checked')) ? 1 : 0;
+
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
@@ -495,7 +500,8 @@
 					action: 'aips_get_author_topics',
 					nonce: aipsAuthorsL10n.nonce,
 					author_id: this.currentAuthorId,
-					status: status
+					status: status,
+					hide_generated: hideGenerated
 				},
 				success: (response) => {
 					if (response.success) {
@@ -904,7 +910,14 @@
 			// Reset topic search when switching tabs
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-			
+
+			// Show the "Hide topics with generated posts" filter only on the Approved tab.
+			if (status === 'approved') {
+				$('#aips-hide-generated-label').show();
+			} else {
+				$('#aips-hide-generated-label').hide();
+			}
+
 			// Immediately switch to the loading skeleton, then fetch the
 			// appropriate content for the selected tab.
 			if (status === 'feedback') {
@@ -954,6 +967,16 @@
 		clearTopicSearch: function(e) {
 			e.preventDefault();
 			$('#aips-topic-search').val('').trigger('keyup');
+		},
+
+		/**
+		 * Reload the Approved topics list when the "Hide topics with generated
+		 * posts" checkbox is toggled.
+		 *
+		 * @param {Event} e - Change event from `#aips-hide-generated-posts`.
+		 */
+		onHideGeneratedChange: function(e) {
+			this.loadTopics('approved');
 		},
 
 		/**

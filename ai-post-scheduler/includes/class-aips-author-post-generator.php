@@ -318,6 +318,17 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		// Build a context object for the generator with the creation method
 		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
 		
+		/**
+		 * Filter the context object used for author post generation before it is passed to the generator.
+		 *
+		 * @since 1.8.0
+		 *
+		 * @param AIPS_Topic_Context $context The generated context object.
+		 * @param object $topic               The topic object from the database.
+		 * @param object $author              The author object from the database.
+		 */
+		$context = apply_filters('aips_author_post_generation_context', $context, $topic, $author);
+
 		// Generate the post using the context
 		// Note: The Generator internally creates its own history container
 		try {
@@ -325,35 +336,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
-				
-				// The Generator now handles all logging internally via History Container
-				// We can optionally log additional high-level activity here
-				$history = $this->history_service->create('topic_post_generation', array(
-					'topic_id' => $topic->id,
-					'author_id' => $author->id,
-				));
-				
-				$history->record(
-					'activity',
-					sprintf(
-						__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
-						$topic->topic_title,
-						$post_id->get_error_message()
-					),
-					array(
-						'event_type' => 'topic_post_generation',
-						'event_status' => 'failed',
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					),
-					null,
-					array(
-						'author_id' => $author->id,
-						'author_name' => $author->name,
-						'error' => $post_id->get_error_message(),
-					)
-				);
-				
+				$this->log_generation_error($topic, $author, $post_id->get_error_message());
 				return $post_id;
 			}
 			
@@ -405,6 +388,17 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			
 			$this->logger->log("Successfully generated post {$post_id} from topic {$topic->id}", 'info');
 			
+			/**
+			 * Fires immediately after a post has been successfully generated from an author topic.
+			 *
+			 * @since 1.8.0
+			 *
+			 * @param int    $post_id The ID of the newly generated WordPress post.
+			 * @param object $topic   The topic object used to generate the post.
+			 * @param object $author  The author object.
+			 */
+			do_action('aips_author_post_generated', $post_id, $topic, $author);
+
 			return $post_id;
 			
 		} catch (Exception $e) {
@@ -432,37 +426,46 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 				do_action('aips_generation_failed', $payload);
 			}
 			
-			// Log exception using new History API
-			$history = $this->history_service->create('topic_post_generation', array(
-				'topic_id' => $topic->id,
-				'author_id' => $author->id,
-			));
-			
-			$history->record(
-				'activity',
-				sprintf(
-					__('Exception while generating post from topic "%s": %s', 'ai-post-scheduler'),
-					$topic->topic_title,
-					$e->getMessage()
-				),
-				array(
-					'event_type' => 'topic_post_generation',
-					'event_status' => 'failed',
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				null,
-				array(
-					'author_id' => $author->id,
-					'author_name' => $author->name,
-					'error' => $e->getMessage(),
-				)
-			);
-			
+			$this->log_generation_error($topic, $author, $e->getMessage());
 			return new WP_Error('generation_failed', $e->getMessage());
 		}
 	}
 	
+	/**
+	 * Centralized method to log topic post generation errors to the History API.
+	 *
+	 * @param object $topic         The topic object from the database.
+	 * @param object $author        The author object from the database.
+	 * @param string $error_message The detailed error message.
+	 * @return void
+	 */
+	private function log_generation_error($topic, $author, $error_message) {
+		$history = $this->history_service->create('topic_post_generation', array(
+			'topic_id' => $topic->id,
+			'author_id' => $author->id,
+		));
+
+		$history->record(
+			'activity',
+			sprintf(
+				__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
+				$topic->topic_title,
+				$error_message
+			),
+			array(
+				'event_type' => 'topic_post_generation',
+				'event_status' => 'failed',
+				'topic_id' => $topic->id,
+				'topic_title' => $topic->topic_title,
+			),
+			null,
+			array(
+				'author_id' => $author->id,
+				'author_name' => $author->name,
+				'error' => $error_message,
+			)
+		);
+	}
 	
 	/**
 	 * Update the author's post generation schedule.

@@ -255,6 +255,7 @@ class AIPS_Authors_Controller {
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : null;
+		$hide_generated = isset($_POST['hide_generated']) ? (bool) absint($_POST['hide_generated']) : true;
 		
 		if (!$author_id) {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
@@ -315,13 +316,19 @@ class AIPS_Authors_Controller {
 		unset($topic);
 		
 		// Refine the topic collection based on the active tab semantics:
-		// - "approved" tab: only approved topics that have NO generated posts yet.
+		// - "approved" tab (hide_generated=true, default): only approved topics
+		//   that have NO generated posts yet.
+		// - "approved" tab (hide_generated=false): all approved topics, including
+		//   those that already have one or more generated posts.
 		// - "rejected" tab: only rejected topics that have NO generated posts yet.
 		// - "posts_generated" tab: any topics (regardless of current status)
 		//   that have one or more generated posts associated with them.
 		if ('approved' === $status) {
-			$topics = array_values(array_filter($topics, function ($topic) {
-				return ('approved' === $topic->status && (int) $topic->post_count === 0);
+			$topics = array_values(array_filter($topics, function ($topic) use ($hide_generated) {
+				if ('approved' !== $topic->status) {
+					return false;
+				}
+				return $hide_generated ? (int) $topic->post_count === 0 : true;
 			}));
 		} elseif ('rejected' === $status) {
 			$topics = array_values(array_filter($topics, function ($topic) {
