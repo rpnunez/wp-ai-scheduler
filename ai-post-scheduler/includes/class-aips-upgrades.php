@@ -279,6 +279,48 @@ class AIPS_Upgrades {
                 $this->convert_datetime_to_bigint( $table, $col_name );
             }
         }
+
+        // Fix composite indexes on aips_history that dbDelta may not detect properly.
+        // Add them explicitly if they don't exist to prevent duplicate key errors.
+        $this->ensure_history_composite_indexes();
+    }
+
+    /**
+     * Ensure composite indexes exist on aips_history table.
+     *
+     * dbDelta has known issues detecting composite indexes, so we add them
+     * explicitly here with existence checks to prevent duplicate key errors.
+     * These indexes are intentionally excluded from the schema definition in
+     * AIPS_DB_Manager::get_schema() to avoid dbDelta attempting to add them.
+     *
+     * This method is called during every upgrade to 2.5.0+ and ensures the
+     * indexes exist on both fresh installs and existing databases.
+     */
+    private function ensure_history_composite_indexes() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'aips_history';
+
+        // Only proceed if the history table exists.
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        if ( $table_exists !== $table ) {
+            return;
+        }
+
+        $indexes = array(
+            'status_created'   => 'ADD KEY status_created (status, created_at)',
+            'template_created' => 'ADD KEY template_created (template_id, created_at)',
+        );
+
+        foreach ( $indexes as $key_name => $add_clause ) {
+            $exists = $wpdb->get_row( $wpdb->prepare(
+                "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $key_name
+            ) );
+
+            if ( ! $exists ) {
+                $wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+            }
+        }
     }
 
     /**
