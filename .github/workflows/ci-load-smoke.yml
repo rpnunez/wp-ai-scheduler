@@ -1,0 +1,146 @@
+name: Load Smoke Tests (Phase H.3)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      run_full_phpunit:
+        description: 'Run full PHPUnit suite alongside smoke tests'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: load-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# ─────────────────────────────────────────────────────────────────────────────
+# This workflow runs the Phase H.3 smoke tests that validate the plugin's
+# resilience contracts under concurrent / burst load conditions without
+# requiring a live HTTP server:
+#
+#   - Rate-limiter burst ceiling and window behaviour
+#   - Circuit breaker opening after rapid failures
+#   - Circuit breaker recovery after reset / timeout
+#   - execute_safely() short-circuit under open circuit or rate limit
+#   - Background job claim-first locking (schedule processor)
+#   - Metrics repository queue-health snapshot structure
+#
+# For true HTTP load tests (wrk/ab) see scripts/load-test.sh; those require
+# a running WordPress instance and are intended for staging environments.
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  load-smoke:
+    name: Load & Smoke Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: ['8.2']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        ports: [3306:3306]
+        env:
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, xml, curl, zip, dom, fileinfo
+          coverage: none
+          tools: composer:v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y subversion mysql-client
+
+      - name: Wait for MySQL and create test database
+        run: |
+          ATTEMPTS=10
+          until mysqladmin ping -h127.0.0.1 --silent; do
+            ATTEMPTS=$((ATTEMPTS-1))
+            if [ $ATTEMPTS -le 0 ]; then
+              echo "MySQL did not become ready in time."
+              exit 1
+            fi
+            echo "Waiting for MySQL…"
+            sleep 5
+          done
+          mysql -h127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS wordpress_test;"
+
+      - name: Install Composer dependencies
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install WordPress test library
+        run: |
+          cd ai-post-scheduler
+          bash bin/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_CORE_DIR: /tmp/wordpress
+
+      # ── Run only the H.3 smoke test suite ──────────────────────────────────
+      - name: Run load smoke tests
+        run: |
+          cd ai-post-scheduler
+          vendor/bin/phpunit --filter Test_AIPS_Load_Smoke --testdox
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_CORE_DIR: /tmp/wordpress
+
+      # ── Optionally run the full suite (manual trigger only) ────────────────
+      - name: Run full PHPUnit suite (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_phpunit == 'true' }}
+        run: |
+          cd ai-post-scheduler
+          composer test -- --testdox
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_CORE_DIR: /tmp/wordpress
+
+      # ── Validate load-test script syntax ───────────────────────────────────
+      - name: Validate load-test.sh syntax
+        run: bash -n scripts/load-test.sh && echo "load-test.sh syntax OK"
+
+      # ── Upload test artefacts ───────────────────────────────────────────────
+      - name: Upload smoke test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-smoke-results-php${{ matrix.php }}
+          path: |
+            ai-post-scheduler/.phpunit.result.cache
+          retention-days: 7
+          if-no-files-found: ignore
+
+  smoke-summary:
+    name: Smoke Test Summary
+    runs-on: ubuntu-latest
+    needs: load-smoke
+    if: always()
+    permissions: {}
+
+    steps:
+      - name: Check smoke test results
+        run: |
+          if [ "${{ needs.load-smoke.result }}" != "success" ]; then
+            echo "::error::Load smoke tests failed — see job logs for details."
+            exit 1
+          fi
+          echo "::notice::All Phase H.3 load smoke tests passed."
