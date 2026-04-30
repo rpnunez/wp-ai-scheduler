@@ -284,12 +284,26 @@ class AIPS_Authors_Controller {
 		foreach ($topics as &$topic) {
 			$logs = $this->logs_repository->get_by_topic($topic->id);
 			$post_count = 0;
+			$generated_posts = array();
 			foreach ($logs as $log) {
 				if ($log->action === 'post_generated' && $log->post_id) {
 					$post_count++;
+					if ('posts_generated' === $status) {
+						$wp_post = get_post( (int) $log->post_id );
+						if ($wp_post) {
+							$generated_posts[] = array(
+								'post_id'        => (int) $log->post_id,
+								'post_status'    => $wp_post->post_status,
+								'date_generated' => $log->created_at,
+							);
+						}
+					}
 				}
 			}
 			$topic->post_count = $post_count;
+			if ('posts_generated' === $status) {
+				$topic->generated_posts = $generated_posts;
+			}
 			
 			$topic->last_feedback = null;
 			if (isset($latest_feedback_by_topic[(int) $topic->id])) {
