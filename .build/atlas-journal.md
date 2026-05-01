@@ -1438,3 +1438,30 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-29 - [Extract AI Variable Resolver, Image Prompt Processor, Content Normalizer]
+**Context:** The `AIPS_Generator` class was a "God Object" (1100+ lines), handling its primary responsibility of orchestration alongside AI variable extraction/resolution, featured image prompt string processing, and markdown content parsing/normalization.
+**Decision:** Applied "Separation of Concerns". Extracted AI variable resolution logic into `AIPS_AI_Variable_Resolver`, featured image prompt processing into `AIPS_Image_Prompt_Processor`, and content parsing into `AIPS_Content_Normalizer`. The `AIPS_Generator` constructor was updated to initialize these, while keeping proxy methods to preserve backward compatibility.
+**Consequence:**
+* `AIPS_Generator` is reduced in size and focuses more strictly on orchestration.
+* `AIPS_AI_Variable_Resolver`, `AIPS_Image_Prompt_Processor`, and `AIPS_Content_Normalizer` encapsulate domain-specific formatting and parsing logic, making them easier to test.
+* Maintained 100% backward compatibility by keeping proxy wrapper methods on `AIPS_Generator`.
+**Tests:** Added the three new classes to the `AIPS_Autoloader_Test`. Autoloader PHPUnit test suite executed with no regressions.
+
+## 2024-05-29 - [Extract AI Variable Resolver, Image Prompt Processor, Content Normalizer]
+**Context:** The `AIPS_Generator` class was a "God Object" (1100+ lines), handling its primary responsibility of orchestration alongside AI variable extraction/resolution, featured image prompt string processing, and markdown content parsing/normalization.
+**Decision:** Applied "Separation of Concerns". Extracted AI variable resolution logic into `AIPS_AI_Variable_Resolver`, featured image prompt processing into `AIPS_Image_Prompt_Processor`, and content parsing into `AIPS_Content_Normalizer`. The `AIPS_Generator` constructor was updated to initialize these, while keeping proxy methods to preserve backward compatibility.
+**Consequence:**
+* `AIPS_Generator` is reduced in size and focuses more strictly on orchestration.
+* `AIPS_AI_Variable_Resolver`, `AIPS_Image_Prompt_Processor`, and `AIPS_Content_Normalizer` encapsulate domain-specific formatting and parsing logic, making them easier to test.
+* Maintained 100% backward compatibility by keeping proxy wrapper methods on `AIPS_Generator`.
+**Tests:** Added the three new classes to the `AIPS_Autoloader_Test`. Autoloader PHPUnit test suite executed with no regressions.
+
+## 2024-05-29 - [Extract AI Variable Resolver, Image Prompt Processor, Content Normalizer]
+**Context:** The `AIPS_Generator` class was a "God Object" (1100+ lines), handling its primary responsibility of orchestration alongside AI variable extraction/resolution, featured image prompt string processing, and markdown content parsing/normalization.
+**Decision:** Applied "Separation of Concerns". Extracted AI variable resolution logic into `AIPS_AI_Variable_Resolver`, featured image prompt processing into `AIPS_Image_Prompt_Processor`, and content parsing into `AIPS_Content_Normalizer`. The `AIPS_Generator` constructor was updated to initialize these, while keeping proxy methods to preserve backward compatibility. Injected a callback for AI variable resolution to maintain execution flow via `generate_content`.
+**Consequence:**
+* `AIPS_Generator` is reduced in size and focuses more strictly on orchestration.
+* `AIPS_AI_Variable_Resolver`, `AIPS_Image_Prompt_Processor`, and `AIPS_Content_Normalizer` encapsulate domain-specific formatting and parsing logic, making them easier to test.
+* Maintained 100% backward compatibility by keeping proxy wrapper methods on `AIPS_Generator`.
+**Tests:** Added the three new classes to the `AIPS_Autoloader_Test`. Autoloader PHPUnit test suite executed with no regressions.
