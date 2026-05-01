@@ -77,3 +77,6 @@
 ## 2026-04-18 - Post Preview Added to Generated Posts and Partial Generations Tabs
 **Learning:** The AJAX-based post preview functionality was already implemented for Pending Review but omitted from the Generated Posts and Partial Generations lists, causing users to have to fully open the WordPress editor to see the generated content.
 **Action:** Reuse the `.aips-preview-post` class and `aips_get_post_preview` AJAX action from `admin-post-review.js` by simply adding the preview button to the other tabs in the Content view.
+## 2025-02-18 - Consistent Empty State Clear Buttons
+**Learning:** Found multiple places where search and filter clear buttons inside `.aips-empty-state-actions` used the prominent `.aips-btn-primary` class, creating visual noise when a list was empty and conflicting with primary "Create" actions on those screens.
+**Action:** Always use `.aips-btn-ghost` for empty state search/filter clear actions to maintain clear visual hierarchy and let true primary actions stand out.
