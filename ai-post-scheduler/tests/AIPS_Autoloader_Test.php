@@ -150,6 +150,9 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 		// List of classes that should be loadable
 		$classes = array(
 			'AIPS_Generator',
+			'AIPS_AI_Variable_Resolver',
+			'AIPS_Image_Prompt_Processor',
+			'AIPS_Content_Normalizer',
 			'AIPS_Scheduler',
 			'AIPS_Templates',
 			'AIPS_History',
