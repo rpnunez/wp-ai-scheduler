@@ -47,6 +47,10 @@ class AIPS_Generator {
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
 
+    private $ai_variable_resolver;
+    private $image_prompt_processor;
+    private $content_normalizer;
+
     /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
@@ -104,6 +108,20 @@ class AIPS_Generator {
 
         // Initialize logger wrapper
         $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
+
+        $this->content_normalizer = new AIPS_Content_Normalizer($this->markdown_parser);
+
+        $this->ai_variable_resolver = new AIPS_AI_Variable_Resolver(
+            $this->template_processor,
+            $this->generation_logger,
+            function($prompt, $options, $log_type) { return $this->generate_content($prompt, $options, $log_type); }
+        );
+
+        $this->image_prompt_processor = new AIPS_Image_Prompt_Processor(
+            $this->template_processor,
+            $this->ai_variable_resolver,
+            function($content, $max_length) { return $this->content_normalizer->smart_truncate_content($content, $max_length); }
+        );
     }
 
     /**
@@ -214,43 +232,16 @@ class AIPS_Generator {
     /**
      * Resolve AI Variables from a generation context.
      *
-     * Extracts AI Variables from the title prompt and uses AI to generate
-     * appropriate values based on the content context.
-     *
      * @param AIPS_Generation_Context $context Generation context.
      * @param string                  $content Generated article content for context.
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_from_context($context, $content) {
-        // Get the title prompt from context
-        $title_prompt = $context->get_title_prompt();
-
-        // For template contexts with voice, voice takes precedence
-        if ($context->get_type() === 'template' && $context->get_voice_id()) {
-            $voice_obj = $context->get_voice();
-            if ($voice_obj && !empty($voice_obj->title_prompt)) {
-                $title_prompt = $voice_obj->title_prompt;
-            }
-        }
-
-        // Avoid building the content context when the title prompt does not
-        // contain any AI variables to resolve.
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
-        $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
-        if (empty($ai_variables)) {
-            return array();
-        }
-
-        // Build context from content prompt and generated content only when AI
-        // variables are present. Use smart truncation to preserve context from
-        // both beginning and end of content.
-        $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
-        $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
-
-        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+        return $this->ai_variable_resolver->resolve_ai_variables_from_context(
+            $context,
+            $content,
+            function($content, $max_length) { return $this->smart_truncate_content($content, $max_length); }
+        );
     }
 
     /**
@@ -262,44 +253,7 @@ class AIPS_Generator {
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_for_template_string($template_string, $context_str, $log_type = 'ai_variables') {
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
-        $ai_variables = $this->template_processor->extract_ai_variables($template_string);
-
-        if (empty($ai_variables)) {
-            return array();
-        }
-
-        $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
-
-        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('max_tokens' => 200);
-        $result = $this->generate_content($resolve_prompt, $options, $log_type);
-
-        if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
-            return array();
-        }
-
-        $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
-
-        if (empty($resolved_values)) {
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-                'component' => $log_type,
-            ));
-        } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-                'component' => $log_type,
-            ));
-        }
-
-        return $resolved_values;
+        return $this->ai_variable_resolver->resolve_ai_variables_for_template_string($template_string, $context_str, $log_type);
     }
 
     /**
@@ -311,33 +265,11 @@ class AIPS_Generator {
      * @return string
      */
     private function build_featured_image_variable_context($context, $content = '', $title = '') {
-        $context_parts = array();
-
-        if (!empty($context->get_content_prompt())) {
-            $context_parts[] = 'Content Prompt: ' . $context->get_content_prompt();
-        }
-
-        if (!empty($title)) {
-            $context_parts[] = 'Generated Post Title: ' . $title;
-        }
-
-        if (!empty($content)) {
-            $context_parts[] = "Generated Article Content:\n" . $this->smart_truncate_content($content, 1600);
-        }
-
-        if (!empty($context->get_topic())) {
-            $context_parts[] = 'Topic: ' . $context->get_topic();
-        }
-
-        return implode("\n\n", $context_parts);
+        return $this->image_prompt_processor->build_featured_image_variable_context($context, $content, $title);
     }
 
     /**
      * Process featured image prompt with basic template variables and AI variables.
-     *
-     * Resolves any AI variables (custom {{VariableName}} placeholders not in the
-     * system variable list) using the generated content and title as context,
-     * then processes standard template variables such as {{topic}}.
      *
      * @param AIPS_Generation_Context $context Generation context.
      * @param string                  $content Generated article content.
@@ -345,48 +277,17 @@ class AIPS_Generator {
      * @return string Processed image prompt with all variables replaced.
      */
     public function process_featured_image_prompt($context, $content = '', $title = '') {
-        $image_prompt = $context->get_image_prompt();
-
-        if (empty($image_prompt)) {
-            return '';
-        }
-
-        $topic_str = $context->get_topic();
-        $resolved_ai_variables = array();
-
-        if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
-            $image_context = $this->build_featured_image_variable_context($context, $content, $title);
-            $resolved_ai_variables = $this->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
-        }
-
-        if (method_exists($this->template_processor, 'process_with_ai_variables')) {
-            $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
-        } else {
-            $processed_prompt = $this->template_processor->process($image_prompt, $topic_str);
-        }
-
-        return $this->remove_unresolved_template_placeholders($processed_prompt);
+        return $this->image_prompt_processor->process_featured_image_prompt($context, $content, $title);
     }
 
     /**
      * Remove any unresolved template placeholders from a processed prompt.
      *
-     * This is a defensive cleanup step for public featured image prompt
-     * processing so downstream preview and generation paths never receive raw
-     * {{Variable}} tokens when AI-variable resolution is partial.
-     *
      * @param string $prompt Processed prompt text.
      * @return string Prompt with unresolved placeholders removed.
      */
     private function remove_unresolved_template_placeholders($prompt) {
-        $prompt = (string) $prompt;
-        $prompt = preg_replace('/\{\{[^{}]+\}\}/', '', $prompt);
-
-        if (!is_string($prompt)) {
-            return '';
-        }
-
-        return trim(preg_replace('/\s+/', ' ', $prompt));
+        return $this->image_prompt_processor->remove_unresolved_template_placeholders($prompt);
     }
 
     /**
@@ -402,33 +303,7 @@ class AIPS_Generator {
      * @return string Truncated content with beginning and end preserved.
      */
     private function smart_truncate_content($content, $max_length = 2000) {
-        $content_length = mb_strlen($content);
-
-        // If content fits within limit, return as-is
-        if ($content_length <= $max_length) {
-            return $content;
-        }
-
-        // Define separator and calculate its length
-        $separator = "\n\n[...]\n\n";
-        $separator_length = mb_strlen($separator);
-
-        // Ensure minimum length to avoid negative values
-        $min_length = $separator_length + 40; // At least 20 chars on each end
-        if ($max_length < $min_length) {
-            $max_length = $min_length;
-        }
-
-        // Calculate how much to take from each end
-        // Take 60% from the beginning (introductions, key points) and 40% from the end (conclusions)
-        $available_length = $max_length - $separator_length;
-        $start_length = (int) ($available_length * 0.6);
-        $end_length = $available_length - $start_length;
-
-        $start_content = mb_substr($content, 0, $start_length);
-        $end_content = mb_substr($content, -$end_length);
-
-        return $start_content . $separator . $end_content;
+        return $this->content_normalizer->smart_truncate_content($content, $max_length);
     }
 
     /**
@@ -1122,21 +997,7 @@ class AIPS_Generator {
      * @return string Sanitized HTML content.
      */
     private function normalize_generated_content_for_wordpress($content) {
-        if (!is_string($content)) {
-            return '';
-        }
-
-        $normalized_content = trim($content);
-
-        if ($normalized_content === '') {
-            return '';
-        }
-
-        if ( $this->markdown_parser && $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
-            $normalized_content = $this->markdown_parser->parse( $normalized_content );
-        }
-
-        return wp_kses_post($normalized_content);
+        return $this->content_normalizer->normalize_generated_content_for_wordpress($content);
     }
 
     /**
