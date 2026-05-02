@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-28 - [Extract Generator Utils]
+**Context:** The `AIPS_Generator` class was an 1100+ line "God Object" that not only orchestrated generation but also resolved AI variables, processed featured image prompts, and handled content normalization and truncation.
+**Decision:** Applied "Separation of Concerns". Extracted `AIPS_AI_Variable_Resolver`, `AIPS_Image_Prompt_Processor`, and `AIPS_Content_Normalizer`. Delegated the logic to these new helper classes within the generator. To maintain strict backward compatibility and avoid circular dependencies, `generate_content` and `smart_truncate_content` were passed as closures to the extracted classes.
+**Consequence:** The generator class is significantly leaner and more focused on orchestration. 100% backward compatibility was preserved by retaining proxy methods on `AIPS_Generator`.
+**Tests:** Verified backward compatibility by running the existing full test suite and ensuring no regressions.
