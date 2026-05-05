@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2024-05-18 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized transition to "Next Steps" post-save success panel using standard wizard navigation and properly structured parameter URLs instead of raw visibility toggles and string concatenation.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js
+**Outcome:** Ensures seamless UI progression via `AIPS.wizardGoToStep` and correctly constructed tool redirection links, improving user flow directly after template creation.

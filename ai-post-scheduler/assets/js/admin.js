@@ -3510,25 +3510,34 @@
         },
 
         /**
-         * Displays the post-save "Next Steps" panel inside the template wizard.
+         * Displays the post-save "Next Steps" panel inside the template wizard
+         * dynamically using wizard progression mechanics.
          *
          * Replaces the hard page reload after a successful template save,
          * keeping the user in-context with actionable next steps.
+         * Constructs valid parameter URLs for external tool linking.
          *
          * @param {number} templateId - The ID of the just-saved template.
          */
         showPostSaveActions: function(templateId) {
             var $modal = $('#aips-template-modal');
-            $modal.find('.aips-wizard-step-content').hide();
-            $modal.find('.aips-post-save-step').show();
+            var totalSteps = parseInt($modal.data('wizard-steps'), 10) || 4;
+            var successStep = totalSteps + 1;
+
+            AIPS.wizardGoToStep(successStep, $modal);
 
             $modal.find('.aips-wizard-progress').hide();
             $modal.find('.aips-wizard-footer').hide();
 
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
-            $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
+            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl
+                : 'admin.php?page=aips-schedule';
+
+            var url = new URL(scheduleUrlBase, window.location.href);
+            url.searchParams.set('schedule_template', templateId);
+            url.hash = 'open_schedule_modal';
+
+            $('#aips-quick-schedule-btn').attr('href', url.toString()).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
         },
 
