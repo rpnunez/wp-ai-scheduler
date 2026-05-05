@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-29 - [Extract AIPS_History_Stats_Repository]
+**Context:** `AIPS_History_Repository` had become a God Object (over 1200 lines), mixing core CRUD operations and detailed analytical query methods for gathering statistics.
+**Decision:** Applied Separation of Concerns. Extracted all analytical queries and stat calculation methods (`get_estimated_generation_time`, `get_stats`, `get_daily_generation_counts`, `get_template_stats`, `get_all_template_stats`, `get_schedule_generated_post_counts`, `get_author_schedule_logs_by_event_types`) into a new `AIPS_History_Stats_Repository` class.
+**Consequence:** Improved cohesion and reduced the size of `AIPS_History_Repository`. The main repository now acts as a proxy, instantiating `AIPS_History_Stats_Repository` internally and delegating stat-related calls to maintain backward compatibility. Added new file `class-aips-history-stats-repository.php` and updated autoloader classmaps.
+**Tests:** Ran the existing test suite (`composer test`) to ensure autoloader maps are properly updated and proxy methods delegate successfully. Pre-existing test failures (due to limited DB mode) remain the same, confirming no new regressions.
