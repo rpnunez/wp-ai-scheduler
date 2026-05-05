@@ -226,7 +226,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
 				<p class="aips-empty-state-description"><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
 				<div class="aips-empty-state-actions">
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-source-search-clear-2">
+					<button type="button" class="aips-btn aips-btn-ghost" id="aips-source-search-clear-2">
 						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
