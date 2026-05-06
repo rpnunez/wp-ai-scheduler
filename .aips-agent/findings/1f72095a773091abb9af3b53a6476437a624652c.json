@@ -1,0 +1,17 @@
+{
+  "id": "1f72095a773091abb9af3b53a6476437a624652c",
+  "type": "controller_datetime_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-dashboard-controller.php",
+  "symbol": "AIPS_Dashboard_Controller",
+  "anchor": "get_schedule_rows:strtotime-next_run_gmt",
+  "summary": "Dashboard schedule formatting still parses next_run inside a controller with raw strtotime instead of using AIPS_DateTime, which risks timezone drift and keeps date handling inconsistent with the bigint timestamp migration.",
+  "why_it_matters": "Controllers should not own ad-hoc datetime parsing in this codebase. Using AIPS_DateTime keeps site timezone display and UTC storage rules consistent.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-dashboard-controller.php:144"
+  ],
+  "suggested_fix": "Normalize next_run through AIPS_DateTime and keep presentation formatting in a helper or value object-aware path.",
+  "first_seen_run_id": "aips-20260506T234621Z",
+  "last_seen_run_id": "aips-20260506T234621Z"
+}
