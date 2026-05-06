@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2024-05-23 - Planner Optimization
+**Target Feature:** Planner
+**Improvement:** Fixed an issue where the bulk scheduler ignored the selected frequency and scheduled all topics for the same time instead of staggering them based on the frequency.
+**Files Modified:** ai-post-scheduler/includes/class-aips-planner.php
+**Outcome:** Topics scheduled in bulk from the planner are now properly staggered according to the selected frequency interval, rather than all running at the exact same moment.

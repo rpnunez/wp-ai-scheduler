@@ -146,15 +146,11 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
-	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * Submitting multiple topics with a 'once' frequency must
+	 * stagger the schedule entries using a default 'daily' interval
+	 * so they don't all run simultaneously.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_staggers_daily_by_default() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -174,28 +170,24 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
-		foreach ($schedules as $i => $schedule) {
-			$this->assertEquals(
-				$start_date,
-				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
-			);
-		}
+		$this->assertEquals('2030-06-15 13:15:00', $schedules[0]['next_run']);
+		$this->assertEquals('2030-06-16 13:15:00', $schedules[1]['next_run']);
+		$this->assertEquals('2030-06-17 13:15:00', $schedules[2]['next_run']);
+		$this->assertEquals('2030-06-18 13:15:00', $schedules[3]['next_run']);
+		$this->assertEquals('2030-06-19 13:15:00', $schedules[4]['next_run']);
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * Submitting multiple topics with a frequency must
+	 * stagger the schedule entries using the interval calculator.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_staggers_next_run() {
 		$this->set_admin_user();
 
-		$start_date = '2030-08-01 09:00:00';
+		$start_date = '2030-06-15 13:15:00';
 
 		$this->set_valid_post(array(
-			'topics'      => array('Daily A', 'Daily B', 'Daily C'),
+			'topics'      => array('Topic A', 'Topic B', 'Topic C'),
 			'template_id' => 1,
 			'start_date'  => $start_date,
 			'frequency'   => 'daily',
@@ -204,17 +196,14 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$response = $this->capture_json(array($this->planner, 'ajax_bulk_schedule'));
 
 		$this->assertTrue($response['success'], 'Expected success. Got: ' . wp_json_encode($response));
+		$this->assertEquals(3, $response['data']['count']);
 
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
-		foreach ($schedules as $i => $schedule) {
-			$this->assertEquals(
-				$start_date,
-				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
-			);
-		}
+		$this->assertEquals('2030-06-15 13:15:00', $schedules[0]['next_run']);
+		$this->assertEquals('2030-06-16 13:15:00', $schedules[1]['next_run']);
+		$this->assertEquals('2030-06-17 13:15:00', $schedules[2]['next_run']);
 	}
 
 	/**
