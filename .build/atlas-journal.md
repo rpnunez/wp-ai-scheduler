@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-28 - [Extract AIPS_AI_JSON_Extractor]
+**Context:** The `AIPS_AI_Service` class had grown beyond a single responsibility, orchestrating external AI engine interactions while simultaneously handling the low-level string parsing, sanitization, and extraction of JSON structures from potentially malformed conversational responses via its internal `extract_json_fragment` and `sanitize_json_candidate` methods.
+**Decision:** Applied "Separation of Concerns". Extracted the JSON extraction and sanitization logic into a dedicated, standalone `AIPS_AI_JSON_Extractor` class. Injected/instantiated this class within `AIPS_AI_Service` so it can simply delegate the extraction step when parsing text-based AI responses in `generate_json_from_text()`.
+**Consequence:**
+* `AIPS_AI_Service` is leaner and more tightly focused on external service orchestration.
+* The error-prone string parsing and sanitization logic is cleanly encapsulated and now significantly easier to test in isolation.
+* Maintained 100% backward compatibility as the public API of `AIPS_AI_Service` remains identical.
+**Tests:** Migrated and expanded extraction unit tests into the new `Test_AIPS_AI_JSON_Extractor.php` suite. Verified tests pass and achieve full code coverage for the extraction module, and verified no regressions in the core `AIPS_AI_Service` tests.
