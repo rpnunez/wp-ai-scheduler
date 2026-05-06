@@ -273,15 +273,21 @@ final class AI_Post_Scheduler {
     /**
      * Run versioned upgrade checks.
      *
-     * Call-order guarantee (must not be changed):
-     *   1. AIPS_DB_Migrations::check_and_run() runs first.  It handles the
-     *      subset of structural changes that WordPress's dbDelta() cannot
-     *      perform: column renames, type changes, index drops/adds, and data
-     *      backfills. Migrations must complete before dbDelta runs so the
-     *      schema is in a consistent state.
-     *   2. AIPS_DB_Manager::install_tables() runs second (called by activate()
-     *      immediately after this method returns on the activation path).
-     *      dbDelta() then handles CREATE TABLE and ADD COLUMN idempotently.
+     * Called both on plugin activation (via activate()) and on every page load
+     * via the plugins_loaded hook. WordPress plugin auto-updates skip activation,
+     * so this must be self-contained: AIPS_DB_Migrations::check_and_run() runs
+     * migrations AND install_tables() (dbDelta) when an upgrade is detected,
+     * ensuring the schema is fully applied regardless of the call path.
+     *
+     * Call-order guarantee inside AIPS_DB_Migrations::run_upgrade() (must not change):
+     *   1. Versioned migrations run first — column renames/type changes/index ops
+     *      that dbDelta cannot perform. Schema must be consistent before dbDelta.
+     *   2. AIPS_DB_Manager::install_tables() (dbDelta) runs second — adds any new
+     *      tables/columns introduced in the current plugin version.
+     *
+     * Note: activate() also calls install_tables() directly afterward for the
+     * fresh-install / re-activation edge case. The double invocation is harmless
+     * because dbDelta is fully idempotent.
      *
      * @return void
      */

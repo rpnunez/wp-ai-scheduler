@@ -6,8 +6,9 @@
  * ─────────────────────
  * Layer 1 — AIPS_DB_Manager  (schema truth via dbDelta)
  *   Handles CREATE TABLE, ADD COLUMN, and column widening.
- *   Called unconditionally on activation and on each upgrade via
- *   AI_Post_Scheduler::activate() immediately after this class returns.
+ *   Called by run_upgrade() after all migrations complete, ensuring new
+ *   schema objects are applied on BOTH the activation path and the
+ *   plugins_loaded path (WordPress auto-updates skip activation).
  *
  * Layer 2 — AIPS_DB_Migrations  (this class)
  *   Handles structural changes that WordPress's dbDelta() CANNOT perform:
@@ -65,15 +66,24 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Run every migration whose target version is above $from_version, then
-	 * persist the new DB version so subsequent calls are skipped.
+	 * Run every migration whose target version is above $from_version, apply
+	 * the dbDelta schema (Layer 1), then persist the new DB version so
+	 * subsequent calls are skipped.
 	 *
-	 * Note: do NOT call AIPS_DB_Manager::install_tables() here. On the
-	 * activation path, install_tables() is called unconditionally by
-	 * AI_Post_Scheduler::activate() immediately after this method returns,
-	 * which is the correct ordering (migrations first, then dbDelta). On the
-	 * plugins_loaded path no second install_tables() call is needed because no
-	 * new schema objects are introduced at runtime outside of activations.
+	 * Call order (must not be changed):
+	 *   1. Versioned migrations run first — they handle the structural changes
+	 *      that dbDelta cannot (column renames, type changes, index drops/adds,
+	 *      data backfills). The schema must be consistent before dbDelta runs.
+	 *   2. AIPS_DB_Manager::install_tables() runs second — dbDelta then applies
+	 *      CREATE TABLE and ADD COLUMN for any new schema objects introduced in
+	 *      the current plugin version.
+	 *   3. aips_db_version is stamped to AIPS_VERSION via AIPS_Config::set_option()
+	 *      so the Config in-memory cache is kept in sync and subsequent reads
+	 *      within the same request see the updated value.
+	 *
+	 * install_tables() is idempotent (dbDelta is safe to run multiple times), so
+	 * calling it here is harmless even when activate() also calls it directly
+	 * afterward for the re-activation / fresh-install edge case.
 	 *
 	 * @param string $from_version The currently stored DB version.
 	 * @return void
@@ -95,7 +105,37 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_5_0();
 		}
 
-		update_option( 'aips_db_version', AIPS_VERSION );
+		// Apply Layer-1 schema changes (new tables / new columns) so that plugin
+		// updates delivered via WordPress auto-update — which skip activate() —
+		// still get a complete, up-to-date schema.
+		$install_result = AIPS_DB_Manager::install_tables();
+
+		if ( is_wp_error( $install_result ) ) {
+			$this->logger->log(
+				'install_tables() failed during upgrade from ' . $from_version . ': ' . $install_result->get_error_message(),
+				'error'
+			);
+
+			if ( class_exists( 'AIPS_Notifications' ) ) {
+				( new AIPS_Notifications() )->system_error( array(
+					'title'         => __( 'Database upgrade failed', 'ai-post-scheduler' ),
+					'error_code'    => $install_result->get_error_code(),
+					'error_message' => $install_result->get_error_message(),
+					'from_version'  => $from_version,
+					'url'           => admin_url( 'admin.php?page=aips-status' ),
+					'dedupe_key'    => 'db_upgrade_failed_' . sanitize_key( (string) $from_version ),
+					'dedupe_window' => 1800,
+				) );
+			}
+
+			// Return without stamping the version so the next request retries.
+			return;
+		}
+
+		// Use AIPS_Config::set_option() so the per-request option cache is
+		// invalidated immediately; bare update_option() would leave the cache
+		// stale for the rest of this request.
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', AIPS_VERSION );
 		$this->logger->log( 'Database upgraded from version ' . $from_version . ' to ' . AIPS_VERSION, 'info' );
 	}
 
