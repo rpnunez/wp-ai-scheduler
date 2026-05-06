@@ -12,6 +12,43 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Admin_Assets {
 
+	/**
+	 * Plugin page slug prefix.
+	 */
+	private const PAGE_PREFIX = 'aips-';
+
+	/**
+	 * Main dashboard page slug.
+	 */
+	private const PAGE_DASHBOARD = 'ai-post-scheduler';
+
+	/**
+	 * Dashboard hook suffix.
+	 */
+	private const HOOK_DASHBOARD = 'toplevel_page_ai-post-scheduler';
+
+	/**
+	 * Admin page slugs.
+	 */
+	private const PAGE_AUTHORS = 'aips-authors';
+	private const PAGE_AUTHOR_TOPICS = 'aips-author-topics';
+	private const PAGE_TEMPLATES = 'aips-templates';
+	private const PAGE_VOICES = 'aips-voices';
+	private const PAGE_STRUCTURES = 'aips-structures';
+	private const PAGE_SCHEDULE = 'aips-schedule';
+	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
+	private const PAGE_RESEARCH = 'aips-research';
+	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
+	private const PAGE_HISTORY = 'aips-history';
+	private const PAGE_ONBOARDING = 'aips-onboarding';
+	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
+	private const PAGE_STATUS = 'aips-status';
+	private const PAGE_TAXONOMY = 'aips-taxonomy';
+	private const PAGE_SOURCES = 'aips-sources';
+	private const PAGE_SETTINGS = 'aips-settings';
+	private const PAGE_TELEMETRY = 'aips-telemetry';
+	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+
     /**
      * Initialize the class.
      */
@@ -25,92 +62,103 @@ class AIPS_Admin_Assets {
      * Loads CSS and JS assets only on plugin-specific pages.
      *
      * @param string $hook The current admin page hook.
-     * @return void
-     */
-    public function enqueue_admin_assets($hook) {
-        if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
-            return;
-        }
+	 * @return void
+	 */
+	public function enqueue_admin_assets($hook) {
+		if (!$this->hook_contains($hook, self::PAGE_DASHBOARD) && !$this->hook_contains($hook, self::PAGE_PREFIX)) {
+			return;
+		}
 
-        $this->enqueue_global_assets();
+		$this->enqueue_global_assets();
 
-        if (strpos($hook, 'toplevel_page_ai-post-scheduler') !== false) {
-            $this->enqueue_dashboard_assets();
-        }
+		if ($this->hook_contains($hook, self::HOOK_DASHBOARD)) {
+			$this->enqueue_dashboard_assets();
+		}
 
-        if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
-            $this->enqueue_authors_assets($hook);
-        }
+		if ($this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+			$this->enqueue_authors_assets($hook);
+		}
 
-        if (strpos($hook, 'aips-templates') !== false) {
-            $this->enqueue_templates_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+			$this->enqueue_templates_assets();
+		}
 
-        if (strpos($hook, 'aips-voices') !== false) {
-            $this->enqueue_voices_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_VOICES)) {
+			$this->enqueue_voices_assets();
+		}
 
-        if (strpos($hook, 'aips-structures') !== false) {
-            $this->enqueue_structures_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_STRUCTURES)) {
+			$this->enqueue_structures_assets();
+		}
 
-        if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
-            $this->enqueue_schedule_assets($hook);
-        }
+		if ($this->hook_contains($hook, self::PAGE_SCHEDULE) && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+			$this->enqueue_schedule_assets($hook);
+		}
 
-        if (strpos($hook, 'aips-research') !== false) {
-            $this->enqueue_research_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_RESEARCH)) {
+			$this->enqueue_research_assets();
+		}
 
-        if (strpos($hook, 'aips-generated-posts') !== false) {
-            $this->enqueue_generated_posts_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
+			$this->enqueue_generated_posts_assets();
+		}
 
-        if (strpos($hook, 'aips-schedule-calendar') !== false) {
-            $this->enqueue_schedule_calendar_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+			$this->enqueue_schedule_calendar_assets();
+		}
 
-        if (strpos($hook, 'aips-history') !== false) {
-            $this->enqueue_history_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_HISTORY)) {
+			$this->enqueue_history_assets();
+		}
 
-        if (strpos($hook, 'aips-onboarding') !== false) {
-            $this->enqueue_onboarding_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_ONBOARDING)) {
+			$this->enqueue_onboarding_assets();
+		}
 
-        if (strpos($hook, 'aips-dev-tools') !== false) {
-            $this->enqueue_dev_tools_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+			$this->enqueue_dev_tools_assets();
+		}
 
-        if (strpos($hook, 'aips-status') !== false) {
-            $this->enqueue_status_1_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
+			$this->enqueue_status_1_assets();
+		}
 
-        if (strpos($hook, 'aips-taxonomy') !== false) {
-            $this->enqueue_taxonomy_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+			$this->enqueue_taxonomy_assets();
+		}
 
-        if (strpos($hook, 'aips-sources') !== false) {
-            $this->enqueue_sources_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_SOURCES)) {
+			$this->enqueue_sources_assets();
+		}
 
-        if (strpos($hook, 'aips-settings') !== false) {
-            $this->enqueue_settings_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_SETTINGS)) {
+			$this->enqueue_settings_assets();
+		}
 
-        if (strpos($hook, 'aips-status') !== false) {
-            $this->enqueue_status_2_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
+			$this->enqueue_status_2_assets();
+		}
 
-        if (strpos($hook, 'aips-telemetry') !== false) {
-            $this->enqueue_telemetry_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+			$this->enqueue_telemetry_assets();
+		}
 
-        if (strpos($hook, 'aips-internal-links') !== false) {
-            $this->enqueue_internal_links_assets();
-        }
+		if ($this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+			$this->enqueue_internal_links_assets();
+		}
 
-    }
+	}
+
+	/**
+	 * Check whether the current admin hook includes a page slug.
+	 *
+	 * @param string $hook   Current admin page hook.
+	 * @param string $needle Page slug or hook fragment.
+	 * @return bool
+	 */
+	private function hook_contains($hook, $needle) {
+		return strpos($hook, $needle) !== false;
+	}
 
     /**
      * Enqueue global plugin assets.
