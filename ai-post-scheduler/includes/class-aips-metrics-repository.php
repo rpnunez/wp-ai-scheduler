@@ -454,10 +454,10 @@ class AIPS_Metrics_Repository {
 		}
 
 		return array(
-			'total'     => isset( $row->total )     ? (int) $row->total     : 0,
-			'completed' => isset( $row->completed ) ? (int) $row->completed : 0,
-			'failed'    => isset( $row->failed )    ? (int) $row->failed    : 0,
-			'partial'   => isset( $row->partial )   ? (int) $row->partial   : 0,
+			'total'     => (is_object($row) && isset($row->total))     ? (int) $row->total     : 0,
+			'completed' => (is_object($row) && isset($row->completed)) ? (int) $row->completed : 0,
+			'failed'    => (is_object($row) && isset($row->failed))    ? (int) $row->failed    : 0,
+			'partial'   => (is_object($row) && isset($row->partial))   ? (int) $row->partial   : 0,
 		);
 	}
 
@@ -568,7 +568,7 @@ class AIPS_Metrics_Repository {
 			)
 		);
 
-		if ( ! $row || ! isset( $row->avg_calls ) || $row->avg_calls === null ) {
+		if ( ! $row || ! (is_object($row) && isset($row->avg_calls)) || $row->avg_calls === null ) {
 			return 0.0;
 		}
 
@@ -660,7 +660,7 @@ class AIPS_Metrics_Repository {
 			)
 		);
 
-		if ( ! $row || ! isset( $row->total ) || (int) $row->total === 0 ) {
+		if ( ! $row || ! (is_object($row) && isset($row->total)) || (int) $row->total === 0 ) {
 			return -1.0; // No scheduled-run data available.
 		}
 

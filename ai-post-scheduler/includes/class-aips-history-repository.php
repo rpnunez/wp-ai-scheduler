@@ -584,11 +584,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         ");
 
         $stats = array(
-            'total' => isset($results->total) ? (int) $results->total : 0,
-            'completed' => isset($results->completed) ? (int) $results->completed : 0,
-            'failed' => isset($results->failed) ? (int) $results->failed : 0,
-            'processing' => isset($results->processing) ? (int) $results->processing : 0,
-            'partial' => isset($results->partial) ? (int) $results->partial : 0,
+            'total' => (is_object($results) && isset($results->total)) ? (int) $results->total : 0,
+            'completed' => (is_object($results) && isset($results->completed)) ? (int) $results->completed : 0,
+            'failed' => (is_object($results) && isset($results->failed)) ? (int) $results->failed : 0,
+            'processing' => (is_object($results) && isset($results->processing)) ? (int) $results->processing : 0,
+            'partial' => (is_object($results) && isset($results->partial)) ? (int) $results->partial : 0,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 

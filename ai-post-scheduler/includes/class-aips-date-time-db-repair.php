@@ -366,6 +366,7 @@ class AIPS_Date_Time_DB_Repair {
 			return false;
 		}
 
+		if (!is_object($col_info) || !isset($col_info->Type)) { return false; }
 		$type_lower = strtolower( $col_info->Type );
 
 		if ( false !== strpos( $type_lower, 'bigint' ) ) {
