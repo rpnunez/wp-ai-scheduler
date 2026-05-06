@@ -89,16 +89,12 @@ class AIPS_Image_Prompt_Processor {
         $topic_str = $context->get_topic();
         $resolved_ai_variables = array();
 
-        if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
+        if ($this->template_processor->has_ai_variables($image_prompt)) {
             $image_context = $this->build_featured_image_variable_context($context, $content, $title);
             $resolved_ai_variables = $this->ai_variable_resolver->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
         }
 
-        if (method_exists($this->template_processor, 'process_with_ai_variables')) {
-            $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
-        } else {
-            $processed_prompt = $this->template_processor->process($image_prompt, $topic_str);
-        }
+        $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
 
         return $this->remove_unresolved_template_placeholders($processed_prompt);
     }
