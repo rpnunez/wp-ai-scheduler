@@ -537,7 +537,8 @@ class AIPS_Schedule_Processor {
      *
      * @param int      $schedule_id      The schedule ID.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return int|WP_Error Post ID on success, or WP_Error on failure.
+     * @return array|WP_Error List of generated post IDs on success, an array with 'batch_queued'=>true when a large
+     *                        batch was dispatched asynchronously, or WP_Error on failure.
      */
     public function process_single_schedule($schedule_id, $quantity_override = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
@@ -663,7 +664,8 @@ class AIPS_Schedule_Processor {
      * @param object   $schedule         Schedule object (merged with template).
      * @param bool     $is_manual        Whether this is a manual execution.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return int|WP_Error Post ID or WP_Error.
+     * @return array|WP_Error List of generated post IDs on success, an array with 'batch_queued'=>true when a large
+     *                        batch was dispatched asynchronously, or WP_Error on failure.
      */
     private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null) {
         if (!$is_manual) {
@@ -766,11 +768,16 @@ class AIPS_Schedule_Processor {
      * @param AIPS_Schedule_History_Container|null $history
      * @param bool $is_manual
      * @param AIPS_Batch_Queue_Service $batch_service
-     * @return null|WP_Error|array
+     * @return array|WP_Error Array with 'batch_queued'=>true on success (fresh dispatch or already pending),
+     *                        or WP_Error on dispatch failure when $is_manual is true. On non-manual dispatch
+     *                        failure the method handles cleanup internally and returns null.
      */
     private function dispatch_batch_queue($schedule, $post_quantity, $history, $is_manual, $batch_service) {
         if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
-            return null;
+            // Batch is already in the queue — signal "queued" so callers can
+            // surface an appropriate message instead of treating null as a
+            // generated post.
+            return array('batch_queued' => true, 'already_pending' => true);
         }
 
         $now            = AIPS_DateTime::now()->timestamp();
@@ -866,7 +873,11 @@ class AIPS_Schedule_Processor {
             );
         }
 
-        return null;
+        return array(
+            'batch_queued'      => true,
+            'num_batches'       => $dispatch_summary['num_batches'],
+            'scheduled_batches' => $dispatch_summary['scheduled_batches'],
+        );
     }
 
     /**
@@ -927,8 +938,12 @@ class AIPS_Schedule_Processor {
                         // Even if $saved_completed disagrees (e.g. a crash wrote the
                         // post but not the cursor), count(post_ids) reflects the true
                         // number of already-created posts.
+                        //
+                        // $prior_completed is intentionally 0 here: $successful_post_ids
+                        // already holds the previously-generated IDs, so counting them
+                        // again via $prior_completed would double the total.
                         $successful_post_ids = $saved_post_ids;
-                        $prior_completed     = count($saved_post_ids);
+                        $prior_completed     = 0;
                         $start_index         = count($saved_post_ids);
                     } else {
                         // Legacy cursor (no post_ids): resume from the recorded index.

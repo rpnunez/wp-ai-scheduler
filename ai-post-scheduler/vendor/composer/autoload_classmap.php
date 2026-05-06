@@ -1726,6 +1726,7 @@ return array(
     'Test_AIPS_Schedule_Controller_Save' => $baseDir . '/tests/Test_AIPS_Schedule_Controller_Save.php',
     'Test_AIPS_Schedule_Entry' => $baseDir . '/tests/Test_AIPS_Generation_Result.php',
     'Test_AIPS_Schedule_History' => $baseDir . '/tests/Test_AIPS_Schedule_History.php',
+    'Test_AIPS_Schedule_Processor' => $baseDir . '/tests/Test_AIPS_Schedule_Processor.php',
     'Test_AIPS_Schedule_Repository_Bulk' => $baseDir . '/tests/Test_AIPS_Schedule_Repository_Bulk.php',
     'Test_AIPS_Scheduler_Hook_Registration' => $baseDir . '/tests/Test_AIPS_Scheduler_Hook_Registration.php',
     'Test_AIPS_Scheduler_Resilience' => $baseDir . '/tests/Test_AIPS_Scheduler_Resilience.php',

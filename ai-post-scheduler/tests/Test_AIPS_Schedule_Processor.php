@@ -153,7 +153,9 @@ class Test_AIPS_Schedule_Processor extends WP_UnitTestCase {
 
         $result = $this->processor->process_single_schedule(2);
 
-        $this->assertNull($result);
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('batch_queued', $result);
+        $this->assertTrue($result['batch_queued']);
     }
 
     public function test_process_single_schedule_not_found() {

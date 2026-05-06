@@ -210,6 +210,13 @@ class AIPS_Schedule_Controller {
             $result = $this->scheduler->run_schedule_now($schedule_id);
             if (is_wp_error($result)) {
                 AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            } elseif (is_array($result) && !empty($result['batch_queued'])) {
+                AIPS_Ajax_Response::success(array(
+                    'message'      => __('Large batch queued for background processing.', 'ai-post-scheduler'),
+                    'batch_queued' => true,
+                    'post_ids'     => array(),
+                    'edit_url'     => '',
+                ));
             } else {
                 $post_ids = is_array($result) ? $result : array($result);
                 $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
@@ -220,7 +227,7 @@ class AIPS_Schedule_Controller {
                     count($post_ids)
                 );
 
-                 AIPS_Ajax_Response::success(array(
+                AIPS_Ajax_Response::success(array(
                     'message' => $msg,
                     'post_ids' => $post_ids,
                     'edit_url' => $edit_url
@@ -422,8 +429,9 @@ class AIPS_Schedule_Controller {
             ));
         }
 
-        $post_ids = array();
-        $errors = array();
+        $post_ids     = array();
+        $queued_count = 0;
+        $errors       = array();
 
         foreach ($ids as $schedule_id) {
             $result = $this->scheduler->run_schedule_now($schedule_id);
@@ -434,23 +442,35 @@ class AIPS_Schedule_Controller {
                     $schedule_id,
                     $result->get_error_message()
                 );
+            } elseif (is_array($result) && !empty($result['batch_queued'])) {
+                $queued_count++;
             } else {
                 $schedule_post_ids = is_array($result) ? $result : array($result);
                 $post_ids = array_merge($post_ids, $schedule_post_ids);
             }
         }
 
-        if (empty($post_ids) && !empty($errors)) {
+        if (empty($post_ids) && $queued_count === 0 && !empty($errors)) {
             AIPS_Ajax_Response::error(array(
                 'message' => __('All schedule runs failed.', 'ai-post-scheduler'),
                 'errors'  => $errors,
             ));
         }
 
-        $message = sprintf(
-            _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
-            count($post_ids)
-        );
+        $parts = array();
+        if (!empty($post_ids)) {
+            $parts[] = sprintf(
+                _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+                count($post_ids)
+            );
+        }
+        if ($queued_count > 0) {
+            $parts[] = sprintf(
+                _n('%d schedule queued for background processing.', '%d schedules queued for background processing.', $queued_count, 'ai-post-scheduler'),
+                $queued_count
+            );
+        }
+        $message = !empty($parts) ? implode(' ', $parts) : __('No posts generated.', 'ai-post-scheduler');
 
         if (!empty($errors)) {
             $message .= ' ' . sprintf(
@@ -460,9 +480,10 @@ class AIPS_Schedule_Controller {
         }
 
         AIPS_Ajax_Response::success(array(
-            'message'  => $message,
-            'post_ids' => $post_ids,
-            'errors'   => $errors,
+            'message'       => $message,
+            'post_ids'      => $post_ids,
+            'queued_count'  => $queued_count,
+            'errors'        => $errors,
         ));
     }
 
