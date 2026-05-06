@@ -746,8 +746,8 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         ");
         
         return array(
-            'total' => isset($results->total) ? (int) $results->total : 0,
-            'active' => isset($results->active) ? (int) $results->active : 0,
+            'total' => (is_object($results) && isset($results->total)) ? (int) $results->total : 0,
+            'active' => (is_object($results) && isset($results->active)) ? (int) $results->active : 0,
         );
     }
 }
