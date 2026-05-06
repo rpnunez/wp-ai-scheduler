@@ -135,7 +135,7 @@ if (is_object($history)) {
                                     <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
                                     <?php if ($has_active_filter): ?>
                                         <br><br>
-                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
+                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-clear-history-search-btn">
                                             <span class="dashicons dashicons-dismiss"></span>
                                             <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
                                         </button>

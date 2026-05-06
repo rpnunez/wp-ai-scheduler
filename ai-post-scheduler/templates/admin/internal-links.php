@@ -111,7 +111,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-il-search"><?php esc_html_e('Search posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-il-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search by post title…', 'ai-post-scheduler'); ?>">
-						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 
