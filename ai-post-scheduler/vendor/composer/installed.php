@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-atlas-refactor-aips-generator-9038561685912081166',
         'version' => 'dev-atlas-refactor-aips-generator-9038561685912081166',
-        'reference' => '173ccba4ed087fd0502e50f301a5260906a62bf3',
+        'reference' => 'd79a74cd6f9bdcb9d3e6698a53cd78342beaf9f3',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -103,7 +103,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-atlas-refactor-aips-generator-9038561685912081166',
             'version' => 'dev-atlas-refactor-aips-generator-9038561685912081166',
-            'reference' => '173ccba4ed087fd0502e50f301a5260906a62bf3',
+            'reference' => 'd79a74cd6f9bdcb9d3e6698a53cd78342beaf9f3',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

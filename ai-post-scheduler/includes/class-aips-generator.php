@@ -100,6 +100,8 @@ class AIPS_Generator {
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
+        } elseif ( $container->has( AIPS_Markdown_Parser::class ) ) {
+            $this->markdown_parser = $container->make( AIPS_Markdown_Parser::class );
         } elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
             $this->markdown_parser = new AIPS_Markdown_Parser();
         } else {
@@ -109,19 +111,42 @@ class AIPS_Generator {
         // Initialize logger wrapper
         $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
 
-        $this->content_normalizer = new AIPS_Content_Normalizer($this->markdown_parser);
+        // Resolve or construct AIPS_Content_Normalizer.
+        // When a custom markdown_parser is explicitly injected (e.g. in tests) we create a
+        // dedicated normalizer that uses it; otherwise we resolve the singleton from the container.
+        if ( $markdown_parser ) {
+            $this->content_normalizer = new AIPS_Content_Normalizer( $this->markdown_parser );
+        } else {
+            $this->content_normalizer = $container->has( AIPS_Content_Normalizer::class )
+                ? $container->make( AIPS_Content_Normalizer::class )
+                : new AIPS_Content_Normalizer( $this->markdown_parser );
+        }
 
-        $this->ai_variable_resolver = new AIPS_AI_Variable_Resolver(
-            $this->template_processor,
-            $this->generation_logger,
-            function($prompt, $options, $log_type) { return $this->generate_content($prompt, $options, $log_type); }
-        );
+        // Register AIPS_AI_Variable_Resolver in the container and resolve it.
+        // The generate_content callback is passed as a closure – this is strictly unavoidable
+        // because it captures the current generator instance to avoid a circular constructor dependency.
+        $content_normalizer = $this->content_normalizer;
+        $template_processor = $this->template_processor;
+        $generation_logger  = $this->generation_logger;
+        $self               = $this;
+        $container->bind( AIPS_AI_Variable_Resolver::class, function( $c ) use ( $template_processor, $generation_logger, $content_normalizer, $self ) {
+            return new AIPS_AI_Variable_Resolver(
+                $template_processor,
+                $generation_logger,
+                function( $prompt, $options, $log_type ) use ( $self ) {
+                    return $self->generate_content( $prompt, $options, $log_type );
+                },
+                $content_normalizer
+            );
+        } );
+        $this->ai_variable_resolver = $container->make( AIPS_AI_Variable_Resolver::class );
 
-        $this->image_prompt_processor = new AIPS_Image_Prompt_Processor(
-            $this->template_processor,
-            $this->ai_variable_resolver,
-            function($content, $max_length) { return $this->content_normalizer->smart_truncate_content($content, $max_length); }
-        );
+        // Register AIPS_Image_Prompt_Processor in the container and resolve it.
+        $ai_variable_resolver = $this->ai_variable_resolver;
+        $container->bind( AIPS_Image_Prompt_Processor::class, function( $c ) use ( $template_processor, $ai_variable_resolver ) {
+            return new AIPS_Image_Prompt_Processor( $template_processor, $ai_variable_resolver );
+        } );
+        $this->image_prompt_processor = $container->make( AIPS_Image_Prompt_Processor::class );
     }
 
     /**
@@ -237,11 +262,7 @@ class AIPS_Generator {
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_from_context($context, $content) {
-        return $this->ai_variable_resolver->resolve_ai_variables_from_context(
-            $context,
-            $content,
-            function($content, $max_length) { return $this->smart_truncate_content($content, $max_length); }
-        );
+        return $this->ai_variable_resolver->resolve_ai_variables_from_context( $context, $content );
     }
 
     /**
@@ -265,7 +286,7 @@ class AIPS_Generator {
      * @return string
      */
     private function build_featured_image_variable_context($context, $content = '', $title = '') {
-        return $this->image_prompt_processor->build_featured_image_variable_context($context, $content, $title);
+        return $this->ai_variable_resolver->build_featured_image_variable_context($context, $content, $title);
     }
 
     /**

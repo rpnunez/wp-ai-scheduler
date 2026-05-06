@@ -393,6 +393,15 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register generation utility singletons.
+        $container->singleton( AIPS_Markdown_Parser::class, function( $c ) {
+            return new AIPS_Markdown_Parser();
+        } );
+
+        $container->singleton( AIPS_Content_Normalizer::class, function( $c ) {
+            return new AIPS_Content_Normalizer( $c->make( AIPS_Markdown_Parser::class ) );
+        } );
     }
 
     /**
