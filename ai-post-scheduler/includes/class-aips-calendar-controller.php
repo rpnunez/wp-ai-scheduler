@@ -47,10 +47,11 @@ class AIPS_Calendar_Controller {
 	 * @return array Array of calendar events
 	 */
 	public function get_month_events($year, $month) {
-		// Calculate the start and end timestamps for the month (UTC).
-		$start_ts      = mktime( 0, 0, 0, $month, 1, $year );
-		$days_in_month = (int) date( 't', $start_ts );
-		$end_ts        = mktime( 23, 59, 59, $month, $days_in_month, $year );
+		// Calculate the start and end timestamps for the month.
+		// gmmktime() ensures UTC boundaries regardless of the server timezone.
+		$start_ts      = gmmktime( 0, 0, 0, $month, 1, $year );
+		$days_in_month = (int) gmdate( 't', $start_ts );
+		$end_ts        = gmmktime( 23, 59, 59, $month, $days_in_month, $year );
 
 		// Use repository to get active schedules
 		$schedules = $this->schedule_repo->get_all(true);
@@ -85,7 +86,7 @@ class AIPS_Calendar_Controller {
 	 * @param object $schedule  Schedule object
 	 * @param int    $start_ts  Range start as UTC Unix timestamp
 	 * @param int    $end_ts    Range end as UTC Unix timestamp
-	 * @return array Array of datetime strings in MySQL format (for calendar frontend)
+	 * @return array Array of datetime strings in site-local format (for calendar frontend)
 	 */
 	private function calculate_schedule_occurrences($schedule, $start_ts, $end_ts) {
 		$occurrences = array();
@@ -110,8 +111,9 @@ class AIPS_Calendar_Controller {
 		
 		while ($current && $current <= $end_ts && $count < $max_occurrences) {
 			if ($current >= $start_ts) {
-				// Convert to MySQL datetime string for the calendar frontend.
-				$occurrences[] = date('Y-m-d H:i:s', $current);
+				// Format in the WordPress site timezone so the calendar UI displays
+				// the correct local time rather than a UTC or server-tz shifted value.
+				$occurrences[] = wp_date('Y-m-d H:i:s', $current);
 			}
 			
 			// Advance to the next occurrence using the interval calculator.

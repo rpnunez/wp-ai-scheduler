@@ -456,17 +456,27 @@ class AIPS_Author_Topics_Repository {
 	 * @return array<string, int>
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
-		$days  = max( 1, absint( $days ) );
-		$start = AIPS_DateTime::now()->addSeconds( -( ( $days - 1 ) * DAY_IN_SECONDS ) )->timestamp();
+		$days   = max( 1, absint( $days ) );
+		$tz     = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( 'UTC' );
+		$tz_sql = $this->site_tz_offset_sql( $tz );
+
+		// Floor to midnight of the first day in the site timezone so the full
+		// first calendar day is always included in the query.
+		$start = ( new DateTimeImmutable( 'now', $tz ) )
+			->modify( '-' . ( $days - 1 ) . ' days' )
+			->setTime( 0, 0, 0 )
+			->getTimestamp();
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(FROM_UNIXTIME(created_at)) AS day, COUNT(*) AS total
+				"SELECT DATE(CONVERT_TZ(FROM_UNIXTIME(created_at), '+00:00', %s)) AS day, COUNT(*) AS total
 				 FROM {$this->table_name}
 				 WHERE created_at >= %d
-				 GROUP BY DATE(FROM_UNIXTIME(created_at))
+				 GROUP BY DATE(CONVERT_TZ(FROM_UNIXTIME(created_at), '+00:00', %s))
 				 ORDER BY day ASC",
-				$start
+				$tz_sql,
+				$start,
+				$tz_sql
 			)
 		);
 
@@ -476,6 +486,22 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Build a UTC-offset string (e.g. '+05:30') for the given timezone.
+	 *
+	 * Used with MySQL CONVERT_TZ so that DATE(CONVERT_TZ(FROM_UNIXTIME(ts), '+00:00', $offset))
+	 * buckets timestamps in the same day boundaries as WordPress's wp_date() calls.
+	 *
+	 * @param DateTimeZone $tz Site timezone.
+	 * @return string Offset string, e.g. '+05:30' or '-04:00'.
+	 */
+	private function site_tz_offset_sql( DateTimeZone $tz ): string {
+		$offset = (int) $tz->getOffset( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$sign   = $offset >= 0 ? '+' : '-';
+		$abs    = abs( $offset );
+		return sprintf( '%s%02d:%02d', $sign, (int) floor( $abs / 3600 ), (int) ( ( $abs % 3600 ) / 60 ) );
 	}
 }
 

@@ -81,7 +81,7 @@ class AIPS_Telemetry_Repository {
 			'peak_memory_bytes' => '%d',
 			'elapsed_ms'        => '%f',
 			'payload'           => '%s',
-			'inserted_at'       => '%s',
+			'inserted_at'       => '%d',
 		);
 
 		$normalized_data = array();
@@ -141,12 +141,11 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_filtered_page($start_date, $end_date, array $filters = array(), $per_page = 25, $offset = 0) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		$tz     = wp_timezone();
+		$start  = (new DateTimeImmutable($start_date . ' 00:00:00', $tz))->getTimestamp();
+		$end    = (new DateTimeImmutable($end_date . ' 00:00:00', $tz))->modify('+1 day')->getTimestamp();
+		$where  = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start, $end);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
@@ -205,12 +204,11 @@ class AIPS_Telemetry_Repository {
 	 * @return int
 	 */
 	public function count_filtered($start_date, $end_date, array $filters = array()) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		$tz     = wp_timezone();
+		$start  = (new DateTimeImmutable($start_date . ' 00:00:00', $tz))->getTimestamp();
+		$end    = (new DateTimeImmutable($end_date . ' 00:00:00', $tz))->modify('+1 day')->getTimestamp();
+		$where  = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start, $end);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
@@ -231,20 +229,24 @@ class AIPS_Telemetry_Repository {
 	 * @return array<int, array<string, string|int|float>>
 	 */
 	public function get_daily_rollup($start_date, $end_date, array $filters = array()) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		$tz     = wp_timezone();
+		$tz_sql = $this->site_tz_offset_sql( $tz );
+		$start  = (new DateTimeImmutable($start_date . ' 00:00:00', $tz))->getTimestamp();
+		$end    = (new DateTimeImmutable($end_date . ' 00:00:00', $tz))->modify('+1 day')->getTimestamp();
+		$where  = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start, $end);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
-				...$params
+				"SELECT DATE(CONVERT_TZ(FROM_UNIXTIME(inserted_at), '+00:00', %s)) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " GROUP BY DATE(CONVERT_TZ(FROM_UNIXTIME(inserted_at), '+00:00', %s)) ORDER BY metric_date ASC",
+				...array_merge(
+					array( $tz_sql ),
+					$params,
+					array( $tz_sql )
+				)
 			),
 			ARRAY_A
 		);
@@ -304,5 +306,21 @@ class AIPS_Telemetry_Repository {
 			return null;
 		}
 		return json_decode($json, true);
+	}
+
+	/**
+	 * Build a UTC-offset string (e.g. '+05:30') for the given timezone.
+	 *
+	 * Used with MySQL CONVERT_TZ so that DATE(CONVERT_TZ(FROM_UNIXTIME(ts), '+00:00', $offset))
+	 * buckets timestamps in the same day boundaries as WordPress's site-timezone date functions.
+	 *
+	 * @param DateTimeZone $tz Site timezone.
+	 * @return string Offset string, e.g. '+05:30' or '-04:00'.
+	 */
+	private function site_tz_offset_sql( DateTimeZone $tz ): string {
+		$offset = (int) $tz->getOffset( new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) ) );
+		$sign   = $offset >= 0 ? '+' : '-';
+		$abs    = abs( $offset );
+		return sprintf( '%s%02d:%02d', $sign, (int) floor( $abs / 3600 ), (int) ( ( $abs % 3600 ) / 60 ) );
 	}
 }
