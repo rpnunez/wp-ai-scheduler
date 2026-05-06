@@ -86,6 +86,7 @@ return array(
     'AIPS_History_Repository_Test' => $baseDir . '/tests/AIPS_History_Repository_Test.php',
     'AIPS_History_Service' => $baseDir . '/includes/class-aips-history-service.php',
     'AIPS_History_Service_Interface' => $baseDir . '/includes/interface-aips-history-service-interface.php',
+    'AIPS_History_Stats_Repository' => $baseDir . '/includes/class-aips-history-stats-repository.php',
     'AIPS_History_Type' => $baseDir . '/includes/class-aips-history-type.php',
     'AIPS_Image_Service' => $baseDir . '/includes/class-aips-image-service.php',
     'AIPS_Internal_Link_Inserter_Service' => $baseDir . '/includes/class-aips-internal-link-inserter-service.php',

@@ -64,7 +64,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->stats_repository = new AIPS_History_Stats_Repository($this->wpdb, $this->table_name, $this->table_name_log);
+        $this->stats_repository = new AIPS_History_Stats_Repository();
     }
 
     /**

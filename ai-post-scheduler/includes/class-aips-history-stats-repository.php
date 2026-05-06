@@ -8,7 +8,7 @@
  */
 
 if (!defined('ABSPATH')) {
-    die;
+    exit;
 }
 
 /**
@@ -35,26 +35,24 @@ class AIPS_History_Stats_Repository {
 
     /**
      * Initialize the repository.
-     *
-     * @param wpdb   $wpdb           Database instance.
-     * @param string $table_name     History table name.
-     * @param string $table_name_log History log table name.
      */
-    public function __construct($wpdb, $table_name, $table_name_log) {
-        $this->wpdb = $wpdb;
-        $this->table_name = $table_name;
-        $this->table_name_log = $table_name_log;
+    public function __construct() {
+        global $wpdb;
+        $this->wpdb           = $wpdb;
+        $this->table_name     = $wpdb->prefix . 'aips_history';
+        $this->table_name_log = $wpdb->prefix . 'aips_history_log';
     }
 
     /**
      * Get estimated generation time based on recent history.
      *
-     * @param int $limit Number of recent records to analyze. Default 20.
+     * @param int $limit            Number of recent records to analyze. Default 20.
+     * @param int $fallback_seconds Seconds to return when no recorded times exist. Default 30.
      * @return array Associative array with 'per_post_seconds' and 'sample_size'.
      */
-    public function get_estimated_generation_time($limit = 20) {
-        $default_seconds = 30;
-        $limit           = absint($limit);
+    public function get_estimated_generation_time($limit = 20, $fallback_seconds = 30) {
+        $limit            = absint($limit);
+        $fallback_seconds = absint($fallback_seconds);
 
         // Retrieve the most recent recorded generation times.
         $times = $this->wpdb->get_col(
@@ -77,12 +75,12 @@ class AIPS_History_Stats_Repository {
                 $avg              = array_sum($numeric_times) / count($numeric_times);
                 $per_post_seconds = (int) ceil($avg);
             } else {
-                $per_post_seconds = $default_seconds;
+                $per_post_seconds = $fallback_seconds;
             }
 
             $sample_size = count($numeric_times);
         } else {
-            $per_post_seconds = $default_seconds;
+            $per_post_seconds = $fallback_seconds;
             $sample_size      = 0;
         }
 

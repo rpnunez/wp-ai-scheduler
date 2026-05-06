@@ -116,6 +116,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_History_Repository_Test' => __DIR__ . '/../..' . '/tests/AIPS_History_Repository_Test.php',
         'AIPS_History_Service' => __DIR__ . '/../..' . '/includes/class-aips-history-service.php',
         'AIPS_History_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-history-service-interface.php',
+        'AIPS_History_Stats_Repository' => __DIR__ . '/../..' . '/includes/class-aips-history-stats-repository.php',
         'AIPS_History_Type' => __DIR__ . '/../..' . '/includes/class-aips-history-type.php',
         'AIPS_Image_Service' => __DIR__ . '/../..' . '/includes/class-aips-image-service.php',
         'AIPS_Internal_Link_Inserter_Service' => __DIR__ . '/../..' . '/includes/class-aips-internal-link-inserter-service.php',

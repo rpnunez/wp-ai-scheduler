@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-        'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-        'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
+        'pretty_version' => 'dev-atlas/extract-history-stats-repository-11371003803943408168',
+        'version' => 'dev-atlas/extract-history-stats-repository-11371003803943408168',
+        'reference' => 'a0e1add6b638b5e93f4f84713373c71cdcf0307b',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-            'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-            'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
+            'pretty_version' => 'dev-atlas/extract-history-stats-repository-11371003803943408168',
+            'version' => 'dev-atlas/extract-history-stats-repository-11371003803943408168',
+            'reference' => 'a0e1add6b638b5e93f4f84713373c71cdcf0307b',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
