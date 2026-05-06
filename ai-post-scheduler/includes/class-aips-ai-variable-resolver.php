@@ -66,10 +66,6 @@ class AIPS_AI_Variable_Resolver {
 			}
 		}
 
-		if ( ! method_exists( $this->template_processor, 'extract_ai_variables' ) ) {
-			return array();
-		}
-
 		$ai_variables = $this->template_processor->extract_ai_variables( $title_prompt );
 		if ( empty( $ai_variables ) ) {
 			return array();
@@ -82,10 +78,6 @@ class AIPS_AI_Variable_Resolver {
 	}
 
 	public function resolve_ai_variables_for_template_string( $template_string, $context_str, $log_type = 'ai_variables', $generator_callback = null ) {
-		if ( ! method_exists( $this->template_processor, 'extract_ai_variables' ) ) {
-			return array();
-		}
-
 		$ai_variables = $this->template_processor->extract_ai_variables( $template_string );
 
 		if ( empty( $ai_variables ) ) {
