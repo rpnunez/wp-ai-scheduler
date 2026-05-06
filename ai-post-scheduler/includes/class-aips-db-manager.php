@@ -632,6 +632,66 @@ class AIPS_DB_Manager {
         );
     }
 
+    /**
+     * Convert a single DATETIME or TIMESTAMP column to BIGINT UNSIGNED on an
+     * existing table, preserving data via a temporary column rename strategy:
+     *
+     *   1. ADD a temporary BIGINT column.
+     *   2. UPDATE it with UNIX_TIMESTAMP(original) for all rows.
+     *   3. DROP the original DATETIME column.
+     *   4. RENAME the temporary column to the original name.
+     *
+     * If the column is already BIGINT, or does not exist, the method returns
+     * false immediately (no-op). This makes it safe to call on fresh installs
+     * where dbDelta has already created BIGINT columns from get_schema().
+     *
+     * This is the single canonical implementation. Both AIPS_DB_Migrations and
+     * AIPS_Date_Time_DB_Repair delegate here rather than duplicating the logic.
+     *
+     * @param string $table    Full table name including WordPress prefix.
+     * @param string $col_name Name of the column to convert.
+     * @return bool            True if the conversion was performed; false if it
+     *                         was a no-op (column absent or already BIGINT).
+     */
+    public static function convert_datetime_column_to_bigint( $table, $col_name ) {
+        global $wpdb;
+
+        $col_info = $wpdb->get_row( $wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $col_name
+        ) );
+
+        if ( ! $col_info ) {
+            return false; // Column doesn't exist; dbDelta will create it.
+        }
+
+        $type_lower = strtolower( $col_info->Type );
+
+        if ( false !== strpos( $type_lower, 'bigint' ) ) {
+            return false; // Already BIGINT — nothing to do.
+        }
+
+        if ( false === strpos( $type_lower, 'datetime' ) && false === strpos( $type_lower, 'timestamp' ) ) {
+            return false; // Not a temporal column — skip.
+        }
+
+        $tmp_col = $col_name . '_ts_tmp';
+
+        // 1. Add temporary BIGINT column.
+        $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$tmp_col}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 2. Populate from the existing DATETIME.
+        $wpdb->query( "UPDATE `{$table}` SET `{$tmp_col}` = IFNULL(UNIX_TIMESTAMP(`{$col_name}`), 0)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 3. Drop the original DATETIME column.
+        $wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$col_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 4. Rename temp column to the original name.
+        $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        return true;
+    }
+
     public function drop_tables() {
         global $wpdb;
         $tables = self::get_full_table_names();
