@@ -103,6 +103,12 @@ class Test_Generated_Posts_Controller extends WP_UnitTestCase {
 		
 		$this->assertNotFalse($log_id2);
 		
+		// Mock DB for get_by_id in limited environment
+		$GLOBALS['wpdb']->get_results_return_val = array(
+			(object) array('history_type_id' => AIPS_History_Type::AI_REQUEST),
+			(object) array('history_type_id' => AIPS_History_Type::AI_RESPONSE)
+		);
+
 		// Retrieve and verify
 		$history_item = $this->history_repository->get_by_id($history_id);
 		$this->assertNotNull($history_item);

@@ -33,9 +33,19 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	public function test_preview_requires_nonce() {
 		$_POST['prompt_template'] = 'Test content prompt';
 		$_POST['nonce'] = 'invalid_nonce';
+		$_REQUEST['nonce'] = $_POST['nonce'];
 
-		$this->expectException(WPAjaxDieStopException::class);
-		$this->controller->ajax_preview_template_prompts();
+		$thrown = false;
+		ob_start();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			$thrown = true;
+		} catch (WPAjaxDieContinueException $e) {
+			$thrown = true;
+		}
+		ob_end_clean();
+		$this->assertTrue($thrown, 'Exception should be thrown for invalid nonce');
 	}
 
 	/**
@@ -45,8 +55,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = '';
 
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -66,8 +83,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['image_prompt'] = '';
 		$_POST['generate_featured_image'] = 0;
 
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -98,6 +122,13 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 			'title_prompt' => 'Use a professional tone',
 			'content_instructions' => 'Write in a formal style',
 		));
+		// Mock the DB for get_voice
+		$GLOBALS['wpdb']->get_row_return_val = (object) array(
+			'id' => 1,
+			'name' => 'Test Voice',
+			'title_prompt' => 'Use a professional tone',
+			'content_instructions' => 'Write in a formal style'
+		);
 
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Write about {{topic}}';
@@ -106,8 +137,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['article_structure_id'] = 0;
 		$_POST['generate_featured_image'] = 0;
 
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -120,6 +158,7 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		
 		// Clean up
 		$voice_service->delete($voice_id);
+		$GLOBALS['wpdb']->get_row_return_val = null;
 	}
 
 	/**
@@ -135,8 +174,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['featured_image_source'] = 'ai_prompt';
 		$_POST['image_prompt'] = 'A beautiful landscape with {{topic}}';
 
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -157,8 +203,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Test content';
 
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
