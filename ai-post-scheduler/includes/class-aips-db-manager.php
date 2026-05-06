@@ -95,7 +95,7 @@ class AIPS_DB_Manager {
             template_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
-            creation_method varchar(20) DEFAULT NULL,
+            creation_method varchar(50) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),

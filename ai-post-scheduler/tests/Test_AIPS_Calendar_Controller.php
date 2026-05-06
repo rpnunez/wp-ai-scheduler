@@ -39,13 +39,14 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
+		ob_start();
 		try {
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 
 		$this->assertTrue($response['success']);
@@ -80,13 +81,14 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
+		ob_start();
 		try {
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 
 		$this->assertFalse($response['success']);
@@ -102,13 +104,14 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
+		ob_start();
 		try {
 			$this->controller->ajax_get_calendar_events();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected
 		}
 
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 
 		$this->assertFalse($response['success']);

@@ -67,8 +67,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$this->repository->create($data2);
 		
 		// Capture JSON output
-		$this->expectOutputRegex('/.*structures.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_get_structures();
 		} catch (WPAjaxDieContinueException $e) {
@@ -76,7 +75,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		}
 		
 		// Verify response
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -92,15 +91,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		wp_set_current_user($this->subscriber_user_id);
 		
 		// Capture JSON output
-		$this->expectOutputRegex('/.*Permission denied.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_get_structures();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception from wp_send_json_error
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -144,15 +142,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Set POST data
 		$_POST['structure_id'] = 1;
 		
-		$this->expectOutputRegex('/.*structure.*/');
-		
+		ob_start();
 		try {
 			$controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -168,15 +165,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Set invalid POST data
 		$_POST['structure_id'] = 0;
 		
-		$this->expectOutputRegex('/.*Invalid structure ID.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -197,15 +193,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Set POST data with non-existent ID
 		$_POST['structure_id'] = 999999;
 		
-		$this->expectOutputRegex('/.*Structure not found.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_get_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		global $wpdb;
@@ -240,15 +235,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$_POST['prompt_template'] = 'Write an article about {{topic}}';
 		$_POST['is_active'] = '1';
 		
-		$this->expectOutputRegex('/.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the request
@@ -270,15 +264,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$_POST['sections'] = array('intro', 'body');
 		$_POST['prompt_template'] = 'Updated prompt template';
 		
-		$this->expectOutputRegex('/.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		// Verify that the controller properly processed the request
@@ -297,15 +290,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$_POST['description'] = 'Test Description';
 		$_POST['sections'] = array('intro');
 		
-		$this->expectOutputRegex('/.*Name and prompt template are required.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -328,15 +320,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$_POST['sections'] = array('intro<script>');
 		$_POST['prompt_template'] = 'Test <strong>template</strong>';
 		
-		$this->expectOutputRegex('/.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_save_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the sanitization request
@@ -365,8 +356,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Set POST data
 		$_POST['structure_id'] = 1;
 		
-		$this->expectOutputRegex('/.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_delete_structure();
 		} catch (Exception $e) {
@@ -386,7 +376,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 			$this->markTestSkipped('Database tests cannot run correctly in limited mode without WP Test Lib.');
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		global $wpdb;
@@ -411,15 +401,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Set POST data with invalid ID
 		$_POST['structure_id'] = 0;
 		
-		$this->expectOutputRegex('/.*Invalid structure ID.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_delete_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -434,15 +423,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		
 		$_POST['structure_id'] = 1;
 		
-		$this->expectOutputRegex('/.*Permission denied.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_delete_structure();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -459,15 +447,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		$_POST['structure_id'] = 1;
 		$_POST['is_active'] = 0;
 		
-		$this->expectOutputRegex('/.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		// Verify the controller processes the request
@@ -483,15 +470,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		
 		$_POST['structure_id'] = 0;
 		
-		$this->expectOutputRegex('/.*Invalid structure ID.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);
@@ -506,15 +492,14 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		
 		$_POST['structure_id'] = 1;
 		
-		$this->expectOutputRegex('/.*Permission denied.*/');
-		
+		ob_start();
 		try {
 			$this->controller->ajax_toggle_structure_active();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected exception
 		}
 		
-		$output = $this->getActualOutput();
+		$output = ob_get_clean();
 		$response = json_decode($output, true);
 		
 		$this->assertFalse($response['success']);

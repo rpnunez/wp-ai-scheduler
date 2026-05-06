@@ -46,7 +46,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['prompt_template'] = '';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+			// expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -67,7 +71,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['generate_featured_image'] = 0;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+			// expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -107,7 +115,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['generate_featured_image'] = 0;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+			// expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -136,7 +148,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['image_prompt'] = 'A beautiful landscape with {{topic}}';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+			// expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -158,7 +174,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['prompt_template'] = 'Test content';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+			// expected
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);

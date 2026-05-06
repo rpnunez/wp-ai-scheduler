@@ -1564,6 +1564,87 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
+
+    // Admin menu stubs — required by AIPS_Settings and any class that registers
+    // menu pages during construction.
+    if (!function_exists('add_menu_page')) {
+        function add_menu_page($page_title, $menu_title, $capability, $menu_slug, $callback = '', $icon_url = '', $position = null) {
+            return $menu_slug;
+        }
+    }
+
+    if (!function_exists('add_submenu_page')) {
+        function add_submenu_page($parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback = '', $position = null) {
+            return $menu_slug;
+        }
+    }
+
+    if (!function_exists('remove_menu_page')) {
+        function remove_menu_page($menu_slug) {
+            return true;
+        }
+    }
+
+    if (!function_exists('remove_submenu_page')) {
+        function remove_submenu_page($menu_slug, $submenu_slug) {
+            return true;
+        }
+    }
+
+    // Script/style enqueue stubs
+    if (!function_exists('wp_enqueue_script')) {
+        function wp_enqueue_script($handle, $src = '', $deps = array(), $ver = false, $in_footer = false) {
+            // no-op
+        }
+    }
+
+    if (!function_exists('wp_enqueue_style')) {
+        function wp_enqueue_style($handle, $src = '', $deps = array(), $ver = false, $media = 'all') {
+            // no-op
+        }
+    }
+
+    if (!function_exists('wp_register_script')) {
+        function wp_register_script($handle, $src, $deps = array(), $ver = false, $in_footer = false) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_register_style')) {
+        function wp_register_style($handle, $src, $deps = array(), $ver = false, $media = 'all') {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_localize_script')) {
+        function wp_localize_script($handle, $object_name, $l10n) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_add_inline_script')) {
+        function wp_add_inline_script($handle, $data, $position = 'after') {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_add_inline_style')) {
+        function wp_add_inline_style($handle, $data) {
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_script_is')) {
+        function wp_script_is($handle, $list = 'enqueued') {
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_enqueue_media')) {
+        function wp_enqueue_media($args = array()) {
+            // no-op
+        }
+    }
 }
 
 if (!function_exists('wp_is_writable')) {
@@ -1576,5 +1657,17 @@ if (!function_exists('_get_cron_array')) {
         return isset($GLOBALS['aips_test_single_events'])
             ? $GLOBALS['aips_test_single_events']
             : array();
+    }
+}
+
+if (!function_exists('trailingslashit')) {
+    function trailingslashit($string) {
+        return rtrim($string, '/\\') . '/';
+    }
+}
+
+if (!function_exists('untrailingslashit')) {
+    function untrailingslashit($string) {
+        return rtrim($string, '/\\');
     }
 }

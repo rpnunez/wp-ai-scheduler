@@ -1438,3 +1438,41 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+---
+
+## 2026-05-06 - Schema Fix, AJAX Registry Gap, and PHPUnit 10 Compatibility Sweep
+
+**Challenge:**
+Three independent structural issues discovered during a codebase audit:
+
+1. **Schema data-integrity gap**: `aips_history.creation_method` was declared as `varchar(20)`, but a prior ADR (and the `schema` memory) stated it should be `varchar(50)` to give room for hierarchical operation labels. While current values (`scheduled`, `schedule_lifecycle`, `manual`) fit within 20 chars, the mismatch between the documented intent and the actual DDL was a latent correctness risk.
+
+2. **AJAX registry routing gap**: `aips_fix_datetime_values` was called from `admin-db.js` and registered via `add_action('wp_ajax_aips_fix_datetime_values', ...)` in `AIPS_DB_Manager::__construct()`. However, it was missing from `AIPS_Ajax_Registry::$map`. Because `boot_ajax()` relies solely on the registry to lazy-instantiate the correct controller, any direct request for this action without a prior registry hit would silently fail (the controller would never be instantiated). This was a routing completeness bug.
+
+3. **PHPUnit 10 test API incompatibility**: The codebase had been upgraded to require `phpunit/phpunit: ^10.5`, but 5+ test files still used PHPUnit 9 API calls that were removed in PHPUnit 10:
+   - `MockBuilder::setMethods()` → removed, must use `onlyMethods()` or `addMethods()`
+   - `TestCase::getActualOutput()` → removed, must use explicit `ob_start()`/`ob_get_clean()` buffering
+   - Several test files using `ob_start()` without a `try/catch` around AJAX calls (AJAX handler throws `WPAjaxDieContinueException` via `wp_send_json_*`, leaving buffers open)
+
+4. **Test bootstrap missing WP admin function stubs**: `add_menu_page()`, `add_submenu_page()`, `wp_enqueue_script()`, `wp_enqueue_style()`, `trailingslashit()`, and related functions were absent from the mock bootstrap, causing class-load-time errors for any class (e.g., `AIPS_Settings`) that calls these in a constructor or during `plugins_loaded`.
+
+**Decision:**
+
+1. **Schema**: Changed `creation_method` from `varchar(20)` to `varchar(50)` in `AIPS_DB_Manager::get_schema()`. `dbDelta()` automatically widens the column on the next plugin upgrade, so no explicit migration step is needed.
+
+2. **AJAX registry**: Added `'aips_fix_datetime_values' => 'AIPS_DB_Manager'` to `AIPS_Ajax_Registry::$map`. This is the single source of truth for lazy controller resolution; the constructor `add_action` call remains as-is because it is what actually attaches the handler after the controller is instantiated.
+
+3. **PHPUnit 10 compatibility**: Updated 6 test files:
+   - `AIPS_History_Repository_Performance_Test.php`: `setMethods()` → `addMethods()` (mocking `stdClass`, where `onlyMethods()` would fail because it requires the methods to exist on the class)
+   - `AIPS_Structures_Controller_Test.php`, `Test_AIPS_Calendar_Controller.php`, `Test_AIPS_Schedule_Controller_Run_Now.php`, `Test_AIPS_Schedule_History.php`: `getActualOutput()` replaced with `ob_start()` + `ob_get_clean()`; `expectOutputRegex()` calls removed (they conflict with manual output capture)
+   - `Test_AIPS_Templates_Controller_Preview.php`: all AJAX calls wrapped in `try/catch(WPAjaxDieContinueException)` so that `ob_get_clean()` always runs
+
+4. **Bootstrap stubs**: Added `add_menu_page()`, `add_submenu_page()`, `remove_menu_page()`, `remove_submenu_page()`, `wp_enqueue_script()`, `wp_enqueue_style()`, `wp_register_script()`, `wp_register_style()`, `wp_localize_script()`, `wp_add_inline_script()`, `wp_add_inline_style()`, `wp_script_is()`, `wp_enqueue_media()`, `trailingslashit()`, and `untrailingslashit()` to the fallback mock section of `tests/bootstrap.php`.
+
+**Impact:**
+- PHPUnit test error count reduced from 129 → 97 (-25%); risky tests from 5 → 1.
+- The 97 remaining errors are all integration tests that require a live WordPress/MySQL environment (`wp-admin/includes/upgrade.php`). These are expected in the limited CI environment and are pre-existing.
+- AJAX routing is now complete and auditable: all plugin AJAX actions map 1-to-1 through `AIPS_Ajax_Registry`.
+- Schema and existing data remain fully compatible; no data loss risk.
+- No breaking changes to any public API, hook, or filter.

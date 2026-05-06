@@ -47,7 +47,7 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
     public function test_get_history_selects_specific_columns() {
         // Create a mock for wpdb
         $wpdb_mock = $this->getMockBuilder('stdClass')
-            ->setMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
+            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
             ->getMock();
 
         $wpdb_mock->prefix = 'wp_';
@@ -103,7 +103,7 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
      */
     public function test_get_partial_generations_omits_limit_for_unbounded_requests() {
         $wpdb_mock = $this->getMockBuilder('stdClass')
-            ->setMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
+            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
             ->getMock();
 
         $wpdb_mock->prefix = 'wp_';

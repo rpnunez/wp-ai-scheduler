@@ -155,6 +155,7 @@ class AIPS_Ajax_Registry {
 		'aips_reinstall_db'               => 'AIPS_DB_Manager',
 		'aips_wipe_db'                    => 'AIPS_DB_Manager',
 		'aips_flush_cron_events'          => 'AIPS_DB_Manager',
+		'aips_fix_datetime_values'        => 'AIPS_DB_Manager',
 
 		// Post Review
 		'aips_get_draft_posts'            => 'AIPS_Post_Review',
