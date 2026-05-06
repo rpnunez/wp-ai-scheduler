@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "repo": "rpnunez/wp-ai-scheduler",
+  "last_run_at": "2026-05-06T23:46:21Z",
+  "last_run_id": "aips-20260506T234621Z",
+  "ruleset_hash": "47b87ed0b87cf607e3cdeb11cd37dcdf89346480",
+  "files": {
+    "ai-post-scheduler/includes/class-aips-calendar-controller.php": {
+      "fingerprint": "67f48d78836c405e8c623d7f0b526b47ad8a0c4fdd165c4a67c686eeb2c77a9b",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 0,
+      "status": "ok"
+    },
+    "ai-post-scheduler/includes/class-aips-schedule-repository.php": {
+      "fingerprint": "35eb3441276f13f3b0d214fdb488f28b34559a25132b6374ea46405c75e50193",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 0,
+      "status": "ok"
+    },
+    "ai-post-scheduler/includes/class-aips-interval-calculator.php": {
+      "fingerprint": "25555ef0ccf5f5c9a67a586545a434c6397edae268b5d05e695af4af9d2cdb12",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 0,
+      "status": "ok"
+    },
+    "ai-post-scheduler/includes/class-aips-dashboard-controller.php": {
+      "fingerprint": "dd5d787d6ae3b8d938e94b9b36151451a28f5774b93aa4457b3de955eaa49dc5",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 1,
+      "status": "has_findings"
+    },
+    "ai-post-scheduler/includes/class-aips-data-management-export-json.php": {
+      "fingerprint": "04b0c2d3daf1bd91343d214749eb2a6d07344480b26235eb605f9122711c164c",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 1,
+      "status": "has_findings"
+    },
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php": {
+      "fingerprint": "ad79e0836138df607c031249c3d4e25af87caf7f019a98f8bd9b3ea2ab04109e",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 1,
+      "status": "has_findings"
+    },
+    "ai-post-scheduler/tests/Test_AIPS_Calendar_Controller.php": {
+      "fingerprint": "8690a64f327d239980fdf6f54a00f7b07b18aebf1962f040ca4b1883317da527",
+      "last_scanned_at": "2026-05-06T23:46:21Z",
+      "last_scan_run_id": "aips-20260506T234621Z",
+      "findings_open_count": 0,
+      "status": "ok"
+    }
+  },
+  "open_findings": {
+    "1f72095a773091abb9af3b53a6476437a624652c": {
+      "type": "controller_datetime_gap",
+      "severity": "medium",
+      "path": "ai-post-scheduler/includes/class-aips-dashboard-controller.php",
+      "symbol": "AIPS_Dashboard_Controller",
+      "anchor": "get_schedule_rows:strtotime-next_run_gmt",
+      "first_seen_run_id": "aips-20260506T234621Z",
+      "last_seen_run_id": "aips-20260506T234621Z",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/1f72095a773091abb9af3b53a6476437a624652c.json"
+    },
+    "385e7b45071cb7966f1f0a0af0a77ca13cdf7d4a": {
+      "type": "direct_wpdb_outside_repo",
+      "severity": "medium",
+      "path": "ai-post-scheduler/includes/class-aips-data-management-export-json.php",
+      "symbol": "AIPS_Data_Management_Export_JSON",
+      "anchor": "export:wpdb-show-tables-select-all",
+      "first_seen_run_id": "aips-20260506T234621Z",
+      "last_seen_run_id": "aips-20260506T234621Z",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/385e7b45071cb7966f1f0a0af0a77ca13cdf7d4a.json"
+    },
+    "a2331e2177febd4809dfea240c3bb098ad95e4c0": {
+      "type": "direct_wpdb_outside_repo",
+      "severity": "high",
+      "path": "ai-post-scheduler/includes/class-aips-data-management-import-json.php",
+      "symbol": "AIPS_Data_Management_Import_JSON",
+      "anchor": "import:wpdb-truncate-insert",
+      "first_seen_run_id": "aips-20260506T234621Z",
+      "last_seen_run_id": "aips-20260506T234621Z",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/a2331e2177febd4809dfea240c3bb098ad95e4c0.json"
+    }
+  }
+}
