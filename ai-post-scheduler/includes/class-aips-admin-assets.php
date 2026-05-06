@@ -121,6 +121,7 @@ class AIPS_Admin_Assets {
 
 		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
 			$this->enqueue_status_1_assets();
+			$this->enqueue_status_2_assets();
 		}
 
 		if ($this->hook_contains($hook, self::PAGE_TAXONOMY)) {
@@ -133,10 +134,6 @@ class AIPS_Admin_Assets {
 
 		if ($this->hook_contains($hook, self::PAGE_SETTINGS)) {
 			$this->enqueue_settings_assets();
-		}
-
-		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
-			$this->enqueue_status_2_assets();
 		}
 
 		if ($this->hook_contains($hook, self::PAGE_TELEMETRY)) {
