@@ -612,7 +612,7 @@ class AIPS_AI_Edit_Controller {
 	 */
 	private function log_wp_error( WP_Error $error, $method = '' ) {
 		$context = $method ? '[' . $method . '] ' : '';
-		error_log( 'AIPS AI Edit Controller Error ' . $context . '(' . $error->get_error_code() . '): ' . $error->get_error_message() );
+		AIPS_Logger::instance()->error( 'AIPS AI Edit Controller Error ' . $context . '(' . $error->get_error_code() . '): ' . $error->get_error_message() );
 	}
 
 	/**

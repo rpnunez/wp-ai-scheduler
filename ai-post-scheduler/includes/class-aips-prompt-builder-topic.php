@@ -54,7 +54,14 @@ class AIPS_Prompt_Builder_Topic {
 	) {
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
-			$quantity = 5;
+			/**
+			 * Filters the default topic-generation quantity when an author's
+			 * topic_generation_quantity is not set or is less than 1.
+			 *
+			 * @since 2.6.0
+			 * @param int $quantity Default fallback quantity. Default 5.
+			 */
+			$quantity = max(1, (int) apply_filters('aips_default_topic_quantity', 5));
 		}
 
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";

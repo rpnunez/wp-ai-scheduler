@@ -833,6 +833,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('wp_schedule_single_event')) {
         function wp_schedule_single_event($timestamp, $hook, $args = array()) {
+            // Store the scheduled event so _get_cron_array() and tests can inspect it.
+            if (!isset($GLOBALS['aips_test_single_events'])) {
+                $GLOBALS['aips_test_single_events'] = array();
+            }
+            $hash = md5(serialize($args));
+            $GLOBALS['aips_test_single_events'][$timestamp][$hook][$hash] = array(
+                'schedule' => false,
+                'interval' => 0,
+                'args'     => $args,
+            );
             return true;
         }
     }
@@ -1452,6 +1462,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generation-result.php',
         'class-aips-schedule-entry.php',
         'class-aips-template-data.php',
+        'class-aips-template-entry.php',
     ];
     
     foreach ($files as $file) {
@@ -1562,6 +1573,8 @@ if (!function_exists('wp_is_writable')) {
 }
 if (!function_exists('_get_cron_array')) {
     function _get_cron_array() {
-        return array();
+        return isset($GLOBALS['aips_test_single_events'])
+            ? $GLOBALS['aips_test_single_events']
+            : array();
     }
 }

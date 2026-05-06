@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-copilot/add-admin-editable-prompt-templates',
-        'version' => 'dev-copilot/add-admin-editable-prompt-templates',
-        'reference' => '5cd7763fbb3e8fcea6ea7382b3affa4ae2355b25',
+        'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
+        'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
+        'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-copilot/add-admin-editable-prompt-templates',
-            'version' => 'dev-copilot/add-admin-editable-prompt-templates',
-            'reference' => '5cd7763fbb3e8fcea6ea7382b3affa4ae2355b25',
+            'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
+            'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
+            'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

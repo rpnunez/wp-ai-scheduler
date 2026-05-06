@@ -122,6 +122,16 @@ class AIPS_Authors_Repository {
 	 * @return int|false The ID of the created author or false on failure.
 	 */
 	public function create($data) {
+		$now = AIPS_DateTime::now()->timestamp();
+
+		if (!isset($data['created_at'])) {
+			$data['created_at'] = $now;
+		}
+
+		if (!isset($data['updated_at'])) {
+			$data['updated_at'] = $now;
+		}
+
 		$result = $this->wpdb->insert($this->table_name, $data);
 		if ( $result ) {
 			$this->cache->flush();
@@ -137,6 +147,10 @@ class AIPS_Authors_Repository {
 	 * @return int|false The number of rows updated, or false on error.
 	 */
 	public function update($id, $data) {
+		if (!isset($data['updated_at'])) {
+			$data['updated_at'] = AIPS_DateTime::now()->timestamp();
+		}
+
 		$result = $this->wpdb->update(
 			$this->table_name,
 			$data,
@@ -174,13 +188,13 @@ class AIPS_Authors_Repository {
 	 * @return array Array of author objects.
 	 */
 	public function get_due_for_topic_generation() {
-		$current_time = current_time('mysql');
+		$current_time = AIPS_DateTime::now()->timestamp();
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
 			AND (topic_generation_is_active IS NULL OR topic_generation_is_active = 1)
 			AND topic_generation_next_run IS NOT NULL 
-			AND topic_generation_next_run <= %s
+			AND topic_generation_next_run <= %d
 			ORDER BY topic_generation_next_run ASC",
 			$current_time
 		));
@@ -192,13 +206,13 @@ class AIPS_Authors_Repository {
 	 * @return array Array of author objects.
 	 */
 	public function get_due_for_post_generation() {
-		$current_time = current_time('mysql');
+		$current_time = AIPS_DateTime::now()->timestamp();
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
 			AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
 			AND post_generation_next_run IS NOT NULL 
-			AND post_generation_next_run <= %s
+			AND post_generation_next_run <= %d
 			ORDER BY post_generation_next_run ASC",
 			$current_time
 		));
@@ -214,9 +228,12 @@ class AIPS_Authors_Repository {
 	public function update_topic_generation_active($author_id, $is_active) {
 		$result = $this->wpdb->update(
 			$this->table_name,
-			array('topic_generation_is_active' => (int) $is_active ? 1 : 0),
+			array(
+				'topic_generation_is_active' => (int) $is_active ? 1 : 0,
+				'updated_at' => AIPS_DateTime::now()->timestamp(),
+			),
 			array('id' => absint($author_id)),
-			array('%d'),
+			array('%d', '%d'),
 			array('%d')
 		);
 		if ( $result !== false ) {
@@ -235,9 +252,12 @@ class AIPS_Authors_Repository {
 	public function update_post_generation_active($author_id, $is_active) {
 		$result = $this->wpdb->update(
 			$this->table_name,
-			array('post_generation_is_active' => (int) $is_active ? 1 : 0),
+			array(
+				'post_generation_is_active' => (int) $is_active ? 1 : 0,
+				'updated_at' => AIPS_DateTime::now()->timestamp(),
+			),
 			array('id' => absint($author_id)),
-			array('%d'),
+			array('%d', '%d'),
 			array('%d')
 		);
 		if ( $result !== false ) {
@@ -250,18 +270,19 @@ class AIPS_Authors_Repository {
 	 * Update topic generation schedule for an author.
 	 *
 	 * @param int $author_id Author ID.
-	 * @param string $next_run Next run time in MySQL datetime format.
+	 * @param int $next_run Next run timestamp.
 	 * @return int|false The number of rows updated, or false on error.
 	 */
 	public function update_topic_generation_schedule($author_id, $next_run) {
 		$result = $this->wpdb->update(
 			$this->table_name,
 			array(
-				'topic_generation_last_run' => current_time('mysql'),
-				'topic_generation_next_run' => $next_run
+				'topic_generation_last_run' => AIPS_DateTime::now()->timestamp(),
+				'topic_generation_next_run' => absint($next_run),
+				'updated_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			array('id' => $author_id),
-			array('%s', '%s'),
+			array('%d', '%d', '%d'),
 			array('%d')
 		);
 		if ( $result !== false ) {
@@ -274,18 +295,19 @@ class AIPS_Authors_Repository {
 	 * Update post generation schedule for an author.
 	 *
 	 * @param int $author_id Author ID.
-	 * @param string $next_run Next run time in MySQL datetime format.
+	 * @param int $next_run Next run timestamp.
 	 * @return int|false The number of rows updated, or false on error.
 	 */
 	public function update_post_generation_schedule($author_id, $next_run) {
 		$result = $this->wpdb->update(
 			$this->table_name,
 			array(
-				'post_generation_last_run' => current_time('mysql'),
-				'post_generation_next_run' => $next_run
+				'post_generation_last_run' => AIPS_DateTime::now()->timestamp(),
+				'post_generation_next_run' => absint($next_run),
+				'updated_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			array('id' => $author_id),
-			array('%s', '%s'),
+			array('%d', '%d', '%d'),
 			array('%d')
 		);
 		if ( $result !== false ) {

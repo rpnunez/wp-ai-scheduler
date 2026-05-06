@@ -111,14 +111,21 @@ class AIPS_Sources_Cron {
 	/**
 	 * Cron callback: fetch content for all sources that are due.
 	 *
-	 * Processes at most MAX_PER_RUN sources per invocation to avoid HTTP
-	 * timeouts. Sources are ordered by next_fetch_at ascending so the most
-	 * overdue ones are handled first.
+	 * Processes at most `aips_sources_cron_max_per_run` sources per invocation
+	 * (default: MAX_PER_RUN = 10) to avoid HTTP timeouts. Sources are ordered
+	 * by next_fetch_at ascending so the most overdue ones are handled first.
 	 *
 	 * @return void
 	 */
 	public function run() {
-		$due_sources = $this->sources_repo->get_due_for_fetch( self::MAX_PER_RUN );
+		/**
+		 * Filters the maximum number of sources processed per cron run.
+		 *
+		 * @since 2.6.0
+		 * @param int $max Default maximum. Default AIPS_Sources_Cron::MAX_PER_RUN (10).
+		 */
+		$max_per_run = max(1, (int) apply_filters('aips_sources_cron_max_per_run', self::MAX_PER_RUN));
+		$due_sources = $this->sources_repo->get_due_for_fetch( $max_per_run );
 
 		if ( empty( $due_sources ) ) {
 			return;

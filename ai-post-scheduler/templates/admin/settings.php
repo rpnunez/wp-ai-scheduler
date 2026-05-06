@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) {
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-resilience"><?php esc_html_e('Resilience &amp; Limits', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-content-strategy"><?php esc_html_e('Content Strategy', 'ai-post-scheduler'); ?></button>
-					<button type="button" class="aips-tab-link" data-tab="settings-cache"><?php esc_html_e('Cache', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-cache"><?php esc_html_e('Performance', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-api-keys"><?php esc_html_e('API Keys', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-developers"><?php esc_html_e('Developers', 'ai-post-scheduler'); ?></button>
 				</div>
@@ -104,9 +104,11 @@ if (!defined('ABSPATH')) {
 						</p>
 					</div>
 
-					<!-- Cache Tab -->
+					<!-- Performance Tab -->
 					<div id="settings-cache-tab" class="aips-tab-content" style="display:none;">
-						<p class="description"><?php esc_html_e('Configure the caching layer used by the plugin. The Array driver is always available and requires no configuration. DB and Redis drivers provide cross-request persistence.', 'ai-post-scheduler'); ?></p>
+						<p class="description"><?php esc_html_e('Configure performance-related options for the plugin, including the internal cache layer used to speed up database reads, template processing, and scheduled operations.', 'ai-post-scheduler'); ?></p>
+
+						<h3><?php esc_html_e('Cache System', 'ai-post-scheduler'); ?></h3>
 						<table class="form-table" role="presentation" id="aips-cache-settings-table">
 							<?php do_settings_fields('aips-settings', 'aips_cache_section'); ?>
 						</table>

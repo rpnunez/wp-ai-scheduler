@@ -6,6 +6,7 @@
  *   AIPS_Generation_Result — named constructors, status constants, helper methods
  *   AIPS_Schedule_Entry    — from_row() factory, type coercions, helpers
  *   AIPS_Template_Data     — from_row() factory, type coercions, helpers
+ *   AIPS_Template_Entry    — from_template_and_overrides() factory, type coercions
  *
  * @package AI_Post_Scheduler
  */
@@ -508,6 +509,207 @@ class Test_AIPS_Template_Data extends WP_UnitTestCase {
 
 		try {
 			$tpl->name = 'Modified';
+			$this->fail( 'Expected Error was not thrown' );
+		} catch ( Error $e ) {
+			$this->assertStringContainsString( 'readonly', $e->getMessage() );
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// AIPS_Template_Entry tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Class Test_AIPS_Template_Entry
+ */
+class Test_AIPS_Template_Entry extends WP_UnitTestCase {
+
+	/**
+	 * Build a minimal source object (simulating a raw template DB row).
+	 *
+	 * @param array $overrides Optional field overrides.
+	 * @return object
+	 */
+	private function make_source( array $overrides = array() ): object {
+		$defaults = array(
+			'name'                    => 'Test Template',
+			'prompt_template'         => 'Write about {{topic}}.',
+			'post_status'             => 'draft',
+			'generate_featured_image' => '0',
+			'featured_image_source'   => 'ai_prompt',
+			'include_sources'         => '0',
+		);
+		return (object) array_merge( $defaults, $overrides );
+	}
+
+	// -----------------------------------------------------------------------
+	// Type coercions
+	// -----------------------------------------------------------------------
+
+	/**
+	 * from_template_and_overrides() sets id and post_quantity from explicit params.
+	 */
+	public function test_explicit_params_are_stored() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides(
+			42,
+			$this->make_source(),
+			5,
+			7
+		);
+
+		$this->assertSame( 42, $entry->id );
+		$this->assertSame( 5, $entry->post_quantity );
+		$this->assertSame( 7, $entry->article_structure_id );
+	}
+
+	/**
+	 * article_structure_id defaults to null when omitted.
+	 */
+	public function test_article_structure_id_defaults_to_null() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides( 1, $this->make_source(), 3 );
+
+		$this->assertNull( $entry->article_structure_id );
+	}
+
+	/**
+	 * Boolean flags are coerced from tinyint strings correctly.
+	 * '0' must produce false; '1' must produce true.
+	 */
+	public function test_boolean_coercions() {
+		$with_img = AIPS_Template_Entry::from_template_and_overrides(
+			1,
+			$this->make_source( array( 'generate_featured_image' => '1' ) ),
+			1
+		);
+		$no_img = AIPS_Template_Entry::from_template_and_overrides(
+			1,
+			$this->make_source( array( 'generate_featured_image' => '0' ) ),
+			1
+		);
+		$with_src = AIPS_Template_Entry::from_template_and_overrides(
+			1,
+			$this->make_source( array( 'include_sources' => '1' ) ),
+			1
+		);
+		$no_src = AIPS_Template_Entry::from_template_and_overrides(
+			1,
+			$this->make_source( array( 'include_sources' => '0' ) ),
+			1
+		);
+
+		$this->assertTrue( $with_img->generate_featured_image );
+		$this->assertFalse( $no_img->generate_featured_image );
+		$this->assertTrue( $with_src->include_sources );
+		$this->assertFalse( $no_src->include_sources );
+	}
+
+	/**
+	 * Nullable string fields return null when missing or empty.
+	 */
+	public function test_nullable_string_fields_default_to_null() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides( 1, $this->make_source(), 1 );
+
+		$this->assertNull( $entry->title_prompt );
+		$this->assertNull( $entry->image_prompt );
+		$this->assertNull( $entry->featured_image_unsplash_keywords );
+		$this->assertNull( $entry->featured_image_media_ids );
+		$this->assertNull( $entry->post_tags );
+		$this->assertNull( $entry->source_group_ids );
+	}
+
+	/**
+	 * Nullable integer fields return null when missing from source.
+	 */
+	public function test_nullable_int_fields_default_to_null() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides( 1, $this->make_source(), 1 );
+
+		$this->assertNull( $entry->post_category );
+		$this->assertNull( $entry->post_author );
+	}
+
+	/**
+	 * Populated optional fields are mapped correctly.
+	 */
+	public function test_populated_optional_fields() {
+		$source = $this->make_source( array(
+			'title_prompt'                     => 'Create a title',
+			'image_prompt'                     => 'Abstract landscape',
+			'generate_featured_image'          => '1',
+			'featured_image_source'            => 'unsplash',
+			'featured_image_unsplash_keywords' => 'nature,mountains',
+			'featured_image_media_ids'         => '10,11',
+			'post_status'                      => 'publish',
+			'post_category'                    => '5',
+			'post_tags'                        => 'ai,tech',
+			'post_author'                      => '3',
+			'include_sources'                  => '1',
+			'source_group_ids'                 => '[1,2]',
+		) );
+
+		$entry = AIPS_Template_Entry::from_template_and_overrides( 99, $source, 10, 4 );
+
+		$this->assertSame( 99, $entry->id );
+		$this->assertSame( 'Create a title', $entry->title_prompt );
+		$this->assertSame( 'Abstract landscape', $entry->image_prompt );
+		$this->assertTrue( $entry->generate_featured_image );
+		$this->assertSame( 'unsplash', $entry->featured_image_source );
+		$this->assertSame( 'nature,mountains', $entry->featured_image_unsplash_keywords );
+		$this->assertSame( '10,11', $entry->featured_image_media_ids );
+		$this->assertSame( 'publish', $entry->post_status );
+		$this->assertSame( 5, $entry->post_category );
+		$this->assertSame( 'ai,tech', $entry->post_tags );
+		$this->assertSame( 3, $entry->post_author );
+		$this->assertSame( 10, $entry->post_quantity );
+		$this->assertSame( 4, $entry->article_structure_id );
+		$this->assertTrue( $entry->include_sources );
+		$this->assertSame( '[1,2]', $entry->source_group_ids );
+	}
+
+	/**
+	 * Defaults are applied when optional fields are absent from the source object.
+	 */
+	public function test_defaults_applied_for_missing_fields() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides(
+			1,
+			(object) array( 'name' => 'Min', 'prompt_template' => 'Prompt' ),
+			2
+		);
+
+		$this->assertSame( 'draft', $entry->post_status );
+		$this->assertSame( 'ai_prompt', $entry->featured_image_source );
+		$this->assertFalse( $entry->generate_featured_image );
+		$this->assertFalse( $entry->include_sources );
+	}
+
+	// -----------------------------------------------------------------------
+	// Source object flexibility
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Factory works with a merged schedule+template object where the template_id
+	 * is passed explicitly and may differ from the source object's own `id` field.
+	 */
+	public function test_explicit_template_id_overrides_source_id() {
+		$source = $this->make_source( array( 'id' => '77' ) ); // schedule id, not template id
+		$entry  = AIPS_Template_Entry::from_template_and_overrides( 42, $source, 1 );
+
+		// The explicitly provided template_id (42) must win.
+		$this->assertSame( 42, $entry->id );
+	}
+
+	// -----------------------------------------------------------------------
+	// Immutability
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Properties are readonly and cannot be overwritten after construction.
+	 */
+	public function test_properties_are_readonly() {
+		$entry = AIPS_Template_Entry::from_template_and_overrides( 1, $this->make_source(), 1 );
+
+		try {
+			$entry->id = 999;
 			$this->fail( 'Expected Error was not thrown' );
 		} catch ( Error $e ) {
 			$this->assertStringContainsString( 'readonly', $e->getMessage() );

@@ -1290,8 +1290,8 @@
                 $('#rotation_pattern').val(rotationPattern || '');
                 $('#schedule_is_active').prop('checked', isActive == 1);
                 if (nextRun) {
-                    var dt0 = new Date(nextRun);
-                    if (!isNaN(dt0.getTime())) {
+                    var dt0 = AIPS.DateTime.parse(nextRun);
+                    if (dt0) {
                         var pad0 = function(n) { return n < 10 ? '0' + n : n; };
                         $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
                             'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
@@ -1313,8 +1313,8 @@
             $('#sw_schedule_is_active').prop('checked', isActive == 1);
 
             if (nextRun) {
-                var dt = new Date(nextRun);
-                if (!isNaN(dt.getTime())) {
+                var dt = AIPS.DateTime.parse(nextRun);
+                if (dt) {
                     var pad = function(n) { return n < 10 ? '0' + n : n; };
                     var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
                         'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());

@@ -71,6 +71,10 @@ class AIPS_Cache_Factory {
 	 * Falls back to ArrayDriver if the chosen driver cannot be initialised
 	 * (e.g. Redis extension missing) and optionally schedules an admin notice.
 	 *
+	 * When the 'aips_enable_cache_system' option is falsy the Array driver is
+	 * returned immediately, preventing unnecessary Redis/DB connection attempts
+	 * and avoiding related admin notices while the cache system is disabled.
+	 *
 	 * Note: This method intentionally uses direct get_option() calls instead of
 	 * AIPS_Config::get_instance()->get_option(). AIPS_Config relies on
 	 * AIPS_Cache_Factory::named() to create its own per-request cache, so using
@@ -82,6 +86,14 @@ class AIPS_Cache_Factory {
 	 * @return AIPS_Cache_Driver
 	 */
 	public static function make_driver( $driver_name = null ) {
+		// When the cache system is disabled, skip expensive driver initialisation
+		// (Redis connection, DB queries, etc.) and return the lightest driver.
+		$system_enabled_raw = get_option( 'aips_enable_cache_system', '1' );
+		$system_enabled     = ($system_enabled_raw !== '0' && $system_enabled_raw !== 0 && $system_enabled_raw !== false);
+		if (!$system_enabled) {
+			return new AIPS_Cache_Array_Driver();
+		}
+
 		if ($driver_name === null) {
 			$driver_name = get_option( 'aips_cache_driver', 'array' );
 		}

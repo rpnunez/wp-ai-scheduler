@@ -51,6 +51,48 @@
         },
 
         /**
+         * Confirm and run the date/time normalization repair routine.
+         *
+         * Converts lingering legacy date/time storage and backfills missing
+         * scheduler-facing next-run values for active records.
+         *
+         * @param {Event} e - Click event from an `.aips-fix-datetime-db` element.
+         */
+        fixDateTimeValues: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            AIPS.Utilities.confirm('Run the date/time repair routine? This will normalize legacy date/time storage and backfill missing next-run values for active schedules, authors, and sources.', 'Confirm', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, fix values', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Fixing...');
+
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_fix_datetime_values',
+                            nonce: aipsAjax.nonce
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                AIPS.Utilities.showToast(response.data.message, 'success');
+                                setTimeout(function() { location.reload(); }, 1500);
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred.', 'error');
+                        },
+                        complete: function() {
+                            $btn.prop('disabled', false).text('Fix Date/Time Values in DB');
+                        }
+                    });
+                }}
+            ]);
+        },
+
+        /**
          * Confirm and reinstall all plugin database tables.
          *
          * Reads the `#aips-backup-db` checkbox to decide whether to back up
@@ -368,6 +410,7 @@
     // Bind DB Management Events
     $(document).ready(function() {
         $(document).on('click', '.aips-repair-db', window.AIPS.repairDb);
+        $(document).on('click', '.aips-fix-datetime-db', window.AIPS.fixDateTimeValues);
         $(document).on('click', '.aips-reinstall-db', window.AIPS.reinstallDb);
         $(document).on('click', '.aips-wipe-db', window.AIPS.wipeDb);
         $(document).on('click', '.aips-export-data', window.AIPS.exportData);

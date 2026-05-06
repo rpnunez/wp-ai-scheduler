@@ -106,6 +106,8 @@ class AIPS_Sources_Data_Repository {
 			}
 		}
 
+		$now = AIPS_DateTime::now()->timestamp();
+
 		$row = array(
 			'source_id'        => $source_id,
 			'url'              => isset( $data['url'] ) ? esc_url_raw( $data['url'] ) : '',
@@ -119,10 +121,12 @@ class AIPS_Sources_Data_Repository {
 			'fetch_status'     => isset( $data['fetch_status'] ) ? sanitize_text_field( $data['fetch_status'] ) : 'success',
 			'http_status'      => isset( $data['http_status'] ) ? absint( $data['http_status'] ) : 0,
 			'error_message'    => isset( $data['error_message'] ) ? sanitize_textarea_field( $data['error_message'] ) : '',
-			'fetched_at'       => current_time( 'mysql' ),
+			'fetched_at'       => $now,
+			'created_at'       => $now,
+			'updated_at'       => $now,
 		);
 
-		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%s' );
+		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d' );
 		$result = $this->wpdb->insert( $this->table_name, $row, $format );
 		return $result !== false;
 	}
@@ -414,10 +418,11 @@ class AIPS_Sources_Data_Repository {
 				array(
 					'http_status'   => absint( $http_status ),
 					'error_message' => sanitize_textarea_field( $error ),
-					'fetched_at'    => current_time( 'mysql' ),
+					'fetched_at'    => AIPS_DateTime::now()->timestamp(),
+					'updated_at'    => AIPS_DateTime::now()->timestamp(),
 				),
 				array( 'id' => (int) $fail_row->id ),
-				array( '%d', '%s', '%s' ),
+				array( '%d', '%s', '%d', '%d' ),
 				array( '%d' )
 			);
 		} else {
@@ -428,9 +433,11 @@ class AIPS_Sources_Data_Repository {
 					'fetch_status'  => 'failed',
 					'http_status'   => absint( $http_status ),
 					'error_message' => sanitize_textarea_field( $error ),
-					'fetched_at'    => current_time( 'mysql' ),
+					'fetched_at'    => AIPS_DateTime::now()->timestamp(),
+					'created_at'    => AIPS_DateTime::now()->timestamp(),
+					'updated_at'    => AIPS_DateTime::now()->timestamp(),
 				),
-				array( '%d', '%s', '%d', '%s', '%s' )
+				array( '%d', '%s', '%d', '%s', '%d', '%d', '%d' )
 			);
 		}
 	}

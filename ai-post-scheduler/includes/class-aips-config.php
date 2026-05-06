@@ -179,6 +179,7 @@ class AIPS_Config {
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
             // Cache framework settings.
+            'aips_enable_cache_system'  => true,
             'aips_cache_driver'         => 'array',
             'aips_cache_db_prefix'      => '',
             'aips_cache_default_ttl'    => 3600,
@@ -507,6 +508,7 @@ class AIPS_Config {
      * values should use this accessor instead.
      *
      * @return array Cache configuration with keys:
+     *               'enabled'        (bool)   Whether the cache system is enabled.
      *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
      *               'db_prefix'      (string) Table prefix for the DB driver.
      *               'default_ttl'    (int)    Default time-to-live in seconds.
@@ -519,6 +521,7 @@ class AIPS_Config {
      */
     public function get_cache_config() {
         return array(
+            'enabled'        => (bool)   $this->get_option('aips_enable_cache_system'),
             'driver'         => (string) $this->get_option('aips_cache_driver'),
             'db_prefix'      => (string) $this->get_option('aips_cache_db_prefix'),
             'default_ttl'    => (int)    $this->get_option('aips_cache_default_ttl'),
@@ -529,6 +532,18 @@ class AIPS_Config {
             'redis_prefix'   => (string) $this->get_option('aips_cache_redis_prefix'),
             'redis_timeout'  => (float)  $this->get_option('aips_cache_redis_timeout'),
         );
+    }
+
+    /**
+     * Check whether the plugin's internal cache system is enabled.
+     *
+     * This is a convenience wrapper around get_option() for the
+     * 'aips_enable_cache_system' setting.
+     *
+     * @return bool True when the cache system is enabled, false otherwise.
+     */
+    public function is_cache_system_enabled() {
+        return (bool) $this->get_option('aips_enable_cache_system');
     }
 
     /**

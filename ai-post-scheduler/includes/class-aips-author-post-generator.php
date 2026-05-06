@@ -24,6 +24,22 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 
 	/**
+	 * WordPress cron hook name for per-author post-generation slices.
+	 *
+	 * @var string
+	 */
+	const SLICE_HOOK = 'aips_process_author_post_slice';
+
+	/**
+	 * Default minimum number of due authors that triggers per-author batching.
+	 *
+	 * Override via the 'aips_author_post_batch_threshold' filter.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_THRESHOLD = 3;
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;
@@ -103,6 +119,11 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	/**
 	 * Process post generation for all due authors.
 	 *
+	 * When the number of due authors meets or exceeds the configured threshold
+	 * (aips_author_post_batch_threshold), individual single cron events are
+	 * dispatched for each author instead of processing all of them inline.
+	 * This prevents PHP timeout issues when many authors are due simultaneously.
+	 *
 	 * Called by WordPress cron on the `aips_generate_author_posts` hook.
 	 * Implements AIPS_Cron_Generation_Handler::process().
 	 */
@@ -116,11 +137,19 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			$this->logger->log('No authors due for post generation', 'info');
 			return;
 		}
+
+		$author_count = count($due_authors);
+		$this->logger->log("Found {$author_count} authors due for post generation", 'info');
+
+		// Determine whether to dispatch per-author slices.
+		$threshold = max(1, (int) apply_filters('aips_author_post_batch_threshold', self::DEFAULT_BATCH_THRESHOLD));
+
+		if ( $author_count >= $threshold ) {
+			$this->dispatch_author_slices( $due_authors );
+			return;
+		}
 		
-		$this->logger->log('Found ' . count($due_authors) . ' authors due for post generation', 'info');
-		
-		// Process each author through the shared execution harness, which scopes a
-		// unique correlation ID to each author's run and provides a Throwable safety net.
+		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
 			$this->runner->run(
 				function() use ($author) {
@@ -132,6 +161,83 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');
+	}
+
+	/**
+	 * Dispatch one `aips_process_author_post_slice` single event per due author.
+	 *
+	 * Each event fires shortly after the current time (staggered to avoid
+	 * hammering the AI service simultaneously) and calls
+	 * process_author_slice() for a single author.
+	 *
+	 * @param object[] $due_authors Array of author objects from the repository.
+	 */
+	private function dispatch_author_slices( array $due_authors ): void {
+		$now            = time();
+		$correlation_id = (string) AIPS_Correlation_ID::get();
+
+		// Stagger each author's event by 15 seconds to avoid simultaneous AI requests.
+		$stagger_seconds = (int) apply_filters('aips_author_post_slice_stagger_seconds', 15);
+		$stagger_seconds = max(0, $stagger_seconds);
+
+		$i = 0;
+		foreach ( $due_authors as $author ) {
+			$fire_at = $now + ($i * $stagger_seconds);
+			wp_schedule_single_event(
+				$fire_at,
+				self::SLICE_HOOK,
+				array( (int) $author->id, $correlation_id )
+			);
+			$i++;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Dispatched %d author-post slice events (stagger: %ds each).',
+				count($due_authors),
+				$stagger_seconds
+			),
+			'info'
+		);
+	}
+
+	/**
+	 * Process post generation for a single author slice.
+	 *
+	 * This is the callback for the `aips_process_author_post_slice` cron hook.
+	 * It loads the author by ID and calls generate_post_for_author().
+	 *
+	 * @param int    $author_id      ID of the author to process.
+	 * @param string $correlation_id Correlation ID for tracing.
+	 */
+	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::set( $correlation_id );
+		}
+
+		$author = $this->authors_repository->get_by_id( $author_id );
+		if ( ! $author ) {
+			$this->logger->log(
+				"Author post slice: author {$author_id} not found — skipping.",
+				'warning'
+			);
+			if ( ! empty( $correlation_id ) ) {
+				AIPS_Correlation_ID::reset();
+			}
+			return;
+		}
+
+		$this->runner->run(
+			function() use ($author) {
+				$this->generate_post_for_author($author);
+			},
+			'author_post_generation',
+			array('author_id' => $author->id)
+		);
+
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::reset();
+		}
 	}
 	
 	/**
@@ -192,8 +298,18 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
 		
-		// Get expanded context from similar approved topics
-		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
+		// Get expanded context from similar approved topics.
+		// The limit is filterable so installations with many related topics can
+		// increase it without code changes.
+		/**
+		 * Filters the maximum number of similar approved topics used as expanded
+		 * context when generating a post from an author topic.
+		 *
+		 * @since 2.6.0
+		 * @param int $limit Default context limit. Default 5.
+		 */
+		$context_limit    = max(1, (int) apply_filters('aips_topic_expansion_context_limit', 5));
+		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, $context_limit);
 		
 		if (!empty($expanded_context)) {
 			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');

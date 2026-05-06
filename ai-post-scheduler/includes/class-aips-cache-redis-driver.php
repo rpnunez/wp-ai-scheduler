@@ -229,8 +229,7 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 			$this->redis      = null;
 			$this->connected  = false;
 			$this->last_error = $e->getMessage();
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'AIPS Redis cache driver connection failed: ' . $e->getMessage() );
+			AIPS_Logger::instance()->error( 'AIPS Redis cache driver connection failed: ' . $e->getMessage() );
 		}
 	}
 

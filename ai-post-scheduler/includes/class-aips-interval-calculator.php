@@ -122,13 +122,17 @@ class AIPS_Interval_Calculator {
      * Determines when a scheduled task should run next based on its frequency setting.
      * Handles various interval types including hourly, daily, weekly, and day-specific schedules.
      *
-     * @param string      $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
-     * @param string|null $start_time Optional. The base time to calculate from. Defaults to current time.
-     * @return string The next run time in MySQL datetime format (Y-m-d H:i:s).
+     * All values are UTC Unix timestamps.
+     *
+     * @param string   $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
+     * @param int|null $start_time Optional. UTC Unix timestamp to calculate from. Defaults to current time.
+     * @return int UTC Unix timestamp for the next run.
      */
     public function calculate_next_run($frequency, $start_time = null) {
-        $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
-        $now = current_time('timestamp');
+        $base_time = is_numeric($start_time) && (int) $start_time > 0
+            ? (int) $start_time
+            : AIPS_DateTime::now()->timestamp();
+        $now = AIPS_DateTime::now()->timestamp();
         
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
@@ -164,29 +168,29 @@ class AIPS_Interval_Calculator {
                     $base_time = $this->calculate_next_timestamp($frequency, $now);
                 }
             }
-            return date('Y-m-d H:i:s', $base_time);
+            return $base_time;
         }
         
-        $next = $this->calculate_next_timestamp($frequency, $base_time);
-        
-        return date('Y-m-d H:i:s', $next);
+        return $this->calculate_next_timestamp($frequency, $base_time);
     }
 
     /**
      * Calculate the first scheduled occurrence on or after a given target date.
      *
+     * All values are UTC Unix timestamps.
+     *
      * @param string $frequency   The frequency identifier.
-     * @param string $last_run    The last run time (base time).
-     * @param string $target_date The target date to find the next occurrence after.
-     * @return string The next occurrence date string.
+     * @param int    $last_run    UTC Unix timestamp for the last run (base time).
+     * @param int    $target_date UTC Unix timestamp to find the next occurrence after.
+     * @return int UTC Unix timestamp.
      */
     public function calculate_next_occurrence_after($frequency, $last_run, $target_date) {
-        $base_time = strtotime($last_run);
-        $target = strtotime($target_date);
+        $base_time = is_numeric($last_run) ? (int) $last_run : 0;
+        $target    = is_numeric($target_date) ? (int) $target_date : 0;
 
         // If the base time is already after the target, return it
         if ($base_time >= $target) {
-            return date('Y-m-d H:i:s', $base_time);
+            return $base_time;
         }
 
         // Iterate with a high limit (e.g. 100,000 iterations covers ~11 years of hourly data)
@@ -198,7 +202,7 @@ class AIPS_Interval_Calculator {
             $limit--;
         }
 
-        return date('Y-m-d H:i:s', $base_time);
+        return $base_time;
     }
     
     /**

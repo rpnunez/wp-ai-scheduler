@@ -46,6 +46,12 @@ class AIPS_Settings {
     public function register_settings() {
         $defaults = AIPS_Config::get_instance()->get_default_options();
 
+        // Reset the memoised cache-system-enabled flag whenever the option changes
+        // so that the new value is picked up immediately within the same request.
+        add_action('update_option_aips_enable_cache_system', function() {
+            AIPS_Cache::reset_system_enabled_flag();
+        });
+
         register_setting('aips_settings', 'aips_default_post_status', array(
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_default_post_status'],
@@ -499,6 +505,10 @@ class AIPS_Settings {
         // -----------------------------------------------------------------------
         $defaults = AIPS_Config::get_instance()->get_default_options();
 
+        register_setting('aips_settings', 'aips_enable_cache_system', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_enable_cache_system'],
+        ));
         register_setting('aips_settings', 'aips_cache_driver', array(
             'sanitize_callback' => array($this->ui, 'sanitize_cache_driver'),
             'default'           => $defaults['aips_cache_driver'],
@@ -538,9 +548,17 @@ class AIPS_Settings {
 
         add_settings_section(
             'aips_cache_section',
-            __('Cache Settings', 'ai-post-scheduler'),
+            '',
             array($this->ui, 'cache_section_callback'),
             'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_enable_cache_system',
+            __('Enable Cache System?', 'ai-post-scheduler'),
+            array($this->ui, 'enable_cache_system_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
         );
 
         add_settings_field(

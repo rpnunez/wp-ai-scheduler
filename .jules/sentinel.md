@@ -1,0 +1,9 @@
+## 2026-04-24 - Fix SQL Injection and Information Leakage in History Endpoints
+**Vulnerability:** Found a potential SQL injection by interpolating an array directly via implode in AIPS_History_Repository::delete_bulk, and found error leakage via wp_die in AJAX handlers in AIPS_History::ajax_export_history.
+**Learning:** The ID array in delete_bulk was cast to absint, providing some defense, but direct interpolation violates the "Defense in Depth" policy. The wp_die function outputs raw HTML that breaks JSON API expectations and exposes internal implementation details.
+**Prevention:** Always use wpdb->prepare with dynamic placeholders (%d, %s) for IN clauses, and always return standard generic JSON responses via AIPS_Ajax_Response::error in AJAX endpoints instead of wp_die.
+
+## 2026-04-24 - Secure check_ajax_referer responses in JSON endpoints
+**Vulnerability:** Several AJAX controllers (`AIPS_Telemetry_Controller`, `AIPS_System_Status_Controller`, `AIPS_Internal_Links_Controller`, `AIPS_Research_Controller`, `AIPS_Sources_Controller`) called `check_ajax_referer()` without passing `false` for the third parameter. This allowed WordPress's default `wp_die()` behavior to output raw HTML errors on failure, breaking JSON API expectations and potentially leaking internal structural information to clients instead of returning a generic error message.
+**Learning:** By default, `check_ajax_referer` calls `wp_die()`, which returns HTML. When building a JSON API, we must intercept this by passing `false` and handling the failure explicitly to maintain a consistent data format and secure, generic error messages.
+**Prevention:** Always pass `false` as the third parameter to `check_ajax_referer` in AJAX endpoints and manually handle the failure by returning a structured, generic JSON response using standard wrappers like `AIPS_Ajax_Response::error()`.

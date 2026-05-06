@@ -946,6 +946,12 @@ class AIPS_Author_Topics_Controller {
 	private function _do_bulk_generate_topics( array $topic_ids, array $options ): void {
 		$post_generator = $this->post_generator;
 
+		// Merge in async queue support: large batches are dispatched to cron workers.
+		$options = array_merge(
+			array( 'queue_job_type' => 'author_topic_post' ),
+			$options
+		);
+
 		$result = $this->bulk_generator_service->run(
 			$topic_ids,
 			function ( $topic_id ) use ( $post_generator ) {
@@ -953,6 +959,23 @@ class AIPS_Author_Topics_Controller {
 			},
 			$options
 		);
+
+		// Async queued path: large batch dispatched to cron workers.
+		if ( $result->was_queued ) {
+			AIPS_Ajax_Response::success(array(
+				'message' => sprintf(
+					/* translators: %d: number of topics */
+					__( 'Bulk generation queued for %d topics. Posts will be created in the background.', 'ai-post-scheduler' ),
+					count( $topic_ids )
+				),
+				'queued'        => true,
+				'job_id'        => $result->job_id,
+				'success_count' => 0,
+				'failed_count'  => 0,
+				'errors'        => array(),
+			));
+			return;
+		}
 
 		if ( $result->was_limited ) {
 			AIPS_Ajax_Response::error(array(

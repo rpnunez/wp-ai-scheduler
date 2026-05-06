@@ -205,11 +205,11 @@ class AIPS_Template_Processor {
      */
     public function get_variables($topic = null) {
         $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
+            '{{date}}' => AIPS_DateTime::now()->toDisplay('F j, Y'),
+            '{{year}}' => AIPS_DateTime::now()->toDisplay('Y'),
+            '{{month}}' => AIPS_DateTime::now()->toDisplay('F'),
+            '{{day}}' => AIPS_DateTime::now()->toDisplay('l'),
+            '{{time}}' => AIPS_DateTime::now()->toDisplay('H:i'),
             '{{site_name}}' => get_bloginfo('name'),
             '{{site_description}}' => get_bloginfo('description'),
             '{{random_number}}' => rand(1, 1000),
