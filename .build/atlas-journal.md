@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-24 - Extract Logic in AIPS_Schedule_Processor
+**Context:** The `execute_schedule_logic` method inside `AIPS_Schedule_Processor` was a "God Method" exceeding 400 lines. It tangled schedule preparation, large-batch dispatching, resume state tracking, synchronous generation loop execution, and result finalizing. This violated the Single Responsibility principle, made testing difficult, and increased maintenance burden.
+**Decision:** Applied the "Extract Method" refactoring pattern to decouple distinct responsibilities into specialized private methods (`dispatch_batch_queue`, `get_batch_resume_state`, and `process_synchronous_batch`). The main method now serves only to orchestrate these separate domain logic blocks.
+**Consequence:** The size of `execute_schedule_logic` was reduced to under 90 lines. The extracted functions make the batch logic testable independently. Backward compatibility is maintained since all existing dependencies and database schema expectations remain unchanged.
+**Tests:** Added `Test_AIPS_Schedule_Processor.php` with unit tests covering synchronous manual generation, missing schedules, and large-batch queue dispatching paths.

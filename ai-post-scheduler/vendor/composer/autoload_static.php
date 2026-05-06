@@ -1756,6 +1756,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Schedule_Controller_Save' => __DIR__ . '/../..' . '/tests/Test_AIPS_Schedule_Controller_Save.php',
         'Test_AIPS_Schedule_Entry' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Result.php',
         'Test_AIPS_Schedule_History' => __DIR__ . '/../..' . '/tests/Test_AIPS_Schedule_History.php',
+        'Test_AIPS_Schedule_Processor' => __DIR__ . '/../..' . '/tests/Test_AIPS_Schedule_Processor.php',
         'Test_AIPS_Schedule_Repository_Bulk' => __DIR__ . '/../..' . '/tests/Test_AIPS_Schedule_Repository_Bulk.php',
         'Test_AIPS_Scheduler_Hook_Registration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Scheduler_Hook_Registration.php',
         'Test_AIPS_Scheduler_Resilience' => __DIR__ . '/../..' . '/tests/Test_AIPS_Scheduler_Resilience.php',

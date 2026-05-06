@@ -75,6 +75,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
 
     /**
      * Verifies that run_schedule_now() uses the template's post_quantity (not a hard-coded 1).
+     * Uses a quantity (3) that is below the large-batch threshold so the synchronous path runs.
      */
     public function test_run_schedule_now_uses_template_post_quantity() {
         $schedule = (object) array(
@@ -89,18 +90,18 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         $template = (object) array(
             'id' => 456,
             'name' => 'Manual Test Template',
-            'post_quantity' => 5, // Should now be honoured, not overridden to 1
+            'post_quantity' => 3, // Below the large-batch threshold — should be honoured synchronously.
             'is_active' => 1
         );
 
-        $this->build_scheduler_with_mocks($schedule, $template, 123, 5);
+        $this->build_scheduler_with_mocks($schedule, $template, 123, 3);
 
         $result = $this->scheduler->run_schedule_now(123);
 
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
-        $this->assertEquals(array(123, 123, 123, 123, 123), $result);
+        $this->assertEquals(array(123, 123, 123), $result);
     }
 
     /**
