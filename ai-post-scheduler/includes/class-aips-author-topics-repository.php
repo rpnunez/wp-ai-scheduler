@@ -457,14 +457,14 @@ class AIPS_Author_Topics_Repository {
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
 		$days  = max( 1, absint( $days ) );
-		$start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+		$start = AIPS_DateTime::now()->addSeconds( -( ( $days - 1 ) * DAY_IN_SECONDS ) )->timestamp();
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(created_at) AS day, COUNT(*) AS total
+				"SELECT DATE(FROM_UNIXTIME(created_at)) AS day, COUNT(*) AS total
 				 FROM {$this->table_name}
-				 WHERE created_at >= %s
-				 GROUP BY DATE(created_at)
+				 WHERE created_at >= %d
+				 GROUP BY DATE(FROM_UNIXTIME(created_at))
 				 ORDER BY day ASC",
 				$start
 			)

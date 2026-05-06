@@ -11,12 +11,12 @@ class Test_AIPS_Templates_Interval extends WP_UnitTestCase {
 		$templates = new AIPS_Templates();
 		$calculator = new AIPS_Interval_Calculator();
 
-		$base_time   = current_time('timestamp');
+		$base_time   = AIPS_DateTime::now()->timestamp();
 		$frequencies = array('hourly', 'monthly', 'every_wednesday');
 
 		foreach ($frequencies as $frequency) {
 			$template_next = $this->invoke_private_method($templates, 'calculate_next_run', array($frequency, $base_time));
-			$expected_next = strtotime($calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time)));
+			$expected_next = $calculator->calculate_next_run($frequency, $base_time);
 
 			$this->assertSame($expected_next, $template_next);
 		}

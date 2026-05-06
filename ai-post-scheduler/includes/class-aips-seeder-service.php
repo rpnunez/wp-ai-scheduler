@@ -145,7 +145,7 @@ class AIPS_Seeder_Service {
             $template = $all_templates[array_rand($all_templates)];
             $freq = $frequencies[array_rand($frequencies)];
             // Random start time within next 24 hours
-            $next_run = date('Y-m-d H:i:s', time() + rand(60, 86400));
+            $next_run = time() + rand(60, 86400);
 
             $schedules[] = array(
                 'template_id' => $template->id,
@@ -196,7 +196,7 @@ class AIPS_Seeder_Service {
             if (!is_string($topic)) continue;
 
             $template = $all_templates[array_rand($all_templates)];
-            $next_run = date('Y-m-d H:i:s', $base_time + ($index * 3600)); // Spread out by hour
+            $next_run = $base_time + ($index * 3600); // Spread out by hour
 
             $schedules[] = array(
                 'template_id' => $template->id,

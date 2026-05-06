@@ -47,11 +47,11 @@ class AIPS_Calendar_Controller {
 	 * @return array Array of calendar events
 	 */
 	public function get_month_events($year, $month) {
-		// Calculate the start and end dates for the month
-		$start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
-		$days_in_month = date('t', strtotime($start_date)); // Number of days in month
-		$end_date = sprintf('%04d-%02d-%02d 23:59:59', $year, $month, $days_in_month);
-		
+		// Calculate the start and end timestamps for the month (UTC).
+		$start_ts      = mktime( 0, 0, 0, $month, 1, $year );
+		$days_in_month = (int) date( 't', $start_ts );
+		$end_ts        = mktime( 23, 59, 59, $month, $days_in_month, $year );
+
 		// Use repository to get active schedules
 		$schedules = $this->schedule_repo->get_all(true);
 		
@@ -59,7 +59,7 @@ class AIPS_Calendar_Controller {
 		
 		foreach ($schedules as $schedule) {
 			// Calculate all occurrences of this schedule within the month
-			$occurrences = $this->calculate_schedule_occurrences($schedule, $start_date, $end_date);
+			$occurrences = $this->calculate_schedule_occurrences($schedule, $start_ts, $end_ts);
 			
 			foreach ($occurrences as $occurrence) {
 				$events[] = array(
@@ -80,73 +80,52 @@ class AIPS_Calendar_Controller {
 	}
 	
 	/**
-	 * Calculate schedule occurrences within a date range.
+	 * Calculate schedule occurrences within a timestamp range.
 	 *
-	 * @param object $schedule   Schedule object
-	 * @param string $start_date Start date (MySQL format)
-	 * @param string $end_date   End date (MySQL format)
-	 * @return array Array of datetime strings in MySQL format
+	 * @param object $schedule  Schedule object
+	 * @param int    $start_ts  Range start as UTC Unix timestamp
+	 * @param int    $end_ts    Range end as UTC Unix timestamp
+	 * @return array Array of datetime strings in MySQL format (for calendar frontend)
 	 */
-	private function calculate_schedule_occurrences($schedule, $start_date, $end_date) {
+	private function calculate_schedule_occurrences($schedule, $start_ts, $end_ts) {
 		$occurrences = array();
-		
-		$current = strtotime($schedule->next_run);
-		$start = strtotime($start_date);
-		$end = strtotime($end_date);
-		
-		// If next_run is before the start date, we need to calculate forward
-		if ($current < $start) {
-			$current = $this->calculate_next_occurrence($schedule, $start_date);
+
+		// next_run is stored as a bigint Unix timestamp.
+		$current = (int) $schedule->next_run;
+
+		// If next_run is before the range start, advance it to the first occurrence
+		// inside the range using the efficient interval calculator method.
+		if ($current < $start_ts) {
+			$current = $this->interval_calculator->calculate_next_occurrence_after(
+				$schedule->frequency,
+				$current,
+				$start_ts
+			);
 		}
-		
-		// Calculate max occurrences based on frequency to avoid truncation
-		// For hourly schedules in a 31-day month: 31 * 24 = 744 occurrences
-		$max_occurrences = 1000; // Increased from 100 to handle hourly schedules
+
+		// Calculate max occurrences based on frequency to avoid truncation.
+		// For hourly schedules in a 31-day month: 31 * 24 = 744 occurrences.
+		$max_occurrences = 1000;
 		$count = 0;
 		
-		while ($current && $current <= $end && $count < $max_occurrences) {
-			if ($current >= $start) {
+		while ($current && $current <= $end_ts && $count < $max_occurrences) {
+			if ($current >= $start_ts) {
+				// Convert to MySQL datetime string for the calendar frontend.
 				$occurrences[] = date('Y-m-d H:i:s', $current);
 			}
 			
-			// Calculate next occurrence using interval calculator
-			$next_run_str = $this->interval_calculator->calculate_next_run(
-				$schedule->frequency,
-				date('Y-m-d H:i:s', $current)
-			);
-			
-			if (!$next_run_str) {
+			// Advance to the next occurrence using the interval calculator.
+			$next = $this->interval_calculator->calculate_next_run($schedule->frequency, $current);
+
+			if (!$next || $next <= $current) {
 				break;
 			}
-			
-			$current = strtotime($next_run_str);
+
+			$current = $next;
 			$count++;
 		}
 		
 		return $occurrences;
-	}
-	
-	/**
-	 * Calculate the next occurrence from a given start date.
-	 *
-	 * @param object $schedule   Schedule object
-	 * @param string $start_date Start date
-	 * @return int Timestamp of next occurrence
-	 */
-	private function calculate_next_occurrence($schedule, $start_date) {
-		// Use the new efficient method in Interval Calculator
-		// This avoids the 1000 iteration limit and handles large time gaps
-		$next_occurrence = $this->interval_calculator->calculate_next_occurrence_after(
-			$schedule->frequency,
-			$schedule->next_run,
-			$start_date
-		);
-		
-		if (!$next_occurrence) {
-			return strtotime($start_date); // Fallback
-		}
-		
-		return strtotime($next_occurrence);
 	}
 	
 	/**

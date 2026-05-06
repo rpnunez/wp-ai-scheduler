@@ -97,13 +97,13 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
+        $now = AIPS_DateTime::now()->timestamp();
         $today_end = strtotime('today 23:59:59', $now);
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
 
         foreach ($schedules as $schedule) {
-            $cursor = strtotime($schedule->next_run);
+            $cursor = (int) $schedule->next_run;
             $frequency = $schedule->frequency;
 
             // Limit iterations to prevent infinite loops or excessive processing
@@ -160,7 +160,7 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
+        $now = AIPS_DateTime::now()->timestamp();
         $today_end = strtotime('today 23:59:59', $now);
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
@@ -171,7 +171,7 @@ class AIPS_Templates {
                 $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
             }
 
-            $cursor = strtotime($schedule->next_run);
+            $cursor = (int) $schedule->next_run;
             $frequency = $schedule->frequency;
 
             // Limit iterations to prevent infinite loops or excessive processing
@@ -209,8 +209,7 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
-        return strtotime($next_run);
+        return $this->interval_calculator->calculate_next_run($frequency, (int) $base_time);
     }
     
     public function render_page() {

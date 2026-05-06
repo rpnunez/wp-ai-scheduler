@@ -85,18 +85,18 @@ class AIPS_Schedule_Entry {
 	public readonly ?string $topic;
 
 	/**
-	 * Datetime of the next scheduled run (MySQL format).
+	 * Unix timestamp of the next scheduled run.
 	 *
-	 * @var string
+	 * @var int
 	 */
-	public readonly string $next_run;
+	public readonly int $next_run;
 
 	/**
-	 * Datetime of the last completed run, or null if never run (MySQL format).
+	 * Unix timestamp of the last completed run, or 0 if never run.
 	 *
-	 * @var string|null
+	 * @var int
 	 */
-	public readonly ?string $last_run;
+	public readonly int $last_run;
 
 	/**
 	 * Whether this schedule is active.
@@ -148,11 +148,11 @@ class AIPS_Schedule_Entry {
 	public readonly ?string $batch_progress;
 
 	/**
-	 * Row creation datetime (MySQL format).
+	 * Row creation Unix timestamp.
 	 *
-	 * @var string
+	 * @var int
 	 */
-	public readonly string $created_at;
+	public readonly int $created_at;
 
 	// -----------------------------------------------------------------------
 	// Joined / virtual fields
@@ -181,8 +181,8 @@ class AIPS_Schedule_Entry {
 	 * @param string|null $rotation_pattern     Multi-topic rotation strategy.
 	 * @param string      $frequency            Frequency identifier.
 	 * @param string|null $topic                Optional topic text.
-	 * @param string      $next_run             Next run datetime (MySQL).
-	 * @param string|null $last_run             Last run datetime (MySQL) or null.
+	 * @param int         $next_run             Next run Unix timestamp.
+	 * @param int         $last_run             Last run Unix timestamp (0 if never run).
 	 * @param bool        $is_active            Active flag.
 	 * @param string      $status               Operational status.
 	 * @param int|null    $schedule_history_id  FK to history for last run.
@@ -190,7 +190,7 @@ class AIPS_Schedule_Entry {
 	 * @param string      $circuit_state        Circuit-breaker state.
 	 * @param string|null $run_state            Serialised run-state.
 	 * @param string|null $batch_progress       Serialised batch-progress.
-	 * @param string      $created_at           Row creation datetime (MySQL).
+	 * @param int         $created_at           Row creation Unix timestamp.
 	 * @param string|null $template_name        Joined template name, if available.
 	 */
 	private function __construct(
@@ -201,8 +201,8 @@ class AIPS_Schedule_Entry {
 		?string $rotation_pattern,
 		string $frequency,
 		?string $topic,
-		string $next_run,
-		?string $last_run,
+		int $next_run,
+		int $last_run,
 		bool $is_active,
 		string $status,
 		?int $schedule_history_id,
@@ -210,7 +210,7 @@ class AIPS_Schedule_Entry {
 		string $circuit_state,
 		?string $run_state,
 		?string $batch_progress,
-		string $created_at,
+		int $created_at,
 		?string $template_name
 	) {
 		$this->id                   = $id;
@@ -255,8 +255,8 @@ class AIPS_Schedule_Entry {
 			isset( $row->rotation_pattern ) && $row->rotation_pattern !== '' ? (string) $row->rotation_pattern : null,
 			(string) ( $row->frequency ?? 'daily' ),
 			isset( $row->topic ) && $row->topic !== '' ? (string) $row->topic : null,
-			(string) $row->next_run,
-			isset( $row->last_run ) && $row->last_run !== '' ? (string) $row->last_run : null,
+			(int) ( $row->next_run ?? 0 ),
+			(int) ( $row->last_run ?? 0 ),
 			isset( $row->is_active ) && $row->is_active !== null ? 1 === (int) $row->is_active : true,
 			(string) ( $row->status ?? 'active' ),
 			isset( $row->schedule_history_id ) && $row->schedule_history_id !== null ? (int) $row->schedule_history_id : null,
@@ -264,7 +264,7 @@ class AIPS_Schedule_Entry {
 			(string) ( $row->circuit_state ?? 'closed' ),
 			isset( $row->run_state ) && $row->run_state !== '' ? (string) $row->run_state : null,
 			isset( $row->batch_progress ) && $row->batch_progress !== '' ? (string) $row->batch_progress : null,
-			(string) ( $row->created_at ?? '' ),
+			(int) ( $row->created_at ?? 0 ),
 			isset( $row->template_name ) && $row->template_name !== '' ? (string) $row->template_name : null
 		);
 	}
@@ -276,12 +276,12 @@ class AIPS_Schedule_Entry {
 	/**
 	 * Whether this schedule is overdue (next_run is in the past).
 	 *
-	 * @param string|null $current_time Optional. MySQL-format current time. Defaults to now.
+	 * @param int|null $current_time Optional. UTC Unix timestamp. Defaults to now.
 	 * @return bool
 	 */
-	public function is_due( ?string $current_time = null ): bool {
+	public function is_due( ?int $current_time = null ): bool {
 		if ( $current_time === null ) {
-			$current_time = current_time( 'mysql' );
+			$current_time = AIPS_DateTime::now()->timestamp();
 		}
 		return $this->next_run <= $current_time;
 	}

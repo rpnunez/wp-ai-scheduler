@@ -33,8 +33,8 @@ interface AIPS_Schedule_Repository_Interface {
 	/**
 	 * Fetch due schedules.
 	 *
-	 * @param string|null $current_time Current time in MySQL format.
-	 * @param int         $limit Max results.
+	 * @param int|null $current_time Current UTC Unix timestamp. Defaults to now.
+	 * @param int      $limit Max results.
 	 * @return array
 	 */
 	public function get_due_schedules($current_time = null, $limit = 5);

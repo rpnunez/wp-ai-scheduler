@@ -279,7 +279,7 @@ class AIPS_Author_Topics_Generator {
 				'score' => $score,
 				'metadata' => wp_json_encode(array(
 					'generated_via' => 'ai_json',
-					'generation_date' => current_time('mysql'),
+					'generation_date' => AIPS_DateTime::now()->timestamp(),
 					'keywords' => $keywords
 				))
 			);
@@ -337,7 +337,7 @@ class AIPS_Author_Topics_Generator {
 				'score' => 50,
 				'metadata' => wp_json_encode(array(
 					'generated_via' => 'ai',
-					'generation_date' => current_time('mysql')
+					'generation_date' => AIPS_DateTime::now()->timestamp()
 				))
 			);
 			

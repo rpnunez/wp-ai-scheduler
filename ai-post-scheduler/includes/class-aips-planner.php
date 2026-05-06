@@ -134,7 +134,7 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+        $next_run = $base_time;
 
         foreach ($topics as $topic) {
             $schedules[] = array(

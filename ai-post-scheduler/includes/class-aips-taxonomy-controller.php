@@ -317,7 +317,7 @@ class AIPS_Taxonomy_Controller {
 		$this->repository->update($item_id, array(
 			'term_id'    => $term_id,
 			'status'     => 'created',
-			'updated_at' => current_time('mysql'),
+			'updated_at' => AIPS_DateTime::now()->timestamp(),
 		));
 
 		return array(

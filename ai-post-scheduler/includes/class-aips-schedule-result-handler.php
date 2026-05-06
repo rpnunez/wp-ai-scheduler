@@ -73,7 +73,7 @@ class AIPS_Schedule_Result_Handler {
                 $this->repository->update($schedule->schedule_id, array(
                     'is_active' => 0,
                     'status' => 'failed',
-                    'last_run' => current_time('mysql')
+                    'last_run' => AIPS_DateTime::now()->timestamp(),
                 ));
                 $this->logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
@@ -103,7 +103,7 @@ class AIPS_Schedule_Result_Handler {
         } else {
             // For recurring schedules, we ONLY update last_run here.
             // next_run was already updated at the start (Claim-First).
-            $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+            $this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
         }
     }
 

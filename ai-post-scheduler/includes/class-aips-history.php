@@ -261,8 +261,8 @@ class AIPS_History {
         // Calculate duration between created_at and completed_at.
         $duration_seconds = null;
         if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
-            $start = strtotime( $history_item->created_at );
-            $end   = strtotime( $history_item->completed_at );
+            $start = (int) $history_item->created_at;
+            $end   = (int) $history_item->completed_at;
             if ( $start && $end && $end >= $start ) {
                 $duration_seconds = $end - $start;
             }
@@ -524,7 +524,7 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
-            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $item->formatted_date = date_i18n($format, (int) $item->created_at);
         }
     }
 }

@@ -343,7 +343,7 @@ class AIPS_Research_Controller {
         }
 
         $count = 0;
-        $next_run = date('Y-m-d H:i:s', $base_time);
+        $next_run = $base_time;
 
         $schedules_to_create = array();
 

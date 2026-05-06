@@ -265,7 +265,7 @@ class AIPS_History_Container {
 		// Build details array
 		$details = array(
 			'message' => $message,
-			'timestamp' => current_time('mysql'),
+			'timestamp' => AIPS_DateTime::now()->timestamp(),
 		);
 		
 		// Add input if provided
@@ -407,7 +407,7 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
@@ -442,7 +442,7 @@ class AIPS_History_Container {
 		return $this->repository->update($this->history_id, array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
 		)) !== false;
 	}
 	

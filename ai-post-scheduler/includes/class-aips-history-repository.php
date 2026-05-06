@@ -615,20 +615,20 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_daily_generation_counts( $days = 14 ) {
         $days  = max( 1, absint( $days ) );
-        $start = wp_date( 'Y-m-d', current_time( 'timestamp', true ) - ( ( $days - 1 ) * DAY_IN_SECONDS ), wp_timezone() );
+        $start = AIPS_DateTime::now()->addSeconds( -( ( $days - 1 ) * DAY_IN_SECONDS ) )->timestamp();
 
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
-                    DATE(created_at) AS day,
+                    DATE(FROM_UNIXTIME(created_at)) AS day,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
                     SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
                     COUNT(*) AS total
                  FROM {$this->table_name}
-                 WHERE created_at >= %s
+                 WHERE created_at >= %d
                    AND COALESCE(creation_method, '') <> 'schedule_lifecycle'
                    AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-                 GROUP BY DATE(created_at)
+                 GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
                 $start
             )

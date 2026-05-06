@@ -174,12 +174,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// All next_run values must equal the Unix timestamp of the user-specified start_date.
+		$expected_ts = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
 			$this->assertEquals(
-				$start_date,
+				$expected_ts,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %d (%s), got %s', $i, $expected_ts, $start_date, $schedule['next_run'])
 			);
 		}
 	}
@@ -208,11 +209,12 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		$expected_ts = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
 			$this->assertEquals(
-				$start_date,
+				$expected_ts,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %d (%s), got %s', $i, $expected_ts, $start_date, $schedule['next_run'])
 			);
 		}
 	}
@@ -238,7 +240,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(1, $schedules);
-		$this->assertEquals($start_date, $schedules[0]['next_run']);
+		$this->assertEquals(strtotime($start_date), $schedules[0]['next_run']);
 	}
 }
 
