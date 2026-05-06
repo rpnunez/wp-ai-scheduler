@@ -264,7 +264,7 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		$manual_snapshots = isset($_POST['manual_snapshots']) && is_array($_POST['manual_snapshots'])
-			? $_POST['manual_snapshots']
+			? wp_unslash($_POST['manual_snapshots'])
 			: array();
 
 		if (!$post_id || !$history_id) {
@@ -364,7 +364,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-		$components = isset($_POST['components']) ? $_POST['components'] : array();
+		$components = isset($_POST['components']) && is_array($_POST['components']) ? wp_unslash($_POST['components']) : array();
 		
 		if (!$post_id || empty($components)) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
