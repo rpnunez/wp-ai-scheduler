@@ -69,12 +69,17 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
+		$repo = AIPS_Prompt_Template_Group_Repository::instance();
+		$base = $repo->get_prompt_for_component( 'post_featured_image' );
+
 		$image_prompt = $context->get_image_prompt();
-		if (empty($image_prompt)) {
-			return '';
+		if (!empty($image_prompt)) {
+			$processed = $this->template_processor->process($image_prompt, $context->get_topic());
+			return ! empty( $base ) ? $base . "\n\n" . $processed : $processed;
 		}
 
-		return $this->template_processor->process($image_prompt, $context->get_topic());
+		// No template-specific prompt — fall back to the Prompt Templates base if set.
+		return ! empty( $base ) ? $base : '';
 	}
 
 	/**
@@ -89,10 +94,19 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 		$source = isset($template->featured_image_source) ? $template->featured_image_source : 'ai_prompt';
 		$image_prompt = isset($template->image_prompt) ? $template->image_prompt : '';
 
-		if (!$should_generate || $source !== 'ai_prompt' || empty($image_prompt)) {
+		if (!$should_generate || $source !== 'ai_prompt') {
 			return '';
 		}
 
-		return $this->template_processor->process($image_prompt, $topic);
+		$repo = AIPS_Prompt_Template_Group_Repository::instance();
+		$base = $repo->get_prompt_for_component( 'post_featured_image' );
+
+		if (!empty($image_prompt)) {
+			$processed = $this->template_processor->process($image_prompt, $topic);
+			return ! empty( $base ) ? $base . "\n\n" . $processed : $processed;
+		}
+
+		// No template-specific prompt — fall back to the Prompt Templates base if set.
+		return ! empty( $base ) ? $base : '';
 	}
 }

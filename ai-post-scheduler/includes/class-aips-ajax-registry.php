@@ -29,6 +29,14 @@ class AIPS_Ajax_Registry {
 	 * @var array<string, string>
 	 */
 	private static $map = array(
+		// Prompt Templates Controller
+		'aips_get_prompt_template_groups'         => 'AIPS_Prompt_Templates_Controller',
+		'aips_get_prompt_template_group'          => 'AIPS_Prompt_Templates_Controller',
+		'aips_save_prompt_template_group'         => 'AIPS_Prompt_Templates_Controller',
+		'aips_delete_prompt_template_group'       => 'AIPS_Prompt_Templates_Controller',
+		'aips_set_default_prompt_template_group'  => 'AIPS_Prompt_Templates_Controller',
+		'aips_save_prompt_template_items'         => 'AIPS_Prompt_Templates_Controller',
+
 		// Templates Controller
 		'aips_save_template'              => 'AIPS_Templates_Controller',
 		'aips_delete_template'            => 'AIPS_Templates_Controller',

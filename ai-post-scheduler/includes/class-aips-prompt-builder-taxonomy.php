@@ -46,7 +46,11 @@ class AIPS_Prompt_Builder_Taxonomy {
 		$taxonomy_type = $taxonomy_type === 'category' ? 'category' : 'post_tag';
 		$type_label    = $taxonomy_type === 'category' ? 'categories' : 'tags';
 
-		$prompt  = "Based on the following posts, generate appropriate {$type_label} for a WordPress site.\n\n";
+		$repo     = AIPS_Prompt_Template_Group_Repository::instance();
+		$base_tpl = $repo->get_prompt_for_component( 'taxonomy' );
+		// Replace {type_label} placeholder with the actual taxonomy label.
+		$prompt = str_replace( '{type_label}', $type_label, $base_tpl ) . "\n\n";
+
 		$prompt .= "Posts:\n";
 
 		foreach ($post_contents as $content) {

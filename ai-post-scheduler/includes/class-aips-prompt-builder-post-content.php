@@ -92,6 +92,13 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		// Prepend optional base system instruction from Prompt Templates (empty by default).
+		$repo = AIPS_Prompt_Template_Group_Repository::instance();
+		$base = $repo->get_prompt_for_component( 'post_content' );
+		if ( ! empty( $base ) ) {
+			$processed_prompt = $base . "\n\n" . $processed_prompt;
+		}
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
@@ -110,6 +117,13 @@ class AIPS_Prompt_Builder_Post_Content {
 		if ($voice) {
 			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+		}
+
+		// Prepend optional base system instruction from Prompt Templates (empty by default).
+		$repo = AIPS_Prompt_Template_Group_Repository::instance();
+		$base = $repo->get_prompt_for_component( 'post_content' );
+		if ( ! empty( $base ) ) {
+			$processed_prompt = $base . "\n\n" . $processed_prompt;
 		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
