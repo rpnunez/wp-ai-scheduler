@@ -537,8 +537,13 @@ class AIPS_Schedule_Processor {
      *
      * @param int      $schedule_id      The schedule ID.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return array|WP_Error List of generated post IDs on success, an array with 'batch_queued'=>true when a large
-     *                        batch was dispatched asynchronously, or WP_Error on failure.
+     * @return array|WP_Error On synchronous success: list of generated post IDs (int[]).
+     *                        When a large batch was dispatched asynchronously: array with
+     *                          'batch_queued'      => true,
+     *                          'num_batches'       => int  (fresh dispatch),
+     *                          'scheduled_batches' => int  (fresh dispatch), or
+     *                          'already_pending'   => true (already in the queue).
+     *                        On failure: WP_Error.
      */
     public function process_single_schedule($schedule_id, $quantity_override = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
@@ -664,8 +669,13 @@ class AIPS_Schedule_Processor {
      * @param object   $schedule         Schedule object (merged with template).
      * @param bool     $is_manual        Whether this is a manual execution.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return array|WP_Error List of generated post IDs on success, an array with 'batch_queued'=>true when a large
-     *                        batch was dispatched asynchronously, or WP_Error on failure.
+     * @return array|WP_Error On synchronous success: list of generated post IDs (int[]).
+     *                        When a large batch was dispatched asynchronously: array with
+     *                          'batch_queued'      => true,
+     *                          'num_batches'       => int  (fresh dispatch),
+     *                          'scheduled_batches' => int  (fresh dispatch), or
+     *                          'already_pending'   => true (already in the queue).
+     *                        On failure: WP_Error.
      */
     private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null) {
         if (!$is_manual) {
@@ -768,9 +778,12 @@ class AIPS_Schedule_Processor {
      * @param AIPS_Schedule_History_Container|null $history
      * @param bool $is_manual
      * @param AIPS_Batch_Queue_Service $batch_service
-     * @return array|WP_Error Array with 'batch_queued'=>true on success (fresh dispatch or already pending),
-     *                        or WP_Error on dispatch failure when $is_manual is true. On non-manual dispatch
-     *                        failure the method handles cleanup internally and returns null.
+     * @return array|WP_Error On success returns an array with:
+     *                          'batch_queued'      => true
+     *                          'num_batches'       => int  (fresh dispatch only)
+     *                          'scheduled_batches' => int  (fresh dispatch only)
+     *                          'already_pending'   => true (already-pending skip only)
+     *                        Returns WP_Error on dispatch failure.
      */
     private function dispatch_batch_queue($schedule, $post_quantity, $history, $is_manual, $batch_service) {
         if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
@@ -822,7 +835,7 @@ class AIPS_Schedule_Processor {
 
             $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary);
             $this->result_handler->handle_execution_failure($schedule, $dispatch_summary, $history, false);
-            return null;
+            return $dispatch_summary;
         }
 
         $this->repository->update_run_state($schedule->schedule_id, array(
