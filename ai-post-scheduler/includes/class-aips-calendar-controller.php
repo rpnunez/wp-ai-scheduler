@@ -47,10 +47,7 @@ class AIPS_Calendar_Controller {
 	 * @return array Array of calendar events
 	 */
 	public function get_month_events($year, $month) {
-		// Calculate the start and end dates for the month
-		$start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
-		$days_in_month = date('t', strtotime($start_date)); // Number of days in month
-		$end_date = sprintf('%04d-%02d-%02d 23:59:59', $year, $month, $days_in_month);
+		$month_range = $this->get_month_range($year, $month);
 		
 		// Use repository to get active schedules
 		$schedules = $this->schedule_repo->get_all(true);
@@ -59,7 +56,7 @@ class AIPS_Calendar_Controller {
 		
 		foreach ($schedules as $schedule) {
 			// Calculate all occurrences of this schedule within the month
-			$occurrences = $this->calculate_schedule_occurrences($schedule, $start_date, $end_date);
+			$occurrences = $this->calculate_schedule_occurrences($schedule, $month_range['start'], $month_range['end']);
 			
 			foreach ($occurrences as $occurrence) {
 				$events[] = array(
@@ -87,16 +84,20 @@ class AIPS_Calendar_Controller {
 	 * @param string $end_date   End date (MySQL format)
 	 * @return array Array of datetime strings in MySQL format
 	 */
-	private function calculate_schedule_occurrences($schedule, $start_date, $end_date) {
+	private function calculate_schedule_occurrences($schedule, $start_timestamp, $end_timestamp) {
 		$occurrences = array();
 		
-		$current = strtotime($schedule->next_run);
-		$start = strtotime($start_date);
-		$end = strtotime($end_date);
+		$current = $this->normalize_datetime_input($schedule->next_run);
+		$start = (int) $start_timestamp;
+		$end = (int) $end_timestamp;
+
+		if ($current <= 0) {
+			return $occurrences;
+		}
 		
 		// If next_run is before the start date, we need to calculate forward
 		if ($current < $start) {
-			$current = $this->calculate_next_occurrence($schedule, $start_date);
+			$current = $this->calculate_next_occurrence($schedule, $start);
 		}
 		
 		// Calculate max occurrences based on frequency to avoid truncation
@@ -106,20 +107,21 @@ class AIPS_Calendar_Controller {
 		
 		while ($current && $current <= $end && $count < $max_occurrences) {
 			if ($current >= $start) {
-				$occurrences[] = date('Y-m-d H:i:s', $current);
+				$occurrences[] = AIPS_DateTime::fromTimestamp($current)->toMysql();
 			}
 			
 			// Calculate next occurrence using interval calculator
-			$next_run_str = $this->interval_calculator->calculate_next_run(
+			$next_run = $this->interval_calculator->calculate_next_occurrence_after(
 				$schedule->frequency,
-				date('Y-m-d H:i:s', $current)
+				$current,
+				$current + 1
 			);
 			
-			if (!$next_run_str) {
+			if (empty($next_run) || !is_numeric($next_run) || (int) $next_run <= $current) {
 				break;
 			}
 			
-			$current = strtotime($next_run_str);
+			$current = (int) $next_run;
 			$count++;
 		}
 		
@@ -133,20 +135,67 @@ class AIPS_Calendar_Controller {
 	 * @param string $start_date Start date
 	 * @return int Timestamp of next occurrence
 	 */
-	private function calculate_next_occurrence($schedule, $start_date) {
+	private function calculate_next_occurrence($schedule, $start_timestamp) {
 		// Use the new efficient method in Interval Calculator
 		// This avoids the 1000 iteration limit and handles large time gaps
+		$base_timestamp = $this->normalize_datetime_input($schedule->next_run);
+
+		if ($base_timestamp <= 0) {
+			return (int) $start_timestamp;
+		}
+
 		$next_occurrence = $this->interval_calculator->calculate_next_occurrence_after(
 			$schedule->frequency,
-			$schedule->next_run,
-			$start_date
+			$base_timestamp,
+			(int) $start_timestamp
 		);
 		
 		if (!$next_occurrence) {
-			return strtotime($start_date); // Fallback
+			return (int) $start_timestamp;
 		}
 		
-		return strtotime($next_occurrence);
+		return (int) $next_occurrence;
+	}
+
+	/**
+	 * Get the UTC timestamp range for a calendar month.
+	 *
+	 * @param int $year  Year number.
+	 * @param int $month Month number.
+	 * @return array{start:int,end:int}
+	 */
+	private function get_month_range($year, $month) {
+		$start = AIPS_DateTime::fromMysql(sprintf('%04d-%02d-01 00:00:00', $year, $month));
+
+		return array(
+			'start' => $start->timestamp(),
+			'end' => $start->advance('+1 month')->addSeconds(-1)->timestamp(),
+		);
+	}
+
+	/**
+	 * Normalize stored schedule times to UTC timestamps.
+	 *
+	 * @param mixed $value Stored schedule datetime value.
+	 * @return int
+	 */
+	private function normalize_datetime_input($value) {
+		if ($value instanceof AIPS_DateTime) {
+			return $value->timestamp();
+		}
+
+		if (is_numeric($value)) {
+			return max(0, (int) $value);
+		}
+
+		if (is_string($value)) {
+			$parsed = AIPS_DateTime::fromMysqlOrNull($value);
+			if ($parsed !== null) {
+				return $parsed->timestamp();
+			}
+		}
+
+		return 0;
 	}
 	
 	/**
@@ -199,6 +248,8 @@ class AIPS_Calendar_Controller {
 	 * @return void
 	 */
 	public function ajax_get_calendar_events() {
+		$now = AIPS_DateTime::now();
+
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
@@ -207,8 +258,8 @@ class AIPS_Calendar_Controller {
 			AIPS_Ajax_Response::error(__('Unauthorized access.', 'ai-post-scheduler'));
 		}
 		
-		$year = isset($_POST['year']) ? absint($_POST['year']) : date('Y');
-		$month = isset($_POST['month']) ? absint($_POST['month']) : date('n');
+		$year = isset($_POST['year']) ? absint($_POST['year']) : (int) $now->toDisplay('Y');
+		$month = isset($_POST['month']) ? absint($_POST['month']) : (int) $now->toDisplay('n');
 		
 		// Validate month
 		if ($month < 1 || $month > 12) {

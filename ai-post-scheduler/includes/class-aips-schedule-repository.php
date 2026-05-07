@@ -206,18 +206,20 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        $next_run = $this->normalize_datetime_input(isset($data['next_run']) ? $data['next_run'] : 0);
+
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => sanitize_text_field($data['frequency']),
-            'next_run' => sanitize_text_field($data['next_run']),
+            'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s');
+        $format = array('%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -283,13 +285,13 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
         
         if (isset($data['next_run'])) {
-            $update_data['next_run'] = sanitize_text_field($data['next_run']);
-            $format[] = '%s';
+            $update_data['next_run'] = $this->normalize_datetime_input($data['next_run']);
+            $format[] = '%d';
         }
         
         if (isset($data['last_run'])) {
-            $update_data['last_run'] = sanitize_text_field($data['last_run']);
-            $format[] = '%s';
+            $update_data['last_run'] = $this->normalize_datetime_input($data['last_run']);
+            $format[] = '%d';
         }
         
         if (isset($data['is_active'])) {
@@ -567,13 +569,13 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             array_push($values,
                 absint($data['template_id']),
                 sanitize_text_field($data['frequency']),
-                sanitize_text_field($data['next_run']),
+                $this->normalize_datetime_input(isset($data['next_run']) ? $data['next_run'] : 0),
                 isset($data['is_active']) ? (int) $data['is_active'] : 0,
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
                 isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
             );
-            $placeholders[] = "(%d, %s, %s, %d, %s, %d, %s)";
+            $placeholders[] = "(%d, %s, %d, %d, %s, %d, %s)";
         }
 
         $query .= implode(', ', $placeholders);
@@ -749,5 +751,33 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             'total' => isset($results->total) ? (int) $results->total : 0,
             'active' => isset($results->active) ? (int) $results->active : 0,
         );
+    }
+
+    /**
+     * Normalize legacy MySQL datetimes and timestamp-like values to UTC timestamps.
+     *
+     * The schedule schema stores bigint timestamps, but some older call sites and
+     * tests still pass MySQL datetime strings.
+     *
+     * @param mixed $value Timestamp or datetime-like input.
+     * @return int UTC Unix timestamp, or 0 when the value cannot be parsed.
+     */
+    private function normalize_datetime_input($value) {
+        if ($value instanceof AIPS_DateTime) {
+            return $value->timestamp();
+        }
+
+        if (is_numeric($value)) {
+            return max(0, (int) $value);
+        }
+
+        if (is_string($value)) {
+            $parsed = AIPS_DateTime::fromMysqlOrNull(sanitize_text_field($value));
+            if ($parsed !== null) {
+                return $parsed->timestamp();
+            }
+        }
+
+        return 0;
     }
 }

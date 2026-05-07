@@ -1,0 +1,21 @@
+{
+  "id": "a2331e2177febd4809dfea240c3bb098ad95e4c0",
+  "type": "direct_wpdb_outside_repo",
+  "severity": "high",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-data-management-import-json.php",
+  "symbol": "AIPS_Data_Management_Import_JSON",
+  "anchor": "import:wpdb-truncate-insert",
+  "summary": "The JSON import class issues direct TRUNCATE and INSERT statements through $wpdb outside the repository/DB layer.",
+  "why_it_matters": "This is a write-heavy path that bypasses the repository pattern and concentrates destructive SQL inside a higher-level import class, increasing rollback and validation risk.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:70",
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:100",
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:110",
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:114",
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:123"
+  ],
+  "suggested_fix": "Move destructive import persistence into a dedicated repository/DB-layer collaborator with explicit transaction and validation boundaries.",
+  "first_seen_run_id": "aips-20260506T234621Z",
+  "last_seen_run_id": "aips-20260506T234621Z"
+}
