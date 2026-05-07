@@ -92,7 +92,6 @@ if (!defined('ABSPATH')) {
 								</tr>
 							</thead>
 							<tbody>
-								<?php
 								<?php foreach ($draft_posts['items'] as $item): ?>
 								<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 									<td>
