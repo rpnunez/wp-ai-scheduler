@@ -22,7 +22,18 @@ class AIPS_Admin_L10n {
 	 * @return array
 	 */
 	public static function get($key) {
-		$language = AIPS_Config::get_instance()->get_option('aips_language', 'en');
+		$language = AIPS_Config::get_instance()->get_option('aips_language');
+
+		if (!is_string($language)) {
+			$language = 'en';
+		} else {
+			$language = trim($language);
+
+			if ('' === $language) {
+				$language = 'en';
+			}
+		}
+
 		return AIPS_Language_Store::get($language, $key);
 	}
 }
