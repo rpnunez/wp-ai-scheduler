@@ -321,18 +321,23 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     /**
      * Helper: create a mock $mwai that throws from simpleTextQuery.
      *
-     * @param string $message Exception message to throw.
+     * @param stdClass $capture Object whose prompt/params properties are populated on call.
+     * @param string   $message Exception message to throw.
      * @return object Anonymous mock.
      */
-    private function make_text_query_throwing_mock($message) {
-        return new class($message) {
+    private function make_text_query_throwing_mock(stdClass $capture, $message) {
+        return new class($capture, $message) {
+            private $capture;
             private $message;
 
-            public function __construct($message) {
+            public function __construct($capture, $message) {
+                $this->capture = $capture;
                 $this->message = $message;
             }
 
             public function simpleTextQuery($prompt, $params) {
+                $this->capture->prompt = $prompt;
+                $this->capture->params = $params;
                 throw new Exception($this->message);
             }
         };
@@ -726,7 +731,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     public function test_generate_text_exception_maps_provider_error_code() {
         global $mwai;
         $original_mwai = $mwai;
-        $mwai = $this->make_text_query_throwing_mock('Incorrect API key provided');
+        $capture = new stdClass();
+        $capture->prompt = null;
+        $capture->params = null;
+        $mwai = $this->make_text_query_throwing_mock($capture, 'Incorrect API key provided');
 
         try {
             $service = new AIPS_AI_Service();
@@ -735,6 +743,8 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertInstanceOf('WP_Error', $result);
             $this->assertSame('invalid_api_key', $result->get_error_code());
             $this->assertSame('Incorrect API key provided', $result->get_error_message());
+            $this->assertSame('Prompt', $capture->prompt);
+            $this->assertIsArray($capture->params);
         } finally {
             $mwai = $original_mwai;
         }
@@ -746,7 +756,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     public function test_generate_text_exception_falls_back_to_generation_failed_code() {
         global $mwai;
         $original_mwai = $mwai;
-        $mwai = $this->make_text_query_throwing_mock('Provider exploded unexpectedly');
+        $capture = new stdClass();
+        $capture->prompt = null;
+        $capture->params = null;
+        $mwai = $this->make_text_query_throwing_mock($capture, 'Provider exploded unexpectedly');
 
         try {
             $service = new AIPS_AI_Service();
@@ -755,6 +768,8 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertInstanceOf('WP_Error', $result);
             $this->assertSame('generation_failed', $result->get_error_code());
             $this->assertSame('Provider exploded unexpectedly', $result->get_error_message());
+            $this->assertSame('Prompt', $capture->prompt);
+            $this->assertIsArray($capture->params);
         } finally {
             $mwai = $original_mwai;
         }
