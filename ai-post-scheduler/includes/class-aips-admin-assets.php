@@ -65,86 +65,118 @@ class AIPS_Admin_Assets {
 	 * @return void
 	 */
 	public function enqueue_admin_assets($hook) {
-		if (!$this->hook_contains($hook, self::PAGE_DASHBOARD) && !$this->hook_contains($hook, self::PAGE_PREFIX)) {
+        $page = $this->get_current_page_slug();
+
+        if (!$this->is_plugin_admin_page($hook, $page)) {
 			return;
 		}
 
 		$this->enqueue_global_assets();
 
-		if ($this->hook_contains($hook, self::HOOK_DASHBOARD)) {
+        if ($this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page) {
 			$this->enqueue_dashboard_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
 			$this->enqueue_templates_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_VOICES)) {
+        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
 			$this->enqueue_voices_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_STRUCTURES)) {
+        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
 			$this->enqueue_structures_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SCHEDULE) && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_RESEARCH)) {
+        if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
 			$this->enqueue_research_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
+        if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_calendar_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_HISTORY)) {
+        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
 			$this->enqueue_history_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_ONBOARDING)) {
+        if (self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
 			$this->enqueue_onboarding_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
+        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
 			$this->enqueue_sources_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SETTINGS)) {
+        if (self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS)) {
 			$this->enqueue_settings_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
 			$this->enqueue_telemetry_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
 			$this->enqueue_internal_links_assets();
 		}
 
 	}
+
+    /**
+     * Determine whether the current request is one of this plugin's admin pages.
+     *
+     * @param string $hook Current admin page hook.
+     * @param string $page Current sanitized page slug.
+     * @return bool
+     */
+    private function is_plugin_admin_page($hook, $page) {
+        if (self::PAGE_DASHBOARD === $page || 0 === strpos($page, self::PAGE_PREFIX)) {
+            return true;
+        }
+
+        return $this->hook_contains($hook, self::PAGE_DASHBOARD) || $this->hook_contains($hook, self::PAGE_PREFIX);
+    }
+
+    /**
+     * Get the current sanitized admin page slug from the request.
+     *
+     * @return string
+     */
+    private function get_current_page_slug() {
+        $page = filter_input(INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+        if (!is_string($page) || '' === $page) {
+            return '';
+        }
+
+        return sanitize_key(wp_unslash($page));
+    }
 
 	/**
 	 * Check whether the current admin hook includes a page slug.
