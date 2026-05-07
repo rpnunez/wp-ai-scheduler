@@ -70,8 +70,10 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		};
 
 		$history_repository = new class {
-			public function create($data) {
-				return 123;
+			public function create($type, $data = array()) {
+				return new class {
+					public function record($type, $message, $context = array(), $post_data = array(), $author_data = array()) {}
+				};
 			}
 			
 			public function update($id, $data) {
@@ -94,8 +96,8 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 				$this->captured_template =& $captured_template;
 			}
 			
-			public function generate_post($template, $history_id, $variables) {
-				$this->captured_template = $template;
+			public function generate_post($context) {
+				$this->captured_template = $context;
 				return 456; // Return a mock post ID
 			}
 		};
@@ -111,7 +113,7 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'generator', $generator);
 		$this->inject_property($reflection, $post_generator, 'logger', $logger);
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
-		$this->inject_property($reflection, $post_generator, 'history_repository', $history_repository);
+		$this->inject_property($reflection, $post_generator, 'history_service', $history_repository);
 		$this->inject_property($reflection, $post_generator, 'expansion_service', $expansion_service);
 
 		// Create author and topic objects
@@ -126,13 +128,13 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 
 		// Assert the captured template contains expanded context
 		$this->assertNotNull($generator->captured_template);
-		$this->assertStringContainsString('Related approved topics:', $generator->captured_template->prompt_template);
-		$this->assertStringContainsString('How to write better code', $generator->captured_template->prompt_template);
-		$this->assertStringContainsString('Best practices for software development', $generator->captured_template->prompt_template);
+		$this->assertStringContainsString('Related approved topics:', $generator->captured_template->get_content_prompt());
+		$this->assertStringContainsString('How to write better code', $generator->captured_template->get_content_prompt());
+		$this->assertStringContainsString('Best practices for software development', $generator->captured_template->get_content_prompt());
 
 		// Assert base prompt is still present
-		$this->assertStringContainsString('Write a comprehensive blog post about: Clean Code Principles', $generator->captured_template->prompt_template);
-		$this->assertStringContainsString('Field/Niche: Software Development', $generator->captured_template->prompt_template);
+		$this->assertStringContainsString('Write a comprehensive blog post about: Clean Code Principles', $generator->captured_template->get_content_prompt());
+		$this->assertStringContainsString('Field/Niche: Software Development', $generator->captured_template->get_content_prompt());
 
 		// Assert logger recorded the context addition
 		$found_log = false;
@@ -207,8 +209,10 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		};
 
 		$history_repository = new class {
-			public function create($data) {
-				return 123;
+			public function create($type, $data = array()) {
+				return new class {
+					public function record($type, $message, $context = array(), $post_data = array(), $author_data = array()) {}
+				};
 			}
 			
 			public function update($id, $data) {
@@ -231,8 +235,8 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 				$this->captured_template =& $captured_template;
 			}
 			
-			public function generate_post($template, $history_id, $variables) {
-				$this->captured_template = $template;
+			public function generate_post($context) {
+				$this->captured_template = $context;
 				return 456; // Return a mock post ID
 			}
 		};
@@ -248,7 +252,7 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'generator', $generator);
 		$this->inject_property($reflection, $post_generator, 'logger', $logger);
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
-		$this->inject_property($reflection, $post_generator, 'history_repository', $history_repository);
+		$this->inject_property($reflection, $post_generator, 'history_service', $history_repository);
 		$this->inject_property($reflection, $post_generator, 'expansion_service', $expansion_service);
 
 		// Create author and topic objects
@@ -263,11 +267,11 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 
 		// Assert the captured template does NOT contain expanded context
 		$this->assertNotNull($generator->captured_template);
-		$this->assertStringNotContainsString('Related approved topics:', $generator->captured_template->prompt_template);
+		$this->assertStringNotContainsString('Related approved topics:', $generator->captured_template->get_content_prompt());
 
 		// Assert base prompt is still present
-		$this->assertStringContainsString('Write a comprehensive blog post about: New Topic Without Similar Topics', $generator->captured_template->prompt_template);
-		$this->assertStringContainsString('Field/Niche: Software Development', $generator->captured_template->prompt_template);
+		$this->assertStringContainsString('Write a comprehensive blog post about: New Topic Without Similar Topics', $generator->captured_template->get_content_prompt());
+		$this->assertStringContainsString('Field/Niche: Software Development', $generator->captured_template->get_content_prompt());
 
 		// Assert logger did NOT record context addition
 		$found_log = false;

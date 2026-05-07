@@ -169,7 +169,7 @@ class AIPS_Author_Topics_Scheduler {
 	 * @param object[] $due_authors Array of author objects from the repository.
 	 */
 	private function dispatch_author_slices( array $due_authors ): void {
-		$now            = time();
+		$now            = AIPS_DateTime::now()->timestamp();
 		$correlation_id = (string) AIPS_Correlation_ID::get();
 
 		// Stagger each author's event by 10 seconds to avoid simultaneous AI requests.
@@ -177,19 +177,28 @@ class AIPS_Author_Topics_Scheduler {
 		$stagger_seconds = max(0, $stagger_seconds);
 
 		$i = 0;
+		$scheduled_count = 0;
 		foreach ( $due_authors as $author ) {
 			$fire_at = $now + ($i * $stagger_seconds);
-			wp_schedule_single_event(
+			$scheduled = wp_schedule_single_event(
 				$fire_at,
 				self::SLICE_HOOK,
 				array( (int) $author->id, $correlation_id )
 			);
+
+			if ( $scheduled ) {
+				$scheduled_count++;
+			} else {
+				$this->logger->log( "Failed to schedule topics slice event for author {$author->id}", 'error' );
+			}
+
 			$i++;
 		}
 
 		$this->logger->log(
 			sprintf(
-				'Dispatched %d author-topics slice events (stagger: %ds each).',
+				'Dispatched %d of %d author-topics slice events (stagger: %ds each).',
+				$scheduled_count,
 				count($due_authors),
 				$stagger_seconds
 			),
