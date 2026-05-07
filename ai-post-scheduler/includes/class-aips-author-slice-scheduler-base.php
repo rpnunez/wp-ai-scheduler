@@ -37,9 +37,9 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 	protected $history_service;
 
 	/**
-	 * @var AIPS_Resilience_Service Resilience service for retry logic
+	 * @var AIPS_Job_Scheduler Job scheduler service
 	 */
-	protected $resilience_service;
+	protected $job_scheduler;
 
 	/**
 	 * Get the cron hook name for this scheduler's slice processing.
@@ -85,136 +85,52 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 	 * @param object[] $due_authors Array of author objects from the repository.
 	 */
 	protected function dispatch_author_slices( array $due_authors ): void {
-		// Use AIPS_DateTime instead of time() for consistent timezone-safe timestamp handling
-		$now            = AIPS_DateTime::now()->timestamp();
+		if ( empty( $due_authors ) ) {
+			return;
+		}
+
 		$correlation_id = (string) AIPS_Correlation_ID::get();
 
 		// Get stagger configuration from filter
 		$stagger_seconds = (int) apply_filters( $this->get_stagger_filter(), $this->get_default_stagger_seconds() );
 		$stagger_seconds = max( 0, $stagger_seconds );
 
-		$failed_authors = array();
-		$successful_count = 0;
-
-		$i = 0;
-		foreach ( $due_authors as $author ) {
-			$fire_at = $now + ($i * $stagger_seconds);
-			$args = array( (int) $author->id, $correlation_id );
-
-			// Avoid scheduling duplicate events
-			if ( wp_next_scheduled( $this->get_slice_hook(), $args ) ) {
-				$successful_count++;
-				$i++;
-				continue;
-			}
-
-			// Try to schedule the event with retry logic
-			$scheduled = $this->schedule_slice_with_retry( $this->get_slice_hook(), $fire_at, $args, $author->id );
-
-			if ( $scheduled ) {
-				$successful_count++;
-			} else {
-				$failed_authors[] = $author;
-			}
-
-			$i++;
-		}
+		// Use centralized job scheduler for staggered dispatching
+		$summary = $this->job_scheduler->schedule_staggered(
+			$this->get_slice_hook(),
+			$due_authors,
+			array(
+				'args_builder'    => function( $author ) use ( $correlation_id ) {
+					return array( (int) $author->id, $correlation_id );
+				},
+				'stagger_seconds' => $stagger_seconds,
+				'job_type'        => $this->get_log_type() . '_slice',
+				'correlation_id'  => $correlation_id,
+				'retry_options'   => array(
+					'max_attempts'   => (int) apply_filters( 'aips_slice_schedule_max_attempts', 3 ),
+					'log_to_history' => true,
+				),
+				'metadata'        => array(
+					'history_type' => $this->get_history_type(),
+				),
+				'on_failed'       => function( $failed_authors, $correlation_id ) {
+					$this->schedule_failed_authors_retry( $failed_authors, $correlation_id );
+				},
+			)
+		);
 
 		$this->logger->log(
 			sprintf(
 				'Dispatched %d/%d %s slice events (stagger: %ds each).',
-				$successful_count,
-				count($due_authors),
+				$summary->get_scheduled_count(),
+				$summary->get_total_count(),
 				$this->get_log_type(),
 				$stagger_seconds
 			),
-			'info'
+			$summary->get_failed_count() > 0 ? 'warning' : 'info'
 		);
-
-		// Schedule a delayed retry for any failed authors
-		if ( ! empty( $failed_authors ) ) {
-			$this->schedule_failed_authors_retry( $failed_authors, $correlation_id );
-		}
 	}
 
-	/**
-	 * Schedule a slice event with retry logic using AIPS_Resilience_Service.
-	 *
-	 * Attempts to schedule the event up to 3 times with exponential backoff
-	 * (1s, 2s delays between attempts) to handle transient WordPress cron issues.
-	 *
-	 * @param string $hook      The cron hook name.
-	 * @param int    $fire_at   Unix timestamp when the event should fire.
-	 * @param array  $args      Arguments to pass to the hook.
-	 * @param int    $author_id Author ID for logging.
-	 * @return bool True if successfully scheduled, false otherwise.
-	 */
-	protected function schedule_slice_with_retry( string $hook, int $fire_at, array $args, int $author_id ): bool {
-		$max_attempts = (int) apply_filters( 'aips_slice_schedule_max_attempts', 3 );
-		$attempt_num = 0;
-		$last_error = null;
-
-		$success = $this->resilience_service->retry_with_backoff(
-			function() use ( $hook, $fire_at, $args, $author_id, &$attempt_num, &$last_error ) {
-				$attempt_num++;
-				$result = wp_schedule_single_event( $fire_at, $hook, $args );
-
-				if ( $result === true ) {
-					if ( $attempt_num > 1 ) {
-						$this->logger->log(
-							sprintf( 'Successfully scheduled slice for author ID %d on attempt %d', $author_id, $attempt_num ),
-							'info'
-						);
-					}
-					return true;
-				}
-
-				// Log the failure
-				$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error (returned false)';
-				$last_error = $error_msg;
-
-				$this->logger->log(
-					sprintf(
-						'Attempt %d: Failed to schedule %s slice for author ID %d: %s',
-						$attempt_num,
-						$this->get_log_type(),
-						$author_id,
-						$error_msg
-					),
-					'warning'
-				);
-
-				return false;
-			},
-			$max_attempts,
-			1, // Initial 1-second delay
-			true // Use exponential backoff
-		);
-
-		// If all attempts failed, log to history
-		if ( ! $success ) {
-			$history = $this->history_service->create( $this->get_history_type(), array(
-				'author_id' => $author_id,
-			) );
-
-			$history->record(
-				'dispatch_failed',
-				sprintf( 'Failed to dispatch %s slice after %d attempts: %s', $this->get_log_type(), $max_attempts, $last_error ),
-				array(
-					'event_type'   => 'dispatch_slice_failed',
-					'event_status' => 'failed',
-				),
-				null,
-				array(
-					'author_id'     => $author_id,
-					'error'         => $last_error,
-					'max_attempts'  => $max_attempts,
-				)
-			);
-		}
-
-		return $success;
-	}
 
 	/**
 	 * Schedule a delayed retry event for failed authors.
@@ -227,11 +143,12 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 	 * @param string   $correlation_id Correlation ID for tracing.
 	 */
 	protected function schedule_failed_authors_retry( array $failed_authors, string $correlation_id ): void {
+		if ( empty( $failed_authors ) ) {
+			return;
+		}
+
 		$retry_delay = (int) apply_filters( 'aips_author_slice_retry_delay_seconds', 300 ); // 5 minutes
 		$retry_delay = max( 60, $retry_delay ); // At least 1 minute
-
-		$retry_hook = $this->get_retry_hook();
-		$retry_at   = AIPS_DateTime::now()->timestamp() + $retry_delay;
 
 		$author_ids = array_map( function( $author ) {
 			return (int) $author->id;
@@ -242,22 +159,27 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 			$correlation_id,
 		);
 
-		// Avoid duplicate retry events
-		if ( wp_next_scheduled( $retry_hook, $retry_args ) ) {
-			$this->logger->log(
-				sprintf(
-					'Retry event for %d failed %s slices already scheduled',
-					count( $failed_authors ),
-					$this->get_log_type()
+		$retry_at = AIPS_DateTime::now()->timestamp() + $retry_delay;
+
+		// Use centralized job scheduler for retry event
+		$success = $this->job_scheduler->schedule_simple(
+			$this->get_retry_hook(),
+			$retry_at,
+			$retry_args,
+			array(
+				'job_type'       => $this->get_log_type() . '_retry',
+				'correlation_id' => $correlation_id,
+				'retry_options'  => array(
+					'max_attempts' => 3,
 				),
-				'info'
-			);
-			return;
-		}
+				'metadata'       => array(
+					'history_type'      => $this->get_history_type(),
+					'failed_author_ids' => $author_ids,
+				),
+			)
+		);
 
-		$result = wp_schedule_single_event( $retry_at, $retry_hook, $retry_args );
-
-		if ( $result === true ) {
+		if ( $success ) {
 			$this->logger->log(
 				sprintf(
 					'Scheduled delayed retry for %d failed %s slices in %d seconds',
@@ -268,13 +190,11 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 				'info'
 			);
 		} else {
-			$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'returned false';
 			$this->logger->log(
 				sprintf(
-					'CRITICAL: Failed to schedule retry event for %d failed %s slices: %s',
+					'CRITICAL: Failed to schedule retry event for %d failed %s slices',
 					count( $failed_authors ),
-					$this->get_log_type(),
-					$error_msg
+					$this->get_log_type()
 				),
 				'error'
 			);
@@ -283,7 +203,7 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 			$history = $this->history_service->create( $this->get_history_type(), array() );
 			$history->record(
 				'retry_schedule_failed',
-				sprintf( 'Failed to schedule retry for %d failed author slices: %s', count( $failed_authors ), $error_msg ),
+				sprintf( 'Failed to schedule retry for %d failed author slices', count( $failed_authors ) ),
 				array(
 					'event_type'   => 'retry_schedule_failed',
 					'event_status' => 'failed',
@@ -291,7 +211,6 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 				null,
 				array(
 					'failed_author_ids' => $author_ids,
-					'error'             => $error_msg,
 				)
 			);
 		}

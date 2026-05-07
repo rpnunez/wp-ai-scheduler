@@ -85,7 +85,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
-		$this->resilience_service = new AIPS_Resilience_Service();
+		$this->job_scheduler = new AIPS_Job_Scheduler();
 	}
 
 	/**

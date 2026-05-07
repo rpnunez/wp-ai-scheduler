@@ -99,7 +99,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
-		$this->resilience_service = new AIPS_Resilience_Service();
+		$this->job_scheduler = new AIPS_Job_Scheduler();
 	}
 
 	/**
