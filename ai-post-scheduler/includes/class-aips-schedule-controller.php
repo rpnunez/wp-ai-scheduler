@@ -556,7 +556,7 @@ class AIPS_Schedule_Controller {
     /**
      * AJAX: Run any schedule type immediately.
      *
-     * Expects POST: id (int), type (string).
+     * Expects POST: id (int), type (string), quantity (optional int for author_post_gen).
      */
     public function ajax_unified_run_now() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -567,15 +567,16 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $id       = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type     = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : null;
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $result  = $service->run_now($id, $type);
+        $result  = $service->run_now($id, $type, $quantity);
 
         if (is_wp_error($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));

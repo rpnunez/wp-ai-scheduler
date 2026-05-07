@@ -157,15 +157,16 @@ class AIPS_Unified_Schedule_Service {
 	 * Run a specific schedule immediately.
 	 *
 	 * Return value varies by type:
-	 *  – template_schedule : int post ID  (or WP_Error)
+	 *  – template_schedule : array of post IDs (or WP_Error)
 	 *  – author_topic_gen  : array of topics (or WP_Error)
-	 *  – author_post_gen   : int post ID  (or WP_Error)
+	 *  – author_post_gen   : array of post IDs (or WP_Error)
 	 *
-	 * @param int    $id   Numeric ID.
-	 * @param string $type One of the TYPE_* constants.
+	 * @param int      $id       Numeric ID.
+	 * @param string   $type     One of the TYPE_* constants.
+	 * @param int|null $quantity Optional quantity override for author_post_gen.
 	 * @return mixed
 	 */
-	public function run_now($id, $type) {
+	public function run_now($id, $type, $quantity = null) {
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
 				$scheduler = new AIPS_Scheduler();
@@ -181,7 +182,7 @@ class AIPS_Unified_Schedule_Service {
 				if (!$author) {
 					return new WP_Error('not_found', __('Author not found.', 'ai-post-scheduler'));
 				}
-				return $generator->generate_posts_for_author($author, null, 'manual', true);
+				return $generator->generate_posts_for_author($author, $quantity, 'manual', true);
 
 			default:
 				return new WP_Error('invalid_type', __('Invalid schedule type.', 'ai-post-scheduler'));
