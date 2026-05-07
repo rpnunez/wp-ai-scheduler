@@ -243,6 +243,8 @@ class AIPS_Batch_Queue_Service {
 			);
 		}
 
+		$base_timestamp = $this->normalize_base_timestamp( $base_timestamp );
+
 		$config            = $this->calculate_config($item_count);
 		$num_batches      = $config['num_batches'];
 		$posts_per_batch  = $config['posts_per_batch'];
@@ -348,5 +350,33 @@ class AIPS_Batch_Queue_Service {
 			'window_seconds'    => $config['window_seconds'],
 			'scheduled_batches' => $scheduled_batches,
 		);
+	}
+
+	/**
+	 * Normalise a batch base timestamp so dispatch is not anchored in the past.
+	 *
+	 * When cron is delayed, callers may pass a stale timestamp. Anchoring queued
+	 * slices to "now" avoids scheduling immediately-overdue events in the past.
+	 *
+	 * @param int $base_timestamp Requested base timestamp.
+	 * @return int Normalized timestamp at or after current time.
+	 */
+	private function normalize_base_timestamp( int $base_timestamp ): int {
+		$now = AIPS_DateTime::now()->timestamp();
+
+		if ( $base_timestamp >= $now ) {
+			return $base_timestamp;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Batch queue dispatch requested with past base timestamp %d; normalizing to %d.',
+				$base_timestamp,
+				$now
+			),
+			'warning'
+		);
+
+		return $now;
 	}
 }
