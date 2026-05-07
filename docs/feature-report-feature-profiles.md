@@ -7,7 +7,7 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [WARNING] Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_components, aips_regenerate_component, aips_regenerate_all_components, aips_save_post_components, aips_get_component_revisions
-    2. [INFO] Uses raw error_log() 2 time(s) — prefer AIPS_Logger for structured logging
+    2. [INFO] Uses raw error_log() 1 time(s) — prefer AIPS_Logger for structured logging
     3. Consider refactoring — class has 654 lines (may violate SRP)
     4. Document custom hooks in HOOKS.md for third-party developers
 
@@ -32,7 +32,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1129 lines (may violate SRP)
+    1. Consider refactoring — class has 1176 lines (may violate SRP)
     2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -106,13 +106,12 @@
 * **File**: `ai-post-scheduler/includes/class-aips-author-post-generator.php`
 * **Class**: `AIPS_Author_Post_Generator`
 * **Implements**: `AIPS_Cron_Generation_Handler`
-* **Missing Functionality**: 
-    * No filter hooks for customizing generation output
-    * No dedicated error handling methods visible
+* **Missing Functionality**: No dedicated error handling methods visible
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_History_Service, AIPS_Logger without using AIPS_Container — consider resolving from the container
-    2. High coupling — depends on 13 classes
-    3. Document custom hooks in HOOKS.md for third-party developers
+    2. Consider refactoring — class has 547 lines (may violate SRP)
+    3. High coupling — depends on 13 classes
+    4. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -146,7 +145,7 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [WARNING] Registers 20 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_approve_topic, aips_reject_topic, aips_edit_topic, aips_delete_topic, aips_generate_post_from_topic
-    2. Consider refactoring — class has 1085 lines (may violate SRP)
+    2. Consider refactoring — class has 1108 lines (may violate SRP)
     3. High method count (22+ methods) — consider splitting responsibilities
     4. High coupling — depends on 14 classes
 
@@ -179,6 +178,7 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_History_Service, AIPS_Logger without using AIPS_Container — consider resolving from the container
+    2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -213,13 +213,48 @@
 
 ---
 
+### Batch Queue Service
+* **Summary**: Batch Queue Service
+* **File**: `ai-post-scheduler/includes/class-aips-batch-queue-service.php`
+* **Class**: `AIPS_Batch_Queue_Service`
+* **Missing Functionality**: 
+    * Does not implement an interface — consider adding a contract
+    * No input validation methods visible
+* **Recommended Improvements**: 
+    1. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+    2. Consider using AIPS_Cache for caching expensive operations
+    3. Document custom hooks in HOOKS.md for third-party developers
+
+---
+
+### Bulk Batch Job Store
+* **Summary**: Bulk Batch Job Store
+* **File**: `ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php`
+* **Class**: `AIPS_Bulk_Batch_Job_Store`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
+
+---
+
+### Bulk Batch Processor
+* **Summary**: Bulk Batch Processor
+* **File**: `ai-post-scheduler/includes/class-aips-bulk-batch-processor.php`
+* **Class**: `AIPS_Bulk_Batch_Processor`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. [INFO] Directly instantiates AIPS_History_Service, AIPS_Logger without using AIPS_Container — consider resolving from the container
+
+---
+
 ### Bulk Generation Result
 * **Summary**: Bulk Generator Service
 * **File**: `ai-post-scheduler/includes/class-aips-bulk-generator-service.php`
 * **Class**: `AIPS_Bulk_Generation_Result`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. High coupling — depends on 9 classes
+    1. Consider refactoring — class has 561 lines (may violate SRP)
+    2. High coupling — depends on 13 classes
 
 ---
 
@@ -228,6 +263,8 @@
 * **File**: `ai-post-scheduler/includes/class-aips-cache.php`
 * **Class**: `AIPS_Cache`
 * **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. [INFO] Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option()
 
 ---
 
@@ -266,8 +303,6 @@
 * **Class**: `AIPS_Cache_Redis_Driver`
 * **Implements**: `AIPS_Cache_Driver`
 * **Missing Functionality**: None identified
-* **Recommended Improvements**: 
-    1. [INFO] Uses raw error_log() 1 time(s) — prefer AIPS_Logger for structured logging
 
 ---
 
@@ -322,8 +357,8 @@
 * **Class**: `AIPS_Config`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 703 lines (may violate SRP)
-    2. High method count (32+ methods) — consider splitting responsibilities
+    1. Consider refactoring — class has 718 lines (may violate SRP)
+    2. High method count (33+ methods) — consider splitting responsibilities
 
 ---
 
@@ -357,8 +392,8 @@
 * **Class**: `AIPS_DB_Manager`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. [WARNING] Registers 4 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events
-    2. Consider refactoring — class has 904 lines (may violate SRP)
+    1. [WARNING] Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_fix_datetime_values, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events
+    2. Consider refactoring — class has 1039 lines (may violate SRP)
     3. Add comprehensive class-level PHPDoc documentation
 
 ---
@@ -372,6 +407,7 @@
     * No input validation methods visible
 * **Recommended Improvements**: 
     1. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+    2. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
 
 ---
 
@@ -382,7 +418,6 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [WARNING] Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_export_data, aips_import_data
-    2. [INFO] Uses raw error_log() 1 time(s) — prefer AIPS_Logger for structured logging
 
 ---
 
@@ -447,6 +482,30 @@
 * **Recommended Improvements**: 
     1. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
     2. Consider using Repository pattern for database access instead of direct $wpdb
+
+---
+
+### Datetime
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-date-time.php`
+* **Class**: `AIPS_DateTime`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. High method count (28+ methods) — consider splitting responsibilities
+    2. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+    3. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Date Time Db Repair
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-date-time-db-repair.php`
+* **Class**: `AIPS_Date_Time_DB_Repair`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
+    2. Consider using Repository pattern for database access instead of direct $wpdb
+    3. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -565,7 +624,7 @@
     * No dedicated error handling methods visible
 * **Recommended Improvements**: 
     1. Consider refactoring — class has 1154 lines (may violate SRP)
-    2. High coupling — depends on 19 classes
+    2. High coupling — depends on 20 classes
     3. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -596,8 +655,8 @@
 * **Implements**: `AIPS_History_Repository_Interface`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1180 lines (may violate SRP)
-    2. High method count (26+ methods) — consider splitting responsibilities
+    1. Consider refactoring — class has 1237 lines (may violate SRP)
+    2. High method count (27+ methods) — consider splitting responsibilities
 
 ---
 
@@ -652,7 +711,7 @@
 * **Recommended Improvements**: 
     1. [WARNING] Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_internal_links_get_suggestions, aips_internal_links_generate_suggestions, aips_internal_links_update_status, aips_internal_links_update_anchor, aips_internal_links_delete
     2. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
-    3. Consider refactoring — class has 706 lines (may violate SRP)
+    3. Consider refactoring — class has 732 lines (may violate SRP)
     4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
@@ -714,7 +773,7 @@
     * Does not implement an interface — consider adding a contract
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_Resilience_Service without using AIPS_Container — consider resolving from the container
-    2. Consider refactoring — class has 698 lines (may violate SRP)
+    2. Consider refactoring — class has 711 lines (may violate SRP)
 
 ---
 
@@ -954,6 +1013,8 @@
 * **File**: `ai-post-scheduler/includes/class-aips-prompt-builder-topic.php`
 * **Class**: `AIPS_Prompt_Builder_Topic`
 * **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -982,7 +1043,7 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_History_Service, AIPS_Logger without using AIPS_Container — consider resolving from the container
-    2. Consider refactoring — class has 884 lines (may violate SRP)
+    2. Consider refactoring — class has 906 lines (may violate SRP)
     3. High coupling — depends on 14 classes
     4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
     5. Document custom hooks in HOOKS.md for third-party developers
@@ -1046,8 +1107,8 @@
 * **Class**: `AIPS_Schedule_Processor`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 760 lines (may violate SRP)
-    2. High coupling — depends on 18 classes
+    1. Consider refactoring — class has 1074 lines (may violate SRP)
+    2. High coupling — depends on 21 classes
     3. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -1059,8 +1120,19 @@
 * **Implements**: `AIPS_Schedule_Repository_Interface`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 718 lines (may violate SRP)
-    2. High method count (24+ methods) — consider splitting responsibilities
+    1. Consider refactoring — class has 754 lines (may violate SRP)
+    2. High method count (25+ methods) — consider splitting responsibilities
+
+---
+
+### Schedule Result Handler
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-schedule-result-handler.php`
+* **Class**: `AIPS_Schedule_Result_Handler`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document custom hooks in HOOKS.md for third-party developers
+    2. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -1073,7 +1145,7 @@
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_History_Service without using AIPS_Container — consider resolving from the container
     2. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
-    3. High coupling — depends on 9 classes
+    3. High coupling — depends on 10 classes
 
 ---
 
@@ -1121,7 +1193,7 @@
 * **Class**: `AIPS_Settings`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 683 lines (may violate SRP)
+    1. Consider refactoring — class has 701 lines (may violate SRP)
 
 ---
 
@@ -1142,8 +1214,8 @@
 * **Class**: `AIPS_Settings_UI`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 861 lines (may violate SRP)
-    2. High method count (55+ methods) — consider splitting responsibilities
+    1. Consider refactoring — class has 904 lines (may violate SRP)
+    2. High method count (57+ methods) — consider splitting responsibilities
 
 ---
 
@@ -1173,6 +1245,7 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
+    2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -1203,7 +1276,7 @@
 * **Class**: `AIPS_Sources_Repository`
 * **Missing Functionality**: Does not implement an interface — consider adding a contract
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 508 lines (may violate SRP)
+    1. Consider refactoring — class has 521 lines (may violate SRP)
 
 ---
 
@@ -1368,6 +1441,14 @@
 
 ---
 
+### Template Entry
+* **Summary**: Template Entry DTO
+* **File**: `ai-post-scheduler/includes/class-aips-template-entry.php`
+* **Class**: `AIPS_Template_Entry`
+* **Missing Functionality**: None identified
+
+---
+
 ### Template Helper
 * **Summary**: No description available
 * **File**: `ai-post-scheduler/includes/class-aips-template-helper.php`
@@ -1479,7 +1560,7 @@
 * **Class**: `AIPS_Trending_Topics_Repository`
 * **Missing Functionality**: Does not implement an interface — consider adding a contract
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 758 lines (may violate SRP)
+    1. Consider refactoring — class has 769 lines (may violate SRP)
 
 ---
 
@@ -1492,7 +1573,7 @@
     * Does not implement an interface — consider adding a contract
     * No input validation methods visible
 * **Recommended Improvements**: 
-    1. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
+    1. High coupling — depends on 10 classes
     2. Consider using AIPS_Cache for caching expensive operations
 
 ---

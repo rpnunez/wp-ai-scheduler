@@ -1,0 +1,81 @@
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write  # needed to create GitHub Releases + upload assets
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release-zip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+          coverage: none
+
+      - name: Get tag version
+        id: vars
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # composer.json is expected in ai-post-scheduler/
+      - name: Install Composer dependencies (production)
+        working-directory: ai-post-scheduler
+        run: |
+          composer install \
+            --no-dev \
+            --prefer-dist \
+            --no-interaction \
+            --optimize-autoloader
+
+      - name: Verify vendor exists
+        run: test -f ai-post-scheduler/vendor/autoload.php
+
+      - name: Stamp version into plugin header (from tag)
+        run: |
+          FILE="ai-post-scheduler/ai-post-scheduler.php"
+          VERSION="${{ steps.vars.outputs.version }}"
+      
+          # Update the plugin header " * Version:" line (WordPress plugin header style)
+          perl -0777 -i -pe "s/^(\\s*\\*\\s*Version:\\s*).*$/\$1$VERSION/m" "$FILE"
+      
+          echo "Stamped Version: $VERSION into $FILE"
+          grep -nE '^\s*\*\s*Version:\s*' "$FILE"
+
+      - name: Build zip (plugin folder at root)
+        run: |
+          PLUGIN_DIR="ai-post-scheduler"
+          ZIP_NAME="ai-post-scheduler-${{ steps.vars.outputs.tag }}.zip"
+
+          zip -r "$ZIP_NAME" "$PLUGIN_DIR" \
+            -x "**/.git/**" \
+            -x "**/.github/**" \
+            -x "**/node_modules/**" \
+            -x "**/.DS_Store"
+
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Create GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: ${{ env.ZIP_NAME }}
