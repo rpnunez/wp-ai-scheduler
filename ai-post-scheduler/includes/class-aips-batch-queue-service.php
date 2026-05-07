@@ -186,7 +186,7 @@ class AIPS_Batch_Queue_Service {
 		int $post_quantity,
 		int $base_timestamp,
 		string $correlation_id = ''
-	): array|WP_Error {
+	) {
 		$result = $this->job_scheduler->schedule_batched(
 			self::HOOK,
 			$post_quantity,
@@ -238,7 +238,7 @@ class AIPS_Batch_Queue_Service {
 		int $base_timestamp,
 		array $prefix_args = array(),
 		string $correlation_id = ''
-	): array|WP_Error {
+	) {
 		$result = $this->job_scheduler->schedule_batched(
 			$hook,
 			$item_count,

@@ -223,7 +223,7 @@ class AIPS_Job_Dispatcher {
 	 * @param AIPS_Job_Definition $job Job to check.
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
-	private function get_scheduled_timestamp(AIPS_Job_Definition $job) {
+	private function get_scheduled_timestamp(AIPS_Job_Definition $job): int|false {
 		return wp_next_scheduled($job->get_hook(), $job->get_args());
 	}
 
