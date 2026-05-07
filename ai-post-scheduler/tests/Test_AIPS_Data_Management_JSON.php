@@ -109,6 +109,65 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 		$this->assertSame(1, $repository->disable_calls);
 		$this->assertSame(1, $repository->enable_calls);
 	}
+
+	public function test_mysql_export_uses_repository_reads_for_existing_tables() {
+		$repository = new Test_AIPS_Data_Management_JSON_Repository_Stub();
+		$repository->existing_tables = array(
+			'alpha' => 'wp_aips_alpha',
+		);
+		$repository->rows_by_table = array(
+			'wp_aips_alpha' => array(
+				array(
+					'id' => 7,
+					'name' => 'Alpha',
+				),
+			),
+		);
+		$repository->create_statements = array(
+			'wp_aips_alpha' => 'CREATE TABLE `wp_aips_alpha` (`id` bigint(20) NOT NULL)',
+		);
+
+		$exporter = new class($repository) extends AIPS_Data_Management_Export_MySQL {
+			protected function get_tables() {
+				return array(
+					'alpha' => 'wp_aips_alpha',
+					'beta' => 'wp_aips_beta',
+				);
+			}
+		};
+
+		$dump = $exporter->export();
+
+		$this->assertSame(array('alpha' => 'wp_aips_alpha', 'beta' => 'wp_aips_beta'), $repository->requested_existing_tables);
+		$this->assertSame(array('wp_aips_alpha'), $repository->create_statement_tables);
+		$this->assertSame(array('wp_aips_alpha'), $repository->read_tables);
+		$this->assertStringContainsString('DROP TABLE IF EXISTS `wp_aips_alpha`;', $dump);
+		$this->assertStringContainsString('INSERT INTO `wp_aips_alpha` (`id`, `name`) VALUES (\'7\', \'Alpha\');', $dump);
+		$this->assertStringContainsString('-- Table wp_aips_beta does not exist', $dump);
+	}
+
+	public function test_mysql_export_skips_drop_when_create_statement_missing() {
+		$repository = new Test_AIPS_Data_Management_JSON_Repository_Stub();
+		$repository->existing_tables = array(
+			'alpha' => 'wp_aips_alpha',
+		);
+		$repository->rows_by_table = array(
+			'wp_aips_alpha' => array(),
+		);
+
+		$exporter = new class($repository) extends AIPS_Data_Management_Export_MySQL {
+			protected function get_tables() {
+				return array(
+					'alpha' => 'wp_aips_alpha',
+				);
+			}
+		};
+
+		$dump = $exporter->export();
+
+		$this->assertStringNotContainsString('DROP TABLE IF EXISTS `wp_aips_alpha`;', $dump);
+		$this->assertStringContainsString('-- No data in table', $dump);
+	}
 }
 
 class Test_AIPS_Data_Management_JSON_Repository_Stub {
@@ -118,6 +177,8 @@ class Test_AIPS_Data_Management_JSON_Repository_Stub {
 	public $insert_results = array();
 	public $requested_existing_tables = array();
 	public $read_tables = array();
+	public $create_statements = array();
+	public $create_statement_tables = array();
 	public $truncated_tables = array();
 	public $insert_calls = array();
 	public $disable_calls = 0;
@@ -131,6 +192,16 @@ class Test_AIPS_Data_Management_JSON_Repository_Stub {
 	public function get_table_rows($full_table_name) {
 		$this->read_tables[] = $full_table_name;
 		return isset($this->rows_by_table[$full_table_name]) ? $this->rows_by_table[$full_table_name] : array();
+	}
+
+	public function get_create_table_statement($full_table_name) {
+		$this->create_statement_tables[] = $full_table_name;
+
+		if (isset($this->create_statements[$full_table_name])) {
+			return $this->create_statements[$full_table_name];
+		}
+
+		return null;
 	}
 
 	public function disable_foreign_key_checks() {
