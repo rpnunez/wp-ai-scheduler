@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2026-05-08 - Template Wizard and List Optimization
+**Target Feature:** Templates
+**Improvement:** Optimized the flow of saving, cloning, and deleting templates by replacing hard page reloads (`location.reload()`) with a seamless AJAX-based table refresh. Introduced the `aips_get_templates_list_html` AJAX endpoint and the `AIPS.refreshTemplatesList()` JS function. This prevents context loss and disruptive full-page flashes, keeping the user immersed in their workflow when managing templates.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js, ai-post-scheduler/includes/class-aips-templates-controller.php, ai-post-scheduler/templates/admin/templates.php, ai-post-scheduler/templates/partials/template-row.php
+**Outcome:** Enhances the template management workflow by creating a seamless single-page application feel, eliminating disruptive flashes and improving overall administrative efficiency.
