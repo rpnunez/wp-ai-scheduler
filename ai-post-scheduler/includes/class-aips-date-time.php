@@ -136,6 +136,36 @@ class AIPS_DateTime extends DateTimeImmutable {
 		return new static( $date . ' 00:00:00', self::utc() );
 	}
 
+	/**
+	 * Format a mixed date input as relative (if within 24h) or absolute time.
+	 *
+	 * Accepts numeric timestamps, MySQL datetime strings, or null. Converts to
+	 * human-readable format: relative time ("2 hours ago") if within 24 hours,
+	 * absolute formatted date/time otherwise.
+	 *
+	 * Useful for activity feeds and history displays where recent events use
+	 * relative timestamps for readability.
+	 *
+	 * @param string|int|null $date_input Timestamp (int), MySQL datetime (string), or null.
+	 * @param string $format PHP date format for absolute times. Empty = WordPress date/time settings.
+	 * @return string Human-readable formatted date, or '—' if invalid/null.
+	 */
+	public static function formatRelativeOrAbsolute( $date_input, string $format = '' ): string {
+		if ( ! $date_input ) {
+			return '—';
+		}
+
+		$date_time = is_numeric( $date_input )
+			? static::fromTimestampOrNull( (int) $date_input )
+			: static::fromMysqlOrNull( (string) $date_input );
+
+		if ( ! ( $date_time instanceof static ) ) {
+			return '—';
+		}
+
+		return $date_time->toRelativeOrAbsolute( $format );
+	}
+
 	/* ─── Scalar output ─────────────────────────────────────────────── */
 
 	/**
@@ -257,6 +287,26 @@ class AIPS_DateTime extends DateTimeImmutable {
 			? sprintf( __( '%s ago', 'ai-post-scheduler' ), $label )
 			/* translators: %s: human-readable time difference */
 			: sprintf( __( 'in %s', 'ai-post-scheduler' ), $label );
+	}
+
+	/**
+	 * Format as relative time if within 24 hours, absolute time otherwise.
+	 *
+	 * Displays human-readable relative time (e.g., "2 hours ago") for dates
+	 * within the last 24 hours, and formatted absolute date/time for older dates.
+	 * Useful for activity/history feeds where recent events are more readable
+	 * with relative timestamps.
+	 *
+	 * @param string $format PHP date format for absolute times. Default = WordPress date/time settings.
+	 * @param static|null $reference Compare against this time. Default = now.
+	 * @return string Human-readable formatted date string.
+	 */
+	public function toRelativeOrAbsolute( string $format = '', ?self $reference = null ): string {
+		$ref = $reference ?? self::now();
+		if ( $this->diffInSeconds( $ref ) < DAY_IN_SECONDS ) {
+			return $this->toHumanDiff( $ref );
+		}
+		return $this->toDisplay( $format );
 	}
 
 	/* ─── Comparison helpers ────────────────────────────────────────── */
