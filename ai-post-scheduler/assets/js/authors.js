@@ -302,6 +302,8 @@
 						$('#author_preferred_content_length').val(author.preferred_content_length || '');
 						$('#author_language').val(author.language || 'en');
 						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
+						$('#author_manual_post_generation_quantity').val(author.manual_post_generation_quantity || 1);
+						$('#author_scheduled_post_generation_quantity').val(author.scheduled_post_generation_quantity || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
