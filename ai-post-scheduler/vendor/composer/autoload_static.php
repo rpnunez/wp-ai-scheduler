@@ -49,6 +49,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Article_Structure_Repository' => __DIR__ . '/../..' . '/includes/class-aips-article-structure-repository.php',
         'AIPS_Article_Structure_Repository_Test' => __DIR__ . '/../..' . '/tests/AIPS_Article_Structure_Repository_Test.php',
         'AIPS_Author_Post_Generator' => __DIR__ . '/../..' . '/includes/class-aips-author-post-generator.php',
+        'AIPS_Author_Slice_Scheduler_Base' => __DIR__ . '/../..' . '/includes/class-aips-author-slice-scheduler-base.php',
         'AIPS_Author_Suggestions_Service' => __DIR__ . '/../..' . '/includes/class-aips-author-suggestions-service.php',
         'AIPS_Author_Topic_Logs_Repository' => __DIR__ . '/../..' . '/includes/class-aips-author-topic-logs-repository.php',
         'AIPS_Author_Topics_Bulk_Actions_Test' => __DIR__ . '/../..' . '/tests/AIPS_Author_Topics_Bulk_Actions_Test.php',

@@ -19,6 +19,7 @@ return array(
     'AIPS_Article_Structure_Repository' => $baseDir . '/includes/class-aips-article-structure-repository.php',
     'AIPS_Article_Structure_Repository_Test' => $baseDir . '/tests/AIPS_Article_Structure_Repository_Test.php',
     'AIPS_Author_Post_Generator' => $baseDir . '/includes/class-aips-author-post-generator.php',
+    'AIPS_Author_Slice_Scheduler_Base' => $baseDir . '/includes/class-aips-author-slice-scheduler-base.php',
     'AIPS_Author_Suggestions_Service' => $baseDir . '/includes/class-aips-author-suggestions-service.php',
     'AIPS_Author_Topic_Logs_Repository' => $baseDir . '/includes/class-aips-author-topic-logs-repository.php',
     'AIPS_Author_Topics_Bulk_Actions_Test' => $baseDir . '/tests/AIPS_Author_Topics_Bulk_Actions_Test.php',

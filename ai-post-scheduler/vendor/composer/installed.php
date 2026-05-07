@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
         'version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
-        'reference' => 'e5bd8b81064c3cdf029997e40164380423d94065',
+        'reference' => '8b92bddcf6e51206f8b25ab8a0910050215bcb5d',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -103,7 +103,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
             'version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
-            'reference' => 'e5bd8b81064c3cdf029997e40164380423d94065',
+            'reference' => '8b92bddcf6e51206f8b25ab8a0910050215bcb5d',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
