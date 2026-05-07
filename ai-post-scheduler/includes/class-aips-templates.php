@@ -97,13 +97,14 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
-        $today_end = strtotime('today 23:59:59', $now);
-        $week_end = strtotime('+7 days', $now);
-        $month_end = strtotime('+30 days', $now);
+        // Use AIPS_DateTime for consistent UTC-first timestamp handling
+        $now = AIPS_DateTime::now()->timestamp();
+        $today_end = AIPS_DateTime::now()->advance('today 23:59:59')->timestamp();
+        $week_end = AIPS_DateTime::now()->advance('+7 days')->timestamp();
+        $month_end = AIPS_DateTime::now()->advance('+30 days')->timestamp();
 
         foreach ($schedules as $schedule) {
-            $cursor = strtotime($schedule->next_run);
+            $cursor = AIPS_DateTime::fromMysql($schedule->next_run)->timestamp();
             $frequency = $schedule->frequency;
 
             // Limit iterations to prevent infinite loops or excessive processing
