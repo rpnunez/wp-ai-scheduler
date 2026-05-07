@@ -53,17 +53,24 @@ class AIPS_Embeddings_Cron {
 	private $history_service;
 
 	/**
+	 * @var AIPS_Job_Scheduler Job scheduler service
+	 */
+	private $job_scheduler;
+
+	/**
 	 * Initialize the cron handler.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Topic expansion service.
 	 * @param AIPS_Logger_Interface|null          $logger            Logger instance.
 	 * @param AIPS_History_Service_Interface|null $history_service   History service.
+	 * @param AIPS_Job_Scheduler|null             $job_scheduler     Job scheduler service.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null) {
+	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
 		$container = AIPS_Container::get_instance();
 		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler();
 	}
 
 	/**
@@ -273,11 +280,21 @@ class AIPS_Embeddings_Cron {
 		// Schedule to run in a few seconds
 		$timestamp = time() + 5;
 
-		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
+		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
 		if (function_exists('as_schedule_single_action')) {
 			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
 		} else {
-			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
+			$this->job_scheduler->schedule_simple(
+				'aips_process_author_embeddings',
+				$timestamp,
+				array($args),
+				array(
+					'job_type'      => 'author_embeddings',
+					'retry_options' => array(
+						'max_attempts' => 3,
+					),
+				)
+			);
 		}
 	}
 }
