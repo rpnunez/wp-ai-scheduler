@@ -203,7 +203,7 @@ $schedule_type_labels = array(
                                             <?php echo esc_html(ucfirst($item->status)); ?>
                                         </span>
                                     </td>
-                                    <td class="cell-meta"><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?></td>
+                                    <td class="cell-meta"><?php echo esc_html( ( is_numeric( $item->created_at ) ? AIPS_DateTime::fromTimestampOrNull( (int) $item->created_at ) : AIPS_DateTime::fromMysqlOrNull( (string) $item->created_at ) )?->toDisplay( get_option('date_format') ) ?: '—' ); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

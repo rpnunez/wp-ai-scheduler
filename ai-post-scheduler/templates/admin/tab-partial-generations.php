@@ -94,15 +94,20 @@ if (!defined('ABSPATH')) {
 							if ( ! $date_string ) {
 								return '—';
 							}
-							$timestamp = strtotime( $date_string );
-							if ( ! $timestamp ) {
+
+							$date_time = is_numeric( $date_string )
+								? AIPS_DateTime::fromTimestampOrNull( (int) $date_string )
+								: AIPS_DateTime::fromMysqlOrNull( (string) $date_string );
+							if ( ! ( $date_time instanceof AIPS_DateTime ) ) {
 								return '—';
 							}
-							if ( ( time() - $timestamp ) < DAY_IN_SECONDS ) {
-								/* translators: %s: human-readable time difference */
-								return sprintf( __( '%s ago', 'ai-post-scheduler' ), human_time_diff( $timestamp ) );
+
+							$now = AIPS_DateTime::now();
+							if ( abs( $now->timestamp() - $date_time->timestamp() ) < DAY_IN_SECONDS ) {
+								return $date_time->toHumanDiff( $now );
 							}
-							return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
+
+							return $date_time->toDisplay( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
 						};
 						?>
 						<?php foreach ($partial_posts_data as $post_data): ?>
