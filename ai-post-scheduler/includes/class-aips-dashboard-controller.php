@@ -139,14 +139,15 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        // Convert site-local datetime to a true UTC timestamp.
+        // Convert site-local datetime to UTC via AIPS_DateTime for consistent parsing.
         $next_run_gmt = get_gmt_from_date( $next_run );
-        $run_ts       = strtotime( $next_run_gmt );
-        if ( false === $run_ts ) {
+        $run_at       = AIPS_DateTime::fromMysqlOrNull( $next_run_gmt );
+        if ( null === $run_at ) {
             return '—';
         }
+        $run_ts = $run_at->timestamp();
 
-        $now_ts = current_time( 'timestamp', true ); // UTC
+        $now_ts = AIPS_DateTime::now()->timestamp(); // UTC
         $diff   = $run_ts - $now_ts;
 
         // Already in the past or within a minute — show absolute.
