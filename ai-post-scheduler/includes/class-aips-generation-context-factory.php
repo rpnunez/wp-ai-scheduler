@@ -48,13 +48,25 @@ class AIPS_Generation_Context_Factory {
 
 	/**
 	 * Constructor.
+	 *
+	 * @param AIPS_History_Repository|null       $history_repository       Optional history repository.
+	 * @param AIPS_Template_Repository|null      $template_repository      Optional template repository.
+	 * @param AIPS_Author_Topics_Repository|null $author_topics_repository Optional author topics repository.
+	 * @param AIPS_Authors_Repository|null       $authors_repository       Optional authors repository.
+	 * @param AIPS_Voices_Repository|null        $voices_repository        Optional voices repository.
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->template_repository = new AIPS_Template_Repository();
-		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->voices_repository = new AIPS_Voices_Repository();
+	public function __construct(
+		$history_repository = null,
+		$template_repository = null,
+		$author_topics_repository = null,
+		$authors_repository = null,
+		$voices_repository = null
+	) {
+		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
+		$this->template_repository = $template_repository ?: new AIPS_Template_Repository();
+		$this->author_topics_repository = $author_topics_repository ?: new AIPS_Author_Topics_Repository();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->voices_repository = $voices_repository ?: new AIPS_Voices_Repository();
 	}
 
 	/**

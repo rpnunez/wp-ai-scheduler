@@ -1,0 +1,19 @@
+{
+  "id": "2a1bc778e8d8d9e8a253e37eb07fe86703cf4a1d",
+  "type": "framework_di_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-internal-links-controller.php",
+  "symbol": "AIPS_Internal_Links_Controller",
+  "anchor": "__construct:new_services_and_repositories",
+  "summary": "Internal links controller constructs several services and repositories directly in its constructor.",
+  "why_it_matters": "That coupling makes the feature harder to test in isolation and weakens consistency with the plugin's dependency-management conventions.",
+  "suggested_fix": "Resolve optional constructor dependencies via AIPS_Container where bindings exist, keeping the controller thin and easier to compose.",
+  "first_seen_run_id": "aips-20260507T224141Z",
+  "last_seen_run_id": "aips-20260507T224141Z",
+  "citations": [
+    "ai-post-scheduler/includes/class-aips-internal-links-controller.php:59",
+    "ai-post-scheduler/includes/class-aips-internal-links-controller.php:60",
+    "ai-post-scheduler/includes/class-aips-internal-links-controller.php:61"
+  ]
+}
