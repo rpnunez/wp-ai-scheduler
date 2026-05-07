@@ -122,7 +122,7 @@ class AIPS_Batch_Queue_Service {
 	 * @return bool True when batch queue should be used.
 	 */
 	public function needs_batch_queue(int $post_quantity): bool {
-		return $this->job_scheduler->get_slicer()->needs_batching($post_quantity, 'schedule');
+		return $post_quantity >= $this->get_large_batch_threshold();
 	}
 
 	/**
@@ -134,7 +134,7 @@ class AIPS_Batch_Queue_Service {
 	 * @return int Spread window in seconds (minimum 0).
 	 */
 	public function get_window_seconds(): int {
-		return max(0, (int) apply_filters('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS));
+		return $this->get_batch_window_seconds();
 	}
 
 	/**
@@ -153,7 +153,9 @@ class AIPS_Batch_Queue_Service {
 	 */
 	public function calculate_config(int $post_quantity): array {
 		$config = $this->job_scheduler->get_slicer()->calculate_slices($post_quantity, array(
-			'context' => 'schedule',
+			'context'        => 'schedule',
+			'max_slices'     => $this->get_max_batches(),
+			'window_seconds' => $this->get_batch_window_seconds(),
 		));
 
 		return $config->to_array();
@@ -184,7 +186,7 @@ class AIPS_Batch_Queue_Service {
 		int $post_quantity,
 		int $base_timestamp,
 		string $correlation_id = ''
-	): array {
+	): array|WP_Error {
 		$result = $this->job_scheduler->schedule_batched(
 			self::HOOK,
 			$post_quantity,
@@ -236,7 +238,7 @@ class AIPS_Batch_Queue_Service {
 		int $base_timestamp,
 		array $prefix_args = array(),
 		string $correlation_id = ''
-	): array {
+	): array|WP_Error {
 		$result = $this->job_scheduler->schedule_batched(
 			$hook,
 			$item_count,
@@ -282,5 +284,56 @@ class AIPS_Batch_Queue_Service {
 		);
 
 		return $now;
+	}
+
+	/**
+	 * Resolve large-batch threshold with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	private function get_large_batch_threshold(): int {
+		$threshold = (int) apply_filters(
+			'aips_large_batch_threshold',
+			apply_filters(
+				'aips_batch_threshold_schedule',
+				apply_filters('aips_batch_threshold', self::DEFAULT_THRESHOLD)
+			)
+		);
+
+		return max(2, $threshold);
+	}
+
+	/**
+	 * Resolve maximum batches with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	private function get_max_batches(): int {
+		$max_batches = (int) apply_filters(
+			'aips_batch_max_jobs',
+			apply_filters(
+				'aips_batch_max_slices_schedule',
+				apply_filters('aips_batch_max_slices', self::DEFAULT_MAX_BATCHES)
+			)
+		);
+
+		return max(1, $max_batches);
+	}
+
+	/**
+	 * Resolve batch window with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	private function get_batch_window_seconds(): int {
+		$window_seconds = (int) apply_filters(
+			'aips_batch_queue_window_seconds',
+			apply_filters(
+				'aips_batch_window_seconds_schedule',
+				apply_filters('aips_batch_window_seconds', self::DEFAULT_WINDOW_SECONDS)
+			)
+		);
+
+		return max(0, $window_seconds);
 	}
 }

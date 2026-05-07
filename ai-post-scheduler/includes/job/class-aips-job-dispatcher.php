@@ -76,11 +76,13 @@ class AIPS_Job_Dispatcher {
 	 */
 	public function dispatch(AIPS_Job_Definition $job, array $retry_options = array()): bool {
 		// Check if already scheduled to avoid duplicates
-		if ($this->is_scheduled($job)) {
+		$existing_timestamp = $this->get_scheduled_timestamp($job);
+		if (false !== $existing_timestamp) {
 			$this->logger->log(
 				sprintf(
-					'Job already scheduled: hook=%s, fire_at=%d',
+					'Job already scheduled: hook=%s, existing_fire_at=%d, requested_fire_at=%d',
 					$job->get_hook(),
+					$existing_timestamp,
 					$job->get_fire_at()
 				),
 				'info',
@@ -117,7 +119,8 @@ class AIPS_Job_Dispatcher {
 				$result = wp_schedule_single_event(
 					$job->get_fire_at(),
 					$job->get_hook(),
-					$job->get_args()
+					$job->get_args(),
+					true
 				);
 
 				if ($result === true) {
@@ -136,9 +139,15 @@ class AIPS_Job_Dispatcher {
 				}
 
 				// Log the failure
-				$error_msg = is_wp_error($result)
-					? $result->get_error_message()
-					: 'Unknown error (wp_schedule_single_event returned false)';
+				if (is_wp_error($result)) {
+					$error_msg = sprintf(
+						'%s: %s',
+						$result->get_error_code(),
+						$result->get_error_message()
+					);
+				} else {
+					$error_msg = 'Unknown error (wp_schedule_single_event returned false)';
+				}
 				$last_error = $error_msg;
 
 				$this->logger->log(
@@ -205,8 +214,17 @@ class AIPS_Job_Dispatcher {
 	 * @return bool True if already scheduled.
 	 */
 	public function is_scheduled(AIPS_Job_Definition $job): bool {
-		$existing_timestamp = wp_next_scheduled($job->get_hook(), $job->get_args());
-		return $existing_timestamp !== false;
+		return $this->get_scheduled_timestamp($job) !== false;
+	}
+
+	/**
+	 * Get the timestamp of an already scheduled matching job.
+	 *
+	 * @param AIPS_Job_Definition $job Job to check.
+	 * @return int|false Existing timestamp when found, false otherwise.
+	 */
+	private function get_scheduled_timestamp(AIPS_Job_Definition $job) {
+		return wp_next_scheduled($job->get_hook(), $job->get_args());
 	}
 
 	/**

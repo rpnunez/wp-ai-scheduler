@@ -20,7 +20,7 @@ class Test_AIPS_Job_Scheduler extends WP_UnitTestCase {
 
 		$this->slicer = new AIPS_Batch_Slicer();
 
-		$this->scheduler = new AIPS_Job_Scheduler($this->dispatcher, $this->slicer);
+		$this->scheduler = new AIPS_Job_Scheduler($this->slicer, $this->dispatcher);
 	}
 
 	public function test_schedule_simple_dispatches_single_job() {
