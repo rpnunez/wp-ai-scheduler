@@ -2,20 +2,18 @@
   "id": "a2331e2177febd4809dfea240c3bb098ad95e4c0",
   "type": "direct_wpdb_outside_repo",
   "severity": "high",
-  "status": "open",
+  "status": "resolved",
   "path": "ai-post-scheduler/includes/class-aips-data-management-import-json.php",
   "symbol": "AIPS_Data_Management_Import_JSON",
   "anchor": "import:wpdb-truncate-insert",
-  "summary": "The JSON import class issues direct TRUNCATE and INSERT statements through $wpdb outside the repository/DB layer.",
-  "why_it_matters": "This is a write-heavy path that bypasses the repository pattern and concentrates destructive SQL inside a higher-level import class, increasing rollback and validation risk.",
+  "summary": "Resolved by routing JSON import truncation and inserts through AIPS_Data_Management_Repository.",
+  "why_it_matters": "The destructive JSON import path now keeps SQL in the repository layer and re-enables foreign key checks in a finally block.",
   "evidence": [
-    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:70",
-    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:100",
-    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:110",
-    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:114",
-    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:123"
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:72",
+    "ai-post-scheduler/includes/class-aips-data-management-repository.php:55",
+    "ai-post-scheduler/tests/Test_AIPS_Data_Management_JSON.php:38"
   ],
-  "suggested_fix": "Move destructive import persistence into a dedicated repository/DB-layer collaborator with explicit transaction and validation boundaries.",
+  "suggested_fix": "No further action required for the JSON importer unless the MySQL importer is brought behind the same repository boundary.",
   "first_seen_run_id": "aips-20260506T234621Z",
-  "last_seen_run_id": "aips-20260506T234621Z"
+  "last_seen_run_id": "aips-20260507T000346Z"
 }

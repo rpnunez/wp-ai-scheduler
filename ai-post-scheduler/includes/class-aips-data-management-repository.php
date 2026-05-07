@@ -1,0 +1,92 @@
+<?php
+if (!defined('ABSPATH')) {
+	exit;
+}
+
+/**
+ * Repository for data management import/export persistence.
+ */
+class AIPS_Data_Management_Repository {
+
+	/**
+	 * @var wpdb
+	 */
+	private $wpdb;
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		global $wpdb;
+		$this->wpdb = $wpdb;
+	}
+
+	/**
+	 * Return the subset of plugin tables that currently exist.
+	 *
+	 * @param array $tables Plugin table map keyed by slug.
+	 * @return array
+	 */
+	public function get_existing_tables($tables) {
+		$existing_tables = array();
+
+		foreach ($tables as $table_name => $full_table_name) {
+			$table_exists = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $full_table_name));
+
+			if ($table_exists === $full_table_name) {
+				$existing_tables[$table_name] = $full_table_name;
+			}
+		}
+
+		return $existing_tables;
+	}
+
+	/**
+	 * Fetch all rows for a validated plugin table.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @return array
+	 */
+	public function get_table_rows($full_table_name) {
+		return $this->wpdb->get_results('SELECT * FROM `' . esc_sql($full_table_name) . '`', ARRAY_A);
+	}
+
+	/**
+	 * Disable foreign key checks for bulk imports.
+	 *
+	 * @return void
+	 */
+	public function disable_foreign_key_checks() {
+		$this->wpdb->query('SET FOREIGN_KEY_CHECKS = 0');
+	}
+
+	/**
+	 * Re-enable foreign key checks after bulk imports.
+	 *
+	 * @return void
+	 */
+	public function enable_foreign_key_checks() {
+		$this->wpdb->query('SET FOREIGN_KEY_CHECKS = 1');
+	}
+
+	/**
+	 * Truncate a validated plugin table.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @return void
+	 */
+	public function truncate_table($full_table_name) {
+		$this->wpdb->query('TRUNCATE TABLE `' . esc_sql($full_table_name) . '`');
+	}
+
+	/**
+	 * Insert one row into a validated plugin table.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @param array  $row             Row payload.
+	 * @return bool
+	 */
+	public function insert_row($full_table_name, $row) {
+		return false !== $this->wpdb->insert($full_table_name, $row);
+	}
+}

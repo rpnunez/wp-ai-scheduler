@@ -2,18 +2,18 @@
   "id": "385e7b45071cb7966f1f0a0af0a77ca13cdf7d4a",
   "type": "direct_wpdb_outside_repo",
   "severity": "medium",
-  "status": "open",
+  "status": "resolved",
   "path": "ai-post-scheduler/includes/class-aips-data-management-export-json.php",
   "symbol": "AIPS_Data_Management_Export_JSON",
   "anchor": "export:wpdb-show-tables-select-all",
-  "summary": "The JSON export class performs table discovery and SELECT queries directly through $wpdb instead of a repository or DB-layer abstraction.",
-  "why_it_matters": "Project rules require SQL ownership to stay in repository or DB-layer classes. Keeping export SQL inline makes schema evolution and testing harder.",
+  "summary": "Resolved by routing JSON export table discovery and row reads through AIPS_Data_Management_Repository.",
+  "why_it_matters": "This path now follows the repository ownership rule, which reduces inline SQL in higher-level import/export classes and makes focused tests possible.",
   "evidence": [
-    "ai-post-scheduler/includes/class-aips-data-management-export-json.php:44",
-    "ai-post-scheduler/includes/class-aips-data-management-export-json.php:56",
-    "ai-post-scheduler/includes/class-aips-data-management-export-json.php:63"
+    "ai-post-scheduler/includes/class-aips-data-management-export-json.php:43",
+    "ai-post-scheduler/includes/class-aips-data-management-repository.php:25",
+    "ai-post-scheduler/tests/Test_AIPS_Data_Management_JSON.php:5"
   ],
-  "suggested_fix": "Extract table enumeration and row export queries into a dedicated repository/service boundary shared by export flows.",
+  "suggested_fix": "No further action required for the JSON exporter unless the MySQL exporter is refactored to share the same repository.",
   "first_seen_run_id": "aips-20260506T234621Z",
-  "last_seen_run_id": "aips-20260506T234621Z"
+  "last_seen_run_id": "aips-20260507T000346Z"
 }
