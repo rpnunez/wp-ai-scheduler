@@ -45,6 +45,9 @@ class AIPS_Post_Manager {
         $title = isset($data['title']) ? $data['title'] : '';
         $content = isset($data['content']) ? $data['content'] : '';
         $excerpt = isset($data['excerpt']) ? $data['excerpt'] : '';
+
+        // Apply a final exact-title dedupe guard before insertion.
+        $title = $this->ensure_unique_post_title($title, 'post');
         
         // Support both legacy template and new context approaches
         $context = isset($data['context']) ? $data['context'] : null;
@@ -133,6 +136,63 @@ class AIPS_Post_Manager {
         $this->apply_seo_metadata($post_id, $seo_data);
 
         return $post_id;
+    }
+
+    /**
+     * Ensure the post title is unique across existing posts.
+     *
+     * Uses an exact-title check and appends numeric suffixes when needed
+     * (for example, "My Title (2)"). This acts as a final safety net in case
+     * upstream generation returns a repeated title.
+     *
+     * @param string $title     Candidate post title.
+     * @param string $post_type Post type to check against.
+     * @return string Unique title.
+     */
+    private function ensure_unique_post_title($title, $post_type = 'post') {
+        $base_title = trim(sanitize_text_field((string) $title));
+
+        if ($base_title === '') {
+            $base_title = __('AI Generated Post', 'ai-post-scheduler');
+        }
+
+        $candidate = $base_title;
+        $suffix = 2;
+
+        while ($this->post_title_exists($candidate, $post_type)) {
+            $candidate = sprintf('%s (%d)', $base_title, $suffix);
+            $suffix++;
+
+            if ($suffix > 50) {
+                $candidate = sprintf('%s (%s)', $base_title, AIPS_DateTime::now()->toDisplay('YmdHis'));
+                break;
+            }
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Check whether an exact title already exists for a post type.
+     *
+     * @param string $title     Exact title to check.
+     * @param string $post_type Post type.
+     * @return bool True when a matching title exists.
+     */
+    private function post_title_exists($title, $post_type = 'post') {
+        global $wpdb;
+
+        $existing_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+            WHERE post_type = %s
+            AND post_title = %s
+            AND post_status NOT IN ('trash', 'auto-draft', 'inherit')
+            LIMIT 1",
+            $post_type,
+            $title
+        ));
+
+        return !empty($existing_id);
     }
 
     /**

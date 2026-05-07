@@ -63,7 +63,7 @@ class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
 	public function export() {
 		$data = array(
 			'version' => AIPS_VERSION,
-			'exported_at' => gmdate('Y-m-d H:i:s'),
+			'exported_at' => AIPS_DateTime::now()->toMysql(),
 			'tables' => array(),
 		);
 		

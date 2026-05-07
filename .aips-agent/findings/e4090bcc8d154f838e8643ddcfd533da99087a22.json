@@ -2,7 +2,7 @@
   "id": "e4090bcc8d154f838e8643ddcfd533da99087a22",
   "type": "session_datetime_gap",
   "severity": "medium",
-  "status": "open",
+  "status": "resolved",
   "path": "ai-post-scheduler/includes/class-aips-generation-session.php",
   "symbol": "AIPS_Generation_Session",
   "anchor": "start-complete-get_duration:current_time_mysql-strtotime",
@@ -15,5 +15,8 @@
   ],
   "suggested_fix": "Store started_at/completed_at as timestamps or AIPS_DateTime instances internally, and derive display strings only at serialization boundaries.",
   "first_seen_run_id": "aips-20260507T000346Z",
-  "last_seen_run_id": "aips-20260507T000346Z"
+  "last_seen_run_id": "aips-20260507T190500Z",
+  "resolved_by": "aips-20260507T190500Z",
+  "resolved_at": "2026-05-07T19:05:00Z",
+  "resolution": "Replaced current_time/strtotime usage with AIPS_DateTime::now()->toMysql() for start/complete and AIPS_DateTime::fromMysqlOrNull() for duration math."
 }

@@ -644,7 +644,7 @@ class AIPS_MCP_Bridge {
 		$needs_upgrade   = version_compare($current_version, AIPS_VERSION, '<');
 
 		if ($params['run'] && $needs_upgrade) {
-			AIPS_Upgrades::check_and_run();
+			AIPS_DB_Migrations::check_and_run();
 			$config->flush_option_cache();
 			$current_version = $config->get_option('aips_db_version');
 		}

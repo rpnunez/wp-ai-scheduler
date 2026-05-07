@@ -36,6 +36,9 @@
 			// Generate Topics Now Button
 			$(document).on('click', '.aips-generate-topics-now', this.generateTopicsNow.bind(this));
 
+			// Generate Posts Now Button
+			$(document).on('click', '.aips-generate-author-posts-now', this.generateAuthorPostsNow.bind(this));
+
 			// Delete Author Button
 			$(document).on('click', '.aips-delete-author', this.deleteAuthor.bind(this));
 
@@ -464,6 +467,80 @@
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
+							},
+							complete: () => {
+								AIPS.Utilities.resetButton($btn);
+							}
+						});
+					}
+				}
+			]);
+		},
+
+		/**
+		 * Confirm and immediately trigger post generation for an author via the
+		 * unified schedule run-now endpoint used on the Schedule page.
+		 *
+		 * @param {Event} e - Click event from an `.aips-generate-author-posts-now` element.
+		 */
+		generateAuthorPostsNow: function (e) {
+			e.preventDefault();
+
+			const $btn = $(e.currentTarget);
+			const authorId = parseInt($btn.data('id'), 10);
+			const type = $btn.data('type') || 'author_post_gen';
+
+			if (!Number.isInteger(authorId) || authorId <= 0) {
+				return;
+			}
+
+			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePosts, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, generate',
+					className: 'aips-btn aips-btn-author-posts',
+					action: () => {
+						AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+
+						$.ajax({
+							url: aipsAjax.ajaxUrl,
+							type: 'POST',
+							data: {
+								action: 'aips_unified_run_now',
+								nonce: aipsAjax.nonce,
+								id: authorId,
+								type: type
+							},
+							success: (response) => {
+								if (response.success) {
+									let message = AIPS.Utilities.escapeHtml(
+										response.data && response.data.message
+											? response.data.message
+											: aipsAuthorsL10n.postsGenerated
+									);
+
+									if (response.data && response.data.edit_url) {
+										const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+
+										if (safeEditUrl) {
+											message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
+												AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
+											'</a>';
+										}
+									}
+
+									AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
+								} else {
+									AIPS.Utilities.showToast(
+										response.data && response.data.message
+											? response.data.message
+											: aipsAuthorsL10n.errorGeneratingPosts,
+										'error'
+									);
+								}
+							},
+							error: () => {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
 							},
 							complete: () => {
 								AIPS.Utilities.resetButton($btn);
