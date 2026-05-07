@@ -71,16 +71,20 @@ class AIPS_Prompt_Builder_Post_Content {
 		$processed_prompt = $context->get_content_prompt();
 		$article_structure_id = $context->get_article_structure_id();
 		$topic = $context->get_topic();
+		$used_structured_prompt = false;
 
 		if ($article_structure_id && $topic) {
 			$structured_prompt = $this->article_structure_section_builder->build($article_structure_id, $topic);
 
 			if (!is_wp_error($structured_prompt)) {
 				$processed_prompt = $structured_prompt;
-			} else {
-				$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+				$used_structured_prompt = true;
 			}
-		} elseif ($topic) {
+		}
+
+		if (!$used_structured_prompt) {
+			// Always process template variables, even when topic is empty.
+			// This prevents raw placeholders like {{topic}} from leaking into prompts.
 			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
 		}
 

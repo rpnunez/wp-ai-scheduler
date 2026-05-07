@@ -110,14 +110,17 @@ class AIPS_Generated_Posts_Controller {
 			
 			// Format source information
 			$source = $this->format_source($item);
+
+			// Use a GMT timestamp to avoid timezone skew when formatting relative time.
+			$published_timestamp = (int) get_post_time('U', true, $post);
 			
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-			'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($post->post_date, get_option('date_format') . ' ' . get_option('time_format')),
-			'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
