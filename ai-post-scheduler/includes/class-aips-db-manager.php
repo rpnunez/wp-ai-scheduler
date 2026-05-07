@@ -528,6 +528,14 @@ class AIPS_DB_Manager {
             dbDelta($sql);
 
             if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
+                if (self::is_ignorable_dbdelta_error($wpdb->last_error)) {
+                    // dbDelta can report duplicate index/column messages on some
+                    // MariaDB/MySQL versions for already-existing schema elements.
+                    // Treat these as no-op so upgrades remain idempotent.
+                    $wpdb->last_error = $pre_error;
+                    continue;
+                }
+
                 return new WP_Error('db_install_failed', $wpdb->last_error);
             }
         }
@@ -539,6 +547,23 @@ class AIPS_DB_Manager {
         update_option('aips_db_version', AIPS_VERSION);
 
         return true;
+    }
+
+    /**
+     * Determine whether a dbDelta error is a safe no-op for existing schema.
+     *
+     * @param string $error_message Raw database error message.
+     * @return bool
+     */
+    private static function is_ignorable_dbdelta_error($error_message) {
+        if (!is_string($error_message) || '' === $error_message) {
+            return false;
+        }
+
+        $normalized = strtolower($error_message);
+
+        return false !== strpos($normalized, 'duplicate key name')
+            || false !== strpos($normalized, 'duplicate column name');
     }
 
     /**
