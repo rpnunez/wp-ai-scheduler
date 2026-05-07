@@ -155,6 +155,70 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$this->assertArrayHasKey('template_id', $first_event);
 		$this->assertArrayHasKey('frequency', $first_event);
 		$this->assertEquals('daily', $first_event['frequency']);
+		$this->assertEquals('2026-02-01 10:00:00', $first_event['start']);
+	}
+
+	/**
+	 * Test get_month_events handles timestamp-based next_run values.
+	 */
+	public function test_get_month_events_with_timestamp_next_run() {
+		global $wpdb;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name' => 'Timestamp Template',
+				'content_prompt' => 'Test prompt',
+				'is_active' => 1,
+			)
+		);
+		$template_id = $wpdb->insert_id;
+
+		$this->schedule_repo->create(array(
+			'template_id' => $template_id,
+			'frequency' => 'daily',
+			'next_run' => AIPS_DateTime::fromMysql('2026-02-01 10:00:00')->timestamp(),
+			'is_active' => 1,
+		));
+
+		$events = $this->controller->get_month_events(2026, 2);
+
+		$this->assertCount(28, $events);
+		$this->assertEquals('2026-02-01 10:00:00', $events[0]['start']);
+	}
+
+	/**
+	 * Test month expansion handles legacy MySQL datetime values without DB-backed repositories.
+	 */
+	public function test_get_month_events_expands_legacy_datetime_schedule_with_stubbed_dependencies() {
+		$this->set_controller_dependencies(
+			array(
+				$this->build_schedule('2026-02-01 10:00:00'),
+			)
+		);
+
+		$events = $this->controller->get_month_events(2026, 2);
+
+		$this->assertCount(28, $events);
+		$this->assertEquals('2026-02-01 10:00:00', $events[0]['start']);
+		$this->assertEquals('2026-02-28 10:00:00', $events[27]['start']);
+	}
+
+	/**
+	 * Test month expansion handles bigint timestamp next_run values without DB-backed repositories.
+	 */
+	public function test_get_month_events_expands_timestamp_schedule_with_stubbed_dependencies() {
+		$this->set_controller_dependencies(
+			array(
+				$this->build_schedule(AIPS_DateTime::fromMysql('2026-02-01 10:00:00')->timestamp()),
+			)
+		);
+
+		$events = $this->controller->get_month_events(2026, 2);
+
+		$this->assertCount(28, $events);
+		$this->assertEquals('2026-02-01 10:00:00', $events[0]['start']);
+		$this->assertEquals('2026-02-28 10:00:00', $events[27]['start']);
 	}
 
 	/**
@@ -301,5 +365,58 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		// Verify author and category are resolved
 		$this->assertEquals('Test Author', $first_event['author']);
 		$this->assertEquals('Test Category', $first_event['category']);
+	}
+
+	private function set_controller_dependencies(array $schedules) {
+		$schedule_repo = new class($schedules) {
+			private $schedules;
+
+			public function __construct($schedules) {
+				$this->schedules = $schedules;
+			}
+
+			public function get_all($active_only = false) {
+				return $this->schedules;
+			}
+		};
+
+		$template_repo = new class() {
+			public function get_by_id($template_id) {
+				return null;
+			}
+		};
+
+		$this->set_private_property($this->controller, 'schedule_repo', $schedule_repo);
+		$this->set_private_property($this->controller, 'template_repo', $template_repo);
+		$this->set_private_property($this->controller, 'interval_calculator', new AIPS_Interval_Calculator());
+	}
+
+	private function build_schedule($next_run) {
+		return (object) array(
+			'id' => 1,
+			'template_name' => 'Stub Template',
+			'template_id' => null,
+			'frequency' => 'daily',
+			'next_run' => $next_run,
+			'topic' => '',
+		);
+	}
+
+	private function set_private_property($object, $property_name, $value) {
+		$reflection = new ReflectionProperty($object, $property_name);
+		$reflection->setAccessible(true);
+		$reflection->setValue($object, $value);
+	}
+
+	private function getActualOutput() {
+		$output = ob_get_contents();
+
+		if ($output === false) {
+			return '';
+		}
+
+		ob_clean();
+
+		return $output;
 	}
 }

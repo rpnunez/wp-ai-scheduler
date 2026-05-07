@@ -1,0 +1,19 @@
+{
+  "id": "a2331e2177febd4809dfea240c3bb098ad95e4c0",
+  "type": "direct_wpdb_outside_repo",
+  "severity": "high",
+  "status": "resolved",
+  "path": "ai-post-scheduler/includes/class-aips-data-management-import-json.php",
+  "symbol": "AIPS_Data_Management_Import_JSON",
+  "anchor": "import:wpdb-truncate-insert",
+  "summary": "Resolved by routing JSON import truncation and inserts through AIPS_Data_Management_Repository.",
+  "why_it_matters": "The destructive JSON import path now keeps SQL in the repository layer and re-enables foreign key checks in a finally block.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-data-management-import-json.php:72",
+    "ai-post-scheduler/includes/class-aips-data-management-repository.php:55",
+    "ai-post-scheduler/tests/Test_AIPS_Data_Management_JSON.php:38"
+  ],
+  "suggested_fix": "No further action required for the JSON importer unless the MySQL importer is brought behind the same repository boundary.",
+  "first_seen_run_id": "aips-20260506T234621Z",
+  "last_seen_run_id": "aips-20260507T000346Z"
+}
