@@ -59,22 +59,22 @@ class AIPS_Author_Topics_Scheduler {
 	 * @var AIPS_Authors_Repository Repository for authors
 	 */
 	private $authors_repository;
-	
+
 	/**
 	 * @var AIPS_Author_Topics_Generator Generator for topics
 	 */
 	private $topics_generator;
-	
+
 	/**
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
-	
+
 	/**
 	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
 	 */
 	private $interval_calculator;
-	
+
 	/**
 	 * @var AIPS_History_Service Service for history logging
 	 */
@@ -91,6 +91,11 @@ class AIPS_Author_Topics_Scheduler {
 	private $batch_queue_service;
 
 	/**
+	 * @var AIPS_Resilience_Service Resilience service for retry logic
+	 */
+	private $resilience_service;
+
+	/**
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
@@ -100,6 +105,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
+		$this->resilience_service = new AIPS_Resilience_Service();
 	}
 
 	/**
@@ -221,7 +227,7 @@ class AIPS_Author_Topics_Scheduler {
 	}
 
 	/**
-	 * Schedule a slice event with retry logic.
+	 * Schedule a slice event with retry logic using AIPS_Resilience_Service.
 	 *
 	 * Attempts to schedule the event up to 3 times with exponential backoff
 	 * (1s, 2s delays between attempts) to handle transient WordPress cron issues.
@@ -234,63 +240,68 @@ class AIPS_Author_Topics_Scheduler {
 	 */
 	private function schedule_slice_with_retry( string $hook, int $fire_at, array $args, int $author_id ): bool {
 		$max_attempts = (int) apply_filters( 'aips_slice_schedule_max_attempts', 3 );
-		$max_attempts = max( 1, min( 5, $max_attempts ) ); // Clamp between 1-5
+		$attempt_num = 0;
+		$last_error = null;
 
-		for ( $attempt = 1; $attempt <= $max_attempts; $attempt++ ) {
-			$result = wp_schedule_single_event( $fire_at, $hook, $args );
+		$success = $this->resilience_service->retry_with_backoff(
+			function() use ( $hook, $fire_at, $args, $author_id, &$attempt_num, &$last_error ) {
+				$attempt_num++;
+				$result = wp_schedule_single_event( $fire_at, $hook, $args );
 
-			if ( $result === true ) {
-				if ( $attempt > 1 ) {
-					$this->logger->log(
-						sprintf( 'Successfully scheduled slice for author ID %d on attempt %d', $author_id, $attempt ),
-						'info'
-					);
+				if ( $result === true ) {
+					if ( $attempt_num > 1 ) {
+						$this->logger->log(
+							sprintf( 'Successfully scheduled slice for author ID %d on attempt %d', $author_id, $attempt_num ),
+							'info'
+						);
+					}
+					return true;
 				}
-				return true;
-			}
 
-			// Log the failure
-			$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error (returned false)';
-			$this->logger->log(
-				sprintf(
-					'Attempt %d/%d: Failed to schedule author-topics slice for author ID %d: %s',
-					$attempt,
-					$max_attempts,
-					$author_id,
-					$error_msg
-				),
-				$attempt < $max_attempts ? 'warning' : 'error'
-			);
+				// Log the failure
+				$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error (returned false)';
+				$last_error = $error_msg;
 
-			// If not the last attempt, wait before retrying (exponential backoff)
-			if ( $attempt < $max_attempts ) {
-				$delay_seconds = pow( 2, $attempt - 1 ); // 1s, 2s, 4s
-				sleep( $delay_seconds );
-			}
-		}
+				$this->logger->log(
+					sprintf(
+						'Attempt %d: Failed to schedule author-topics slice for author ID %d: %s',
+						$attempt_num,
+						$author_id,
+						$error_msg
+					),
+					'warning'
+				);
 
-		// All attempts failed - log to history
-		$history = $this->history_service->create( 'author_topic_generation', array(
-			'author_id' => $author_id,
-		) );
-
-		$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error (returned false)';
-		$history->record(
-			'dispatch_failed',
-			sprintf( 'Failed to dispatch topics slice after %d attempts: %s', $max_attempts, $error_msg ),
-			array(
-				'event_type'   => 'dispatch_slice_failed',
-				'event_status' => 'failed',
-			),
-			null,
-			array(
-				'author_id'     => $author_id,
-				'error'         => $error_msg,
-				'max_attempts'  => $max_attempts,
-			)
+				return false;
+			},
+			$max_attempts,
+			1, // Initial 1-second delay
+			true // Use exponential backoff
 		);
 
-		return false;
+		// If all attempts failed, log to history
+		if ( ! $success ) {
+			$history = $this->history_service->create( 'author_topic_generation', array(
+				'author_id' => $author_id,
+			) );
+
+			$history->record(
+				'dispatch_failed',
+				sprintf( 'Failed to dispatch topics slice after %d attempts: %s', $max_attempts, $last_error ),
+				array(
+					'event_type'   => 'dispatch_slice_failed',
+					'event_status' => 'failed',
+				),
+				null,
+				array(
+					'author_id'     => $author_id,
+					'error'         => $last_error,
+					'max_attempts'  => $max_attempts,
+				)
+			);
+		}
+
+		return $success;
 	}
 
 	/**
