@@ -401,7 +401,6 @@ class AIPS_Admin_L10n {
 					'editPostLabel'          => __('Edit', 'ai-post-scheduler'),
 					'filterAll'              => __('All', 'ai-post-scheduler'),
 					'filterByType'           => __('Filter:', 'ai-post-scheduler'),
-					'typeLabels'             => AIPS_History_Type::get_all_types(),
 					'colTimestamp'           => __('Timestamp', 'ai-post-scheduler'),
 					'colType'                => __('Type', 'ai-post-scheduler'),
 					'colLogType'             => __('Log Type', 'ai-post-scheduler'),

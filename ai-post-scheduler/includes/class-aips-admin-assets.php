@@ -442,6 +442,9 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-history', 'aipsHistoryL10n', AIPS_Admin_L10n::get('history'));
+            wp_localize_script('aips-admin-history', 'aipsHistoryConfig', array(
+                'typeLabels' => AIPS_History_Type::get_all_types(),
+            ));
     }
 
     /**

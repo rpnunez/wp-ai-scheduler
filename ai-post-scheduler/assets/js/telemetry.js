@@ -649,7 +649,7 @@
 				hoursMinutesAgo: t.insertedHoursMinutesAgo  || undefined,
 				yesterdayAt:     t.insertedYesterdayAt      || undefined,
 				absoluteDate:    t.insertedAbsoluteDate     || undefined,
-				locale:          (window.aipsTelemetryConfig && window.aipsTelemetryConfig.locale) || undefined
+				locale:          window.aipsTelemetryConfig.locale || undefined
 			};
 		},
 

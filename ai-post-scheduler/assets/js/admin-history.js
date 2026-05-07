@@ -441,7 +441,7 @@
 					if (!typeCounts[String(tid)]) {
 						return;
 					}
-					var typeLabel = (aipsHistoryL10n.typeLabels && aipsHistoryL10n.typeLabels[tid])
+					var typeLabel = (aipsHistoryConfig.typeLabels && aipsHistoryConfig.typeLabels[tid])
 						|| self.typeLabelFallback(tid);
 					filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
 						typeId:      T.escape(String(tid)),
