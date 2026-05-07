@@ -1,9 +1,9 @@
 {
     "schema_version": 1,
     "repo": "rpnunez/wp-ai-scheduler",
-    "last_run_at": "2026-05-07T01:14:31Z",
-    "last_run_id": "aips-20260507T011431Z",
-    "ruleset_hash": "722a25cc9909db8602efc279b31af916d0471d08",
+    "last_run_at": "2026-05-07T22:06:27Z",
+    "last_run_id": "aips-20260507T220627Z",
+    "ruleset_hash": "1559db00904777f3cee970a7bdaf2f1d7d98f7fd",
     "files": {
         "ai-post-scheduler/includes/class-aips-author-post-generator.php": {
             "fingerprint": "062fa9f1daefeec6a371d430a12546f47affe299",
@@ -48,11 +48,11 @@
             "status": "ok"
         },
         "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php": {
-            "fingerprint": "d09a740e8a22f77e2e091b656262080dbd89bf7f",
-            "last_scanned_at": "2026-05-07T00:03:46Z",
-            "last_scan_run_id": "aips-20260507T000346Z",
-            "findings_open_count": 1,
-            "status": "has_findings"
+            "fingerprint": "912f504692900be7a4e675b5596ae3c8cb7b09ee",
+            "last_scanned_at": "2026-05-07T22:06:27Z",
+            "last_scan_run_id": "aips-20260507T220627Z",
+            "findings_open_count": 0,
+            "status": "ok"
         },
         "ai-post-scheduler/includes/class-aips-data-management-import-json.php": {
             "fingerprint": "5604a904e7644e281782527cbf97f1f30a373efe",
@@ -62,9 +62,9 @@
             "status": "ok"
         },
         "ai-post-scheduler/includes/class-aips-data-management-repository.php": {
-            "fingerprint": "0bcd2b3ef5c9da8882f5393a70ddecc6daef3a9d",
-            "last_scanned_at": "2026-05-07T00:03:46Z",
-            "last_scan_run_id": "aips-20260507T000346Z",
+            "fingerprint": "9bde86591d8bcdbf166be8ec3b8af8769391ac5a",
+            "last_scanned_at": "2026-05-07T22:06:27Z",
+            "last_scan_run_id": "aips-20260507T220627Z",
             "findings_open_count": 0,
             "status": "ok"
         },
@@ -111,9 +111,9 @@
             "status": "ok"
         },
         "ai-post-scheduler/tests/Test_AIPS_Data_Management_JSON.php": {
-            "fingerprint": "65c98614a883a54473114877398383ed85d22be9",
-            "last_scanned_at": "2026-05-07T00:03:46Z",
-            "last_scan_run_id": "aips-20260507T000346Z",
+            "fingerprint": "846a0193bc2b63dfd9f2a5206d07a4868b111eca",
+            "last_scanned_at": "2026-05-07T22:06:27Z",
+            "last_scan_run_id": "aips-20260507T220627Z",
             "findings_open_count": 0,
             "status": "ok"
         },
@@ -210,8 +210,8 @@
             "symbol": "AIPS_Data_Management_Export_MySQL",
             "anchor": "export:wpdb-show-create-select-all",
             "first_seen_run_id": "aips-20260507T000346Z",
-            "last_seen_run_id": "aips-20260507T000346Z",
-            "status": "open",
+            "last_seen_run_id": "aips-20260507T220627Z",
+            "status": "resolved",
             "finding_file": ".aips-agent/findings/ceebabf5fab06d5fe1aabbdf93ba66315f2cc3d0.json"
         },
         "d86313d531e2a080dafc8b305c38d9eeb1876dd5": {
