@@ -1,0 +1,19 @@
+{
+  "id": "ceebabf5fab06d5fe1aabbdf93ba66315f2cc3d0",
+  "type": "direct_wpdb_outside_repo",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php",
+  "symbol": "AIPS_Data_Management_Export_MySQL",
+  "anchor": "export:wpdb-show-create-select-all",
+  "summary": "The MySQL export class still performs table discovery plus SHOW CREATE TABLE and SELECT queries directly through $wpdb.",
+  "why_it_matters": "This duplicates the same persistence concern just removed from the JSON exporter, leaving SQL ownership split across higher-level export classes.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php:61",
+    "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php:73",
+    "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php:82"
+  ],
+  "suggested_fix": "Reuse AIPS_Data_Management_Repository for validated table discovery and row reads, and isolate MySQL dump formatting from persistence concerns.",
+  "first_seen_run_id": "aips-20260507T000346Z",
+  "last_seen_run_id": "aips-20260507T000346Z"
+}
