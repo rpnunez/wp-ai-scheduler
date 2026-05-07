@@ -136,6 +136,7 @@ class AIPS_Config {
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
             // General
+            'aips_language' => 'en',
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,

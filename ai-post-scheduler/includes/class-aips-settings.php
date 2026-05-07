@@ -60,6 +60,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_default_category'],
         ));
+        register_setting('aips_settings', 'aips_language', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => $defaults['aips_language'],
+        ));
         register_setting('aips_settings', 'aips_enable_logging', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_logging'],
@@ -171,6 +175,14 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_language',
+            __('Language', 'ai-post-scheduler'),
+            array($this->ui, 'language_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
