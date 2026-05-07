@@ -173,7 +173,8 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	 * @param object[] $due_authors Array of author objects from the repository.
 	 */
 	private function dispatch_author_slices( array $due_authors ): void {
-		$now            = time();
+		// Use AIPS_Date_Time instead of time() for consistent timezone-safe timestamp handling
+		$now            = AIPS_DateTime::now()->timestamp();
 		$correlation_id = (string) AIPS_Correlation_ID::get();
 
 		// Stagger each author's event by 15 seconds to avoid simultaneous AI requests.
@@ -183,11 +184,42 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		$i = 0;
 		foreach ( $due_authors as $author ) {
 			$fire_at = $now + ($i * $stagger_seconds);
-			wp_schedule_single_event(
-				$fire_at,
-				self::SLICE_HOOK,
-				array( (int) $author->id, $correlation_id )
-			);
+			$args = array( (int) $author->id, $correlation_id );
+
+			// Avoid scheduling duplicate events
+			if ( wp_next_scheduled( self::SLICE_HOOK, $args ) ) {
+				continue;
+			}
+
+			$result = wp_schedule_single_event( $fire_at, self::SLICE_HOOK, $args );
+
+			// Check for schedule errors
+			if ( $result === false || is_wp_error( $result ) ) {
+				$error_msg = is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error (returned false)';
+				$this->logger->log(
+					sprintf( 'Failed to schedule author-post slice event for author ID %d: %s', $author->id, $error_msg ),
+					'error'
+				);
+
+				// Log using History Service for observability
+				$history = $this->history_service->create( 'author_post_generation', array(
+					'author_id' => $author->id,
+				) );
+
+				$history->record(
+					'dispatch_failed',
+					sprintf( 'Failed to dispatch post slice: %s', $error_msg ),
+					array(
+						'event_type'   => 'dispatch_slice_failed',
+						'event_status' => 'failed',
+					),
+					null,
+					array(
+						'author_id' => $author->id,
+						'error'     => $error_msg,
+					)
+				);
+			}
 			$i++;
 		}
 
