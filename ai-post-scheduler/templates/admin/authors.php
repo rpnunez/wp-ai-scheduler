@@ -234,10 +234,16 @@ $site_ctx = AIPS_Site_Context::get();
                                     </td>
                                     <td>
                                         <div class="cell-actions">
-                                            <button class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
-                                                <span class="dashicons dashicons-update"></span>
-                                                <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
-                                            </button>
+                                            <div class="aips-author-generation-actions">
+                                                <button class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
+                                                    <span class="dashicons dashicons-update"></span>
+                                                    <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
+                                                </button>
+                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
+                                                    <span class="dashicons dashicons-admin-post"></span>
+                                                    <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
+                                                </button>
+                                            </div>
                                             <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                                 <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
@@ -895,5 +901,4 @@ $site_ctx = AIPS_Site_Context::get();
 <script type="text/html" id="aips-tmpl-suggestion-meta-row">
 <span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
 </script>
-
 
