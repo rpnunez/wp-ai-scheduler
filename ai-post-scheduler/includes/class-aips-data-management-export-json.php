@@ -7,6 +7,26 @@ if (!defined('ABSPATH')) {
  * JSON export implementation (placeholder for future)
  */
 class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
+
+	/**
+	 * @var AIPS_Data_Management_Repository
+	 */
+	private $repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Data_Management_Repository|null $repository Repository override for tests.
+	 */
+	public function __construct($repository = null) {
+		if ($repository) {
+			$this->repository = $repository;
+			return;
+		}
+
+		$repository_class = 'AIPS_Data_Management_Repository';
+		$this->repository = new $repository_class();
+	}
 	
 	/**
 	 * Get the export format name
@@ -41,26 +61,16 @@ class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
 	 * @return string The exported JSON data
 	 */
 	public function export() {
-		global $wpdb;
-		
 		$data = array(
 			'version' => AIPS_VERSION,
 			'exported_at' => AIPS_DateTime::now()->toMysql(),
 			'tables' => array(),
 		);
 		
-		$tables = $this->get_tables();
-		
+		$tables = $this->repository->get_existing_tables($this->get_tables());
+
 		foreach ($tables as $table_name => $full_table_name) {
-			// Check if table exists
-			$table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $full_table_name));
-			
-			if ($table_exists !== $full_table_name) {
-				continue;
-			}
-			
-			// Get table data - table name is already validated from get_full_table_names()
-			$rows = $wpdb->get_results("SELECT * FROM `" . esc_sql($full_table_name) . "`", ARRAY_A);
+			$rows = $this->repository->get_table_rows($full_table_name);
 			$data['tables'][$table_name] = $rows;
 		}
 		
