@@ -93,7 +93,7 @@
 					method: 'POST',
 					data: {
 						action: 'aips_search_posts',
-						nonce: aipsTaxonomyL10n.nonce,
+						nonce: aipsTaxonomyConfig.nonce,
 						search_term: searchTerm
 					},
 					success: function(response) {
@@ -215,7 +215,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_generate_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					taxonomy_type: taxonomyType,
 					generation_prompt: generationPrompt,
 					base_post_ids: this.selectedPostIds
@@ -269,7 +269,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_get_taxonomy_items',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					taxonomy_type: taxonomyType
 				},
 				success: function(response) {
@@ -423,7 +423,7 @@
 				method: 'POST',
 				data: {
 					action: ajaxAction,
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					item_ids: itemIds
 				},
 				success: function(response) {
@@ -479,7 +479,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_delete_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					item_id: itemId
 				},
 				success: function(response) {
@@ -512,7 +512,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_create_taxonomy_term',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					item_id: itemId
 				},
 				success: function(response) {
@@ -539,7 +539,7 @@
 				method: 'POST',
 				data: {
 					action: action,
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: aipsTaxonomyConfig.nonce,
 					item_id: itemId
 				},
 				success: function(response) {

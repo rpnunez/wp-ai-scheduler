@@ -48,7 +48,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'authors':
 				return array(
-					'nonce'                       => wp_create_nonce('aips_ajax_nonce'),
 					'addNewAuthor'                => __('Add New Author', 'ai-post-scheduler'),
 					'editAuthor'                  => __('Edit Author', 'ai-post-scheduler'),
 					'saveAuthor'                  => __('Save Author', 'ai-post-scheduler'),
@@ -325,8 +324,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'post_review':
 				return array(
-					'ajaxUrl'              => admin_url('admin-ajax.php'),
-					'nonce'                => wp_create_nonce('aips_ajax_nonce'),
 					'confirmPublish'       => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
 					'confirmBulkPublish'   => __('Are you sure you want to publish %d selected post(s)?', 'ai-post-scheduler'),
 					'confirmDelete'        => __('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler'),
@@ -358,8 +355,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'ai_edit':
 				return array(
-					'ajaxUrl'             => admin_url('admin-ajax.php'),
-					'nonce'               => wp_create_nonce('aips_ajax_nonce'),
 					'regenerate'          => __('Re-generate', 'ai-post-scheduler'),
 					'regenerating'        => __('Regenerating...', 'ai-post-scheduler'),
 					'regenerateAll'       => __('Regenerate All', 'ai-post-scheduler'),
@@ -436,7 +431,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'taxonomy':
 				return array(
-					'nonce'              => wp_create_nonce('aips_ajax_nonce'),
 					'selectTaxonomyType' => __('Please select a taxonomy type.', 'ai-post-scheduler'),
 					'selectPost'         => __('Please select at least one post.', 'ai-post-scheduler'),
 					'selectAction'       => __('Please select an action.', 'ai-post-scheduler'),
@@ -470,7 +464,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'system_status':
 				return array(
-					'nonce'        => wp_create_nonce('aips_reset_circuit_breaker'),
 					'hideDetails'  => __('Hide Details', 'ai-post-scheduler'),
 					'showDetails'  => __('Show Details', 'ai-post-scheduler'),
 					'resetSuccess' => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
@@ -490,8 +483,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'telemetry':
 				return array(
-					'nonce'                    => wp_create_nonce('aips_get_telemetry'),
-					'detailsNonce'             => wp_create_nonce('aips_get_telemetry_details'),
 					'loading'                  => __('Loading…', 'ai-post-scheduler'),
 					'loadingDetails'           => __('Loading telemetry details…', 'ai-post-scheduler'),
 					'filterLabel'              => __('Filter', 'ai-post-scheduler'),
@@ -543,7 +534,6 @@ class AIPS_Admin_L10n {
 					'detailsRawPayloadHelp'    => __('Review the structured payload summaries above, or expand the raw JSON below for the original object.', 'ai-post-scheduler'),
 					'detailsEventItemLabel'    => __('Event %s', 'ai-post-scheduler'),
 					'detailsItemLabel'         => __('Item %s', 'ai-post-scheduler'),
-					'locale'                   => get_locale(),
 					'expandLabel'              => __('Expand', 'ai-post-scheduler'),
 					'collapseLabel'            => __('Collapse', 'ai-post-scheduler'),
 					'insertedJustNow'          => __('just now', 'ai-post-scheduler'),
@@ -559,7 +549,6 @@ class AIPS_Admin_L10n {
 				);
 			case 'internal_links':
 				return array(
-					'nonce'                => wp_create_nonce('aips_ajax_nonce'),
 					'confirmDelete'        => __('Delete this suggestion? This cannot be undone.', 'ai-post-scheduler'),
 					'confirmClearIndex'    => __('Clear the entire index and all suggestions? This cannot be undone.', 'ai-post-scheduler'),
 					'indexingStarted'      => __('Indexing started. Posts will be processed in the background.', 'ai-post-scheduler'),

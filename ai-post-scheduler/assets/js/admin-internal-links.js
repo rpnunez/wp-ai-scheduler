@@ -421,7 +421,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:   'aips_internal_links_get_suggestions',
-				nonce:    aipsInternalLinksL10n.nonce,
+				nonce:    aipsInternalLinksConfig.nonce,
 				page:     self.currentPage,
 				per_page: self.perPage,
 				status:   self.currentStatus,
@@ -588,7 +588,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  aipsInternalLinksConfig.nonce,
 			}, function (response) {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
 					label: self.originalIndexText,
@@ -618,7 +618,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_clear_index',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  aipsInternalLinksConfig.nonce,
 			}, function (response) {
 				if (response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
@@ -654,7 +654,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:          'aips_internal_links_generate_suggestions',
-				nonce:           aipsInternalLinksL10n.nonce,
+				nonce:           aipsInternalLinksConfig.nonce,
 				post_id:         postId,
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
@@ -699,7 +699,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_internal_links_reindex_post',
-				nonce:   aipsInternalLinksL10n.nonce,
+				nonce:   aipsInternalLinksConfig.nonce,
 				post_id: postId,
 			}, function (response) {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
@@ -735,7 +735,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_update_status',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  aipsInternalLinksConfig.nonce,
 				id:     id,
 				status: status,
 			}, function (response) {
@@ -761,7 +761,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_delete',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  aipsInternalLinksConfig.nonce,
 				id:     id,
 			}, function (response) {
 				if (response.success) {
@@ -785,7 +785,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:      'aips_internal_links_update_anchor',
-				nonce:       aipsInternalLinksL10n.nonce,
+				nonce:       aipsInternalLinksConfig.nonce,
 				id:          id,
 				anchor_text: anchorText,
 			}, function (response) {
@@ -813,7 +813,7 @@
 		refreshStatus: function () {
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_get_status',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  aipsInternalLinksConfig.nonce,
 			}, function (response) {
 				if (!response.success) { return; }
 
@@ -898,7 +898,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:        'aips_internal_links_get_post_for_insertion',
-				nonce:         aipsInternalLinksL10n.nonce,
+				nonce:         aipsInternalLinksConfig.nonce,
 				suggestion_id: suggestionId,
 			}, function (response) {
 				if (!response.success) {
@@ -1013,7 +1013,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:        'aips_internal_links_find_insert_locations',
-				nonce:         aipsInternalLinksL10n.nonce,
+				nonce:         aipsInternalLinksConfig.nonce,
 				suggestion_id: suggestionId,
 			}, function (response) {
 				$spinner.removeClass('is-active');
@@ -1391,7 +1391,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:     'aips_internal_links_apply_bulk_insertions',
-				nonce:      aipsInternalLinksL10n.nonce,
+				nonce:      aipsInternalLinksConfig.nonce,
 				insertions: JSON.stringify(insertions),
 			}, function (response) {
 				$btn.prop('disabled', false).html(originalBtnHtml);

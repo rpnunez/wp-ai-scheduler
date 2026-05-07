@@ -238,6 +238,9 @@ class AIPS_Admin_Assets {
           $page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
 
           wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', AIPS_Admin_L10n::get('authors'));
+          wp_localize_script('aips-authors-script', 'aipsAuthorsConfig', array(
+              'nonce' => wp_create_nonce('aips_ajax_nonce'),
+          ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
           // semantically distinct from the translation strings above.
@@ -370,6 +373,10 @@ class AIPS_Admin_Assets {
 
             // Localize Post Review script for Pending Review tab
             wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', AIPS_Admin_L10n::get('post_review'));
+            wp_localize_script('aips-admin-post-review', 'aipsPostReviewConfig', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+            ));
 
             // AI Edit Modal (for Generated Posts page)
             wp_enqueue_script(
@@ -388,6 +395,10 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', AIPS_Admin_L10n::get('ai_edit'));
+            wp_localize_script('aips-admin-ai-edit', 'aipsAIEditConfig', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+            ));
     }
 
     /**
@@ -494,6 +505,9 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-taxonomy', 'aipsTaxonomyL10n', AIPS_Admin_L10n::get('taxonomy'));
+            wp_localize_script('aips-admin-taxonomy', 'aipsTaxonomyConfig', array(
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            ));
     }
 
     /**
@@ -536,6 +550,9 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', AIPS_Admin_L10n::get('system_status'));
+            wp_localize_script('aips-admin-system-status', 'aipsSystemStatusConfig', array(
+                'nonce' => wp_create_nonce('aips_reset_circuit_breaker'),
+            ));
     }
 
     /**
@@ -595,6 +612,11 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', AIPS_Admin_L10n::get('telemetry'));
+            wp_localize_script('aips-telemetry-script', 'aipsTelemetryConfig', array(
+                'nonce'       => wp_create_nonce('aips_get_telemetry'),
+                'detailsNonce' => wp_create_nonce('aips_get_telemetry_details'),
+                'locale'      => get_locale(),
+            ));
     }
 
     /**
@@ -609,6 +631,9 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksL10n', AIPS_Admin_L10n::get('internal_links'));
+            wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksConfig', array(
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            ));
     }
 
 }

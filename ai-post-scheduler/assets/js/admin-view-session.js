@@ -83,8 +83,8 @@
 		showLoadingModal();
 		
 		// Get AJAX URL and nonce from global variables
-		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.ajaxUrl);
-		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce);
+		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.ajaxUrl);
+		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.nonce);
 		
 		if (!ajaxUrl) {
 			showError('AJAX URL not found. Please refresh the page and try again.');
@@ -324,8 +324,8 @@
 		$button.prop('disabled', true).text('Loading...');
 		
 		// Get AJAX URL and nonce
-		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.ajaxUrl);
-		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce);
+		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.ajaxUrl);
+		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.nonce);
 		
 		// Fetch the JSON data
 		$.ajax({
@@ -367,8 +367,8 @@
 		}
 
 		// Get AJAX URL and nonce
-		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.ajaxUrl);
-		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce);
+		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.ajaxUrl);
+		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewConfig && window.aipsPostReviewConfig.nonce);
 
 		if (currentLogCount <= CLIENT_LOG_THRESHOLD) {
 			// Small session: fetch the JSON via AJAX and trigger client-side download

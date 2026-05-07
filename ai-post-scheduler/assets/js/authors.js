@@ -159,7 +159,7 @@
 								type: 'POST',
 								data: {
 									action: 'aips_generate_topics_now',
-									nonce: aipsAuthorsL10n.nonce,
+									nonce: aipsAuthorsConfig.nonce,
 									author_id: authorId
 								}
 							});
@@ -199,7 +199,7 @@
 								type: 'POST',
 								data: {
 									action: 'aips_delete_author',
-									nonce: aipsAuthorsL10n.nonce,
+									nonce: aipsAuthorsConfig.nonce,
 									author_id: authorId
 								}
 							});
@@ -274,7 +274,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_author',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					author_id: authorId
 				},
 				success: (response) => {
@@ -354,7 +354,7 @@
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
-				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
+				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsConfig.nonce,
 				success: (response) => {
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
@@ -397,7 +397,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_delete_author',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								author_id: authorId
 							},
 							success: (response) => {
@@ -448,7 +448,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_generate_topics_now',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								author_id: authorId
 							},
 							success: (response) => {
@@ -493,7 +493,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_author_topics',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					author_id: this.currentAuthorId,
 					status: status
 				},
@@ -726,7 +726,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_suggest_related_topics',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					author_id: this.currentAuthorId,
 					limit: 5
 				},
@@ -1166,7 +1166,7 @@
 				type: 'POST',
 				data: {
 					action: ajaxAction,
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					topic_id: topicId,
 					reason: reason,
 					reason_category: reasonCategory,
@@ -1209,7 +1209,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_author_feedback',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					author_id: this.currentAuthorId
 				},
 				success: (response) => {
@@ -1291,7 +1291,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_delete_topic',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								topic_id: topicId
 							},
 							success: (response) => {
@@ -1367,7 +1367,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_edit_topic',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					topic_id: topicId,
 					topic_title: newTitle
 				},
@@ -1431,7 +1431,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_generate_post_from_topic',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								topic_id: topicId
 							},
 							success: (response) => {
@@ -1489,7 +1489,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_topic_logs',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					topic_id: topicId
 				},
 				success: (response) => {
@@ -1580,7 +1580,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_topic_posts',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					topic_id: topicId
 				},
 				success: (response) => {
@@ -1705,7 +1705,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_publish_post',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								post_id: postId
 							},
 							success: (response) => {
@@ -1818,7 +1818,7 @@
 								ajaxAction = 'aips_bulk_delete_feedback';
 								data = {
 									action: ajaxAction,
-									nonce: aipsAuthorsL10n.nonce,
+									nonce: aipsAuthorsConfig.nonce,
 									feedback_ids: ids
 								};
 							} else {
@@ -1847,7 +1847,7 @@
 							}
 							data = {
 								action: ajaxAction,
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								topic_ids: ids
 							};
 						}
@@ -1954,7 +1954,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_bulk_generate_estimate',
-					nonce: aipsAuthorsL10n.nonce
+					nonce: aipsAuthorsConfig.nonce
 				},
 				success: (estimateResponse) => {
 					let perPost = DEFAULT_PER_POST_SECONDS;
@@ -2093,7 +2093,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_suggest_authors',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					site_niche: siteNiche,
 					target_audience: $('#aips-suggest-target-audience').val().trim(),
 					content_goals: $('#aips-suggest-content-goals').val().trim(),
@@ -2204,7 +2204,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_save_author',
-					nonce: aipsAuthorsL10n.nonce,
+					nonce: aipsAuthorsConfig.nonce,
 					name: suggestion.name,
 					field_niche: suggestion.field_niche,
 					description: suggestion.description || '',
@@ -2316,7 +2316,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_generation_queue',
-					nonce: aipsAuthorsL10n.nonce
+					nonce: aipsAuthorsConfig.nonce
 				},
 				success: (response) => {
 					if (response.success && response.data.topics) {
@@ -2619,7 +2619,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_bulk_generate_from_queue',
-								nonce: aipsAuthorsL10n.nonce,
+								nonce: aipsAuthorsConfig.nonce,
 								topic_ids: topicIds
 							},
 							success: (response) => {
