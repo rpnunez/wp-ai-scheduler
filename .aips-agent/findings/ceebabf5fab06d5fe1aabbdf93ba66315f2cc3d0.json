@@ -2,7 +2,7 @@
   "id": "ceebabf5fab06d5fe1aabbdf93ba66315f2cc3d0",
   "type": "direct_wpdb_outside_repo",
   "severity": "medium",
-  "status": "open",
+  "status": "resolved",
   "path": "ai-post-scheduler/includes/class-aips-data-management-export-mysql.php",
   "symbol": "AIPS_Data_Management_Export_MySQL",
   "anchor": "export:wpdb-show-create-select-all",
@@ -15,5 +15,7 @@
   ],
   "suggested_fix": "Reuse AIPS_Data_Management_Repository for validated table discovery and row reads, and isolate MySQL dump formatting from persistence concerns.",
   "first_seen_run_id": "aips-20260507T000346Z",
-  "last_seen_run_id": "aips-20260507T000346Z"
+  "last_seen_run_id": "aips-20260507T220627Z",
+  "resolved_run_id": "aips-20260507T220627Z",
+  "resolved_at": "2026-05-07T22:06:27Z"
 }
