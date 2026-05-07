@@ -51,6 +51,16 @@ class AIPS_Dashboard_Controller {
         ));
         $recent_posts = $recent_posts_data['items'];
 
+        // Pre-format dates for recent posts
+        if (!empty($recent_posts)) {
+            foreach ($recent_posts as $item) {
+                $item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
+                    $item->created_at,
+                    get_option('date_format')
+                );
+            }
+        }
+
         // Upcoming Scheduled Activity — sourced from all schedule types, matching Schedules page.
         // Pass include_stats=false to skip expensive aggregate COUNT queries since the dashboard
         // only needs schedule metadata (title, type, next_run) for the upcoming list.

@@ -89,28 +89,7 @@ if (!defined('ABSPATH')) {
 							</tr>
 						</thead>
 						<tbody>
-							<?php
-						$format_relative_date = static function ( $date_string ) {
-							if ( ! $date_string ) {
-								return '—';
-							}
-
-							$date_time = is_numeric( $date_string )
-								? AIPS_DateTime::fromTimestampOrNull( (int) $date_string )
-								: AIPS_DateTime::fromMysqlOrNull( (string) $date_string );
-							if ( ! ( $date_time instanceof AIPS_DateTime ) ) {
-								return '—';
-							}
-
-							$now = AIPS_DateTime::now();
-							if ( abs( $now->timestamp() - $date_time->timestamp() ) < DAY_IN_SECONDS ) {
-								return $date_time->toHumanDiff( $now );
-							}
-
-							return $date_time->toDisplay( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
-						};
-						?>
-						<?php foreach ($partial_posts_data as $post_data): ?>
+							<?php foreach ($partial_posts_data as $post_data): ?>
 							<tr>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
@@ -138,10 +117,10 @@ if (!defined('ABSPATH')) {
 									<div class="cell-meta"><?php echo esc_html($controller->format_post_status($post_data['post_status'])); ?></div>
 								</td>
 								<td>
-									<div class="cell-meta"><?php echo esc_html($format_relative_date($post_data['date_updated'])); ?></div>
+									<div class="cell-meta"><?php echo esc_html($post_data['date_updated']); ?></div>
 								</td>
 								<td>
-									<div class="cell-meta"><?php echo esc_html($format_relative_date($post_data['date_generated'])); ?></div>
+									<div class="cell-meta"><?php echo esc_html($post_data['date_generated']); ?></div>
 								</td>
 								<td>
 									<div class="cell-actions">

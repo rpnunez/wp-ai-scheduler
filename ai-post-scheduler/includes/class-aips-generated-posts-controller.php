@@ -115,9 +115,9 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-				'date_generated' => $item->created_at,
-				'date_published' => $post->post_date,
-				'date_scheduled' => $schedule ? $schedule->next_run : null,
+			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
+			'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($post->post_date, get_option('date_format') . ' ' . get_option('time_format')),
+			'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
@@ -129,6 +129,13 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'template_id' => $template_id,
 		));
+
+		// Pre-format dates for draft posts
+		if (!empty($draft_posts['items'])) {
+			foreach ($draft_posts['items'] as $item) {
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format'));
+			}
+		}
 
 		$partial_generations = $this->history_repository->get_partial_generations(array(
 			'page' => $partial_page,
@@ -153,8 +160,8 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-				'date_generated' => $item->created_at,
-				'date_updated' => $item->post_modified,
+			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
+			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),

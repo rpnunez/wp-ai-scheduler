@@ -93,26 +93,6 @@ if (!defined('ABSPATH')) {
 							</thead>
 							<tbody>
 								<?php
-								$format_relative_date = static function ( $date_string ) {
-									if ( ! $date_string ) {
-										return '—';
-									}
-
-									$date_time = is_numeric( $date_string )
-										? AIPS_DateTime::fromTimestampOrNull( (int) $date_string )
-										: AIPS_DateTime::fromMysqlOrNull( (string) $date_string );
-									if ( ! ( $date_time instanceof AIPS_DateTime ) ) {
-										return '—';
-									}
-
-									$now = AIPS_DateTime::now();
-									if ( abs( $now->timestamp() - $date_time->timestamp() ) < DAY_IN_SECONDS ) {
-										return $date_time->toHumanDiff( $now );
-									}
-
-									return $date_time->toDisplay( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
-								};
-								?>
 								<?php foreach ($draft_posts['items'] as $item): ?>
 								<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 									<td>
@@ -130,7 +110,7 @@ if (!defined('ABSPATH')) {
 									</td>
 									<td>
 										<div class="cell-meta">
-											<?php echo esc_html($format_relative_date($item->created_at)); ?>
+											<?php echo esc_html($item->created_at_formatted); ?>
 										</div>
 									</td>
 									<td>
