@@ -499,8 +499,90 @@
 			// Get the default quantity from the author's manual_post_generation_quantity setting
 			const defaultQuantity = this.getAuthorManualPostQuantity(authorId);
 
-			// Show custom modal with quantity input
-			this.showGeneratePostsModal(authorId, type, defaultQuantity, $btn);
+			// Use the new reusable showModal method
+			AIPS.Utilities.showModal({
+				heading: aipsAuthorsL10n.generatePostsModalTitle || 'Generate Posts',
+				message: aipsAuthorsL10n.generatePostsModalMessage || 'How many posts would you like to generate for this author?',
+				fields: [
+					{
+						type: 'number',
+						name: 'quantity',
+						label: aipsAuthorsL10n.numberOfPostsLabel || 'Number of Posts to Generate',
+						value: defaultQuantity,
+						min: 1,
+						max: 10,
+						required: true,
+						validate: function(value) {
+							const num = parseInt(value, 10);
+							if (!num || num < 1 || num > 10) {
+								return aipsAuthorsL10n.invalidQuantityError || 'Please enter a valid quantity between 1 and 10.';
+							}
+							return null;
+						}
+					}
+				],
+				buttons: [
+					{
+						label: aipsAuthorsL10n.cancel || 'Cancel',
+						className: 'aips-btn aips-btn-primary'
+					},
+					{
+						label: aipsAuthorsL10n.generateButtonLabel || 'Generate',
+						className: 'aips-btn aips-btn-author-posts',
+						submit: true,
+						action: (formData) => {
+							// Set button to loading state
+							AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+
+							$.ajax({
+								url: aipsAjax.ajaxUrl,
+								type: 'POST',
+								data: {
+									action: 'aips_unified_run_now',
+									nonce: aipsAjax.nonce,
+									id: authorId,
+									type: type,
+									quantity: formData.quantity
+								},
+								success: (response) => {
+									if (response.success) {
+										let message = AIPS.Utilities.escapeHtml(
+											response.data && response.data.message
+												? response.data.message
+												: aipsAuthorsL10n.postsGenerated
+										);
+
+										if (response.data && response.data.edit_url) {
+											const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+
+											if (safeEditUrl) {
+												message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
+													AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
+												'</a>';
+											}
+										}
+
+										AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
+									} else {
+										AIPS.Utilities.showToast(
+											response.data && response.data.message
+												? response.data.message
+												: aipsAuthorsL10n.errorGeneratingPosts,
+											'error'
+										);
+									}
+								},
+								error: () => {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
+								},
+								complete: () => {
+									AIPS.Utilities.resetButton($btn);
+								}
+							});
+						}
+					}
+				]
+			});
 		},
 
 		/**
@@ -518,142 +600,6 @@
 			return 1; // Default to 1 if not found
 		},
 
-		/**
-		 * Show a custom modal for generating posts with a quantity input field.
-		 *
-		 * @param {number} authorId - The author ID.
-		 * @param {string} type - The generation type (author_post_gen).
-		 * @param {number} defaultQuantity - The default quantity to display.
-		 * @param {jQuery} $btn - The button element that triggered the modal.
-		 */
-		showGeneratePostsModal: function(authorId, type, defaultQuantity, $btn) {
-			const headingId = 'aips-generate-posts-heading-' + Date.now();
-
-			// Build the overlay
-			const $overlay = $('<div></div>')
-				.addClass('aips-confirm-overlay')
-				.attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId });
-
-			const $dialog = $('<div class="aips-confirm-dialog"></div>');
-
-			const $header = $('<div class="aips-confirm-header"></div>')
-				.append($('<h3></h3>').attr({ id: headingId, 'class': 'aips-confirm-heading' }).text(aipsAuthorsL10n.generatePostsModalTitle || 'Generate Posts'));
-
-			const $body = $('<div class="aips-confirm-body"></div>')
-				.append($('<p class="aips-confirm-message"></p>').text(aipsAuthorsL10n.generatePostsModalMessage || 'How many posts would you like to generate for this author?'));
-
-			// Add the quantity input field
-			const $formGroup = $('<div class="form-group" style="margin-top: 15px;"></div>');
-			const $label = $('<label for="aips-generate-posts-quantity"></label>')
-				.text(aipsAuthorsL10n.numberOfPostsLabel || 'Number of Posts to Generate');
-			const $input = $('<input type="number" id="aips-generate-posts-quantity" min="1" max="10" />')
-				.val(defaultQuantity)
-				.css({ width: '100%', padding: '8px', marginTop: '5px' });
-
-			$formGroup.append($label, $input);
-			$body.append($formGroup);
-
-			const $footer = $('<div class="aips-confirm-footer"></div>');
-
-			const closeDialog = () => {
-				$overlay.addClass('aips-confirm-closing');
-				setTimeout(() => { $overlay.remove(); }, 200);
-				$(document).off('keydown.aips-generate-posts');
-			};
-
-			// Cancel button
-			const $cancelBtn = $('<button type="button"></button>')
-				.addClass('aips-btn aips-btn-primary')
-				.text(aipsAuthorsL10n.cancel || 'Cancel')
-				.on('click', closeDialog);
-
-			// Generate button
-			const $generateBtn = $('<button type="button"></button>')
-				.addClass('aips-btn aips-btn-author-posts')
-				.text(aipsAuthorsL10n.generateButtonLabel || 'Generate')
-				.on('click', () => {
-					const quantity = parseInt($input.val(), 10);
-
-					if (!quantity || quantity < 1 || quantity > 10) {
-						AIPS.Utilities.showToast(aipsAuthorsL10n.invalidQuantityError || 'Please enter a valid quantity between 1 and 10.', 'error');
-						return;
-					}
-
-					closeDialog();
-
-					// Set button to loading state
-					AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
-
-					$.ajax({
-						url: aipsAjax.ajaxUrl,
-						type: 'POST',
-						data: {
-							action: 'aips_unified_run_now',
-							nonce: aipsAjax.nonce,
-							id: authorId,
-							type: type,
-							quantity: quantity
-						},
-						success: (response) => {
-							if (response.success) {
-								let message = AIPS.Utilities.escapeHtml(
-									response.data && response.data.message
-										? response.data.message
-										: aipsAuthorsL10n.postsGenerated
-								);
-
-								if (response.data && response.data.edit_url) {
-									const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
-
-									if (safeEditUrl) {
-										message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
-											AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
-										'</a>';
-									}
-								}
-
-								AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
-							} else {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: aipsAuthorsL10n.errorGeneratingPosts,
-									'error'
-								);
-							}
-						},
-						error: () => {
-							AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
-						},
-						complete: () => {
-							AIPS.Utilities.resetButton($btn);
-						}
-					});
-				});
-
-			$footer.append($cancelBtn, $generateBtn);
-
-			$dialog.append($header, $body, $footer);
-			$overlay.append($dialog);
-			$('body').append($overlay);
-
-			// Focus the input field for accessibility
-			setTimeout(() => { $input.trigger('focus').trigger('select'); }, 100);
-
-			// Close on Escape key
-			$(document).on('keydown.aips-generate-posts', (e) => {
-				if (e.key === 'Escape') {
-					closeDialog();
-				}
-			});
-
-			// Close when clicking the backdrop (outside the dialog)
-			$overlay.on('click', (e) => {
-				if ($(e.target).is($overlay)) {
-					closeDialog();
-				}
-			});
-		},
 
 
 		/**
