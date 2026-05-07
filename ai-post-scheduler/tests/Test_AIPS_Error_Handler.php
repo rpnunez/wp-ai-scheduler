@@ -78,6 +78,30 @@ class Test_AIPS_Error_Handler extends WP_UnitTestCase {
 		$this->assertCount(1, $this->logger->errors);
 	}
 
+	public function test_get_safe_call_error_message_returns_original_exception_message() {
+		$error = new WP_Error(
+			'safe_call_failed',
+			'Fallback message',
+			array(
+				'exception_message' => 'Provider exploded',
+			)
+		);
+
+		$this->assertSame(
+			'Provider exploded',
+			AIPS_Error_Handler::get_safe_call_error_message($error)
+		);
+	}
+
+	public function test_get_safe_call_error_message_falls_back_to_wp_error_message() {
+		$error = new WP_Error('generic_error', 'Fallback message');
+
+		$this->assertSame(
+			'Fallback message',
+			AIPS_Error_Handler::get_safe_call_error_message($error)
+		);
+	}
+
 	/**
 	 * Replace the shared logger singleton for test isolation.
 	 *

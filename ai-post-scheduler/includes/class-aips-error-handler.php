@@ -49,6 +49,27 @@ class AIPS_Error_Handler {
 	}
 
 	/**
+	 * Extract the original exception message from a safe_call() WP_Error payload.
+	 *
+	 * Falls back to the WP_Error message when the safe_call() metadata is absent,
+	 * which keeps callers compatible with both safe_call() and non-safe_call()
+	 * WP_Error instances.
+	 *
+	 * @param WP_Error $error Error returned from safe_call() or another caller.
+	 *
+	 * @return string
+	 */
+	public static function get_safe_call_error_message(WP_Error $error) {
+		$error_data = $error->get_error_data();
+
+		if (is_array($error_data) && !empty($error_data['exception_message'])) {
+			return $error_data['exception_message'];
+		}
+
+		return $error->get_error_message();
+	}
+
+	/**
 	 * Centralized helper for text-generation errors.
 	 *
 	 * Creates a WP_Error and logs it via the provided log callback. Any

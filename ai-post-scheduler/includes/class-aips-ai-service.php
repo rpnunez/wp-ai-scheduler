@@ -182,7 +182,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
             if (is_wp_error($result)) {
                 $error_data      = $result->get_error_data();
-                $error_message   = $this->get_safe_call_error_message($result, $error_data);
+                $error_message   = AIPS_Error_Handler::get_safe_call_error_message($result);
                 $provider_code   = AIPS_Resilience_Service::extract_error_code_from_message($error_message);
                 $normalized_error = new WP_Error(
                     $provider_code ?: 'generation_failed',
@@ -219,22 +219,6 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         return $result;
-    }
-
-    /**
-     * Extract the original exception message from a safe_call() WP_Error payload.
-     *
-     * @param WP_Error   $error      Error returned from AIPS_Error_Handler::safe_call().
-     * @param mixed|null $error_data Error data payload attached to the WP_Error.
-     *
-     * @return string
-     */
-    private function get_safe_call_error_message(WP_Error $error, $error_data = null) {
-        if (is_array($error_data) && !empty($error_data['exception_message'])) {
-            return $error_data['exception_message'];
-        }
-
-        return $error->get_error_message();
     }
     
     /**
