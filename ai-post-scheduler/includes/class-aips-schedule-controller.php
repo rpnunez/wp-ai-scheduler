@@ -574,7 +574,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $result  = $service->run_now($id, $type);
 
         if (is_wp_error($result)) {
@@ -641,7 +641,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $result  = $service->toggle($id, $type, $is_active);
 
         if ($result !== false) {
@@ -675,7 +675,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $updated = 0;
         $errors  = array();
 
@@ -742,7 +742,7 @@ class AIPS_Schedule_Controller {
             ));
         }
 
-        $service  = new AIPS_Unified_Schedule_Service();
+        $service  = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $success  = 0;
         $errors   = array();
 
@@ -813,7 +813,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $service       = new AIPS_Unified_Schedule_Service();
+        $service       = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $deleted_count = 0;
         $deleted_items = array();
         $failed_items  = array();
@@ -893,7 +893,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
-        $service = new AIPS_Unified_Schedule_Service();
+        $service = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
