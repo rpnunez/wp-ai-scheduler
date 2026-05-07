@@ -92,22 +92,6 @@ if (!defined('ABSPATH')) {
 								</tr>
 							</thead>
 							<tbody>
-								<?php
-								$format_relative_date = static function ( $date_string ) {
-									if ( ! $date_string ) {
-										return '—';
-									}
-									$timestamp = strtotime( $date_string );
-									if ( ! $timestamp ) {
-										return '—';
-									}
-									if ( ( time() - $timestamp ) < DAY_IN_SECONDS ) {
-										/* translators: %s: human-readable time difference */
-										return sprintf( __( '%s ago', 'ai-post-scheduler' ), human_time_diff( $timestamp ) );
-									}
-									return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
-								};
-								?>
 								<?php foreach ($draft_posts['items'] as $item): ?>
 								<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 									<td>
@@ -125,7 +109,7 @@ if (!defined('ABSPATH')) {
 									</td>
 									<td>
 										<div class="cell-meta">
-											<?php echo esc_html($format_relative_date($item->created_at)); ?>
+											<?php echo esc_html($item->created_at_formatted); ?>
 										</div>
 									</td>
 									<td>

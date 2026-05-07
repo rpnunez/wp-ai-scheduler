@@ -1,0 +1,17 @@
+{
+  "id": "3cb3fe17cd4e348a13021dc24b1623cd72f05940",
+  "type": "scheduler_datetime_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-author-post-generator.php",
+  "symbol": "AIPS_Author_Post_Generator",
+  "anchor": "dispatch_author_slices:time-base_timestamp",
+  "summary": "Author-post slice dispatch anchors cron event timing with time() instead of AIPS_DateTime.",
+  "why_it_matters": "Using AIPS_DateTime consistently prevents drift and makes scheduler timing behavior easier to reason about in one framework abstraction.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-author-post-generator.php:176"
+  ],
+  "suggested_fix": "Use AIPS_DateTime::now()->timestamp() as the slice dispatch base timestamp.",
+  "first_seen_run_id": "aips-20260507T011431Z",
+  "last_seen_run_id": "aips-20260507T011431Z"
+}
