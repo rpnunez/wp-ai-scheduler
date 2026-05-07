@@ -173,29 +173,41 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
         // call those methods inside this closure.
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
-            try {
-                // Use simpleTextQuery API method
-                $result = $ai->simpleTextQuery($prompt, $params);
+            $result = AIPS_Error_Handler::safe_call(
+                function() use ($ai, $prompt, $params) {
+                    return $ai->simpleTextQuery($prompt, $params);
+                },
+                __('AI text generation request failed.', 'ai-post-scheduler')
+            );
 
-                $this->logger->log('Received response from simpleTextQuery', 'debug', array(
-                    'response' => $result,
-                ));
+            if (is_wp_error($result)) {
+                $error_data      = $result->get_error_data();
+                $error_message   = is_array($error_data) && !empty($error_data['exception_message'])
+                    ? $error_data['exception_message']
+                    : $result->get_error_message();
+                $provider_code   = AIPS_Resilience_Service::extract_error_code_from_message($error_message);
+                $normalized_error = new WP_Error(
+                    $provider_code ?: 'generation_failed',
+                    $error_message,
+                    $error_data
+                );
 
-                if ($result && !empty($result)) {
-                    $this->log_call('text', $prompt, $options, null, $result);
-                    return $result;
-                }
-
-                $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
-                $this->log_call('text', $prompt, $options, $error);
-                return $error;
-
-            } catch (Exception $e) {
-                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
-                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
-                $this->log_call('text', $prompt, $options, $error);
-                return $error;
+                $this->log_call('text', $prompt, $options, $normalized_error);
+                return $normalized_error;
             }
+
+            $this->logger->log('Received response from simpleTextQuery', 'debug', array(
+                'response' => $result,
+            ));
+
+            if ($result && !empty($result)) {
+                $this->log_call('text', $prompt, $options, null, $result);
+                return $result;
+            }
+
+            $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
+            $this->log_call('text', $prompt, $options, $error);
+            return $error;
         }, 'text', $prompt, $options);
 
         // Log resilience failures (circuit breaker, rate limit)

@@ -319,6 +319,26 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
+     * Helper: create a mock $mwai that throws from simpleTextQuery.
+     *
+     * @param string $message Exception message to throw.
+     * @return object Anonymous mock.
+     */
+    private function make_text_query_throwing_mock($message) {
+        return new class($message) {
+            private $message;
+
+            public function __construct($message) {
+                $this->message = $message;
+            }
+
+            public function simpleTextQuery($prompt, $params) {
+                throw new Exception($this->message);
+            }
+        };
+    }
+
+    /**
      * Test that maxTokens passed directly overrides the built-in default of 2000.
      */
     public function test_prepare_options_maxTokens_overrides_default() {
@@ -695,6 +715,46 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
             $this->assertSame('gpt-4', $capture->params['model'], 'model should be forwarded to the engine.');
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test generate_text preserves provider code extraction when the engine throws.
+     */
+    public function test_generate_text_exception_maps_provider_error_code() {
+        global $mwai;
+        $original_mwai = $mwai;
+        $mwai = $this->make_text_query_throwing_mock('Incorrect API key provided');
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt');
+
+            $this->assertInstanceOf('WP_Error', $result);
+            $this->assertSame('invalid_api_key', $result->get_error_code());
+            $this->assertSame('Incorrect API key provided', $result->get_error_message());
+        } finally {
+            $mwai = $original_mwai;
+        }
+    }
+
+    /**
+     * Test generate_text falls back to generation_failed when the engine throws an unknown error.
+     */
+    public function test_generate_text_exception_falls_back_to_generation_failed_code() {
+        global $mwai;
+        $original_mwai = $mwai;
+        $mwai = $this->make_text_query_throwing_mock('Provider exploded unexpectedly');
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Prompt');
+
+            $this->assertInstanceOf('WP_Error', $result);
+            $this->assertSame('generation_failed', $result->get_error_code());
+            $this->assertSame('Provider exploded unexpectedly', $result->get_error_message());
         } finally {
             $mwai = $original_mwai;
         }

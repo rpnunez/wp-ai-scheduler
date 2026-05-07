@@ -22,7 +22,7 @@ class AIPS_Error_Handler {
 	public static function safe_call($callable, $fallback_message) {
 		$message = self::normalize_fallback_message($fallback_message);
 
-		if (!is_callable($callable)) {
+		if (is_callable($callable) === false) {
 			self::log_safe_call_failure(
 				new InvalidArgumentException('AIPS_Error_Handler::safe_call received a non-callable value.'),
 				$message
