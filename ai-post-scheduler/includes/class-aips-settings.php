@@ -61,7 +61,7 @@ class AIPS_Settings {
             'default'           => $defaults['aips_default_category'],
         ));
         register_setting('aips_settings', 'aips_language', array(
-            'sanitize_callback' => 'sanitize_text_field',
+            'sanitize_callback' => array(__CLASS__, 'sanitize_language_option'),
             'default'           => $defaults['aips_language'],
         ));
         register_setting('aips_settings', 'aips_enable_logging', array(
@@ -644,6 +644,20 @@ class AIPS_Settings {
             'aips-settings',
             'aips_cache_section'
         );
+    }
+
+    /**
+     * Sanitize the language option value.
+     *
+     * Normalizes using sanitize_key and falls back to 'en' for unsupported codes.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return string Validated language code.
+     */
+    public static function sanitize_language_option($value) {
+        $key = sanitize_key($value);
+        $available = array_keys(AIPS_Language_Store::get_available_languages());
+        return in_array($key, $available, true) ? $key : 'en';
     }
 
     /**
