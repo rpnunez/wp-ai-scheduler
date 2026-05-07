@@ -203,7 +203,7 @@ $schedule_type_labels = array(
                                             <?php echo esc_html(ucfirst($item->status)); ?>
                                         </span>
                                     </td>
-                                    <td class="cell-meta"><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?></td>
+                                    <td class="cell-meta"><?php echo esc_html($item->created_at_formatted); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

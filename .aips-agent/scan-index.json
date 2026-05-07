@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "repo": "rpnunez/wp-ai-scheduler",
-  "last_run_at": "2026-05-07T00:03:46Z",
-  "last_run_id": "aips-20260507T000346Z",
+  "last_run_at": "2026-05-07T19:05:00Z",
+  "last_run_id": "aips-20260507T190500Z",
   "ruleset_hash": "722a25cc9909db8602efc279b31af916d0471d08",
   "files": {
     "ai-post-scheduler/includes/class-aips-calendar-controller.php": {
@@ -27,11 +27,11 @@
       "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-dashboard-controller.php": {
-      "fingerprint": "5f41b200be584907a9b8c9f169ee478ffd309f5f",
-      "last_scanned_at": "2026-05-07T00:03:46Z",
-      "last_scan_run_id": "aips-20260507T000346Z",
-      "findings_open_count": 1,
-      "status": "has_findings"
+      "fingerprint": "7dd9e132203a72ee1be51567570631e0057a393d",
+      "last_scanned_at": "2026-05-07T19:05:00Z",
+      "last_scan_run_id": "aips-20260507T190500Z",
+      "findings_open_count": 0,
+      "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-data-management-export-json.php": {
       "fingerprint": "661c4b7609412a8213217c7248b859094e380200",
@@ -62,18 +62,18 @@
       "status": "has_findings"
     },
     "ai-post-scheduler/includes/class-aips-templates.php": {
-      "fingerprint": "96c243877f5d8dd697881136b07fb197945cc112",
-      "last_scanned_at": "2026-05-07T00:03:46Z",
-      "last_scan_run_id": "aips-20260507T000346Z",
-      "findings_open_count": 1,
-      "status": "has_findings"
+      "fingerprint": "a1aec2edf30fb70d3f832ddd38e5f0c774f8aa40",
+      "last_scanned_at": "2026-05-07T18:45:00Z",
+      "last_scan_run_id": "aips-20260507T184500Z",
+      "findings_open_count": 0,
+      "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-generation-session.php": {
-      "fingerprint": "804c4e4b0ac9185a49397bf4c6e04c0a7ccb9217",
-      "last_scanned_at": "2026-05-07T00:03:46Z",
-      "last_scan_run_id": "aips-20260507T000346Z",
-      "findings_open_count": 1,
-      "status": "has_findings"
+      "fingerprint": "52909c2aaba73b9a352679ac9177886497c22597",
+      "last_scanned_at": "2026-05-07T19:05:00Z",
+      "last_scan_run_id": "aips-20260507T190500Z",
+      "findings_open_count": 0,
+      "status": "ok"
     },
     "ai-post-scheduler/tests/Test_AIPS_Calendar_Controller.php": {
       "fingerprint": "8690a64f327d239980fdf6f54a00f7b07b18aebf1962f040ca4b1883317da527",
@@ -88,6 +88,13 @@
       "last_scan_run_id": "aips-20260507T000346Z",
       "findings_open_count": 0,
       "status": "ok"
+    },
+    "ai-post-scheduler/tests/Test_AIPS_Generation_Context.php": {
+      "fingerprint": "598d74ad104a3a6806dbd9372edfafd28c0836aa",
+      "last_scanned_at": "2026-05-07T19:05:00Z",
+      "last_scan_run_id": "aips-20260507T190500Z",
+      "findings_open_count": 0,
+      "status": "ok"
     }
   },
   "open_findings": {
@@ -98,8 +105,8 @@
       "symbol": "AIPS_Dashboard_Controller",
       "anchor": "get_schedule_rows:strtotime-next_run_gmt",
       "first_seen_run_id": "aips-20260506T234621Z",
-      "last_seen_run_id": "aips-20260507T000346Z",
-      "status": "open",
+      "last_seen_run_id": "aips-20260507T190500Z",
+      "status": "resolved",
       "finding_file": ".aips-agent/findings/1f72095a773091abb9af3b53a6476437a624652c.json"
     },
     "385e7b45071cb7966f1f0a0af0a77ca13cdf7d4a": {
@@ -135,17 +142,6 @@
       "status": "open",
       "finding_file": ".aips-agent/findings/ceebabf5fab06d5fe1aabbdf93ba66315f2cc3d0.json"
     },
-    "9e391e15dea4370e23e518d91f75c51fa99838c0": {
-      "type": "service_datetime_gap",
-      "severity": "medium",
-      "path": "ai-post-scheduler/includes/class-aips-templates.php",
-      "symbol": "AIPS_Templates",
-      "anchor": "get_pending_stats:current_time-strtotime-next_run",
-      "first_seen_run_id": "aips-20260507T000346Z",
-      "last_seen_run_id": "aips-20260507T000346Z",
-      "status": "open",
-      "finding_file": ".aips-agent/findings/9e391e15dea4370e23e518d91f75c51fa99838c0.json"
-    },
     "e4090bcc8d154f838e8643ddcfd533da99087a22": {
       "type": "session_datetime_gap",
       "severity": "medium",
@@ -153,8 +149,8 @@
       "symbol": "AIPS_Generation_Session",
       "anchor": "start-complete-get_duration:current_time_mysql-strtotime",
       "first_seen_run_id": "aips-20260507T000346Z",
-      "last_seen_run_id": "aips-20260507T000346Z",
-      "status": "open",
+      "last_seen_run_id": "aips-20260507T190500Z",
+      "status": "resolved",
       "finding_file": ".aips-agent/findings/e4090bcc8d154f838e8643ddcfd533da99087a22.json"
     }
   }
