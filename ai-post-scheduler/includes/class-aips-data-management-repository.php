@@ -52,6 +52,34 @@ class AIPS_Data_Management_Repository {
 	}
 
 	/**
+	 * Determine whether a validated plugin table exists.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @return bool
+	 */
+	public function table_exists($full_table_name) {
+		$table_exists = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $full_table_name));
+
+		return $table_exists === $full_table_name;
+	}
+
+	/**
+	 * Fetch the CREATE TABLE statement for a validated plugin table.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @return string|null
+	 */
+	public function get_create_table_statement($full_table_name) {
+		$create_table = $this->wpdb->get_row('SHOW CREATE TABLE `' . esc_sql($full_table_name) . '`', ARRAY_N);
+
+		if (!is_array($create_table) || !isset($create_table[1])) {
+			return null;
+		}
+
+		return (string) $create_table[1];
+	}
+
+	/**
 	 * Disable foreign key checks for bulk imports.
 	 *
 	 * @return void
