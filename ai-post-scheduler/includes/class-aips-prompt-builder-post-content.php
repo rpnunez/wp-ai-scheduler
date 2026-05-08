@@ -23,6 +23,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Builder_Post_Content {
 
 	/**
+	 * Number of random bytes used for the uniqueness seed.
+	 */
+	const UNIQUENESS_SEED_BYTES = 4;
+
+	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
 	private $template_processor;
@@ -150,6 +155,6 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	private function get_uniqueness_seed_line() {
-		return 'Unique generation seed: ' . bin2hex(random_bytes(4)) . '. Use this to add extra variation in angle, framing, and structure beyond the titles explicitly listed above.';
+		return 'Unique generation seed: ' . bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES)) . '. Use this to add extra variation in angle, framing, and structure beyond the titles explicitly listed above.';
 	}
 }

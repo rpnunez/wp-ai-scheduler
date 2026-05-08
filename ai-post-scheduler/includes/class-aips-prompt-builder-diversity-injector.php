@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Builder_Diversity_Injector {
 
 	/**
+	 * Default number of recent titles to include in diversity blocks.
+	 */
+	const DEFAULT_TITLE_LIMIT = 12;
+
+	/**
 	 * @var AIPS_History_Repository|null
 	 */
 	private $history_repository;
@@ -204,7 +209,17 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	 * @return int
 	 */
 	private function get_limit($subject) {
-		$limit = (int) apply_filters('aips_diversity_avoid_titles_limit', 12, $subject);
+		/**
+		 * Filters how many recent titles are included in diversity avoid-title blocks.
+		 *
+		 * The subject may be a template object, an AIPS_Generation_Context instance,
+		 * or an author object when building author-topic prompts. Default 12 titles.
+		 *
+		 * @since 2.6.0
+		 * @param int   $limit   Number of titles to include.
+		 * @param mixed $subject Template object, generation context, or author object.
+		 */
+		$limit = (int) apply_filters('aips_diversity_avoid_titles_limit', self::DEFAULT_TITLE_LIMIT, $subject);
 
 		return max(1, $limit);
 	}
