@@ -721,6 +721,9 @@
                 success: function(response) {
                     if (response.success) {
                         var savedId = response.data.template_id;
+                        if (response.data && response.data.slicing_notice && response.data.slicing_notice.message) {
+                            AIPS.Utilities.showToast(response.data.slicing_notice.message, 'warning');
+                        }
                         AIPS.lastSavedTemplateId = savedId;
                         AIPS.showPostSaveActions(savedId);
                     } else {
@@ -800,6 +803,10 @@
                         }
 
                         AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
+
+                        if (response.data && response.data.slicing_notice && response.data.slicing_notice.message) {
+                            AIPS.Utilities.showToast(response.data.slicing_notice.message, 'warning');
+                        }
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }

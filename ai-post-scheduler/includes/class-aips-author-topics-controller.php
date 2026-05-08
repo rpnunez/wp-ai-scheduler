@@ -82,13 +82,19 @@ class AIPS_Author_Topics_Controller {
 	private $bulk_generator_service;
 
 	/**
+	 * @var AIPS_Job_Scheduler Job scheduler service
+	 */
+	private $job_scheduler;
+
+	/**
 	 * Initialize the controller.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
+	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null) {
+	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -99,6 +105,7 @@ class AIPS_Author_Topics_Controller {
 		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
+		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -826,11 +833,21 @@ class AIPS_Author_Topics_Controller {
 		// Schedule to run in a few seconds
 		$timestamp = time() + 5;
 
-		// Prefer Action Scheduler if available, otherwise use wp_schedule_single_event
+		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
 		if (function_exists('as_schedule_single_action')) {
 			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
 		} else {
-			wp_schedule_single_event($timestamp, 'aips_process_author_embeddings', array($args));
+			$this->job_scheduler->schedule_simple(
+				'aips_process_author_embeddings',
+				$timestamp,
+				array($args),
+				array(
+					'job_type'      => 'author_embeddings',
+					'retry_options' => array(
+						'max_attempts' => 3,
+					),
+				)
+			);
 		}
 	}
 

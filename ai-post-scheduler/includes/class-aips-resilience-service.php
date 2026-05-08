@@ -270,6 +270,45 @@ class AIPS_Resilience_Service {
     }
 
     /**
+     * Execute a callable with simple retry and exponential backoff.
+     *
+     * Unlike execute_with_retry() which is designed for AI operations and expects
+     * WP_Error returns, this method supports any boolean-returning callable and
+     * provides a simple, configurable retry mechanism with exponential backoff.
+     *
+     * @param callable $callable     Function to execute. Must return true on success, false on failure.
+     * @param int      $max_attempts Maximum number of attempts (default: 3, clamped 1-5).
+     * @param int      $initial_delay Initial delay in seconds between retries (default: 1).
+     * @param bool     $use_backoff  Whether to use exponential backoff (default: true).
+     * @return bool True if any attempt succeeded, false if all failed.
+     */
+    public function retry_with_backoff(callable $callable, int $max_attempts = 3, int $initial_delay = 1, bool $use_backoff = true): bool {
+        $max_attempts = max(1, min(5, $max_attempts)); // Clamp between 1-5
+        $initial_delay = max(1, $initial_delay); // At least 1 second
+
+        for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
+            $result = $callable();
+
+            if ($result === true) {
+                return true;
+            }
+
+            // If not the last attempt, wait before retrying
+            if ($attempt < $max_attempts) {
+                if ($use_backoff) {
+                    // Exponential backoff: 1s, 2s, 4s, 8s, etc.
+                    $delay = $initial_delay * pow(2, $attempt - 1);
+                } else {
+                    $delay = $initial_delay;
+                }
+                sleep($delay);
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Calculate retry delay with exponential backoff and jitter.
      *
      * @param int   $attempt       Current attempt number.

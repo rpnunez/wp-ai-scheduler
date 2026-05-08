@@ -50,6 +50,11 @@ class AIPS_Internal_Links_Controller {
 	private $logger;
 
 	/**
+	 * @var AIPS_Job_Scheduler
+	 */
+	private $job_scheduler;
+
+	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
 	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
@@ -57,19 +62,22 @@ class AIPS_Internal_Links_Controller {
 	 * @param AIPS_Post_Embeddings_Repository|null      $embeddings_repo  Embeddings repository.
 	 * @param AIPS_Logger|null                          $logger           Logger instance.
 	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
+	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
 	 */
 	public function __construct(
 		$service = null,
 		$links_repo = null,
 		$embeddings_repo = null,
 		$logger = null,
-		$inserter_service = null
+		$inserter_service = null,
+		$job_scheduler = null
 	) {
 		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
 		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
 		$this->embeddings_repo  = $embeddings_repo  ?: new AIPS_Post_Embeddings_Repository();
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
+		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
@@ -725,7 +733,18 @@ class AIPS_Internal_Links_Controller {
 		if (function_exists('as_schedule_single_action')) {
 			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
 		} else {
-			wp_schedule_single_event($timestamp, 'aips_index_posts_batch', array($args));
+			// Use centralized job scheduler
+			$this->job_scheduler->schedule_simple(
+				'aips_index_posts_batch',
+				$timestamp,
+				array($args),
+				array(
+					'job_type'      => 'internal_links_indexing',
+					'retry_options' => array(
+						'max_attempts' => 3,
+					),
+				)
+			);
 		}
 	}
 }
