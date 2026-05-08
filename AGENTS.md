@@ -12,8 +12,7 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 
 ## Critical Constraints (Anti-Duplication)
 1. **Check Existing PRs:** Before making any file modifications, you MUST use the GitHub CLI (`gh pr list`) or check the repository's open pull requests.
-2. **De-duplication:** If a PR already exists that addresses the same feature or modifies the same files, ABORT the task immediately.
-3. **Task Tracking:** Always check `TASKS.md` at the root. If the task you are assigned is already listed as "In Progress" or "Completed," do not proceed.
+2. **De-duplication:** When determining what to work on (unless given specific instructions), the agent MUST pull the current open PR list before making a decision and choose work that is not already addressed by an open PR to avoid wasted time and resources. If a PR already exists that addresses the same feature, ABORT the task immediately.
 
 ## Current runtime shape
 
