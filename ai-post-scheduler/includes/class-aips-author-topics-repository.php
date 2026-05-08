@@ -255,13 +255,20 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects.
 	 */
 	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+
 		if ($after_id > 0) {
 			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name}
-				WHERE author_id = %d
-				AND status = 'approved'
-				AND id > %d
-				ORDER BY id ASC
+				"SELECT t.* FROM {$this->table_name} t
+				LEFT JOIN {$logs_table} l
+					ON l.author_topic_id = t.id
+					AND l.action = 'post_generated'
+					AND l.post_id IS NOT NULL
+				WHERE t.author_id = %d
+				AND t.status = 'approved'
+				AND l.id IS NULL
+				AND t.id > %d
+				ORDER BY t.id ASC
 				LIMIT %d",
 				$author_id,
 				$after_id,
@@ -270,10 +277,15 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name}
-			WHERE author_id = %d
-			AND status = 'approved'
-			ORDER BY id ASC
+			"SELECT t.* FROM {$this->table_name} t
+			LEFT JOIN {$logs_table} l
+				ON l.author_topic_id = t.id
+				AND l.action = 'post_generated'
+				AND l.post_id IS NOT NULL
+			WHERE t.author_id = %d
+			AND t.status = 'approved'
+			AND l.id IS NULL
+			ORDER BY t.id ASC
 			LIMIT %d",
 			$author_id,
 			$limit

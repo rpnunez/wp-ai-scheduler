@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-        'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-        'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
+        'pretty_version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
+        'version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
+        'reference' => 'c07b6ee2d3b0ebbd9f756fff2d4a79a93ffa7a4d',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-            'version' => 'dev-bug-hunter-fix-template-typeerror-843787395166090092',
-            'reference' => '7126343dd1e5cb473906f91c3ac79380d41236c6',
+            'pretty_version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
+            'version' => 'dev-scheduler-time-and-error-handling-18027481328929783849',
+            'reference' => 'c07b6ee2d3b0ebbd9f756fff2d4a79a93ffa7a4d',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

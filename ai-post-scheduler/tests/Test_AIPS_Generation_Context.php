@@ -166,6 +166,26 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertNotNull($template_data);
 		$this->assertEquals(123, $template_data['id']);
 	}
+
+	/**
+	 * Test that generation session duration is computed from MySQL timestamps.
+	 *
+	 * @return void
+	 */
+	public function test_generation_session_duration_from_mysql_timestamps() {
+		$session = new AIPS_Generation_Session();
+
+		$reflection = new ReflectionClass($session);
+		$started_prop = $reflection->getProperty('started_at');
+		$completed_prop = $reflection->getProperty('completed_at');
+		$started_prop->setAccessible(true);
+		$completed_prop->setAccessible(true);
+
+		$started_prop->setValue($session, '2026-05-06 10:00:00');
+		$completed_prop->setValue($session, '2026-05-06 10:02:30');
+
+		$this->assertSame(150, $session->get_duration());
+	}
 	
 	/**
 	 * Test that context data is properly serialized to array.

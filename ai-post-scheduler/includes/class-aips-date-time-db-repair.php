@@ -350,40 +350,15 @@ class AIPS_Date_Time_DB_Repair {
 	/**
 	 * Convert a single legacy DATETIME/TIMESTAMP column to BIGINT.
 	 *
-	 * @param string $table Full table name.
+	 * Delegates to AIPS_DB_Manager::convert_datetime_column_to_bigint() which
+	 * is the single canonical implementation of this four-step ALTER routine.
+	 *
+	 * @param string $table    Full table name.
 	 * @param string $col_name Column name.
-	 * @return bool
+	 * @return bool            True if the conversion was performed; false otherwise.
 	 */
 	private function convert_legacy_datetime_column_to_bigint( $table, $col_name ) {
-		$col_info = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$col_name
-			)
-		);
-
-		if ( ! $col_info ) {
-			return false;
-		}
-
-		$type_lower = strtolower( $col_info->Type );
-
-		if ( false !== strpos( $type_lower, 'bigint' ) ) {
-			return false;
-		}
-
-		if ( false === strpos( $type_lower, 'datetime' ) && false === strpos( $type_lower, 'timestamp' ) ) {
-			return false;
-		}
-
-		$tmp_col = $col_name . '_ts_tmp';
-
-		$this->wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$tmp_col}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$this->wpdb->query( "UPDATE `{$table}` SET `{$tmp_col}` = IFNULL(UNIX_TIMESTAMP(`{$col_name}`), 0)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$this->wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$col_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$this->wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-		return true;
+		return AIPS_DB_Manager::convert_datetime_column_to_bigint( $table, $col_name );
 	}
 
 	/**

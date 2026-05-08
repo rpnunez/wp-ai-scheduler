@@ -89,12 +89,19 @@ class AIPS_Batch_Queue_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_Job_Scheduler Centralized job scheduler service
+	 */
+	private $job_scheduler;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Logger|null $logger Optional logger for dispatch diagnostics.
+	 * @param AIPS_Logger|null        $logger        Optional logger for dispatch diagnostics.
+	 * @param AIPS_Job_Scheduler|null $job_scheduler Optional job scheduler service.
 	 */
-	public function __construct( ?AIPS_Logger $logger = null ) {
+	public function __construct( ?AIPS_Logger $logger = null, ?AIPS_Job_Scheduler $job_scheduler = null ) {
 		$this->logger = $logger ?: new AIPS_Logger();
+		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler(null, null, $this->logger);
 	}
 
 	// -----------------------------------------------------------------------
@@ -115,8 +122,7 @@ class AIPS_Batch_Queue_Service {
 	 * @return bool True when batch queue should be used.
 	 */
 	public function needs_batch_queue(int $post_quantity): bool {
-		$threshold = max(2, (int) apply_filters('aips_large_batch_threshold', self::DEFAULT_THRESHOLD));
-		return $post_quantity >= $threshold;
+		return $post_quantity >= $this->get_large_batch_threshold();
 	}
 
 	/**
@@ -128,7 +134,7 @@ class AIPS_Batch_Queue_Service {
 	 * @return int Spread window in seconds (minimum 0).
 	 */
 	public function get_window_seconds(): int {
-		return max(0, (int) apply_filters('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS));
+		return $this->get_batch_window_seconds();
 	}
 
 	/**
@@ -146,26 +152,13 @@ class AIPS_Batch_Queue_Service {
 	 * }
 	 */
 	public function calculate_config(int $post_quantity): array {
-		$max_batches    = max(1, (int) apply_filters('aips_batch_max_jobs', self::DEFAULT_MAX_BATCHES));
-		$window_seconds = $this->get_window_seconds();
+		$config = $this->job_scheduler->get_slicer()->calculate_slices($post_quantity, array(
+			'context'        => 'schedule',
+			'max_slices'     => $this->get_max_batches(),
+			'window_seconds' => $this->get_batch_window_seconds(),
+		));
 
-		// Aim for ~2 posts per job, but never exceed max_batches.
-		$num_batches     = min($max_batches, (int) ceil($post_quantity / 2));
-		$num_batches     = max(1, $num_batches);
-		$posts_per_batch = (int) ceil($post_quantity / $num_batches);
-
-		// Spread jobs evenly across the window.
-		// If only 1 batch, no spread is needed.
-		$interval_seconds = ($num_batches > 1)
-			? (float) ($window_seconds / ($num_batches - 1))
-			: 0.0;
-
-		return array(
-			'num_batches'      => $num_batches,
-			'posts_per_batch'  => $posts_per_batch,
-			'window_seconds'   => $window_seconds,
-			'interval_seconds' => $interval_seconds,
-		);
+		return $config->to_array();
 	}
 
 	/**
@@ -193,14 +186,24 @@ class AIPS_Batch_Queue_Service {
 		int $post_quantity,
 		int $base_timestamp,
 		string $correlation_id = ''
-	): array {
-		return $this->dispatch_generic(
+	) {
+		$result = $this->job_scheduler->schedule_batched(
 			self::HOOK,
 			$post_quantity,
-			$base_timestamp,
-			array( $schedule_id ),
-			$correlation_id
+			array(
+				'prefix_args'     => array( $schedule_id ),
+				'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
+				'context'         => 'schedule',
+				'correlation_id'  => $correlation_id,
+			)
 		);
+
+		if (is_wp_error($result)) {
+			return $result;
+		}
+
+		// Convert to legacy format
+		return $result->to_array();
 	}
 
 	/**
@@ -235,118 +238,102 @@ class AIPS_Batch_Queue_Service {
 		int $base_timestamp,
 		array $prefix_args = array(),
 		string $correlation_id = ''
-	): array {
-		if ( $item_count < 1 ) {
-			return new WP_Error(
-				'aips_invalid_batch_item_count',
-				__( 'Batch queue dispatch requires at least one item.', 'ai-post-scheduler' )
-			);
-		}
-
-		$config            = $this->calculate_config($item_count);
-		$num_batches      = $config['num_batches'];
-		$posts_per_batch  = $config['posts_per_batch'];
-		$interval_seconds = $config['interval_seconds'];
-		$scheduled_batches = 0;
-
-		for ($batch = 0; $batch < $num_batches; $batch++) {
-			$start_index     = $batch * $posts_per_batch;
-			// min() ensures the last batch does not exceed the total when
-			// item_count is not evenly divisible by posts_per_batch.
-			$this_batch_size = min($posts_per_batch, $item_count - $start_index);
-
-			// Batch 0 fires at base_timestamp (immediately); subsequent batches
-			// are staggered by interval_seconds each.
-			$delay   = (int) round($batch * $interval_seconds);
-			$fire_at = $base_timestamp + $delay;
-
-			$args = array_merge(
-				$prefix_args,
-				array(
-					$start_index,
-					$this_batch_size,
-					$item_count,
-					$correlation_id,
-				)
-			);
-
-			$existing_timestamp = wp_next_scheduled( $hook, $args );
-			if ( false !== $existing_timestamp ) {
-				$this->logger->log(
-					sprintf(
-						'Batch queue dispatch: hook %s slice start=%d size=%d already scheduled for %d; reusing existing event.',
-						$hook,
-						$start_index,
-						$this_batch_size,
-						(int) $existing_timestamp
-					),
-					'warning'
-				);
-				$scheduled_batches++;
-				continue;
-			}
-
-			$schedule_result = wp_schedule_single_event(
-				$fire_at,
-				$hook,
-				$args,
-				true
-			);
-
-			if ( is_wp_error( $schedule_result ) ) {
-				$this->logger->log(
-					sprintf(
-						'Batch queue dispatch failed for hook %s slice start=%d size=%d: %s',
-						$hook,
-						$start_index,
-						$this_batch_size,
-						$schedule_result->get_error_message()
-					),
-					'error'
-				);
-				return new WP_Error(
-					'aips_batch_queue_schedule_failed',
-					sprintf(
-						/* translators: 1: hook name, 2: start index, 3: batch size, 4: error message */
-						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d): %4$s', 'ai-post-scheduler' ),
-						$hook,
-						$start_index,
-						$this_batch_size,
-						$schedule_result->get_error_message()
-					)
-				);
-			}
-
-			if ( false === $schedule_result ) {
-				$this->logger->log(
-					sprintf(
-						'Batch queue dispatch failed for hook %s slice start=%d size=%d: wp_schedule_single_event returned false.',
-						$hook,
-						$start_index,
-						$this_batch_size
-					),
-					'error'
-				);
-				return new WP_Error(
-					'aips_batch_queue_schedule_failed',
-					sprintf(
-						/* translators: 1: hook name, 2: start index, 3: batch size */
-						__( 'Failed scheduling batch queue event for %1$s (start %2$d, size %3$d).', 'ai-post-scheduler' ),
-						$hook,
-						$start_index,
-						$this_batch_size
-					)
-				);
-			}
-
-			$scheduled_batches++;
-		}
-
-		return array(
-			'num_batches'       => $num_batches,
-			'posts_per_batch'   => $posts_per_batch,
-			'window_seconds'    => $config['window_seconds'],
-			'scheduled_batches' => $scheduled_batches,
+	) {
+		$result = $this->job_scheduler->schedule_batched(
+			$hook,
+			$item_count,
+			array(
+				'prefix_args'     => $prefix_args,
+				'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
+				'context'         => 'default',
+				'correlation_id'  => $correlation_id,
+			)
 		);
+
+		if (is_wp_error($result)) {
+			return $result;
+		}
+
+		// Convert to legacy format
+		return $result->to_array();
+	}
+
+	/**
+	 * Normalise a batch base timestamp so dispatch is not anchored in the past.
+	 *
+	 * When cron is delayed, callers may pass a stale timestamp. Anchoring queued
+	 * slices to "now" avoids scheduling immediately-overdue events in the past.
+	 *
+	 * @param int $base_timestamp Requested base timestamp.
+	 * @return int Normalized timestamp at or after current time.
+	 */
+	private function normalize_base_timestamp( int $base_timestamp ): int {
+		$now = AIPS_DateTime::now()->timestamp();
+
+		if ( $base_timestamp >= $now ) {
+			return $base_timestamp;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Batch queue dispatch requested with past base timestamp %d; normalizing to %d.',
+				$base_timestamp,
+				$now
+			),
+			'warning'
+		);
+
+		return $now;
+	}
+
+	/**
+	 * Resolve large-batch threshold with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	public function get_large_batch_threshold(): int {
+		$threshold = (int) apply_filters(
+			'aips_large_batch_threshold',
+			apply_filters(
+				'aips_batch_threshold_schedule',
+				apply_filters('aips_batch_threshold', self::DEFAULT_THRESHOLD)
+			)
+		);
+
+		return max(2, $threshold);
+	}
+
+	/**
+	 * Resolve maximum batches with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	private function get_max_batches(): int {
+		$max_batches = (int) apply_filters(
+			'aips_batch_max_jobs',
+			apply_filters(
+				'aips_batch_max_slices_schedule',
+				apply_filters('aips_batch_max_slices', self::DEFAULT_MAX_BATCHES)
+			)
+		);
+
+		return max(1, $max_batches);
+	}
+
+	/**
+	 * Resolve batch window with backward-compatible filter support.
+	 *
+	 * @return int
+	 */
+	private function get_batch_window_seconds(): int {
+		$window_seconds = (int) apply_filters(
+			'aips_batch_queue_window_seconds',
+			apply_filters(
+				'aips_batch_window_seconds_schedule',
+				apply_filters('aips_batch_window_seconds', self::DEFAULT_WINDOW_SECONDS)
+			)
+		);
+
+		return max(0, $window_seconds);
 	}
 }
