@@ -150,6 +150,6 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	private function get_uniqueness_seed_line() {
-		return 'Unique generation seed: ' . bin2hex(random_bytes(4)) . '. Use this to ensure your angle, framing, and structure differ from any prior post on this topic.';
+		return 'Unique generation seed: ' . bin2hex(random_bytes(4)) . '. Use this to add extra variation in angle, framing, and structure beyond the titles explicitly listed above.';
 	}
 }
