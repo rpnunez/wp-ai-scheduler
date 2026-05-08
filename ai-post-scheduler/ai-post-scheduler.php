@@ -582,6 +582,15 @@ final class AI_Post_Scheduler {
             );
         }, 10, 2);
 
+        // Retry failed topic-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_topics', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->retry_failed_topic_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
         // Lazy-resolve the author-post generator only when its hook fires.
         add_action('aips_generate_author_posts', function() {
             AIPS_Author_Post_Generator::instance()->process();
@@ -592,6 +601,15 @@ final class AI_Post_Scheduler {
         add_action('aips_process_author_post_slice', function( $author_id, $correlation_id = '' ) {
             AIPS_Author_Post_Generator::instance()->process_author_slice(
                 (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed post-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_posts', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->retry_failed_post_slices(
+                (string) $author_ids_json,
                 (string) $correlation_id
             );
         }, 10, 2);
