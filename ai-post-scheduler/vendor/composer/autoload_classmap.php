@@ -1736,6 +1736,7 @@ return array(
     'Test_AIPS_Planner_Testable' => $baseDir . '/tests/Test_AIPS_Planner_Bulk_Generate_Now.php',
     'Test_AIPS_Post_Review_Repository' => $baseDir . '/tests/Test_AIPS_Post_Review_Repository.php',
     'Test_AIPS_Prompt_Builder' => $baseDir . '/tests/Test_AIPS_Prompt_Builder.php',
+    'Test_AIPS_Regeneration_DI' => $baseDir . '/tests/Test_AIPS_Regeneration_DI.php',
     'Test_AIPS_Resilience_Improvements' => $baseDir . '/tests/Test_AIPS_Resilience_Improvements.php',
     'Test_AIPS_Schedule_Controller_Bulk' => $baseDir . '/tests/Test_AIPS_Schedule_Controller_Bulk.php',
     'Test_AIPS_Schedule_Controller_Run_Now' => $baseDir . '/tests/Test_AIPS_Schedule_Controller_Run_Now.php',
