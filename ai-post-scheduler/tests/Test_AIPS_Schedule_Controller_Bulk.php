@@ -344,19 +344,24 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$this->assertEquals( 'No schedule IDs provided.', $response['data']['message'] );
 	}
 
-	public function test_bulk_run_now_exceeds_limit_returns_error() {
+	public function test_bulk_run_now_with_many_items_processes_without_limit_error() {
 		wp_set_current_user( $this->admin_user_id );
 
-		// Default limit is 5; create 6 schedules
+		// Previously this path failed at >5. It should now process all schedules.
 		$ids = $this->create_test_schedules( 6 );
+
+		$this->scheduler->expects( $this->exactly( 6 ) )
+			->method( 'run_schedule_now' )
+			->willReturn( 777 );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['ids']   = $ids;
 
 		$response = $this->call_ajax( array( $this->controller, 'ajax_bulk_run_now_schedules' ) );
 
-		$this->assertFalse( $response['success'] );
-		$this->assertStringContainsString( 'Too many schedules selected', $response['data']['message'] );
+		$this->assertTrue( $response['success'] );
+		$this->assertCount( 6, $response['data']['post_ids'] );
+		$this->assertEmpty( $response['data']['errors'] );
 	}
 
 	public function test_bulk_run_now_permission_denied() {
