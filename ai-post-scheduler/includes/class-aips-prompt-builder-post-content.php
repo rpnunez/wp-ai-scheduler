@@ -96,6 +96,8 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
@@ -116,6 +118,21 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 		}
 
+		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
+	}
+
+	/**
+	 * Generate a uniqueness seed line to append to content prompts.
+	 *
+	 * Appending a cryptographically random seed for each generation run nudges
+	 * the AI to produce varied angles and framing rather than converging on the
+	 * same post structure when the same base prompt is used repeatedly.
+	 *
+	 * @return string
+	 */
+	private function get_uniqueness_seed_line() {
+		return 'Unique generation seed: ' . bin2hex(random_bytes(4)) . '. Use this to ensure your angle, framing, and structure differ from any prior post on this topic.';
 	}
 }

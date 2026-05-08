@@ -199,4 +199,60 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		$this->assertIsString($result);
 		$this->assertStringContainsString('Simple prompt.', $result);
 	}
+
+	// ------------------------------------------------------------------
+	// Uniqueness seed injection
+	// ------------------------------------------------------------------
+
+	/**
+	 * Legacy template path: a uniqueness seed line is appended to every prompt.
+	 */
+	public function test_uniqueness_seed_appended_to_legacy_prompt() {
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $this->builder->build($template, null, null);
+
+		$this->assertStringContainsString('Unique generation seed:', $result);
+	}
+
+	/**
+	 * Context-based path: a uniqueness seed line is appended to every prompt.
+	 */
+	public function test_uniqueness_seed_appended_to_context_prompt() {
+		$template = (object) array(
+			'id'                   => 1,
+			'name'                 => 'T',
+			'prompt_template'      => 'Write about {{topic}}.',
+			'article_structure_id' => null,
+		);
+		$context = new AIPS_Template_Context($template, null, 'AI Agents');
+
+		$result = $this->builder->build($context);
+
+		$this->assertStringContainsString('Unique generation seed:', $result);
+	}
+
+	/**
+	 * Two consecutive calls produce different seed values.
+	 */
+	public function test_uniqueness_seeds_differ_across_calls() {
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result1 = $this->builder->build($template, null, null);
+		$result2 = $this->builder->build($template, null, null);
+
+		// Extract the seed hex strings to compare them directly.
+		preg_match('/Unique generation seed: ([0-9a-f]+)\./', $result1, $matches1);
+		preg_match('/Unique generation seed: ([0-9a-f]+)\./', $result2, $matches2);
+
+		$this->assertNotEmpty($matches1[1] ?? '');
+		$this->assertNotEmpty($matches2[1] ?? '');
+		$this->assertNotEquals($matches1[1], $matches2[1], 'Seeds should differ across generation calls.');
+	}
 }
