@@ -141,6 +141,12 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 			}
 		};
 
+		$authors_repository = new class {
+			public function update_post_generation_schedule($author_id, $next_run) {
+				// No-op: avoid DB writes in unit tests.
+			}
+		};
+
 		$post_generator = new class extends AIPS_Author_Post_Generator {
 			public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
 				return 3000 + (int) $topic->id;
@@ -148,6 +154,7 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 		};
 
 		$this->inject_property($post_generator, 'topics_repository', $topics_repository);
+		$this->inject_property($post_generator, 'authors_repository', $authors_repository);
 
 		$author = (object) array(
 			'id' => 12,

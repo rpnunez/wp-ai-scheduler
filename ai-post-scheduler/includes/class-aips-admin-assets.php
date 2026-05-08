@@ -221,6 +221,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),

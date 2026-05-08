@@ -159,7 +159,7 @@ class AIPS_Unified_Schedule_Service {
 	 * Return value varies by type:
 	 *  – template_schedule : array of post IDs (or WP_Error)
 	 *  – author_topic_gen  : array of topics (or WP_Error)
-	 *  – author_post_gen   : array of post IDs (or WP_Error)
+	 *  – author_post_gen   : array of generated post IDs (or WP_Error)
 	 *
 	 * @param int      $id       Numeric ID.
 	 * @param string   $type     One of the TYPE_* constants.

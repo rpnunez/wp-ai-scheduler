@@ -239,7 +239,7 @@ $site_ctx = AIPS_Site_Context::get();
                                                     <span class="dashicons dashicons-update"></span>
                                                     <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
                                                 </button>
-                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
+                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
                                                     <span class="dashicons dashicons-admin-post"></span>
                                                     <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
                                                 </button>

@@ -602,7 +602,7 @@ class AIPS_Schedule_Controller {
 
         $id       = isset($_POST['id']) ? absint($_POST['id']) : 0;
         $type     = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
-        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : null;
+        $quantity = isset($_POST['quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['quantity']))) : null;
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));

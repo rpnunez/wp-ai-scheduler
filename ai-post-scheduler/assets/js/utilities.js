@@ -266,10 +266,11 @@
          *   @param {boolean}  [fields[].required]  - Whether field is required.
          *   @param {Function} [fields[].validate]  - Custom validation function(value). Return error message string or null if valid.
          * @param {Array} options.buttons - Array of button config objects. Each may contain:
-         *   @param {string}   buttons[].label      - Button label text.
-         *   @param {string}   [buttons[].className] - CSS class(es) for the button.
-         *   @param {Function} [buttons[].action]   - Callback invoked with formData object: action(formData).
-         *   @param {boolean}  [buttons[].submit]   - If true, validates form before calling action.
+         *   @param {string}   buttons[].label            - Button label text.
+         *   @param {string}   [buttons[].className]      - CSS class(es) for the button.
+         *   @param {Function} [buttons[].action]         - Callback invoked with formData object: action(formData).
+         *   @param {boolean}  [buttons[].submit]         - If true, validates form before calling action.
+         *   @param {boolean}  [buttons[].closeAfterAction] - If true (default), closes modal before calling action.
          *
          * @example
          * AIPS.Utilities.showModal({
@@ -466,14 +467,18 @@
 
                     // Required validation
                     if (fieldInfo.required) {
+                        var labelText = fieldInfo.$input.prev('label').text() || fieldName;
+                        var requiredTpl = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.fieldRequired) || '%s is required.';
+                        var requiredMsg = requiredTpl.replace('%s', labelText);
+
                         if (fieldInfo.type === 'checkbox') {
                             if (!val) {
-                                firstError = (fieldInfo.$input.prev('label').text() || fieldName) + ' is required.';
+                                firstError = requiredMsg;
                                 return;
                             }
                         } else {
                             if (!val || (typeof val === 'string' && val.trim() === '')) {
-                                firstError = (fieldInfo.$input.prev('label').text() || fieldName) + ' is required.';
+                                firstError = requiredMsg;
                                 return;
                             }
                         }
@@ -494,10 +499,11 @@
 
             // Build buttons
             $.each(buttons, function(i, btn) {
-                var label     = btn.label     || 'OK';
-                var className = btn.className || 'aips-btn aips-btn-secondary';
-                var action    = typeof btn.action === 'function' ? btn.action : null;
-                var submit    = btn.submit    || false;
+                var label            = btn.label            || 'OK';
+                var className        = btn.className        || 'aips-btn aips-btn-secondary';
+                var action           = typeof btn.action === 'function' ? btn.action : null;
+                var submit           = btn.submit           || false;
+                var closeAfterAction = btn.closeAfterAction !== undefined ? btn.closeAfterAction : true;
 
                 var $btn = $('<button type="button"></button>')
                     .addClass(className)
@@ -515,6 +521,9 @@
 
                     if (action) {
                         var formData = getFormData();
+                        if (closeAfterAction) {
+                            closeDialog();
+                        }
                         action(formData);
                     } else {
                         closeDialog();

@@ -496,8 +496,8 @@
 				return;
 			}
 
-			// Get the default quantity from the author's manual_post_generation_quantity setting
-			const defaultQuantity = this.getAuthorManualPostQuantity(authorId);
+			// Get the default quantity from the author's manual_post_generation_quantity data attribute
+			const defaultQuantity = this.getAuthorManualPostQuantity($btn);
 
 			// Use the new reusable showModal method
 			AIPS.Utilities.showModal({
@@ -586,18 +586,15 @@
 		},
 
 		/**
-		 * Get the manual_post_generation_quantity for a specific author.
+		 * Get the manual_post_generation_quantity for a specific author from the
+		 * button's data-quantity attribute.
 		 *
-		 * @param {number} authorId - The author ID.
+		 * @param {jQuery} $btn - The "Generate Posts" button element.
 		 * @return {number} The manual post generation quantity (defaults to 1).
 		 */
-		getAuthorManualPostQuantity: function(authorId) {
-			// Find the author in the currently loaded data
-			const author = this.authors.find(a => a.id === authorId);
-			if (author && author.manual_post_generation_quantity) {
-				return parseInt(author.manual_post_generation_quantity, 10);
-			}
-			return 1; // Default to 1 if not found
+		getAuthorManualPostQuantity: function($btn) {
+			const quantity = parseInt($btn.data('quantity'), 10);
+			return (!isNaN(quantity) && quantity >= 1) ? quantity : 1;
 		},
 
 
