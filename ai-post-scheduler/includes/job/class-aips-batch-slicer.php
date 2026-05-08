@@ -66,7 +66,48 @@ class AIPS_Batch_Slicer {
 		}
 
 		$threshold = (int) apply_filters($filter_name, self::DEFAULT_THRESHOLD);
+
+		// Preserve legacy schedule-specific extension points.
+		if ($context === 'schedule') {
+			$threshold = (int) apply_filters('aips_large_batch_threshold', $threshold);
+		}
+
 		return max(2, $threshold);
+	}
+
+	/**
+	 * Build a normalized slice plan for UI/controller orchestration.
+	 *
+	 * @param int   $item_count Total items selected.
+	 * @param array $options    Optional slicer options. Supports the same options
+	 *                          as calculate_slices() plus optional threshold.
+	 * @return array{needs_slicing: bool, slice_count: int, slice_size: int, threshold: int}
+	 */
+	public function get_slice_plan(int $item_count, array $options = array()): array {
+		$item_count = max(0, $item_count);
+		$context = isset($options['context']) ? (string) $options['context'] : 'default';
+
+		$threshold = isset($options['threshold'])
+			? max(2, (int) $options['threshold'])
+			: $this->get_threshold($context);
+
+		if ($item_count <= $threshold) {
+			return array(
+				'needs_slicing' => false,
+				'slice_count'   => 1,
+				'slice_size'    => $item_count > 0 ? $item_count : 1,
+				'threshold'     => $threshold,
+			);
+		}
+
+		$config = $this->calculate_slices($item_count, $options);
+
+		return array(
+			'needs_slicing' => true,
+			'slice_count'   => max(1, $config->get_num_slices()),
+			'slice_size'    => max(1, $config->get_items_per_slice()),
+			'threshold'     => $threshold,
+		);
 	}
 
 	/**
@@ -136,6 +177,12 @@ class AIPS_Batch_Slicer {
 		}
 
 		$max = (int) apply_filters($filter_name, self::DEFAULT_MAX_SLICES);
+
+		// Preserve legacy schedule-specific extension points.
+		if ($context === 'schedule') {
+			$max = (int) apply_filters('aips_batch_max_jobs', $max);
+		}
+
 		return max(1, $max);
 	}
 
@@ -152,6 +199,12 @@ class AIPS_Batch_Slicer {
 		}
 
 		$window = (int) apply_filters($filter_name, self::DEFAULT_WINDOW_SECONDS);
+
+		// Preserve legacy schedule-specific extension points.
+		if ($context === 'schedule') {
+			$window = (int) apply_filters('aips_batch_queue_window_seconds', $window);
+		}
+
 		return max(0, $window);
 	}
 }

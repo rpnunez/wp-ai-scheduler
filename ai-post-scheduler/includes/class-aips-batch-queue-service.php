@@ -291,7 +291,7 @@ class AIPS_Batch_Queue_Service {
 	 *
 	 * @return int
 	 */
-	private function get_large_batch_threshold(): int {
+	public function get_large_batch_threshold(): int {
 		$threshold = (int) apply_filters(
 			'aips_large_batch_threshold',
 			apply_filters(
