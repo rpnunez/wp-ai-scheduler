@@ -519,8 +519,10 @@ class AIPS_Schedule_Processor {
     public function process_due_schedules() {
         $this->logger->log('Starting scheduled post generation', 'info');
 
-        // Use the updated repository method that handles the join and limit
-        $due_schedules = $this->repository->get_due_schedules(AIPS_DateTime::now()->timestamp(), 5);
+        // Keep the per-tick schedule fetch aligned with the configured batch threshold
+        // so cron throughput scales with the same slicing configuration.
+        $due_limit = $this->get_batch_queue_service()->get_large_batch_threshold();
+        $due_schedules = $this->repository->get_due_schedules(AIPS_DateTime::now()->timestamp(), $due_limit);
 
         if (empty($due_schedules)) {
             $this->logger->log('No scheduled posts due', 'info');

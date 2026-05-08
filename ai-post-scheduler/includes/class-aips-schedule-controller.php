@@ -106,6 +106,39 @@ class AIPS_Schedule_Controller {
         return $posts;
     }
 
+    /**
+     * Record a bulk slicing notice in history.
+     *
+     * @param string $history_type History container type.
+     * @param string $message      Human-readable message.
+     * @param array  $context      Structured context payload.
+     * @return void
+     */
+    private function log_bulk_slicing_notice($history_type, $message, $context = array()) {
+        $history_service = new AIPS_History_Service($this->history_repository);
+        $history = $history_service->create($history_type, array(
+            'creation_method' => $history_type,
+            'user_id'         => get_current_user_id(),
+            'source'          => 'manual_ui',
+        ));
+
+        if (!$history) {
+            return;
+        }
+
+        $history->record(
+            'activity',
+            $message,
+            array(
+                'event_type'   => 'bulk_slicing_notice',
+                'event_status' => 'success',
+            ),
+            null,
+            $context
+        );
+        $history->complete_success();
+    }
+
     public function ajax_save_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -248,16 +281,7 @@ class AIPS_Schedule_Controller {
             $voice = $voices->get($template->voice_id);
         }
 
-        $quantity = $template->post_quantity ?: 1;
-
-        // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
-        // and potential API rate limiting issues.
-        $max_run_now = 2;
-        $capped = false;
-        if ($quantity > $max_run_now) {
-            $quantity = $max_run_now;
-            $capped = true;
-        }
+        $quantity = max(1, absint($template->post_quantity ?: 1));
 
         $post_ids = array();
         $errors = array();
@@ -292,13 +316,6 @@ class AIPS_Schedule_Controller {
         );
 
         $notice_parts = array();
-
-        if ($capped) {
-            $notice_parts[] = sprintf(
-                __('Manual runs are limited to %d posts.', 'ai-post-scheduler'),
-                $max_run_now
-            );
-        }
 
         if (!empty($errors)) {
             $notice_parts[] = sprintf(
@@ -410,33 +427,49 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
-        $max_bulk_run = apply_filters('aips_bulk_run_now_limit', 5);
-        if (count($ids) > $max_bulk_run) {
-            AIPS_Ajax_Response::error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: maximum allowed */
-                    __('Too many schedules selected (%1$d). Please select no more than %2$d at a time to avoid timeouts.', 'ai-post-scheduler'),
+        $slice_plan = (new AIPS_Batch_Slicer())->get_slice_plan(count($ids), array(
+            'context' => 'schedule',
+        ));
+        if (!empty($slice_plan['needs_slicing'])) {
+            $this->log_bulk_slicing_notice(
+                'bulk_schedule_run_now',
+                sprintf(
+                    /* translators: 1: selected schedules, 2: slice count, 3: threshold */
+                    __('Bulk Run Now selected %1$d schedules. Processing will be split into %2$d slices because it exceeds threshold %3$d.', 'ai-post-scheduler'),
                     count($ids),
-                    $max_bulk_run
+                    (int) $slice_plan['slice_count'],
+                    (int) $slice_plan['threshold']
                 ),
-            ));
+                array(
+                    'item_count'   => count($ids),
+                    'slice_count'  => (int) $slice_plan['slice_count'],
+                    'slice_size'   => (int) $slice_plan['slice_size'],
+                    'threshold'    => (int) $slice_plan['threshold'],
+                    'endpoint'     => 'aips_bulk_run_now_schedules',
+                )
+            );
         }
 
         $post_ids = array();
         $errors = array();
 
-        foreach ($ids as $schedule_id) {
-            $result = $this->scheduler->run_schedule_now($schedule_id);
-            if (is_wp_error($result)) {
-                $errors[] = sprintf(
-                    /* translators: 1: schedule ID, 2: error message */
-                    __('Schedule #%1$d: %2$s', 'ai-post-scheduler'),
-                    $schedule_id,
-                    $result->get_error_message()
-                );
-            } else {
-                $schedule_post_ids = is_array($result) ? $result : array($result);
-                $post_ids = array_merge($post_ids, $schedule_post_ids);
+        $slice_size = isset($slice_plan['slice_size']) ? max(1, (int) $slice_plan['slice_size']) : count($ids);
+        $id_slices  = array_chunk($ids, $slice_size);
+
+        foreach ($id_slices as $id_slice) {
+            foreach ($id_slice as $schedule_id) {
+                $result = $this->scheduler->run_schedule_now($schedule_id);
+                if (is_wp_error($result)) {
+                    $errors[] = sprintf(
+                        /* translators: 1: schedule ID, 2: error message */
+                        __('Schedule #%1$d: %2$s', 'ai-post-scheduler'),
+                        $schedule_id,
+                        $result->get_error_message()
+                    );
+                } else {
+                    $schedule_post_ids = is_array($result) ? $result : array($result);
+                    $post_ids = array_merge($post_ids, $schedule_post_ids);
+                }
             }
         }
 
@@ -736,40 +769,56 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
         }
 
-        $max_bulk = apply_filters('aips_unified_bulk_run_now_limit', 5);
-        if (count($items) > $max_bulk) {
-            AIPS_Ajax_Response::error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: max allowed */
-                    __('Too many schedules selected (%1$d). Please select no more than %2$d at a time.', 'ai-post-scheduler'),
+        $slice_plan = (new AIPS_Batch_Slicer())->get_slice_plan(count($items), array(
+            'context' => 'schedule',
+        ));
+        if (!empty($slice_plan['needs_slicing'])) {
+            $this->log_bulk_slicing_notice(
+                'bulk_unified_run_now',
+                sprintf(
+                    /* translators: 1: selected schedules, 2: slice count, 3: threshold */
+                    __('Unified Bulk Run Now selected %1$d schedules. Processing will be split into %2$d slices because it exceeds threshold %3$d.', 'ai-post-scheduler'),
                     count($items),
-                    $max_bulk
+                    (int) $slice_plan['slice_count'],
+                    (int) $slice_plan['threshold']
                 ),
-            ));
+                array(
+                    'item_count'   => count($items),
+                    'slice_count'  => (int) $slice_plan['slice_count'],
+                    'slice_size'   => (int) $slice_plan['slice_size'],
+                    'threshold'    => (int) $slice_plan['threshold'],
+                    'endpoint'     => 'aips_unified_bulk_run_now',
+                )
+            );
         }
 
         $service  = new AIPS_Unified_Schedule_Service();
         $success  = 0;
         $errors   = array();
 
-        foreach ($items as $item) {
-            $id   = isset($item['id']) ? absint($item['id']) : 0;
-            $type = isset($item['type']) ? sanitize_key($item['type']) : '';
-            if (!$id || empty($type)) {
-                continue;
-            }
+        $slice_size  = isset($slice_plan['slice_size']) ? max(1, (int) $slice_plan['slice_size']) : count($items);
+        $item_slices = array_chunk($items, $slice_size);
 
-            $result = $service->run_now($id, $type);
-            if (is_wp_error($result)) {
-                $errors[] = sprintf(
-                    /* translators: 1: ID, 2: error */
-                    __('ID %1$d (%2$s): %3$s', 'ai-post-scheduler'),
-                    $id,
-                    $type,
-                    $result->get_error_message()
-                );
-            } else {
-                $success++;
+        foreach ($item_slices as $item_slice) {
+            foreach ($item_slice as $item) {
+                $id   = isset($item['id']) ? absint($item['id']) : 0;
+                $type = isset($item['type']) ? sanitize_key($item['type']) : '';
+                if (!$id || empty($type)) {
+                    continue;
+                }
+
+                $result = $service->run_now($id, $type);
+                if (is_wp_error($result)) {
+                    $errors[] = sprintf(
+                        /* translators: 1: ID, 2: error */
+                        __('ID %1$d (%2$s): %3$s', 'ai-post-scheduler'),
+                        $id,
+                        $type,
+                        $result->get_error_message()
+                    );
+                } else {
+                    $success++;
+                }
             }
         }
 

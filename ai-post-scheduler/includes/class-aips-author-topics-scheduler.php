@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
  *
  * Schedules and executes topic generation for authors.
  */
-class AIPS_Author_Topics_Scheduler {
+class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 
 	/**
 	 * WordPress cron hook name for per-author topic-generation slices.
@@ -56,29 +56,14 @@ class AIPS_Author_Topics_Scheduler {
 	}
 
 	/**
-	 * @var AIPS_Authors_Repository Repository for authors
-	 */
-	private $authors_repository;
-	
-	/**
 	 * @var AIPS_Author_Topics_Generator Generator for topics
 	 */
 	private $topics_generator;
-	
-	/**
-	 * @var AIPS_Logger Logger instance
-	 */
-	private $logger;
-	
+
 	/**
 	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
 	 */
 	private $interval_calculator;
-	
-	/**
-	 * @var AIPS_History_Service Service for history logging
-	 */
-	private $history_service;
 
 	/**
 	 * @var AIPS_Notifications Notifications service
@@ -100,6 +85,61 @@ class AIPS_Author_Topics_Scheduler {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
+		$this->job_scheduler = new AIPS_Job_Scheduler();
+	}
+
+	/**
+	 * Get the cron hook name for this scheduler's slice processing.
+	 *
+	 * @return string The WordPress cron hook name.
+	 */
+	protected function get_slice_hook(): string {
+		return self::SLICE_HOOK;
+	}
+
+	/**
+	 * Get the filter name for stagger seconds configuration.
+	 *
+	 * @return string The WordPress filter name.
+	 */
+	protected function get_stagger_filter(): string {
+		return 'aips_author_topics_slice_stagger_seconds';
+	}
+
+	/**
+	 * Get the default stagger seconds value.
+	 *
+	 * @return int Default number of seconds between author slices.
+	 */
+	protected function get_default_stagger_seconds(): int {
+		return 10;
+	}
+
+	/**
+	 * Get the history service type for this scheduler.
+	 *
+	 * @return string Type string for history service.
+	 */
+	protected function get_history_type(): string {
+		return 'author_topic_generation';
+	}
+
+	/**
+	 * Get the human-readable log type for this scheduler.
+	 *
+	 * @return string Log type.
+	 */
+	protected function get_log_type(): string {
+		return 'author-topics';
+	}
+
+	/**
+	 * Get the retry cron hook name for this scheduler.
+	 *
+	 * @return string The WordPress cron hook name for retries.
+	 */
+	protected function get_retry_hook(): string {
+		return 'aips_retry_failed_author_slices_topics';
 	}
 
 	/**
@@ -160,44 +200,6 @@ class AIPS_Author_Topics_Scheduler {
 	}
 
 	/**
-	 * Dispatch one `aips_process_author_topics_slice` single event per due author.
-	 *
-	 * Each event fires shortly after the current time (staggered by a few seconds
-	 * to avoid hammering the AI service simultaneously) and calls
-	 * process_author_slice() for a single author.
-	 *
-	 * @param object[] $due_authors Array of author objects from the repository.
-	 */
-	private function dispatch_author_slices( array $due_authors ): void {
-		$now            = time();
-		$correlation_id = (string) AIPS_Correlation_ID::get();
-
-		// Stagger each author's event by 10 seconds to avoid simultaneous AI requests.
-		$stagger_seconds = (int) apply_filters('aips_author_topics_slice_stagger_seconds', 10);
-		$stagger_seconds = max(0, $stagger_seconds);
-
-		$i = 0;
-		foreach ( $due_authors as $author ) {
-			$fire_at = $now + ($i * $stagger_seconds);
-			wp_schedule_single_event(
-				$fire_at,
-				self::SLICE_HOOK,
-				array( (int) $author->id, $correlation_id )
-			);
-			$i++;
-		}
-
-		$this->logger->log(
-			sprintf(
-				'Dispatched %d author-topics slice events (stagger: %ds each).',
-				count($due_authors),
-				$stagger_seconds
-			),
-			'info'
-		);
-	}
-
-	/**
 	 * Process topic generation for a single author slice.
 	 *
 	 * This is the callback for the `aips_process_author_topics_slice` cron hook.
@@ -228,7 +230,20 @@ class AIPS_Author_Topics_Scheduler {
 			AIPS_Correlation_ID::reset();
 		}
 	}
-	
+
+	/**
+	 * Retry failed author topic slices.
+	 *
+	 * This is the callback for the `aips_retry_failed_author_slices_topics` cron hook.
+	 * It re-attempts to dispatch slice events for authors that failed to schedule earlier.
+	 *
+	 * @param string $author_ids_json JSON-encoded array of author IDs.
+	 * @param string $correlation_id  Correlation ID for tracing.
+	 */
+	public function retry_failed_topic_slices( string $author_ids_json, string $correlation_id = '' ): void {
+		$this->retry_failed_slices( $author_ids_json, $correlation_id );
+	}
+
 	/**
 	 * Generate topics for a specific author.
 	 *
