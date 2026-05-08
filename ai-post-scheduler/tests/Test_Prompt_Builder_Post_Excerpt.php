@@ -26,6 +26,18 @@ class Test_Prompt_Builder_Post_Excerpt extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_diversity_injector($block = '') {
+		return new class( $block ) {
+			private $block;
+			public function __construct( $block ) {
+				$this->block = $block;
+			}
+			public function build_avoid_titles_block( $subject ) {
+				return $this->block;
+			}
+		};
+	}
+
 	// ------------------------------------------------------------------
 	// Base prompt structure
 	// ------------------------------------------------------------------
@@ -187,5 +199,17 @@ class Test_Prompt_Builder_Post_Excerpt extends WP_UnitTestCase {
 		$result = $this->builder->build('Title', 'Content', null, null);
 
 		$this->assertStringContainsString('CUSTOM', $result);
+	}
+
+	public function test_build_appends_avoid_titles_block_when_available() {
+		$builder = new AIPS_Prompt_Builder_Post_Excerpt(
+			new AIPS_Template_Processor(),
+			$this->make_diversity_injector("Avoid these existing titles or very close variations:\n- Existing Title")
+		);
+
+		$result = $builder->build('Title', 'Content', null, null, (object) array( 'id' => 1 ));
+
+		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
+		$this->assertStringContainsString('- Existing Title', $result);
 	}
 }

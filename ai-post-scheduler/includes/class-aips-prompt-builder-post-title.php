@@ -28,10 +28,17 @@ class AIPS_Prompt_Builder_Post_Title {
 	private $template_processor;
 
 	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
 	 */
-	public function __construct($template_processor = null) {
+	private $diversity_injector;
+
+	/**
+	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 */
+	public function __construct($template_processor = null, $diversity_injector = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -70,7 +77,7 @@ class AIPS_Prompt_Builder_Post_Title {
 				}
 			}
 
-			$prompt = $this->build_base_prompt($title_instructions, $content);
+			$prompt = $this->build_base_prompt($title_instructions, $content, $context);
 
 			return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
 		}
@@ -83,7 +90,7 @@ class AIPS_Prompt_Builder_Post_Title {
 			$title_instructions = $this->template_processor->process($template->title_prompt, $topic);
 		}
 
-		$prompt = $this->build_base_prompt($title_instructions, $content);
+		$prompt = $this->build_base_prompt($title_instructions, $content, $template);
 
 		return apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
 	}
@@ -93,9 +100,10 @@ class AIPS_Prompt_Builder_Post_Title {
 	 *
 	 * @param string $title_instructions Processed title instructions.
 	 * @param string $content Generated article content.
+	 * @param mixed  $subject Template object or generation context.
 	 * @return string
 	 */
-	private function build_base_prompt($title_instructions, $content) {
+	private function build_base_prompt($title_instructions, $content, $subject = null) {
 		$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
 
 		if (!empty($title_instructions)) {
@@ -103,6 +111,11 @@ class AIPS_Prompt_Builder_Post_Title {
 		}
 
 		$prompt .= "\n\nHere is the content:\n\n" . $content;
+
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($subject);
+		if (!empty($diversity_block)) {
+			$prompt .= "\n\n" . $diversity_block;
+		}
 
 		return $prompt;
 	}

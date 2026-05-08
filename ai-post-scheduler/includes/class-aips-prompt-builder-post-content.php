@@ -33,12 +33,19 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $article_structure_section_builder;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
+	 */
+	private $diversity_injector;
+
+	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
 	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null  $diversity_injector            Optional diversity injector.
 	 */
-	public function __construct($template_processor = null, $article_structure_section_builder = null) {
+	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -96,6 +103,11 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
+		if (!empty($diversity_block)) {
+			$processed_prompt .= "\n\n" . $diversity_block;
+		}
+
 		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
@@ -116,6 +128,11 @@ class AIPS_Prompt_Builder_Post_Content {
 		if ($voice) {
 			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+		}
+
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
+		if (!empty($diversity_block)) {
+			$processed_prompt .= "\n\n" . $diversity_block;
 		}
 
 		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();

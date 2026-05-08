@@ -345,7 +345,7 @@ class AIPS_Generator {
      * @return string Processed image prompt with all variables replaced.
      */
     public function process_featured_image_prompt($context, $content = '', $title = '') {
-        $image_prompt = $context->get_image_prompt();
+        $image_prompt = $this->post_featured_image_prompt_builder->build($context, $context->get_topic());
 
         if (empty($image_prompt)) {
             return '';
@@ -508,9 +508,9 @@ class AIPS_Generator {
      * @param array       $options AI options.
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
-    public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array()) {
+    public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array(), $subject = null) {
         // Delegate prompt building to AIPS_Prompt_Builder_Post_Excerpt
-        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic);
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject);
 
         // Set token limit for excerpt generation
         //$options['maxTokens'] = 150;
@@ -550,7 +550,7 @@ class AIPS_Generator {
         $topic_str = $context->get_topic();
 
         // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str);
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');

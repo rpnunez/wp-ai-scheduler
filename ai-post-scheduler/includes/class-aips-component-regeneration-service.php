@@ -199,7 +199,7 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		// Use generator's generate_excerpt method
-		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str);
+		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str, array(), $generation_context);
 		
 		if (is_wp_error($result)) {
 			return $result;

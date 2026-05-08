@@ -28,10 +28,17 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	private $template_processor;
 
 	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
 	 */
-	public function __construct($template_processor = null) {
+	private $diversity_injector;
+
+	/**
+	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 */
+	public function __construct($template_processor = null, $diversity_injector = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -41,9 +48,10 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 * @param string      $content The article content to summarize.
 	 * @param object|null $voice Optional voice object with excerpt instructions.
 	 * @param string|null $topic Optional topic to inject into voice instructions.
+	 * @param mixed       $subject Optional template or generation context.
 	 * @return string
 	 */
-	public function build($title, $content, $voice = null, $topic = null) {
+	public function build($title, $content, $voice = null, $topic = null, $subject = null) {
 		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
 
 		$voice_instructions = $this->build_instructions($voice, $topic);
@@ -53,6 +61,12 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 
 		$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
 		$excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($subject);
+		if (!empty($diversity_block)) {
+			$excerpt_prompt .= $diversity_block . "\n\n";
+		}
+
 		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
 
 		return apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);

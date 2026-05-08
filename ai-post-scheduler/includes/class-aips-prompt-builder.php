@@ -61,10 +61,15 @@ class AIPS_Prompt_Builder {
      */
     private $post_excerpt_builder;
 
-    /**
-     * @var AIPS_Post_Featured_Image_Builder Post featured image builder instance
-     */
+	/**
+	 * @var AIPS_Post_Featured_Image_Builder Post featured image builder instance
+	 */
 	private $post_featured_image_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder instance
+	 */
+	private $diversity_injector;
     
     /**
      * @var bool Indicates if the sources filter has been registered
@@ -84,6 +89,7 @@ class AIPS_Prompt_Builder {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
+		$this->diversity_injector = new AIPS_Prompt_Builder_Diversity_Injector();
 
         // Register the content prompt sources filter once.
         if (!self::$sources_filter_registered) {
@@ -222,8 +228,8 @@ class AIPS_Prompt_Builder {
      * @param string|null $topic   Optional topic to be injected into prompts (legacy).
      * @return string The complete excerpt generation prompt.
      */
-    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
-        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic);
+    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $subject = null) {
+        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic, $subject);
     }
 
     /**
@@ -422,11 +428,11 @@ INSTRUCTIONS;
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $this->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content, true);
+        $title_prompt = $this->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, true);
+        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, $template_data);
 
         // Build image prompt if enabled
         $image_prompt_processed = $this->get_post_featured_image_builder()->build($template_data, $sample_topic);
@@ -487,7 +493,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_title_builder() {
 		if (null === $this->post_title_builder) {
-			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor);
+			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor, $this->diversity_injector);
 		}
 
 		return $this->post_title_builder;
@@ -500,7 +506,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_excerpt_builder() {
 		if (null === $this->post_excerpt_builder) {
-			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor);
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor, $this->diversity_injector);
 		}
 
 		return $this->post_excerpt_builder;
@@ -514,7 +520,7 @@ INSTRUCTIONS;
 	public function get_post_content_builder() {
 		if (null === $this->post_content_builder) {
             $article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor);
-            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder);
+            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder, $this->diversity_injector);
 		}
 
 		return $this->post_content_builder;
@@ -527,7 +533,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_featured_image_builder() {
 		if (null === $this->post_featured_image_builder) {
-			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
+			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor, $this->diversity_injector);
 		}
 
 		return $this->post_featured_image_builder;

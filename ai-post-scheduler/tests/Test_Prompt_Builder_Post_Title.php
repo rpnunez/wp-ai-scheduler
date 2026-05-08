@@ -26,6 +26,18 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_diversity_injector($block = '') {
+		return new class( $block ) {
+			private $block;
+			public function __construct( $block ) {
+				$this->block = $block;
+			}
+			public function build_avoid_titles_block( $subject ) {
+				return $this->block;
+			}
+		};
+	}
+
 	// ------------------------------------------------------------------
 	// Legacy template object path
 	// ------------------------------------------------------------------
@@ -216,5 +228,20 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 		$result = $this->builder->build($template, 'AI', null, 'Body.');
 
 		$this->assertStringContainsString('FILTERED', $result);
+	}
+
+	public function test_build_appends_avoid_titles_block_when_available() {
+		$builder = new AIPS_Prompt_Builder_Post_Title(
+			new AIPS_Template_Processor(),
+			$this->make_diversity_injector("Avoid these existing titles or very close variations:\n- Existing Title")
+		);
+		$template = (object) array(
+			'title_prompt' => 'Create a title about {{topic}}.',
+		);
+
+		$result = $builder->build($template, 'AI', null, 'Body.');
+
+		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
+		$this->assertStringContainsString('- Existing Title', $result);
 	}
 }

@@ -33,6 +33,18 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_diversity_injector($block = '') {
+		return new class( $block ) {
+			private $block;
+			public function __construct( $block ) {
+				$this->block = $block;
+			}
+			public function build_avoid_titles_block( $subject ) {
+				return $this->block;
+			}
+		};
+	}
+
 	// ------------------------------------------------------------------
 	// Legacy template path
 	// ------------------------------------------------------------------
@@ -254,5 +266,29 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		$this->assertNotEmpty($matches1[1] ?? '');
 		$this->assertNotEmpty($matches2[1] ?? '');
 		$this->assertNotEquals($matches1[1], $matches2[1], 'Seeds should differ across generation calls.');
+	}
+
+	public function test_avoid_titles_block_is_appended_when_available() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager  = new AIPS_Article_Structure_Manager();
+		$section_builder    = new AIPS_Prompt_Builder_Article_Structure_Section(
+			$structure_manager,
+			null,
+			$template_processor
+		);
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			$template_processor,
+			$section_builder,
+			$this->make_diversity_injector("Avoid these existing titles or very close variations:\n- Existing Title")
+		);
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, null, null);
+
+		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
+		$this->assertStringContainsString('- Existing Title', $result);
 	}
 }
