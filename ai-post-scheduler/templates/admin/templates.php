@@ -343,8 +343,8 @@ if (!defined('ABSPATH')) {
                         
                         <div class="aips-form-row">
                             <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>
-                            <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
-                            <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
+                            <input type="number" id="post_quantity" name="post_quantity" min="1" value="1" class="small-text">
+                            <p class="description"><?php esc_html_e('Generate one or more posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                         </div>
 
                         <?php

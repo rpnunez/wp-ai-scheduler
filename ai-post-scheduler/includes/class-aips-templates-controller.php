@@ -18,6 +18,78 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
 
+    /**
+     * Record a template-level lifecycle notice when runs will be sliced.
+     *
+     * @param int    $template_id   Template ID.
+     * @param string $template_name Template name.
+     * @param int    $post_quantity Configured posts per run.
+     * @return array<string, int|string>|null Notice payload for UI toast, or null.
+     */
+    private function maybe_log_template_slicing_notice($template_id, $template_name, $post_quantity) {
+        $post_quantity = max(1, absint($post_quantity));
+        $batch_service = new AIPS_Batch_Queue_Service();
+        $threshold     = $batch_service->get_large_batch_threshold();
+
+        if ($post_quantity <= $threshold) {
+            return null;
+        }
+
+        $config      = $batch_service->calculate_config($post_quantity);
+        $slice_count = isset($config['num_batches']) ? max(1, absint($config['num_batches'])) : 1;
+        $notice_message = sprintf(
+            /* translators: 1: configured quantity, 2: threshold, 3: slice count */
+            __('This template is configured for %1$d posts. With threshold %2$d, runs will be split into %3$d slices.', 'ai-post-scheduler'),
+            $post_quantity,
+            $threshold,
+            $slice_count
+        );
+
+        $history_service = new AIPS_History_Service();
+        $history = $history_service->create('template_lifecycle', array(
+            'template_id'     => absint($template_id),
+            'creation_method' => 'template_lifecycle',
+            'user_id'         => get_current_user_id(),
+            'source'          => 'manual_ui',
+        ));
+
+        if (!$history) {
+            return null;
+        }
+
+        $history->record(
+            'activity',
+            sprintf(
+                /* translators: 1: template name, 2: post quantity, 3: threshold, 4: slice count */
+                __('Template "%1$s" saved with %2$d posts per run. Quantities above threshold (%3$d) will be split into %4$d slices at runtime.', 'ai-post-scheduler'),
+                $template_name,
+                $post_quantity,
+                $threshold,
+                $slice_count
+            ),
+            array(
+                'event_type'   => 'template_slicing_notice',
+                'event_status' => 'success',
+            ),
+            null,
+            array(
+                'template_id'   => absint($template_id),
+                'post_quantity' => $post_quantity,
+                'threshold'     => $threshold,
+                'slice_count'   => $slice_count,
+            )
+        );
+
+        $history->complete_success();
+
+        return array(
+            'message'       => $notice_message,
+            'slice_count'   => $slice_count,
+            'threshold'     => $threshold,
+            'post_quantity' => $post_quantity,
+        );
+    }
+
     public function ajax_save_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -61,13 +133,15 @@ class AIPS_Templates_Controller {
             AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
         }
 
-        if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
+        if ($data['post_quantity'] < 1) {
             $data['post_quantity'] = 1;
         }
 
         $id = $this->templates->save($data);
 
         if ($id) {
+            $slicing_notice = $this->maybe_log_template_slicing_notice($id, $data['name'], $data['post_quantity']);
+
             do_action('aips_template_changed', array(
                 'action'        => $data['id'] ? 'updated' : 'created',
                 'template_id'   => absint($id),
@@ -77,7 +151,8 @@ class AIPS_Templates_Controller {
 
             AIPS_Ajax_Response::success(array(
                 'message' => __('Template saved successfully.', 'ai-post-scheduler'),
-                'template_id' => $id
+                'template_id' => $id,
+                'slicing_notice' => $slicing_notice,
             ));
         } else {
             AIPS_Ajax_Response::error(__('Failed to save template.', 'ai-post-scheduler'));

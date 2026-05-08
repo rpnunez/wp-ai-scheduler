@@ -9,15 +9,15 @@
             "fingerprint": "062fa9f1daefeec6a371d430a12546f47affe299",
             "last_scanned_at": "2026-05-07T01:14:31Z",
             "last_scan_run_id": "aips-20260507T011431Z",
-            "findings_open_count": 2,
-            "status": "has_findings"
+            "findings_open_count": 0,
+            "status": "ok"
         },
         "ai-post-scheduler/includes/class-aips-author-topics-scheduler.php": {
             "fingerprint": "be754bf829ec2c8798d110f5df5bb5fb36531cf8",
             "last_scanned_at": "2026-05-07T01:14:31Z",
             "last_scan_run_id": "aips-20260507T011431Z",
-            "findings_open_count": 2,
-            "status": "has_findings"
+            "findings_open_count": 0,
+            "status": "ok"
         },
         "ai-post-scheduler/includes/class-aips-batch-queue-service.php": {
             "fingerprint": "f7a44de99dfd4a6f4d35e2b30397f717c7028756",
@@ -134,7 +134,7 @@
             "anchor": "dispatch_author_slices:wp_schedule_single_event-unchecked",
             "first_seen_run_id": "aips-20260507T011431Z",
             "last_seen_run_id": "aips-20260507T011431Z",
-            "status": "open",
+            "status": "resolved",
             "finding_file": ".aips-agent/findings/095b36a959b02c01c8a11d0ba12209f0a4b29741.json"
         },
         "1f72095a773091abb9af3b53a6476437a624652c": {
@@ -167,7 +167,7 @@
             "anchor": "dispatch_author_slices:time-base_timestamp",
             "first_seen_run_id": "aips-20260507T011431Z",
             "last_seen_run_id": "aips-20260507T011431Z",
-            "status": "open",
+            "status": "resolved",
             "finding_file": ".aips-agent/findings/3cb3fe17cd4e348a13021dc24b1623cd72f05940.json"
         },
         "5f29b08991b4753c2a23130f4b20e518f4d7d599": {
@@ -189,7 +189,7 @@
             "anchor": "dispatch_author_slices:wp_schedule_single_event-unchecked",
             "first_seen_run_id": "aips-20260507T011431Z",
             "last_seen_run_id": "aips-20260507T011431Z",
-            "status": "open",
+            "status": "resolved",
             "finding_file": ".aips-agent/findings/9be2a62932a52c9d55cad66d077deb7b6151f024.json"
         },
         "a2331e2177febd4809dfea240c3bb098ad95e4c0": {
@@ -222,7 +222,7 @@
             "anchor": "dispatch_author_slices:time-base_timestamp",
             "first_seen_run_id": "aips-20260507T011431Z",
             "last_seen_run_id": "aips-20260507T011431Z",
-            "status": "open",
+            "status": "resolved",
             "finding_file": ".aips-agent/findings/d86313d531e2a080dafc8b305c38d9eeb1876dd5.json"
         },
         "e4090bcc8d154f838e8643ddcfd533da99087a22": {
