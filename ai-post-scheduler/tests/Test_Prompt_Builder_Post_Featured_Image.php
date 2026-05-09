@@ -21,18 +21,6 @@ class Test_Prompt_Builder_Post_Featured_Image extends WP_UnitTestCase {
 		$this->builder = new AIPS_Prompt_Builder_Post_Featured_Image(new AIPS_Template_Processor());
 	}
 
-	private function make_diversity_injector($block = '') {
-		return new class( $block ) {
-			private $block;
-			public function __construct( $block ) {
-				$this->block = $block;
-			}
-			public function build_avoid_titles_block( $subject ) {
-				return $this->block;
-			}
-		};
-	}
-
 	// ------------------------------------------------------------------
 	// Legacy template path
 	// ------------------------------------------------------------------
@@ -255,22 +243,5 @@ class Test_Prompt_Builder_Post_Featured_Image extends WP_UnitTestCase {
 		$result = $builder->build($template, null);
 
 		$this->assertSame('Simple image prompt.', $result);
-	}
-
-	public function test_build_appends_avoid_titles_block_when_available() {
-		$builder = new AIPS_Prompt_Builder_Post_Featured_Image(
-			new AIPS_Template_Processor(),
-			$this->make_diversity_injector("Avoid these existing titles or very close variations:\n- Existing Title")
-		);
-		$template = (object) array(
-			'generate_featured_image' => 1,
-			'featured_image_source'   => 'ai_prompt',
-			'image_prompt'            => 'Simple image prompt.',
-		);
-
-		$result = $builder->build($template, null);
-
-		$this->assertStringContainsString('Simple image prompt.', $result);
-		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
 	}
 }

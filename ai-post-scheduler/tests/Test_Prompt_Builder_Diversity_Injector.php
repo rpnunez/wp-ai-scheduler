@@ -7,6 +7,13 @@
 
 class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 
+	public function tearDown(): void {
+		remove_all_filters('aips_diversity_content_formats');
+		remove_all_filters('aips_diversity_content_format_heading');
+		remove_all_filters('aips_diversity_content_format_block');
+		parent::tearDown();
+	}
+
 	public function test_build_avoid_titles_block_for_template_context_uses_history_titles() {
 		$history_repository = new class {
 			public function get_history($args = array()) {
@@ -96,5 +103,32 @@ class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 		$this->assertStringContainsString('Topic One', $block);
 		$this->assertStringContainsString('Topic Two', $block);
 		$this->assertSame(1, substr_count($block, 'Topic One'));
+	}
+
+	public function test_build_content_format_block_rotates_based_on_completed_history_total() {
+		add_filter('aips_diversity_content_formats', function () {
+			return array('implementation checklist', 'comparison guide', 'failure analysis');
+		});
+
+		$history_repository = new class {
+			public function get_history($args = array()) {
+				return array(
+					'items' => array(),
+					'total' => 4,
+				);
+			}
+		};
+		$injector = new AIPS_Prompt_Builder_Diversity_Injector($history_repository, null);
+		$template = (object) array(
+			'id'              => 11,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'AI');
+
+		$block = $injector->build_content_format_block($context);
+
+		$this->assertStringContainsString('Use this content format for this generation:', $block);
+		$this->assertStringContainsString('- comparison guide', $block);
 	}
 }

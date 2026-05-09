@@ -113,6 +113,11 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $diversity_block;
 		}
 
+		$content_format_block = $this->diversity_injector->build_content_format_block($context);
+		if (!empty($content_format_block)) {
+			$processed_prompt .= "\n\n" . $content_format_block;
+		}
+
 		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
@@ -138,6 +143,11 @@ class AIPS_Prompt_Builder_Post_Content {
 		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
 		if (!empty($diversity_block)) {
 			$processed_prompt .= "\n\n" . $diversity_block;
+		}
+
+		$content_format_block = $this->diversity_injector->build_content_format_block($template);
+		if (!empty($content_format_block)) {
+			$processed_prompt .= "\n\n" . $content_format_block;
 		}
 
 		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();

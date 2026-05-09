@@ -26,14 +26,19 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	private function make_diversity_injector($block = '') {
-		return new class( $block ) {
-			private $block;
-			public function __construct( $block ) {
-				$this->block = $block;
+	private function make_diversity_injector($avoid_titles_block = '', $content_format_block = '') {
+		return new class( $avoid_titles_block, $content_format_block ) {
+			private $avoid_titles_block;
+			private $content_format_block;
+			public function __construct( $avoid_titles_block, $content_format_block ) {
+				$this->avoid_titles_block = $avoid_titles_block;
+				$this->content_format_block = $content_format_block;
 			}
 			public function build_avoid_titles_block( $subject ) {
-				return $this->block;
+				return $this->avoid_titles_block;
+			}
+			public function build_content_format_block( $subject ) {
+				return $this->content_format_block;
 			}
 		};
 	}
@@ -243,5 +248,20 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
 		$this->assertStringContainsString('- Existing Title', $result);
+	}
+
+	public function test_build_appends_content_format_block_when_available() {
+		$builder = new AIPS_Prompt_Builder_Post_Title(
+			new AIPS_Template_Processor(),
+			$this->make_diversity_injector('', "Use this content format for this generation:\n- failure analysis")
+		);
+		$template = (object) array(
+			'title_prompt' => 'Create a title about {{topic}}.',
+		);
+
+		$result = $builder->build($template, 'AI', null, 'Body.');
+
+		$this->assertStringContainsString('Use this content format for this generation:', $result);
+		$this->assertStringContainsString('- failure analysis', $result);
 	}
 }

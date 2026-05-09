@@ -507,7 +507,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_excerpt_builder() {
 		if (null === $this->post_excerpt_builder) {
-			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor, $this->diversity_injector);
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor);
 		}
 
 		return $this->post_excerpt_builder;
@@ -534,7 +534,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_featured_image_builder() {
 		if (null === $this->post_featured_image_builder) {
-			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor, $this->diversity_injector);
+			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
 		}
 
 		return $this->post_featured_image_builder;

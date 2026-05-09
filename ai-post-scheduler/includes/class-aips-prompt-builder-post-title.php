@@ -117,6 +117,11 @@ class AIPS_Prompt_Builder_Post_Title {
 			$prompt .= "\n\n" . $diversity_block;
 		}
 
+		$content_format_block = $this->diversity_injector->build_content_format_block($subject);
+		if (!empty($content_format_block)) {
+			$prompt .= "\n\n" . $content_format_block;
+		}
+
 		return $prompt;
 	}
 }

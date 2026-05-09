@@ -28,17 +28,10 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	private $template_processor;
 
 	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
+	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
 	 */
-	private $diversity_injector;
-
-	/**
-	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
-	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
-	 */
-	public function __construct($template_processor = null, $diversity_injector = null) {
+	public function __construct($template_processor = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -61,11 +54,6 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 
 		$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
 		$excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($subject);
-		if (!empty($diversity_block)) {
-			$excerpt_prompt .= $diversity_block . "\n\n";
-		}
 
 		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
 

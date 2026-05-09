@@ -134,6 +134,66 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	}
 
 	/**
+	 * Build a content-format block for post-generation prompts.
+	 *
+	 * Rotates through a filterable set of structural formats based on the number
+	 * of completed generations for the current template or author, so repeated
+	 * runs naturally spread across different article shapes.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return string
+	 */
+	public function build_content_format_block($subject) {
+		$formats = $this->get_content_formats($subject);
+
+		if (empty($formats)) {
+			return '';
+		}
+
+		$index = $this->get_content_format_index($subject, count($formats));
+		$format = isset($formats[ $index ]) ? $formats[ $index ] : reset($formats);
+		$format = trim((string) $format);
+
+		if ($format === '') {
+			return '';
+		}
+
+		/**
+		 * Filters the heading used for the content-format diversity block.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $heading Default heading.
+		 * @param mixed  $subject Template object or generation context.
+		 * @param string $format  Selected content format.
+		 * @param array  $formats Normalized format list.
+		 */
+		$heading = apply_filters(
+			'aips_diversity_content_format_heading',
+			'Use this content format for this generation:',
+			$subject,
+			$format,
+			$formats
+		);
+
+		$block  = $heading . "\n";
+		$block .= '- ' . $format . "\n\n";
+		$block .= 'Treat this as the primary structure and framing for this piece. Do not default to a generic overview unless this format naturally calls for it.';
+
+		/**
+		 * Filters the final content-format diversity block.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $block   Formatted prompt block.
+		 * @param mixed  $subject Template object or generation context.
+		 * @param string $format  Selected content format.
+		 * @param array  $formats Normalized format list.
+		 */
+		return apply_filters('aips_diversity_content_format_block', $block, $subject, $format, $formats);
+	}
+
+	/**
 	 * Fetch recent generated post titles from history.
 	 *
 	 * @param array $args History repository arguments.
@@ -156,6 +216,43 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		}
 
 		return $titles;
+	}
+
+	/**
+	 * Fetch the completed generation count for the current subject.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return int
+	 */
+	private function get_completed_generation_count($subject) {
+		$args = array(
+			'status'   => 'completed',
+			'per_page' => 1,
+			'page'     => 1,
+			'fields'   => 'list',
+		);
+
+		if ($subject instanceof AIPS_Template_Context) {
+			$args['template_id'] = (int) $subject->get_id();
+		} elseif ($subject instanceof AIPS_Topic_Context) {
+			$author = $subject->get_author();
+			if (!$author || empty($author->id)) {
+				return 0;
+			}
+
+			$args['author_id'] = (int) $author->id;
+		} elseif (is_object($subject) && !empty($subject->id)) {
+			$args['template_id'] = (int) $subject->id;
+		} else {
+			return 0;
+		}
+
+		$history = $this->history_repository->get_history($args);
+		if (!is_array($history) || !isset($history['total'])) {
+			return 0;
+		}
+
+		return max(0, (int) $history['total']);
 	}
 
 	/**
@@ -192,6 +289,70 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		$block .= "\nDo not reuse, lightly rephrase, or mirror these titles. Choose a clearly different angle, wording, and framing.";
 
 		return $block;
+	}
+
+	/**
+	 * Get the normalized list of supported content formats.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return array
+	 */
+	private function get_content_formats($subject) {
+		$defaults = array(
+			'implementation checklist',
+			'case-study teardown',
+			'myth-vs-reality analysis',
+			'comparison guide',
+			'failure analysis',
+			'migration guide',
+			'step-by-step tutorial',
+			'decision framework',
+		);
+
+		/**
+		 * Filters the available content formats used by the diversity injector.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param array $defaults Default content format labels.
+		 * @param mixed $subject  Template object or generation context.
+		 */
+		$formats = apply_filters('aips_diversity_content_formats', $defaults, $subject);
+		if (!is_array($formats)) {
+			return array();
+		}
+
+		$formats = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						function($format) {
+							return trim((string) $format);
+						},
+						$formats
+					)
+				)
+			)
+		);
+
+		return $formats;
+	}
+
+	/**
+	 * Resolve which content format should be assigned for this subject.
+	 *
+	 * @param mixed $subject Prompt subject.
+	 * @param int   $count   Number of available formats.
+	 * @return int
+	 */
+	private function get_content_format_index($subject, $count) {
+		if ($count < 2) {
+			return 0;
+		}
+
+		$total = $this->get_completed_generation_count($subject);
+
+		return $total % $count;
 	}
 
 	/**

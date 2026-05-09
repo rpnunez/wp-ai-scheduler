@@ -28,17 +28,10 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	private $template_processor;
 
 	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
+	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
 	 */
-	private $diversity_injector;
-
-	/**
-	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
-	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
-	 */
-	public function __construct($template_processor = null, $diversity_injector = null) {
+	public function __construct($template_processor = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -81,14 +74,7 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
-		$processed_prompt = $this->template_processor->process($image_prompt, $context->get_topic());
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
-
-		if (!empty($diversity_block)) {
-			$processed_prompt .= "\n\n" . $diversity_block;
-		}
-
-		return $processed_prompt;
+		return $this->template_processor->process($image_prompt, $context->get_topic());
 	}
 
 	/**
@@ -107,13 +93,6 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
-		$processed_prompt = $this->template_processor->process($image_prompt, $topic);
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
-
-		if (!empty($diversity_block)) {
-			$processed_prompt .= "\n\n" . $diversity_block;
-		}
-
-		return $processed_prompt;
+		return $this->template_processor->process($image_prompt, $topic);
 	}
 }
