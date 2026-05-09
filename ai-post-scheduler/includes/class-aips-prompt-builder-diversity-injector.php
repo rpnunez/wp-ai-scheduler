@@ -24,6 +24,11 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	const DEFAULT_TITLE_LIMIT = 12;
 
 	/**
+	 * Number of random bytes used for the uniqueness seed.
+	 */
+	const UNIQUENESS_SEED_BYTES = 4;
+
+	/**
 	 * @var AIPS_History_Repository|null
 	 */
 	private $history_repository;
@@ -34,12 +39,19 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	private $author_topics_repository;
 
 	/**
+	 * @var AIPS_Post_Slices_Repository|null
+	 */
+	private $post_slices_repository;
+
+	/**
 	 * @param AIPS_History_Repository|null       $history_repository History repository.
 	 * @param AIPS_Author_Topics_Repository|null $author_topics_repository Author topics repository.
+	 * @param AIPS_Post_Slices_Repository|null   $post_slices_repository Post slices repository.
 	 */
-	public function __construct($history_repository = null, $author_topics_repository = null) {
+	public function __construct($history_repository = null, $author_topics_repository = null, $post_slices_repository = null) {
 		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
 		$this->author_topics_repository = $author_topics_repository ?: new AIPS_Author_Topics_Repository();
+		$this->post_slices_repository = $post_slices_repository;
 	}
 
 	/**
@@ -150,7 +162,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			return '';
 		}
 
-		$index = $this->get_content_format_index($subject, count($formats));
+		$index = $this->get_rotation_index($subject, count($formats));
 		$format = isset($formats[ $index ]) ? $formats[ $index ] : reset($formats);
 		$format = trim((string) $format);
 
@@ -191,6 +203,84 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		 * @param array  $formats Normalized format list.
 		 */
 		return apply_filters('aips_diversity_content_format_block', $block, $subject, $format, $formats);
+	}
+
+	/**
+	 * Build the post-slice guidance block for title/content prompts.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return string
+	 */
+	public function build_post_slice_block($subject) {
+		$slices = $this->get_post_slices($subject);
+
+		if (empty($slices)) {
+			return '';
+		}
+
+		$index = $this->get_rotation_index($subject, count($slices));
+		$slice = isset($slices[ $index ]) ? $slices[ $index ] : reset($slices);
+		$slice = trim((string) $slice);
+
+		if ($slice === '') {
+			return '';
+		}
+
+		/**
+		 * Filters the heading used for the post-slice diversity block.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $heading Default heading.
+		 * @param mixed  $subject Template object or generation context.
+		 * @param string $slice   Selected post slice.
+		 * @param array  $slices  Normalized active post slice list.
+		 */
+		$heading = apply_filters(
+			'aips_diversity_post_slice_heading',
+			'Use this post style for this generation:',
+			$subject,
+			$slice,
+			$slices
+		);
+
+		$block  = $heading . "\n";
+		$block .= '- ' . $slice . "\n\n";
+		$block .= 'Treat this as the editorial lens for the piece. Shape the title angle, examples, section emphasis, and framing around this style without simply naming the style in the post.';
+
+		/**
+		 * Filters the final post-slice diversity block.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $block   Formatted prompt block.
+		 * @param mixed  $subject Template object or generation context.
+		 * @param string $slice   Selected post slice.
+		 * @param array  $slices  Normalized active post slice list.
+		 */
+		return apply_filters('aips_diversity_post_slice_block', $block, $subject, $slice, $slices);
+	}
+
+	/**
+	 * Build the uniqueness-seed guidance block for content prompts.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return string
+	 */
+	public function build_uniqueness_seed_line_block($subject = null) {
+		$seed = $this->generate_uniqueness_seed();
+		$block = 'Unique generation seed: ' . $seed . '. Use this run-specific seed to vary angle, framing, structure, and examples while keeping the post meaningfully distinct from past generations.';
+
+		/**
+		 * Filters the uniqueness-seed prompt block.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param string $block   Formatted prompt block.
+		 * @param mixed  $subject Template object or generation context.
+		 * @param string $seed    Generated seed value.
+		 */
+		return apply_filters('aips_diversity_uniqueness_seed_line_block', $block, $subject, $seed);
 	}
 
 	/**
@@ -339,13 +429,58 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	}
 
 	/**
-	 * Resolve which content format should be assigned for this subject.
+	 * Get the normalized list of active post slices.
+	 *
+	 * @param mixed $subject Template object or generation context.
+	 * @return array
+	 */
+	private function get_post_slices($subject) {
+		if ($this->post_slices_repository === null && class_exists('AIPS_Post_Slices_Repository')) {
+			$this->post_slices_repository = AIPS_Post_Slices_Repository::instance();
+		}
+
+		$slices = array();
+
+		if ($this->post_slices_repository && method_exists($this->post_slices_repository, 'get_active_names')) {
+			$slices = $this->post_slices_repository->get_active_names();
+		}
+
+		/**
+		 * Filters the active post slices used by the diversity injector.
+		 *
+		 * @since 2.6.0
+		 *
+		 * @param array $slices  Active post slice labels.
+		 * @param mixed $subject Template object or generation context.
+		 */
+		$slices = apply_filters('aips_diversity_post_slices', $slices, $subject);
+
+		if (!is_array($slices)) {
+			return array();
+		}
+
+		return array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						function($slice) {
+							return trim((string) $slice);
+						},
+						$slices
+					)
+				)
+			)
+		);
+	}
+
+	/**
+	 * Resolve which diversity item should be assigned for this subject.
 	 *
 	 * @param mixed $subject Prompt subject.
 	 * @param int   $count   Number of available formats.
 	 * @return int
 	 */
-	private function get_content_format_index($subject, $count) {
+	private function get_rotation_index($subject, $count) {
 		if ($count < 2) {
 			return 0;
 		}
@@ -353,6 +488,23 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		$total = $this->get_completed_generation_count($subject);
 
 		return $total % $count;
+	}
+
+	/**
+	 * Generate a uniqueness seed with fallback entropy.
+	 *
+	 * @return string
+	 */
+	private function generate_uniqueness_seed() {
+		try {
+			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
+		} catch (Random\RandomException) {
+			$random_one = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
+			$random_two = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
+			$fallback = $random_one . '|' . $random_two . '|' . uniqid('', true) . '|' . microtime(true);
+
+			return substr(hash('sha256', $fallback), 0, self::UNIQUENESS_SEED_BYTES * 2);
+		}
 	}
 
 	/**

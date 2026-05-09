@@ -122,6 +122,11 @@ class AIPS_Prompt_Builder_Post_Title {
 			$prompt .= "\n\n" . $content_format_block;
 		}
 
+		$post_slice_block = $this->diversity_injector->build_post_slice_block($subject);
+		if (!empty($post_slice_block)) {
+			$prompt .= "\n\n" . $post_slice_block;
+		}
+
 		return $prompt;
 	}
 }

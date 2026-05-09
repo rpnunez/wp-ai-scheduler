@@ -23,11 +23,6 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Builder_Post_Content {
 
 	/**
-	 * Number of random bytes used for the uniqueness seed.
-	 */
-	const UNIQUENESS_SEED_BYTES = 4;
-
-	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
 	private $template_processor;
@@ -118,7 +113,15 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $content_format_block;
 		}
 
-		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
+		$post_slice_block = $this->diversity_injector->build_post_slice_block($context);
+		if (!empty($post_slice_block)) {
+			$processed_prompt .= "\n\n" . $post_slice_block;
+		}
+
+		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);
+		if (!empty($uniqueness_seed_line_block)) {
+			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
+		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
@@ -150,42 +153,16 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $content_format_block;
 		}
 
-		$processed_prompt .= "\n\n" . $this->get_uniqueness_seed_line();
+		$post_slice_block = $this->diversity_injector->build_post_slice_block($template);
+		if (!empty($post_slice_block)) {
+			$processed_prompt .= "\n\n" . $post_slice_block;
+		}
+
+		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($template);
+		if (!empty($uniqueness_seed_line_block)) {
+			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
+		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
-	}
-
-	/**
-	 * Generate a uniqueness seed line to append to content prompts.
-	 *
-	 * Appending a cryptographically random seed for each generation run nudges
-	 * the AI to produce varied angles and framing rather than converging on the
-	 * same post structure when the same base prompt is used repeatedly.
-	 *
-	 * @return string
-	 */
-	private function get_uniqueness_seed_line() {
-		// Keep wording neutral so this instruction is valid even when no diversity block is appended.
-		return 'Unique generation seed: ' . $this->generate_uniqueness_seed() . '. Use this to add extra variation in angle, framing, and structure while keeping the post meaningfully distinct from past generations.';
-	}
-
-	/**
-	 * Generate a uniqueness seed with fallback entropy.
-	 *
-	 * Uses random_bytes() first, then falls back to pseudo-random sources
-	 * when secure random generation is unavailable.
-	 *
-	 * @return string
-	 */
-	private function generate_uniqueness_seed() {
-		try {
-			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
-		} catch (Random\RandomException) {
-			$random_one = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
-			$random_two = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
-			$fallback = $random_one . '|' . $random_two . '|' . uniqid('', true) . '|' . microtime(true);
-
-			return substr(hash('sha256', $fallback), 0, self::UNIQUENESS_SEED_BYTES * 2);
-		}
 	}
 }

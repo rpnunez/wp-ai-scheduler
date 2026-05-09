@@ -33,19 +33,29 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	private function make_diversity_injector($avoid_titles_block = '', $content_format_block = '') {
-		return new class( $avoid_titles_block, $content_format_block ) {
+	private function make_diversity_injector($avoid_titles_block = '', $content_format_block = '', $post_slice_block = '', $uniqueness_seed_line_block = 'Unique generation seed: testseed. Use this run-specific seed to vary angle, framing, structure, and examples while keeping the post meaningfully distinct from past generations.') {
+		return new class( $avoid_titles_block, $content_format_block, $post_slice_block, $uniqueness_seed_line_block ) {
 			private $avoid_titles_block;
 			private $content_format_block;
-			public function __construct( $avoid_titles_block, $content_format_block ) {
+			private $post_slice_block;
+			private $uniqueness_seed_line_block;
+			public function __construct( $avoid_titles_block, $content_format_block, $post_slice_block, $uniqueness_seed_line_block ) {
 				$this->avoid_titles_block = $avoid_titles_block;
 				$this->content_format_block = $content_format_block;
+				$this->post_slice_block = $post_slice_block;
+				$this->uniqueness_seed_line_block = $uniqueness_seed_line_block;
 			}
 			public function build_avoid_titles_block( $subject ) {
 				return $this->avoid_titles_block;
 			}
 			public function build_content_format_block( $subject ) {
 				return $this->content_format_block;
+			}
+			public function build_post_slice_block( $subject ) {
+				return $this->post_slice_block;
+			}
+			public function build_uniqueness_seed_line_block( $subject ) {
+				return $this->uniqueness_seed_line_block;
 			}
 		};
 	}
@@ -319,5 +329,29 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('Use this content format for this generation:', $result);
 		$this->assertStringContainsString('- implementation checklist', $result);
+	}
+
+	public function test_post_slice_block_is_appended_when_available() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager  = new AIPS_Article_Structure_Manager();
+		$section_builder    = new AIPS_Prompt_Builder_Article_Structure_Section(
+			$structure_manager,
+			null,
+			$template_processor
+		);
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			$template_processor,
+			$section_builder,
+			$this->make_diversity_injector('', '', "Use this post style for this generation:\n- failure modes")
+		);
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, null, null);
+
+		$this->assertStringContainsString('Use this post style for this generation:', $result);
+		$this->assertStringContainsString('- failure modes', $result);
 	}
 }

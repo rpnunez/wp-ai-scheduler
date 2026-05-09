@@ -11,6 +11,10 @@ class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 		remove_all_filters('aips_diversity_content_formats');
 		remove_all_filters('aips_diversity_content_format_heading');
 		remove_all_filters('aips_diversity_content_format_block');
+		remove_all_filters('aips_diversity_post_slices');
+		remove_all_filters('aips_diversity_post_slice_heading');
+		remove_all_filters('aips_diversity_post_slice_block');
+		remove_all_filters('aips_diversity_uniqueness_seed_line_block');
 		parent::tearDown();
 	}
 
@@ -130,5 +134,50 @@ class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('Use this content format for this generation:', $block);
 		$this->assertStringContainsString('- comparison guide', $block);
+	}
+
+	public function test_build_post_slice_block_uses_active_names_from_repository() {
+		$history_repository = new class {
+			public function get_history($args = array()) {
+				return array(
+					'items' => array(),
+					'total' => 1,
+				);
+			}
+		};
+		$post_slices_repository = new class {
+			public function get_active_names() {
+				return array('beginner onboarding', 'failure modes', 'observability');
+			}
+		};
+		$injector = new AIPS_Prompt_Builder_Diversity_Injector($history_repository, null, $post_slices_repository);
+		$template = (object) array(
+			'id'              => 11,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+		);
+
+		$block = $injector->build_post_slice_block($template);
+
+		$this->assertStringContainsString('Use this post style for this generation:', $block);
+		$this->assertStringContainsString('- failure modes', $block);
+		$this->assertStringContainsString('editorial lens', $block);
+	}
+
+	public function test_build_uniqueness_seed_line_block_returns_seed_guidance() {
+		$history_repository = new class {
+			public function get_history($args = array()) {
+				return array(
+					'items' => array(),
+					'total' => 0,
+				);
+			}
+		};
+		$injector = new AIPS_Prompt_Builder_Diversity_Injector($history_repository, null);
+
+		$block = $injector->build_uniqueness_seed_line_block();
+
+		$this->assertMatchesRegularExpression('/Unique generation seed: [0-9a-f]{8}\./', $block);
+		$this->assertStringContainsString('run-specific seed', $block);
 	}
 }
