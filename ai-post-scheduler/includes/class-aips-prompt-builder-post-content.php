@@ -170,11 +170,11 @@ class AIPS_Prompt_Builder_Post_Content {
 		try {
 			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
 		} catch (Random\RandomException $exception) {
-			if (function_exists('wp_rand')) {
-				return sprintf('%08x', wp_rand(0, 0xffffffff));
-			}
+			$random_one = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
+			$random_two = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
+			$fallback = $random_one . '|' . $random_two . '|' . uniqid('', true) . '|' . microtime(true);
 
-			return sprintf('%08x', mt_rand(0, 0xffffffff));
+			return substr(hash('sha256', $fallback), 0, self::UNIQUENESS_SEED_BYTES * 2);
 		}
 	}
 }
