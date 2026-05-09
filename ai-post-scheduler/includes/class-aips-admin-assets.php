@@ -192,16 +192,23 @@ class AIPS_Admin_Assets {
     /**
      * Enqueue global plugin assets.
      */
-    private function enqueue_global_assets() {
+	private function enqueue_global_assets() {
 
-        // Global Admin Styles and Scripts
+		// Global Admin Styles and Scripts
 
-        wp_enqueue_style(
+		wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
-            AIPS_VERSION
-        );
+			array(),
+			AIPS_VERSION
+		);
+
+		wp_enqueue_style(
+			'aips-utilities-style',
+			AIPS_PLUGIN_URL . 'assets/css/utilities.css',
+			array('aips-admin-style'),
+			AIPS_VERSION
+		);
 
         wp_enqueue_script(
 			'aips-datetime-script',

@@ -34,7 +34,128 @@
          * future setup that must run once the DOM is ready.
          */
         init: function() {
-            // Nothing needed on init currently; reserved for future use.
+            this.initHubPages();
+        },
+
+        /**
+         * Initialize shared hub-page tab behavior.
+         *
+         * Hub pages use lightweight cards and route users into the existing
+         * detailed managers. Tabs stay client-side for quick switching while
+         * the active tab key is mirrored into the query string so refreshes and
+         * copied URLs preserve context.
+         */
+        initHubPages: function() {
+            var self = this;
+
+            $('[data-aips-hub-page]').each(function() {
+                var $page = $(this);
+                var requestedTabKey = self.getQueryParam('tab');
+                var $requestedTab = requestedTabKey ? $page.find('[data-aips-hub-tab-link][data-tab-key="' + requestedTabKey + '"]').first() : $();
+                var $defaultTab = $page.find('[data-aips-hub-tab-link].active').first();
+
+                if (!$defaultTab.length) {
+                    $defaultTab = $page.find('[data-aips-hub-tab-link]').first();
+                }
+
+                if ($requestedTab.length) {
+                    self.activateHubTab($page, $requestedTab);
+                } else if ($defaultTab.length) {
+                    self.activateHubTab($page, $defaultTab, false);
+                }
+            });
+
+            $(document).on('click', '[data-aips-hub-tab-link]', function(e) {
+                e.preventDefault();
+                var $tab = $(this);
+                var $page = $tab.closest('[data-aips-hub-page]');
+
+                if (!$page.length) {
+                    return;
+                }
+
+                self.activateHubTab($page, $tab);
+            });
+
+            $(document).on('keydown', '[data-aips-hub-tab-link]', function(e) {
+                var keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+                if (keys.indexOf(e.key) === -1) {
+                    return;
+                }
+
+                var $tabs = $(this).closest('[data-aips-hub-tabs]').find('[data-aips-hub-tab-link]');
+                var currentIndex = $tabs.index(this);
+                var targetIndex = currentIndex;
+
+                if (e.key === 'ArrowLeft') {
+                    targetIndex = currentIndex === 0 ? $tabs.length - 1 : currentIndex - 1;
+                } else if (e.key === 'ArrowRight') {
+                    targetIndex = currentIndex === $tabs.length - 1 ? 0 : currentIndex + 1;
+                } else if (e.key === 'Home') {
+                    targetIndex = 0;
+                } else if (e.key === 'End') {
+                    targetIndex = $tabs.length - 1;
+                }
+
+                e.preventDefault();
+                $tabs.eq(targetIndex).trigger('click').trigger('focus');
+            });
+        },
+
+        /**
+         * Activate one hub tab and reveal its linked panel.
+         *
+         * @param {jQuery} $page      Hub page wrapper.
+         * @param {jQuery} $tab       Clicked tab link.
+         * @param {boolean} updateUrl Whether to write the tab key into the URL.
+         */
+        activateHubTab: function($page, $tab, updateUrl) {
+            var panelId;
+            var tabKey;
+            var $tabs;
+            var $panels;
+
+            if (updateUrl === undefined) {
+                updateUrl = true;
+            }
+
+            panelId = $tab.data('tab');
+            tabKey = $tab.data('tab-key');
+            $tabs = $page.find('[data-aips-hub-tab-link]');
+            $panels = $page.find('[data-aips-hub-panel]');
+
+            $tabs.removeClass('active').attr('aria-selected', 'false').attr('tabindex', '-1');
+            $tab.addClass('active').attr('aria-selected', 'true').attr('tabindex', '0');
+
+            $panels.attr('hidden', 'hidden').attr('aria-hidden', 'true').removeClass('active');
+            $page.find('#' + panelId).removeAttr('hidden').attr('aria-hidden', 'false').addClass('active');
+
+            if (updateUrl && tabKey) {
+                this.setQueryParam('tab', tabKey);
+            }
+        },
+
+        /**
+         * Read a single query parameter from the current URL.
+         *
+         * @param {string} key Query-string key.
+         * @return {string}
+         */
+        getQueryParam: function(key) {
+            var params = new URLSearchParams(window.location.search);
+            return params.get(key) || '';
+        },
+
+        /**
+         * Update a single query parameter without reloading the page.
+         *
+         * @param {string} key   Query-string key.
+         * @param {string} value Query-string value.
+         */
+        setQueryParam: function(key, value) {
+            var url = new URL(window.location.href);
+            url.searchParams.set(key, value);
+            window.history.replaceState({}, '', url.toString());
         },
 
         /**

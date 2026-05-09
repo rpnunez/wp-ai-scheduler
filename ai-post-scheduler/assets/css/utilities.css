@@ -1,0 +1,143 @@
+/**
+ * Shared utility styles for cross-page admin UI patterns.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+.aips-hub-header {
+	margin-bottom: var(--aips-space-4);
+}
+
+.aips-hub-tab-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	margin-bottom: var(--aips-space-5);
+	padding: var(--aips-space-2);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-hub-tab-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 40px;
+	padding: 0 var(--aips-space-4);
+	border: 1px solid transparent;
+	border-radius: var(--aips-radius-md);
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	text-decoration: none;
+	transition: background-color var(--aips-transition-fast), border-color var(--aips-transition-fast), color var(--aips-transition-fast);
+}
+
+.aips-hub-tab-link:hover,
+.aips-hub-tab-link:focus {
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-900);
+	outline: none;
+	box-shadow: none;
+}
+
+.aips-hub-tab-link.active {
+	background: var(--aips-primary-light);
+	border-color: rgba(34, 113, 177, 0.2);
+	color: var(--aips-primary);
+}
+
+.aips-hub-panel {
+	display: block;
+}
+
+.aips-hub-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-4);
+}
+
+.aips-hub-section-header {
+	max-width: 880px;
+}
+
+.aips-hub-section-title {
+	margin: 0 0 var(--aips-space-2);
+	font-size: var(--aips-text-xl);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+}
+
+.aips-hub-section-description {
+	margin: 0;
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-relaxed);
+	color: var(--aips-gray-500);
+}
+
+.aips-hub-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--aips-space-4);
+}
+
+.aips-hub-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-5);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-hub-card-eyebrow {
+	margin: 0;
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-primary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.aips-hub-card-title {
+	margin: 0;
+	font-size: var(--aips-text-lg);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+}
+
+.aips-hub-card-description {
+	margin: 0;
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-relaxed);
+	color: var(--aips-gray-600);
+}
+
+.aips-hub-card-list {
+	margin: 0;
+	padding-left: 18px;
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-relaxed);
+}
+
+.aips-hub-card-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	margin-top: auto;
+}
+
+@media (max-width: 782px) {
+	.aips-hub-tab-nav {
+		padding: var(--aips-space-3);
+	}
+
+	.aips-hub-tab-link {
+		flex: 1 1 calc(50% - var(--aips-space-2));
+	}
+}
