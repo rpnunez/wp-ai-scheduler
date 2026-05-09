@@ -155,6 +155,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	private function get_uniqueness_seed_line() {
+		// Keep wording neutral so this instruction is valid even when no diversity block is appended.
 		return 'Unique generation seed: ' . $this->generate_uniqueness_seed() . '. Use this to add extra variation in angle, framing, and structure while keeping the post meaningfully distinct from past generations.';
 	}
 
@@ -169,7 +170,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	private function generate_uniqueness_seed() {
 		try {
 			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
-		} catch (Random\RandomException $exception) {
+		} catch (Random\RandomException) {
 			$random_one = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
 			$random_two = function_exists('wp_rand') ? wp_rand(0, 0xffffffff) : mt_rand(0, 0xffffffff);
 			$fallback = $random_one . '|' . $random_two . '|' . uniqid('', true) . '|' . microtime(true);
