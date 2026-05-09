@@ -159,14 +159,17 @@ class AIPS_Prompt_Builder_Post_Content {
 	}
 
 	/**
-	 * Generate a resilient uniqueness seed.
+	 * Generate a uniqueness seed with fallback entropy.
+	 *
+	 * Uses random_bytes() first, then falls back to pseudo-random sources
+	 * when secure random generation is unavailable.
 	 *
 	 * @return string
 	 */
 	private function generate_uniqueness_seed() {
 		try {
 			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
-		} catch (Exception $e) {
+		} catch (Random\RandomException $exception) {
 			if (function_exists('wp_rand')) {
 				return sprintf('%08x', wp_rand(0, 0xffffffff));
 			}
