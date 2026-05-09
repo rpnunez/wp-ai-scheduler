@@ -73,10 +73,18 @@ class AIPS_Component_Regeneration_Service {
 	
 	/**
 	 * Constructor
+	 *
+	 * @param AIPS_History_Repository|null       $history_repository         Optional history repository.
+	 * @param AIPS_Generation_Context_Factory|null $generation_context_factory Optional generation context factory.
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
+	public function __construct($history_repository = null, $generation_context_factory = null) {
+		$container = AIPS_Container::get_instance();
+
+		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
+		$this->generation_context_factory = $generation_context_factory
+			?: ($container->has(AIPS_Generation_Context_Factory::class)
+				? $container->make(AIPS_Generation_Context_Factory::class)
+				: new AIPS_Generation_Context_Factory());
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
 		

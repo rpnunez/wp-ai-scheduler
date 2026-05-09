@@ -1,0 +1,21 @@
+{
+  "id": "0513ae60a9ec71920dfe463716b59faee4cd9f8b",
+  "type": "framework_di_gap",
+  "severity": "medium",
+  "status": "resolved",
+  "path": "ai-post-scheduler/includes/class-aips-component-regeneration-service.php",
+  "symbol": "AIPS_Component_Regeneration_Service",
+  "anchor": "__construct:new_AIPS_Generation_Context_Factory",
+  "summary": "The regeneration service hard-wired its generation context factory instead of allowing injected or container-managed construction.",
+  "why_it_matters": "This made the regeneration path harder to test and inconsistent with the plugin's existing container-driven dependency pattern.",
+  "suggested_fix": "Allow the service to accept an injected generation context factory and fall back to an AIPS_Container binding before constructing a concrete instance.",
+  "first_seen_run_id": "aips-20260507T224141Z",
+  "last_seen_run_id": "aips-20260507T224141Z",
+  "citations": [
+    "ai-post-scheduler/includes/class-aips-component-regeneration-service.php:79",
+    "ai-post-scheduler/includes/class-aips-generation-context-factory.php:50",
+    "ai-post-scheduler/includes/class-aips-ai-edit-controller.php:42"
+  ],
+  "resolved_run_id": "aips-20260507T224141Z",
+  "resolved_at": "2026-05-07T22:41:41Z"
+}

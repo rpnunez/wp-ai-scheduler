@@ -1,0 +1,19 @@
+{
+  "id": "10ff097aed57833a82a3e0e732818a96c6e8d4dc",
+  "type": "god_object",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-admin-assets.php",
+  "symbol": "AIPS_Admin_Assets",
+  "anchor": "enqueue_admin_assets:page_slug_branch_chain",
+  "summary": "Admin assets centralizes page detection and page-specific enqueue rules in one large branch chain.",
+  "why_it_matters": "The class is becoming a routing hub for unrelated admin pages, which raises maintenance cost and makes feature-specific asset behavior harder to isolate.",
+  "suggested_fix": "Extract page-to-enqueue mapping or dedicated page asset registration helpers so the controller does not keep growing conditionally.",
+  "first_seen_run_id": "aips-20260507T224141Z",
+  "last_seen_run_id": "aips-20260507T224141Z",
+  "citations": [
+    "ai-post-scheduler/includes/class-aips-admin-assets.php:60",
+    "ai-post-scheduler/includes/class-aips-admin-assets.php:69",
+    "ai-post-scheduler/includes/class-aips-admin-assets.php:133"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "a6ecc5fb71f2c5543ae5734a64b29820b4fdb597",
+  "type": "framework_di_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-generated-posts-controller.php",
+  "symbol": "AIPS_Generated_Posts_Controller",
+  "anchor": "__construct:new_repositories_and_render_page:new_template_authors_repository",
+  "summary": "Generated posts controller still hard-wires repositories in both the constructor and render path.",
+  "why_it_matters": "The controller is doing its own dependency construction, which reduces testability and diverges from the repo's emerging AIPS_Container pattern.",
+  "suggested_fix": "Allow repository injection or container-based resolution for the history, schedule, post-review, template, and authors dependencies.",
+  "first_seen_run_id": "aips-20260507T224141Z",
+  "last_seen_run_id": "aips-20260507T224141Z",
+  "citations": [
+    "ai-post-scheduler/includes/class-aips-generated-posts-controller.php:49",
+    "ai-post-scheduler/includes/class-aips-generated-posts-controller.php:171",
+    "ai-post-scheduler/includes/class-aips-generated-posts-controller.php:175"
+  ]
+}

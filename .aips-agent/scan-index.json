@@ -1,9 +1,9 @@
 {
     "schema_version": 1,
     "repo": "rpnunez/wp-ai-scheduler",
-    "last_run_at": "2026-05-07T22:06:27Z",
-    "last_run_id": "aips-20260507T220627Z",
-    "ruleset_hash": "1559db00904777f3cee970a7bdaf2f1d7d98f7fd",
+    "last_run_at": "2026-05-07T22:41:41Z",
+    "last_run_id": "aips-20260507T224141Z",
+    "ruleset_hash": "8f92636205ec9db5059f1f823fe47ba8ca876fb0",
     "files": {
         "ai-post-scheduler/includes/class-aips-author-post-generator.php": {
             "fingerprint": "062fa9f1daefeec6a371d430a12546f47affe299",
@@ -123,6 +123,55 @@
             "last_scan_run_id": "aips-20260507T190500Z",
             "findings_open_count": 0,
             "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-generation-context-factory.php": {
+            "fingerprint": "7c05a89a53ca6f474749e0b44f07e1baf1d51378",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-component-regeneration-service.php": {
+            "fingerprint": "73a0dd62643a33ddbe2f7a710041a02f2b8bbbdb",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-ai-edit-controller.php": {
+            "fingerprint": "ac9c87a7bb181d0bfc7bc0477993d9e195cde40d",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/tests/Test_AIPS_Regeneration_DI.php": {
+            "fingerprint": "750394241f342cf50b7e6812c92e5e7790a69540",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-generated-posts-controller.php": {
+            "fingerprint": "477877b9a7c057228d2fefad1ec38ba8e77d0430",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 1,
+            "status": "has_findings"
+        },
+        "ai-post-scheduler/includes/class-aips-admin-assets.php": {
+            "fingerprint": "207faac7376f01f1a30d520f055c63b9a9407bdf",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 1,
+            "status": "has_findings"
+        },
+        "ai-post-scheduler/includes/class-aips-internal-links-controller.php": {
+            "fingerprint": "923cea926d15e596cfbbeb1562f84b36e9cef85f",
+            "last_scanned_at": "2026-05-07T22:41:41Z",
+            "last_scan_run_id": "aips-20260507T224141Z",
+            "findings_open_count": 1,
+            "status": "has_findings"
         }
     },
     "open_findings": {
@@ -235,6 +284,50 @@
             "last_seen_run_id": "aips-20260507T190500Z",
             "status": "resolved",
             "finding_file": ".aips-agent/findings/e4090bcc8d154f838e8643ddcfd533da99087a22.json"
+        },
+        "0513ae60a9ec71920dfe463716b59faee4cd9f8b": {
+            "type": "framework_di_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-component-regeneration-service.php",
+            "symbol": "AIPS_Component_Regeneration_Service",
+            "anchor": "__construct:new_AIPS_Generation_Context_Factory",
+            "first_seen_run_id": "aips-20260507T224141Z",
+            "last_seen_run_id": "aips-20260507T224141Z",
+            "status": "resolved",
+            "finding_file": ".aips-agent/findings/0513ae60a9ec71920dfe463716b59faee4cd9f8b.json"
+        },
+        "a6ecc5fb71f2c5543ae5734a64b29820b4fdb597": {
+            "type": "framework_di_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-generated-posts-controller.php",
+            "symbol": "AIPS_Generated_Posts_Controller",
+            "anchor": "__construct:new_repositories_and_render_page:new_template_authors_repository",
+            "first_seen_run_id": "aips-20260507T224141Z",
+            "last_seen_run_id": "aips-20260507T224141Z",
+            "status": "open",
+            "finding_file": ".aips-agent/findings/a6ecc5fb71f2c5543ae5734a64b29820b4fdb597.json"
+        },
+        "10ff097aed57833a82a3e0e732818a96c6e8d4dc": {
+            "type": "god_object",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-admin-assets.php",
+            "symbol": "AIPS_Admin_Assets",
+            "anchor": "enqueue_admin_assets:page_slug_branch_chain",
+            "first_seen_run_id": "aips-20260507T224141Z",
+            "last_seen_run_id": "aips-20260507T224141Z",
+            "status": "open",
+            "finding_file": ".aips-agent/findings/10ff097aed57833a82a3e0e732818a96c6e8d4dc.json"
+        },
+        "2a1bc778e8d8d9e8a253e37eb07fe86703cf4a1d": {
+            "type": "framework_di_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-internal-links-controller.php",
+            "symbol": "AIPS_Internal_Links_Controller",
+            "anchor": "__construct:new_services_and_repositories",
+            "first_seen_run_id": "aips-20260507T224141Z",
+            "last_seen_run_id": "aips-20260507T224141Z",
+            "status": "open",
+            "finding_file": ".aips-agent/findings/2a1bc778e8d8d9e8a253e37eb07fe86703cf4a1d.json"
         }
     }
 }
