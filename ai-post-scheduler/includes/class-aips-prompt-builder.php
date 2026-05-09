@@ -62,7 +62,7 @@ class AIPS_Prompt_Builder {
     private $post_excerpt_builder;
 
 	/**
-	 * @var AIPS_Post_Featured_Image_Builder Post featured image builder instance
+	 * @var AIPS_Prompt_Builder_Post_Featured_Image Post featured image builder instance
 	 */
 	private $post_featured_image_builder;
 
@@ -222,10 +222,11 @@ class AIPS_Prompt_Builder {
      *
      * Supports both legacy template-based approach and new context-based approach.
      *
-     * @param string      $title   Title of the generated article.
-     * @param string      $content The article content to summarize.
-     * @param object|null $voice   Optional voice object with excerpt instructions (legacy).
-     * @param string|null $topic   Optional topic to be injected into prompts (legacy).
+     * @param string                         $title   Title of the generated article.
+     * @param string                         $content The article content to summarize.
+     * @param object|null                    $voice   Optional voice object with excerpt instructions (legacy).
+     * @param string|null                    $topic   Optional topic to be injected into prompts (legacy).
+     * @param object|AIPS_Generation_Context $subject Optional template/author object or generation context for diversity injection.
      * @return string The complete excerpt generation prompt.
      */
     public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $subject = null) {

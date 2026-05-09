@@ -155,6 +155,23 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	private function get_uniqueness_seed_line() {
-		return 'Unique generation seed: ' . bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES)) . '. Use this to add extra variation in angle, framing, and structure beyond the titles explicitly listed above.';
+		return 'Unique generation seed: ' . $this->generate_uniqueness_seed() . '. Use this to add extra variation in angle, framing, and structure while keeping the post meaningfully distinct from past generations.';
+	}
+
+	/**
+	 * Generate a resilient uniqueness seed.
+	 *
+	 * @return string
+	 */
+	private function generate_uniqueness_seed() {
+		try {
+			return bin2hex(random_bytes(self::UNIQUENESS_SEED_BYTES));
+		} catch (Exception $e) {
+			if (function_exists('wp_rand')) {
+				return sprintf('%08x', wp_rand(0, 0xffffffff));
+			}
+
+			return sprintf('%08x', mt_rand(0, 0xffffffff));
+		}
 	}
 }

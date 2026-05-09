@@ -501,11 +501,12 @@ class AIPS_Generator {
      * Ensures the excerpt length is within a reasonable limit and removes
      * surrounding quotes from the AI output.
      *
-     * @param string      $title   Title of the generated article.
-     * @param string      $content The article content to summarize.
-     * @param object|null $voice   Optional voice object with excerpt instructions.
-     * @param string|null $topic   Optional topic to be injected into prompts.
-     * @param array       $options AI options.
+     * @param string                         $title   Title of the generated article.
+     * @param string                         $content The article content to summarize.
+     * @param object|null                    $voice   Optional voice object with excerpt instructions.
+     * @param string|null                    $topic   Optional topic to be injected into prompts.
+     * @param array                          $options AI options.
+     * @param object|AIPS_Generation_Context $subject Optional template/author object or generation context for diversity injection.
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array(), $subject = null) {

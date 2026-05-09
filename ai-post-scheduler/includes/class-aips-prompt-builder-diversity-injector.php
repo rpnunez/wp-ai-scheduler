@@ -6,7 +6,7 @@
  * generated titles and topic ideas.
  *
  * @package AI_Post_Scheduler
- * @since 2.6.0
+ * @since 2.5.0
  */
 
 if (!defined('ABSPATH')) {
@@ -107,10 +107,6 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			return '';
 		}
 
-		if (!method_exists($this->author_topics_repository, 'get_by_author')) {
-			return '';
-		}
-
 		$rows = $this->author_topics_repository->get_by_author((int) $author->id);
 		if (empty($rows) || !is_array($rows)) {
 			return '';
@@ -144,10 +140,6 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	 * @return array
 	 */
 	private function get_recent_post_titles(array $args) {
-		if (!method_exists($this->history_repository, 'get_history')) {
-			return array();
-		}
-
 		$history = $this->history_repository->get_history($args);
 		if (empty($history['items']) || !is_array($history['items'])) {
 			return array();
@@ -215,7 +207,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		 * The subject may be a template object, an AIPS_Generation_Context instance,
 		 * or an author object when building author-topic prompts. Default 12 titles.
 		 *
-		 * @since 2.6.0
+		 * @since 2.5.0
 		 * @param int   $limit   Number of titles to include.
 		 * @param mixed $subject Template object, generation context, or author object.
 		 */
