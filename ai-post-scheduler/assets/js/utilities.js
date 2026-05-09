@@ -66,7 +66,6 @@
             });
 
             $(document).on('click', '[data-aips-hub-tab-link]', function(e) {
-                e.preventDefault();
                 var $tab = $(this);
                 var $page = $tab.closest('[data-aips-hub-page]');
 
@@ -74,6 +73,11 @@
                     return;
                 }
 
+                if ($page.is('[data-aips-hub-server-tabs]')) {
+                    return;
+                }
+
+                e.preventDefault();
                 self.activateHubTab($page, $tab);
             });
 

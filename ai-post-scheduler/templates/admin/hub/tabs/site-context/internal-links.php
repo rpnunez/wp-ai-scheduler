@@ -3,17 +3,13 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$section_title       = __('Internal Links', 'ai-post-scheduler');
-$section_description = __('Keep link suggestions and internal-linking context close to the rest of the site knowledge the generators rely on.', 'ai-post-scheduler');
-$cards               = array(
-	array(
-		'eyebrow'     => __('Link Graph', 'ai-post-scheduler'),
-		'title'       => __('Internal Link Suggestions', 'ai-post-scheduler'),
-		'description' => __('Review the link inventory and supporting data that can improve generated post navigation and contextual linking.', 'ai-post-scheduler'),
-		'actions'     => array(
-			array('label' => __('Open Internal Links', 'ai-post-scheduler'), 'href' => AIPS_Admin_Menu_Helper::get_page_url('internal_links'), 'primary' => true),
-		),
-	),
-);
+global $aips_internal_links_controller;
 
-include AIPS_PLUGIN_DIR . 'templates/admin/hub/components/card-grid.php';
+if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
+	$aips_internal_links_controller->render_page();
+	return;
+}
+
+echo '<div class="notice notice-error"><p>' .
+	esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
+'</p></div>';

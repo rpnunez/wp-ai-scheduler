@@ -20,6 +20,7 @@ class AIPS_Admin_Hub_Registry {
 				'menu_title'   => __('Content Setup', 'ai-post-scheduler'),
 				'page_title'   => __('Content Setup', 'ai-post-scheduler'),
 				'description'  => __('Configure the reusable building blocks that shape generated posts: templates, voices, article structures, and prompt blocks.', 'ai-post-scheduler'),
+				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-templates',
 					'aips-voices',
@@ -54,6 +55,7 @@ class AIPS_Admin_Hub_Registry {
 				'menu_title'   => __('Automation', 'ai-post-scheduler'),
 				'page_title'   => __('Automation', 'ai-post-scheduler'),
 				'description'  => __('Plan what gets generated, when it runs, and how author-specific workflows move from research to scheduled output.', 'ai-post-scheduler'),
+				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-authors',
 					'aips-author-topics',
@@ -89,6 +91,7 @@ class AIPS_Admin_Hub_Registry {
 				'menu_title'   => __('Outputs', 'ai-post-scheduler'),
 				'page_title'   => __('Outputs', 'ai-post-scheduler'),
 				'description'  => __('Review generated content, keep drafts moving, and inspect generation history without hunting through separate menu branches.', 'ai-post-scheduler'),
+				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-generated-posts',
 					'aips-history',
@@ -116,6 +119,7 @@ class AIPS_Admin_Hub_Registry {
 				'menu_title'   => __('Site Context', 'ai-post-scheduler'),
 				'page_title'   => __('Site Context', 'ai-post-scheduler'),
 				'description'  => __('Manage the site knowledge the generators rely on: reference sources, taxonomy terms, and internal linking guidance.', 'ai-post-scheduler'),
+				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-sources',
 					'aips-taxonomy',
@@ -144,6 +148,7 @@ class AIPS_Admin_Hub_Registry {
 				'menu_title'   => __('Settings', 'ai-post-scheduler'),
 				'page_title'   => __('Settings', 'ai-post-scheduler'),
 				'description'  => __('Keep plugin configuration, system diagnostics, seed data, telemetry, and developer tools in one administrative workspace.', 'ai-post-scheduler'),
+				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-settings',
 					'aips-status',

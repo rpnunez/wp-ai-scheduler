@@ -61,6 +61,8 @@ class AIPS_Admin_Menu_Helper {
 	 * @return string The escaped admin URL.
 	 */
 	public static function get_page_url($page, $args = array()) {
+		$default_args = array();
+
 		if (!isset(self::$page_slugs[$page])) {
 			// Fallback to the provided slug if it's not in our map
 			$slug = $page;
@@ -68,10 +70,85 @@ class AIPS_Admin_Menu_Helper {
 			$slug = self::$page_slugs[$page];
 		}
 
+		switch ($page) {
+			case 'templates':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array('tab' => 'templates');
+				break;
+			case 'voices':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array('tab' => 'voices');
+				break;
+			case 'structures':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array('tab' => 'structures');
+				break;
+			case 'prompt_sections':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array('tab' => 'prompt-blocks');
+				break;
+			case 'authors':
+				$slug         = self::$page_slugs['automation_hub'];
+				$default_args = array('tab' => 'authors');
+				break;
+			case 'research':
+				$slug         = self::$page_slugs['automation_hub'];
+				$default_args = array('tab' => 'research');
+				break;
+			case 'schedule':
+				$slug         = self::$page_slugs['automation_hub'];
+				$default_args = array('tab' => 'schedule');
+				break;
+			case 'schedule_calendar':
+				$slug         = self::$page_slugs['automation_hub'];
+				$default_args = array('tab' => 'calendar');
+				break;
+			case 'generated_posts':
+				$slug         = self::$page_slugs['outputs_hub'];
+				$default_args = array('tab' => 'content-queue');
+				break;
+			case 'history':
+				$slug         = self::$page_slugs['outputs_hub'];
+				$default_args = array('tab' => 'history');
+				break;
+			case 'sources':
+				$slug         = self::$page_slugs['site_context_hub'];
+				$default_args = array('tab' => 'sources');
+				break;
+			case 'taxonomy':
+				$slug         = self::$page_slugs['site_context_hub'];
+				$default_args = array('tab' => 'taxonomy');
+				break;
+			case 'internal_links':
+				$slug         = self::$page_slugs['site_context_hub'];
+				$default_args = array('tab' => 'internal-links');
+				break;
+			case 'settings':
+				$slug         = self::$page_slugs['settings_hub'];
+				$default_args = array('tab' => 'general');
+				break;
+			case 'system_status':
+				$slug         = self::$page_slugs['settings_hub'];
+				$default_args = array('tab' => 'system');
+				break;
+			case 'seeder':
+				$slug         = self::$page_slugs['settings_hub'];
+				$default_args = array('tab' => 'utilities');
+				break;
+			case 'telemetry':
+				$slug         = self::$page_slugs['settings_hub'];
+				$default_args = array('tab' => 'telemetry');
+				break;
+			case 'dev_tools':
+				$slug         = self::$page_slugs['settings_hub'];
+				$default_args = array('tab' => 'developer');
+				break;
+		}
+
 		$url = admin_url('admin.php?page=' . $slug);
 
-		if (!empty($args)) {
-			$url = add_query_arg($args, $url);
+		if (!empty($default_args) || !empty($args)) {
+			$url = add_query_arg(array_merge($default_args, $args), $url);
 		}
 
 		return $url;

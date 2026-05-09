@@ -68,7 +68,9 @@ class AIPS_Generated_Posts_Controller {
 	/**
 	 * Render the Generated Posts admin page
 	 */
-	public function render_page() {
+	public function render_page($args = array()) {
+		$initial_tab = isset($args['initial_tab']) ? sanitize_key($args['initial_tab']) : 'aips-generated-posts';
+
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
 		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;

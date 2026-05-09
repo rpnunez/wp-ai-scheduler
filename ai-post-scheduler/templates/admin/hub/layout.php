@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="wrap aips-wrap">
-	<div class="aips-page-container aips-hub-page" data-aips-hub-page="<?php echo esc_attr($hub['slug']); ?>" data-aips-active-tab="<?php echo esc_attr($active_tab_key); ?>">
+	<div class="aips-page-container aips-hub-page" data-aips-hub-page="<?php echo esc_attr($hub['slug']); ?>" data-aips-active-tab="<?php echo esc_attr($active_tab_key); ?>"<?php echo !empty($hub['render_active_only']) ? ' data-aips-hub-server-tabs="true"' : ''; ?>>
 		<div class="aips-page-header aips-hub-header">
 			<div class="aips-page-header-top">
 				<div>
@@ -51,11 +51,14 @@ if (!defined('ABSPATH')) {
 				$panel_id  = 'aips-hub-' . sanitize_html_class($hub['slug'] . '-' . $tab['key']) . '-tab';
 				$is_active = ($active_tab_key === $tab['key']);
 				?>
+				<?php if (!empty($hub['render_active_only']) && !$is_active) : ?>
+					<?php continue; ?>
+				<?php endif; ?>
 				<section
 					id="<?php echo esc_attr($panel_id); ?>"
 					class="aips-hub-panel aips-tab-content<?php echo $is_active ? ' active' : ''; ?>"
 					data-aips-hub-panel
-					<?php echo $is_active ? '' : 'hidden="hidden"'; ?>
+					<?php echo (!empty($hub['render_active_only']) || $is_active) ? '' : 'hidden="hidden"'; ?>
 					aria-hidden="<?php echo $is_active ? 'false' : 'true'; ?>"
 					role="tabpanel"
 				>

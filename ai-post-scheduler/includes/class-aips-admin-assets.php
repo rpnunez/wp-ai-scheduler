@@ -48,6 +48,11 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_CONTENT_SETUP_HUB = 'aips-content-setup';
+	private const PAGE_AUTOMATION_HUB = 'aips-automation';
+	private const PAGE_OUTPUTS_HUB = 'aips-outputs';
+	private const PAGE_SITE_CONTEXT_HUB = 'aips-site-context';
+	private const PAGE_SETTINGS_HUB = 'aips-settings-hub';
 
     /**
      * Initialize the class.
@@ -66,6 +71,7 @@ class AIPS_Admin_Assets {
 	 */
 	public function enqueue_admin_assets($hook) {
         $page = $this->get_current_page_slug();
+		$tab  = $this->get_current_tab_key();
 
         if (!$this->is_plugin_admin_page($hook, $page)) {
 			return;
@@ -77,39 +83,39 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->is_hub_tab($page, $tab, self::PAGE_AUTOMATION_HUB, array('authors')) || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_TEMPLATES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('templates')) || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
 			$this->enqueue_templates_assets();
 		}
 
-        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
+        if (self::PAGE_VOICES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('voices')) || $this->hook_contains($hook, self::PAGE_VOICES)) {
 			$this->enqueue_voices_assets();
 		}
 
-        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
+        if (self::PAGE_STRUCTURES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('structures', 'prompt-blocks')) || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
 			$this->enqueue_structures_assets();
 		}
 
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->is_hub_tab($page, $tab, self::PAGE_AUTOMATION_HUB, array('schedule')) || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->is_hub_tab($page, $tab, self::PAGE_AUTOMATION_HUB, array('calendar')) && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-        if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
+        if (self::PAGE_RESEARCH === $page || $this->is_hub_tab($page, $tab, self::PAGE_AUTOMATION_HUB, array('research')) || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
 			$this->enqueue_research_assets();
 		}
 
-        if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
+        if (self::PAGE_GENERATED_POSTS === $page || $this->is_hub_tab($page, $tab, self::PAGE_OUTPUTS_HUB, array('content-queue', 'review-pipeline')) || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
 		}
 
-        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->is_hub_tab($page, $tab, self::PAGE_AUTOMATION_HUB, array('calendar')) || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_calendar_assets();
 		}
 
-        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
+        if (self::PAGE_HISTORY === $page || $this->is_hub_tab($page, $tab, self::PAGE_OUTPUTS_HUB, array('history')) || $this->hook_contains($hook, self::PAGE_HISTORY)) {
 			$this->enqueue_history_assets();
 		}
 
@@ -117,32 +123,32 @@ class AIPS_Admin_Assets {
 			$this->enqueue_onboarding_assets();
 		}
 
-        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+        if (self::PAGE_DEV_TOOLS === $page || $this->is_hub_tab($page, $tab, self::PAGE_SETTINGS_HUB, array('developer')) || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+        if (self::PAGE_STATUS === $page || $this->is_hub_tab($page, $tab, self::PAGE_SETTINGS_HUB, array('system')) || $this->hook_contains($hook, self::PAGE_STATUS)) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->is_hub_tab($page, $tab, self::PAGE_SITE_CONTEXT_HUB, array('taxonomy')) || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->is_hub_tab($page, $tab, self::PAGE_SITE_CONTEXT_HUB, array('sources')) || $this->hook_contains($hook, self::PAGE_SOURCES)) {
 			$this->enqueue_sources_assets();
 		}
 
-        if (self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS)) {
+        if (self::PAGE_SETTINGS === $page || $this->is_hub_tab($page, $tab, self::PAGE_SETTINGS_HUB, array('general')) || $this->hook_contains($hook, self::PAGE_SETTINGS)) {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+        if (self::PAGE_TELEMETRY === $page || $this->is_hub_tab($page, $tab, self::PAGE_SETTINGS_HUB, array('telemetry')) || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
 			$this->enqueue_telemetry_assets();
 		}
 
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->is_hub_tab($page, $tab, self::PAGE_SITE_CONTEXT_HUB, array('internal-links')) || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
 			$this->enqueue_internal_links_assets();
 		}
 
@@ -179,6 +185,21 @@ class AIPS_Admin_Assets {
     }
 
 	/**
+	 * Get the current sanitized hub tab key from the request.
+	 *
+	 * @return string
+	 */
+	private function get_current_tab_key() {
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+		if (!is_string($tab) || '' === $tab) {
+			return '';
+		}
+
+		return sanitize_key(wp_unslash($tab));
+	}
+
+	/**
 	 * Check whether the current admin hook includes a page slug.
 	 *
 	 * @param string $hook   Current admin page hook.
@@ -187,6 +208,19 @@ class AIPS_Admin_Assets {
 	 */
 	private function hook_contains($hook, $needle) {
 		return strpos($hook, $needle) !== false;
+	}
+
+	/**
+	 * Check whether the current request is a specific visible hub tab.
+	 *
+	 * @param string   $page     Current page slug.
+	 * @param string   $tab      Current tab key.
+	 * @param string   $hub_page Hub page slug.
+	 * @param string[] $tabs     Matching tab keys.
+	 * @return bool
+	 */
+	private function is_hub_tab($page, $tab, $hub_page, $tabs) {
+		return $page === $hub_page && in_array($tab, $tabs, true);
 	}
 
     /**
