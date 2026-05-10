@@ -72,6 +72,8 @@ class AIPS_History_Container {
 		$this->repository = $repository;
 		$this->session = null;
 		
+		$this->metadata = $this->normalize_metadata($type, $metadata);
+
 		if ($existing_history_id) {
 			// Load existing history container
 			$history = $repository->get_by_id($existing_history_id);
@@ -79,8 +81,8 @@ class AIPS_History_Container {
 				$this->uuid = $history->uuid;
 				$this->correlation_id = isset($history->correlation_id) ? $history->correlation_id : null;
 				$this->history_id = $history->id;
-				$this->type = $type;
-				$this->metadata = $metadata;
+				$this->type = !empty($history->creation_method) ? $history->creation_method : $type;
+				$this->metadata = $this->normalize_metadata($this->type, $metadata);
 				$this->is_persisted = true;
 				return;
 			}
@@ -96,7 +98,7 @@ class AIPS_History_Container {
 		$this->uuid = AIPS_Utilities::generate_uuid();
 		$this->history_id = null;
 		$this->type = $type;
-		$this->metadata = $metadata;
+		$this->metadata = $this->normalize_metadata($type, $metadata);
 		$this->is_persisted = false;
 		
 		// Persist to database immediately
@@ -183,6 +185,30 @@ class AIPS_History_Container {
 		return $history_container;
 	}
 	
+
+	/**
+	 * Normalize metadata so history type is always persisted in one field.
+	 *
+	 * @param string $type Container type.
+	 * @param array  $metadata Raw metadata.
+	 * @return array
+	 */
+	private function normalize_metadata($type, $metadata) {
+		if (!is_array($metadata)) {
+			$metadata = array();
+		}
+
+		if (empty($metadata['creation_method']) && !empty($type)) {
+			$metadata['creation_method'] = $type;
+		}
+
+		if (!empty($type)) {
+			$metadata['history_type'] = $type;
+		}
+
+		return $metadata;
+	}
+
 	/**
 	 * Persist this history container to the database
 	 *

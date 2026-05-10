@@ -45,21 +45,9 @@ class AIPS_Templates_Controller {
             $slice_count
         );
 
-        $history_service = new AIPS_History_Service();
-        $history = $history_service->create('template_lifecycle', array(
-            'template_id'     => absint($template_id),
-            'creation_method' => 'template_lifecycle',
-            'user_id'         => get_current_user_id(),
-            'source'          => 'manual_ui',
-        ));
-
-        if (!$history) {
-            return null;
-        }
-
-        $history->record(
-            'activity',
-            sprintf(
+        AIPS_History_Service::log_event(array(
+            'history_type' => 'template_lifecycle',
+            'message' => sprintf(
                 /* translators: 1: template name, 2: post quantity, 3: threshold, 4: slice count */
                 __('Template "%1$s" saved with %2$d posts per run. Quantities above threshold (%3$d) will be split into %4$d slices at runtime.', 'ai-post-scheduler'),
                 $template_name,
@@ -67,20 +55,19 @@ class AIPS_Templates_Controller {
                 $threshold,
                 $slice_count
             ),
-            array(
-                'event_type'   => 'template_slicing_notice',
-                'event_status' => 'success',
+            'event_type' => 'template_slicing_notice',
+            'event_status' => 'success',
+            'metadata' => array(
+                'template_id'   => absint($template_id),
+                'source'        => 'manual_ui',
             ),
-            null,
-            array(
+            'context' => array(
                 'template_id'   => absint($template_id),
                 'post_quantity' => $post_quantity,
                 'threshold'     => $threshold,
                 'slice_count'   => $slice_count,
             )
-        );
-
-        $history->complete_success();
+        ));
 
         return array(
             'message'       => $notice_message,

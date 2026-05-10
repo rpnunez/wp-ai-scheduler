@@ -128,18 +128,17 @@ class AIPS_Generator {
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
         // Log AI request before making the call
-        if ($this->current_history) {
-            $this->current_history->record(
-                'ai_request',
-                "Requesting AI generation for {$log_type}",
-                array(
-                    'prompt' => $prompt,
-                    'options' => $options,
-                ),
-                null,
-                array('component' => $log_type)
-            );
-        }
+        AIPS_History_Service::record_on_container(
+            $this->current_history,
+            'ai_request',
+            "Requesting AI generation for {$log_type}",
+            array(
+                'prompt' => $prompt,
+                'options' => $options,
+            ),
+            null,
+            array('component' => $log_type)
+        );
 
         // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
         // Only set it when the caller has not already provided an explicit token override.
@@ -155,18 +154,17 @@ class AIPS_Generator {
 
         if (is_wp_error($result)) {
             // Log the error
-            if ($this->current_history) {
-                $this->current_history->record(
-                    'error',
-                    "AI generation failed for {$log_type}: " . $result->get_error_message(),
-                    array(
-                        'prompt' => $prompt,
-                        'options' => $options,
-                    ),
-                    null,
-                    array('component' => $log_type, 'error' => $result->get_error_message())
-                );
-            }
+            AIPS_History_Service::record_on_container(
+                $this->current_history,
+                'error',
+                "AI generation failed for {$log_type}: " . $result->get_error_message(),
+                array(
+                    'prompt' => $prompt,
+                    'options' => $options,
+                ),
+                null,
+                array('component' => $log_type, 'error' => $result->get_error_message())
+            );
 
             $this->logger->log($result->get_error_message(), 'error', array(
                 'component'      => $log_type,
@@ -174,15 +172,14 @@ class AIPS_Generator {
             ));
         } else {
             // Log successful AI response
-            if ($this->current_history) {
-                $this->current_history->record(
-                    'ai_response',
-                    "AI generation successful for {$log_type}",
-                    null,
-                    $result,
-                    array('component' => $log_type)
-                );
-            }
+            AIPS_History_Service::record_on_container(
+                $this->current_history,
+                'ai_response',
+                "AI generation successful for {$log_type}",
+                null,
+                $result,
+                array('component' => $log_type)
+            );
 
             $this->logger->log('Content generated successfully', 'info', array(
                 'component'       => $log_type,

@@ -471,16 +471,12 @@ class AIPS_Notifications {
 		$sent = wp_mail($to_email, $subject, $body, $headers);
 
 		if ($sent) {
-			$history = $this->history_service->create('notification_sent', array());
-			$history->record(
-				'activity',
+			AIPS_History_Service::log_success(
+				'notification_sent',
 				/* translators: %s: recipient email address */
 				sprintf(__('Notification email sent to %s', 'ai-post-scheduler'), $to_email),
-				array(
-					'event_type'   => 'notification_email_sent',
-					'event_status' => 'success',
-				),
-				null,
+				'notification_email_sent',
+				array(),
 				array(
 					'notification_type' => $template->get_type(),
 					'to_email'          => $to_email,
@@ -490,16 +486,12 @@ class AIPS_Notifications {
 			return true;
 		}
 
-		$history = $this->history_service->create('notification_sent', array());
-		$history->record(
-			'activity',
+		AIPS_History_Service::log_failure(
+			'notification_sent',
 			/* translators: %s: recipient email address */
 			sprintf(__('Notification email failed for %s', 'ai-post-scheduler'), $to_email),
-			array(
-				'event_type'   => 'notification_email_sent',
-				'event_status' => 'failed',
-			),
-			null,
+			'notification_email_sent',
+			array(),
 			array(
 				'notification_type' => $template->get_type(),
 				'to_email'          => $to_email,
