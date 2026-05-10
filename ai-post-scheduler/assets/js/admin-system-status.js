@@ -44,6 +44,7 @@
 		bindEvents: function() {
 			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
+			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
 		},
 
 		/**
@@ -112,6 +113,27 @@
 				}
 			).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed. Please try again.').show();
+				$btn.prop('disabled', false);
+			});
+		},
+
+
+		runStatusOperation: function(e) {
+			e.preventDefault();
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+			var action = $btn.data('op');
+			var $result = $('.aips-status-op-result');
+			$btn.prop('disabled', true);
+			$.post(ajaxurl, { action: action, nonce: l10n.nonce || '' }, function(response) {
+				if (response && response.success) {
+					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
+				} else {
+					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
+				}
+				$btn.prop('disabled', false);
+			}).fail(function() {
+				$result.text(l10n.requestFailed || 'Request failed.').show();
 				$btn.prop('disabled', false);
 			});
 		},
