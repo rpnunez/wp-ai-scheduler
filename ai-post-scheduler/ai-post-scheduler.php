@@ -401,6 +401,14 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Schedule_Repository::class);
         });
 
+        $container->singleton(AIPS_Unified_Schedule_Service::class, function( $container ) {
+            return new AIPS_Unified_Schedule_Service();
+        });
+
+        $container->singleton(AIPS_Unified_Schedule_Service_Interface::class, function( $container ) {
+            return $container->make(AIPS_Unified_Schedule_Service::class);
+        });
+
         $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
             return AIPS_Telemetry_Repository::instance();
         });

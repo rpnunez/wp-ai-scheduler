@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Provides a unified view of every scheduled process in the plugin,
  * regardless of which underlying database table stores it.
  */
-class AIPS_Unified_Schedule_Service {
+class AIPS_Unified_Schedule_Service implements AIPS_Unified_Schedule_Service_Interface {
 
 	/** Schedule type constants */
 	const TYPE_TEMPLATE    = 'template_schedule';
@@ -52,14 +52,62 @@ class AIPS_Unified_Schedule_Service {
 	private $author_topic_logs_repository;
 
 	/**
-	 * Initialise the service and its dependencies.
+	 * @var AIPS_Logger_Interface
 	 */
-	public function __construct() {
-		$this->schedule_repository          = new AIPS_Schedule_Repository();
-		$this->authors_repository           = new AIPS_Authors_Repository();
-		$this->history_repository           = new AIPS_History_Repository();
-		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
-		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
+	private $logger;
+
+	/**
+	 * @var AIPS_History_Service_Interface
+	 */
+	private $history_service;
+
+	/**
+	 * @var AIPS_Cache
+	 */
+	private $cache;
+
+	/**
+	 * Initialise the service and its dependencies.
+	 *
+	 * @param AIPS_Schedule_Repository|null          $schedule_repository
+	 * @param AIPS_Authors_Repository|null           $authors_repository
+	 * @param AIPS_History_Repository_Interface|null $history_repository
+	 * @param AIPS_Author_Topics_Repository|null     $author_topics_repository
+	 * @param AIPS_Author_Topic_Logs_Repository|null $author_topic_logs_repository
+	 */
+	public function __construct(
+		AIPS_Schedule_Repository $schedule_repository = null,
+		AIPS_Authors_Repository $authors_repository = null,
+		AIPS_History_Repository_Interface $history_repository = null,
+		AIPS_Author_Topics_Repository $author_topics_repository = null,
+		AIPS_Author_Topic_Logs_Repository $author_topic_logs_repository = null,
+		AIPS_Logger_Interface $logger = null,
+		AIPS_History_Service_Interface $history_service = null
+	) {
+		$container = AIPS_Container::get_instance();
+
+		$this->schedule_repository = $schedule_repository ?:
+			($container->has(AIPS_Schedule_Repository::class) ? $container->make(AIPS_Schedule_Repository::class) : new AIPS_Schedule_Repository());
+
+		$this->authors_repository = $authors_repository ?:
+			($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
+
+		$this->history_repository = $history_repository ?:
+			($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : AIPS_History_Repository::instance());
+
+		$this->author_topics_repository = $author_topics_repository ?:
+			($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+
+		$this->author_topic_logs_repository = $author_topic_logs_repository ?:
+			($container->has(AIPS_Author_Topic_Logs_Repository::class) ? $container->make(AIPS_Author_Topic_Logs_Repository::class) : new AIPS_Author_Topic_Logs_Repository());
+
+		$this->logger = $logger ?:
+			($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : AIPS_Logger::instance());
+
+		$this->history_service = $history_service ?:
+			($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
+
+		$this->cache = AIPS_Cache_Factory::named('aips_unified_schedule_service', 'array');
 	}
 
 	/**
@@ -74,6 +122,15 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array Sorted, normalised schedule rows.
 	 */
 	public function get_all($type_filter = '', $include_stats = true) {
+		$type_filter   = is_string($type_filter) ? sanitize_text_field($type_filter) : '';
+		$include_stats = (bool) $include_stats;
+
+		$cache_key = 'all_schedules_' . $type_filter . '_' . ($include_stats ? '1' : '0');
+
+		if ($this->cache->has($cache_key)) {
+			return $this->cache->get($cache_key);
+		}
+
 		$schedules = array();
 
 		if (empty($type_filter) || $type_filter === self::TYPE_TEMPLATE) {
@@ -123,6 +180,9 @@ class AIPS_Unified_Schedule_Service {
 			return 0;
 		});
 
+		// Cache for a short time since this aggregates from many tables
+		$this->cache->set($cache_key, $schedules, 5 * MINUTE_IN_SECONDS);
+
 		return $schedules;
 	}
 
@@ -135,18 +195,52 @@ class AIPS_Unified_Schedule_Service {
 	 * @return bool|int False on failure, truthy on success.
 	 */
 	public function toggle($id, $type, $is_active) {
+		$id        = absint($id);
+		$type      = is_string($type) ? sanitize_text_field($type) : '';
 		$is_active = (int) $is_active;
 
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
-				$scheduler = new AIPS_Scheduler();
-				return $scheduler->toggle_active($id, $is_active);
+				$scheduler = AIPS_Container::get_instance()->has(AIPS_Scheduler::class)
+					? AIPS_Container::get_instance()->make(AIPS_Scheduler::class)
+					: new AIPS_Scheduler();
+				$result = $scheduler->toggle_active($id, $is_active);
+				if ($result) {
+					$this->cache->flush();
+					$this->logger->info('Toggled template schedule status', array('id' => $id, 'is_active' => $is_active));
+
+					$schedule = $this->schedule_repository->get_by_id($id);
+					if ($schedule && !empty($schedule->schedule_history_id)) {
+						$this->history_service->log_activity(
+							$schedule->schedule_history_id,
+							sprintf(__('Template schedule %s.', 'ai-post-scheduler'), $is_active ? __('activated', 'ai-post-scheduler') : __('deactivated', 'ai-post-scheduler')),
+							array('event_type' => 'schedule_toggle', 'is_active' => $is_active)
+						);
+					}
+				} else {
+					$this->logger->error('Failed to toggle template schedule status', array('id' => $id, 'is_active' => $is_active));
+				}
+				return $result;
 
 			case self::TYPE_AUTHOR_TOPIC:
-				return $this->authors_repository->update_topic_generation_active($id, $is_active);
+				$result = $this->authors_repository->update_topic_generation_active($id, $is_active);
+				if ($result !== false) {
+					$this->cache->flush();
+					$this->logger->info('Toggled author topic schedule status', array('id' => $id, 'is_active' => $is_active));
+				} else {
+					$this->logger->error('Failed to toggle author topic schedule status', array('id' => $id, 'is_active' => $is_active));
+				}
+				return $result;
 
 			case self::TYPE_AUTHOR_POST:
-				return $this->authors_repository->update_post_generation_active($id, $is_active);
+				$result = $this->authors_repository->update_post_generation_active($id, $is_active);
+				if ($result !== false) {
+					$this->cache->flush();
+					$this->logger->info('Toggled author post schedule status', array('id' => $id, 'is_active' => $is_active));
+				} else {
+					$this->logger->error('Failed to toggle author post schedule status', array('id' => $id, 'is_active' => $is_active));
+				}
+				return $result;
 
 			default:
 				return false;
@@ -166,17 +260,26 @@ class AIPS_Unified_Schedule_Service {
 	 * @return mixed
 	 */
 	public function run_now($id, $type) {
+		$id   = absint($id);
+		$type = is_string($type) ? sanitize_text_field($type) : '';
+
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
-				$scheduler = new AIPS_Scheduler();
+				$scheduler = AIPS_Container::get_instance()->has(AIPS_Scheduler::class)
+					? AIPS_Container::get_instance()->make(AIPS_Scheduler::class)
+					: new AIPS_Scheduler();
 				return $scheduler->run_schedule_now($id);
 
 			case self::TYPE_AUTHOR_TOPIC:
-				$scheduler = new AIPS_Author_Topics_Scheduler();
+				$scheduler = AIPS_Container::get_instance()->has(AIPS_Author_Topics_Scheduler::class)
+					? AIPS_Container::get_instance()->make(AIPS_Author_Topics_Scheduler::class)
+					: new AIPS_Author_Topics_Scheduler();
 				return $scheduler->generate_now($id);
 
 			case self::TYPE_AUTHOR_POST:
-				$generator = new AIPS_Author_Post_Generator();
+				$generator = AIPS_Container::get_instance()->has(AIPS_Author_Post_Generator::class)
+					? AIPS_Container::get_instance()->make(AIPS_Author_Post_Generator::class)
+					: new AIPS_Author_Post_Generator();
 				$author    = $this->authors_repository->get_by_id($id);
 				if (!$author) {
 					return new WP_Error('not_found', __('Author not found.', 'ai-post-scheduler'));
@@ -198,12 +301,33 @@ class AIPS_Unified_Schedule_Service {
 	 * @return true|WP_Error
 	 */
 	public function delete($id, $type) {
+		$id   = absint($id);
+		$type = is_string($type) ? sanitize_text_field($type) : '';
+
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
+				$schedule = $this->schedule_repository->get_by_id($id);
 				if ($this->schedule_repository->delete($id)) {
+					$this->cache->flush();
+					$this->logger->info('Deleted template schedule', array(
+						'id' => $id,
+						'type' => $type
+					));
+
+					if ($schedule && !empty($schedule->schedule_history_id)) {
+						$this->history_service->log_activity(
+							$schedule->schedule_history_id,
+							__('Template schedule deleted.', 'ai-post-scheduler'),
+							array('event_type' => 'schedule_delete')
+						);
+					}
 					return true;
 				}
 
+				$this->logger->error('Failed to delete template schedule', array(
+					'id' => $id,
+					'type' => $type
+				));
 				return new WP_Error(
 					'delete_failed',
 					__('Failed to delete schedule.', 'ai-post-scheduler')
@@ -233,6 +357,8 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array Normalised log entry arrays.
 	 */
 	public function get_history($id, $type, $limit = 0) {
+		$id    = absint($id);
+		$type  = is_string($type) ? sanitize_text_field($type) : '';
 		$limit = absint($limit);
 
 		switch ($type) {

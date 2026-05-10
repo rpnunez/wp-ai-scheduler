@@ -64,7 +64,7 @@ class AIPS_Dashboard_Controller {
         // Upcoming Scheduled Activity — sourced from all schedule types, matching Schedules page.
         // Pass include_stats=false to skip expensive aggregate COUNT queries since the dashboard
         // only needs schedule metadata (title, type, next_run) for the upcoming list.
-        $unified_service  = new AIPS_Unified_Schedule_Service();
+        $unified_service  = AIPS_Container::get_instance()->make(AIPS_Unified_Schedule_Service_Interface::class);
         $all_schedules    = $unified_service->get_all( '', false );
         $upcoming         = array_slice( array_filter( $all_schedules, function ( $s ) {
             return ! empty( $s['is_active'] );
