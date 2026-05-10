@@ -31,7 +31,7 @@
          */
         refreshContentPanel: function(contentSelector, emptyStateSelector, callback) {
             $.get(location.href, function(html) {
-                var $newDoc = $(html);
+                var $newDoc = $('<div>').append($.parseHTML(html));
                 var $newContent = $newDoc.find(contentSelector).closest('.aips-content-panel');
                 var $existingPanel = $(contentSelector).closest('.aips-content-panel');
 
