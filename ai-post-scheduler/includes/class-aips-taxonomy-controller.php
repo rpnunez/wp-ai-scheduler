@@ -127,7 +127,7 @@ class AIPS_Taxonomy_Controller {
 		}
 
 		// Create history container for taxonomy generation
-		$history = $this->history_service->create('taxonomy_generation', array(
+		$history = $this->history_service->get_or_create('taxonomy_generation', array(
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_generate_taxonomy',
@@ -154,7 +154,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record('activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(
 			'taxonomy_type' => $taxonomy_type,
 			'generated_count' => count($result)
 		));
@@ -352,13 +352,17 @@ class AIPS_Taxonomy_Controller {
 
 			// Log approval
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_approval', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
+				$this->history_service->create_record_and_complete_success(
+					'taxonomy_approval',
+					array(
+						'item_id' => $item_id,
+					),
 					'activity',
 					sprintf(__('Taxonomy item approved: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_approved', 'event_status' => 'success'),
+					array(
+						'event_type' => 'taxonomy_approved',
+						'event_status' => 'success',
+					),
 					null,
 					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
 				);
@@ -395,13 +399,17 @@ class AIPS_Taxonomy_Controller {
 
 			// Log rejection
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_rejection', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
+				$this->history_service->create_record_and_complete_success(
+					'taxonomy_rejection',
+					array(
+						'item_id' => $item_id,
+					),
 					'activity',
 					sprintf(__('Taxonomy item rejected: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_rejected', 'event_status' => 'failed'),
+					array(
+						'event_type' => 'taxonomy_rejected',
+						'event_status' => 'failed',
+					),
 					null,
 					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
 				);
