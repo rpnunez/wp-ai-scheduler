@@ -263,3 +263,8 @@
 **Improvement:** Optimized the retry generation flow to reload the history table via AJAX instead of triggering a full page reload, improving workflow efficiency.
 **Files Modified:** ai-post-scheduler/assets/js/admin-history.js
 **Outcome:** Reduced user wait time and eliminated jarring page refreshes after a failed generation is retried.
+## 2024-05-14 - UX Optimization
+Target Feature: Template Wizard, Schedule UI, Voice UI
+Improvement: Replaced hard `location.reload()` calls with dynamic AJAX content panel refreshing to preserve UI context.
+Files Modified: ai-post-scheduler/assets/js/admin.js
+Outcome: Faster, smoother transitions between states without losing scroll position or tab context.
