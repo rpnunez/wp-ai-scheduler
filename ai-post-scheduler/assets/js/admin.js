@@ -165,9 +165,6 @@
             // Settings
             $(document).on('click', '#aips-test-connection', this.testConnection);
 
-            // Preserve tab hash on form submissions
-            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
-
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
 
@@ -297,30 +294,6 @@
                     $spinner.removeClass('is-active');
                 }
             });
-        },
-
-        /**
-         * Append the current URL hash to a form's `action` attribute before
-         * submission so that the active tab is preserved after the page reloads.
-         *
-         * Bound to the `submit` event on `.aips-post-review-filters` and
-         * `form[action*="aips-generated-posts"]`.
-         *
-         * @param {Event} e - Submit event from the form element.
-         */
-        preserveTabOnSubmit: function(e) {
-            // Append current hash to form action to preserve active tab
-            var hash = window.location.hash;
-            if (hash) {
-                var $form = $(this);
-                var action = $form.attr('action') || window.location.pathname + window.location.search;
-                
-                // Remove existing hash if present
-                action = action.split('#')[0];
-                
-                // Add the hash to the action
-                $form.attr('action', action + hash);
-            }
         },
 
         /**

@@ -40,20 +40,22 @@ if (!isset($chart_data) || !is_array($chart_data)) {
     );
 }
 ?>
-<?php if (!class_exists('Meow_MWAI_Core')): ?>
-<div class="notice notice-error">
-	<p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
-</div>
-<?php endif; ?>
+<div id="aips-dashboard-panel" class="aips-hub-content-stack">
+        <?php if (!class_exists('Meow_MWAI_Core')): ?>
+        <div class="aips-hub-notice-stack">
+            <div class="notice notice-error">
+                <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
+            </div>
+        </div>
+        <?php endif; ?>
 
-<div id="aips-dashboard-panel">
         <!-- Compact Stats List (full width, above tables) -->
-        <div class="aips-content-panel">
-            <div class="aips-panel-body" style="padding: 0 4px;">
+        <div class="aips-content-panel aips-dashboard-stats-panel">
+            <div class="aips-panel-body aips-dashboard-stats-body">
                 <ul class="aips-dashboard-stats-list">
 
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-edit aips-stat-icon" style="color:var(--aips-primary);"></span>
+                        <span class="dashicons dashicons-edit aips-stat-icon aips-stat-icon--primary"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($total_generated); ?></strong>
                     </a></li>
@@ -72,17 +74,17 @@ if (!isset($chart_data) || !is_array($chart_data)) {
 
                     <?php if ($partial_generations > 0): ?>
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'partial'))); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-warning aips-stat-icon" style="color:var(--aips-warning);"></span>
+                        <span class="dashicons dashicons-warning aips-stat-icon aips-stat-icon--warning"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></span>
-                        <strong class="aips-stat-value" style="color:var(--aips-warning);"><?php echo esc_html($partial_generations); ?></strong>
+                        <strong class="aips-stat-value aips-stat-value--warning"><?php echo esc_html($partial_generations); ?></strong>
                     </a></li>
                     <?php endif; ?>
 
                     <?php if ($failed_count > 0): ?>
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'failed'))); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-dismiss aips-stat-icon" style="color:var(--aips-error);"></span>
+                        <span class="dashicons dashicons-dismiss aips-stat-icon aips-stat-icon--error"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
-                        <strong class="aips-stat-value" style="color:var(--aips-error);"><?php echo esc_html($failed_count); ?></strong>
+                        <strong class="aips-stat-value aips-stat-value--error"><?php echo esc_html($failed_count); ?></strong>
                     </a></li>
                     <?php endif; ?>
 
@@ -229,7 +231,7 @@ if (!isset($chart_data) || !is_array($chart_data)) {
                     <h2 class="aips-panel-title"><?php esc_html_e('Post Generations by Day', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="height:220px;">
+                    <div class="aips-dashboard-chart-wrap aips-dashboard-chart-wrap--medium">
                         <canvas id="aips-chart-posts-by-day" aria-label="<?php esc_attr_e('Post Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>
@@ -240,7 +242,7 @@ if (!isset($chart_data) || !is_array($chart_data)) {
                     <h2 class="aips-panel-title"><?php esc_html_e('Topic Generations by Day', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="height:220px;">
+                    <div class="aips-dashboard-chart-wrap aips-dashboard-chart-wrap--medium">
                         <canvas id="aips-chart-topics-by-day" aria-label="<?php esc_attr_e('Topic Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>
@@ -255,7 +257,7 @@ if (!isset($chart_data) || !is_array($chart_data)) {
                     <h2 class="aips-panel-title"><?php esc_html_e('AI Error Rate (%)', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
-                    <div class="aips-dashboard-chart-wrap" style="height:200px;">
+                    <div class="aips-dashboard-chart-wrap aips-dashboard-chart-wrap--small">
                         <canvas id="aips-chart-error-rate" aria-label="<?php esc_attr_e('AI Error Rate', 'ai-post-scheduler'); ?>" role="img"></canvas>
                     </div>
                 </div>

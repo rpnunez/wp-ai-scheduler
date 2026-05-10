@@ -166,7 +166,9 @@ if (!defined('ABSPATH')) {
 					aria-hidden="<?php echo $is_active ? 'false' : 'true'; ?>"
 					role="tabpanel"
 				>
-					<?php include $tab['partial']; ?>
+					<div class="aips-hub-panel-frame">
+						<?php include $tab['partial']; ?>
+					</div>
 				</section>
 			<?php endforeach; ?>
 		</div>

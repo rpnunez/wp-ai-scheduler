@@ -6,37 +6,33 @@ if (!defined('ABSPATH')) {
 $active_tab  = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'settings-general';
 ?>
 
-		<!-- Plugin Settings Form -->
-		<div class="aips-content-panel">
-			<div class="aips-panel-header">
-				<h2><?php esc_html_e('Plugin Configuration', 'ai-post-scheduler'); ?></h2>
-			</div>
-				<div class="aips-panel-body">
+<div class="aips-hub-content-stack">
+	<div class="aips-content-panel aips-settings-panel">
+		<div class="aips-panel-body">
+			<form method="post" action="options.php" id="aips-settings-form">
+				<?php settings_fields('aips_settings'); ?>
 
-				<form method="post" action="options.php" id="aips-settings-form">
-					<?php settings_fields('aips_settings'); ?>
+				<!-- General Tab -->
+				<div id="settings-general-tab" class="aips-tab-content<?php echo 'settings-general' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-general' === $active_tab ? '' : ' style="display:none;"'; ?>>
+					<p class="description"><?php esc_html_e('Configure default settings for AI-generated posts.', 'ai-post-scheduler'); ?></p>
+					<table class="form-table" role="presentation">
+						<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
+					</table>
+					<p class="submit">
+						<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+					</p>
+				</div>
 
-					<!-- General Tab -->
-					<div id="settings-general-tab" class="aips-tab-content<?php echo 'settings-general' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-general' === $active_tab ? '' : ' style="display:none;"'; ?>>
-						<p class="description"><?php esc_html_e('Configure default settings for AI-generated posts.', 'ai-post-scheduler'); ?></p>
-						<table class="form-table" role="presentation">
-							<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
-						</table>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
-					</div>
-
-					<!-- AI Tab -->
-					<div id="settings-ai-tab" class="aips-tab-content<?php echo 'settings-ai' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-ai' === $active_tab ? '' : ' style="display:none;"'; ?>>
-						<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
-						<table class="form-table" role="presentation">
-							<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
-						</table>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
-					</div>
+				<!-- AI Tab -->
+				<div id="settings-ai-tab" class="aips-tab-content<?php echo 'settings-ai' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-ai' === $active_tab ? '' : ' style="display:none;"'; ?>>
+					<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
+					<table class="form-table" role="presentation">
+						<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
+					</table>
+					<p class="submit">
+						<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+					</p>
+				</div>
 
 					<!-- Feedback Tab -->
 					<div id="settings-feedback-tab" class="aips-tab-content<?php echo 'settings-feedback' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-feedback' === $active_tab ? '' : ' style="display:none;"'; ?>>
@@ -107,19 +103,17 @@ $active_tab  = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'settings-general';
 					</div>
 
 					<!-- Developers Tab -->
-					<div id="settings-developers-tab" class="aips-tab-content<?php echo 'settings-developers' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-developers' === $active_tab ? '' : ' style="display:none;"'; ?>>
-						<p class="description"><?php esc_html_e('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler'); ?></p>
-						<table class="form-table" role="presentation">
-							<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
-						</table>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
-					</div>
+				<div id="settings-developers-tab" class="aips-tab-content<?php echo 'settings-developers' === $active_tab ? ' active' : ''; ?>"<?php echo 'settings-developers' === $active_tab ? '' : ' style="display:none;"'; ?>>
+					<p class="description"><?php esc_html_e('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler'); ?></p>
+					<table class="form-table" role="presentation">
+						<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
+					</table>
+					<p class="submit">
+						<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+					</p>
+				</div>
 
-				</form>
-			</div>
+			</form>
 		</div>
-
 	</div>
 </div>
