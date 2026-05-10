@@ -153,6 +153,7 @@ class AIPS_Template_Repository {
 
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
+            'description' => isset($data['description']) ? wp_kses_post($data['description']) : '',
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
@@ -173,7 +174,7 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -201,6 +202,11 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
         
+        if (isset($data['description'])) {
+            $update_data['description'] = wp_kses_post($data['description']);
+            $format[] = '%s';
+        }
+
         if (isset($data['prompt_template'])) {
             $update_data['prompt_template'] = wp_kses_post($data['prompt_template']);
             $format[] = '%s';

@@ -139,6 +139,7 @@ class AIPS_Onboarding_Wizard {
 		$template = !empty($state['template_id']) ? $templates_repo->get_by_id((int) $state['template_id']) : null;
 
 		$categories = get_categories(array('hide_empty' => false));
+		$presets = class_exists('AIPS_Preset_Registry') ? AIPS_Preset_Registry::get_all() : array();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/onboarding.php';
 	}
@@ -332,6 +333,15 @@ class AIPS_Onboarding_Wizard {
 			'post_author' => get_current_user_id(),
 			'is_active' => 1,
 		);
+
+		$preset_id = isset($_POST['preset_id']) ? sanitize_key(wp_unslash($_POST['preset_id'])) : '';
+		$preset = class_exists('AIPS_Preset_Registry') ? AIPS_Preset_Registry::get($preset_id) : null;
+		if (is_array($preset)) {
+			$data['post_category'] = (int) $preset['default_category'];
+			$data['include_sources'] = !empty($preset['include_sources']) ? 1 : 0;
+			$data['source_group_ids'] = wp_json_encode(isset($preset['source_group_ids']) ? $preset['source_group_ids'] : array());
+			$data['description'] = wp_json_encode(array('preset_id' => $preset['id'], 'preset_name' => $preset['name'], 'preset_applied_at' => current_time('mysql')));
+		}
 
 		$repo = new AIPS_Template_Repository();
 		$template_id = $repo->create($data);
