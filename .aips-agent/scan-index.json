@@ -270,6 +270,46 @@
             "last_seen_run_id": "aips-20260507T190500Z",
             "status": "resolved",
             "finding_file": ".aips-agent/findings/e4090bcc8d154f838e8643ddcfd533da99087a22.json"
+        },
+        "71fc14f84d76abcf6cb28a78a783756fb88bd0ce": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-sources-cron.php",
+            "symbol": "AIPS_Sources_Cron",
+            "anchor": "schedule:wp_schedule_event-time",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "resolved"
+        },
+        "9bc697e60496bea41d5230907ab6e6e93cace833": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-embeddings-cron.php",
+            "symbol": "AIPS_Embeddings_Cron",
+            "anchor": "schedule_next_batch:time-plus-five",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
+        },
+        "25db61572c31b65f1068f4ce15fecee620d9bdf2": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-research-controller.php",
+            "symbol": "AIPS_Research_Controller",
+            "anchor": "parse_research_window:strtotime-start_date",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
+        },
+        "5c7c5164aad20076c0561f0bbc6a6a0b0c07fa75": {
+            "type": "logging_gap",
+            "severity": "low",
+            "path": "ai-post-scheduler/includes/class-aips-sources-fetcher.php",
+            "symbol": "AIPS_Sources_Fetcher",
+            "anchor": "fetch_source:duration-without-history-metric",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
         }
     }
 }
