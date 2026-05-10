@@ -14,11 +14,18 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Menu {
 
     /**
+     * @var AIPS_Upcoming_Events_Controller
+     */
+    private $upcoming_events_controller;
+
+    /**
      * Initialize the admin menu class.
      *
      * Hooks into admin_menu and menu/page filters.
      */
     public function __construct() {
+        $this->upcoming_events_controller = new AIPS_Upcoming_Events_Controller();
+
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
@@ -118,6 +125,15 @@ class AIPS_Admin_Menu {
             'manage_options',
             'aips-schedule',
             array($this, 'render_schedule_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Upcoming', 'ai-post-scheduler'),
+            __('Upcoming', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-upcoming',
+            array($this, 'render_upcoming_page')
         );
 
         add_submenu_page(
@@ -315,6 +331,10 @@ class AIPS_Admin_Menu {
      */
     public function render_schedule_calendar_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
+    }
+
+    public function render_upcoming_page() {
+        $this->upcoming_events_controller->render_page();
     }
 
     /**
