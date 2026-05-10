@@ -145,7 +145,9 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 		}
 
 		foreach ($history['items'] as $item) {
-			if (!empty($type) && isset($item->creation_method) && !empty($item->creation_method) && $item->creation_method !== $type) {
+			$item_type = isset($item->creation_method) ? (string) $item->creation_method : '';
+
+			if (!empty($type) && !empty($item_type) && $item_type !== $type) {
 				continue;
 			}
 
