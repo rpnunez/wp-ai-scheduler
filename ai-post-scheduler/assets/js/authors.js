@@ -71,11 +71,11 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
-			
+
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge[data-context="author-topic"]', this.viewTopicPosts.bind(this));
 			$(document).on('click', '.aips-publish-topic-post', this.publishTopicPost.bind(this));
-			
+
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 			$(document).on('click', '.topic-title-cell', this.onTopicTitleCellClick.bind(this));
@@ -270,6 +270,7 @@
 			// Show loading
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.loading);
 			$('#aips-author-modal').fadeIn();
+			$('#aips-author-form').addClass('aips-form-loading');
 
 			// Load author data
 			$.ajax({
@@ -281,6 +282,7 @@
 					author_id: authorId
 				},
 				success: (response) => {
+					$('#aips-author-form').removeClass('aips-form-loading');
 					if (response.success && response.data.author) {
 						const author = response.data.author;
 
@@ -328,6 +330,7 @@
 					}
 				},
 				error: () => {
+					$('#aips-author-form').removeClass('aips-form-loading');
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoading, 'error');
 
 					$('#aips-author-modal').fadeOut();
@@ -981,7 +984,7 @@
 			// Reset topic search when switching tabs
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-			
+
 			// Immediately switch to the loading skeleton, then fetch the
 			// appropriate content for the selected tab.
 			if (status === 'feedback') {
@@ -1046,12 +1049,12 @@
 		 */
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
-			
+
 			// Clear existing options except the default one
 			$dropdowns.each(function() {
 				const $dropdown = $(this);
 				$dropdown.find('option:not(:first)').remove();
-				
+
 				// Add options based on the active tab
 				if (status === 'pending') {
 					// Pending Review tab: Approve, Reject, Delete
@@ -1620,7 +1623,7 @@
 
 			$('#aips-topic-logs-content').html(tableHtml);
 		},
-		
+
 		/**
 		 * Open the topic-posts modal and start loading posts for the given topic.
 		 *
@@ -1633,16 +1636,16 @@
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			const topicId = $(e.currentTarget).data('topic-id');
 			this.currentTopicPostsTopicId = topicId;
-			
+
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
-			
+
 			this.loadTopicPosts(topicId);
 		},
-		
+
 		/**
 		 * Fetch posts generated from a topic via `aips_get_topic_posts`.
 		 *
@@ -1664,11 +1667,11 @@
 					if (response.success) {
 						const topic = response.data.topic;
 						const posts = response.data.posts;
-						
+
 						$('#aips-topic-posts-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
 						);
-						
+
 						this.renderTopicPosts(posts);
 					} else {
 						$('#aips-topic-posts-content').html(
@@ -1681,7 +1684,7 @@
 				}
 			});
 		},
-		
+
 		/**
 		 * Build and inject the topic-post list into `#aips-topic-posts-content`.
 		 *
@@ -1870,7 +1873,7 @@
 			}
 
 			if (ids.length === 0) {
-				const message = activeTab === 'feedback' 
+				const message = activeTab === 'feedback'
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
 				AIPS.Utilities.showToast(message, 'warning');
@@ -1997,7 +2000,7 @@
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: activeTab === 'feedback' 
+				delete: activeTab === 'feedback'
 					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
 					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
 				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
@@ -2326,7 +2329,7 @@
 			});
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		queueTopics: [],
@@ -2349,7 +2352,7 @@
 		bindEvents: function () {
 			// React to shared tab switching events for top-level Authors tabs.
 			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
-			
+
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -2728,7 +2731,7 @@
 			]);
 		}
 	};
-  
+
 	// Initialize when document is ready
 	$(document).ready(function () {
 		AuthorsModule.init();
