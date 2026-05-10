@@ -278,7 +278,7 @@ class AIPS_Embeddings_Cron {
 		);
 
 		// Schedule to run in a few seconds
-		$timestamp = time() + 5;
+		$timestamp = AIPS_DateTime::now()->advance(5)->timestamp();
 
 		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
 		if (function_exists('as_schedule_single_action')) {
