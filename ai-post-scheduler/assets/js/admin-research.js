@@ -11,6 +11,7 @@
          * @type {string[]}
          */
         researchSelectedTopics: [],
+        researchPendingHighlights: [],
 
         /**
          * Initialize the research admin module.
@@ -49,6 +50,34 @@
             $(document).on('click', '#aips-generate-now-confirm', AIPS.confirmGenerateNow);
             $(document).on('click', '.aips-post-count-badge[data-context="trending-topic"]', AIPS.viewTrendingTopicPosts);
             $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
+            $(document).on('click', '#aips-open-research-modal', AIPS.openResearchModal);
+            $(document).on('click', '#aips-open-source-research-modal', AIPS.openSourceResearchModal);
+        },
+
+        /**
+         * Open the "New Trending Topic Research" modal.
+         *
+         * @param {Event} e Click event.
+         */
+        openResearchModal: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            $('#aips-research-modal').fadeIn();
+            $('#research-niche').trigger('focus');
+        },
+
+        /**
+         * Open the "New Research from Sources" modal.
+         *
+         * @param {Event} e Click event.
+         */
+        openSourceResearchModal: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            $('#aips-source-research-modal').fadeIn();
+            $('#source-research-niche').trigger('focus');
         },
 
         /**
@@ -83,7 +112,11 @@
                 },
                 success: function(response) {
                     if (response.success) {
+                        AIPS.prepareTopicHighlights(response.data && response.data.topics ? response.data.topics : []);
                         AIPS.renderResearchResults(response.data);
+                        $('#aips-research-modal').fadeOut();
+                        $form.trigger('reset');
+                        $('#research-count').val('10');
                         $('#load-topics').trigger('click');
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
@@ -136,6 +169,9 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.renderResearchResults(response.data);
+                        $('#aips-source-research-modal').fadeOut();
+                        $form.trigger('reset');
+                        $('#source-research-count').val('10');
                         $('#load-topics').trigger('click');
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
@@ -303,10 +339,15 @@
                         status: esc(statusLabel),
                         status_label: esc(statusLabelText)
                     });
+                    var topicKey = String(topic.topic || '').toLowerCase();
+                    var nicheKey = String(topic.niche || '').toLowerCase();
 
                     return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
                         id: esc(topic.id),
                         topic: esc(topic.topic),
+                        row_class: '',
+                        topic_key: esc(topicKey),
+                        niche_key: esc(nicheKey),
                         status_chip_html: statusChipHtml,
                         post_count_badge_html: postCountBadgeHtml,
                         reason_html: reasonHtml,
@@ -336,6 +377,8 @@
             $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
             $('#topics-tablenav').show();
             $('#bulk-schedule-section').hide();
+
+            AIPS.applyPendingTopicHighlights();
 
             if ($('#filter-search').val()) {
                 AIPS.filterTopics();
@@ -539,20 +582,52 @@
          */
         focusResearchForm: function(e) {
             e.preventDefault();
+            AIPS.openResearchModal(e);
+        },
 
-            var $form = $('#aips-research-form');
-            if (!$form.length) {
+        /**
+         * Track topic keys from the last "Research Trending Topics" request.
+         *
+         * @param {Array<Object>} topics Topics returned by the research action.
+         */
+        prepareTopicHighlights: function(topics) {
+            if (!Array.isArray(topics) || topics.length === 0) {
+                AIPS.researchPendingHighlights = [];
                 return;
             }
 
-            $('html, body').animate({
-                scrollTop: $form.offset().top - 50
-            }, 500);
+            AIPS.researchPendingHighlights = topics.map(function(topic) {
+                var topicNiche = topic.niche || $('#research-niche').val() || '';
+                return String(topic.topic || '').toLowerCase() + '::' + String(topicNiche).toLowerCase();
+            });
+        },
 
-            var $nicheField = $('#research-niche');
-            if ($nicheField.length) {
-                $nicheField.focus();
+        /**
+         * Highlight newly added rows after the table is reloaded.
+         */
+        applyPendingTopicHighlights: function() {
+            if (!Array.isArray(AIPS.researchPendingHighlights) || AIPS.researchPendingHighlights.length === 0) {
+                return;
             }
+
+            var pending = {};
+            AIPS.researchPendingHighlights.forEach(function(key) {
+                pending[key] = true;
+            });
+
+            $('.aips-research-table tbody tr').each(function() {
+                var $row = $(this);
+                var key = String($row.data('topic-key') || '') + '::' + String($row.data('niche-key') || '');
+                if (pending[key]) {
+                    $row.addClass('aips-research-row-highlight');
+                }
+            });
+
+            setTimeout(function() {
+                $('.aips-research-row-highlight').removeClass('aips-research-row-highlight');
+            }, 5000);
+
+            AIPS.researchPendingHighlights = [];
         },
 
         /**

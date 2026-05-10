@@ -297,7 +297,7 @@ class AIPS_Research_Service {
             'keywords' => isset($topic['keywords']) && is_array($topic['keywords'])
                 ? AIPS_Utilities::sanitize_string_array($topic['keywords'])
                 : array(),
-            'researched_at' => current_time('mysql'),
+            'researched_at' => AIPS_DateTime::now()->timestamp(),
         );
     }
 
@@ -337,7 +337,7 @@ class AIPS_Research_Service {
                     'score' => $score,
                     'reason' => 'Extracted from AI response',
                     'keywords' => array(),
-                    'researched_at' => current_time('mysql'),
+                    'researched_at' => AIPS_DateTime::now()->timestamp(),
                 );
 
                 $score = max(50, $score - 5); // Decrease score for each topic

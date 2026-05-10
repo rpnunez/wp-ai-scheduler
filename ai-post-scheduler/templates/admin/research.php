@@ -23,6 +23,11 @@ $valid_tabs = array('trending', 'planner', 'gap-analysis');
 if (!in_array($active_tab, $valid_tabs, true)) {
     $active_tab = 'trending';
 }
+$research_source_groups = get_terms(array(
+	'taxonomy'   => 'aips_source_group',
+	'hide_empty' => false,
+));
+$has_research_source_groups = !is_wp_error($research_source_groups) && !empty($research_source_groups);
 ?>
 
 <div class="wrap aips-wrap">
@@ -65,141 +70,31 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             </div>
         </div>
         
-        <!-- New Research Panel -->
-        <div class="aips-content-panel">
-            <div class="aips-panel-header">
-                <h2 class="aips-panel-title"><?php esc_html_e('New Research', 'ai-post-scheduler'); ?></h2>
-            </div>
-            <div class="aips-panel-body">
-            <form id="aips-research-form" method="post">
-                <?php wp_nonce_field('aips_ajax_nonce', 'aips_nonce'); ?>
-                
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="research-niche"><?php echo esc_html__('Niche/Industry', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="text" id="research-niche" name="niche" class="regular-text" required 
-                                   placeholder="<?php echo esc_attr__('e.g., Digital Marketing, Health & Wellness, AI Technology', 'ai-post-scheduler'); ?>">
-                            <p class="description">
-                                <?php echo esc_html__('Enter the niche or industry to research trending topics for.', 'ai-post-scheduler'); ?>
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="research-count"><?php echo esc_html__('Number of Topics', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" id="research-count" name="count" min="1" max="50" value="10" class="small-text">
-                            <p class="description">
-                                <?php echo esc_html__('How many trending topics to discover (1-50).', 'ai-post-scheduler'); ?>
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="research-keywords"><?php echo esc_html__('Focus Keywords (Optional)', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="text" id="research-keywords" name="keywords" class="regular-text" 
-                                   placeholder="<?php echo esc_attr__('e.g., SEO, content strategy, automation', 'ai-post-scheduler'); ?>">
-                            <p class="description">
-                                <?php echo esc_html__('Comma-separated keywords to focus the research (optional).', 'ai-post-scheduler'); ?>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-                
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
-                    <button type="submit" class="aips-btn aips-btn-primary" id="research-submit">
-                        <span class="dashicons dashicons-search" aria-hidden="true"></span>
-                        <?php esc_html_e('Research Trending Topics', 'ai-post-scheduler'); ?>
-                    </button>
-                    <span class="spinner" style="float: none; margin: 0;"></span>
-                </div>
-            </form>
-
-            <?php
-            // Source-based research section — only shown when source groups exist.
-            $research_source_groups = get_terms(array(
-                'taxonomy'   => 'aips_source_group',
-                'hide_empty' => false,
-            ));
-            if (!is_wp_error($research_source_groups) && !empty($research_source_groups)):
-            ?>
-            <hr style="margin: 24px 0;">
-            <h3><?php esc_html_e('Research from Trusted Sources', 'ai-post-scheduler'); ?></h3>
-            <p class="description" style="margin-bottom: 12px;">
-                <?php esc_html_e('Use pre-fetched content from your Trusted Sources to ground AI topic suggestions in real reference material.', 'ai-post-scheduler'); ?>
-            </p>
-            <form id="aips-research-from-sources-form" method="post">
-                <input
-                    type="hidden"
-                    id="aips-source-research-nonce"
-                    name="aips_nonce"
-                    value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>"
-                >
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="source-research-niche"><?php esc_html_e('Niche/Context', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="text" id="source-research-niche" name="niche" class="regular-text" required
-                                   placeholder="<?php esc_attr_e('e.g., WordPress Development', 'ai-post-scheduler'); ?>">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <div class="aips-checkbox-group">
-                                <?php foreach ($research_source_groups as $rsg): ?>
-                                    <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
-                                        <input type="checkbox" name="term_ids[]"
-                                               value="<?php echo esc_attr($rsg->term_id); ?>">
-                                        <?php echo esc_html($rsg->name); ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="description"><?php esc_html_e('Select which source groups to include as context.', 'ai-post-scheduler'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="source-research-count"><?php esc_html_e('Number of Topics', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" id="source-research-count" name="count" min="1" max="50" value="10" class="small-text">
-                        </td>
-                    </tr>
-                </table>
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
-                    <button type="submit" class="aips-btn aips-btn-secondary" id="source-research-submit">
-                        <span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
-                        <?php esc_html_e('Research from Sources', 'ai-post-scheduler'); ?>
-                    </button>
-                    <span class="spinner" id="source-research-spinner" style="float: none; margin: 0;"></span>
-                </div>
-            </form>
-            <?php endif; ?>
-            
-            <div id="research-results" style="display: none; margin-top: 24px;">
-                <h3><?php esc_html_e('Research Results', 'ai-post-scheduler'); ?></h3>
-                <div id="research-results-content"></div>
-            </div>
-            </div><!-- .aips-panel-body -->
-        </div><!-- .aips-content-panel (research) -->
-
         <!-- Trending Topics Library Panel -->
         <div class="aips-content-panel">
             <div class="aips-panel-header">
                 <h2 class="aips-panel-title"><?php esc_html_e('Trending Topics Library', 'ai-post-scheduler'); ?></h2>
+            </div>
+            <input type="hidden" id="aips_nonce" value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>">
+
+            <div class="aips-panel-toolbar aips-research-actions-toolbar">
+                <div class="aips-toolbar-left">
+                    <button type="button" class="aips-btn aips-btn-primary" id="aips-open-research-modal">
+                        <span class="dashicons dashicons-search"></span>
+                        <?php esc_html_e('New Trending Topic Research', 'ai-post-scheduler'); ?>
+                    </button>
+                    <?php if ($has_research_source_groups): ?>
+                        <button type="button" class="aips-btn aips-btn-primary" id="aips-open-source-research-modal">
+                            <span class="dashicons dashicons-admin-links"></span>
+                            <?php esc_html_e('New Research from Sources', 'ai-post-scheduler'); ?>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div id="research-results" class="aips-research-results" style="display: none;">
+                <h3><?php esc_html_e('Research Results', 'ai-post-scheduler'); ?></h3>
+                <div id="research-results-content"></div>
             </div>
             
             <!-- Filters -->
@@ -366,6 +261,130 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
 
+    <div id="aips-research-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('New Trending Topic Research', 'ai-post-scheduler'); ?></h2>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <form id="aips-research-form" method="post">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="research-niche"><?php echo esc_html__('Niche/Industry', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="text" id="research-niche" name="niche" class="regular-text" required
+                                    placeholder="<?php echo esc_attr__('e.g., Digital Marketing, Health & Wellness, AI Technology', 'ai-post-scheduler'); ?>">
+                                <p class="description">
+                                    <?php echo esc_html__('Enter the niche or industry to research trending topics for.', 'ai-post-scheduler'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="research-count"><?php echo esc_html__('Number of Topics', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" id="research-count" name="count" min="1" max="50" value="10" class="small-text">
+                                <p class="description">
+                                    <?php echo esc_html__('How many trending topics to discover (1-50).', 'ai-post-scheduler'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="research-keywords"><?php echo esc_html__('Focus Keywords (Optional)', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="text" id="research-keywords" name="keywords" class="regular-text"
+                                    placeholder="<?php echo esc_attr__('e.g., SEO, content strategy, automation', 'ai-post-scheduler'); ?>">
+                                <p class="description">
+                                    <?php echo esc_html__('Comma-separated keywords to focus the research (optional).', 'ai-post-scheduler'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="aips-research-modal-actions">
+                        <button type="submit" class="aips-btn aips-btn-primary" id="research-submit">
+                            <span class="dashicons dashicons-search" aria-hidden="true"></span>
+                            <?php esc_html_e('Research Trending Topics', 'ai-post-scheduler'); ?>
+                        </button>
+                        <span class="spinner"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <?php if ($has_research_source_groups): ?>
+    <div id="aips-source-research-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('New Research from Sources', 'ai-post-scheduler'); ?></h2>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <p class="description">
+                    <?php esc_html_e('Use pre-fetched content from your Trusted Sources to ground AI topic suggestions in real reference material.', 'ai-post-scheduler'); ?>
+                </p>
+                <form id="aips-research-from-sources-form" method="post">
+                    <input
+                        type="hidden"
+                        id="aips-source-research-nonce"
+                        name="aips_nonce"
+                        value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>"
+                    >
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="source-research-niche"><?php esc_html_e('Niche/Context', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="text" id="source-research-niche" name="niche" class="regular-text" required
+                                    placeholder="<?php esc_attr_e('e.g., WordPress Development', 'ai-post-scheduler'); ?>">
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <div class="aips-checkbox-group">
+                                    <?php foreach ($research_source_groups as $rsg): ?>
+                                        <label class="aips-checkbox-label aips-source-group-label">
+                                            <input type="checkbox" name="term_ids[]"
+                                                value="<?php echo esc_attr($rsg->term_id); ?>">
+                                            <?php echo esc_html($rsg->name); ?>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <p class="description"><?php esc_html_e('Select which source groups to include as context.', 'ai-post-scheduler'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="source-research-count"><?php esc_html_e('Number of Topics', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" id="source-research-count" name="count" min="1" max="50" value="10" class="small-text">
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="aips-research-modal-actions">
+                        <button type="submit" class="aips-btn aips-btn-primary" id="source-research-submit">
+                            <span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
+                            <?php esc_html_e('Research from Sources', 'ai-post-scheduler'); ?>
+                        </button>
+                        <span class="spinner" id="source-research-spinner"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Generate Now — Template Selection Modal -->
     <div id="aips-generate-now-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
@@ -477,7 +496,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </script>
 
     <script type="text/html" id="aips-tmpl-research-topics-row">
-        <tr>
+        <tr class="{{row_class}}" data-topic-key="{{topic_key}}" data-niche-key="{{niche_key}}">
             <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
             <td>
                 <strong>{{topic}}</strong>
