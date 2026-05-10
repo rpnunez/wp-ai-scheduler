@@ -14,11 +14,18 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Menu {
 
     /**
+     * @var AIPS_Upcoming_Events_Controller
+     */
+    private $upcoming_events_controller;
+
+    /**
      * Initialize the admin menu class.
      *
      * Hooks into admin_menu and menu/page filters.
      */
     public function __construct() {
+        $this->upcoming_events_controller = new AIPS_Upcoming_Events_Controller();
+
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
@@ -327,8 +334,7 @@ class AIPS_Admin_Menu {
     }
 
     public function render_upcoming_page() {
-        $controller = new AIPS_Upcoming_Events_Controller();
-        $controller->render_page();
+        $this->upcoming_events_controller->render_page();
     }
 
     /**

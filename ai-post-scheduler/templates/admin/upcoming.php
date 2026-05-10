@@ -21,6 +21,20 @@ $notice_msg  = isset($_GET['aips_message']) ? sanitize_text_field(rawurldecode(w
 			<div class="notice notice-<?php echo esc_attr('success' === $notice_type ? 'success' : 'error'); ?>"><p><?php echo esc_html($notice_msg); ?></p></div>
 		<?php endif; ?>
 
+		<?php if ($details_event) : ?>
+			<div class="aips-content-panel" style="margin-bottom: 12px;">
+				<div class="aips-panel-body">
+					<h2><?php esc_html_e('Event Details', 'ai-post-scheduler'); ?></h2>
+					<p><strong><?php esc_html_e('Event', 'ai-post-scheduler'); ?>:</strong> <?php echo esc_html($details_event['event_label']); ?></p>
+					<p><strong><?php esc_html_e('Hook', 'ai-post-scheduler'); ?>:</strong> <code><?php echo esc_html($details_event['hook']); ?></code></p>
+					<p><strong><?php esc_html_e('Run Time', 'ai-post-scheduler'); ?>:</strong> <?php echo esc_html($details_event['run_time']); ?></p>
+					<?php if (!empty($details_event['args'])) : ?>
+						<p><strong><?php esc_html_e('Arguments', 'ai-post-scheduler'); ?>:</strong> <code><?php echo esc_html(wp_json_encode($details_event['args'])); ?></code></p>
+					<?php endif; ?>
+				</div>
+			</div>
+		<?php endif; ?>
+
 		<div class="aips-content-panel">
 			<div class="aips-panel-body no-padding">
 				<table class="wp-list-table widefat fixed striped">
@@ -43,7 +57,7 @@ $notice_msg  = isset($_GET['aips_message']) ? sanitize_text_field(rawurldecode(w
 									'ts'     => $event['timestamp'],
 									'hash'   => $event['hash'],
 								), admin_url('admin-post.php')), 'aips_run_upcoming_event');
-								$details_url = add_query_arg(array('page' => 'aips-upcoming', 'details' => rawurlencode($event['hook'])), admin_url('admin.php'));
+								$details_url = add_query_arg(array('page' => 'aips-upcoming', 'details' => rawurlencode($event['hook']), 'details_ts' => $event['timestamp']), admin_url('admin.php'));
 								?>
 								<tr>
 									<td>

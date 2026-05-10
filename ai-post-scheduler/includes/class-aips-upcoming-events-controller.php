@@ -9,7 +9,8 @@ class AIPS_Upcoming_Events_Controller {
 	}
 
 	public function render_page() {
-		$events = $this->get_events();
+		$events        = $this->get_events();
+		$details_event = $this->get_details_event($events);
 		include AIPS_PLUGIN_DIR . 'templates/admin/upcoming.php';
 	}
 
@@ -35,17 +36,24 @@ class AIPS_Upcoming_Events_Controller {
 			$schedules = wp_get_schedules();
 			if (isset($schedules[$event['schedule']]['interval'])) {
 				$interval = absint($schedules[$event['schedule']]['interval']);
-				$next_ts  = $timestamp + $interval;
-				$now_ts   = AIPS_DateTime::now()->timestamp();
-				while ($next_ts <= $now_ts) {
-					$next_ts += $interval;
+				if ($interval > 0) {
+					$next_ts = $timestamp + $interval;
+					$now_ts  = AIPS_DateTime::now()->timestamp();
+					while ($next_ts <= $now_ts) {
+						$next_ts += $interval;
+					}
+					wp_schedule_event($next_ts, $event['schedule'], $hook, $event['args']);
 				}
-				wp_schedule_event($next_ts, $event['schedule'], $hook, $event['args']);
 			}
 		}
 
-		do_action_ref_array($hook, $event['args']);
-		$this->redirect_with_notice('success', __('Event executed successfully.', 'ai-post-scheduler'));
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp(), $hook, $event['args']);
+
+		if (function_exists('spawn_cron')) {
+			spawn_cron(AIPS_DateTime::now()->timestamp());
+		}
+
+		$this->redirect_with_notice('success', __('Event has been queued to run immediately.', 'ai-post-scheduler'));
 	}
 
 	private function redirect_with_notice($type, $message) {
@@ -61,6 +69,24 @@ class AIPS_Upcoming_Events_Controller {
 		$events = $this->get_events();
 		foreach ($events as $event) {
 			if ($event['hook'] === $hook && (int) $event['timestamp'] === (int) $timestamp && $event['hash'] === $hash) {
+				return $event;
+			}
+		}
+
+		return null;
+	}
+
+
+
+	private function get_details_event($events) {
+		$hook = isset($_GET['details']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['details']))) : '';
+		$ts   = isset($_GET['details_ts']) ? absint($_GET['details_ts']) : 0;
+		if (empty($hook) || empty($ts)) {
+			return null;
+		}
+
+		foreach ($events as $event) {
+			if ($event['hook'] === $hook && (int) $event['timestamp'] === $ts) {
 				return $event;
 			}
 		}
