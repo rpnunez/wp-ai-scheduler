@@ -52,21 +52,20 @@ class AIPS_Settings_AJAX {
 		$options = array(
 			'maxTokens' => 20,
 		);
-		$history = $this->history_service->create(
+		$history = AIPS_History_Service::log_activity(
 			'settings_connection_test',
+			__('Testing AI connection from the settings screen.', 'ai-post-scheduler'),
+			'connection_test',
+			'started',
 			array(
 				'user_id' => get_current_user_id(),
-			)
-		);
-
-		$history->record(
-			'activity',
-			__('Testing AI connection from the settings screen.', 'ai-post-scheduler'),
+			),
 			array(
 				'source' => 'settings_ui',
 			)
 		);
-		$history->record(
+		AIPS_History_Service::record_on_container(
+			$history,
 			'ai_request',
 			__('Settings connection test prompt sent to AI.', 'ai-post-scheduler'),
 			array(
@@ -95,7 +94,8 @@ class AIPS_Settings_AJAX {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record(
+		AIPS_History_Service::record_on_container(
+			$history,
 			'ai_response',
 			__('Settings connection test response received.', 'ai-post-scheduler'),
 			null,

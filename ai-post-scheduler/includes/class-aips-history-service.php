@@ -112,6 +112,53 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 
 		return $history;
 	}
+
+	/**
+	 * Static convenience wrapper for activity-style logs.
+	 *
+	 * @param string $history_type History container type.
+	 * @param string $message Human-readable message.
+	 * @param string $event_type Event type key.
+	 * @param string $event_status Event status key.
+	 * @param array  $metadata Optional container metadata.
+	 * @param array  $context Optional log context.
+	 * @return AIPS_History_Container
+	 */
+	public static function log_activity($history_type, $message, $event_type, $event_status, $metadata = array(), $context = array()) {
+		$service = self::instance();
+
+		return $service->create_and_record(
+			$history_type,
+			$metadata,
+			'activity',
+			$message,
+			array(
+				'event_type' => $event_type,
+				'event_status' => $event_status,
+			),
+			null,
+			$context
+		);
+	}
+
+	/**
+	 * Record on an existing container only when available.
+	 *
+	 * @param AIPS_History_Container|null $history History container.
+	 * @param string $log_type Log type.
+	 * @param string $message Message.
+	 * @param mixed $input Optional input.
+	 * @param mixed $output Optional output.
+	 * @param array $context Optional context.
+	 * @return int|false
+	 */
+	public static function record_on_container($history, $log_type, $message, $input = null, $output = null, $context = array()) {
+		if (!$history) {
+			return false;
+		}
+
+		return $history->record($log_type, $message, $input, $output, $context);
+	}
 	
 	/**
 	 * Get activity feed (high-level events)
