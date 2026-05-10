@@ -276,7 +276,7 @@
             "severity": "medium",
             "path": "ai-post-scheduler/includes/class-aips-sources-cron.php",
             "symbol": "AIPS_Sources_Cron",
-            "anchor": "ensure_dispatcher_schedule:wp_schedule_event-time",
+            "anchor": "schedule:wp_schedule_event-time",
             "first_seen_run_id": "aips-20260510T120000Z",
             "last_seen_run_id": "aips-20260510T120000Z",
             "status": "resolved"
