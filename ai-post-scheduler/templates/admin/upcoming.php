@@ -21,6 +21,22 @@ $notice_msg  = isset($_GET['aips_message']) ? sanitize_text_field(rawurldecode(w
 			<div class="notice notice-<?php echo esc_attr('success' === $notice_type ? 'success' : 'error'); ?>"><p><?php echo esc_html($notice_msg); ?></p></div>
 		<?php endif; ?>
 
+		<div class="aips-author-topics-stats" style="margin-bottom:12px;">
+			<div class="aips-stat-card aips-stat-generated">
+				<span class="aips-stat-value"><?php echo esc_html(number_format_i18n($workload_cards['next_24h_posts'])); ?></span>
+				<span class="aips-stat-label"><?php esc_html_e('Next 24h expected posts', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-stat-card aips-stat-approved">
+				<span class="aips-stat-value"><?php echo esc_html(number_format_i18n($workload_cards['next_24h_topics'])); ?></span>
+				<span class="aips-stat-label"><?php esc_html_e('Next 24h expected topic generations', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-stat-card">
+				<span class="aips-stat-value"><?php echo esc_html(number_format_i18n($workload_cards['largest_run']['count'])); ?></span>
+				<span class="aips-stat-label"><?php esc_html_e('Largest scheduled run', 'ai-post-scheduler'); ?></span>
+				<div style="font-size:12px;opacity:0.85;"><?php echo esc_html($workload_cards['largest_run']['label']); ?></div>
+			</div>
+		</div>
+
 		<div class="aips-filter-bar" style="margin-bottom:12px;">
 			<form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
 				<input type="hidden" name="page" value="aips-upcoming" />

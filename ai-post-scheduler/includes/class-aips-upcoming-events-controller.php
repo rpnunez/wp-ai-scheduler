@@ -9,9 +9,11 @@ class AIPS_Upcoming_Events_Controller {
 	}
 
 	public function render_page() {
-		$filter_state  = $this->get_filter_state();
-		$events        = $this->get_events($filter_state);
-		$details_event = $this->get_details_event($events);
+		$filter_state    = $this->get_filter_state();
+		$all_events       = $this->get_events();
+		$events           = $this->apply_filters($all_events, $filter_state, AIPS_DateTime::now()->timestamp());
+		$workload_cards   = $this->build_workload_cards($all_events);
+		$details_event    = $this->get_details_event($all_events);
 		include AIPS_PLUGIN_DIR . 'templates/admin/upcoming.php';
 	}
 
@@ -110,7 +112,7 @@ class AIPS_Upcoming_Events_Controller {
 		return null;
 	}
 
-	private function get_events($filter_state = array()) {
+	private function get_events() {
 		$cron = _get_cron_array();
 		if (!is_array($cron)) {
 			return array();
@@ -140,8 +142,6 @@ class AIPS_Upcoming_Events_Controller {
 				}
 			}
 		}
-
-		$events = $this->apply_filters($events, $filter_state, $now_ts);
 
 		usort($events, function ($a, $b) {
 			return $a['timestamp'] <=> $b['timestamp'];
@@ -183,6 +183,42 @@ class AIPS_Upcoming_Events_Controller {
 
 			return true;
 		}));
+	}
+
+
+	private function build_workload_cards($events) {
+		$now_ts = AIPS_DateTime::now()->timestamp();
+		$end_ts = $now_ts + DAY_IN_SECONDS;
+		$posts_24h = 0;
+		$topics_24h = 0;
+		$largest = array('count' => 0, 'label' => __('None', 'ai-post-scheduler'));
+
+		foreach ($events as $event) {
+			if ((int) $event['timestamp'] > $end_ts) {
+				continue;
+			}
+
+			$count = isset($event['estimate']['count']) ? (int) $event['estimate']['count'] : 0;
+			if ('aips_generate_author_topics' === $event['hook']) {
+				$topics_24h += $count;
+			}
+			if ('aips_generate_author_posts' === $event['hook']) {
+				$posts_24h += $count;
+			}
+
+			if ($count > $largest['count']) {
+				$largest = array(
+					'count' => $count,
+					'label' => $event['event_label'],
+				);
+			}
+		}
+
+		return array(
+			'next_24h_posts' => $posts_24h,
+			'next_24h_topics' => $topics_24h,
+			'largest_run' => $largest,
+		);
 	}
 
 	private function format_run_time($timestamp) {
@@ -229,17 +265,17 @@ class AIPS_Upcoming_Events_Controller {
 	}
 
 	private function estimate_expected_output($hook, $args) {
-		$estimate = array('value' => '~1', 'type' => 'operation', 'details' => '');
+		$estimate = array('value' => '~1', 'count' => 1, 'type' => 'operation', 'details' => '');
 		switch ($hook) {
 			case 'aips_generate_scheduled_posts':
 				$repo = new AIPS_Schedule_Repository();
 				$due = $repo->get_due_schedules(AIPS_DateTime::now()->timestamp(), 1000);
-				$estimate = array('value' => '~' . count($due), 'type' => __('template runs', 'ai-post-scheduler'), 'details' => __('Due active schedules', 'ai-post-scheduler'));
+				$estimate = array('value' => '~' . count($due), 'count' => count($due), 'type' => __('template runs', 'ai-post-scheduler'), 'details' => __('Due active schedules', 'ai-post-scheduler'));
 				break;
 			case 'aips_generate_author_topics':
 				$authors_repo = new AIPS_Authors_Repository();
 				$authors = $authors_repo->get_all(false);
-				$estimate = array('value' => '~' . count($authors), 'type' => __('authors scanned', 'ai-post-scheduler'), 'details' => __('Potential topic generation checks', 'ai-post-scheduler'));
+				$estimate = array('value' => '~' . count($authors), 'count' => count($authors), 'type' => __('authors scanned', 'ai-post-scheduler'), 'details' => __('Potential topic generation checks', 'ai-post-scheduler'));
 				break;
 			case 'aips_generate_author_posts':
 				$topics_repo = new AIPS_Author_Topics_Repository();
@@ -248,13 +284,13 @@ class AIPS_Upcoming_Events_Controller {
 					$counts = $topics_repo->get_status_counts((int) $author->id);
 					$pending += isset($counts['approved']) ? (int) $counts['approved'] : 0;
 				}
-				$estimate = array('value' => '~' . $pending, 'type' => __('post candidates', 'ai-post-scheduler'), 'details' => __('Approved topics pending generation', 'ai-post-scheduler'));
+				$estimate = array('value' => '~' . $pending, 'count' => $pending, 'type' => __('post candidates', 'ai-post-scheduler'), 'details' => __('Approved topics pending generation', 'ai-post-scheduler'));
 				break;
 			case 'aips_process_schedule_batch':
 			case 'aips_process_author_topics_slice':
 			case 'aips_process_author_post_slice':
 			case 'aips_process_bulk_batch':
-				$estimate = array('value' => '1', 'type' => __('slice', 'ai-post-scheduler'), 'details' => __('Single queue slice execution', 'ai-post-scheduler'));
+				$estimate = array('value' => '1', 'count' => 1, 'type' => __('slice', 'ai-post-scheduler'), 'details' => __('Single queue slice execution', 'ai-post-scheduler'));
 				break;
 		}
 
