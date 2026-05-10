@@ -73,6 +73,45 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	public function create($type, $metadata = array()) {
 		return new AIPS_History_Container($this->repository, $type, $metadata);
 	}
+
+	/**
+	 * Create a history container and record a single log entry.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Container metadata.
+	 * @param string $log_type Log type.
+	 * @param string $message Human readable message.
+	 * @param mixed  $input Optional input payload.
+	 * @param mixed  $output Optional output payload.
+	 * @param array  $context Optional context payload.
+	 * @return AIPS_History_Container
+	 */
+	public function create_and_record($history_type, $metadata, $log_type, $message, $input = null, $output = null, $context = array()) {
+		$history = $this->create($history_type, $metadata);
+		$history->record($log_type, $message, $input, $output, $context);
+
+		return $history;
+	}
+
+	/**
+	 * Create a history container, record a single entry, and complete success.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Container metadata.
+	 * @param string $log_type Log type.
+	 * @param string $message Human readable message.
+	 * @param mixed  $input Optional input payload.
+	 * @param mixed  $output Optional output payload.
+	 * @param array  $context Optional context payload.
+	 * @param array  $result_data Optional completion payload.
+	 * @return AIPS_History_Container
+	 */
+	public function create_record_and_complete_success($history_type, $metadata, $log_type, $message, $input = null, $output = null, $context = array(), $result_data = array()) {
+		$history = $this->create_and_record($history_type, $metadata, $log_type, $message, $input, $output, $context);
+		$history->complete_success($result_data);
+
+		return $history;
+	}
 	
 	/**
 	 * Get activity feed (high-level events)
