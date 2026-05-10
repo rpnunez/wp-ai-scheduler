@@ -38,3 +38,7 @@
 {"event": "finding_upsert", "run_id": "aips-20260510T120000Z", "finding_id": "25db61572c31b65f1068f4ce15fecee620d9bdf2", "type": "datetime_gap", "severity": "medium", "path": "ai-post-scheduler/includes/class-aips-research-controller.php", "symbol": "AIPS_Research_Controller", "anchor": "parse_research_window:strtotime-start_date"}
 {"event": "finding_upsert", "run_id": "aips-20260510T120000Z", "finding_id": "5c7c5164aad20076c0561f0bbc6a6a0b0c07fa75", "type": "logging_gap", "severity": "low", "path": "ai-post-scheduler/includes/class-aips-sources-fetcher.php", "symbol": "AIPS_Sources_Fetcher", "anchor": "fetch_source:duration-without-history-metric"}
 {"event": "run_end", "run_id": "aips-20260510T120000Z", "at": "2026-05-10T12:00:00Z", "scanned_files": 5, "open_findings_count": 0}
+{"event": "run_start", "timestamp": "2026-05-10T12:00:00Z"}
+{"event": "finding_upsert", "finding_id": "scheduler_sources_cron_datetime", "type": "scheduler_datetime_gap", "severity": "medium", "path": "ai-post-scheduler/includes/class-aips-sources-cron.php", "symbol": "AIPS_Sources_Cron", "anchor": "schedule:time-base_timestamp"}
+{"event": "finding_resolved", "finding_id": "scheduler_sources_cron_datetime", "timestamp": "2026-05-10T12:05:00Z"}
+{"event": "run_end", "timestamp": "2026-05-10T12:05:00Z", "totals": {"scanned_files": 1, "open_findings": 0}}
