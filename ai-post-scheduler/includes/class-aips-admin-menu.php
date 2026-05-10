@@ -122,6 +122,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Upcoming', 'ai-post-scheduler'),
+            __('Upcoming', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-upcoming',
+            array($this, 'render_upcoming_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule Calendar', 'ai-post-scheduler'),
             __('Schedule Calendar', 'ai-post-scheduler'),
             'manage_options',
@@ -315,6 +324,11 @@ class AIPS_Admin_Menu {
      */
     public function render_schedule_calendar_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
+    }
+
+    public function render_upcoming_page() {
+        $controller = new AIPS_Upcoming_Events_Controller();
+        $controller->render_page();
     }
 
     /**
