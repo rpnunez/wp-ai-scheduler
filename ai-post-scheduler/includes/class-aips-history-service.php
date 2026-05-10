@@ -71,7 +71,69 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	 * @return AIPS_History_Container History container object
 	 */
 	public function create($type, $metadata = array()) {
-		return new AIPS_History_Container($this->repository, $type, $metadata);
+		return new AIPS_History_Container($this->repository, $type, self::build_metadata($type, $metadata));
+	}
+
+	/**
+	 * Build normalized metadata for history containers.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Optional metadata overrides.
+	 * @return array
+	 */
+	public static function build_metadata($history_type, $metadata = array()) {
+		if (!is_array($metadata)) {
+			$metadata = array();
+		}
+
+		$normalized = $metadata;
+
+		if (empty($normalized['creation_method']) && !empty($history_type)) {
+			$normalized['creation_method'] = $history_type;
+		}
+
+		if (empty($normalized['history_type']) && !empty($history_type)) {
+			$normalized['history_type'] = $history_type;
+		}
+
+		if (!isset($normalized['user_id']) && function_exists('get_current_user_id')) {
+			$user_id = get_current_user_id();
+			if ($user_id > 0) {
+				$normalized['user_id'] = $user_id;
+			}
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * Get an existing history container when possible, or create one.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Metadata for creation/lookup.
+	 * @param int    $history_id Optional existing history ID.
+	 * @param int    $post_id Optional post ID context for resolve fallback.
+	 * @return AIPS_History_Container
+	 */
+	public function get_or_create($history_type, $metadata = array(), $history_id = 0, $post_id = 0) {
+		$history_id = absint($history_id);
+		$post_id    = absint($post_id);
+
+		if ($history_id > 0) {
+			$existing = AIPS_History_Container::load_existing($this->repository, $history_id);
+			if ($existing) {
+				return $existing;
+			}
+		}
+
+		if ($post_id > 0) {
+			$resolved = AIPS_History_Container::resolve_existing($this->repository, $post_id, $history_id);
+			if (!is_wp_error($resolved)) {
+				return $resolved;
+			}
+		}
+
+		return $this->create($history_type, $metadata);
 	}
 
 	/**
@@ -129,7 +191,7 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 
 		return $service->create_and_record(
 			$history_type,
-			$metadata,
+			self::build_metadata($history_type, $metadata),
 			'activity',
 			$message,
 			array(
