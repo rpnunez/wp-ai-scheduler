@@ -312,6 +312,44 @@ class AIPS_Settings_UI {
         <?php
     }
 
+
+    public function automation_policy_preset_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_preset');
+        ?>
+        <select name="aips_automation_policy_preset">
+            <option value="steady_publishing" <?php selected($value, 'steady_publishing'); ?>><?php esc_html_e('Steady publishing', 'ai-post-scheduler'); ?></option>
+            <option value="research_first_weekly" <?php selected($value, 'research_first_weekly'); ?>><?php esc_html_e('Research-first weekly', 'ai-post-scheduler'); ?></option>
+            <option value="high_volume_bulk_review" <?php selected($value, 'high_volume_bulk_review'); ?>><?php esc_html_e('High-volume bulk with review', 'ai-post-scheduler'); ?></option>
+        </select>
+        <?php
+    }
+
+    public function automation_policy_per_run_max_items_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_per_run_max_items');
+        ?><input type="number" name="aips_automation_policy_per_run_max_items" value="<?php echo esc_attr($value); ?>" min="1" max="100" class="small-text"><?php
+    }
+
+    public function automation_policy_retry_profile_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_retry_profile');
+        ?>
+        <select name="aips_automation_policy_retry_profile">
+            <option value="conservative" <?php selected($value, 'conservative'); ?>><?php esc_html_e('Conservative', 'ai-post-scheduler'); ?></option>
+            <option value="balanced" <?php selected($value, 'balanced'); ?>><?php esc_html_e('Balanced', 'ai-post-scheduler'); ?></option>
+            <option value="aggressive" <?php selected($value, 'aggressive'); ?>><?php esc_html_e('Aggressive', 'ai-post-scheduler'); ?></option>
+        </select>
+        <?php
+    }
+
+    public function automation_policy_require_approval_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_require_approval');
+        ?><input type="hidden" name="aips_automation_policy_require_approval" value="0"><input type="checkbox" name="aips_automation_policy_require_approval" value="1" <?php checked(1, $value); ?>><?php
+    }
+
+    public function automation_policy_require_sources_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_require_sources');
+        ?><input type="hidden" name="aips_automation_policy_require_sources" value="0"><input type="checkbox" name="aips_automation_policy_require_sources" value="1" <?php checked(1, $value); ?>><?php
+    }
+
     /**
      * Render the logging enable setting field.
      *

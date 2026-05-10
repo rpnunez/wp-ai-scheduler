@@ -169,6 +169,13 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+
+            // Automation policy
+            'aips_automation_policy_preset' => 'steady_publishing',
+            'aips_automation_policy_per_run_max_items' => 5,
+            'aips_automation_policy_retry_profile' => 'balanced',
+            'aips_automation_policy_require_approval' => false,
+            'aips_automation_policy_require_sources' => false,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
