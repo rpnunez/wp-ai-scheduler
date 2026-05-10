@@ -34,7 +34,7 @@ if (!$author_id) {
 
 $authors_repository = new AIPS_Authors_Repository();
 $author = $authors_repository->get_by_id($author_id);
-$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
+$author_page_url = AIPS_Admin_Menu_Helper::get_page_url( 'authors', array( 'author_id' => $author_id ) );
 
 if (!$author) {
 	?>
@@ -90,7 +90,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 					</button>
-					<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-secondary">
 						<span class="dashicons dashicons-admin-post"></span>
 						<?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
 					</a>

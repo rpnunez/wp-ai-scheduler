@@ -12,10 +12,15 @@ if (!isset($structures) || !is_array($structures)) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
+$is_hub_mode   = !empty($aips_hub_mode);
+$active_subtab = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'aips-structures';
+$show_structures_panel = ('aips-structure-sections' !== $active_subtab);
+$show_sections_panel   = ('aips-structure-sections' === $active_subtab);
 ?>
+<?php if (!$is_hub_mode) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
-		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
 				<div>
@@ -35,13 +40,13 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
 		<div class="aips-tab-nav">
 			<a href="#aips-structures" class="aips-tab-link active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
 			<a href="#aips-structure-sections" class="aips-tab-link" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
 		</div>
+<?php endif; ?>
 
-	<div id="aips-structures-tab" class="aips-tab-content active">
+	<div id="aips-structures-tab" class="aips-tab-content<?php echo $show_structures_panel ? ' active' : ''; ?>"<?php echo $show_structures_panel ? '' : ' style="display:none;"'; ?>>
 		<div class="aips-content-panel">
 		<div class="aips-structures-container">
 			<?php if (!empty($structures)): ?>
@@ -81,7 +86,7 @@ if (!isset($sections) || !is_array($sections)) {
 									<span class="dashicons dashicons-edit"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
 								</button>
-								<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-schedule', array('schedule_structure' => $structure->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+								<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_structure' => $structure->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-calendar-alt"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
 								</a>
@@ -142,7 +147,7 @@ if (!isset($sections) || !is_array($sections)) {
 	</div>
 	</div>
 
-	<div id="aips-structure-sections-tab" class="aips-tab-content" style="display:none;">
+	<div id="aips-structure-sections-tab" class="aips-tab-content<?php echo $show_sections_panel ? ' active' : ''; ?>"<?php echo $show_sections_panel ? '' : ' style="display:none;"'; ?>>
 		<div class="aips-content-panel">
 		<div class="aips-structures-container">
 			<?php if (!empty($sections)): ?>
@@ -331,8 +336,10 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 		</div>
 	</div>
+<?php if (!$is_hub_mode) : ?>
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap -->
+<?php endif; ?>
 
 <?php /* HTML templates used by AIPS.Templates.renderRaw() in admin.js */ ?>
 

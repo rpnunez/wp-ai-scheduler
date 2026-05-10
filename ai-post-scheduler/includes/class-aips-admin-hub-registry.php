@@ -19,7 +19,7 @@ class AIPS_Admin_Hub_Registry {
 				'slug'         => 'aips-content-setup',
 				'menu_title'   => __('Content Setup', 'ai-post-scheduler'),
 				'page_title'   => __('Content Setup', 'ai-post-scheduler'),
-				'description'  => __('Configure the reusable building blocks that shape generated posts: templates, voices, article structures, and prompt blocks.', 'ai-post-scheduler'),
+				'description'  => __('Configure the reusable building blocks that shape generated posts.', 'ai-post-scheduler'),
 				'render_active_only' => true,
 				'legacy_pages' => array(
 					'aips-templates',
@@ -31,21 +31,76 @@ class AIPS_Admin_Hub_Registry {
 					array(
 						'key'     => 'templates',
 						'label'   => __('Templates', 'ai-post-scheduler'),
+						'title'   => __('Post Templates', 'ai-post-scheduler'),
+						'description' => __('Create and manage AI post generation templates with custom prompts and publishing settings.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Add Template', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-template-btn',
+								'icon'  => 'dashicons-plus-alt',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/templates.php',
 					),
 					array(
 						'key'     => 'voices',
 						'label'   => __('Voices', 'ai-post-scheduler'),
+						'title'   => __('Voices', 'ai-post-scheduler'),
+						'description' => __('Define reusable voice profiles so generated posts stay consistent in tone, structure, and delivery.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Add Voice', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-voice-btn',
+								'icon'  => 'dashicons-plus-alt2',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/voices.php',
 					),
 					array(
 						'key'     => 'structures',
 						'label'   => __('Structures', 'ai-post-scheduler'),
+						'title'   => __('Article Structures', 'ai-post-scheduler'),
+						'description' => __('Define reusable article outlines and section building blocks for generated posts.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Add Structure Section', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary aips-add-section-btn',
+								'icon'  => 'dashicons-plus-alt2',
+							),
+							array(
+								'label' => __('Add New Structure', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-structure-btn',
+								'icon'  => 'dashicons-plus-alt2',
+							),
+						),
+						'subtabs' => array(
+							array(
+								'key'         => 'aips-structures',
+								'label'       => __('Article Structures', 'ai-post-scheduler'),
+								'title'       => __('Article Structures', 'ai-post-scheduler'),
+								'description' => __('Manage the structure presets that control how AI-generated articles are assembled.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'aips-structure-sections',
+								'label'       => __('Structure Sections', 'ai-post-scheduler'),
+								'title'       => __('Structure Sections', 'ai-post-scheduler'),
+								'description' => __('Maintain the reusable section blocks that can be mixed into article structures.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/structures.php',
 					),
 					array(
 						'key'     => 'prompt-blocks',
 						'label'   => __('Prompt Blocks', 'ai-post-scheduler'),
+						'title'   => __('Prompt Blocks', 'ai-post-scheduler'),
+						'description' => __('Create reusable prompt snippets that can be inserted into templates and structures with placeholders.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Add Block', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-section-btn',
+								'icon'  => 'dashicons-plus-alt',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/prompt-blocks.php',
 					),
 				),
@@ -101,11 +156,6 @@ class AIPS_Admin_Hub_Registry {
 						'key'     => 'content-queue',
 						'label'   => __('Content Queue', 'ai-post-scheduler'),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/outputs/content-queue.php',
-					),
-					array(
-						'key'     => 'review-pipeline',
-						'label'   => __('Review Pipeline', 'ai-post-scheduler'),
-						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/outputs/review-pipeline.php',
 					),
 					array(
 						'key'     => 'history',

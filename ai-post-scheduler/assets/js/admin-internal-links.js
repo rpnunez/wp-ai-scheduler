@@ -121,12 +121,24 @@
 		 * @param {Event} e Click event from a `.aips-tab-link` element.
 		 */
 		onTabClick: function (e) {
+			var $tabLink = $(e.currentTarget);
+			var $tabNav;
+			var $scope;
+			var tab;
+
+			if (!$tabLink.closest('#suggestions-tab, #generate-tab, .aips-tab-nav').length) {
+				return;
+			}
+
 			e.preventDefault();
-			var tab = $(e.currentTarget).data('tab');
-			$('.aips-tab-link').removeClass('active');
-			$(e.currentTarget).addClass('active');
-			$('.aips-tab-content').hide().attr('aria-hidden', 'true');
-			$('#' + tab + '-tab').show().attr('aria-hidden', 'false');
+			tab = $tabLink.data('tab');
+			$tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
+			$scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
+
+			$tabNav.find('.aips-tab-link').removeClass('active');
+			$tabLink.addClass('active');
+			$scope.find('.aips-tab-content').hide().attr('aria-hidden', 'true');
+			$scope.find('#' + tab + '-tab').first().show().attr('aria-hidden', 'false');
 		},
 
 		/**

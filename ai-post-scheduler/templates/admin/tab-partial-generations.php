@@ -26,7 +26,9 @@ if (!defined('ABSPATH')) {
 			<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<form method="get" class="search-form aips-filter-form">
-						<input type="hidden" name="page" value="aips-generated-posts">
+						<input type="hidden" name="page" value="aips-outputs">
+						<input type="hidden" name="tab" value="content-queue">
+						<input type="hidden" name="content_tab" value="aips-partial-generations">
 						<div class="aips-filter-left">
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author-partial"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>

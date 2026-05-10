@@ -3,30 +3,18 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Get authors - only instantiate repository when needed
-$authors_repository = null;
-$topics_repository = null;
-$logs_repository = null;
-$structures_repository = null;
-$authors = array();
-$article_structures = array();
+$authors_repository    = new AIPS_Authors_Repository();
+$topics_repository     = new AIPS_Author_Topics_Repository();
+$logs_repository       = new AIPS_Author_Topic_Logs_Repository();
+$structures_repository = new AIPS_Article_Structure_Repository();
+$authors               = $authors_repository->get_all();
+$article_structures    = $structures_repository->get_all(true); // Get active structures only
+$all_feedback_stats    = array();
 
-if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
-    $authors_repository = new AIPS_Authors_Repository();
-    $authors = $authors_repository->get_all();
-
-    if (!empty($authors)) {
-        $topics_repository = new AIPS_Author_Topics_Repository();
-        $logs_repository = new AIPS_Author_Topic_Logs_Repository();
-        // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
-        $feedback_repository = new AIPS_Feedback_Repository();
-        $author_ids = array_map(function($a) { return $a->id; }, $authors);
-        $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
-    }
-
-    // Load article structures for the dropdown
-    $structures_repository = new AIPS_Article_Structure_Repository();
-    $article_structures = $structures_repository->get_all(true); // Get active structures only
+if (!empty($authors)) {
+    $feedback_repository = new AIPS_Feedback_Repository();
+    $author_ids = array_map(function($a) { return $a->id; }, $authors);
+    $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
 }
 
 // Site-wide content settings used to pre-fill the Author Suggestions modal
@@ -215,7 +203,7 @@ $site_ctx = AIPS_Site_Context::get();
                                     </td>
                                     <td>
                                         <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
-                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-author-topics', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                            <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'author_topics', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php echo esc_html(sprintf(_n('%d Topic', '%d Topics', $total_topics, 'ai-post-scheduler'), $total_topics)); ?>
                                             </a>
@@ -227,7 +215,7 @@ $site_ctx = AIPS_Site_Context::get();
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                        <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                             <span class="dashicons dashicons-admin-post"></span>
                                             <?php echo esc_html(sprintf(_n('%d Post', '%d Posts', $posts_count, 'ai-post-scheduler'), $posts_count)); ?>
                                         </a>
@@ -583,7 +571,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <?php else: ?>
                         <p class="description">
                             <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
                         </p>
                     <?php endif; ?>
                 </div>
@@ -607,7 +595,7 @@ $site_ctx = AIPS_Site_Context::get();
                 <?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?>
                 <?php if (!empty($site_ctx['niche'])) : ?>
                     <?php esc_html_e('Fields below are pre-filled from your Site Content Strategy settings.', 'ai-post-scheduler'); ?>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-settings') . '#content-strategy'); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings') . '#settings-content-strategy'); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
                 <?php endif; ?>
             </p>
         </div>

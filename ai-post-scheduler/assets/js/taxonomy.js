@@ -22,8 +22,11 @@
 		 * Initialize the Taxonomy module.
 		 */
 		init: function() {
+			var initialTab = this.getInitialTab();
+
+			this.currentTab = initialTab;
 			this.bindEvents();
-			this.loadTaxonomyItems('categories');
+			this.loadTaxonomyItems(initialTab);
 		},
 
 		/**
@@ -46,6 +49,29 @@
 			$(document).on('click', '.aips-create-term', this.createTerm.bind(this));
 			$(document).on('keyup search', '#aips-taxonomy-search', this.filterItems.bind(this));
 			$(document).on('click', '#aips-taxonomy-search-clear', this.clearSearch.bind(this));
+		},
+
+		/**
+		 * Resolve the initial active taxonomy tab from the current page state.
+		 *
+		 * @return {string}
+		 */
+		getInitialTab: function() {
+			var params = new URLSearchParams(window.location.search);
+			var requested = params.get('subtab') || '';
+			var $activeLink;
+
+			if (requested === 'categories' || requested === 'tags') {
+				return requested;
+			}
+
+			$activeLink = $('#aips-taxonomy-panel .aips-tab-link.active').first();
+
+			if ($activeLink.length) {
+				requested = $activeLink.data('tab');
+			}
+
+			return requested === 'tags' ? 'tags' : 'categories';
 		},
 
 		/**
@@ -242,11 +268,23 @@
 		 * @param {Event} e Click event.
 		 */
 		switchTab: function(e) {
-			e.preventDefault();
-			var tab = $(e.currentTarget).data('tab');
+			var $tabLink;
+			var $tabNav;
+			var $scope;
+			var tab;
 
-			$('.aips-tab-link').removeClass('active');
-			$(e.currentTarget).addClass('active');
+			if (!$(e.currentTarget).closest('#aips-taxonomy-panel').length) {
+				return;
+			}
+
+			e.preventDefault();
+			$tabLink = $(e.currentTarget);
+			tab = $tabLink.data('tab');
+			$tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
+			$scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
+
+			$tabNav.find('.aips-tab-link').removeClass('active');
+			$tabLink.addClass('active');
 
 			this.currentTab = tab;
 			this.loadTaxonomyItems(tab);

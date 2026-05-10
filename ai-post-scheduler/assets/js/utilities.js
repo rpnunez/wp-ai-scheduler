@@ -68,12 +68,20 @@
             $(document).on('click', '[data-aips-hub-tab-link]', function(e) {
                 var $tab = $(this);
                 var $page = $tab.closest('[data-aips-hub-page]');
+                var href;
 
                 if (!$page.length) {
                     return;
                 }
 
                 if ($page.is('[data-aips-hub-server-tabs]')) {
+                    href = $tab.attr('href');
+
+                    if (href) {
+                        e.preventDefault();
+                        window.location.assign(href);
+                    }
+
                     return;
                 }
 

@@ -71,7 +71,7 @@ class AIPS_Admin_Assets {
 	 */
 	public function enqueue_admin_assets($hook) {
         $page = $this->get_current_page_slug();
-		$tab  = $this->get_current_tab_key();
+		$tab  = $this->get_current_tab_key($page);
 
         if (!$this->is_plugin_admin_page($hook, $page)) {
 			return;
@@ -189,14 +189,33 @@ class AIPS_Admin_Assets {
 	 *
 	 * @return string
 	 */
-	private function get_current_tab_key() {
+	private function get_current_tab_key($page = '') {
 		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 		if (!is_string($tab) || '' === $tab) {
-			return '';
+			return $this->get_default_hub_tab_key($page);
 		}
 
 		return sanitize_key(wp_unslash($tab));
+	}
+
+	/**
+	 * Resolve the default tab key for a hub page when `tab` is absent.
+	 *
+	 * @param string $page Current page slug.
+	 * @return string
+	 */
+	private function get_default_hub_tab_key($page) {
+		if ('' === $page || !class_exists('AIPS_Admin_Hub_Registry')) {
+			return '';
+		}
+
+		$hub = AIPS_Admin_Hub_Registry::get_hub_by_slug($page);
+		if (empty($hub['tabs']) || !is_array($hub['tabs'])) {
+			return '';
+		}
+
+		return !empty($hub['tabs'][0]['key']) ? sanitize_key($hub['tabs'][0]['key']) : '';
 	}
 
 	/**
@@ -517,7 +536,10 @@ class AIPS_Admin_Assets {
 
           // Pass page-context data (not i18n) in a separate object so it stays
           // semantically distinct from the translation strings above.
-          $deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
+          $current_page = $this->get_current_page_slug();
+          $current_tab = $this->get_current_tab_key();
+          $is_authors_list_context = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) || $this->is_hub_tab( $current_page, $current_tab, self::PAGE_AUTOMATION_HUB, array( 'authors' ) );
+          $deep_link_author_id = $is_authors_list_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
           wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,

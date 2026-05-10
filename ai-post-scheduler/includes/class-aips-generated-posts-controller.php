@@ -69,7 +69,17 @@ class AIPS_Generated_Posts_Controller {
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page($args = array()) {
+		$requested_content_tab = isset($_GET['content_tab']) ? sanitize_key(wp_unslash($_GET['content_tab'])) : '';
+		$allowed_tabs = array(
+			'aips-generated-posts',
+			'aips-partial-generations',
+			'aips-pending-review',
+		);
 		$initial_tab = isset($args['initial_tab']) ? sanitize_key($args['initial_tab']) : 'aips-generated-posts';
+
+		if (in_array($requested_content_tab, $allowed_tabs, true)) {
+			$initial_tab = $requested_content_tab;
+		}
 
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;

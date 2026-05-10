@@ -6,10 +6,12 @@ if (!defined('ABSPATH')) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
+$is_hub_mode = !empty($aips_hub_mode);
 ?>
+<?php if (!$is_hub_mode) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
-		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
 				<div>
@@ -24,6 +26,7 @@ if (!isset($sections) || !is_array($sections)) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
@@ -116,7 +119,10 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 			<?php endif; ?>
 		</div>
+<?php if (!$is_hub_mode) : ?>
 	</div>
+</div>
+<?php endif; ?>
 
 	<!-- Section Modal (kept as-is for JavaScript compatibility) --><div id="aips-section-modal" class="aips-modal" style="display: none;">
 		<div class="aips-modal-content">

@@ -81,19 +81,30 @@ class AIPS_Admin_Menu_Helper {
 				break;
 			case 'structures':
 				$slug         = self::$page_slugs['content_setup_hub'];
-				$default_args = array('tab' => 'structures');
+				$default_args = array(
+					'tab'    => 'structures',
+					'subtab' => 'aips-structures',
+				);
 				break;
 			case 'prompt_sections':
 				$slug         = self::$page_slugs['content_setup_hub'];
-				$default_args = array('tab' => 'prompt-blocks');
+				$default_args = array(
+					'tab' => 'prompt-blocks',
+				);
 				break;
 			case 'authors':
 				$slug         = self::$page_slugs['automation_hub'];
-				$default_args = array('tab' => 'authors');
+				$default_args = array(
+					'tab'    => 'authors',
+					'subtab' => 'authors-list',
+				);
 				break;
 			case 'research':
 				$slug         = self::$page_slugs['automation_hub'];
-				$default_args = array('tab' => 'research');
+				$default_args = array(
+					'tab'    => 'research',
+					'subtab' => 'trending',
+				);
 				break;
 			case 'schedule':
 				$slug         = self::$page_slugs['automation_hub'];
@@ -105,7 +116,10 @@ class AIPS_Admin_Menu_Helper {
 				break;
 			case 'generated_posts':
 				$slug         = self::$page_slugs['outputs_hub'];
-				$default_args = array('tab' => 'content-queue');
+				$default_args = array(
+					'tab'    => 'content-queue',
+					'subtab' => 'aips-generated-posts',
+				);
 				break;
 			case 'history':
 				$slug         = self::$page_slugs['outputs_hub'];
@@ -117,15 +131,24 @@ class AIPS_Admin_Menu_Helper {
 				break;
 			case 'taxonomy':
 				$slug         = self::$page_slugs['site_context_hub'];
-				$default_args = array('tab' => 'taxonomy');
+				$default_args = array(
+					'tab'    => 'taxonomy',
+					'subtab' => 'categories',
+				);
 				break;
 			case 'internal_links':
 				$slug         = self::$page_slugs['site_context_hub'];
-				$default_args = array('tab' => 'internal-links');
+				$default_args = array(
+					'tab'    => 'internal-links',
+					'subtab' => 'suggestions',
+				);
 				break;
 			case 'settings':
 				$slug         = self::$page_slugs['settings_hub'];
-				$default_args = array('tab' => 'general');
+				$default_args = array(
+					'tab'    => 'general',
+					'subtab' => 'settings-general',
+				);
 				break;
 			case 'system_status':
 				$slug         = self::$page_slugs['settings_hub'];
