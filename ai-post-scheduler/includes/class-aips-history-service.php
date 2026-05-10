@@ -186,8 +186,9 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	 * @param array  $context Optional log context.
 	 * @return AIPS_History_Container
 	 */
-	public static function log_activity($history_type, $message, $event_type, $event_status, $metadata = array(), $context = array()) {
+	public static function log_activity($history_type, $message, $event_type = '', $event_status = '', $metadata = array(), $context = array()) {
 		$service = self::instance();
+		$event = self::normalize_event_context($event_type, $event_status, $context);
 
 		return $service->create_and_record(
 			$history_type,
@@ -195,12 +196,72 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 			'activity',
 			$message,
 			array(
-				'event_type' => $event_type,
-				'event_status' => $event_status,
+				'event_type' => $event['event_type'],
+				'event_status' => $event['event_status'],
 			),
 			null,
-			$context
+			$event['context']
 		);
+	}
+
+	/**
+	 * Normalize event type/status and fold into context.
+	 *
+	 * @param string $event_type Event type.
+	 * @param string $event_status Event status.
+	 * @param array  $context Optional context.
+	 * @return array{event_type:string,event_status:string,context:array}
+	 */
+	public static function normalize_event_context($event_type = '', $event_status = '', $context = array()) {
+		if (!is_array($context)) {
+			$context = array();
+		}
+
+		$normalized_event_type = !empty($event_type) ? (string) $event_type : (isset($context['event_type']) ? (string) $context['event_type'] : 'activity');
+		$normalized_status = !empty($event_status) ? (string) $event_status : (isset($context['event_status']) ? (string) $context['event_status'] : 'success');
+
+		$context['event_type'] = $normalized_event_type;
+		$context['event_status'] = $normalized_status;
+
+		return array(
+			'event_type' => $normalized_event_type,
+			'event_status' => $normalized_status,
+			'context' => $context,
+		);
+	}
+
+	public static function log_success($history_type, $message, $event_type = '', $metadata = array(), $context = array()) {
+		return self::log_activity($history_type, $message, $event_type, 'success', $metadata, $context);
+	}
+
+	public static function log_failure($history_type, $message, $event_type = '', $metadata = array(), $context = array()) {
+		return self::log_activity($history_type, $message, $event_type, 'failed', $metadata, $context);
+	}
+
+	public static function log_warning($history_type, $message, $event_type = 'warning', $metadata = array(), $context = array()) {
+		$service = self::instance();
+		$event = self::normalize_event_context($event_type, 'warning', $context);
+
+		return $service->create_and_record(
+			$history_type,
+			self::build_metadata($history_type, $metadata),
+			'warning',
+			$message,
+			array(
+				'event_type' => $event['event_type'],
+				'event_status' => $event['event_status'],
+			),
+			null,
+			$event['context']
+		);
+	}
+
+	public static function log_user_action($history_type, $action, $message, $metadata = array(), $action_data = array()) {
+		$service = self::instance();
+		$history = $service->create($history_type, $metadata);
+		$history->record_user_action($action, $message, $action_data);
+
+		return $history;
 	}
 
 	/**

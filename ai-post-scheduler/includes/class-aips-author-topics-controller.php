@@ -168,14 +168,13 @@ class AIPS_Author_Topics_Controller {
 
 			// Log to activity feed using History Container
 			if ($topic) {
-				AIPS_History_Service::log_activity(
+				AIPS_History_Service::log_success(
 					'topic_approval',
 					sprintf(
 						__('Topic approved: "%s"', 'ai-post-scheduler'),
 						$topic->topic_title
 					),
 					'topic_approved',
-					'success',
 					array(
 						'topic_id' => $topic_id,
 					),
@@ -235,14 +234,13 @@ class AIPS_Author_Topics_Controller {
 
 			// Log to activity feed using History Container
 			if ($topic) {
-				AIPS_History_Service::log_activity(
+				AIPS_History_Service::log_failure(
 					'topic_rejection',
 					sprintf(
 						__('Topic rejected: "%s"', 'ai-post-scheduler'),
 						$topic->topic_title
 					),
 					'topic_rejected',
-					'failed',
 					array(
 						'topic_id' => $topic_id,
 					),
@@ -355,7 +353,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Create history container for manual generation
-		$history = $this->history_service->create('manual_generation', array(
+		$history = $this->history_service->get_or_create('manual_generation', array(
 			'topic_id' => $topic_id,
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
@@ -380,7 +378,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record('activity', __('Post generated successfully from topic', 'ai-post-scheduler'), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', __('Post generated successfully from topic', 'ai-post-scheduler'), null, null, array(
 			'post_id' => $result,
 			'topic_id' => $topic_id
 		));
@@ -530,7 +528,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Create history container for bulk delete operation
-		$history = $this->history_service->create('bulk_delete', array(
+		$history = $this->history_service->get_or_create('bulk_delete', array(
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_bulk_delete_topics',
@@ -552,7 +550,7 @@ class AIPS_Author_Topics_Controller {
 				$success_count++;
 			} else {
 				$failed_count++;
-				AIPS_History_Service::record_on_container($history, 'warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
+				AIPS_History_Service::record_on_container($history, 'warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id, 'event_type' => 'bulk_delete_topics', 'event_status' => 'warning'));
 			}
 		}
 
@@ -596,7 +594,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Create history container for regeneration
-		$history = $this->history_service->create('manual_regeneration', array(
+		$history = $this->history_service->get_or_create('manual_regeneration', array(
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_regenerate_post',
@@ -1040,7 +1038,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Create history container for bulk delete operation
-		$history = $this->history_service->create('bulk_delete_feedback', array(
+		$history = $this->history_service->get_or_create('bulk_delete_feedback', array(
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_bulk_delete_feedback',
