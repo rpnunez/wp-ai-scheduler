@@ -154,7 +154,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record('activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(
 			'taxonomy_type' => $taxonomy_type,
 			'generated_count' => count($result)
 		));
@@ -352,14 +352,14 @@ class AIPS_Taxonomy_Controller {
 
 			// Log approval
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_approval', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
-					'activity',
+				AIPS_History_Service::log_activity(
+					'taxonomy_approval',
 					sprintf(__('Taxonomy item approved: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_approved', 'event_status' => 'success'),
-					null,
+					'taxonomy_approved',
+					'success',
+					array(
+						'item_id' => $item_id,
+					),
 					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
 				);
 			}
@@ -395,14 +395,14 @@ class AIPS_Taxonomy_Controller {
 
 			// Log rejection
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_rejection', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
-					'activity',
+				AIPS_History_Service::log_activity(
+					'taxonomy_rejection',
 					sprintf(__('Taxonomy item rejected: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_rejected', 'event_status' => 'failed'),
-					null,
+					'taxonomy_rejected',
+					'failed',
+					array(
+						'item_id' => $item_id,
+					),
 					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
 				);
 			}

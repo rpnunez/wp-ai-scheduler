@@ -168,20 +168,17 @@ class AIPS_Author_Topics_Controller {
 
 			// Log to activity feed using History Container
 			if ($topic) {
-				$approve_history = $this->history_service->create('topic_approval', array(
-					'topic_id' => $topic_id,
-				));
-				$approve_history->record(
-					'activity',
+				AIPS_History_Service::log_activity(
+					'topic_approval',
 					sprintf(
 						__('Topic approved: "%s"', 'ai-post-scheduler'),
 						$topic->topic_title
 					),
+					'topic_approved',
+					'success',
 					array(
-						'event_type' => 'topic_approved',
-						'event_status' => 'success',
+						'topic_id' => $topic_id,
 					),
-					null,
 					array(
 						'topic_id' => $topic_id,
 						'topic_title' => $topic->topic_title,
@@ -238,20 +235,17 @@ class AIPS_Author_Topics_Controller {
 
 			// Log to activity feed using History Container
 			if ($topic) {
-				$reject_history = $this->history_service->create('topic_rejection', array(
-					'topic_id' => $topic_id,
-				));
-				$reject_history->record(
-					'activity',
+				AIPS_History_Service::log_activity(
+					'topic_rejection',
 					sprintf(
 						__('Topic rejected: "%s"', 'ai-post-scheduler'),
 						$topic->topic_title
 					),
+					'topic_rejected',
+					'failed',
 					array(
-						'event_type' => 'topic_rejected',
-						'event_status' => 'failed',
+						'topic_id' => $topic_id,
 					),
-					null,
 					array(
 						'topic_id' => $topic_id,
 						'topic_title' => $topic->topic_title,
@@ -558,11 +552,11 @@ class AIPS_Author_Topics_Controller {
 				$success_count++;
 			} else {
 				$failed_count++;
-				$history->record('warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
+				AIPS_History_Service::record_on_container($history, 'warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
 			}
 		}
 
-		$history->record('activity', sprintf(__('Deleted %d topics', 'ai-post-scheduler'), $success_count), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', sprintf(__('Deleted %d topics', 'ai-post-scheduler'), $success_count), null, null, array(
 			'deleted_count' => $success_count,
 			'requested_count' => count($topic_ids)
 		));
@@ -628,7 +622,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record('activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
 			'post_id' => $result,
 			'original_post_id' => $post_id,
 			'topic_id' => $topic_id
@@ -1068,11 +1062,11 @@ class AIPS_Author_Topics_Controller {
 				$success_count++;
 			} else {
 				$failed_count++;
-				$history->record('warning', sprintf(__('Failed to delete feedback ID %d', 'ai-post-scheduler'), $feedback_id), null, null, array('feedback_id' => $feedback_id));
+				AIPS_History_Service::record_on_container($history, 'warning', sprintf(__('Failed to delete feedback ID %d', 'ai-post-scheduler'), $feedback_id), null, null, array('feedback_id' => $feedback_id));
 			}
 		}
 
-		$history->record('activity', sprintf(__('Deleted %d feedback items', 'ai-post-scheduler'), $success_count), null, null, array(
+		AIPS_History_Service::record_on_container($history, 'activity', sprintf(__('Deleted %d feedback items', 'ai-post-scheduler'), $success_count), null, null, array(
 			'deleted_count' => $success_count,
 			'requested_count' => count($feedback_ids)
 		));
