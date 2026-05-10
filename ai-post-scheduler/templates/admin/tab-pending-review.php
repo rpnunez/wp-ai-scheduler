@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-filter-bar">
 					<form method="get" class="aips-post-review-filters aips-filter-form">
 						<input type="hidden" name="page" value="aips-outputs">
-						<input type="hidden" name="tab" value="review-pipeline">
+						<input type="hidden" name="tab" value="content-queue">
 						<input type="hidden" name="content_tab" value="aips-pending-review">
 						<div class="aips-filter-left">
 								<?php if (!empty($templates)): ?>

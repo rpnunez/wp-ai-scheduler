@@ -20,9 +20,13 @@ class AIPS_Admin_Hub_Layout {
 		$active_tab        = self::get_tab_by_key($tabs, $active_tab_key);
 		$active_subtab     = self::get_active_subtab($active_tab);
 		$active_subtab_key = isset($active_subtab['key']) ? $active_subtab['key'] : '';
-		$context_title     = self::get_context_value($hub, $active_tab, $active_subtab, 'title', 'page_title');
-		$context_description = self::get_context_value($hub, $active_tab, $active_subtab, 'description', 'description');
-		$context_actions   = self::get_context_actions($active_tab, $active_subtab);
+		$context           = self::build_context($hub, $active_tab, $active_subtab);
+		$context_title     = !empty($context['title']) ? $context['title'] : '';
+		$context_description = !empty($context['description']) ? $context['description'] : '';
+		$context_actions   = !empty($context['actions']) && is_array($context['actions']) ? $context['actions'] : array();
+		$context_metrics   = !empty($context['metrics']) && is_array($context['metrics']) ? $context['metrics'] : array();
+		$context_breadcrumbs = !empty($context['breadcrumbs']) && is_array($context['breadcrumbs']) ? $context['breadcrumbs'] : array();
+		$context_eyebrow   = !empty($context['eyebrow']) ? $context['eyebrow'] : ( !empty($hub['page_title']) ? $hub['page_title'] : '' );
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/hub/layout.php';
 	}
@@ -99,34 +103,55 @@ class AIPS_Admin_Hub_Layout {
 	 * @param string               $hub_fallback_key Hub fallback key.
 	 * @return string
 	 */
-	private static function get_context_value($hub, $tab, $subtab, $context_key, $hub_fallback_key) {
-		if (!empty($subtab[ $context_key ])) {
-			return $subtab[ $context_key ];
+	private static function build_context($hub, $tab, $subtab) {
+		$context = array(
+			'eyebrow'     => !empty($hub['page_title']) ? $hub['page_title'] : '',
+			'title'       => !empty($hub['page_title']) ? $hub['page_title'] : '',
+			'description' => !empty($hub['description']) ? $hub['description'] : '',
+			'actions'     => array(),
+			'metrics'     => array(),
+			'breadcrumbs' => array(),
+		);
+
+		$context = self::merge_context($context, $hub);
+		$context = self::merge_context($context, $tab);
+		$context = self::merge_context($context, $subtab);
+
+		$callback = '';
+		if (!empty($subtab['context_callback'])) {
+			$callback = $subtab['context_callback'];
+		} elseif (!empty($tab['context_callback'])) {
+			$callback = $tab['context_callback'];
+		} elseif (!empty($hub['context_callback'])) {
+			$callback = $hub['context_callback'];
 		}
 
-		if (!empty($tab[ $context_key ])) {
-			return $tab[ $context_key ];
+		if ($callback && is_callable($callback)) {
+			$callback_context = call_user_func($callback, $hub, $tab, $subtab);
+			if (is_array($callback_context)) {
+				$context = array_merge($context, $callback_context);
+			}
 		}
 
-		return !empty($hub[ $hub_fallback_key ]) ? $hub[ $hub_fallback_key ] : '';
+		return $context;
 	}
 
 	/**
-	 * Resolve header actions for the current tab context.
+	 * Merge known context keys from a hub/tab/subtab definition.
 	 *
-	 * @param array<string, mixed> $tab Active tab definition.
-	 * @param array<string, mixed> $subtab Active subtab definition.
-	 * @return array<int, array<string, string>>
+	 * @param array<string, mixed> $context Existing context.
+	 * @param array<string, mixed> $source  Config source.
+	 * @return array<string, mixed>
 	 */
-	private static function get_context_actions($tab, $subtab) {
-		if (!empty($subtab['actions']) && is_array($subtab['actions'])) {
-			return $subtab['actions'];
+	private static function merge_context($context, $source) {
+		$keys = array('eyebrow', 'title', 'description', 'actions', 'metrics', 'breadcrumbs');
+
+		foreach ($keys as $key) {
+			if (isset($source[ $key ])) {
+				$context[ $key ] = $source[ $key ];
+			}
 		}
 
-		if (!empty($tab['actions']) && is_array($tab['actions'])) {
-			return $tab['actions'];
-		}
-
-		return array();
+		return $context;
 	}
 }

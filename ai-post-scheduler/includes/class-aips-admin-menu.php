@@ -47,6 +47,10 @@ class AIPS_Admin_Menu {
 		);
 
 		foreach (AIPS_Admin_Hub_Registry::get_hubs() as $hub_key => $hub) {
+			if ('ai-post-scheduler' === $hub['slug']) {
+				continue;
+			}
+
 			add_submenu_page(
 				'ai-post-scheduler',
 				$hub['page_title'],
@@ -207,8 +211,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_dashboard_page() {
-		$controller = new AIPS_Dashboard_Controller();
-		$controller->render_page();
+		$this->render_hub_page('dashboard');
 	}
 
 	/**
@@ -217,8 +220,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_voices_page() {
-		$voices_handler = new AIPS_Voices();
-		$voices_handler->render_page();
+		$this->redirect_legacy_page('voices');
 	}
 
 	/**
@@ -227,8 +229,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_templates_page() {
-		$templates_handler = new AIPS_Templates();
-		$templates_handler->render_page();
+		$this->redirect_legacy_page('templates');
 	}
 
 	/**
@@ -237,7 +238,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_schedule_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+		$this->redirect_legacy_page('schedule');
 	}
 
 	/**
@@ -246,7 +247,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_schedule_calendar_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
+		$this->redirect_legacy_page('schedule_calendar');
 	}
 
 	/**
@@ -255,7 +256,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_research_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+		$this->redirect_legacy_page('research');
 	}
 
 	/**
@@ -264,7 +265,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_authors_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+		$this->redirect_legacy_page('authors');
 	}
 
 	/**
@@ -273,7 +274,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_author_topics_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+		$this->redirect_legacy_page('author_topics');
 	}
 
 	/**
@@ -282,8 +283,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_generated_posts_page() {
-		$controller = new AIPS_Generated_Posts_Controller();
-		$controller->render_page();
+		$this->redirect_legacy_page('generated_posts');
 	}
 
 	/**
@@ -292,13 +292,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_structures_page() {
-		$structure_repo = new AIPS_Article_Structure_Repository();
-		$section_repo   = new AIPS_Prompt_Section_Repository();
-
-		$structures = $structure_repo->get_all(false);
-		$sections   = $section_repo->get_all(false);
-
-		include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
+		$this->redirect_legacy_page('structures');
 	}
 
 	/**
@@ -307,10 +301,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_prompt_sections_page() {
-		$section_repo = new AIPS_Prompt_Section_Repository();
-		$sections     = $section_repo->get_all(false);
-
-		include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
+		$this->redirect_legacy_page('prompt_sections');
 	}
 
 	/**
@@ -319,8 +310,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_history_page() {
-		$history_handler = new AIPS_History();
-		$history_handler->render_page();
+		$this->redirect_legacy_page('history');
 	}
 
 	/**
@@ -329,8 +319,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_telemetry_page() {
-		$controller = new AIPS_Telemetry_Controller();
-		$controller->render_page();
+		$this->redirect_legacy_page('telemetry');
 	}
 
 	/**
@@ -339,31 +328,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_sources_page() {
-		$repo    = new AIPS_Sources_Repository();
-		$sources = $repo->get_all(false);
-
-		$source_groups = get_terms(array(
-			'taxonomy'   => 'aips_source_group',
-			'hide_empty' => false,
-		));
-		if (is_wp_error($source_groups)) {
-			$source_groups = array();
-		}
-
-		$source_group_name_map = array();
-		foreach ($source_groups as $group) {
-			$source_group_name_map[(int) $group->term_id] = $group->name;
-		}
-
-		$all_source_ids         = array_map(function ($source) {
-			return (int) $source->id;
-		}, $sources);
-		$source_term_ids_map    = $repo->get_term_ids_for_sources($all_source_ids);
-		$data_repo              = new AIPS_Sources_Data_Repository();
-		$source_fetch_data_map  = $data_repo->get_by_source_ids($all_source_ids);
-		$source_content_count_map = $data_repo->get_counts_by_source_ids($all_source_ids);
-
-		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+		$this->redirect_legacy_page('sources');
 	}
 
 	/**
@@ -372,7 +337,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_settings_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
+		$this->redirect_legacy_page('settings');
 	}
 
 	/**
@@ -381,7 +346,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_seeder_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+		$this->redirect_legacy_page('seeder');
 	}
 
 	/**
@@ -390,7 +355,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_onboarding_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/onboarding.php';
+		$this->redirect_legacy_page('onboarding');
 	}
 
 	/**
@@ -399,8 +364,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_status_page() {
-		$status_handler = new AIPS_System_Status();
-		$status_handler->render_page();
+		$this->redirect_legacy_page('system_status');
 	}
 
 	/**
@@ -409,8 +373,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_dev_tools_page() {
-		$dev_tools = new AIPS_Dev_Tools();
-		$dev_tools->render_page();
+		$this->redirect_legacy_page('dev_tools');
 	}
 
 	/**
@@ -419,7 +382,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_taxonomy_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+		$this->redirect_legacy_page('taxonomy');
 	}
 
 	/**
@@ -428,22 +391,22 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_internal_links_page() {
-		global $aips_internal_links_controller;
+		$this->redirect_legacy_page('internal_links');
+	}
 
-		if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-			try {
-				$aips_internal_links_controller->render_page();
-				return;
-			} catch (Throwable $throwable) {
-				echo '<div class="notice notice-error"><p>' .
-					esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
-				'</p></div>';
-				return;
-			}
-		}
+	/**
+	 * Redirect a hidden legacy route into its hub workspace.
+	 *
+	 * @param string $logical_page Logical page key for AIPS_Admin_Menu_Helper.
+	 * @return void
+	 */
+	private function redirect_legacy_page($logical_page) {
+		$args = $_GET;
 
-		echo '<div class="notice notice-error"><p>' .
-			esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
-		'</p></div>';
+		unset($args['page']);
+
+		$url = AIPS_Admin_Menu_Helper::get_page_url($logical_page, $args);
+		wp_safe_redirect($url);
+		exit;
 	}
 }

@@ -79,7 +79,7 @@ class AIPS_Admin_Assets {
 
 		$this->enqueue_global_assets();
 
-        if ($this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page) {
+        if (($this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page) && 'onboarding' !== $tab) {
 			$this->enqueue_dashboard_assets();
 		}
 
@@ -107,7 +107,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_research_assets();
 		}
 
-        if (self::PAGE_GENERATED_POSTS === $page || $this->is_hub_tab($page, $tab, self::PAGE_OUTPUTS_HUB, array('content-queue', 'review-pipeline')) || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
+        if (self::PAGE_GENERATED_POSTS === $page || $this->is_hub_tab($page, $tab, self::PAGE_OUTPUTS_HUB, array('content-queue')) || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
 		}
 
@@ -119,7 +119,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_history_assets();
 		}
 
-        if (self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
+        if (self::PAGE_ONBOARDING === $page || $this->is_hub_tab($page, $tab, self::PAGE_DASHBOARD, array('onboarding')) || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
 			$this->enqueue_onboarding_assets();
 		}
 
@@ -356,10 +356,7 @@ class AIPS_Admin_Assets {
             AIPS_VERSION,
             true
           );
-
           // Localize script with translations and nonce
-          $page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
-
           wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
             'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
@@ -538,11 +535,18 @@ class AIPS_Admin_Assets {
           // semantically distinct from the translation strings above.
           $current_page = $this->get_current_page_slug();
           $current_tab = $this->get_current_tab_key();
-          $is_authors_list_context = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) || $this->is_hub_tab( $current_page, $current_tab, self::PAGE_AUTOMATION_HUB, array( 'authors' ) );
-          $deep_link_author_id = $is_authors_list_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
+          $current_subtab = sanitize_key((string) filter_input(INPUT_GET, 'subtab', FILTER_SANITIZE_FULL_SPECIAL_CHARS));
+          $requested_author_id = absint(filter_input(INPUT_GET, 'author_id', FILTER_VALIDATE_INT));
+          $topic_tab = sanitize_key((string) filter_input(INPUT_GET, 'topic_status', FILTER_SANITIZE_FULL_SPECIAL_CHARS));
+          $is_hub_authors_page = $this->is_hub_tab($current_page, $current_tab, self::PAGE_AUTOMATION_HUB, array('authors'));
+          $is_author_topics_context = (strpos($hook, 'aips-author-topics') !== false) || ($is_hub_authors_page && 'author-topics' === $current_subtab);
+          $page_author_id = $is_author_topics_context ? $requested_author_id : 0;
+          $is_authors_list_context = ((strpos($hook, 'aips-authors') !== false && strpos($hook, 'aips-author-topics') === false) || ($is_hub_authors_page && 'author-topics' !== $current_subtab));
+          $deep_link_author_id = $is_authors_list_context ? $requested_author_id : 0;
           wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,
+              'topicTab'        => $topic_tab ? $topic_tab : 'pending',
             ));
 
           // Embeddings script — only relevant on Authors and Author Topics pages.

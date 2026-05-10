@@ -3,58 +3,50 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Type-label helper for unified schedule types.
-$schedule_type_labels = array(
-    'template_schedule' => __('Template', 'ai-post-scheduler'),
-    'author_topic_gen'  => __('Topic Gen', 'ai-post-scheduler'),
-    'author_post_gen'   => __('Post Gen', 'ai-post-scheduler'),
-);
+// Fallbacks for contexts that do not provide all dashboard variables.
+if (!isset($schedule_type_labels) || !is_array($schedule_type_labels)) {
+    $schedule_type_labels = array(
+        'template_schedule' => __('Template', 'ai-post-scheduler'),
+        'author_topic_gen'  => __('Topic Gen', 'ai-post-scheduler'),
+        'author_post_gen'   => __('Post Gen', 'ai-post-scheduler'),
+    );
+}
+
+if (!isset($chart_completed) || !is_array($chart_completed)) {
+    $chart_completed = (isset($chart_data['completed']) && is_array($chart_data['completed'])) ? $chart_data['completed'] : array();
+}
+if (!isset($chart_failed) || !is_array($chart_failed)) {
+    $chart_failed = (isset($chart_data['failed']) && is_array($chart_data['failed'])) ? $chart_data['failed'] : array();
+}
+if (!isset($chart_topics) || !is_array($chart_topics)) {
+    $chart_topics = (isset($chart_data['topics']) && is_array($chart_data['topics'])) ? $chart_data['topics'] : array();
+}
+
+$total_generated     = isset($total_generated) ? (int) $total_generated : 0;
+$pending_reviews     = isset($pending_reviews) ? (int) $pending_reviews : 0;
+$topics_in_queue     = isset($topics_in_queue) ? (int) $topics_in_queue : 0;
+$partial_generations = isset($partial_generations) ? (int) $partial_generations : 0;
+$failed_count        = isset($failed_count) ? (int) $failed_count : 0;
+$upcoming            = isset($upcoming) && is_array($upcoming) ? $upcoming : array();
+$recent_posts        = isset($recent_posts) && is_array($recent_posts) ? $recent_posts : array();
+
+if (!isset($chart_data) || !is_array($chart_data)) {
+    $chart_data = array(
+        'labels'    => array(),
+        'completed' => $chart_completed,
+        'failed'    => $chart_failed,
+        'errorRate' => array(),
+        'topics'    => $chart_topics,
+    );
+}
 ?>
-<div class="wrap aips-wrap">
-    <?php if (!class_exists('Meow_MWAI_Core')): ?>
-    <div class="notice notice-error">
-        <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
-    </div>
-    <?php endif; ?>
+<?php if (!class_exists('Meow_MWAI_Core')): ?>
+<div class="notice notice-error">
+	<p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
+</div>
+<?php endif; ?>
 
-    <div class="aips-page-container" id="aips-dashboard-panel">
-
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Dashboard', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Overview of your content generation activity and quick actions.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions" style="flex-wrap: wrap;">
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-media-document"></span>
-                        <?php esc_html_e('Templates', 'ai-post-scheduler'); ?>
-                    </a>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-admin-users"></span>
-                        <?php esc_html_e('Authors', 'ai-post-scheduler'); ?>
-                    </a>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-calendar-alt"></span>
-                        <?php esc_html_e('Schedules', 'ai-post-scheduler'); ?>
-                    </a>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-edit"></span>
-                        <?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?>
-                    </a>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('system_status')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-info"></span>
-                        <?php esc_html_e('System Status', 'ai-post-scheduler'); ?>
-                    </a>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-admin-generic"></span>
-                        <?php esc_html_e('Settings', 'ai-post-scheduler'); ?>
-                    </a>
-                </div>
-            </div>
-        </div>
-
+<div id="aips-dashboard-panel">
         <!-- Compact Stats List (full width, above tables) -->
         <div class="aips-content-panel">
             <div class="aips-panel-body" style="padding: 0 4px;">
@@ -66,7 +58,7 @@ $schedule_type_labels = array(
                         <strong class="aips-stat-value"><?php echo esc_html($total_generated); ?></strong>
                     </a></li>
 
-                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-stat-link">
+                    <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-pending-review'))); ?>" class="aips-stat-link">
                         <span class="dashicons dashicons-visibility aips-stat-icon"></span>
                         <span class="aips-stat-label"><?php echo esc_html( _n( 'Pending Review', 'Pending Reviews', $pending_reviews, 'ai-post-scheduler' ) ); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($pending_reviews); ?></strong>
@@ -300,10 +292,7 @@ $schedule_type_labels = array(
             </div>
 
         </div>
-
-    </div>
 </div>
-
 <script>
 window.aipsDashboardChartData = <?php echo wp_json_encode($chart_data); ?>;
 </script>

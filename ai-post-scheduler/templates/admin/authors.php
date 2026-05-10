@@ -567,7 +567,7 @@ $queue_active        = ('generation-queue' === $active_tab);
                 <?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?>
                 <?php if (!empty($site_ctx['niche'])) : ?>
                     <?php esc_html_e('Fields below are pre-filled from your Site Content Strategy settings.', 'ai-post-scheduler'); ?>
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings') . '#settings-content-strategy'); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings', array('subtab' => 'settings-content-strategy'))); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
                 <?php endif; ?>
             </p>
         </div>

@@ -468,23 +468,33 @@ class AIPS_Author_Topics_Repository {
 	 * @return array<string, int>
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
-		$days  = max( 1, absint( $days ) );
-		$start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+		$days     = max( 1, absint( $days ) );
+		$start_ts = current_time( 'timestamp', true ) - ( ( $days - 1 ) * DAY_IN_SECONDS );
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(created_at) AS day, COUNT(*) AS total
+				"SELECT generated_at
 				 FROM {$this->table_name}
-				 WHERE created_at >= %s
-				 GROUP BY DATE(created_at)
-				 ORDER BY day ASC",
-				$start
+				 WHERE generated_at >= %d
+				 ORDER BY generated_at ASC",
+				$start_ts
 			)
 		);
 
-		$data = array();
+		$data     = array();
+		$timezone = wp_timezone();
 		foreach ( $results as $row ) {
-			$data[ $row->day ] = (int) $row->total;
+			$generated_at = isset( $row->generated_at ) ? (int) $row->generated_at : 0;
+			if ( $generated_at <= 0 ) {
+				continue;
+			}
+
+			$day = wp_date( 'Y-m-d', $generated_at, $timezone );
+			if ( ! isset( $data[ $day ] ) ) {
+				$data[ $day ] = 0;
+			}
+
+			$data[ $day ]++;
 		}
 
 		return $data;

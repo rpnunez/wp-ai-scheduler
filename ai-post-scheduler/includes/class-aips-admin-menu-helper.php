@@ -71,6 +71,14 @@ class AIPS_Admin_Menu_Helper {
 		}
 
 		switch ($page) {
+			case 'dashboard':
+				$slug         = self::$page_slugs['dashboard'];
+				$default_args = array('tab' => 'overview');
+				break;
+			case 'onboarding':
+				$slug         = self::$page_slugs['dashboard'];
+				$default_args = array('tab' => 'onboarding');
+				break;
 			case 'templates':
 				$slug         = self::$page_slugs['content_setup_hub'];
 				$default_args = array('tab' => 'templates');
@@ -97,6 +105,13 @@ class AIPS_Admin_Menu_Helper {
 				$default_args = array(
 					'tab'    => 'authors',
 					'subtab' => 'authors-list',
+				);
+				break;
+			case 'author_topics':
+				$slug         = self::$page_slugs['automation_hub'];
+				$default_args = array(
+					'tab'    => 'authors',
+					'subtab' => 'author-topics',
 				);
 				break;
 			case 'research':

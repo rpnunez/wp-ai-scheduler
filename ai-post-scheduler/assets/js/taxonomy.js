@@ -58,19 +58,12 @@
 		getInitialTab: function() {
 			var params = new URLSearchParams(window.location.search);
 			var requested = params.get('subtab') || '';
-			var $activeLink;
 
 			if (requested === 'categories' || requested === 'tags') {
 				return requested;
 			}
 
-			$activeLink = $('#aips-taxonomy-panel .aips-tab-link.active').first();
-
-			if ($activeLink.length) {
-				requested = $activeLink.data('tab');
-			}
-
-			return requested === 'tags' ? 'tags' : 'categories';
+			return 'categories';
 		},
 
 		/**

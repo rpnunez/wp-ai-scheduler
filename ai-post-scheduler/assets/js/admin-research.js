@@ -673,20 +673,13 @@
                     niche: niche
                 },
                 success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        if ($('.aips-tab-link[data-tab="trending"]').length) {
-                            $('.aips-tab-link[data-tab="trending"]').trigger('click');
-                            setTimeout(function() {
-                                $('#load-topics').trigger('click');
-                            }, 500);
-                        } else {
-                            var url = new URL(window.location.href);
-                            url.searchParams.set('subtab', 'trending');
-                            url.searchParams.set('aips_reload_topics', '1');
-                            window.location.assign(url.toString());
-                        }
-                    } else {
+					if (response.success) {
+						AIPS.Utilities.showToast(response.data.message, 'success');
+						var url = new URL(window.location.href);
+						url.searchParams.set('subtab', 'trending');
+						url.searchParams.set('aips_reload_topics', '1');
+						window.location.assign(url.toString());
+					} else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },

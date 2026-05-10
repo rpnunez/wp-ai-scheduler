@@ -15,6 +15,80 @@ class AIPS_Admin_Hub_Registry {
 	 */
 	public static function get_hubs() {
 		$hubs = array(
+			'dashboard'     => array(
+				'slug'         => 'ai-post-scheduler',
+				'menu_title'   => __('Dashboard', 'ai-post-scheduler'),
+				'page_title'   => __('Dashboard', 'ai-post-scheduler'),
+				'description'  => __('Track generation health, review recent activity, and finish setup without leaving the main plugin workspace.', 'ai-post-scheduler'),
+				'render_active_only' => true,
+				'legacy_pages' => array(
+					'aips-onboarding',
+				),
+				'tabs'         => array(
+					array(
+						'key'     => 'overview',
+						'label'   => __('Overview', 'ai-post-scheduler'),
+						'title'   => __('Dashboard', 'ai-post-scheduler'),
+						'description' => __('Monitor content throughput, queue pressure, and recent activity from one place.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Templates', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-media-document',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('templates'),
+							),
+							array(
+								'label' => __('Authors', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-admin-users',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors'),
+							),
+							array(
+								'label' => __('Schedules', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-calendar-alt',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+							),
+							array(
+								'label' => __('Review Queue', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary',
+								'icon'  => 'dashicons-visibility',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-pending-review')),
+							),
+						),
+						'context_callback' => array(__CLASS__, 'get_dashboard_overview_context'),
+						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/dashboard/overview.php',
+					),
+					array(
+						'key'     => 'onboarding',
+						'label'   => __('Onboarding', 'ai-post-scheduler'),
+						'title'   => __('Onboarding Wizard', 'ai-post-scheduler'),
+						'description' => __('Finish first-run setup, generate a sample author and template, and verify the plugin can create its first post.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Skip Onboarding', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-dismiss',
+								'id'    => 'aips-onboarding-skip',
+							),
+							array(
+								'label' => __('Open Settings', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-admin-settings',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('settings', array('subtab' => 'settings-content-strategy')),
+							),
+							array(
+								'label' => __('Restart Wizard', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-danger',
+								'icon'  => 'dashicons-update',
+								'id'    => 'aips-onboarding-reset',
+							),
+						),
+						'context_callback' => array(__CLASS__, 'get_onboarding_context'),
+						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/dashboard/onboarding.php',
+					),
+				),
+			),
 			'content_setup' => array(
 				'slug'         => 'aips-content-setup',
 				'menu_title'   => __('Content Setup', 'ai-post-scheduler'),
@@ -179,7 +253,15 @@ class AIPS_Admin_Hub_Registry {
 								'title'       => __('Generation Queue', 'ai-post-scheduler'),
 								'description' => __('Inspect approved author topics waiting to become generated posts.', 'ai-post-scheduler'),
 							),
+							array(
+								'key'         => 'author-topics',
+								'label'       => __('Author Topics', 'ai-post-scheduler'),
+								'title'       => __('Author Topics', 'ai-post-scheduler'),
+								'description' => __('Review pending topics, approvals, rejections, generated posts, and topic feedback for a specific author.', 'ai-post-scheduler'),
+								'context_callback' => array(__CLASS__, 'get_author_topics_context'),
+							),
 						),
+						'context_callback' => array(__CLASS__, 'get_authors_context'),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/automation/authors.php',
 					),
 					array(
@@ -553,5 +635,199 @@ class AIPS_Admin_Hub_Registry {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Build context for the dashboard overview tab.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_dashboard_overview_context($hub = array(), $tab = array(), $subtab = array()) {
+		$controller = new AIPS_Dashboard_Controller();
+		$data       = $controller->get_view_data();
+
+		return array(
+			'metrics' => array(
+				array(
+					'label' => __('Posts Generated', 'ai-post-scheduler'),
+					'value' => isset($data['total_generated']) ? number_format_i18n((int) $data['total_generated']) : '0',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts'),
+				),
+				array(
+					'label' => __('Pending Review', 'ai-post-scheduler'),
+					'value' => isset($data['pending_reviews']) ? number_format_i18n((int) $data['pending_reviews']) : '0',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-pending-review')),
+				),
+				array(
+					'label' => __('Topics in Queue', 'ai-post-scheduler'),
+					'value' => isset($data['topics_in_queue']) ? number_format_i18n((int) $data['topics_in_queue']) : '0',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors', array('subtab' => 'generation-queue')),
+				),
+				array(
+					'label' => __('Partial Generations', 'ai-post-scheduler'),
+					'value' => isset($data['partial_generations']) ? number_format_i18n((int) $data['partial_generations']) : '0',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-partial-generations')),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Build context for the onboarding tab.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_onboarding_context($hub = array(), $tab = array(), $subtab = array()) {
+		$wizard            = new AIPS_Onboarding_Wizard();
+		$data              = $wizard->get_view_data();
+		$state             = !empty($data['state']) && is_array($data['state']) ? $data['state'] : array();
+		$aips_config       = AIPS_Config::get_instance();
+		$strategy_complete = !empty($aips_config->get_option('aips_site_niche'));
+		$author_complete   = !empty($data['author']) && !empty($data['author']->id);
+		$template_complete = !empty($data['template']) && !empty($data['template']->id);
+		$topics_complete   = !empty($state['topics_generated']);
+		$post_complete     = !empty($state['post_id']);
+		$completed_steps   = 0;
+
+		foreach (array($strategy_complete, $author_complete, $template_complete, $topics_complete, $post_complete) as $step_complete) {
+			if ($step_complete) {
+				$completed_steps++;
+			}
+		}
+
+		return array(
+			'metrics' => array(
+				array(
+					'label' => __('Completed Steps', 'ai-post-scheduler'),
+					'value' => sprintf(__('%1$d / %2$d', 'ai-post-scheduler'), $completed_steps, 5),
+				),
+				array(
+					'label' => __('AI Engine', 'ai-post-scheduler'),
+					'value' => !empty($data['ai_engine_active']) ? __('Ready', 'ai-post-scheduler') : __('Missing', 'ai-post-scheduler'),
+				),
+				array(
+					'label' => __('Topics Generated', 'ai-post-scheduler'),
+					'value' => !empty($state['topics_generated']) ? __('Yes', 'ai-post-scheduler') : __('No', 'ai-post-scheduler'),
+				),
+				array(
+					'label' => __('First Post', 'ai-post-scheduler'),
+					'value' => !empty($state['post_id']) ? __('Created', 'ai-post-scheduler') : __('Not Yet', 'ai-post-scheduler'),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Build shared Authors tab context.
+	 *
+	 * @param array<string, mixed> $hub    Hub definition.
+	 * @param array<string, mixed> $tab    Tab definition.
+	 * @param array<string, mixed> $subtab Active subtab definition.
+	 * @return array<string, mixed>
+	 */
+	public static function get_authors_context($hub, $tab, $subtab) {
+		if (!empty($subtab['key']) && 'author-topics' === $subtab['key']) {
+			return self::get_author_topics_context();
+		}
+
+		return array();
+	}
+
+	/**
+	 * Build context for the Author Topics subtab.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_author_topics_context($hub = array(), $tab = array(), $subtab = array()) {
+		$author_id = isset($_GET['author_id']) ? absint(wp_unslash($_GET['author_id'])) : 0;
+		if (!$author_id) {
+			return array(
+				'title'       => __('Author Topics', 'ai-post-scheduler'),
+				'description' => __('Select an author to review pending topics, approvals, generated posts, and feedback.', 'ai-post-scheduler'),
+			);
+		}
+
+		$authors_repository = new AIPS_Authors_Repository();
+		$topics_repository  = new AIPS_Author_Topics_Repository();
+		$logs_repository    = new AIPS_Author_Topic_Logs_Repository();
+		$author             = $authors_repository->get_by_id($author_id);
+
+		if (!$author) {
+			return array(
+				'title'       => __('Author Topics', 'ai-post-scheduler'),
+				'description' => __('The requested author could not be found.', 'ai-post-scheduler'),
+			);
+		}
+
+		$status_counts = $topics_repository->get_status_counts($author_id);
+		$posts_count   = $logs_repository->count_generated_posts_by_author($author_id);
+		$total_topics  = (int) $status_counts['pending'] + (int) $status_counts['approved'] + (int) $status_counts['rejected'] + (int) $status_counts['posts_generated'];
+
+		return array(
+			'eyebrow'     => __('Automation', 'ai-post-scheduler'),
+			'title'       => $author->name,
+			'description' => $author->field_niche,
+			'breadcrumbs' => array(
+				array(
+					'label' => __('Authors', 'ai-post-scheduler'),
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors'),
+				),
+				array(
+					'label' => $author->name,
+				),
+			),
+			'actions' => array(
+				array(
+					'label' => __('Edit Author', 'ai-post-scheduler'),
+					'class' => 'aips-btn aips-btn-secondary',
+					'icon'  => 'dashicons-edit',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors', array('author_id' => $author_id)),
+				),
+				array(
+					'label'      => __('Generate Topics', 'ai-post-scheduler'),
+					'class'      => 'aips-btn aips-btn-primary aips-generate-topics-now',
+					'icon'       => 'dashicons-update',
+					'attributes' => array(
+						'data-id' => (string) $author_id,
+					),
+				),
+				array(
+					'label' => __('View Generated Posts', 'ai-post-scheduler'),
+					'class' => 'aips-btn aips-btn-secondary',
+					'icon'  => 'dashicons-admin-post',
+					'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('author_id' => $author_id)),
+				),
+			),
+			'metrics' => array(
+				array(
+					'label' => __('Pending Review', 'ai-post-scheduler'),
+					'value' => number_format_i18n((int) $status_counts['pending']),
+					'tone'  => 'danger',
+					'id'    => 'stat-pending-count',
+				),
+				array(
+					'label' => __('Approved', 'ai-post-scheduler'),
+					'value' => number_format_i18n((int) $status_counts['approved']),
+					'tone'  => 'success',
+					'id'    => 'stat-approved-count',
+				),
+				array(
+					'label' => __('Rejected', 'ai-post-scheduler'),
+					'value' => number_format_i18n((int) $status_counts['rejected']),
+					'id'    => 'stat-rejected-count',
+				),
+				array(
+					'label' => __('Posts Generated', 'ai-post-scheduler'),
+					'value' => number_format_i18n((int) $posts_count),
+					'tone'  => 'primary',
+					'id'    => 'stat-posts-generated-count',
+				),
+				array(
+					'label' => __('Total Topics', 'ai-post-scheduler'),
+					'value' => number_format_i18n($total_topics),
+					'id'    => 'stat-total-count',
+				),
+			),
+		);
 	}
 }

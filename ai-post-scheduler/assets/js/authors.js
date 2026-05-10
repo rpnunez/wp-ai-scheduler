@@ -58,8 +58,8 @@
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
-			// Tab switching in topics modal
-			$(document).on('aips:tabSwitch', this.onTabSwitch.bind(this));
+			// Author Topics status tabs
+			$(document).on('click', '.aips-author-topics-tab', this.onAuthorTopicsTabClick.bind(this));
 
 			// Topic actions
 			$(document).on('click', '.aips-approve-topic', this.approveTopic.bind(this));
@@ -968,26 +968,33 @@
 			$('#stat-pending-count').text(pending);
 			$('#stat-approved-count').text(approved);
 			$('#stat-rejected-count').text(rejected);
+			$('#stat-posts-generated-count').text(postsGenerated);
 		},
 
 		/**
-		 * Handles the custom aips:tabSwitch event fired by admin.js after a .aips-tab-link click.
+		 * Resolve the currently active Author Topics status tab.
 		 *
-		 * @param {jQuery.Event} e      - The jQuery event object.
-		 * @param {string}       status - The tab ID (data-tab value) of the newly active tab.
+		 * @return {string}
 		 */
-		onTabSwitch: function (e, status) {
-			// Only handle authors-page-specific behaviour
-			if (!$('#aips-topics-content').length) {
-				return;
-			}
+		getActiveAuthorTopicsTab: function () {
+			const $activeTab = $('.aips-author-topics-tab.active').first();
+			const status = $activeTab.data('topic-tab');
 
-			// Reset topic search when switching tabs
+			return status || 'pending';
+		},
+
+		onAuthorTopicsTabClick: function (e) {
+			e.preventDefault();
+
+			const $tab = $(e.currentTarget);
+			const status = $tab.data('topic-tab') || 'pending';
+
+			$('.aips-author-topics-tab').removeClass('active');
+			$tab.addClass('active');
+
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-			
-			// Immediately switch to the loading skeleton, then fetch the
-			// appropriate content for the selected tab.
+
 			if (status === 'feedback') {
 				this.showTopicsLoading();
 				this.loadFeedback();
@@ -995,7 +1002,12 @@
 				this.loadTopics(status);
 			}
 
-			// Update bulk action dropdown options based on tab
+			if (window.history && window.history.replaceState) {
+				const url = new URL(window.location.href);
+				url.searchParams.set('topic_status', status);
+				window.history.replaceState({}, '', url.toString());
+			}
+
 			this.updateBulkActionDropdown(status);
 		},
 
@@ -1377,7 +1389,7 @@
 							},
 							success: (response) => {
 								if (response.success) {
-									const activeTab = $('.aips-tab-link.active').data('tab');
+									const activeTab = this.getActiveAuthorTopicsTab();
 									this.loadTopics(activeTab);
 								} else {
 									AIPS.Utilities.showToast(
@@ -1518,7 +1530,7 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
-									const activeTab = $('.aips-tab-link.active').data('tab');
+									const activeTab = this.getActiveAuthorTopicsTab();
 									this.loadTopics(activeTab);
 								} else {
 									AIPS.Utilities.showToast(
@@ -1854,7 +1866,7 @@
 			const $button = $(e.currentTarget);
 			const $dropdown = $button.siblings('.aips-bulk-action-select');
 			const action = $dropdown.val();
-			const activeTab = $('.aips-tab-link.active').data('tab');
+			const activeTab = this.getActiveAuthorTopicsTab();
 
 			if (!action) {
 				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
@@ -2723,9 +2735,17 @@
 		// The author ID is passed via aipsAuthorContext.authorId (set by PHP when the
 		// page param is 'aips-author-topics'), so no inline script injection is needed.
 		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.authorId ) {
+			const initialTopicTab = aipsAuthorContext.topicTab || AuthorsModule.getActiveAuthorTopicsTab();
 			AuthorsModule.currentAuthorId = aipsAuthorContext.authorId;
-			AuthorsModule.updateBulkActionDropdown('pending');
-			AuthorsModule.loadTopics('pending');
+			$('.aips-author-topics-tab').removeClass('active');
+			$('.aips-author-topics-tab[data-topic-tab="' + initialTopicTab + '"]').addClass('active');
+			AuthorsModule.updateBulkActionDropdown(initialTopicTab);
+			if (initialTopicTab === 'feedback') {
+				AuthorsModule.showTopicsLoading();
+				AuthorsModule.loadFeedback();
+			} else {
+				AuthorsModule.loadTopics(initialTopicTab);
+			}
 		}
 
 		// Deep-link: on the Authors list page, open the Edit modal directly when

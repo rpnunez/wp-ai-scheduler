@@ -102,7 +102,7 @@ class AIPS_Onboarding_Wizard {
 
 		delete_transient($this->activation_redirect_transient);
 
-		wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url(self::PAGE_SLUG));
+		wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url('onboarding'));
 		exit;
 	}
 
@@ -127,6 +127,17 @@ class AIPS_Onboarding_Wizard {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
+		$view_data = $this->get_view_data();
+		extract($view_data, EXTR_SKIP);
+		include AIPS_PLUGIN_DIR . 'templates/admin/onboarding.php';
+	}
+
+	/**
+	 * Build the onboarding view model.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function get_view_data() {
 		$state = $this->get_state();
 
 		$site_ctx = class_exists('AIPS_Site_Context') ? AIPS_Site_Context::get() : array();
@@ -140,7 +151,14 @@ class AIPS_Onboarding_Wizard {
 
 		$categories = get_categories(array('hide_empty' => false));
 
-		include AIPS_PLUGIN_DIR . 'templates/admin/onboarding.php';
+		return array(
+			'state'            => $state,
+			'site_ctx'         => $site_ctx,
+			'ai_engine_active' => $ai_engine_active,
+			'author'           => $author,
+			'template'         => $template,
+			'categories'       => $categories,
+		);
 	}
 
 	// ---------------------------------------------------------------------
