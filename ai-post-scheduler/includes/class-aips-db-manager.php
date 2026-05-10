@@ -143,6 +143,7 @@ class AIPS_DB_Manager {
             featured_image_unsplash_keywords text,
             featured_image_media_ids text,
             post_status varchar(50) DEFAULT 'draft',
+            post_type varchar(50) DEFAULT 'post',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,

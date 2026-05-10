@@ -54,6 +54,8 @@ class AIPS_Post_Manager {
         $template = isset($data['template']) ? $data['template'] : null;
 
         // If we have a context, use it; otherwise fall back to template
+        $post_type = 'post';
+
         if ($context instanceof AIPS_Generation_Context) {
             $post_status = $context->get_post_status();
             $post_author = $context->get_post_author();
@@ -61,6 +63,7 @@ class AIPS_Post_Manager {
             $post_tags = $context->get_post_tags();
         } elseif ($template) {
             $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
+            $post_type = !empty($template->post_type) ? sanitize_key($template->post_type) : 'post';
             $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
@@ -77,7 +80,7 @@ class AIPS_Post_Manager {
             'post_excerpt' => $excerpt,
             'post_status' => $post_status,
             'post_author' => $post_author,
-            'post_type' => 'post',
+            'post_type' => post_type_exists($post_type) ? $post_type : 'post',
         );
 
         if (!empty($post_category)) {

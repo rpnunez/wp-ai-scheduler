@@ -206,6 +206,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
 
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
+            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => $frequency,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
