@@ -81,6 +81,8 @@ class AIPS_Generated_Posts_Controller {
 			$initial_tab = $requested_content_tab;
 		}
 
+		$aips_hub_subtab = $initial_tab;
+
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
 		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;

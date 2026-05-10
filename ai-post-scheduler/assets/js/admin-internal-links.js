@@ -59,9 +59,6 @@
 		 * Bind all UI event listeners.
 		 */
 		bindEvents: function () {
-			// Tab navigation
-			$(document).on('click', '.aips-tab-link', this.onTabClick.bind(this));
-
 			// Status filter
 			$(document).on('change', '#aips-il-status-filter', this.onStatusFilterChange.bind(this));
 
@@ -114,32 +111,6 @@
 		// -----------------------------------------------------------------------
 		// Event handlers
 		// -----------------------------------------------------------------------
-
-		/**
-		 * Switch the visible tab panel.
-		 *
-		 * @param {Event} e Click event from a `.aips-tab-link` element.
-		 */
-		onTabClick: function (e) {
-			var $tabLink = $(e.currentTarget);
-			var $tabNav;
-			var $scope;
-			var tab;
-
-			if (!$tabLink.closest('#suggestions-tab, #generate-tab, .aips-tab-nav').length) {
-				return;
-			}
-
-			e.preventDefault();
-			tab = $tabLink.data('tab');
-			$tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
-			$scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
-
-			$tabNav.find('.aips-tab-link').removeClass('active');
-			$tabLink.addClass('active');
-			$scope.find('.aips-tab-content').hide().attr('aria-hidden', 'true');
-			$scope.find('#' + tab + '-tab').first().show().attr('aria-hidden', 'false');
-		},
 
 		/**
 		 * Reload the suggestions table when the status filter changes.

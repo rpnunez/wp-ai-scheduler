@@ -3,28 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$is_hub_mode = !empty($aips_hub_mode);
 ?>
-<?php if (!$is_hub_mode) : ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description">
-                        <?php esc_html_e('Define consistent tone and style templates for AI-generated content.', 'ai-post-scheduler'); ?>
-                    </p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
-                        <span class="dashicons dashicons-plus-alt2"></span>
-                        <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-<?php endif; ?>
 
         <!-- Content Panel -->
         <div class="aips-content-panel">
@@ -130,10 +109,6 @@ $is_hub_mode = !empty($aips_hub_mode);
                 <?php endif; ?>
             </div>
         </div>
-<?php if (!$is_hub_mode) : ?>
-    </div>
-</div>
-<?php endif; ?>
 <div id="aips-voice-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">

@@ -16,12 +16,21 @@ if (!defined('ABSPATH')) {
 				<?php if (!empty($context_actions)) : ?>
 					<div class="aips-hub-context-actions">
 						<?php foreach ($context_actions as $action) : ?>
-							<button type="button" class="<?php echo esc_attr($action['class']); ?>">
-								<?php if (!empty($action['icon'])) : ?>
-									<span class="dashicons <?php echo esc_attr($action['icon']); ?>"></span>
-								<?php endif; ?>
-								<?php echo esc_html($action['label']); ?>
-							</button>
+							<?php if (!empty($action['url'])) : ?>
+								<a href="<?php echo esc_url($action['url']); ?>" class="<?php echo esc_attr($action['class']); ?>"<?php echo !empty($action['id']) ? ' id="' . esc_attr($action['id']) . '"' : ''; ?>>
+									<?php if (!empty($action['icon'])) : ?>
+										<span class="dashicons <?php echo esc_attr($action['icon']); ?>"></span>
+									<?php endif; ?>
+									<?php echo esc_html($action['label']); ?>
+								</a>
+							<?php else : ?>
+								<button type="button" class="<?php echo esc_attr($action['class']); ?>"<?php echo !empty($action['id']) ? ' id="' . esc_attr($action['id']) . '"' : ''; ?>>
+									<?php if (!empty($action['icon'])) : ?>
+										<span class="dashicons <?php echo esc_attr($action['icon']); ?>"></span>
+									<?php endif; ?>
+									<?php echo esc_html($action['label']); ?>
+								</button>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</div>
 				<?php endif; ?>

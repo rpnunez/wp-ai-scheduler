@@ -122,21 +122,91 @@ class AIPS_Admin_Hub_Registry {
 					array(
 						'key'     => 'schedule',
 						'label'   => __('Schedule', 'ai-post-scheduler'),
+						'title'   => __('Schedules', 'ai-post-scheduler'),
+						'description' => __('Manage recurring generation schedules across templates and automated workflows.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Add Template Schedule', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-schedule-btn',
+								'icon'  => 'dashicons-plus-alt',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/automation/schedule.php',
 					),
 					array(
 						'key'     => 'calendar',
 						'label'   => __('Calendar', 'ai-post-scheduler'),
+						'title'   => __('Schedule Calendar', 'ai-post-scheduler'),
+						'description' => __('Review upcoming scheduled output across month, week, and day views.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('List View', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-list-view',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/automation/calendar.php',
 					),
 					array(
 						'key'     => 'authors',
 						'label'   => __('Authors', 'ai-post-scheduler'),
+						'title'   => __('Authors', 'ai-post-scheduler'),
+						'description' => __('Manage author profiles, topic generation, and author-led post automation in one workspace.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Suggest Authors', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-lightbulb',
+								'id'    => 'aips-suggest-authors-btn',
+							),
+							array(
+								'label' => __('Add Author', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-add-author-btn',
+								'icon'  => 'dashicons-plus-alt',
+							),
+						),
+						'subtabs' => array(
+							array(
+								'key'         => 'authors-list',
+								'label'       => __('Authors List', 'ai-post-scheduler'),
+								'title'       => __('Authors', 'ai-post-scheduler'),
+								'description' => __('Review author profiles, quality signals, and generation controls.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'generation-queue',
+								'label'       => __('Generation Queue', 'ai-post-scheduler'),
+								'title'       => __('Generation Queue', 'ai-post-scheduler'),
+								'description' => __('Inspect approved author topics waiting to become generated posts.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/automation/authors.php',
 					),
 					array(
 						'key'     => 'research',
 						'label'   => __('Research', 'ai-post-scheduler'),
+						'title'   => __('Research', 'ai-post-scheduler'),
+						'description' => __('Research trends, identify gaps, and plan coverage before generating content.', 'ai-post-scheduler'),
+						'subtabs' => array(
+							array(
+								'key'         => 'trending',
+								'label'       => __('Trending Topics', 'ai-post-scheduler'),
+								'title'       => __('Trending Topics', 'ai-post-scheduler'),
+								'description' => __('Discover and schedule promising topics from current niche research.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'gap-analysis',
+								'label'       => __('Gap Analysis', 'ai-post-scheduler'),
+								'title'       => __('Gap Analysis', 'ai-post-scheduler'),
+								'description' => __('Find missing coverage areas and generate topic ideas from content gaps.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'planner',
+								'label'       => __('Planner', 'ai-post-scheduler'),
+								'title'       => __('Planner', 'ai-post-scheduler'),
+								'description' => __('Turn research findings into a structured editorial plan.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/automation/research.php',
 					),
 				),
@@ -155,11 +225,43 @@ class AIPS_Admin_Hub_Registry {
 					array(
 						'key'     => 'content-queue',
 						'label'   => __('Content Queue', 'ai-post-scheduler'),
+						'title'   => __('Generated Content', 'ai-post-scheduler'),
+						'description' => __('Review completed posts, partial generations, and drafts pending editorial action.', 'ai-post-scheduler'),
+						'subtabs' => array(
+							array(
+								'key'         => 'aips-generated-posts',
+								'label'       => __('Generated Posts', 'ai-post-scheduler'),
+								'title'       => __('Generated Posts', 'ai-post-scheduler'),
+								'description' => __('Browse completed AI-generated posts and inspect their originating sessions.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'aips-partial-generations',
+								'label'       => __('Partial Generations', 'ai-post-scheduler'),
+								'title'       => __('Partial Generations', 'ai-post-scheduler'),
+								'description' => __('Find posts with incomplete components and recover the missing pieces.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'aips-pending-review',
+								'label'       => __('Pending Review', 'ai-post-scheduler'),
+								'title'       => __('Pending Review', 'ai-post-scheduler'),
+								'description' => __('Work through draft posts waiting for editorial review and publishing decisions.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/outputs/content-queue.php',
 					),
 					array(
 						'key'     => 'history',
 						'label'   => __('History', 'ai-post-scheduler'),
+						'title'   => __('History', 'ai-post-scheduler'),
+						'description' => __('Inspect generation runs, logs, and failures across templates, schedules, and author workflows.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Export CSV', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-download',
+								'id'    => 'aips-export-history-btn',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/outputs/history.php',
 					),
 				),
@@ -179,16 +281,86 @@ class AIPS_Admin_Hub_Registry {
 					array(
 						'key'     => 'sources',
 						'label'   => __('Sources', 'ai-post-scheduler'),
+						'title'   => __('Trusted Sources', 'ai-post-scheduler'),
+						'description' => __('Manage the external URLs and source groups used to ground topic research and content generation.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Manage Groups', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-category',
+								'id'    => 'aips-manage-source-groups-btn',
+							),
+							array(
+								'label' => __('Add Source', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary',
+								'icon'  => 'dashicons-plus-alt2',
+								'id'    => 'aips-add-source-btn',
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/site-context/sources.php',
 					),
 					array(
 						'key'     => 'taxonomy',
 						'label'   => __('Taxonomy', 'ai-post-scheduler'),
+						'title'   => __('Taxonomy', 'ai-post-scheduler'),
+						'description' => __('Generate and manage AI-assisted categories and tags based on existing site content.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Generate Taxonomy', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-primary aips-generate-taxonomy',
+								'icon'  => 'dashicons-update',
+								'id'    => 'aips-open-generate-modal',
+							),
+						),
+						'subtabs' => array(
+							array(
+								'key'         => 'categories',
+								'label'       => __('Categories', 'ai-post-scheduler'),
+								'title'       => __('Categories', 'ai-post-scheduler'),
+								'description' => __('Review and approve generated category suggestions.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'tags',
+								'label'       => __('Tags', 'ai-post-scheduler'),
+								'title'       => __('Tags', 'ai-post-scheduler'),
+								'description' => __('Review and approve generated tag suggestions.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/site-context/taxonomy.php',
 					),
 					array(
 						'key'     => 'internal-links',
 						'label'   => __('Internal Links', 'ai-post-scheduler'),
+						'title'   => __('Internal Links', 'ai-post-scheduler'),
+						'description' => __('Index content and manage semantic internal link suggestions.', 'ai-post-scheduler'),
+						'actions' => array(
+							array(
+								'label' => __('Index Posts', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-database-import',
+								'id'    => 'aips-start-indexing-btn',
+							),
+							array(
+								'label' => __('Clear Index', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-ghost aips-btn-danger',
+								'icon'  => 'dashicons-trash',
+								'id'    => 'aips-clear-index-btn',
+							),
+						),
+						'subtabs' => array(
+							array(
+								'key'         => 'suggestions',
+								'label'       => __('Suggestions', 'ai-post-scheduler'),
+								'title'       => __('Suggestions', 'ai-post-scheduler'),
+								'description' => __('Review pending internal link suggestions and insertion status.', 'ai-post-scheduler'),
+							),
+							array(
+								'key'         => 'generate',
+								'label'       => __('Generate for Post', 'ai-post-scheduler'),
+								'title'       => __('Generate for Post', 'ai-post-scheduler'),
+								'description' => __('Generate or refresh internal link suggestions for a specific post.', 'ai-post-scheduler'),
+							),
+						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/site-context/internal-links.php',
 					),
 				),
@@ -224,16 +396,86 @@ class AIPS_Admin_Hub_Registry {
 			array(
 				'key'     => 'general',
 				'label'   => __('General', 'ai-post-scheduler'),
+				'title'   => __('Settings', 'ai-post-scheduler'),
+				'description' => __('Configure plugin defaults, AI behavior, notifications, resilience, and performance settings.', 'ai-post-scheduler'),
+				'subtabs' => array(
+					array(
+						'key'         => 'settings-general',
+						'label'       => __('General', 'ai-post-scheduler'),
+						'title'       => __('General Settings', 'ai-post-scheduler'),
+						'description' => __('Control the default behavior for AI-generated posts and plugin-wide editorial settings.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-ai',
+						'label'       => __('AI', 'ai-post-scheduler'),
+						'title'       => __('AI Settings', 'ai-post-scheduler'),
+						'description' => __('Choose the AI model and environment used for content generation workflows.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-feedback',
+						'label'       => __('Feedback', 'ai-post-scheduler'),
+						'title'       => __('Feedback Settings', 'ai-post-scheduler'),
+						'description' => __('Tune how the plugin evaluates, deduplicates, and learns from generated topic suggestions.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-notifications',
+						'label'       => __('Notifications', 'ai-post-scheduler'),
+						'title'       => __('Notification Settings', 'ai-post-scheduler'),
+						'description' => __('Set delivery channels and recipients for plugin notifications and summaries.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-resilience',
+						'label'       => __('Resilience & Limits', 'ai-post-scheduler'),
+						'title'       => __('Resilience & Limits', 'ai-post-scheduler'),
+						'description' => __('Adjust retry, protection, and safety limits that keep the generation system stable.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-content-strategy',
+						'label'       => __('Content Strategy', 'ai-post-scheduler'),
+						'title'       => __('Content Strategy', 'ai-post-scheduler'),
+						'description' => __('Define the shared content identity that guides topic and post generation.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-cache',
+						'label'       => __('Performance', 'ai-post-scheduler'),
+						'title'       => __('Performance Settings', 'ai-post-scheduler'),
+						'description' => __('Configure cache and performance-related behavior for admin and generation workloads.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-api-keys',
+						'label'       => __('API Keys', 'ai-post-scheduler'),
+						'title'       => __('API Keys', 'ai-post-scheduler'),
+						'description' => __('Manage third-party service keys used by the plugin.', 'ai-post-scheduler'),
+					),
+					array(
+						'key'         => 'settings-developers',
+						'label'       => __('Developers', 'ai-post-scheduler'),
+						'title'       => __('Developer Settings', 'ai-post-scheduler'),
+						'description' => __('Access development-only options and debugging controls.', 'ai-post-scheduler'),
+					),
+				),
 				'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/settings/general.php',
 			),
 			array(
 				'key'     => 'system',
 				'label'   => __('System Status', 'ai-post-scheduler'),
+				'title'   => __('System Status', 'ai-post-scheduler'),
+				'description' => __('Monitor system health, diagnostics, queue pressure, and recovery guidance in one place.', 'ai-post-scheduler'),
+				'actions' => array(
+					array(
+						'label' => __('Run Onboarding Wizard', 'ai-post-scheduler'),
+						'class' => 'aips-btn aips-btn-primary',
+						'icon'  => 'dashicons-welcome-learn-more',
+						'url'   => AIPS_Admin_Menu_Helper::get_page_url('onboarding'),
+					),
+				),
 				'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/settings/system.php',
 			),
 			array(
 				'key'     => 'utilities',
 				'label'   => __('Utilities', 'ai-post-scheduler'),
+				'title'   => __('Utilities', 'ai-post-scheduler'),
+				'description' => __('Run maintenance and seed-data utilities for local testing and environment setup.', 'ai-post-scheduler'),
 				'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/settings/utilities.php',
 			),
 		);
@@ -242,6 +484,8 @@ class AIPS_Admin_Hub_Registry {
 			$tabs[] = array(
 				'key'     => 'telemetry',
 				'label'   => __('Telemetry', 'ai-post-scheduler'),
+				'title'   => __('Telemetry', 'ai-post-scheduler'),
+				'description' => __('Inspect request-level telemetry, filter records, and compare trends across plugin activity.', 'ai-post-scheduler'),
 				'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/settings/telemetry.php',
 			);
 		}
@@ -250,6 +494,8 @@ class AIPS_Admin_Hub_Registry {
 			$tabs[] = array(
 				'key'     => 'developer',
 				'label'   => __('Developer', 'ai-post-scheduler'),
+				'title'   => __('Developer Tools', 'ai-post-scheduler'),
+				'description' => __('Generate scaffolds and other development-only assets for faster prototyping.', 'ai-post-scheduler'),
 				'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/settings/developer.php',
 			);
 		}

@@ -32,29 +32,9 @@ if (is_object($history)) {
 } else {
     $history = array();
 }
+$has_active_filter = !empty($status_filter) || !empty($search_query);
+$show_panel        = $total_items > 0 || $has_active_filter;
 ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('View generation history containers and inspect every logged step, AI call, and error for each run.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
-                        <span class="dashicons dashicons-download"></span>
-                        <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <?php
-        $has_active_filter = !empty($status_filter) || !empty($search_query);
-        $show_panel        = $total_items > 0 || $has_active_filter;
-        ?>
         <?php if ($show_panel): ?>
         <div class="aips-content-panel">
             <!-- Filter Bar -->
@@ -173,9 +153,6 @@ if (is_object($history)) {
             </div>
         </div>
         <?php endif; ?>
-
-    </div><!-- .aips-page-container -->
-</div><!-- .wrap.aips-wrap -->
 
 <!-- History Logs Modal -->
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">

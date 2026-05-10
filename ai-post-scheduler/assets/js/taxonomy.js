@@ -39,7 +39,6 @@
 			$(document).on('keyup', '#base_posts', this.searchPosts.bind(this));
 			$(document).on('click', '.aips-remove-post', this.removeSelectedPost.bind(this));
 			$(document).on('click', '.aips-search-result', this.selectSearchResult.bind(this));
-			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
 			$(document).on('click', '.aips-select-all-taxonomy', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-taxonomy-checkbox', this.syncSelectAllState.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
@@ -260,34 +259,6 @@
 					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
 				}
 			});
-		},
-
-		/**
-		 * Switch between category/tag tabs.
-		 *
-		 * @param {Event} e Click event.
-		 */
-		switchTab: function(e) {
-			var $tabLink;
-			var $tabNav;
-			var $scope;
-			var tab;
-
-			if (!$(e.currentTarget).closest('#aips-taxonomy-panel').length) {
-				return;
-			}
-
-			e.preventDefault();
-			$tabLink = $(e.currentTarget);
-			tab = $tabLink.data('tab');
-			$tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
-			$scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
-
-			$tabNav.find('.aips-tab-link').removeClass('active');
-			$tabLink.addClass('active');
-
-			this.currentTab = tab;
-			this.loadTaxonomyItems(tab);
 		},
 
 		/**

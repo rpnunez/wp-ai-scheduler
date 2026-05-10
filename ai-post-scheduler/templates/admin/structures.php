@@ -13,40 +13,11 @@ if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
 
-$is_hub_mode   = !empty($aips_hub_mode);
 $active_subtab = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'aips-structures';
 $show_structures_panel = ('aips-structure-sections' !== $active_subtab);
 $show_sections_panel   = ('aips-structure-sections' === $active_subtab);
 ?>
-<?php if (!$is_hub_mode) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Define how your AI-generated content is organized with customizable article structures and sections.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-secondary aips-add-section-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Structure Section', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" class="aips-btn aips-btn-primary aips-add-structure-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add New Structure', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<div class="aips-tab-nav">
-			<a href="#aips-structures" class="aips-tab-link active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-structure-sections" class="aips-tab-link" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
-		</div>
-<?php endif; ?>
-
-	<div id="aips-structures-tab" class="aips-tab-content<?php echo $show_structures_panel ? ' active' : ''; ?>"<?php echo $show_structures_panel ? '' : ' style="display:none;"'; ?>>
+<div id="aips-structures-tab" class="aips-tab-content<?php echo $show_structures_panel ? ' active' : ''; ?>"<?php echo $show_structures_panel ? '' : ' style="display:none;"'; ?>>
 		<div class="aips-content-panel">
 		<div class="aips-structures-container">
 			<?php if (!empty($structures)): ?>
@@ -336,10 +307,6 @@ $show_sections_panel   = ('aips-structure-sections' === $active_subtab);
 			</div>
 		</div>
 	</div>
-<?php if (!$is_hub_mode) : ?>
-	</div><!-- .aips-page-container -->
-</div><!-- .wrap -->
-<?php endif; ?>
 
 <?php /* HTML templates used by AIPS.Templates.renderRaw() in admin.js */ ?>
 

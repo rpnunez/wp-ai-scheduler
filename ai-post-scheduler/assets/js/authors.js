@@ -19,6 +19,10 @@
 		 */
 		init: function () {
 			this.bindEvents();
+
+			if ($('#generation-queue-tab').hasClass('active') || $('#generation-queue-tab:visible').length) {
+				this.loadQueueTopics();
+			}
 		},
 
 		/**
@@ -2347,9 +2351,6 @@
 		 * execution.
 		 */
 		bindEvents: function () {
-			// React to shared tab switching events for top-level Authors tabs.
-			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
-			
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -2359,22 +2360,6 @@
 			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
 			$(document).on('click', '#aips-queue-reload-btn', this.loadQueueTopics.bind(this));
 			$(document).on('click', '.aips-queue-page-link', this.goToQueuePage.bind(this));
-		},
-
-		/**
-		 * Handle shared AIPS tab-switch events for the Authors page top tabs.
-		 *
-		 * @param {jQuery.Event} e     - Custom event object.
-		 * @param {string}       tabId - The activated tab ID.
-		 */
-		handleSharedTabSwitch: function (e, tabId) {
-			if (!$('#generation-queue-tab').length) {
-				return;
-			}
-
-			if (tabId === 'generation-queue') {
-				this.loadQueueTopics();
-			}
 		},
 
 		/**

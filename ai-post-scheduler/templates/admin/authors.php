@@ -19,37 +19,12 @@ if (!empty($authors)) {
 
 // Site-wide content settings used to pre-fill the Author Suggestions modal
 $site_ctx = AIPS_Site_Context::get();
+$active_tab  = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'authors-list';
+$authors_list_active = ('generation-queue' !== $active_tab);
+$queue_active        = ('generation-queue' === $active_tab);
 ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
-                        <span class="dashicons dashicons-lightbulb"></span>
-                        <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
-                    </button>
-                    <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Add tabs for Authors List and Generation Queue -->
-        <div class="aips-tab-nav">
-            <a href="#authors-list" class="aips-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></a>
-            <a href="#generation-queue" class="aips-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></a>
-        </div>
-
-        <!-- Authors List Tab Content -->
-        <div id="authors-list-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+        <div id="authors-list-tab" class="aips-tab-content<?php echo $authors_list_active ? ' active' : ''; ?>"<?php echo $authors_list_active ? '' : ' style="display:none;"'; ?> role="tabpanel" aria-hidden="<?php echo $authors_list_active ? 'false' : 'true'; ?>">
             <?php if (!empty($authors)): ?>
             <div class="aips-content-panel">
                 <!-- Filter Bar -->
@@ -301,7 +276,7 @@ $site_ctx = AIPS_Site_Context::get();
         </div>
 
         <!-- Generation Queue Tab Content -->
-        <div id="generation-queue-tab" class="aips-tab-content" style="display: none;" role="tabpanel" aria-hidden="true">
+        <div id="generation-queue-tab" class="aips-tab-content<?php echo $queue_active ? ' active' : ''; ?>"<?php echo $queue_active ? '' : ' style="display:none;"'; ?> role="tabpanel" aria-hidden="<?php echo $queue_active ? 'false' : 'true'; ?>">
             <div class="aips-content-panel">
                 <div class="aips-filter-bar">
                     <div class="aips-filter-left">
@@ -359,9 +334,6 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
         </div>
-    </div><!-- .aips-page-container -->
-</div><!-- .wrap.aips-wrap -->
-
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">

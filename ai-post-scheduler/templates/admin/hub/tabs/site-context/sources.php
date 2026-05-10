@@ -26,5 +26,4 @@ $source_term_ids_map      = $repo->get_term_ids_for_sources($all_source_ids);
 $data_repo                = new AIPS_Sources_Data_Repository();
 $source_fetch_data_map    = $data_repo->get_by_source_ids($all_source_ids);
 $source_content_count_map = $data_repo->get_counts_by_source_ids($all_source_ids);
-
 include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';

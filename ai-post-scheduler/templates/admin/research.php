@@ -18,31 +18,12 @@ $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();
 $default_research_frequency = 'daily';
-$active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'trending';
+$active_tab = !empty($aips_hub_subtab) ? $aips_hub_subtab : (isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'trending');
 $valid_tabs = array('trending', 'planner', 'gap-analysis');
 if (!in_array($active_tab, $valid_tabs, true)) {
     $active_tab = 'trending';
 }
 ?>
-
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php echo esc_html__('Research', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php echo esc_html__('Discover trending topics in your niche using AI-powered research and automatically schedule content creation.', 'ai-post-scheduler'); ?></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab Navigation -->
-        <div class="aips-tab-nav">
-            <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
-            <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
-        </div>
 
     <div id="trending-tab" class="aips-tab-content<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'trending' ? '' : 'display:none;'; ?>">
         <!-- Research Stats -->
@@ -571,5 +552,3 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             </div>
         </div>
     </script>
-    </div><!-- .aips-page-container -->
-</div><!-- .wrap -->

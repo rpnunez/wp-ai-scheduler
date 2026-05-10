@@ -10,17 +10,6 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Telemetry', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Inspect request-level telemetry, filter records, and compare request trends at a glance.', 'ai-post-scheduler'); ?></p>
-				</div>
-			</div>
-		</div>
-
 		<div class="aips-telemetry-dashboard-grid" id="aips-telemetry-panel">
 			<div class="aips-telemetry-dashboard-main">
 				<div class="aips-content-panel aips-telemetry-records-panel">
@@ -193,8 +182,6 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
-	</div>
-</div>
 
 <script type="text/html" id="aips-tmpl-telemetry-message-row">
 	<tr>

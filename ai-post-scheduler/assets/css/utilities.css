@@ -69,6 +69,16 @@
 
 .aips-hub-tab-item {
 	position: relative;
+	display: flex;
+}
+
+.aips-hub-tab-item.has-submenu::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 0;
+	width: 100%;
+	height: 10px;
 }
 
 .aips-hub-tab-link {
@@ -76,14 +86,14 @@
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	min-height: 34px;
+	min-height: 30px;
 	padding: 0 14px;
 	border: 1px solid transparent;
 	border-radius: var(--aips-radius-md);
 	color: var(--aips-gray-600);
 	font-size: var(--aips-text-sm);
 	font-weight: var(--aips-font-medium);
-	line-height: 1;
+	line-height: 1.1;
 	text-decoration: none;
 	transition: background-color var(--aips-transition-fast), border-color var(--aips-transition-fast), color var(--aips-transition-fast);
 }
@@ -111,7 +121,7 @@
 
 .aips-hub-tab-submenu {
 	position: absolute;
-	top: calc(100% + 6px);
+	top: calc(100% + 2px);
 	left: 0;
 	z-index: 20;
 	display: none;

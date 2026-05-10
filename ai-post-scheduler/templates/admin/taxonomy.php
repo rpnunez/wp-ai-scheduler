@@ -17,26 +17,8 @@ $repository = new AIPS_Taxonomy_Repository();
 $status_counts = $repository->get_status_counts();
 $total_items = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] +
 	$status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
+$active_tab  = !empty($aips_hub_subtab) ? $aips_hub_subtab : 'categories';
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Taxonomy', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Generate and manage AI-powered categories and tags based on your existing posts', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
-						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
 
 		<!-- Taxonomy Stats -->
 		<div class="aips-author-topics-stats">
@@ -60,18 +42,6 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 
 		<!-- Taxonomy Panel -->
 		<div class="aips-content-panel" id="aips-taxonomy-panel">
-			<!-- Tabs -->
-			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link active" data-tab="categories">
-					<?php esc_html_e('Categories', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="categories-count"><?php echo esc_html($status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected']); ?></span>
-				</button>
-				<button class="aips-tab-link" data-tab="tags">
-					<?php esc_html_e('Tags', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="tags-count"><?php echo esc_html($status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected']); ?></span>
-				</button>
-			</div>
-
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left aips-btn-group aips-btn-group-inline">
@@ -123,7 +93,6 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 			</span>
 		</div>
 	</div>
-</div>
 
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">

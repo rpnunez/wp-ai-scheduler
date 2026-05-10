@@ -6,7 +6,12 @@ if (!defined('ABSPATH')) {
 global $aips_internal_links_controller;
 
 if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-	$aips_internal_links_controller->render_page();
+	$summary         = $aips_internal_links_controller->get_service()->get_dashboard_summary();
+	$links_repo      = $aips_internal_links_controller->get_links_repo();
+	$service         = $aips_internal_links_controller->get_service();
+$aips_hub_subtab = isset($active_subtab_key) ? $active_subtab_key : 'suggestions';
+
+	include AIPS_PLUGIN_DIR . 'templates/admin/internal-links.php';
 	return;
 }
 
