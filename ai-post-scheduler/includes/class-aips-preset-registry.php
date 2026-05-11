@@ -7,7 +7,15 @@ class AIPS_Preset_Registry {
 	const OVERRIDES_OPTION = 'aips_preset_overrides';
 
 	public static function get_all() {
-		$presets = self::get_defaults();
+		$presets = array();
+		foreach (self::get_defaults() as $id => $preset) {
+			$safe_id = sanitize_key($id);
+			if (empty($safe_id) || !is_array($preset)) {
+				continue;
+			}
+			$presets[$safe_id] = self::sanitize_preset($preset, $safe_id);
+		}
+
 		$overrides = get_option(self::OVERRIDES_OPTION, array());
 		if (is_array($overrides)) {
 			foreach ($overrides as $id => $preset) {
@@ -31,10 +39,18 @@ class AIPS_Preset_Registry {
 		if (!current_user_can('manage_options')) {
 			return new WP_Error('forbidden', __('Insufficient permissions.', 'ai-post-scheduler'));
 		}
+
+		$name = (string) $name;
 		$key = sanitize_title($name);
 		if ('' === $key) {
 			$key = 'custom-' . time();
 		}
+
+		$defaults = self::get_defaults();
+		if (isset($defaults[$key])) {
+			$key = 'custom-' . $key;
+		}
+
 		$preset = self::sanitize_preset($config, $key);
 		$preset['name'] = sanitize_text_field($name);
 		$preset['source'] = 'custom';
@@ -55,6 +71,20 @@ class AIPS_Preset_Registry {
 	}
 
 	private static function sanitize_preset($preset, $id) {
+		$default_taxonomy = array();
+		if (isset($preset['default_taxonomy']) && is_array($preset['default_taxonomy'])) {
+			foreach ($preset['default_taxonomy'] as $taxonomy => $terms) {
+				$taxonomy = sanitize_key($taxonomy);
+				if ('' === $taxonomy || !is_array($terms)) {
+					continue;
+				}
+				$terms = array_values(array_filter(array_map('absint', $terms)));
+				if (!empty($terms)) {
+					$default_taxonomy[$taxonomy] = $terms;
+				}
+			}
+		}
+
 		return array(
 			'id' => sanitize_key($id),
 			'name' => isset($preset['name']) ? sanitize_text_field($preset['name']) : sanitize_text_field($id),
@@ -63,7 +93,7 @@ class AIPS_Preset_Registry {
 			'frequency' => isset($preset['frequency']) ? sanitize_text_field($preset['frequency']) : 'weekly',
 			'review_mode' => isset($preset['review_mode']) ? sanitize_text_field($preset['review_mode']) : 'manual',
 			'default_category' => isset($preset['default_category']) ? absint($preset['default_category']) : 0,
-			'default_taxonomy' => isset($preset['default_taxonomy']) && is_array($preset['default_taxonomy']) ? $preset['default_taxonomy'] : array(),
+			'default_taxonomy' => $default_taxonomy,
 			'source_research_mode' => isset($preset['source_research_mode']) ? sanitize_text_field($preset['source_research_mode']) : 'optional',
 			'include_sources' => !empty($preset['include_sources']) ? 1 : 0,
 			'source_group_ids' => isset($preset['source_group_ids']) && is_array($preset['source_group_ids']) ? array_map('absint', $preset['source_group_ids']) : array(),

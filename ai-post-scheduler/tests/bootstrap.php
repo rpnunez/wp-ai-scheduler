@@ -1347,6 +1347,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-container.php',
         'class-aips-logger.php',
         'class-aips-config.php',
+        'class-aips-preset-registry.php',
         'class-aips-db-manager.php',
         'class-aips-trending-topics-repository.php',
         'class-aips-history-repository.php',

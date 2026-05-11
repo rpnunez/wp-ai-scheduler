@@ -315,7 +315,14 @@ class AIPS_Planner {
 			AIPS_Ajax_Response::permission_denied();
 		}
 		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
-		$config = isset($_POST['config']) ? (array) $_POST['config'] : array();
+		if ('' === $name) {
+			AIPS_Ajax_Response::invalid_request(__('Preset name is required.', 'ai-post-scheduler'));
+		}
+
+		$config = isset($_POST['config']) ? wp_unslash((array) $_POST['config']) : array();
+		if (!class_exists('AIPS_Preset_Registry')) {
+			AIPS_Ajax_Response::error(__('Preset registry is not available.', 'ai-post-scheduler'));
+		}
 		$key = AIPS_Preset_Registry::save_override_from_template($name, $config);
 		if (is_wp_error($key)) {
 			AIPS_Ajax_Response::error($key->get_error_message());

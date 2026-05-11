@@ -574,7 +574,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
                 isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
-                isset($data['run_state']) ? wp_kses_post($data['run_state']) : null
+                isset($data['run_state']) && is_scalar($data['run_state']) ? wp_unslash((string) $data['run_state']) : null
             );
             $placeholders[] = "(%d, %s, %d, %d, %s, %d, %s, %s)";
         }
