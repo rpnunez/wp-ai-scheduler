@@ -99,6 +99,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_authors_page')
         );
 
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Post Slices', 'ai-post-scheduler'),
+            __('Post Slices', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-slices',
+            array($this, 'render_post_slices_page')
+        );
+
         // Author Topics page - hidden from menu navigation, accessible via URL.
         add_submenu_page(
             null,
@@ -161,6 +170,14 @@ class AIPS_Admin_Menu {
             'manage_options',
             'aips-history',
             array($this, 'render_history_page')
+        );
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Operations Insights', 'ai-post-scheduler'),
+            __('Operations Insights', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-operations-insights',
+            array($this, 'render_operations_insights_page')
         );
 
         add_submenu_page(
@@ -360,6 +377,19 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Render the Post Slices management page.
+     *
+     * @return void
+     */
+    public function render_post_slices_page() {
+        $post_slices_repo   = AIPS_Post_Slices_Repository::instance();
+        $post_slices        = $post_slices_repo->get_all(false);
+        $post_slice_counts  = $post_slices_repo->get_counts();
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
+    }
+
+    /**
      * Render the Author Topics page.
      *
      * Displays all AI-generated topics for a specific author with full
@@ -422,6 +452,11 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    public function render_operations_insights_page() {
+        $controller = new AIPS_Operations_Insights_Controller();
+        $controller->render_page();
     }
 
     /**

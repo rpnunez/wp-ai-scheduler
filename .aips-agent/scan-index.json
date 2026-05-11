@@ -1,9 +1,9 @@
 {
     "schema_version": 1,
     "repo": "rpnunez/wp-ai-scheduler",
-    "last_run_at": "2026-05-07T22:06:27Z",
-    "last_run_id": "aips-20260507T220627Z",
-    "ruleset_hash": "1559db00904777f3cee970a7bdaf2f1d7d98f7fd",
+    "last_run_at": "2026-05-10T12:00:00Z",
+    "last_run_id": "aips-20260510T120000Z",
+    "ruleset_hash": "11751b6f7342be841683050bd35722732adb41c5",
     "files": {
         "ai-post-scheduler/includes/class-aips-author-post-generator.php": {
             "fingerprint": "062fa9f1daefeec6a371d430a12546f47affe299",
@@ -123,6 +123,41 @@
             "last_scan_run_id": "aips-20260507T190500Z",
             "findings_open_count": 0,
             "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-embeddings-cron.php": {
+            "fingerprint": "e6cadee59f1171e448a92bae446ba58926b57891",
+            "last_scanned_at": "2026-05-10T12:00:00Z",
+            "last_scan_run_id": "aips-20260510T120000Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-sources-cron.php": {
+            "fingerprint": "9b540cc857b63e2445121ddc8b95530ba4b31e6d",
+            "last_scanned_at": "2026-05-10T12:00:00Z",
+            "last_scan_run_id": "aips-20260510T120000Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-sources-fetcher.php": {
+            "fingerprint": "328cbade5841af9adbf077b942037ef03c0f801d",
+            "last_scanned_at": "2026-05-10T12:00:00Z",
+            "last_scan_run_id": "aips-20260510T120000Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-research-controller.php": {
+            "fingerprint": "506cc00f451396905d893d59b85b68461496c1b1",
+            "last_scanned_at": "2026-05-10T12:00:00Z",
+            "last_scan_run_id": "aips-20260510T120000Z",
+            "findings_open_count": 0,
+            "status": "ok"
+        },
+        "ai-post-scheduler/includes/class-aips-notifications.php": {
+            "fingerprint": "cf1e3dfdc18a11294f31c7f883e2a99f61b34a7c",
+            "last_scanned_at": "2026-05-10T12:00:00Z",
+            "last_scan_run_id": "aips-20260510T120000Z",
+            "findings_open_count": 0,
+            "status": "ok"
         }
     },
     "open_findings": {
@@ -235,6 +270,46 @@
             "last_seen_run_id": "aips-20260507T190500Z",
             "status": "resolved",
             "finding_file": ".aips-agent/findings/e4090bcc8d154f838e8643ddcfd533da99087a22.json"
+        },
+        "71fc14f84d76abcf6cb28a78a783756fb88bd0ce": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-sources-cron.php",
+            "symbol": "AIPS_Sources_Cron",
+            "anchor": "schedule:wp_schedule_event-time",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "resolved"
+        },
+        "9bc697e60496bea41d5230907ab6e6e93cace833": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-embeddings-cron.php",
+            "symbol": "AIPS_Embeddings_Cron",
+            "anchor": "schedule_next_batch:time-plus-five",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
+        },
+        "25db61572c31b65f1068f4ce15fecee620d9bdf2": {
+            "type": "datetime_gap",
+            "severity": "medium",
+            "path": "ai-post-scheduler/includes/class-aips-research-controller.php",
+            "symbol": "AIPS_Research_Controller",
+            "anchor": "parse_research_window:strtotime-start_date",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
+        },
+        "5c7c5164aad20076c0561f0bbc6a6a0b0c07fa75": {
+            "type": "logging_gap",
+            "severity": "low",
+            "path": "ai-post-scheduler/includes/class-aips-sources-fetcher.php",
+            "symbol": "AIPS_Sources_Fetcher",
+            "anchor": "fetch_source:duration-without-history-metric",
+            "first_seen_run_id": "aips-20260510T120000Z",
+            "last_seen_run_id": "aips-20260510T120000Z",
+            "status": "open"
         }
     }
 }
