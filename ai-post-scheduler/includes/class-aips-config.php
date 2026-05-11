@@ -193,6 +193,14 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Post-refresh automation for existing content
+            'aips_enable_post_refresh_automation' => false,
+            'aips_post_refresh_age_days' => 180,
+            'aips_post_refresh_max_posts_per_run' => 5,
+            'aips_post_refresh_update_stats' => true,
+            'aips_post_refresh_refresh_links' => true,
+            'aips_post_refresh_reframe_intro_outro' => true,
+            'aips_post_refresh_insert_faq' => true,
         );
     }
     

@@ -368,6 +368,32 @@ class AIPS_Settings_UI {
         <?php
     }
 
+    public function enable_post_refresh_automation_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_post_refresh_automation');
+        ?>
+        <input type="hidden" name="aips_enable_post_refresh_automation" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_post_refresh_automation" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable scheduled post refresh automation for existing content', 'ai-post-scheduler'); ?>
+        </label>
+        <?php
+    }
+
+    public function post_refresh_age_days_field_callback() {
+        $value = absint(AIPS_Config::get_instance()->get_option('aips_post_refresh_age_days'));
+        ?>
+        <input type="number" name="aips_post_refresh_age_days" value="<?php echo esc_attr(max(1, $value)); ?>" min="1" step="1" class="small-text">
+        <p class="description"><?php esc_html_e('Only posts older than this many days are eligible for refresh drafting.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    public function post_refresh_max_posts_per_run_field_callback() {
+        $value = absint(AIPS_Config::get_instance()->get_option('aips_post_refresh_max_posts_per_run'));
+        ?>
+        <input type="number" name="aips_post_refresh_max_posts_per_run" value="<?php echo esc_attr(max(1, $value)); ?>" min="1" step="1" class="small-text">
+        <?php
+    }
+
     /**
      * Render the review notifications email setting field.
      *
