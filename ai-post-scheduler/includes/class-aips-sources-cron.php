@@ -104,7 +104,7 @@ class AIPS_Sources_Cron {
 	 */
 	public function schedule() {
 		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( time(), self::DISPATCHER_RECURRENCE, self::HOOK );
+			wp_schedule_event( AIPS_DateTime::now()->timestamp(), self::DISPATCHER_RECURRENCE, self::HOOK );
 		}
 	}
 
