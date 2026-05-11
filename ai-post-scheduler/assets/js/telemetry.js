@@ -151,7 +151,7 @@
 				ajaxurl,
 				{
 					action: 'aips_get_telemetry',
-					nonce: window.aipsTelemetryL10n.nonce || '',
+					nonce: window.aipsTelemetryConfig.nonce || '',
 					page: page,
 					per_page: this.perPage,
 					type: $('#aips-telemetry-type-filter').val() || '',
@@ -314,7 +314,7 @@
 				ajaxurl,
 				{
 					action: 'aips_get_telemetry_details',
-					nonce: window.aipsTelemetryL10n.detailsNonce || '',
+					nonce: window.aipsTelemetryConfig.detailsNonce || '',
 					id: rowId
 				},
 				function(response) {
@@ -649,7 +649,7 @@
 				hoursMinutesAgo: t.insertedHoursMinutesAgo  || undefined,
 				yesterdayAt:     t.insertedYesterdayAt      || undefined,
 				absoluteDate:    t.insertedAbsoluteDate     || undefined,
-				locale:          t.locale                   || undefined
+				locale:          window.aipsTelemetryConfig.locale || undefined
 			};
 		},
 

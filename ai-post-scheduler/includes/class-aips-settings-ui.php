@@ -97,6 +97,26 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the language setting field.
+     *
+     * Displays a dropdown of available languages.
+     *
+     * @return void
+     */
+    public function language_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_language');
+        $languages = AIPS_Language_Store::get_available_languages();
+        ?>
+        <select name="aips_language">
+            <?php foreach ($languages as $code => $label) : ?>
+                <option value="<?php echo esc_attr($code); ?>" <?php selected($value, $code); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Language for admin interface strings.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the AI model setting field.
      *
      * Displays a text input for specifying a custom AI Engine model.

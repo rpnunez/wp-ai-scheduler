@@ -79,13 +79,13 @@
 			$('.aips-ai-edit-content').hide();
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: aipsAIEditConfig.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_post_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
-					nonce: aipsAIEditL10n.nonce
+					nonce: aipsAIEditConfig.nonce
 				},
 				success: window.AIPS.onAIEditComponentsLoaded,
 				error: window.AIPS.onAIEditLoadError
@@ -167,7 +167,7 @@
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
 				component: component,
-				nonce: aipsAIEditL10n.nonce
+				nonce: aipsAIEditConfig.nonce
 			};
 
 			if (window.AIPS.shouldCaptureManualRevision(component)) {
@@ -182,7 +182,7 @@
 				.find('.button-text').text(aipsAIEditL10n.regenerating);
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: aipsAIEditConfig.ajaxUrl,
 				type: 'POST',
 				data: requestData,
 				success: function(response) {
@@ -222,14 +222,14 @@
 			$('.aips-regenerate-btn').prop('disabled', true);
 
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: aipsAIEditConfig.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_regenerate_all_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
 					manual_snapshots: manualSnapshots,
-					nonce: aipsAIEditL10n.nonce
+					nonce: aipsAIEditConfig.nonce
 				},
 				success: function(response) {
 					window.AIPS.onRegenerateAllSuccess($button, response);
@@ -536,13 +536,13 @@
 			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: aipsAIEditConfig.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_save_post_components',
 					post_id: aiEditState.postId,
 					components: components,
-					nonce: aipsAIEditL10n.nonce
+					nonce: aipsAIEditConfig.nonce
 				},
 				success: window.AIPS.onAIEditSaveSuccess,
 				error: window.AIPS.onAIEditSaveError
@@ -728,7 +728,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_component_revisions',
-					nonce: aipsAIEditL10n.nonce,
+					nonce: aipsAIEditConfig.nonce,
 					post_id: aiEditState.postId,
 					component: componentType,
 					history_id: aiEditState.historyId
@@ -845,7 +845,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_restore_component_revision',
-					nonce: aipsAIEditL10n.nonce,
+					nonce: aipsAIEditConfig.nonce,
 					post_id: aiEditState.postId,
 					revision_id: revisionId,
 					component: componentType,

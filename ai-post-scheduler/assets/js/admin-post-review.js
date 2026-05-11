@@ -115,12 +115,12 @@
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action:  'aips_publish_post',
 							post_id: postId,
-							nonce:   aipsPostReviewL10n.nonce,
+							nonce:   aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response.success) {
@@ -171,13 +171,13 @@
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action:     'aips_delete_draft_post',
 							post_id:    postId,
 							history_id: historyId,
-							nonce:      aipsPostReviewL10n.nonce,
+							nonce:      aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response.success) {
@@ -219,12 +219,12 @@
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action:     'aips_regenerate_post',
 							history_id: historyId,
-							nonce:      aipsPostReviewL10n.nonce,
+							nonce:      aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response.success) {
@@ -336,12 +336,12 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action:   'aips_bulk_publish_posts',
 							post_ids: postIds,
-							nonce:    aipsPostReviewL10n.nonce,
+							nonce:    aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response.success) {
@@ -393,12 +393,12 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action: 'aips_bulk_delete_draft_posts',
 							items:  items,
-							nonce:  aipsPostReviewL10n.nonce,
+							nonce:  aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response.success) {
@@ -450,12 +450,12 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  aipsPostReviewConfig.ajaxUrl,
 						type: 'POST',
 						data: {
 							action: 'aips_bulk_regenerate_posts',
 							items:  items,
-							nonce:  aipsPostReviewL10n.nonce,
+							nonce:  aipsPostReviewConfig.nonce,
 						},
 						success: function (response) {
 							if (response && response.success) {
@@ -538,12 +538,12 @@
 			modal.show();
 
 			$.ajax({
-				url:  aipsPostReviewL10n.ajaxUrl,
+				url:  aipsPostReviewConfig.ajaxUrl,
 				type: 'POST',
 				data: {
 					action:  'aips_get_post_preview',
 					post_id: postId,
-					nonce:   aipsPostReviewL10n.nonce,
+					nonce:   aipsPostReviewConfig.nonce,
 				},
 				success: function (response) {
 					if (response.success) {
