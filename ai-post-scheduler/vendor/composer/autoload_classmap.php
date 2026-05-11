@@ -1681,6 +1681,7 @@ return array(
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',
     'Test_AIPS_Admin_Menu' => $baseDir . '/tests/Test_AIPS_Admin_Menu.php',
     'Test_AIPS_Ajax_Registry_Response' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Response.php',
+    'Test_AIPS_Author_Post_Generator_Batching' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Batching.php',
     'Test_AIPS_Author_Post_Generator_Expansion' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Expansion.php',
     'Test_AIPS_Batch_Queue_Service' => $baseDir . '/tests/test-batch-queue-service.php',
     'Test_AIPS_Batch_Slicer' => $baseDir . '/tests/Test_AIPS_Batch_Slicer.php',
