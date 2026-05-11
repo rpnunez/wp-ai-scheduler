@@ -23,6 +23,45 @@
         generatedPostPreviewMap: {},
 
         /**
+         * Refresh a specific content panel dynamically to avoid a full page reload.
+         *
+         * @param {string} contentSelector - Selector for the main content to find and replace.
+         * @param {string} emptyStateSelector - Optional. Fallback selector for the empty state container if the content doesn't exist yet.
+         * @param {function} callback - Optional callback after successful replacement.
+         */
+        refreshContentPanel: function(contentSelector, emptyStateSelector, callback) {
+            $.get(location.href, function(html) {
+                var $newDoc = $('<div>').append($.parseHTML(html));
+                var $newContent = $newDoc.find(contentSelector).closest('.aips-content-panel');
+                var $existingPanel = $(contentSelector).closest('.aips-content-panel');
+
+                if ($newContent.length) {
+                    if ($existingPanel.length) {
+                        $existingPanel.replaceWith($newContent);
+                    } else if (emptyStateSelector) {
+                        var $emptyStatePanel = $(emptyStateSelector).closest('.aips-content-panel');
+                        if ($emptyStatePanel.length) {
+                            $emptyStatePanel.replaceWith($newContent);
+                        } else {
+                            location.reload();
+                            return;
+                        }
+                    } else {
+                        location.reload();
+                        return;
+                    }
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                } else {
+                    location.reload();
+                }
+            }).fail(function() {
+                location.reload();
+            });
+        },
+
+        /**
          * Bootstrap the AIPS admin interface.
          *
          * Registers all delegated event listeners, runs the initial AI variables
@@ -91,7 +130,10 @@
             // Post-save next steps
             $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
-            $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
+            $(document).on('click', '#aips-post-save-done-btn', function() {
+                $('#aips-template-modal').hide();
+                AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
+            });
 
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
@@ -575,7 +617,7 @@
                         },
                         success: function(response) {
                             if (response.success) {
-                                location.reload();
+                                AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                             } else {
                                 AIPS.Utilities.showToast(response.data.message, 'error');
                                 AIPS.Utilities.resetButton($btn);
@@ -807,6 +849,7 @@
                         if (response.data && response.data.slicing_notice && response.data.slicing_notice.message) {
                             AIPS.Utilities.showToast(response.data.slicing_notice.message, 'warning');
                         }
+                        AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -1202,28 +1245,7 @@
                         $('#aips-voice-modal').hide();
 
                         // Dynamically update the voices table
-                        $.get(location.href, function(html) {
-                            var $newDoc = $(html);
-                            var $newContent = $newDoc.find('.aips-voices-list').closest('.aips-content-panel');
-                            var $existingPanel = $('.aips-voices-list').closest('.aips-content-panel');
-
-                            if ($newContent.length) {
-                                if ($existingPanel.length) {
-                                    $existingPanel.replaceWith($newContent);
-                                } else {
-                                    // If table didn't exist (we were on the empty state), replace the empty state panel
-                                    // It's the one containing .aips-empty-state within .aips-voices-container.
-                                    var $emptyStatePanel = $('.aips-voices-container').closest('.aips-content-panel');
-                                    if ($emptyStatePanel.length) {
-                                        $emptyStatePanel.replaceWith($newContent);
-                                    } else {
-                                        location.reload();
-                                    }
-                                }
-                            } else {
-                                location.reload();
-                            }
-                        });
+                        AIPS.refreshContentPanel('.aips-voices-list', '.aips-voices-container');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -1434,32 +1456,8 @@
                         $('#aips-schedule-modal').hide();
 
                         // Dynamically update the schedules table
-                        $.get(location.href, function(html) {
-                            var $newDoc = $(html);
-                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
-                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
-
-                            if ($newContent.length) {
-                                if ($existingPanel.length) {
-                                    $existingPanel.replaceWith($newContent);
-                                } else {
-                                    // If table didn't exist (we were on the empty state), replace the empty state panel
-                                    // We need to find the correct panel to replace.
-                                    // It's the one containing .aips-empty-state that is related to schedules.
-                                    var $emptyStatePanel = $('.aips-content-panel').has('.aips-empty-state').last();
-                                    if ($emptyStatePanel.length) {
-                                        $emptyStatePanel.replaceWith($newContent);
-                                    } else {
-                                        location.reload();
-                                    }
-                                }
-
-                                // Re-bind any dynamic event listeners or UI initializations if needed
-                                // Currently, event delegation handles most interactions in admin.js
-                                AIPS.updateScheduleBulkActions();
-                            } else {
-                                location.reload();
-                            }
+                        AIPS.refreshContentPanel('.aips-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
+                            AIPS.updateScheduleBulkActions();
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
@@ -1522,26 +1520,8 @@
                         $wizardModal.hide();
 
                         // Dynamically update the schedules table
-                        $.get(location.href, function(html) {
-                            var $newDoc = $(html);
-                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
-                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
-
-                            if ($newContent.length) {
-                                if ($existingPanel.length) {
-                                    $existingPanel.replaceWith($newContent);
-                                } else {
-                                    var $emptyStatePanel = $('.aips-content-panel').has('.aips-empty-state').last();
-                                    if ($emptyStatePanel.length) {
-                                        $emptyStatePanel.replaceWith($newContent);
-                                    } else {
-                                        location.reload();
-                                    }
-                                }
-                                AIPS.updateScheduleBulkActions();
-                            } else {
-                                location.reload();
-                            }
+                        AIPS.refreshContentPanel('.aips-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
+                            AIPS.updateScheduleBulkActions();
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');

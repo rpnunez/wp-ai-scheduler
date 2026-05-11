@@ -269,6 +269,8 @@ class AIPS_DB_Manager {
             preferred_content_length varchar(50) DEFAULT NULL,
             language varchar(10) DEFAULT 'en',
             max_posts_per_topic int DEFAULT 1,
+            manual_post_generation_quantity int DEFAULT 1,
+            scheduled_post_generation_quantity int DEFAULT 1,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
