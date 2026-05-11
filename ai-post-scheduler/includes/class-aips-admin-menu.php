@@ -64,7 +64,8 @@ class AIPS_Admin_Menu {
 		$this->register_hidden_page('aips-templates', __('Templates', 'ai-post-scheduler'), array($this, 'render_templates_page'));
 		$this->register_hidden_page('aips-voices', __('Voices', 'ai-post-scheduler'), array($this, 'render_voices_page'));
 		$this->register_hidden_page('aips-structures', __('Article Structures', 'ai-post-scheduler'), array($this, 'render_structures_page'));
-		$this->register_hidden_page('aips-sections', __('Prompt Blocks', 'ai-post-scheduler'), array($this, 'render_prompt_sections_page'));
+		$this->register_hidden_page('aips-sections', __('Structure Sections', 'ai-post-scheduler'), array($this, 'render_prompt_sections_page'));
+		$this->register_hidden_page('aips-post-slices', __('Post Slices', 'ai-post-scheduler'), array($this, 'render_post_slices_page'));
 		$this->register_hidden_page('aips-authors', __('Authors', 'ai-post-scheduler'), array($this, 'render_authors_page'));
 		$this->register_hidden_page('aips-author-topics', __('Author Topics', 'ai-post-scheduler'), array($this, 'render_author_topics_page'));
 		$this->register_hidden_page('aips-research', __('Research', 'ai-post-scheduler'), array($this, 'render_research_page'));
@@ -188,6 +189,15 @@ class AIPS_Admin_Menu {
 	}
 
 	/**
+	 * Render the Operations hub page.
+	 *
+	 * @return void
+	 */
+	public function render_operations_hub_page() {
+		$this->render_hub_page('operations');
+	}
+
+	/**
 	 * Render one shared hub layout.
 	 *
 	 * @param string $hub_key Hub registry key.
@@ -306,6 +316,15 @@ class AIPS_Admin_Menu {
 	}
 
 	/**
+	 * Render the post slices page.
+	 *
+	 * @return void
+	 */
+	public function render_post_slices_page() {
+		$this->redirect_legacy_page('post_slices');
+	}
+
+	/**
 	 * Render the history page.
 	 *
 	 * @return void
@@ -320,8 +339,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_operations_insights_page() {
-		$controller = new AIPS_Operations_Insights_Controller();
-		$controller->render_page();
+		$this->redirect_legacy_page('operations_insights');
 	}
 
 	/**

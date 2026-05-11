@@ -820,6 +820,9 @@ final class AI_Post_Scheduler {
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
 
+		// Register export callbacks and data provider for Operations Insights.
+		new AIPS_Operations_Insights_Controller();
+
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
         // the object (which would double-register all AJAX hooks).

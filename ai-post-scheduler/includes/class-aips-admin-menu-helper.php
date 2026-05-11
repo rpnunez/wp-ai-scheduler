@@ -30,11 +30,13 @@ class AIPS_Admin_Menu_Helper {
 		'automation_hub'       => 'aips-automation',
 		'outputs_hub'          => 'aips-outputs',
 		'site_context_hub'     => 'aips-site-context',
+		'operations_hub'       => 'aips-operations',
 		'settings_hub'         => 'aips-settings-hub',
 		'templates'            => 'aips-templates',
 		'voices'               => 'aips-voices',
 		'structures'           => 'aips-structures',
 		'prompt_sections'      => 'aips-sections',
+		'post_slices'          => 'aips-post-slices',
 		'authors'              => 'aips-authors',
 		'author_topics'        => 'aips-author-topics',
 		'schedule'             => 'aips-schedule',
@@ -51,6 +53,7 @@ class AIPS_Admin_Menu_Helper {
 		'seeder'               => 'aips-seeder',
 		'dev_tools'            => 'aips-dev-tools',
 		'onboarding'           => 'aips-onboarding',
+		'operations_insights'  => 'aips-operations-insights',
 	);
 
 	/**
@@ -97,7 +100,14 @@ class AIPS_Admin_Menu_Helper {
 			case 'prompt_sections':
 				$slug         = self::$page_slugs['content_setup_hub'];
 				$default_args = array(
-					'tab' => 'prompt-blocks',
+					'tab'    => 'structures',
+					'subtab' => 'aips-structure-sections',
+				);
+				break;
+			case 'post_slices':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array(
+					'tab' => 'post_slices',
 				);
 				break;
 			case 'authors':
@@ -180,6 +190,10 @@ class AIPS_Admin_Menu_Helper {
 			case 'dev_tools':
 				$slug         = self::$page_slugs['settings_hub'];
 				$default_args = array('tab' => 'developer');
+				break;
+			case 'operations_insights':
+				$slug         = self::$page_slugs['operations_hub'];
+				$default_args = array('tab' => 'insights');
 				break;
 		}
 
