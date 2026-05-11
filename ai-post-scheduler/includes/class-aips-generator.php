@@ -68,18 +68,20 @@ class AIPS_Generator {
     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
-     */
-    public function __construct(
-        ?AIPS_Logger_Interface $logger = null,
-        ?AIPS_AI_Service_Interface $ai_service = null,
-        $template_processor = null,
+     * @param AIPS_Accessibility_Guardrails|null $accessibility_guardrails
+      */
+     public function __construct(
+         ?AIPS_Logger_Interface $logger = null,
+         ?AIPS_AI_Service_Interface $ai_service = null,
+         $template_processor = null,
         $image_service = null,
         $structure_manager = null,
-        $post_manager = null,
-        ?AIPS_History_Service_Interface $history_service = null,
-        $prompt_builder = null,
-        $markdown_parser = null
-    ) {
+         $post_manager = null,
+         ?AIPS_History_Service_Interface $history_service = null,
+         $prompt_builder = null,
+         $markdown_parser = null,
+         ?AIPS_Accessibility_Guardrails $accessibility_guardrails = null
+     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
@@ -94,7 +96,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
-        $this->accessibility_guardrails = new AIPS_Accessibility_Guardrails();
+         $this->accessibility_guardrails = $accessibility_guardrails ?: new AIPS_Accessibility_Guardrails();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;

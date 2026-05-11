@@ -1386,6 +1386,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generation-context-factory.php',
         'class-aips-post-manager.php',
         'class-aips-post-creator.php',
+        'class-aips-accessibility-guardrails.php',
         'class-aips-markdown-parser.php',
         'class-aips-generator.php',
         'class-aips-component-regeneration-service.php',

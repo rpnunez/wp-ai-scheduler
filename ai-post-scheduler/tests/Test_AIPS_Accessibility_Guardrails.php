@@ -6,12 +6,23 @@ class Test_AIPS_Accessibility_Guardrails extends WP_UnitTestCase {
 
 	public function test_analyze_detects_heading_skip_and_missing_alt_text() {
 		$guardrails = new AIPS_Accessibility_Guardrails();
-		$content = '<h2>Intro</h2><h4>Skipped</h4><p>Short paragraph.</p><img src="x.jpg" />';
+		$content = '<h2>Intro</h2><h4>Skipped</h4><p>Short paragraph.</p><img src="x.jpg" alt="" />';
 
 		$result = $guardrails->analyze($content);
 
 		$this->assertFalse($result['heading_hierarchy_ok']);
 		$this->assertSame(1, $result['missing_alt_images']);
+		$this->assertNotEmpty($result['warnings']);
+	}
+
+	public function test_analyze_flags_deep_first_heading_and_accepts_unquoted_alt_text() {
+		$guardrails = new AIPS_Accessibility_Guardrails();
+		$content = '<h3>Too deep start</h3><p>Body text.</p><img src="x.jpg" alt=description />';
+
+		$result = $guardrails->analyze($content);
+
+		$this->assertFalse($result['heading_hierarchy_ok']);
+		$this->assertSame(0, $result['missing_alt_images']);
 		$this->assertNotEmpty($result['warnings']);
 	}
 

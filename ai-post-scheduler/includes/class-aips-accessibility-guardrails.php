@@ -54,9 +54,15 @@ class AIPS_Accessibility_Guardrails {
 		preg_match_all('/<h([1-6])\b[^>]*>/i', $content, $matches);
 		$levels = array_map('intval', isset($matches[1]) ? $matches[1] : array());
 
-		$previous = 0;
-		foreach ($levels as $level) {
-			if ($previous > 0 && ($level - $previous) > 1) {
+		$previous = null;
+		foreach ($levels as $index => $level) {
+			if ($index === 0 && $level > 2) {
+				$results['heading_hierarchy_ok'] = false;
+				$results['warnings'][] = __('Heading hierarchy starts too deep (first heading should be H2 when post title is H1).', 'ai-post-scheduler');
+				break;
+			}
+
+			if (null !== $previous && ($level - $previous) > 1) {
 				$results['heading_hierarchy_ok'] = false;
 				$results['warnings'][] = __('Heading hierarchy skips levels (for example H2 to H4).', 'ai-post-scheduler');
 				break;
@@ -89,7 +95,19 @@ class AIPS_Accessibility_Guardrails {
 		$missing_alt = 0;
 
 		foreach ($images as $image_tag) {
-			if (!preg_match('/\balt\s*=\s*(["\"]).*?\1/i', $image_tag)) {
+			if (!preg_match('/\balt\s*=\s*(?:(["\'])(.*?)\1|([^\s>"\']+))/i', $image_tag, $alt_matches)) {
+				$missing_alt++;
+				continue;
+			}
+
+			$alt_value = '';
+			if (isset($alt_matches[2]) && $alt_matches[2] !== '') {
+				$alt_value = $alt_matches[2];
+			} elseif (isset($alt_matches[3])) {
+				$alt_value = $alt_matches[3];
+			}
+			$alt_value = trim(wp_strip_all_tags(html_entity_decode((string) $alt_value, ENT_QUOTES, 'UTF-8')));
+			if ($alt_value === '') {
 				$missing_alt++;
 			}
 		}
@@ -117,7 +135,8 @@ class AIPS_Accessibility_Guardrails {
 				continue;
 			}
 
-			$word_count = str_word_count($text);
+			$words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+			$word_count = is_array($words) ? count($words) : 0;
 			if ($word_count > 120) {
 				$long_paragraphs++;
 			}
@@ -141,13 +160,18 @@ class AIPS_Accessibility_Guardrails {
 			return $results;
 		}
 
-		$sentences = preg_split('/[.!?]+/', $text);
+		$sentences = preg_split('/[.!?]+/u', $text);
+		if (!is_array($sentences)) {
+			$sentences = array();
+		}
 		$sentences = array_values(array_filter(array_map('trim', $sentences)));
 
 		$long_sentences = 0;
 		foreach ($sentences as $sentence) {
-			$words = preg_split('/\s+/', $sentence);
-			$words = array_values(array_filter($words));
+			$words = preg_split('/\s+/u', $sentence, -1, PREG_SPLIT_NO_EMPTY);
+			if (!is_array($words)) {
+				$words = array();
+			}
 			if (count($words) > 30) {
 				$long_sentences++;
 			}
@@ -252,11 +276,16 @@ class AIPS_Accessibility_Guardrails {
 			return $results;
 		}
 
-		$sentences = preg_split('/[.!?]+/', $text);
+		$sentences = preg_split('/[.!?]+/u', $text);
+		if (!is_array($sentences)) {
+			$sentences = array();
+		}
 		$sentences = array_values(array_filter(array_map('trim', $sentences)));
 		$sentence_count = max(count($sentences), 1);
-		$words = preg_split('/\s+/', $text);
-		$words = array_values(array_filter($words));
+		$words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+		if (!is_array($words)) {
+			$words = array();
+		}
 		$word_count = max(count($words), 1);
 		$long_word_count = 0;
 

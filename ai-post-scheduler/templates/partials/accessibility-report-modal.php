@@ -54,3 +54,60 @@ if (!defined('ABSPATH')) {
 		<span>{{message}}</span>
 	</div>
 </script>
+
+<script type="text/html" id="aips-tmpl-access-report-shell">
+	<div class="aips-access-report">
+		<div class="aips-access-report-top">
+			<div class="aips-access-report-top-left">
+				<span class="dashicons dashicons-universal-access-alt" aria-hidden="true"></span>
+				<strong>{{report_title}}</strong>
+			</div>
+			<div class="aips-access-report-top-right">{{status_badge}}</div>
+		</div>
+		<div class="aips-access-report-grid">{{cards_html}}</div>
+		<div class="aips-access-report-section">
+			<h3>{{findings_title}}</h3>
+			{{findings_html}}
+		</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-badge">
+	<span class="aips-badge aips-badge-{{status}}">
+		<span class="dashicons dashicons-{{icon}}" aria-hidden="true"></span>
+		{{text}}
+	</span>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-card">
+	<div class="aips-access-report-card aips-access-report-card-{{status}}">
+		<div class="aips-access-report-card-title">
+			<span class="dashicons dashicons-{{icon}}" aria-hidden="true"></span>
+			<span>{{title}}</span>
+		</div>
+		<div class="aips-access-report-card-body">{{lines_html}}</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-card-lines">
+	<ul class="aips-access-report-card-lines">{{items_html}}</ul>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-card-line">
+	<li>{{text}}</li>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-findings-list">
+	<ul class="aips-access-report-findings">{{items_html}}</ul>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-finding-item">
+	<li>
+		<span class="dashicons dashicons-warning" aria-hidden="true"></span>
+		<span>{{text}}</span>
+	</li>
+</script>
+
+<script type="text/html" id="aips-tmpl-access-report-findings-empty">
+	<div class="aips-access-report-findings-empty">{{message}}</div>
+</script>
