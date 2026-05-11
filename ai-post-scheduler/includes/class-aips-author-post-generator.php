@@ -40,6 +40,23 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	const DEFAULT_BATCH_THRESHOLD = 3;
 
 	/**
+	 * Default number of posts to generate per author run.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_POSTS_PER_RUN = 1;
+
+	/**
+	 * Maximum number of posts that can be generated per author run.
+	 *
+	 * Prevents runaway loops from misconfigured settings or large overrides.
+	 * Can be raised via the 'aips_author_post_generation_quantity_max' filter.
+	 *
+	 * @var int
+	 */
+	const MAX_POSTS_PER_RUN = 10;
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;
@@ -193,7 +210,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		foreach ($due_authors as $author) {
 			$this->runner->run(
 				function() use ($author) {
-					$this->generate_post_for_author($author);
+					$this->generate_posts_for_author($author, null, 'scheduled', true);
 				},
 				'author_post_generation',
 				array('author_id' => $author->id)
@@ -207,7 +224,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * Process post generation for a single author slice.
 	 *
 	 * This is the callback for the `aips_process_author_post_slice` cron hook.
-	 * It loads the author by ID and calls generate_post_for_author().
+	 * It loads the author by ID and calls generate_posts_for_author().
 	 *
 	 * @param int    $author_id      ID of the author to process.
 	 * @param string $correlation_id Correlation ID for tracing.
@@ -231,7 +248,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 
 		$this->runner->run(
 			function() use ($author) {
-				$this->generate_post_for_author($author);
+				$this->generate_posts_for_author($author, null, 'scheduled', true);
 			},
 			'author_post_generation',
 			array('author_id' => $author->id)
@@ -278,28 +295,112 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
 	public function generate_post_for_author($author) {
+		$results = $this->generate_posts_for_author($author, 1, 'scheduled', true);
+
+		if (is_wp_error($results)) {
+			return $results;
+		}
+
+		return !empty($results) ? (int) $results[0] : new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Generate one or more posts for a specific author from approved topics.
+	 *
+	 * @param object      $author          Author object from database.
+	 * @param int|null    $count           Optional explicit post count. When null,
+	 *                                     the author-level setting for the creation
+	 *                                     method is used.
+	 * @param string      $creation_method Optional creation method.
+	 * @param bool        $advance_schedule Whether to update the author schedule.
+	 * @return int[]|WP_Error Generated post IDs on success, WP_Error when no posts were generated.
+	 */
+	public function generate_posts_for_author($author, ?int $count = null, string $creation_method = 'scheduled', bool $advance_schedule = true) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
-		
-		// Get the next approved topic for this author
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, 1);
+
+		$post_count = $this->resolve_post_generation_quantity($author, $creation_method, $count);
+
+		// Get the next approved topics for this author.
+		$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count);
 		
 		if (empty($topics)) {
 			$this->logger->log("No approved topics available for author {$author->id}", 'warning');
 			
 			// Still update the schedule to avoid getting stuck
-			$this->update_author_schedule($author);
-			return new WP_Error('no_topics', 'No approved topics available');
+			if ($advance_schedule) {
+				$this->update_author_schedule($author);
+			}
+			return new WP_Error('no_topics', __('No approved topics available', 'ai-post-scheduler'));
 		}
-		
-		$topic = $topics[0];
-		
-		// Generate the post using the topic (scheduled generation)
-		$result = $this->generate_post_from_topic($topic, $author, 'scheduled');
-		
-		// Update the author's next run time
-		$this->update_author_schedule($author);
-		
-		return $result;
+
+		$post_ids = array();
+		$last_error = null;
+
+		foreach ($topics as $topic) {
+			$result = $this->generate_post_from_topic($topic, $author, $creation_method);
+
+			if (is_wp_error($result)) {
+				$last_error = $result;
+				continue;
+			}
+
+			$post_ids[] = (int) $result;
+		}
+
+		if ($advance_schedule) {
+			$this->update_author_schedule($author);
+		}
+
+		if (!empty($post_ids)) {
+			return $post_ids;
+		}
+
+		return $last_error instanceof WP_Error
+			? $last_error
+			: new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Resolve how many posts an author run should generate.
+	 *
+	 * @param object   $author          Author object from database.
+	 * @param string   $creation_method Creation method ('manual' or 'scheduled').
+	 * @param int|null $count           Optional explicit override.
+	 * @return int
+	 */
+	private function resolve_post_generation_quantity($author, string $creation_method, ?int $count = null): int {
+		if (null !== $count) {
+			$resolved_count = $count;
+		} elseif ('manual' === $creation_method) {
+			$resolved_count = isset($author->manual_post_generation_quantity) ? (int) $author->manual_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+		} else {
+			$resolved_count = isset($author->scheduled_post_generation_quantity) ? (int) $author->scheduled_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+		}
+
+		$resolved_count = max(1, $resolved_count);
+
+		/**
+		 * Filters the maximum number of posts allowed per single author run.
+		 * Raise this to allow more than the default cap without code changes.
+		 *
+		 * @since 2.5.1
+		 *
+		 * @param int $max Maximum post count per run.
+		 */
+		$max_count = (int) max(1, apply_filters('aips_author_post_generation_quantity_max', self::MAX_POSTS_PER_RUN));
+
+		/**
+		 * Filters the number of posts generated for a single author run.
+		 *
+		 * @since 2.5.1
+		 *
+		 * @param int    $resolved_count  Resolved post count for this author run.
+		 * @param object $author          Author object from database.
+		 * @param string $creation_method Creation method ('manual' or 'scheduled').
+		 */
+		$filtered_count = (int) apply_filters('aips_author_post_generation_quantity', $resolved_count, $author, $creation_method);
+
+		return max(1, min($max_count, $filtered_count));
 	}
 	
 	/**

@@ -33,6 +33,33 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_diversity_injector($avoid_titles_block = '', $content_format_block = '', $post_slice_block = '', $uniqueness_seed_line_block = 'Unique generation seed: testseed. Use this run-specific seed to vary angle, framing, structure, and examples while keeping the post meaningfully distinct from past generations.') {
+		return new class( $avoid_titles_block, $content_format_block, $post_slice_block, $uniqueness_seed_line_block ) {
+			private $avoid_titles_block;
+			private $content_format_block;
+			private $post_slice_block;
+			private $uniqueness_seed_line_block;
+			public function __construct( $avoid_titles_block, $content_format_block, $post_slice_block, $uniqueness_seed_line_block ) {
+				$this->avoid_titles_block = $avoid_titles_block;
+				$this->content_format_block = $content_format_block;
+				$this->post_slice_block = $post_slice_block;
+				$this->uniqueness_seed_line_block = $uniqueness_seed_line_block;
+			}
+			public function build_avoid_titles_block( $subject ) {
+				return $this->avoid_titles_block;
+			}
+			public function build_content_format_block( $subject ) {
+				return $this->content_format_block;
+			}
+			public function build_post_slice_block( $subject ) {
+				return $this->post_slice_block;
+			}
+			public function build_uniqueness_seed_line_block( $subject ) {
+				return $this->uniqueness_seed_line_block;
+			}
+		};
+	}
+
 	// ------------------------------------------------------------------
 	// Legacy template path
 	// ------------------------------------------------------------------
@@ -198,5 +225,133 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 
 		$this->assertIsString($result);
 		$this->assertStringContainsString('Simple prompt.', $result);
+	}
+
+	// ------------------------------------------------------------------
+	// Uniqueness seed injection
+	// ------------------------------------------------------------------
+
+	/**
+	 * Legacy template path: a uniqueness seed line is appended to every prompt.
+	 */
+	public function test_uniqueness_seed_appended_to_legacy_prompt() {
+		$legacy_template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $this->builder->build($legacy_template, null, null);
+
+		$this->assertStringContainsString('Unique generation seed:', $result);
+	}
+
+	/**
+	 * Context-based path: a uniqueness seed line is appended to every prompt.
+	 */
+	public function test_uniqueness_seed_appended_to_context_prompt() {
+		$template = (object) array(
+			'id'                   => 1,
+			'name'                 => 'T',
+			'prompt_template'      => 'Write about {{topic}}.',
+			'article_structure_id' => null,
+		);
+		$context = new AIPS_Template_Context($template, null, 'AI Agents');
+
+		$result = $this->builder->build($context);
+
+		$this->assertStringContainsString('Unique generation seed:', $result);
+	}
+
+	/**
+	 * Two consecutive calls produce different seed values.
+	 */
+	public function test_uniqueness_seeds_differ_across_calls() {
+		$minimal_template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result1 = $this->builder->build($minimal_template, null, null);
+		$result2 = $this->builder->build($minimal_template, null, null);
+
+		// Extract the seed hex strings to compare them directly.
+		preg_match('/Unique generation seed: ([0-9a-f]+)\./', $result1, $matches1);
+		preg_match('/Unique generation seed: ([0-9a-f]+)\./', $result2, $matches2);
+
+		$this->assertNotEmpty($matches1[1] ?? '');
+		$this->assertNotEmpty($matches2[1] ?? '');
+		$this->assertNotEquals($matches1[1], $matches2[1], 'Seeds should differ across generation calls.');
+	}
+
+	public function test_avoid_titles_block_is_appended_when_available() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager  = new AIPS_Article_Structure_Manager();
+		$section_builder    = new AIPS_Prompt_Builder_Article_Structure_Section(
+			$structure_manager,
+			null,
+			$template_processor
+		);
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			$template_processor,
+			$section_builder,
+			$this->make_diversity_injector("Avoid these existing titles or very close variations:\n- Existing Title")
+		);
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, null, null);
+
+		$this->assertStringContainsString('Avoid these existing titles or very close variations:', $result);
+		$this->assertStringContainsString('- Existing Title', $result);
+	}
+
+	public function test_content_format_block_is_appended_when_available() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager  = new AIPS_Article_Structure_Manager();
+		$section_builder    = new AIPS_Prompt_Builder_Article_Structure_Section(
+			$structure_manager,
+			null,
+			$template_processor
+		);
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			$template_processor,
+			$section_builder,
+			$this->make_diversity_injector('', "Use this content format for this generation:\n- implementation checklist")
+		);
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, null, null);
+
+		$this->assertStringContainsString('Use this content format for this generation:', $result);
+		$this->assertStringContainsString('- implementation checklist', $result);
+	}
+
+	public function test_post_slice_block_is_appended_when_available() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager  = new AIPS_Article_Structure_Manager();
+		$section_builder    = new AIPS_Prompt_Builder_Article_Structure_Section(
+			$structure_manager,
+			null,
+			$template_processor
+		);
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			$template_processor,
+			$section_builder,
+			$this->make_diversity_injector('', '', "Use this post style for this generation:\n- failure modes")
+		);
+		$template = (object) array(
+			'prompt_template'      => 'Write about AI.',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, null, null);
+
+		$this->assertStringContainsString('Use this post style for this generation:', $result);
+		$this->assertStringContainsString('- failure modes', $result);
 	}
 }

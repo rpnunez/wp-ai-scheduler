@@ -32,6 +32,7 @@ class AIPS_Admin_Assets {
 	 */
 	private const PAGE_AUTHORS = 'aips-authors';
 	private const PAGE_AUTHOR_TOPICS = 'aips-author-topics';
+	private const PAGE_POST_SLICES = 'aips-post-slices';
 	private const PAGE_TEMPLATES = 'aips-templates';
 	private const PAGE_VOICES = 'aips-voices';
 	private const PAGE_STRUCTURES = 'aips-structures';
@@ -79,6 +80,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
+		}
+
+        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
+			$this->enqueue_post_slices_assets();
 		}
 
         if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
@@ -221,6 +226,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
@@ -313,6 +319,11 @@ class AIPS_Admin_Assets {
             'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePosts' => __('Generate posts for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePost' => __('Generate a post from this topic now?', 'ai-post-scheduler'),
+            'generatePostsModalTitle' => __('Generate Posts', 'ai-post-scheduler'),
+            'generatePostsModalMessage' => __('How many posts would you like to generate for this author?', 'ai-post-scheduler'),
+            'numberOfPostsLabel' => __('Number of Posts to Generate', 'ai-post-scheduler'),
+            'generateButtonLabel' => __('Generate', 'ai-post-scheduler'),
+            'invalidQuantityError' => __('Please enter a valid quantity between 1 and 10.', 'ai-post-scheduler'),
             'authorSaved' => __('Author saved successfully.', 'ai-post-scheduler'),
             'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
             'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
@@ -490,6 +501,44 @@ class AIPS_Admin_Assets {
               AIPS_VERSION,
               true
           );
+    }
+
+    /**
+     * Enqueue assets for the Post Slices page.
+     */
+    private function enqueue_post_slices_assets() {
+            wp_enqueue_style(
+                'aips-post-slices-style',
+                AIPS_PLUGIN_URL . 'assets/css/post-slices.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-post-slices',
+                AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-post-slices', 'aipsPostSlicesL10n', array(
+                'addNewSlice'   => __('Add New Post Slice', 'ai-post-scheduler'),
+                'editSlice'     => __('Edit Post Slice', 'ai-post-scheduler'),
+                'saveSlice'     => __('Save Post Slice', 'ai-post-scheduler'),
+                'saving'        => __('Saving...', 'ai-post-scheduler'),
+                'deleteConfirm' => __('Are you sure you want to delete this post slice?', 'ai-post-scheduler'),
+                'deleteFailed'  => __('Failed to delete post slice.', 'ai-post-scheduler'),
+                'saveFailed'    => __('Failed to save post slice.', 'ai-post-scheduler'),
+                'toggleFailed'  => __('Failed to update post slice status.', 'ai-post-scheduler'),
+                'nameRequired'  => __('A post slice name is required.', 'ai-post-scheduler'),
+                'noSlicesFound' => __('No post slices match your search criteria.', 'ai-post-scheduler'),
+                'clearSearch'   => __('Clear Search', 'ai-post-scheduler'),
+                'activate'      => __('Activate', 'ai-post-scheduler'),
+                'deactivate'    => __('Deactivate', 'ai-post-scheduler'),
+                'active'        => __('Active', 'ai-post-scheduler'),
+                'inactive'      => __('Inactive', 'ai-post-scheduler'),
+            ));
     }
 
     /**
@@ -1034,12 +1083,16 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
+                'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
+                'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
+                'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
+                'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'                           => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'                         => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
     }
 

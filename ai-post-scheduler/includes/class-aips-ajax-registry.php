@@ -87,6 +87,15 @@ class AIPS_Ajax_Registry {
 		'aips_get_topic_posts'            => 'AIPS_Authors_Controller',
 		'aips_suggest_authors'            => 'AIPS_Authors_Controller',
 
+		// Post Slices Controller
+		'aips_get_post_slices'            => 'AIPS_Post_Slices_Controller',
+		'aips_get_post_slice'             => 'AIPS_Post_Slices_Controller',
+		'aips_save_post_slice'            => 'AIPS_Post_Slices_Controller',
+		'aips_delete_post_slice'          => 'AIPS_Post_Slices_Controller',
+		'aips_toggle_post_slice_active'   => 'AIPS_Post_Slices_Controller',
+		'aips_bulk_toggle_post_slices'    => 'AIPS_Post_Slices_Controller',
+		'aips_bulk_delete_post_slices'    => 'AIPS_Post_Slices_Controller',
+
 		// AI Edit Controller
 		'aips_get_post_components'        => 'AIPS_AI_Edit_Controller',
 		'aips_regenerate_component'       => 'AIPS_AI_Edit_Controller',
@@ -152,6 +161,7 @@ class AIPS_Ajax_Registry {
 
 		// DB Manager
 		'aips_repair_db'                  => 'AIPS_DB_Manager',
+		'aips_fix_datetime_values'        => 'AIPS_DB_Manager',
 		'aips_reinstall_db'               => 'AIPS_DB_Manager',
 		'aips_wipe_db'                    => 'AIPS_DB_Manager',
 		'aips_flush_cron_events'          => 'AIPS_DB_Manager',
@@ -219,6 +229,10 @@ class AIPS_Ajax_Registry {
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
 		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
 		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
+		'aips_status_reschedule_missed_cron' => 'AIPS_System_Status_Controller',
+		'aips_status_retry_failed_slices' => 'AIPS_System_Status_Controller',
+		'aips_status_clear_partial_generations' => 'AIPS_System_Status_Controller',
+		'aips_status_cleanup_stale_jobs_cache' => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',

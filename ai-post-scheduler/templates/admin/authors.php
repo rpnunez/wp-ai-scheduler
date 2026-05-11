@@ -239,7 +239,7 @@ $site_ctx = AIPS_Site_Context::get();
                                                     <span class="dashicons dashicons-update"></span>
                                                     <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
                                                 </button>
-                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
+                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
                                                     <span class="dashicons dashicons-admin-post"></span>
                                                     <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
                                                 </button>
@@ -514,6 +514,18 @@ $site_ctx = AIPS_Site_Context::get();
                 <label for="author_max_posts_per_topic"><?php esc_html_e('Max Posts per Topic', 'ai-post-scheduler'); ?></label>
                 <input type="number" id="author_max_posts_per_topic" name="max_posts_per_topic" value="1" min="1" max="10">
                 <p class="description"><?php esc_html_e('Maximum number of posts that can be generated from a single approved topic.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_manual_post_generation_quantity"><?php esc_html_e('Manual Posts per Run', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="author_manual_post_generation_quantity" name="manual_post_generation_quantity" value="1" min="1" max="10">
+                <p class="description"><?php esc_html_e('How many posts to generate when you manually run Generate Posts for this author.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_scheduled_post_generation_quantity"><?php esc_html_e('Scheduled Posts per Run', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="author_scheduled_post_generation_quantity" name="scheduled_post_generation_quantity" value="1" min="1" max="10">
+                <p class="description"><?php esc_html_e('How many posts to generate each time this author runs via schedule or cron.', 'ai-post-scheduler'); ?></p>
             </div>
 
             <div class="form-group">
