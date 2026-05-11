@@ -31,10 +31,17 @@ class AIPS_Prompt_Builder_Topic {
 	private $base_builder;
 
 	/**
-	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
 	 */
-	public function __construct($base_builder = null) {
+	private $diversity_injector;
+
+	/**
+	 * @param AIPS_Prompt_Builder|null                  $base_builder Optional; instantiated automatically when null.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 */
+	public function __construct($base_builder = null, $diversity_injector = null) {
 		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -146,6 +153,11 @@ class AIPS_Prompt_Builder_Topic {
 		// ---- Custom per-author generation prompt ----
 		if (!empty($author->topic_generation_prompt)) {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";
+		}
+
+		$created_titles_block = $this->diversity_injector->build_created_topic_titles_block($author);
+		if (!empty($created_titles_block)) {
+			$prompt .= $created_titles_block . "\n\n";
 		}
 
 		// ---- Historical feedback ----
