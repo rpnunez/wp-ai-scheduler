@@ -72,6 +72,7 @@ class AIPS_Admin_Menu {
 		$this->register_hidden_page('aips-schedule-calendar', __('Schedule Calendar', 'ai-post-scheduler'), array($this, 'render_schedule_calendar_page'));
 		$this->register_hidden_page('aips-generated-posts', __('Content', 'ai-post-scheduler'), array($this, 'render_generated_posts_page'));
 		$this->register_hidden_page('aips-history', __('History', 'ai-post-scheduler'), array($this, 'render_history_page'));
+		$this->register_hidden_page('aips-operations-insights', __('Operations Insights', 'ai-post-scheduler'), array($this, 'render_operations_insights_page'));
 		$this->register_hidden_page('aips-sources', __('Sources', 'ai-post-scheduler'), array($this, 'render_sources_page'));
 		$this->register_hidden_page('aips-taxonomy', __('Taxonomy', 'ai-post-scheduler'), array($this, 'render_taxonomy_page'));
 		$this->register_hidden_page('aips-internal-links', __('Internal Links', 'ai-post-scheduler'), array($this, 'render_internal_links_page'));
@@ -311,6 +312,16 @@ class AIPS_Admin_Menu {
 	 */
 	public function render_history_page() {
 		$this->redirect_legacy_page('history');
+	}
+
+	/**
+	 * Render the operations insights page.
+	 *
+	 * @return void
+	 */
+	public function render_operations_insights_page() {
+		$controller = new AIPS_Operations_Insights_Controller();
+		$controller->render_page();
 	}
 
 	/**

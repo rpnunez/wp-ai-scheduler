@@ -377,6 +377,327 @@
         },
 
         /**
+         * Display a modal dialog with optional form inputs.
+         *
+         * This is a more flexible version of `confirm()` that supports form inputs.
+         * Form field values are collected and passed to button action callbacks.
+         *
+         * @param {Object} options - Configuration object.
+         * @param {string} options.heading - Modal heading/title.
+         * @param {string} [options.message] - Optional message to display above form fields.
+         * @param {Array} [options.fields] - Array of form field config objects. Each may contain:
+         *   @param {string}   fields[].type        - Input type: 'text', 'number', 'select', 'textarea', 'checkbox'.
+         *   @param {string}   fields[].name        - Field name (used as key in formData object passed to callbacks).
+         *   @param {string}   fields[].label       - Label text for the field.
+         *   @param {string}   [fields[].id]        - Optional input ID (auto-generated if not provided).
+         *   @param {string}   [fields[].className] - Optional CSS class(es) for the input.
+         *   @param {*}        [fields[].value]     - Default/initial value.
+         *   @param {string}   [fields[].placeholder] - Placeholder text.
+         *   @param {number}   [fields[].min]       - Min value (for number inputs).
+         *   @param {number}   [fields[].max]       - Max value (for number inputs).
+         *   @param {Array}    [fields[].options]   - Array of {value, label} objects (for select inputs).
+         *   @param {boolean}  [fields[].required]  - Whether field is required.
+         *   @param {Function} [fields[].validate]  - Custom validation function(value). Return error message string or null if valid.
+         * @param {Array} options.buttons - Array of button config objects. Each may contain:
+         *   @param {string}   buttons[].label            - Button label text.
+         *   @param {string}   [buttons[].className]      - CSS class(es) for the button.
+         *   @param {Function} [buttons[].action]         - Callback invoked with formData object: action(formData).
+         *   @param {boolean}  [buttons[].submit]         - If true, validates form before calling action.
+         *   @param {boolean}  [buttons[].closeAfterAction] - If true (default), closes modal before calling action.
+         *
+         * @example
+         * AIPS.Utilities.showModal({
+         *     heading: 'Generate Posts',
+         *     message: 'How many posts would you like to generate?',
+         *     fields: [
+         *         {
+         *             type: 'number',
+         *             name: 'quantity',
+         *             label: 'Number of Posts',
+         *             value: 3,
+         *             min: 1,
+         *             max: 10,
+         *             required: true
+         *         }
+         *     ],
+         *     buttons: [
+         *         { label: 'Cancel', className: 'aips-btn aips-btn-primary' },
+         *         {
+         *             label: 'Generate',
+         *             className: 'aips-btn aips-btn-author-posts',
+         *             submit: true,
+         *             action: function(formData) {
+         *                 console.log('Quantity:', formData.quantity);
+         *             }
+         *         }
+         *     ]
+         * });
+         */
+        showModal: function(options) {
+            options = options || {};
+            var heading = options.heading || 'Notice';
+            var message = options.message || '';
+            var fields  = options.fields  || [];
+            var buttons = options.buttons || [{ label: 'OK', className: 'aips-btn aips-btn-primary' }];
+
+            var headingId = 'aips-modal-heading-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+            var uniqueId  = Date.now() + '-' + Math.floor(Math.random() * 1000000);
+
+            // Build the overlay
+            var $overlay = $('<div></div>')
+                .addClass('aips-confirm-overlay')
+                .attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId });
+
+            var $dialog = $('<div class="aips-confirm-dialog"></div>');
+
+            var $header = $('<div class="aips-confirm-header"></div>')
+                .append($('<h3></h3>').attr({ id: headingId, 'class': 'aips-confirm-heading' }).text(heading));
+
+            var $body = $('<div class="aips-confirm-body"></div>');
+
+            if (message) {
+                $body.append($('<p class="aips-confirm-message"></p>').text(message));
+            }
+
+            // Build form fields
+            var fieldMap = {}; // Map field names to jQuery input elements
+
+            $.each(fields, function(i, field) {
+                var fieldId = field.id || ('aips-modal-field-' + uniqueId + '-' + i);
+                var fieldName = field.name || ('field_' + i);
+                var fieldType = field.type || 'text';
+
+                var $formGroup = $('<div class="form-group"></div>')
+                    .css({ marginTop: i > 0 ? '15px' : '10px' });
+
+                var $label = $('<label></label>')
+                    .attr('for', fieldId)
+                    .text(field.label || fieldName);
+
+                if (field.required) {
+                    $label.append(' <span style="color: #d63638;">*</span>');
+                }
+
+                $formGroup.append($label);
+
+                var $input;
+
+                if (fieldType === 'select') {
+                    $input = $('<select></select>')
+                        .attr('id', fieldId)
+                        .css({ width: '100%', padding: '8px', marginTop: '5px' });
+
+                    if (field.options && field.options.length) {
+                        $.each(field.options, function(j, opt) {
+                            var $option = $('<option></option>')
+                                .val(opt.value)
+                                .text(opt.label || opt.value);
+                            if (opt.value === field.value) {
+                                $option.attr('selected', 'selected');
+                            }
+                            $input.append($option);
+                        });
+                    }
+                } else if (fieldType === 'textarea') {
+                    $input = $('<textarea></textarea>')
+                        .attr('id', fieldId)
+                        .css({ width: '100%', padding: '8px', marginTop: '5px', minHeight: '80px' })
+                        .val(field.value || '');
+
+                    if (field.placeholder) {
+                        $input.attr('placeholder', field.placeholder);
+                    }
+                } else if (fieldType === 'checkbox') {
+                    $input = $('<input type="checkbox" />')
+                        .attr('id', fieldId)
+                        .css({ marginTop: '5px' });
+
+                    if (field.value) {
+                        $input.prop('checked', true);
+                    }
+                } else {
+                    // text, number, email, etc.
+                    $input = $('<input />')
+                        .attr({ type: fieldType, id: fieldId })
+                        .css({ width: '100%', padding: '8px', marginTop: '5px' })
+                        .val(field.value || '');
+
+                    if (field.placeholder) {
+                        $input.attr('placeholder', field.placeholder);
+                    }
+                    if (fieldType === 'number') {
+                        if (field.min !== undefined) {
+                            $input.attr('min', field.min);
+                        }
+                        if (field.max !== undefined) {
+                            $input.attr('max', field.max);
+                        }
+                    }
+                }
+
+                if (field.className) {
+                    $input.addClass(field.className);
+                }
+
+                // Store reference for later retrieval
+                fieldMap[fieldName] = {
+                    $input: $input,
+                    type: fieldType,
+                    required: field.required || false,
+                    validate: field.validate || null
+                };
+
+                $formGroup.append($input);
+                $body.append($formGroup);
+            });
+
+            var $footer = $('<div class="aips-confirm-footer"></div>');
+
+            var keydownNamespace = 'keydown.aips-modal-' + uniqueId;
+
+            function closeDialog() {
+                $overlay.addClass('aips-confirm-closing');
+                setTimeout(function() { $overlay.remove(); }, 200);
+                $(document).off(keydownNamespace);
+            }
+
+            /**
+             * Collect form field values into an object.
+             * @returns {Object} Object with field names as keys and input values as values.
+             */
+            function getFormData() {
+                var formData = {};
+                $.each(fieldMap, function(fieldName, fieldInfo) {
+                    var val;
+                    if (fieldInfo.type === 'checkbox') {
+                        val = fieldInfo.$input.prop('checked');
+                    } else if (fieldInfo.type === 'number') {
+                        val = parseFloat(fieldInfo.$input.val());
+                        if (isNaN(val)) {
+                            val = null;
+                        }
+                    } else {
+                        val = fieldInfo.$input.val();
+                    }
+                    formData[fieldName] = val;
+                });
+                return formData;
+            }
+
+            /**
+             * Validate all form fields.
+             * @returns {string|null} Error message if validation fails, null if all valid.
+             */
+            function validateForm() {
+                var firstError = null;
+
+                $.each(fieldMap, function(fieldName, fieldInfo) {
+                    if (firstError) {
+                        return; // already found error
+                    }
+
+                    var val = fieldInfo.type === 'checkbox' ? fieldInfo.$input.prop('checked') : fieldInfo.$input.val();
+
+                    // Required validation
+                    if (fieldInfo.required) {
+                        var labelText = fieldInfo.$input.prev('label').text() || fieldName;
+                        var requiredTpl = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.fieldRequired) || '%s is required.';
+                        var requiredMsg = requiredTpl.replace('%s', labelText);
+
+                        if (fieldInfo.type === 'checkbox') {
+                            if (!val) {
+                                firstError = requiredMsg;
+                                return;
+                            }
+                        } else {
+                            if (!val || (typeof val === 'string' && val.trim() === '')) {
+                                firstError = requiredMsg;
+                                return;
+                            }
+                        }
+                    }
+
+                    // Custom validation
+                    if (fieldInfo.validate && typeof fieldInfo.validate === 'function') {
+                        var error = fieldInfo.validate(val);
+                        if (error) {
+                            firstError = error;
+                            return;
+                        }
+                    }
+                });
+
+                return firstError;
+            }
+
+            // Build buttons
+            $.each(buttons, function(i, btn) {
+                var label            = btn.label            || 'OK';
+                var className        = btn.className        || 'aips-btn aips-btn-secondary';
+                var action           = typeof btn.action === 'function' ? btn.action : null;
+                var submit           = btn.submit           || false;
+                var closeAfterAction = btn.closeAfterAction !== undefined ? btn.closeAfterAction : true;
+
+                var $btn = $('<button type="button"></button>')
+                    .addClass(className)
+                    .text(label);
+
+                $btn.on('click', function() {
+                    if (submit) {
+                        // Validate form before calling action
+                        var error = validateForm();
+                        if (error) {
+                            AIPS.Utilities.showToast(error, 'error');
+                            return;
+                        }
+                    }
+
+                    if (action) {
+                        var formData = getFormData();
+                        if (closeAfterAction) {
+                            closeDialog();
+                        }
+                        action(formData);
+                    } else {
+                        closeDialog();
+                    }
+                });
+
+                $footer.append($btn);
+            });
+
+            $dialog.append($header, $body, $footer);
+            $overlay.append($dialog);
+            $('body').append($overlay);
+
+            // Focus the first input or first button for accessibility
+            if (fields.length > 0 && fieldMap[fields[0].name]) {
+                setTimeout(function() {
+                    fieldMap[fields[0].name].$input.trigger('focus');
+                    if (fieldMap[fields[0].name].type !== 'checkbox') {
+                        fieldMap[fields[0].name].$input.trigger('select');
+                    }
+                }, 100);
+            } else {
+                $footer.find('button').first().trigger('focus');
+            }
+
+            // Close on Escape key
+            $(document).on(keydownNamespace, function(e) {
+                if (e.key === 'Escape') {
+                    closeDialog();
+                }
+            });
+
+            // Close when clicking the backdrop (outside the dialog)
+            $overlay.on('click', function(e) {
+                if ($(e.target).is($overlay)) {
+                    closeDialog();
+                }
+            });
+        },
+
+        /**
          * Opens a non-dismissable progress-bar modal to give feedback during a
          * long-running async operation (e.g. bulk post generation).
          *
