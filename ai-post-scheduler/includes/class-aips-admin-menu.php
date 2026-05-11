@@ -146,6 +146,14 @@ class AIPS_Admin_Menu {
             'aips-history',
             array($this, 'render_history_page')
         );
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Operations Insights', 'ai-post-scheduler'),
+            __('Operations Insights', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-operations-insights',
+            array($this, 'render_operations_insights_page')
+        );
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -402,6 +410,11 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    public function render_operations_insights_page() {
+        $controller = new AIPS_Operations_Insights_Controller();
+        $controller->render_page();
     }
 
     /**
