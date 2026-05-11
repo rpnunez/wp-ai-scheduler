@@ -703,12 +703,15 @@ class AIPS_Generated_Posts_Controller {
 		$has_url = isset($node['url']) && is_string($node['url']) && '' !== trim($node['url']);
 		if ($has_url) {
 			$url = esc_url_raw($node['url']);
-			$domain = function_exists('wp_parse_url') ? wp_parse_url($url, PHP_URL_HOST) : parse_url($url, PHP_URL_HOST);
-			$found[] = array(
-				'url' => $url,
-				'title' => isset($node['title']) ? (string) $node['title'] : '',
-				'domain' => is_string($domain) ? $domain : '',
-			);
+			
+			if ('' !== $url) {
+				$domain = function_exists('wp_parse_url') ? wp_parse_url($url, PHP_URL_HOST) : parse_url($url, PHP_URL_HOST);
+				$found[] = array(
+					'url' => $url,
+					'title' => isset($node['title']) ? (string) $node['title'] : '',
+					'domain' => is_string($domain) ? $domain : '',
+				);
+			}
 		}
 		
 		foreach ($node as $child) {
