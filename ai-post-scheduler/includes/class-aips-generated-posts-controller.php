@@ -435,9 +435,15 @@ class AIPS_Generated_Posts_Controller {
 				'provider' => isset($request['provider']) ? $request['provider'] : (isset($request['context']['provider']) ? $request['context']['provider'] : ''),
 				'model' => isset($request['model']) ? $request['model'] : (isset($request['context']['model']) ? $request['context']['model'] : ''),
 				'status' => !empty($response) ? 'completed' : 'requested',
-				'request' => $request,
-				'response' => $response,
+				'has_request' => !empty($request),
+				'has_response' => !empty($response),
+				'source_ref' => 'ai_calls',
 			);
+		}
+		
+		$component_revision_counts = array();
+		foreach ($redacted_revisions as $component_key => $component_revisions_list) {
+			$component_revision_counts[$component_key] = is_array($component_revisions_list) ? count($component_revisions_list) : 0;
 		}
 		
 		$used_urls = array();
@@ -490,7 +496,8 @@ class AIPS_Generated_Posts_Controller {
 			'attempts' => array(
 				'total_attempts' => $attempt_count,
 				'retries_or_regenerations' => $retry_count,
-				'component_revisions' => $redacted_revisions,
+				'component_revision_counts' => $component_revision_counts,
+				'component_revisions_ref' => 'component_revisions',
 			),
 			'timeline' => $timeline,
 			'final_outcome' => array(

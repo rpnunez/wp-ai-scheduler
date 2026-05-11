@@ -128,7 +128,7 @@
 		$('#aips-session-completed').text('');
 		$('#aips-logs-list').html('<p>Loading logs...</p>');
 		$('#aips-ai-list').html('<p>Loading AI calls...</p>');
-		$('#aips-explainability-list').html('<p>Loading explainability...</p>');
+		$('#aips-explainability-list').html('<p>' + aipsViewSessionL10n.loadingExplainability + '</p>');
 	}
 	
 	/**
@@ -165,7 +165,7 @@
 		$container.empty();
 		
 		if (!explainability || typeof explainability !== 'object' || !explainability.generation) {
-			$container.append($('<p class="aips-no-data"></p>').text('Explainability data is not available for this session.'));
+			$container.append($('<p class="aips-no-data"></p>').text(aipsViewSessionL10n.noExplainabilityData));
 			return;
 		}
 		
@@ -180,12 +180,12 @@
 			: 0;
 		
 		var $summary = $('<div class="aips-explainability-summary"></div>');
-		$summary.append(createSummaryRow('Status', explainability.generation.status || 'unknown'));
-		$summary.append(createSummaryRow('Trigger', explainability.trigger && explainability.trigger.origin ? explainability.trigger.origin : 'unknown'));
-		$summary.append(createSummaryRow('Sources Used', String(sourceCount)));
-		$summary.append(createSummaryRow('Retries/Regenerations', String(retryCount)));
-		$summary.append(createSummaryRow('Validation Checks', String(validationCount)));
-		$summary.append(createSummaryRow('Schema Version', explainability.schema_version || '1.0.0'));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryStatus, explainability.generation.status || aipsViewSessionL10n.unknown));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryTrigger, explainability.trigger && explainability.trigger.origin ? explainability.trigger.origin : aipsViewSessionL10n.unknown));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summarySourcesUsed, String(sourceCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryRetries, String(retryCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryValidationChecks, String(validationCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summarySchemaVersion, explainability.schema_version || '1.0.0'));
 		$container.append($summary);
 		
 		var redactionCount = explainability.redactions && typeof explainability.redactions.count !== 'undefined'
@@ -193,13 +193,13 @@
 			: 0;
 		$container.append(
 			$('<p class="aips-explainability-safety-note"></p>').text(
-				'Safety note: sensitive values are redacted where detected. Redactions applied: ' + String(redactionCount) + '.'
+				aipsViewSessionL10n.safetyNotePattern.replace('%d', String(redactionCount))
 			)
 		);
 		
 		if (Array.isArray(explainability.warnings) && explainability.warnings.length > 0) {
 			var $warnings = $('<div class="aips-explainability-warnings"></div>');
-			$warnings.append($('<h4></h4>').text('Warnings'));
+			$warnings.append($('<h4></h4>').text(aipsViewSessionL10n.warningsHeading));
 			var $warningsList = $('<ul></ul>');
 			explainability.warnings.forEach(function(warningText) {
 				$warningsList.append($('<li></li>').text(warningText));
@@ -210,10 +210,10 @@
 		
 		if (Array.isArray(explainability.timeline) && explainability.timeline.length > 0) {
 			var $timeline = $('<div class="aips-explainability-timeline"></div>');
-			$timeline.append($('<h4></h4>').text('Generation Timeline'));
+			$timeline.append($('<h4></h4>').text(aipsViewSessionL10n.timelineHeading));
 			var $timelineList = $('<ol></ol>');
 			explainability.timeline.forEach(function(item) {
-				var stage = item.stage || 'activity';
+				var stage = item.stage || aipsViewSessionL10n.activity;
 				var timestamp = item.timestamp ? ' (' + item.timestamp + ')' : '';
 				var summary = item.summary ? ' — ' + item.summary : '';
 				$timelineList.append(
@@ -225,14 +225,14 @@
 		}
 		
 		var detailSections = [
-			{ key: 'prompt_components', title: 'Prompt Components' },
-			{ key: 'sources', title: 'Sources' },
-			{ key: 'model_runs', title: 'Model Runs' },
-			{ key: 'validation_checks', title: 'Validation Checks' },
-			{ key: 'transformations', title: 'Transformations' },
-			{ key: 'attempts', title: 'Attempts & Revisions' },
-			{ key: 'final_outcome', title: 'Final Outcome' },
-			{ key: 'redactions', title: 'Redactions' }
+			{ key: 'prompt_components', title: aipsViewSessionL10n.sectionPromptComponents },
+			{ key: 'sources', title: aipsViewSessionL10n.sectionSources },
+			{ key: 'model_runs', title: aipsViewSessionL10n.sectionModelRuns },
+			{ key: 'validation_checks', title: aipsViewSessionL10n.sectionValidationChecks },
+			{ key: 'transformations', title: aipsViewSessionL10n.sectionTransformations },
+			{ key: 'attempts', title: aipsViewSessionL10n.sectionAttempts },
+			{ key: 'final_outcome', title: aipsViewSessionL10n.sectionFinalOutcome },
+			{ key: 'redactions', title: aipsViewSessionL10n.sectionRedactions }
 		];
 		
 		detailSections.forEach(function(section) {

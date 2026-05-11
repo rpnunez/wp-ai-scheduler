@@ -57,8 +57,8 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 			'uuid' => 'run-123',
 			'status' => 'completed',
 			'post_id' => 200,
-			'created_at' => '2026-05-10 10:00:00',
-			'completed_at' => '2026-05-10 10:01:30',
+			'created_at' => 1778407200,
+			'completed_at' => 1778407290,
 			'creation_method' => 'scheduled',
 			'template_id' => 4,
 			'author_id' => 0,
@@ -71,7 +71,7 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 			array(
 				'type_id' => AIPS_History_Type::AI_REQUEST,
 				'log_type' => 'content_prompt',
-				'timestamp' => '2026-05-10 10:00:10',
+				'timestamp' => 1778407210,
 				'details' => array(
 					'message' => 'Prompt assembled',
 					'context' => array(
@@ -82,7 +82,7 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 			array(
 				'type_id' => AIPS_History_Type::LOG,
 				'log_type' => 'source_used',
-				'timestamp' => '2026-05-10 10:00:15',
+				'timestamp' => 1778407215,
 				'details' => array(
 					'used' => true,
 					'url' => 'https://example.com/article',
@@ -92,7 +92,7 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 			array(
 				'type_id' => AIPS_History_Type::WARNING,
 				'log_type' => 'validation_check',
-				'timestamp' => '2026-05-10 10:00:50',
+				'timestamp' => 1778407250,
 				'details' => array(
 					'check_name' => 'length_check',
 					'status' => 'warning',
@@ -118,7 +118,7 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 		$component_revisions = array(
 			'content' => array(
 				array(
-					'timestamp' => '2026-05-10 10:01:00',
+					'timestamp' => 1778407260,
 					'value' => 'Updated content',
 				),
 			),
