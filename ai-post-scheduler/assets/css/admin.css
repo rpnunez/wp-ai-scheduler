@@ -3165,6 +3165,12 @@
 	margin: 6px 0;
 }
 
+.aips-explainability-safety-note {
+	margin: 0 0 15px;
+	font-size: 12px;
+	color: #646970;
+}
+
 .aips-explainability-warnings {
 	border-left-color: #dba617;
 	background: #fffdf5;

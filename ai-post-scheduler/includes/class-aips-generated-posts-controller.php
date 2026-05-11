@@ -19,6 +19,10 @@ if (!defined('ABSPATH')) {
  * Manages the Generated Posts admin interface and AJAX endpoints for viewing post generation sessions.
  */
 class AIPS_Generated_Posts_Controller {
+	/**
+	 * Maximum explainability prompt preview length.
+	 */
+	private const EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH = 800;
 	
 	/**
 	 * @var AIPS_History_Repository Repository for database operations
@@ -522,8 +526,14 @@ class AIPS_Generated_Posts_Controller {
 			}
 			
 			$prompt_preview = trim((string) $prompt_preview);
-			if (strlen($prompt_preview) > 800) {
-				$prompt_preview = substr($prompt_preview, 0, 800) . '...';
+			$prompt_length = function_exists('mb_strlen')
+				? mb_strlen($prompt_preview)
+				: strlen($prompt_preview);
+			if ($prompt_length > self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH) {
+				$prompt_preview = function_exists('mb_substr')
+					? mb_substr($prompt_preview, 0, self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH)
+					: substr($prompt_preview, 0, self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH);
+				$prompt_preview .= '...';
 			}
 			
 			$components[] = array(
@@ -531,7 +541,8 @@ class AIPS_Generated_Posts_Controller {
 				'label' => isset($call['label']) ? (string) $call['label'] : ucfirst(str_replace('_', ' ', isset($call['type']) ? (string) $call['type'] : 'unknown')),
 				'included' => !empty($request),
 				'prompt_preview' => $prompt_preview,
-				'prompt_length' => strlen($prompt_preview),
+				'prompt_length' => $prompt_length,
+				'prompt_preview_length' => function_exists('mb_strlen') ? mb_strlen($prompt_preview) : strlen($prompt_preview),
 				'source' => isset($request['context']['source']) ? (string) $request['context']['source'] : 'ai_request',
 			);
 		}
@@ -580,7 +591,7 @@ class AIPS_Generated_Posts_Controller {
 	 */
 	private function is_sensitive_key($key) {
 		$key = strtolower((string) $key);
-		return preg_match('/(password|token|secret|api[_-]?key|authorization|cookie|nonce|bearer|private[_-]?key)/', $key) === 1;
+		return preg_match('/(password|token|secret|api[_-]?key|authorization|cookie|nonce|bearer|private[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)/', $key) === 1;
 	}
 	
 	/**
@@ -591,7 +602,7 @@ class AIPS_Generated_Posts_Controller {
 	 */
 	private function contains_sensitive_token($value) {
 		$value = (string) $value;
-		return preg_match('/(sk-[a-z0-9]{16,}|bearer\s+[a-z0-9\-_\.]{16,}|-----begin[^-]*private key-----)/i', $value) === 1;
+		return preg_match('/(sk-[a-z0-9]{16,}|akia[a-z0-9]{16}|aiza[a-z0-9\-_]{20,}|gh[pousr]_[a-z0-9]{20,}|bearer\s+[a-z0-9\-_\.]{16,}|-----begin[^-]*private key-----)/i', $value) === 1;
 	}
 	
 	/**

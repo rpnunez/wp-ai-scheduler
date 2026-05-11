@@ -188,6 +188,15 @@
 		$summary.append(createSummaryRow('Schema Version', explainability.schema_version || '1.0.0'));
 		$container.append($summary);
 		
+		var redactionCount = explainability.redactions && typeof explainability.redactions.count !== 'undefined'
+			? explainability.redactions.count
+			: 0;
+		$container.append(
+			$('<p class="aips-explainability-safety-note"></p>').text(
+				'Safety note: sensitive values are redacted where detected. Redactions applied: ' + String(redactionCount) + '.'
+			)
+		);
+		
 		if (Array.isArray(explainability.warnings) && explainability.warnings.length > 0) {
 			var $warnings = $('<div class="aips-explainability-warnings"></div>');
 			$warnings.append($('<h4></h4>').text('Warnings'));
@@ -233,10 +242,9 @@
 			}
 			var $details = $('<details class="aips-explainability-details"></details>');
 			$details.append($('<summary></summary>').text(section.title));
-			$details.append(
-				$('<div class="aips-json-viewer"><pre></pre></div>')
-					.find('pre').text(JSON.stringify(value, null, 2)).end()
-			);
+			var $detailsPre = $('<pre></pre>').text(JSON.stringify(value, null, 2));
+			var $detailsViewer = $('<div class="aips-json-viewer"></div>').append($detailsPre);
+			$details.append($detailsViewer);
 			$container.append($details);
 		});
 	}
