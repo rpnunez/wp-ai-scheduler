@@ -226,6 +226,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
@@ -318,6 +319,11 @@ class AIPS_Admin_Assets {
             'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePosts' => __('Generate posts for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePost' => __('Generate a post from this topic now?', 'ai-post-scheduler'),
+			'generatePostsModalTitle' => __('Generate Posts', 'ai-post-scheduler'),
+			'generatePostsModalMessage' => __('How many posts would you like to generate for this author?', 'ai-post-scheduler'),
+			'numberOfPostsLabel' => __('Number of Posts to Generate', 'ai-post-scheduler'),
+			'generateButtonLabel' => __('Generate', 'ai-post-scheduler'),
+			'invalidQuantityError' => __('Please enter a valid quantity between 1 and 10.', 'ai-post-scheduler'),
             'authorSaved' => __('Author saved successfully.', 'ai-post-scheduler'),
             'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
             'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
