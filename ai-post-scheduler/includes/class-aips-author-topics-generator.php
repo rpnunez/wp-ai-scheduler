@@ -74,7 +74,10 @@ class AIPS_Author_Topics_Generator {
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
-		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic();
+		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
+			null,
+			new AIPS_Prompt_Builder_Diversity_Injector(null, $this->topics_repository)
+		);
 	}
 	
 	/**
