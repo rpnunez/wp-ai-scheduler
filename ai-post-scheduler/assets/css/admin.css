@@ -3831,3 +3831,38 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
+
+/* ==========================================================================
+   View History Icon Button (inline with post title)
+   ========================================================================== */
+
+/* View History Icon Button (inline with post title) */
+.aips-btn-icon.aips-view-session {
+	background: transparent;
+	border: 1px solid var(--aips-gray-200);
+	color: var(--aips-gray-600);
+	padding: 4px;
+	width: 28px;
+	height: 28px;
+	min-width: 28px;
+	flex-shrink: 0;
+	transition: all 0.15s ease;
+}
+
+.aips-btn-icon.aips-view-session:hover {
+	background: var(--aips-primary);
+	border-color: var(--aips-primary);
+	color: var(--aips-white);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-icon.aips-view-session:focus {
+	outline: 2px solid var(--aips-primary);
+	outline-offset: 2px;
+}
+
+.aips-btn-icon.aips-view-session .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
