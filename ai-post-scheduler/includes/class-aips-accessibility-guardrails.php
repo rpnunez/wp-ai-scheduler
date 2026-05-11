@@ -95,7 +95,7 @@ class AIPS_Accessibility_Guardrails {
 		$missing_alt = 0;
 
 		foreach ($images as $image_tag) {
-			// Group 1 captures the quote character, group 2 captures quoted alt text, group 3 captures unquoted alt text.
+			// Group 1 captures the quote character (if present), group 2 captures quoted alt text, and group 3 captures unquoted alt text.
 			if (!preg_match('/\balt\s*=\s*(?:(["\'])(.*?)\1|([^\s>"\']+))/i', $image_tag, $alt_matches)) {
 				$missing_alt++;
 				continue;
