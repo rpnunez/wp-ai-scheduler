@@ -154,7 +154,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	 *   next_run = base_time + ($i * 86400)
 	 * causing topics to be spread across multiple days.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_staggers_topics_daily() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -174,22 +174,26 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$calculator = \AIPS_Interval_Calculator::instance();
+		$expected_time = strtotime($start_date);
+
+		// The next_run values must be staggered starting from the user-specified start_date.
 		foreach ($schedules as $i => $schedule) {
+			$expected_date = date('Y-m-d H:i:s', $expected_time);
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
+			$expected_time = $calculator->calculate_next_run('daily', $expected_time);
 		}
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * The invariant holds for repeating frequencies: scheduling multiple
+	 * topics as 'daily' from the same start_date must stagger entries.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_daily_staggers_topics() {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
@@ -208,12 +212,17 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		$calculator = \AIPS_Interval_Calculator::instance();
+		$expected_time = strtotime($start_date);
+
 		foreach ($schedules as $i => $schedule) {
+			$expected_date = date('Y-m-d H:i:s', $expected_time);
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
+			$expected_time = $calculator->calculate_next_run('daily', $expected_time);
 		}
 	}
 
