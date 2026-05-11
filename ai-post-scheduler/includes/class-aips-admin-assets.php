@@ -35,6 +35,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_TEMPLATES = 'aips-templates';
 	private const PAGE_VOICES = 'aips-voices';
 	private const PAGE_STRUCTURES = 'aips-structures';
+	private const PAGE_POST_SLICES = 'aips-post-slices';
 	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
 	private const PAGE_RESEARCH = 'aips-research';
@@ -95,7 +96,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_voices_assets();
 		}
 
-        if (self::PAGE_STRUCTURES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('structures', 'prompt-blocks')) || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
+        if (self::PAGE_STRUCTURES === $page || self::PAGE_POST_SLICES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('structures', 'post_slices')) || $this->hook_contains($hook, self::PAGE_STRUCTURES) || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
 			$this->enqueue_structures_assets();
 		}
 
