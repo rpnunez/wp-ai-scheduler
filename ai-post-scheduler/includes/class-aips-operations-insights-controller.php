@@ -11,13 +11,11 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Operations_Insights_Controller {
-	private $telemetry_repository;
 	private $history_repository;
 
 	public function __construct() {
 		$container = AIPS_Container::get_instance();
-		$this->telemetry_repository = $container->make(AIPS_Telemetry_Repository::class);
-		$this->history_repository   = $container->make(AIPS_History_Repository::class);
+		$this->history_repository = $container->make(AIPS_History_Repository::class);
 
 		add_action('admin_post_aips_operations_insights_export', array($this, 'handle_export'));
 	}
@@ -63,10 +61,18 @@ class AIPS_Operations_Insights_Controller {
 			header('Content-Disposition: attachment; filename="aips-operations-insights.csv"');
 			$output = fopen('php://output', 'w');
 			fputcsv($output, array('section', 'label', 'value_1', 'value_2'));
-			foreach ($data['history_trend'] as $row) { fputcsv($output, array('history_trend', $row['metric_date'], $row['success_count'], $row['failure_count'])); }
-			foreach ($data['duration_by_flow'] as $row) { fputcsv($output, array('duration_by_flow', $row['flow_type'], $row['avg_duration_seconds'], $row['sample_count'])); }
-			foreach ($data['retry_counts'] as $row) { fputcsv($output, array('retry_counts', $row['service_key'], $row['retry_count'], '')); }
-			foreach ($data['failure_reasons'] as $row) { fputcsv($output, array('failure_reasons', $row['reason'], $row['failure_count'], '')); }
+			foreach ($data['history_trend'] as $row) {
+				fputcsv($output, array('history_trend', $row['metric_date'], $row['success_count'], $row['failure_count']));
+			}
+			foreach ($data['duration_by_flow'] as $row) {
+				fputcsv($output, array('duration_by_flow', $row['flow_type'], $row['avg_duration_seconds'], $row['sample_count']));
+			}
+			foreach ($data['retry_counts'] as $row) {
+				fputcsv($output, array('retry_counts', $row['service_key'], $row['retry_count'], ''));
+			}
+			foreach ($data['failure_reasons'] as $row) {
+				fputcsv($output, array('failure_reasons', $row['reason'], $row['failure_count'], ''));
+			}
 			fclose($output);
 			exit;
 		}
