@@ -589,7 +589,7 @@ class AIPS_Schedule_Controller {
     /**
      * AJAX: Run any schedule type immediately.
      *
-     * Expects POST: id (int), type (string).
+     * Expects POST: id (int), type (string), quantity (optional int for author_post_gen).
      */
     public function ajax_unified_run_now() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -600,15 +600,16 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $id       = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type     = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $quantity = isset($_POST['quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['quantity']))) : null;
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $result  = $service->run_now($id, $type);
+        $result  = $service->run_now($id, $type, $quantity);
 
         if (is_wp_error($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -640,10 +641,15 @@ class AIPS_Schedule_Controller {
                 ),
             ));
         } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
-            $post_id  = is_int($result) ? $result : 0;
-            $edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+            $post_ids = is_array($result) ? array_values(array_filter(array_map('absint', $result))) : array();
+            $post_id  = !empty($post_ids) ? $post_ids[0] : 0;
+            $edit_url = 1 === count($post_ids) && $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
             AIPS_Ajax_Response::success(array(
-                'message'  => __('Post generated successfully from author topic!', 'ai-post-scheduler'),
+                'message'  => sprintf(
+                    _n('%d post generated successfully from author topics!', '%d posts generated successfully from author topics!', count($post_ids), 'ai-post-scheduler'),
+                    count($post_ids)
+                ),
+                'post_ids' => $post_ids,
                 'post_id'  => $post_id,
                 'edit_url' => $edit_url,
             ));
