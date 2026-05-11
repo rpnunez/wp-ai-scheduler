@@ -1711,6 +1711,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Admin_Bar_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Cache.php',
         'Test_AIPS_Admin_Menu' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Menu.php',
         'Test_AIPS_Ajax_Registry_Response' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Registry_Response.php',
+        'Test_AIPS_Author_Post_Generator_Batching' => __DIR__ . '/../..' . '/tests/Test_AIPS_Author_Post_Generator_Batching.php',
         'Test_AIPS_Author_Post_Generator_Expansion' => __DIR__ . '/../..' . '/tests/Test_AIPS_Author_Post_Generator_Expansion.php',
         'Test_AIPS_Batch_Queue_Service' => __DIR__ . '/../..' . '/tests/test-batch-queue-service.php',
         'Test_AIPS_Batch_Slicer' => __DIR__ . '/../..' . '/tests/Test_AIPS_Batch_Slicer.php',

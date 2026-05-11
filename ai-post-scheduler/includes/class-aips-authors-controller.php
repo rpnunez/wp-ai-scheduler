@@ -138,6 +138,8 @@ class AIPS_Authors_Controller {
 			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field(wp_unslash($_POST['preferred_content_length'])) : '',
 			'language' => isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : 'en',
 			'max_posts_per_topic' => isset($_POST['max_posts_per_topic']) ? max(1, absint($_POST['max_posts_per_topic'])) : 1,
+			'manual_post_generation_quantity' => isset($_POST['manual_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['manual_post_generation_quantity']))) : 1,
+			'scheduled_post_generation_quantity' => isset($_POST['scheduled_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['scheduled_post_generation_quantity']))) : 1,
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
