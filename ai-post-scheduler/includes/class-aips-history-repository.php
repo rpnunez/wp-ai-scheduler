@@ -130,6 +130,45 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function invalidate_schedule_completed_count_cache($schedule_id) {
         delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
     }
+
+    public function get_daily_success_failure_trend($days = 14) {
+        $days = max(1, absint($days));
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT DATE(FROM_UNIXTIME(created_at)) AS metric_date, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count FROM {$this->table_name} WHERE created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY metric_date ORDER BY metric_date ASC",
+            $days
+        ), ARRAY_A);
+    }
+
+    public function get_average_duration_by_flow($days = 14) {
+        $days = max(1, absint($days));
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT COALESCE(NULLIF(creation_method, ''), 'unknown') AS flow_type, AVG(completed_at - created_at) AS avg_duration_seconds, COUNT(*) AS sample_count FROM {$this->table_name} WHERE completed_at IS NOT NULL AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY flow_type ORDER BY avg_duration_seconds DESC",
+            $days
+        ), ARRAY_A);
+    }
+
+    public function get_retry_counts_by_service($days = 14) {
+        $days = max(1, absint($days));
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(details, '$.context')), ''), 'unknown') AS service_key, COUNT(*) AS retry_count FROM {$this->table_name_log} WHERE log_type = %s AND timestamp >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY service_key ORDER BY retry_count DESC",
+            'retry',
+            $days
+        ), ARRAY_A);
+    }
+
+    public function get_top_failure_reasons($days = 14, $limit = 8) {
+        $days = max(1, absint($days));
+        $limit = max(1, absint($limit));
+
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT COALESCE(NULLIF(TRIM(error_message), ''), 'Unknown failure') AS reason, COUNT(*) AS failure_count FROM {$this->table_name} WHERE status = 'failed' AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY reason ORDER BY failure_count DESC LIMIT %d",
+            $days,
+            $limit
+        ), ARRAY_A);
+    }
     
     /**
      * Get paginated history with optional filtering.
