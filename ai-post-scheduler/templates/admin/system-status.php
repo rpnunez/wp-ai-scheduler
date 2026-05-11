@@ -76,6 +76,23 @@ if (!defined('ABSPATH')) {
                 </div>
             <?php endforeach; ?>
 
+
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2><span class="dashicons dashicons-chart-area"></span> <?php esc_html_e('Unified Operations Health', 'ai-post-scheduler'); ?></h2>
+                </div>
+                <div class="aips-panel-body">
+                    <p><?php esc_html_e('Single-page visibility for telemetry, cron health, queue depth, failed jobs, and dependency status. Use the one-click operations below for safe recovery workflows.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-btn-group aips-action-group">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_reschedule_missed_cron"><?php esc_html_e('Reschedule Missed Cron Hooks', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_retry_failed_slices"><?php esc_html_e('Retry Failed Slices', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_clear_partial_generations"><?php esc_html_e('Clear Stuck Partial Generations', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_cleanup_stale_jobs_cache"><?php esc_html_e('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <div class="aips-status-op-result"></div>
+                </div>
+            </div>
+
             <!-- Tools Row: Cron + AI Engine -->
             <div class="aips-status-tools-row">
                 <!-- Cron Status -->

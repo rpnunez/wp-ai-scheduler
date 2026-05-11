@@ -36,6 +36,7 @@ class AIPS_Admin_Menu_Helper {
 		'structures'           => 'aips-structures',
 		'prompt_sections'      => 'aips-sections',
 		'authors'              => 'aips-authors',
+		'post_slices'          => 'aips-post-slices',
 		'author_topics'        => 'aips-author-topics',
 		'schedule'             => 'aips-schedule',
 		'schedule_calendar'    => 'aips-schedule-calendar',

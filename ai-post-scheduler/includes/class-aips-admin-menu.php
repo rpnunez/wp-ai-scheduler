@@ -71,6 +71,7 @@ class AIPS_Admin_Menu {
 		$this->register_hidden_page('aips-schedule', __('Schedule', 'ai-post-scheduler'), array($this, 'render_schedule_page'));
 		$this->register_hidden_page('aips-schedule-calendar', __('Schedule Calendar', 'ai-post-scheduler'), array($this, 'render_schedule_calendar_page'));
 		$this->register_hidden_page('aips-generated-posts', __('Content', 'ai-post-scheduler'), array($this, 'render_generated_posts_page'));
+		$this->register_hidden_page('aips-post-slices', __('Post Slices', 'ai-post-scheduler'), array($this, 'render_post_slices_page'));
 		$this->register_hidden_page('aips-history', __('History', 'ai-post-scheduler'), array($this, 'render_history_page'));
 		$this->register_hidden_page('aips-operations-insights', __('Operations Insights', 'ai-post-scheduler'), array($this, 'render_operations_insights_page'));
 		$this->register_hidden_page('aips-sources', __('Sources', 'ai-post-scheduler'), array($this, 'render_sources_page'));
@@ -267,6 +268,19 @@ class AIPS_Admin_Menu {
 	 */
 	public function render_authors_page() {
 		$this->redirect_legacy_page('authors');
+	}
+
+	/**
+	 * Render the Post Slices management page.
+	 *
+	 * @return void
+	 */
+	public function render_post_slices_page() {
+		$post_slices_repo  = AIPS_Post_Slices_Repository::instance();
+		$post_slices       = $post_slices_repo->get_all(false);
+		$post_slice_counts = $post_slices_repo->get_counts();
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
 	}
 
 	/**
