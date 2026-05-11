@@ -172,7 +172,7 @@ class AIPS_Admin_Hub_Registry {
 						'actions' => array(
 							array(
 								'label' => __('Add Slice', 'ai-post-scheduler'),
-								'class' => 'aips-btn aips-btn-primary aips-add-section-btn',
+								'class' => 'aips-btn aips-btn-primary aips-add-slice-btn',
 								'icon'  => 'dashicons-plus-alt',
 							),
 						),
