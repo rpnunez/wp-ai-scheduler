@@ -260,23 +260,7 @@
 			if (!component) {
 				return;
 			}
-
-			this.currentComponent = component;
-			this.rules = Array.isArray(component.rules && component.rules.conditions) ? component.rules.conditions.slice() : [];
-
-			$('#aips-content-component-id').val(component.id);
-			$('#aips-content-component-title').val(component.title || '');
-			$('#aips-content-component-description').val(component.description || '');
-			$('#aips-content-component-type').val(component.component_type || 'custom');
-			$('#aips-content-component-content').val(component.content || '');
-			$('#aips-content-component-is-active').prop('checked', component.is_active === 1);
-			$('#aips-content-component-rules-logic').val(component.rules && component.rules.logic ? component.rules.logic : 'and');
-			$('#aips-content-component-rules-action').val(component.rules && component.rules.action ? component.rules.action : 'add_at_end');
-			$('#aips-content-component-rules-wrap').show();
-			$('#aips-content-component-modal-title').text(aipsContentComponentsL10n.editTitle);
-			this.renderRulesRows();
-			this.updateQaDisplay(component.qa_status || 'untested', component.qa_notes || '');
-			this.renderPreview(component.content || '');
+			this.populateEditModal(component);
 			$('#aips-content-component-modal').show();
 		},
 
@@ -526,10 +510,10 @@
 		 */
 		renderPreview: function (content) {
 			if (!content || !content.trim()) {
-				$('#aips-content-component-preview').html('<em>' + AIPS.Templates.escape(aipsContentComponentsL10n.previewEmpty) + '</em>');
+				$('#aips-content-component-preview').text(aipsContentComponentsL10n.previewEmpty);
 				return;
 			}
-			$('#aips-content-component-preview').html(content);
+			$('#aips-content-component-preview').text(content);
 		},
 
 		/**
@@ -652,6 +636,17 @@
 			if (!component) {
 				return;
 			}
+			this.populateEditModal(component);
+			$('#aips-content-component-modal').show();
+		},
+
+		/**
+		 * Populate edit modal fields from component payload.
+		 *
+		 * @param {Object} component Component payload.
+		 * @return {void}
+		 */
+		populateEditModal: function (component) {
 			this.currentComponent = component;
 			this.rules = Array.isArray(component.rules && component.rules.conditions) ? component.rules.conditions.slice() : [];
 			$('#aips-content-component-id').val(component.id);
@@ -668,7 +663,6 @@
 			this.renderRulesRows();
 			this.updateQaDisplay(component.qa_status || 'untested', component.qa_notes || '');
 			this.renderPreview(component.content || '');
-			$('#aips-content-component-modal').show();
 		},
 
 		/**

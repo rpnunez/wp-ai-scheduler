@@ -68,6 +68,7 @@
 	border-radius: var(--aips-radius-md);
 	padding: var(--aips-space-4);
 	min-height: 120px;
+	white-space: pre-wrap;
 }
 
 .aips-content-component-qa {
@@ -92,4 +93,3 @@
 		width: auto;
 	}
 }
-

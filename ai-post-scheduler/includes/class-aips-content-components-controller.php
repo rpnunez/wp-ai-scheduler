@@ -16,6 +16,16 @@ if (!defined('ABSPATH')) {
 class AIPS_Content_Components_Controller {
 
 	/**
+	 * Minimum title length for QA pass.
+	 */
+	private const MIN_TITLE_LENGTH = 3;
+
+	/**
+	 * Minimum content length for QA pass.
+	 */
+	private const MIN_CONTENT_LENGTH = 40;
+
+	/**
 	 * @var AIPS_Content_Components_Repository
 	 */
 	private $repository;
@@ -312,11 +322,11 @@ class AIPS_Content_Components_Controller {
 	private function evaluate_quality($title, $content, $rules) {
 		$messages = array();
 
-		if (mb_strlen(trim((string) $title)) < 3) {
+		if (mb_strlen(trim((string) $title)) < self::MIN_TITLE_LENGTH) {
 			$messages[] = __('Title should be at least 3 characters.', 'ai-post-scheduler');
 		}
 
-		if (mb_strlen(trim(wp_strip_all_tags((string) $content))) < 40) {
+		if (mb_strlen(trim(wp_strip_all_tags((string) $content))) < self::MIN_CONTENT_LENGTH) {
 			$messages[] = __('Content should include enough detail for insertion quality.', 'ai-post-scheduler');
 		}
 
@@ -376,4 +386,3 @@ class AIPS_Content_Components_Controller {
 		return $normalized;
 	}
 }
-
