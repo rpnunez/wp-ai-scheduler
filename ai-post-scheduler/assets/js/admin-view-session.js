@@ -128,6 +128,7 @@
 		$('#aips-session-completed').text('');
 		$('#aips-logs-list').html('<p>Loading logs...</p>');
 		$('#aips-ai-list').html('<p>Loading AI calls...</p>');
+		$('#aips-explainability-list').html('<p>Loading explainability...</p>');
 	}
 	
 	/**
@@ -149,8 +150,104 @@
 		// Display AI calls (including regenerations)
 		renderAICalls(data.ai_calls, data.component_revisions || {});
 		
+		// Display explainability payload
+		renderExplainability(data.explainability || {});
+		
 		// Show modal
 		$('#aips-session-modal').show();
+	}
+
+	/**
+	 * Render explainability tab content.
+	 */
+	function renderExplainability(explainability) {
+		var $container = $('#aips-explainability-list');
+		$container.empty();
+		
+		if (!explainability || typeof explainability !== 'object' || !explainability.generation) {
+			$container.append($('<p class="aips-no-data"></p>').text('Explainability data is not available for this session.'));
+			return;
+		}
+		
+		var retryCount = explainability.attempts && typeof explainability.attempts.retries_or_regenerations !== 'undefined'
+			? explainability.attempts.retries_or_regenerations
+			: 0;
+		var sourceCount = explainability.sources && Array.isArray(explainability.sources.used)
+			? explainability.sources.used.length
+			: 0;
+		var validationCount = Array.isArray(explainability.validation_checks)
+			? explainability.validation_checks.length
+			: 0;
+		
+		var $summary = $('<div class="aips-explainability-summary"></div>');
+		$summary.append(createSummaryRow('Status', explainability.generation.status || 'unknown'));
+		$summary.append(createSummaryRow('Trigger', explainability.trigger && explainability.trigger.origin ? explainability.trigger.origin : 'unknown'));
+		$summary.append(createSummaryRow('Sources Used', String(sourceCount)));
+		$summary.append(createSummaryRow('Retries/Regenerations', String(retryCount)));
+		$summary.append(createSummaryRow('Validation Checks', String(validationCount)));
+		$summary.append(createSummaryRow('Schema Version', explainability.schema_version || '1.0.0'));
+		$container.append($summary);
+		
+		if (Array.isArray(explainability.warnings) && explainability.warnings.length > 0) {
+			var $warnings = $('<div class="aips-explainability-warnings"></div>');
+			$warnings.append($('<h4></h4>').text('Warnings'));
+			var $warningsList = $('<ul></ul>');
+			explainability.warnings.forEach(function(warningText) {
+				$warningsList.append($('<li></li>').text(warningText));
+			});
+			$warnings.append($warningsList);
+			$container.append($warnings);
+		}
+		
+		if (Array.isArray(explainability.timeline) && explainability.timeline.length > 0) {
+			var $timeline = $('<div class="aips-explainability-timeline"></div>');
+			$timeline.append($('<h4></h4>').text('Generation Timeline'));
+			var $timelineList = $('<ol></ol>');
+			explainability.timeline.forEach(function(item) {
+				var stage = item.stage || 'activity';
+				var timestamp = item.timestamp ? ' (' + item.timestamp + ')' : '';
+				var summary = item.summary ? ' — ' + item.summary : '';
+				$timelineList.append(
+					$('<li></li>').text(stage + timestamp + summary)
+				);
+			});
+			$timeline.append($timelineList);
+			$container.append($timeline);
+		}
+		
+		var detailSections = [
+			{ key: 'prompt_components', title: 'Prompt Components' },
+			{ key: 'sources', title: 'Sources' },
+			{ key: 'model_runs', title: 'Model Runs' },
+			{ key: 'validation_checks', title: 'Validation Checks' },
+			{ key: 'transformations', title: 'Transformations' },
+			{ key: 'attempts', title: 'Attempts & Revisions' },
+			{ key: 'final_outcome', title: 'Final Outcome' },
+			{ key: 'redactions', title: 'Redactions' }
+		];
+		
+		detailSections.forEach(function(section) {
+			var value = explainability[section.key];
+			if (typeof value === 'undefined' || value === null) {
+				return;
+			}
+			var $details = $('<details class="aips-explainability-details"></details>');
+			$details.append($('<summary></summary>').text(section.title));
+			$details.append(
+				$('<div class="aips-json-viewer"><pre></pre></div>')
+					.find('pre').text(JSON.stringify(value, null, 2)).end()
+			);
+			$container.append($details);
+		});
+	}
+	
+	/**
+	 * Create a summary row.
+	 */
+	function createSummaryRow(label, value) {
+		return $('<p class="aips-explainability-summary-row"></p>')
+			.append($('<strong></strong>').text(label + ': '))
+			.append(document.createTextNode(value));
 	}
 	
 	/**

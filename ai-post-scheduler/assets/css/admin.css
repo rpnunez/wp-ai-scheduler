@@ -3150,6 +3150,37 @@
     font-style: italic;
 }
 
+.aips-explainability-summary,
+.aips-explainability-warnings,
+.aips-explainability-timeline,
+.aips-explainability-details {
+	padding: 15px;
+	margin-bottom: 15px;
+	background: #f9f9f9;
+	border-left: 4px solid #2271b1;
+	border-radius: 4px;
+}
+
+.aips-explainability-summary-row {
+	margin: 6px 0;
+}
+
+.aips-explainability-warnings {
+	border-left-color: #dba617;
+	background: #fffdf5;
+}
+
+.aips-explainability-timeline ol,
+.aips-explainability-warnings ul {
+	margin: 10px 0 0 20px;
+}
+
+.aips-explainability-details summary {
+	cursor: pointer;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+
 /* Responsive Styles */
 @media screen and (max-width: 782px) {
     .aips-modal-content {

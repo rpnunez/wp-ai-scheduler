@@ -117,7 +117,6 @@ return array(
     'AIPS_Notifications_Repository_Interface' => $baseDir . '/includes/interface-aips-notifications-repository-interface.php',
     'AIPS_Onboarding_Wizard' => $baseDir . '/includes/class-aips-onboarding-wizard.php',
     'AIPS_Onboarding_Wizard_Test' => $baseDir . '/tests/AIPS_Onboarding_Wizard_Test.php',
-    'AIPS_Operations_Insights_Controller' => $baseDir . '/includes/class-aips-operations-insights-controller.php',
     'AIPS_Partial_Generation_State_Reconciler' => $baseDir . '/includes/class-aips-partial-generation-state-reconciler.php',
     'AIPS_Planner' => $baseDir . '/includes/class-aips-planner.php',
     'AIPS_Post_Creator' => $baseDir . '/includes/class-aips-post-creator.php',

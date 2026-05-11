@@ -147,7 +147,6 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Notifications_Repository_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-notifications-repository-interface.php',
         'AIPS_Onboarding_Wizard' => __DIR__ . '/../..' . '/includes/class-aips-onboarding-wizard.php',
         'AIPS_Onboarding_Wizard_Test' => __DIR__ . '/../..' . '/tests/AIPS_Onboarding_Wizard_Test.php',
-        'AIPS_Operations_Insights_Controller' => __DIR__ . '/../..' . '/includes/class-aips-operations-insights-controller.php',
         'AIPS_Partial_Generation_State_Reconciler' => __DIR__ . '/../..' . '/includes/class-aips-partial-generation-state-reconciler.php',
         'AIPS_Planner' => __DIR__ . '/../..' . '/includes/class-aips-planner.php',
         'AIPS_Post_Creator' => __DIR__ . '/../..' . '/includes/class-aips-post-creator.php',
