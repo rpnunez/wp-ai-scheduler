@@ -2,12 +2,16 @@
  * System Status page — toggle log detail rows and reset the circuit breaker.
  *
  * Relies on `aipsSystemStatusL10n` localised by AIPS_Admin_Assets:
- *   - nonce              {string} wp_nonce for aips_reset_circuit_breaker
- *   - hideDetails        {string} "Hide Details" label
- *   - showDetails        {string} "Show Details" label
- *   - resetSuccess       {string} Success confirmation text
- *   - resetFailed        {string} Generic failure text
- *   - requestFailed      {string} Network/AJAX failure text
+ *   - nonce                           {string} wp_nonce for aips_reset_circuit_breaker
+ *   - nonceCronReschedule             {string} wp_nonce for aips_status_reschedule_missed_cron
+ *   - nonceRetrySlices                {string} wp_nonce for aips_status_retry_failed_slices
+ *   - nonceClearPartialGenerations    {string} wp_nonce for aips_status_clear_partial_generations
+ *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
+ *   - hideDetails                     {string} "Hide Details" label
+ *   - showDetails                     {string} "Show Details" label
+ *   - resetSuccess                    {string} Success confirmation text
+ *   - resetFailed                     {string} Generic failure text
+ *   - requestFailed                   {string} Network/AJAX failure text
  *
  * @package AI_Post_Scheduler
  */
@@ -117,15 +121,33 @@
 			});
 		},
 
-
+		/**
+		 * Run a status operation (reschedule cron, retry slices, clear partial generations, etc.).
+		 *
+		 * Each operation uses its own specific nonce for security.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		runStatusOperation: function(e) {
 			e.preventDefault();
 			var l10n = window.aipsSystemStatusL10n || {};
 			var $btn = $(e.currentTarget);
 			var action = $btn.data('op');
 			var $result = $('.aips-status-op-result');
+
+			// Map each action to its specific nonce
+			var nonceMap = {
+				'aips_status_reschedule_missed_cron': l10n.nonceCronReschedule || '',
+				'aips_status_retry_failed_slices': l10n.nonceRetrySlices || '',
+				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
+				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || ''
+			};
+
+			var nonce = nonceMap[action] || '';
+
 			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: action, nonce: l10n.nonce || '' }, function(response) {
+			$.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
 				if (response && response.success) {
 					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
 				} else {
@@ -145,4 +167,3 @@
 	});
 
 })(jQuery);
-

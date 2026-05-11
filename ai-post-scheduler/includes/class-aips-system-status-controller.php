@@ -51,39 +51,56 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success(array('reset' => true));
 	}
 
-	private function assert_status_access() {
-		if ( ! check_ajax_referer('aips_reset_circuit_breaker', 'nonce', false) ) {
+	public function ajax_reschedule_missed_cron() {
+		if ( ! check_ajax_referer('aips_status_reschedule_missed_cron', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
 		}
-	}
 
-	public function ajax_reschedule_missed_cron() {
-		$this->assert_status_access();
-		$db = new AIPS_DB_Manager();
-		$db->ajax_flush_cron_events();
+		$cron_events = AI_Post_Scheduler::get_cron_events();
+		$rescheduled = 0;
+		foreach ($cron_events as $hook => $config) {
+			$schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
+			wp_unschedule_hook($hook);
+			if (wp_schedule_event(time() + 60, $schedule, $hook) !== false) {
+				$rescheduled++;
+			}
+		}
+		AIPS_Ajax_Response::success(array('message' => sprintf(__('Flushed and rescheduled %d cron events.', 'ai-post-scheduler'), $rescheduled)));
 	}
 
 	public function ajax_retry_failed_slices() {
-		$this->assert_status_access();
-		$hooks = array('aips_retry_failed_author_slices_topics', 'aips_retry_failed_author_slices_posts');
-		$retried = 0;
-		foreach ($hooks as $hook) {
-			$next = wp_get_scheduled_event($hook);
-			if ($next && !empty($next->args)) {
-				do_action_ref_array($hook, $next->args);
-				$retried++;
-			}
+		if ( ! check_ajax_referer('aips_status_retry_failed_slices', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Retried %d failed slice queues.', 'ai-post-scheduler'), $retried)));
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		// Immediately schedule retry hooks for both topics and posts.
+		// This bypasses the 5-minute delay and processes failed slices now.
+		$scheduled = 0;
+		if (wp_schedule_single_event(time(), 'aips_retry_failed_author_slices_topics')) {
+			$scheduled++;
+		}
+		if (wp_schedule_single_event(time(), 'aips_retry_failed_author_slices_posts')) {
+			$scheduled++;
+		}
+		AIPS_Ajax_Response::success(array('message' => sprintf(__('Scheduled %d failed slice retry hooks.', 'ai-post-scheduler'), $scheduled)));
 	}
 
 	public function ajax_clear_partial_generations() {
-		$this->assert_status_access();
+		if ( ! check_ajax_referer('aips_status_clear_partial_generations', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
 		$repo = new AIPS_History_Repository();
-		$partials = $repo->get_partial_generations(array('per_page' => 50));
+		$partials = $repo->get_partial_generations(array('per_page' => 10));
 		$reconciled = 0;
 		if (!empty($partials['items'])) {
 			foreach ($partials['items'] as $item) {
@@ -97,7 +114,13 @@ class AIPS_System_Status_Controller {
 	}
 
 	public function ajax_cleanup_stale_jobs_cache() {
-		$this->assert_status_access();
+		if ( ! check_ajax_referer('aips_status_cleanup_stale_jobs_cache', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
 		$deleted = 0;
 		if (class_exists('AIPS_Bulk_Batch_Job_Store')) {
 			$deleted = (new AIPS_Bulk_Batch_Job_Store())->cleanup_old_jobs();
