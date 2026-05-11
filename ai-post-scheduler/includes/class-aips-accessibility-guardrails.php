@@ -18,8 +18,13 @@ class AIPS_Accessibility_Guardrails {
 		$content = is_string($content) ? $content : '';
 		$results = array(
 			'heading_hierarchy_ok' => true,
+			'multiple_h1_count' => 0,
 			'missing_alt_images' => 0,
 			'long_paragraphs' => 0,
+			'long_sentences' => 0,
+			'non_descriptive_links' => 0,
+			'invalid_links' => 0,
+			'excessive_line_breaks' => 0,
 			'plain_language_score' => 100,
 			'plain_language_target' => 60,
 			'warnings' => array(),
@@ -33,8 +38,13 @@ class AIPS_Accessibility_Guardrails {
 		}
 
 		$results = $this->check_heading_hierarchy($content, $results);
+		$results = $this->check_heading_h1_usage($content, $results);
 		$results = $this->check_image_alt_text($content, $results);
 		$results = $this->check_paragraph_readability($content, $results);
+		$results = $this->check_sentence_readability($content, $results);
+		$results = $this->check_link_text($content, $results);
+		$results = $this->check_link_href($content, $results);
+		$results = $this->check_excessive_line_breaks($content, $results);
 		$results = $this->check_plain_language_score($content, $results);
 
 		return $results;
@@ -52,6 +62,22 @@ class AIPS_Accessibility_Guardrails {
 				break;
 			}
 			$previous = $level;
+		}
+
+		return $results;
+	}
+
+	private function check_heading_h1_usage($content, $results) {
+		preg_match_all('/<h1\b[^>]*>/i', $content, $matches);
+		$count = isset($matches[0]) ? count($matches[0]) : 0;
+		$results['multiple_h1_count'] = $count;
+
+		if ($count > 1) {
+			$results['warnings'][] = sprintf(
+				/* translators: %d: number of H1 headings. */
+				__('Multiple H1 headings detected (%d). Prefer a single H1 per post.', 'ai-post-scheduler'),
+				$count
+			);
 		}
 
 		return $results;
@@ -103,6 +129,116 @@ class AIPS_Accessibility_Guardrails {
 				/* translators: %d: number of long paragraphs. */
 				__('Shorten %d long paragraph(s) to improve readability.', 'ai-post-scheduler'),
 				$long_paragraphs
+			);
+		}
+
+		return $results;
+	}
+
+	private function check_sentence_readability($content, $results) {
+		$text = trim(wp_strip_all_tags($content));
+		if ($text === '') {
+			return $results;
+		}
+
+		$sentences = preg_split('/[.!?]+/', $text);
+		$sentences = array_values(array_filter(array_map('trim', $sentences)));
+
+		$long_sentences = 0;
+		foreach ($sentences as $sentence) {
+			$words = preg_split('/\s+/', $sentence);
+			$words = array_values(array_filter($words));
+			if (count($words) > 30) {
+				$long_sentences++;
+			}
+		}
+
+		$results['long_sentences'] = $long_sentences;
+		if ($long_sentences > 0) {
+			$results['warnings'][] = sprintf(
+				/* translators: %d: number of long sentences. */
+				__('Shorten %d long sentence(s) to improve readability.', 'ai-post-scheduler'),
+				$long_sentences
+			);
+		}
+
+		return $results;
+	}
+
+	private function check_link_text($content, $results) {
+		preg_match_all('/<a\b[^>]*>(.*?)<\/a>/is', $content, $matches);
+		$anchors = isset($matches[1]) ? $matches[1] : array();
+		$bad = 0;
+
+		foreach ($anchors as $anchor_text) {
+			$text = strtolower(trim(wp_strip_all_tags($anchor_text)));
+			if ($text === '') {
+				$bad++;
+				continue;
+			}
+
+			if (preg_match('/^(click here|here|learn more|read more|more)$/i', $text)) {
+				$bad++;
+				continue;
+			}
+		}
+
+		$results['non_descriptive_links'] = $bad;
+		if ($bad > 0) {
+			$results['warnings'][] = sprintf(
+				/* translators: %d: number of links with non-descriptive text. */
+				__('Update %d link(s) with more descriptive text (avoid "click here").', 'ai-post-scheduler'),
+				$bad
+			);
+		}
+
+		return $results;
+	}
+
+	private function check_link_href($content, $results) {
+		preg_match_all('/<a\b[^>]*>/i', $content, $matches);
+		$tags = isset($matches[0]) ? $matches[0] : array();
+		$invalid = 0;
+
+		foreach ($tags as $tag) {
+			if (!preg_match('/\bhref\s*=\s*(["\'])(.*?)\1/i', $tag, $href_matches)) {
+				$invalid++;
+				continue;
+			}
+
+			$href = trim((string) $href_matches[2]);
+			if ($href === '' || $href === '#' || stripos($href, 'javascript:') === 0) {
+				$invalid++;
+				continue;
+			}
+		}
+
+		$results['invalid_links'] = $invalid;
+		if ($invalid > 0) {
+			$results['warnings'][] = sprintf(
+				/* translators: %d: number of invalid links. */
+				__('Fix %d invalid link(s) (missing or placeholder href).', 'ai-post-scheduler'),
+				$invalid
+			);
+		}
+
+		return $results;
+	}
+
+	private function check_excessive_line_breaks($content, $results) {
+		$count = 0;
+
+		// Count occurrences of 3+ consecutive <br> tags.
+		if (preg_match_all('/(?:<br\s*\/?>\s*){3,}/i', $content, $matches)) {
+			$count = isset($matches[0]) ? count($matches[0]) : 0;
+		}
+
+		$results['excessive_line_breaks'] = $count;
+		if ($count > 0) {
+			$results['warnings'][] = sprintf(
+				/* translators: %d: number of excessive line break sequences. */
+				__('Replace %d excessive line-break block(s) with semantic paragraphs or lists.', 'ai-post-scheduler'),
+				$count
 			);
 		}
 

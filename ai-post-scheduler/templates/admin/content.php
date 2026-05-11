@@ -68,6 +68,9 @@ include AIPS_PLUGIN_DIR . 'templates/partials/post-preview-modal.php';
 // Include the View Session modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 
+// Include the Accessibility Report modal partial
+include AIPS_PLUGIN_DIR . 'templates/partials/accessibility-report-modal.php';
+
 // Include the AI Edit modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/ai-edit-modal.php';
 ?>

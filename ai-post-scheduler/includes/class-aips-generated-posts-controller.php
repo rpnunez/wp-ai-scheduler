@@ -63,6 +63,7 @@ class AIPS_Generated_Posts_Controller {
 		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
 		// AJAX endpoint to download the session JSON as a file
 		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
+		add_action('wp_ajax_aips_get_accessibility_report', array($this, 'ajax_get_accessibility_report'));
 	}
 	
 	/**
@@ -477,6 +478,146 @@ class AIPS_Generated_Posts_Controller {
 		AIPS_Ajax_Response::success(array(
 			'json' => $json_string,
 		));
+	}
+
+	/**
+	 * AJAX handler to retrieve the Accessibility Report for a post/history container.
+	 *
+	 * Returns the decoded report array when available. Falls back from post meta
+	 * to history logs when post meta is not present.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_accessibility_report() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+
+		if (!$post_id && !$history_id) {
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		$post_title = '';
+		$report = null;
+
+		if ($post_id) {
+			$post = get_post($post_id);
+			if ($post) {
+				$post_title = (string) $post->post_title;
+			}
+
+			$report = $this->get_accessibility_report_from_post_meta($post_id);
+		}
+
+		if (!$report && $history_id) {
+			$history_item = $this->history_repository->get_by_id($history_id);
+
+			if ($history_item && !$post_id && !empty($history_item->post_id)) {
+				$post_id = absint($history_item->post_id);
+				$post = get_post($post_id);
+				if ($post) {
+					$post_title = (string) $post->post_title;
+				}
+
+				$report = $this->get_accessibility_report_from_post_meta($post_id);
+			}
+
+			if (!$report) {
+				$report = $this->get_accessibility_report_from_history_logs($history_id);
+			}
+		}
+
+		if (is_array($report)) {
+			if (!isset($report['warnings']) || !is_array($report['warnings'])) {
+				$report['warnings'] = array();
+			}
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'report'     => is_array($report) ? $report : null,
+			'post_title' => $post_title,
+		));
+	}
+
+	/**
+	 * Retrieve the report JSON stored on the post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array|null
+	 */
+	private function get_accessibility_report_from_post_meta($post_id) {
+		$raw = get_post_meta($post_id, '_aips_accessibility_report', true);
+		if (!is_string($raw) || $raw === '') {
+			return null;
+		}
+
+		$decoded = json_decode($raw, true);
+		if (!is_array($decoded)) {
+			return null;
+		}
+
+		return $decoded;
+	}
+
+	/**
+	 * Best-effort fallback: locate the report payload inside history logs.
+	 *
+	 * @param int $history_id History container ID.
+	 * @return array|null
+	 */
+	private function get_accessibility_report_from_history_logs($history_id) {
+		$logs = $this->history_repository->get_logs_by_history_id($history_id, array(AIPS_History_Type::WARNING), 100);
+		if (empty($logs) || !is_array($logs)) {
+			return null;
+		}
+
+		foreach ($logs as $log) {
+			$details = isset($log->details) ? json_decode((string) $log->details, true) : null;
+			if (!is_array($details)) {
+				continue;
+			}
+
+			$report = $this->find_accessibility_report_payload($details);
+			if (is_array($report)) {
+				return $report;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Recursively search a decoded details payload for an accessibility_report node.
+	 *
+	 * @param mixed $data Decoded JSON node.
+	 * @return array|null
+	 */
+	private function find_accessibility_report_payload($data) {
+		if (!is_array($data)) {
+			return null;
+		}
+
+		if (isset($data['accessibility_report']) && is_array($data['accessibility_report'])) {
+			return $data['accessibility_report'];
+		}
+
+		foreach ($data as $value) {
+			if (is_array($value)) {
+				$found = $this->find_accessibility_report_payload($value);
+				if (is_array($found)) {
+					return $found;
+				}
+			}
+		}
+
+		return null;
 	}
 	
 	/**

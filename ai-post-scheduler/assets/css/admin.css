@@ -662,6 +662,152 @@
 }
 
 /* ==========================================================================
+   Accessibility Report Modal
+   ========================================================================== */
+
+#aips-accessibility-report-modal .aips-modal-content {
+	max-height: 90vh;
+	overflow: hidden;
+}
+
+#aips-accessibility-report-modal .aips-modal-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--aips-space-5);
+}
+
+#aips-accessibility-report-modal .aips-modal-subtitle {
+	margin: 4px 0 0;
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-sm);
+}
+
+.aips-access-report-message {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	padding: var(--aips-space-4);
+	border-radius: var(--aips-radius-base);
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	color: var(--aips-gray-800);
+}
+
+.aips-access-report-message-error {
+	background: var(--aips-error-light);
+	border-color: rgba(227, 61, 52, 0.35);
+	color: var(--aips-error-dark);
+}
+
+.aips-access-report-message-empty {
+	background: var(--aips-info-light);
+	border-color: rgba(56, 89, 174, 0.25);
+	color: var(--aips-info-dark);
+}
+
+.aips-access-report {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-5);
+}
+
+.aips-access-report-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--aips-space-4);
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-lg);
+}
+
+.aips-access-report-top-left {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	color: var(--aips-gray-900);
+}
+
+.aips-access-report-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: var(--aips-space-4);
+}
+
+.aips-access-report-card {
+	background: #fff;
+	border: 1px solid var(--aips-gray-200);
+	border-left: 4px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-lg);
+	padding: var(--aips-space-4);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-access-report-card-success {
+	border-left-color: var(--aips-success);
+}
+
+.aips-access-report-card-warning {
+	border-left-color: var(--aips-warning);
+}
+
+.aips-access-report-card-error {
+	border-left-color: var(--aips-error);
+}
+
+.aips-access-report-card-title {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-access-report-card-lines {
+	margin: 0;
+	padding-left: 18px;
+	color: var(--aips-gray-700);
+}
+
+.aips-access-report-section h3 {
+	margin: 0 0 var(--aips-space-3);
+}
+
+.aips-access-report-findings {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-access-report-findings li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--aips-space-2);
+	padding: var(--aips-space-3);
+	border-radius: var(--aips-radius-lg);
+	border: 1px solid rgba(245, 158, 11, 0.35);
+	background: var(--aips-warning-light);
+	color: var(--aips-warning-dark);
+}
+
+.aips-access-report-findings li .dashicons {
+	margin-top: 2px;
+}
+
+.aips-access-report-findings-empty {
+	padding: var(--aips-space-4);
+	border-radius: var(--aips-radius-lg);
+	border: 1px solid rgba(0, 163, 42, 0.25);
+	background: var(--aips-success-light);
+	color: var(--aips-success-dark);
+}
+
+/* ==========================================================================
    Status Badges (Modern Design)
    ========================================================================== */
 

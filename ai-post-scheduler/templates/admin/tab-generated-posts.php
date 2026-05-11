@@ -95,6 +95,14 @@ if (!defined('ABSPATH')) {
 											<?php echo esc_html($post_data['title']); ?>
 										</a>
 										<button type="button"
+											class="aips-btn aips-btn-icon aips-view-accessibility-report"
+											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>"
+											aria-label="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-universal-access-alt"></span>
+										</button>
+										<button type="button"
 											class="aips-btn aips-btn-icon aips-view-session"
 											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 											title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>"
@@ -249,4 +257,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-
