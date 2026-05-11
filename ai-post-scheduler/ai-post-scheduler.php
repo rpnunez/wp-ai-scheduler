@@ -536,7 +536,6 @@ final class AI_Post_Scheduler {
     private function boot_cron() {
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
-            $policy = AIPS_Unified_Schedule_Service::get_automation_policy();
             AIPS_Scheduler::instance()->process();
         });
         add_filter('cron_schedules', function($schedules) {
@@ -563,7 +562,6 @@ final class AI_Post_Scheduler {
 
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
-            $policy = AIPS_Unified_Schedule_Service::get_automation_policy();
             AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
         });
 
@@ -587,7 +585,6 @@ final class AI_Post_Scheduler {
 
         // Lazy-resolve the author-post generator only when its hook fires.
         add_action('aips_generate_author_posts', function() {
-            $policy = AIPS_Unified_Schedule_Service::get_automation_policy();
             AIPS_Author_Post_Generator::instance()->process();
         });
 
@@ -744,10 +741,7 @@ final class AI_Post_Scheduler {
         // Sources cron: fetch content for sources that have a fetch_interval configured.
         // AIPS_Sources_Cron::schedule() handles registering the cron event at the
         // correct recurrence (every_6_hours) during construction.
-        $policy = AIPS_Unified_Schedule_Service::get_automation_policy();
-        if (!empty($policy['require_sources'])) {
-            AIPS_Sources_Cron::instance();
-        }
+        AIPS_Sources_Cron::instance();
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();

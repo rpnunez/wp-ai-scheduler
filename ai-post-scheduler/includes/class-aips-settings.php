@@ -436,6 +436,49 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
+        // Automation policy (used across cron-driven schedulers)
+        // -----------------------------------------------------------------------
+        add_settings_field(
+            'aips_automation_policy_preset',
+            __('Automation Policy Preset', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_preset_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_per_run_max_items',
+            __('Per-Run Max Items', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_per_run_max_items_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_retry_profile',
+            __('Automation Retry Profile', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_retry_profile_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_require_approval',
+            __('Require Approval', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_require_approval_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_require_sources',
+            __('Require Sources', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_require_sources_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        // -----------------------------------------------------------------------
         // Site-wide Content Strategy settings
         //
         // Options are defined via self::get_content_strategy_options(), so the

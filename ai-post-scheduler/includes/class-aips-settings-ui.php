@@ -313,6 +313,11 @@ class AIPS_Settings_UI {
     }
 
 
+    /**
+     * Render the automation policy preset setting field.
+     *
+     * @return void
+     */
     public function automation_policy_preset_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_preset');
         ?>
@@ -321,14 +326,28 @@ class AIPS_Settings_UI {
             <option value="research_first_weekly" <?php selected($value, 'research_first_weekly'); ?>><?php esc_html_e('Research-first weekly', 'ai-post-scheduler'); ?></option>
             <option value="high_volume_bulk_review" <?php selected($value, 'high_volume_bulk_review'); ?>><?php esc_html_e('High-volume bulk with review', 'ai-post-scheduler'); ?></option>
         </select>
+        <p class="description"><?php esc_html_e('Choose an opinionated automation policy preset. You can still fine-tune the fields below.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
+    /**
+     * Render the per-run max items limit field.
+     *
+     * @return void
+     */
     public function automation_policy_per_run_max_items_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_per_run_max_items');
-        ?><input type="number" name="aips_automation_policy_per_run_max_items" value="<?php echo esc_attr($value); ?>" min="1" max="100" class="small-text"><?php
+        ?>
+        <input type="number" name="aips_automation_policy_per_run_max_items" value="<?php echo esc_attr($value); ?>" min="1" max="100" class="small-text">
+        <p class="description"><?php esc_html_e('Upper limit on how many items automated runs should attempt per cron execution (helps control throughput and cost).', 'ai-post-scheduler'); ?></p>
+        <?php
     }
 
+    /**
+     * Render the automation retry profile setting field.
+     *
+     * @return void
+     */
     public function automation_policy_retry_profile_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_retry_profile');
         ?>
@@ -337,17 +356,42 @@ class AIPS_Settings_UI {
             <option value="balanced" <?php selected($value, 'balanced'); ?>><?php esc_html_e('Balanced', 'ai-post-scheduler'); ?></option>
             <option value="aggressive" <?php selected($value, 'aggressive'); ?>><?php esc_html_e('Aggressive', 'ai-post-scheduler'); ?></option>
         </select>
+        <p class="description"><?php esc_html_e('Controls how aggressively automated workflows should retry failed operations.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
+    /**
+     * Render the automation require-approval toggle.
+     *
+     * @return void
+     */
     public function automation_policy_require_approval_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_require_approval');
-        ?><input type="hidden" name="aips_automation_policy_require_approval" value="0"><input type="checkbox" name="aips_automation_policy_require_approval" value="1" <?php checked(1, $value); ?>><?php
+        ?>
+        <input type="hidden" name="aips_automation_policy_require_approval" value="0">
+        <label>
+            <input type="checkbox" name="aips_automation_policy_require_approval" value="1" <?php checked(1, $value); ?>>
+            <?php esc_html_e('Require approval/review steps in automated flows', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled, automation favors review gates over unattended publishing.', 'ai-post-scheduler'); ?></p>
+        <?php
     }
 
+    /**
+     * Render the automation require-sources toggle.
+     *
+     * @return void
+     */
     public function automation_policy_require_sources_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_automation_policy_require_sources');
-        ?><input type="hidden" name="aips_automation_policy_require_sources" value="0"><input type="checkbox" name="aips_automation_policy_require_sources" value="1" <?php checked(1, $value); ?>><?php
+        ?>
+        <input type="hidden" name="aips_automation_policy_require_sources" value="0">
+        <label>
+            <input type="checkbox" name="aips_automation_policy_require_sources" value="1" <?php checked(1, $value); ?>>
+            <?php esc_html_e('Require sources before generating content', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled, automated workflows can treat missing sources as a blocker.', 'ai-post-scheduler'); ?></p>
+        <?php
     }
 
     /**
