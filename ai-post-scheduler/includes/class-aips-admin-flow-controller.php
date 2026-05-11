@@ -82,7 +82,7 @@ class AIPS_Admin_Flow_Controller {
 			);
 		}
 
-		update_option($this->draft_option, $draft, false);
+		update_option($this->get_draft_option_name(), $draft, false);
 
 		AIPS_Ajax_Response::success(array(
 			'draft'   => $draft,
@@ -133,7 +133,6 @@ class AIPS_Admin_Flow_Controller {
 		$started_transaction = $this->start_transaction();
 
 		try {
-			$this->persist_config_defaults($payload);
 			$template_id = $this->persist_template($payload);
 
 			if (!$template_id) {
@@ -167,7 +166,7 @@ class AIPS_Admin_Flow_Controller {
 			AIPS_Ajax_Response::error($e->getMessage(), 'finalize_failed', 500);
 		}
 
-		delete_option($this->draft_option);
+		delete_option($this->get_draft_option_name());
 
 		$schedule = $this->find_unified_schedule($schedule_id);
 
@@ -201,8 +200,12 @@ class AIPS_Admin_Flow_Controller {
 	}
 
 	private function get_draft() {
-		$draft = get_option($this->draft_option, array());
+		$draft = get_option($this->get_draft_option_name(), array());
 		return is_array($draft) ? $draft : array();
+	}
+
+	private function get_draft_option_name() {
+		return $this->draft_option . '_' . get_current_user_id();
 	}
 
 	private function normalise_payload($payload) {
@@ -227,7 +230,7 @@ class AIPS_Admin_Flow_Controller {
 			'post_tags'              => isset($payload['post_tags']) ? sanitize_text_field($payload['post_tags']) : '',
 			'post_author'            => isset($payload['post_author']) ? absint($payload['post_author']) : absint($this->config->get_option('aips_default_post_author')),
 			'frequency'              => isset($payload['frequency']) ? sanitize_key($payload['frequency']) : 'daily',
-			'start_time'             => isset($payload['start_time']) ? sanitize_text_field($payload['start_time']) : gmdate('Y-m-d\TH:i', AIPS_DateTime::now()->timestamp()),
+			'start_time'             => isset($payload['start_time']) ? sanitize_text_field($payload['start_time']) : AIPS_DateTime::now()->toDisplay('Y-m-d\TH:i'),
 			'is_active'              => isset($payload['is_active']) ? absint($payload['is_active']) : 1,
 			'review_policy'          => $review_policy,
 			'post_status'            => $post_status,
@@ -290,14 +293,6 @@ class AIPS_Admin_Flow_Controller {
 		}
 
 		return $errors;
-	}
-
-	private function persist_config_defaults($payload) {
-		$this->config->set_option('aips_site_content_goals', $payload['content_goal']);
-		$this->config->set_option('aips_default_post_status', $payload['post_status']);
-		$this->config->set_option('aips_default_category', $payload['post_category']);
-		$this->config->set_option('aips_default_post_author', $payload['post_author']);
-		$this->config->set_option('aips_default_article_structure_id', $payload['article_structure_id']);
 	}
 
 	private function persist_template($payload) {

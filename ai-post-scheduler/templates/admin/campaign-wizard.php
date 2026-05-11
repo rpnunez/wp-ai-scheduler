@@ -93,7 +93,7 @@ $authors = get_users(array(
 						</tr>
 						<tr>
 							<th scope="row"><label for="aips_prompt_template"><?php esc_html_e('Prompt Template', 'ai-post-scheduler'); ?> *</label></th>
-							<td><textarea class="large-text code" rows="9" id="aips_prompt_template" name="prompt_template"><?php echo esc_textarea($draft['prompt_template'] ?? "Write a high-quality article about {{topic}}.\n\nContent goal:\n{{content_goal}}\n\nUse clear headings and practical examples."); ?></textarea></td>
+							<td><textarea class="large-text code" rows="9" id="aips_prompt_template" name="prompt_template"><?php echo esc_textarea($draft['prompt_template'] ?? "Write a high-quality article about {{topic}}.\n\nUse clear headings and practical examples."); ?></textarea></td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="aips_title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></label></th>

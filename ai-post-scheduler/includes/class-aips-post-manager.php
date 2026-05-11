@@ -58,6 +58,7 @@ class AIPS_Post_Manager {
 
         if ($context instanceof AIPS_Generation_Context) {
             $post_status = $context->get_post_status();
+            $post_type = $context->get_post_type();
             $post_author = $context->get_post_author();
             $post_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();

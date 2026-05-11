@@ -862,6 +862,40 @@
         },
 
         /**
+         * Sanitize a plain-text scalar by stripping ASCII control characters.
+         *
+         * Suitable for short single-line values such as action names, step keys,
+         * and notice text. Newlines and tabs are removed.
+         *
+         * @param {*} value Value to sanitize.
+         * @return {string} Sanitized plain-text value.
+         */
+        sanitizePlainText: function(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+        },
+
+        /**
+         * Sanitize textarea text while preserving user-authored formatting.
+         *
+         * Removes null bytes and non-printable ASCII controls, but keeps line
+         * breaks and tabs intact so multi-line prompts remain readable.
+         *
+         * @param {*} value Value to sanitize.
+         * @return {string} Sanitized multi-line text.
+         */
+        sanitizeTextareaText: function(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
+        },
+
+        /**
          * Sanitize a URL value for safe use in an href attribute.
          *
          * Validates the protocol and rejects dangerous schemes (javascript:,

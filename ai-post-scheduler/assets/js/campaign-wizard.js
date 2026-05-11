@@ -62,7 +62,7 @@
 		showNotice: function(type, message) {
 			var noticeClass = type === 'success' ? 'notice notice-success' : 'notice notice-error';
 			var $notice = $(document.createElement('div')).addClass(noticeClass);
-			var $message = $(document.createElement('p')).text(this.sanitizeText(message));
+			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
 
 			$('#aips-campaign-wizard-notice').empty().append($notice.append($message));
 			this.showToast(message, type);
@@ -77,7 +77,7 @@
 		 */
 		showToast: function(message, type) {
 			if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
-				AIPS.Utilities.showToast(this.sanitizeText(message), type);
+				AIPS.Utilities.showToast(this.sanitizePlainText(message), type);
 			}
 		},
 
@@ -94,7 +94,7 @@
 					return;
 				}
 
-				data[item.name] = AIPS.CampaignWizard.sanitizeText(item.value);
+				data[item.name] = AIPS.CampaignWizard.sanitizeFieldValue(item.name, item.value);
 			});
 
 			data.is_active = $('#aips-campaign-wizard-form [name="is_active"]').is(':checked') ? 1 : 0;
@@ -108,12 +108,56 @@
 		 * @param {*} value Value to sanitize.
 		 * @return {string}
 		 */
-		sanitizeText: function(value) {
+		sanitizePlainText: function(value) {
+			if (AIPS.Utilities && typeof AIPS.Utilities.sanitizePlainText === 'function') {
+				return AIPS.Utilities.sanitizePlainText(value);
+			}
+
 			if (typeof value === 'undefined' || value === null) {
 				return '';
 			}
 
 			return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+		},
+
+		/**
+		 * Sanitize textarea values while preserving line breaks and tabs.
+		 *
+		 * @param {*} value Value to sanitize.
+		 * @return {string}
+		 */
+		sanitizeTextareaText: function(value) {
+			if (AIPS.Utilities && typeof AIPS.Utilities.sanitizeTextareaText === 'function') {
+				return AIPS.Utilities.sanitizeTextareaText(value);
+			}
+
+			if (typeof value === 'undefined' || value === null) {
+				return '';
+			}
+
+			return String(value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
+		},
+
+		/**
+		 * Sanitize a form field based on its element type.
+		 *
+		 * @param {string} name  Field name.
+		 * @param {*}      value Field value.
+		 * @return {string}
+		 */
+		sanitizeFieldValue: function(name, value) {
+			var $field = $('#aips-campaign-wizard-form')
+				.find('[name]')
+				.filter(function() {
+					return this.name === name;
+				})
+				.first();
+
+			if ($field.is('textarea')) {
+				return this.sanitizeTextareaText(value);
+			}
+
+			return this.sanitizePlainText(value);
 		},
 
 		/**
@@ -132,9 +176,9 @@
 				method: 'POST',
 				dataType: 'json',
 				data: {
-					action: this.sanitizeText(action),
-					nonce: this.sanitizeText(aipsAjax.nonce),
-					step: typeof step === 'undefined' ? this.steps[this.currentStepIndex] : this.sanitizeText(step),
+					action: this.sanitizePlainText(action),
+					nonce: this.sanitizePlainText(aipsAjax.nonce),
+					step: typeof step === 'undefined' ? this.steps[this.currentStepIndex] : this.sanitizePlainText(step),
 					payload: JSON.stringify(this.getPayload()),
 				},
 			})
@@ -214,7 +258,7 @@
 					.appendTo($list);
 
 				$(document.createElement('dd'))
-					.text(AIPS.CampaignWizard.sanitizeText(summary && summary[key] ? summary[key] : ''))
+					.text(AIPS.CampaignWizard.sanitizePlainText(summary && summary[key] ? summary[key] : ''))
 					.appendTo($list);
 			});
 		},
@@ -324,7 +368,7 @@
 		onStepTabClick: function(e) {
 			e.preventDefault();
 
-			var step = AIPS.CampaignWizard.sanitizeText($(this).data('step'));
+			var step = AIPS.CampaignWizard.sanitizePlainText($(this).data('step'));
 			var index = AIPS.CampaignWizard.steps.indexOf(step);
 
 			if (index >= 0) {
@@ -386,7 +430,13 @@
 			);
 
 			if (out.redirect_url) {
-				window.location.href = AIPS.CampaignWizard.sanitizeText(out.redirect_url);
+				var redirectUrl = AIPS.Utilities && typeof AIPS.Utilities.sanitizeUrl === 'function'
+					? AIPS.Utilities.sanitizeUrl(out.redirect_url)
+					: out.redirect_url;
+
+				if (redirectUrl) {
+					window.location.href = redirectUrl;
+				}
 			}
 		},
 
