@@ -1107,12 +1107,16 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
+                'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
+                'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
+                'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
+                'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'                           => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'                         => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
     }
 
