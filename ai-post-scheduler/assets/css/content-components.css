@@ -1,0 +1,95 @@
+/**
+ * Content Components admin styles.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.7.0
+ */
+
+.aips-content-components-page .aips-content-panel {
+	margin-top: var(--aips-space-4);
+}
+
+.aips-content-components-table .column-title {
+	width: 32%;
+}
+
+.aips-content-components-table .column-type {
+	width: 14%;
+}
+
+.aips-content-components-table .column-status,
+.aips-content-components-table .column-qa {
+	width: 12%;
+}
+
+.aips-content-components-table .column-updated {
+	width: 14%;
+}
+
+.aips-content-components-table .column-actions {
+	width: 16%;
+}
+
+#aips-content-component-modal .aips-modal-content {
+	max-width: 980px;
+}
+
+.aips-content-component-rules-wrap {
+	margin-top: var(--aips-space-6);
+	padding-top: var(--aips-space-5);
+	border-top: 1px solid var(--aips-gray-200);
+}
+
+.aips-content-component-rule-row {
+	display: grid;
+	grid-template-columns: 96px minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 2fr) auto;
+	gap: var(--aips-space-3);
+	align-items: center;
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-content-component-rule-join {
+	font-weight: 600;
+	font-size: 12px;
+	color: var(--aips-gray-600);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.aips-content-component-preview-wrap {
+	margin-top: var(--aips-space-6);
+	padding-top: var(--aips-space-5);
+	border-top: 1px solid var(--aips-gray-200);
+}
+
+.aips-content-component-preview {
+	background: #fff;
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-4);
+	min-height: 120px;
+}
+
+.aips-content-component-qa {
+	display: grid;
+	gap: var(--aips-space-2);
+}
+
+.aips-content-component-qa-label {
+	font-weight: 600;
+}
+
+@media screen and (max-width: 960px) {
+	.aips-content-component-rule-row {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-content-components-table .column-type,
+	.aips-content-components-table .column-status,
+	.aips-content-components-table .column-qa,
+	.aips-content-components-table .column-updated,
+	.aips-content-components-table .column-actions {
+		width: auto;
+	}
+}
+

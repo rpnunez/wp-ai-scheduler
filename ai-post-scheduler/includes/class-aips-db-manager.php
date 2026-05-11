@@ -16,6 +16,7 @@ class AIPS_DB_Manager {
         'aips_trending_topics',
         'aips_authors',
         'aips_post_slices',
+        'aips_content_components',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -73,6 +74,7 @@ class AIPS_DB_Manager {
         $table_trending_topics = $tables['aips_trending_topics'];
         $table_authors = $tables['aips_authors'];
         $table_post_slices = $tables['aips_post_slices'];
+        $table_content_components = $tables['aips_content_components'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
@@ -297,6 +299,25 @@ class AIPS_DB_Manager {
             UNIQUE KEY name (name),
             KEY is_active (is_active),
             KEY sort_order (sort_order)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_content_components (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            title varchar(255) NOT NULL,
+            description text,
+            component_type varchar(50) NOT NULL DEFAULT 'custom',
+            content longtext,
+            rules_json longtext,
+            qa_status varchar(30) NOT NULL DEFAULT 'untested',
+            qa_notes text,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY component_type (component_type),
+            KEY qa_status (qa_status),
+            KEY updated_at (updated_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_author_topics (
@@ -630,6 +651,10 @@ class AIPS_DB_Manager {
                 array( 'updated_at', false ),
             ),
             'aips_post_slices' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_content_components' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
