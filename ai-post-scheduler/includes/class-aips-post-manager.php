@@ -38,6 +38,7 @@ class AIPS_Post_Manager {
      *     @type string $topic Optional. Topic used to infer focus keyword when none provided.
      *     @type object $template Optional. Template object containing settings (legacy).
      *     @type AIPS_Generation_Context $context Optional. Generation context (preferred).
+     *     @type array  $accessibility_report Optional. Guardrail analysis results for generated content.
      * }
      * @return int|WP_Error Post ID on success, WP_Error on failure.
      */
@@ -98,6 +99,10 @@ class AIPS_Post_Manager {
                 isset($data['component_statuses']) && is_array($data['component_statuses']) ? $data['component_statuses'] : null,
                 isset($data['generation_incomplete']) ? (bool) $data['generation_incomplete'] : null
             );
+        }
+
+        if (isset($data['accessibility_report']) && is_array($data['accessibility_report'])) {
+            update_post_meta($post_id, '_aips_accessibility_report', wp_json_encode($data['accessibility_report']));
         }
 
         // Handle Tags

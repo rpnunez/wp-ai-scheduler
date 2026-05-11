@@ -46,6 +46,7 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
+    private $accessibility_guardrails;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -93,6 +94,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->accessibility_guardrails = new AIPS_Accessibility_Guardrails();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -755,6 +757,18 @@ class AIPS_Generator {
         $content = $this->normalize_generated_content_for_wordpress($content);
         $component_statuses['post_content'] = ($content !== '');
 
+        $accessibility_report = $this->accessibility_guardrails->analyze($content);
+
+        if ($this->current_history && !empty($accessibility_report['warnings'])) {
+            $this->current_history->record(
+                'warning',
+                'Accessibility guardrails found content issues.',
+                array('accessibility_report' => $accessibility_report),
+                null,
+                array('component' => 'content_accessibility')
+            );
+        }
+
         // Resolve AI variables from the title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
@@ -827,6 +841,7 @@ class AIPS_Generator {
             'seo_title' => $title,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
         );
 
         // Allow integrations to hook before the post is created.
@@ -877,6 +892,7 @@ class AIPS_Generator {
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
         ));
 
         // Write a structured metric snapshot to history_log.  The metrics
@@ -906,6 +922,7 @@ class AIPS_Generator {
                     'context_type' => $context->get_type(),
                     'context_id' => $context->get_id(),
                     'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
                 )
             );
 
@@ -915,6 +932,7 @@ class AIPS_Generator {
                 'context_id' => $context->get_id(),
                 'title' => $title,
                 'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
             ));
         } else {
             $this->current_history->record(
