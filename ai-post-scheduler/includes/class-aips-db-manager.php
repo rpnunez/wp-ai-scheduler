@@ -15,6 +15,7 @@ class AIPS_DB_Manager {
         'aips_prompt_sections',
         'aips_trending_topics',
         'aips_authors',
+        'aips_post_slices',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -71,6 +72,7 @@ class AIPS_DB_Manager {
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
         $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
@@ -279,8 +281,22 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY article_structure_id (article_structure_id),
             KEY is_active (is_active),
-            KEY topic_generation_next_run (topic_generation_next_run),
-            KEY post_generation_next_run (post_generation_next_run)
+          KEY topic_generation_next_run (topic_generation_next_run),
+          KEY post_generation_next_run (post_generation_next_run)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_slices (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            sort_order int(11) NOT NULL DEFAULT 0,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY name (name),
+            KEY is_active (is_active),
+            KEY sort_order (sort_order)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_author_topics (
@@ -610,6 +626,10 @@ class AIPS_DB_Manager {
                 array( 'topic_generation_last_run', false ),
                 array( 'post_generation_next_run', false ),
                 array( 'post_generation_last_run', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_slices' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
@@ -990,6 +1010,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
         $table_sections = $tables['aips_prompt_sections'];
         $table_structures = $tables['aips_article_structures'];
+        $table_post_slices = $tables['aips_post_slices'];
 
         // Seed default prompt sections
         $default_sections = array(
@@ -1051,6 +1072,47 @@ class AIPS_DB_Manager {
 
             if (!$exists) {
                 $wpdb->insert($table_sections, $section);
+            }
+        }
+
+        $default_post_slices = array(
+            'beginner onboarding',
+            'tool selection',
+            'prompt design',
+            'memory patterns',
+            'agent orchestration',
+            'human-in-the-loop approval',
+            'failure modes',
+            'observability',
+            'security and permissions',
+            'testing and evaluation',
+            'cost control',
+            'real business use cases',
+            'build vs buy',
+            'multi-agent coordination',
+            'production rollout mistakes',
+        );
+
+        foreach ($default_post_slices as $index => $slice_name) {
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_post_slices WHERE name = %s",
+                $slice_name
+            ));
+
+            if (!$exists) {
+                $now = AIPS_DateTime::now()->timestamp();
+                $wpdb->insert(
+                    $table_post_slices,
+                    array(
+                        'name' => $slice_name,
+                        'description' => '',
+                        'sort_order' => $index + 1,
+                        'is_active' => 1,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ),
+                    array('%s', '%s', '%d', '%d', '%d', '%d')
+                );
             }
         }
 
