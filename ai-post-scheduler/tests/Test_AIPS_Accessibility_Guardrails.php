@@ -12,6 +12,7 @@ class Test_AIPS_Accessibility_Guardrails extends WP_UnitTestCase {
 
 		$this->assertFalse($result['heading_hierarchy_ok']);
 		$this->assertSame(1, $result['missing_alt_images']);
+		$this->assertStringContainsString('descriptive alt text', implode(' ', $result['warnings']));
 		$this->assertNotEmpty($result['warnings']);
 	}
 
