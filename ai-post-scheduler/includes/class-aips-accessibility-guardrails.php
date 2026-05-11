@@ -107,7 +107,7 @@ class AIPS_Accessibility_Guardrails {
 			} elseif (isset($alt_matches[3])) {
 				$alt_value = $alt_matches[3];
 			}
-			$alt_value = trim(wp_strip_all_tags(html_entity_decode((string) $alt_value, ENT_QUOTES, 'UTF-8')));
+			$alt_value = trim(wp_strip_all_tags((string) $alt_value));
 			if ($alt_value === '') {
 				$missing_alt++;
 			}
