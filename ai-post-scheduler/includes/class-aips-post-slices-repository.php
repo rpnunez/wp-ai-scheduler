@@ -226,6 +226,82 @@ class AIPS_Post_Slices_Repository {
 	}
 
 	/**
+	 * Bulk set active status for multiple slices.
+	 *
+	 * @param array $ids Array of slice IDs.
+	 * @param bool  $is_active Active status.
+	 * @return int|false Number of rows affected, or false on error.
+	 */
+	public function bulk_set_active(array $ids, $is_active) {
+		if (empty($ids)) {
+			return 0;
+		}
+
+		$ids = array_map('absint', $ids);
+		$ids = array_filter($ids);
+
+		if (empty($ids)) {
+			return 0;
+		}
+
+		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+		$is_active_value = $is_active ? 1 : 0;
+		$updated_at = AIPS_DateTime::now()->timestamp();
+
+		$sql = $this->wpdb->prepare(
+			"UPDATE {$this->table_name}
+			SET is_active = %d, updated_at = %d
+			WHERE id IN ({$placeholders})",
+			array_merge(
+				array($is_active_value, $updated_at),
+				$ids
+			)
+		);
+
+		$result = $this->wpdb->query($sql);
+
+		if ($result !== false) {
+			$this->cache->flush();
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Bulk delete multiple slices.
+	 *
+	 * @param array $ids Array of slice IDs.
+	 * @return int|false Number of rows affected, or false on error.
+	 */
+	public function bulk_delete(array $ids) {
+		if (empty($ids)) {
+			return 0;
+		}
+
+		$ids = array_map('absint', $ids);
+		$ids = array_filter($ids);
+
+		if (empty($ids)) {
+			return 0;
+		}
+
+		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+		$sql = $this->wpdb->prepare(
+			"DELETE FROM {$this->table_name} WHERE id IN ({$placeholders})",
+			$ids
+		);
+
+		$result = $this->wpdb->query($sql);
+
+		if ($result !== false) {
+			$this->cache->flush();
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Check whether a name already exists.
 	 *
 	 * @param string $name Slice name.

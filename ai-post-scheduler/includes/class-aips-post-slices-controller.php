@@ -218,12 +218,9 @@ class AIPS_Post_Slices_Controller {
 			AIPS_Ajax_Response::error(__('No post slices selected.', 'ai-post-scheduler'));
 		}
 
-		$updated = 0;
-		foreach ($ids as $id) {
-			$result = $this->repository->set_active($id, $is_active);
-			if ($result !== false && $result > 0) {
-				$updated++;
-			}
+		$updated = $this->repository->bulk_set_active($ids, $is_active);
+		if ($updated === false) {
+			AIPS_Ajax_Response::error(__('Failed to update post slices.', 'ai-post-scheduler'));
 		}
 
 		AIPS_Ajax_Response::success(
@@ -247,12 +244,9 @@ class AIPS_Post_Slices_Controller {
 			AIPS_Ajax_Response::error(__('No post slices selected.', 'ai-post-scheduler'));
 		}
 
-		$deleted = 0;
-		foreach ($ids as $id) {
-			$result = $this->repository->delete($id);
-			if ($result !== false && $result > 0) {
-				$deleted++;
-			}
+		$deleted = $this->repository->bulk_delete($ids);
+		if ($deleted === false) {
+			AIPS_Ajax_Response::error(__('Failed to delete post slices.', 'ai-post-scheduler'));
 		}
 
 		AIPS_Ajax_Response::success(
