@@ -107,41 +107,175 @@
 .aips-actions-grid-3 {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	gap: 5px;
+	gap: 6px;
 	align-items: center;
 }
 
 .aips-actions-grid-3 .aips-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	justify-content: center;
 	width: 100%;
 	text-align: center;
 }
 
-/* ==========================================================================
-   Content page — Source meta in Title/Post cell (all three tabs)
-   ========================================================================== */
-
-.aips-cell-source {
-	display: block;
-	font-size: 12px;
-	color: var(--aips-text-tertiary, #757575);
-	margin-top: 3px;
-	font-weight: 400;
+.aips-actions-grid-3 .aips-btn .dashicons {
+	font-size: 15px;
+	width: 15px;
+	height: 15px;
+	line-height: 15px;
+	flex: 0 0 15px;
 }
 
-/* ==========================================================================
-   Pending Review — 3-column action button grid
-   ========================================================================== */
+/* Semantic row action variants */
+.aips-actions-grid-3 .aips-publish-post {
+	background: #00a32a;
+	border-color: #007c21;
+	color: #fff;
+}
 
-.aips-actions-grid-3 {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 5px;
+.aips-actions-grid-3 .aips-publish-post:hover,
+.aips-actions-grid-3 .aips-publish-post:focus-visible {
+	background: #007c21;
+	border-color: #00631b;
+}
+
+.aips-actions-grid-3 .aips-regenerate-post {
+	background: #fff8f5;
+	border-color: #f0b849;
+	color: #8a4b00;
+}
+
+.aips-actions-grid-3 .aips-regenerate-post:hover,
+.aips-actions-grid-3 .aips-regenerate-post:focus-visible {
+	background: #fef1e6;
+	border-color: #dba617;
+	color: #703c00;
+}
+
+.aips-actions-grid-3 .aips-ai-edit-btn {
+	background: #f3f0ff;
+	border-color: #b9a7ff;
+	color: #4a2ca3;
+}
+
+.aips-actions-grid-3 .aips-ai-edit-btn:hover,
+.aips-actions-grid-3 .aips-ai-edit-btn:focus-visible {
+	background: #e9e2ff;
+	border-color: #9c86ff;
+	color: #3b2384;
+}
+
+.aips-actions-grid-3 .aips-edit-post,
+.aips-actions-grid-3 .aips-preview-post,
+.aips-actions-grid-3 .aips-view-session {
+	background: #fff;
+	border-color: #c3c4c7;
+	color: #2c3338;
+}
+
+.aips-actions-grid-3 .aips-edit-post:hover,
+.aips-actions-grid-3 .aips-preview-post:hover,
+.aips-actions-grid-3 .aips-view-session:hover,
+.aips-actions-grid-3 .aips-edit-post:focus-visible,
+.aips-actions-grid-3 .aips-preview-post:focus-visible,
+.aips-actions-grid-3 .aips-view-session:focus-visible {
+	background: #f6f7f7;
+	border-color: #8c8f94;
+}
+
+/* Action groups (split primary + overflow menu) */
+.aips-row-action-group {
+	display: inline-flex;
+	align-items: stretch;
+	gap: 0;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+	overflow: hidden;
+}
+
+.aips-row-action-group .aips-btn {
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.aips-row-action-group .aips-btn + .aips-btn {
+	border-left: 1px solid #dcdcde;
+}
+
+.aips-row-action-overflow-toggle .dashicons,
+.aips-row-action-overflow-toggle::after {
+	vertical-align: middle;
+}
+
+.aips-row-action-overflow-toggle::after {
+	content: "\f140";
+	font-family: dashicons;
+	font-size: 14px;
+	line-height: 1;
+	display: inline-block;
+	margin-left: 2px;
+}
+
+.aips-row-action-menu {
+	min-width: 180px;
+	padding: 4px 0;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+	background: #fff;
+}
+
+.aips-row-action-menu .aips-row-action-item {
+	display: flex;
 	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	text-decoration: none;
+	color: #1d2327;
+	border-top: 1px solid #f0f0f1;
 }
 
-.aips-actions-grid-3 .aips-btn {
-	justify-content: center;
-	width: 100%;
-	text-align: center;
+.aips-row-action-menu .aips-row-action-item:first-child {
+	border-top: 0;
+}
+
+.aips-row-action-menu .aips-row-action-item:hover,
+.aips-row-action-menu .aips-row-action-item:focus-visible {
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+/* Compact responsive mode */
+@media (max-width: 1100px) {
+	.aips-actions-grid-3 {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 860px) {
+	.aips-actions-grid-3 {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 4px;
+	}
+
+	.aips-actions-grid-3 .aips-btn {
+		justify-content: flex-start;
+		padding-left: 8px;
+	}
+
+	.aips-row-action-group {
+		width: 100%;
+	}
+
+	.aips-row-action-group .aips-btn {
+		flex: 1 1 auto;
+	}
+
+	.aips-row-action-menu {
+		min-width: 150px;
+	}
 }
