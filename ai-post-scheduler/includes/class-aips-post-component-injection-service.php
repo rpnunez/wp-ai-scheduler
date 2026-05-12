@@ -98,6 +98,48 @@ class AIPS_Post_Component_Injection_Service {
 	}
 
 	/**
+	 * Prepare content for a single ad-hoc component/rule pair.
+	 *
+	 * @param string                          $content Base content.
+	 * @param object                          $component Component-like object.
+	 * @param array<string,mixed>             $rule Normalized Phase 1 rule record.
+	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param array<string,mixed>             $options Options.
+	 * @return array<string,mixed>
+	 */
+	public function prepare_manual_component( $content, $component, array $rule, AIPS_Post_Component_Run_Context $context, array $options = array() ) {
+		$base_content = ! empty( $options['strip_existing_markers'] )
+			? $this->strip_injected_components( (string) $content )
+			: (string) $content;
+
+		$rendered = $this->renderer->render_component( $component, $rule, $context );
+		if ( '' === trim( $rendered ) ) {
+			return array(
+				'content' => $base_content,
+				'plan'    => array(),
+				'base'    => $base_content,
+			);
+		}
+
+		$placement = (string) ( $rule['placement'] ?? 'end_of_post' );
+		$hash      = $this->fingerprints->generate( (int) $component->id, $placement, $rendered );
+		$plan      = array(
+			array(
+				'component_id' => (int) $component->id,
+				'placement'    => $placement,
+				'hash'         => $hash,
+				'rendered'     => $this->wrap_with_markers( (int) $component->id, $hash, $rendered ),
+			),
+		);
+
+		return array(
+			'content' => $this->apply_plan( $base_content, $plan ),
+			'plan'    => $plan,
+			'base'    => $base_content,
+		);
+	}
+
+	/**
 	 * Persist one injection trace row per plan item.
 	 *
 	 * @param int    $post_id Post ID.

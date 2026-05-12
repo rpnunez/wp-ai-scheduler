@@ -182,7 +182,9 @@ class AIPS_Post_Component_Rules_Repository {
 				'logic'      => 'or',
 				'conditions' => array(),
 			),
-			'date_window_json' => array(),
+			'date_window_json' => isset( $legacy_rules['date_window'] ) && is_array( $legacy_rules['date_window'] )
+				? $legacy_rules['date_window']
+				: array(),
 		);
 	}
 

@@ -78,4 +78,24 @@ class AIPS_Post_Component_Analytics_Repository {
 			array( '%d', '%d', '%d', '%d', '%d' )
 		);
 	}
+
+	/**
+	 * Return aggregate usage stats keyed by component ID.
+	 *
+	 * @return array<int,array<string,int>>
+	 */
+	public function get_usage_map() {
+		$rows  = $this->wpdb->get_results( "SELECT component_id, impressions, injections, regeneration_reinjections FROM {$this->table_name}" );
+		$usage = array();
+
+		foreach ( (array) $rows as $row ) {
+			$usage[ (int) $row->component_id ] = array(
+				'impressions'               => (int) $row->impressions,
+				'injections'                => (int) $row->injections,
+				'regeneration_reinjections' => (int) $row->regeneration_reinjections,
+			);
+		}
+
+		return $usage;
+	}
 }

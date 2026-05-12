@@ -36,18 +36,50 @@ class AIPS_Content_Components_Controller {
 	private $rules_repository;
 
 	/**
+	 * @var AIPS_Post_Component_Example_Service
+	 */
+	private $example_service;
+
+	/**
+	 * @var AIPS_Post_Component_Rule_Summary_Service
+	 */
+	private $rule_summary_service;
+
+	/**
+	 * @var AIPS_Post_Component_Matcher_Service
+	 */
+	private $matcher_service;
+
+	/**
+	 * @var AIPS_Post_Component_Injection_Service
+	 */
+	private $injection_service;
+
+	/**
+	 * @var AIPS_Post_Component_Analytics_Repository
+	 */
+	private $analytics_repository;
+
+	/**
 	 * Initialize controller.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Content_Components_Repository();
-		$this->rules_repository = new AIPS_Post_Component_Rules_Repository();
+		$this->repository           = new AIPS_Content_Components_Repository();
+		$this->rules_repository     = new AIPS_Post_Component_Rules_Repository();
+		$this->example_service      = new AIPS_Post_Component_Example_Service();
+		$this->rule_summary_service = new AIPS_Post_Component_Rule_Summary_Service();
+		$this->matcher_service      = new AIPS_Post_Component_Matcher_Service();
+		$this->injection_service    = new AIPS_Post_Component_Injection_Service();
+		$this->analytics_repository = new AIPS_Post_Component_Analytics_Repository();
 
-		add_action('wp_ajax_aips_get_content_components', array($this, 'ajax_get_content_components'));
-		add_action('wp_ajax_aips_get_content_component', array($this, 'ajax_get_content_component'));
-		add_action('wp_ajax_aips_save_content_component', array($this, 'ajax_save_content_component'));
-		add_action('wp_ajax_aips_delete_content_component', array($this, 'ajax_delete_content_component'));
-		add_action('wp_ajax_aips_toggle_content_component_active', array($this, 'ajax_toggle_content_component_active'));
-		add_action('wp_ajax_aips_validate_content_component', array($this, 'ajax_validate_content_component'));
+		add_action( 'wp_ajax_aips_get_content_components', array( $this, 'ajax_get_content_components' ) );
+		add_action( 'wp_ajax_aips_get_content_component', array( $this, 'ajax_get_content_component' ) );
+		add_action( 'wp_ajax_aips_save_content_component', array( $this, 'ajax_save_content_component' ) );
+		add_action( 'wp_ajax_aips_delete_content_component', array( $this, 'ajax_delete_content_component' ) );
+		add_action( 'wp_ajax_aips_toggle_content_component_active', array( $this, 'ajax_toggle_content_component_active' ) );
+		add_action( 'wp_ajax_aips_validate_content_component', array( $this, 'ajax_validate_content_component' ) );
+		add_action( 'wp_ajax_aips_get_content_component_examples', array( $this, 'ajax_get_content_component_examples' ) );
+		add_action( 'wp_ajax_aips_post_components_dry_run', array( $this, 'ajax_post_components_dry_run' ) );
 	}
 
 	/**
@@ -269,9 +301,178 @@ class AIPS_Content_Components_Controller {
 
 		AIPS_Ajax_Response::success(
 			array(
-				'qa_status' => $qa_result['status'],
-				'qa_notes'  => $qa_result['notes'],
-				'messages'  => $qa_result['messages'],
+				'qa_status'    => $qa_result['status'],
+				'qa_notes'     => $qa_result['notes'],
+				'messages'     => $qa_result['messages'],
+				'rule_summary' => $this->rule_summary_service->summarize(
+					array(
+						'title' => $title,
+					),
+					$rules
+				),
+			)
+		);
+	}
+
+	/**
+	 * Return five random starter examples for the add-new flow.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_content_component_examples() {
+		$this->authorize();
+
+		AIPS_Ajax_Response::success(
+			array(
+				'examples' => $this->example_service->get_random_examples(5),
+			)
+		);
+	}
+
+	/**
+	 * Dry-run a component match/injection simulation.
+	 *
+	 * @return void
+	 */
+	public function ajax_post_components_dry_run() {
+		$this->authorize();
+
+		$post_id      = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$draft_body   = isset($_POST['draft_body']) ? wp_kses_post(wp_unslash($_POST['draft_body'])) : '';
+		$post_type    = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : 'post';
+		$author_id    = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$region       = isset($_POST['region']) ? sanitize_text_field(wp_unslash($_POST['region'])) : '';
+		$locale       = isset($_POST['locale']) ? sanitize_text_field(wp_unslash($_POST['locale'])) : get_locale();
+		$categories   = isset($_POST['categories']) ? sanitize_text_field(wp_unslash($_POST['categories'])) : '';
+		$tags         = isset($_POST['tags']) ? sanitize_text_field(wp_unslash($_POST['tags'])) : '';
+		$persona      = isset($_POST['author_persona']) ? sanitize_text_field(wp_unslash($_POST['author_persona'])) : '';
+		$current_title = isset($_POST['current_title']) ? sanitize_text_field(wp_unslash($_POST['current_title'])) : '';
+		$current_type = isset($_POST['current_component_type']) ? sanitize_key(wp_unslash($_POST['current_component_type'])) : '';
+		$current_content = isset($_POST['current_content']) ? wp_kses_post(wp_unslash($_POST['current_content'])) : '';
+		$current_rules = $this->sanitize_rules(isset($_POST['current_rules']) ? wp_unslash($_POST['current_rules']) : '');
+
+		$post = null;
+		if ($post_id > 0) {
+			$post = get_post($post_id);
+			if (!$post instanceof WP_Post) {
+				AIPS_Ajax_Response::error(__('Post not found for dry run.', 'ai-post-scheduler'));
+			}
+		}
+
+		if ($post instanceof WP_Post) {
+			$content = '' !== trim($draft_body) ? $draft_body : (string) $post->post_content;
+			$context = AIPS_Post_Component_Run_Context::from_post(
+				$post,
+				array(
+					'content' => $content,
+					'region'  => $region,
+					'locale'  => $locale,
+				)
+			);
+		} else {
+			$context = new AIPS_Post_Component_Run_Context(
+				array(
+					'post_id'         => 0,
+					'post_type'       => $post_type,
+					'post_status'     => 'draft',
+					'author_id'       => $author_id,
+					'author_persona'  => $persona,
+					'topic'           => '',
+					'category_tokens' => $this->csv_tokens($categories),
+					'tag_tokens'      => $this->csv_tokens($tags),
+					'locale'          => $locale,
+					'region'          => '' !== $region ? strtoupper($region) : 'US',
+					'content'         => $draft_body,
+					'content_length'  => mb_strlen(wp_strip_all_tags($draft_body)),
+					'has_headings'    => preg_match('/<h[1-6][^>]*>/i', $draft_body) ? true : false,
+					'has_h2'          => preg_match('/<h2[^>]*>/i', $draft_body) ? true : false,
+					'policy_tags'     => array(),
+					'run_timestamp'   => AIPS_DateTime::now()->timestamp(),
+					'site_timezone'   => wp_timezone_string(),
+				)
+			);
+			$content = $draft_body;
+		}
+
+		$evaluation = $this->matcher_service->evaluate_components_detailed($context);
+		$prepared   = $this->injection_service->prepare_content(
+			$content,
+			$context,
+			array(
+				'strip_existing_markers' => true,
+			)
+		);
+
+		if ('' !== $current_title && '' !== $current_content) {
+			$current_component = (object) array(
+				'id'              => 0,
+				'title'           => $current_title,
+				'component_type'  => $current_type ? $current_type : 'custom',
+				'content_mode'    => 'html',
+				'content'         => $current_content,
+				'content_payload' => $current_content,
+				'status'          => 'active',
+			);
+
+			$normalized_rule = $this->rules_repository->normalize_legacy_payload($current_rules);
+			$current_rule = array(
+				'id'               => 0,
+				'component_id'     => 0,
+				'priority'         => 1000,
+				'placement'        => $normalized_rule['placement'],
+				'frequency_mode'   => $normalized_rule['frequency_mode'],
+				'max_occurrences'  => $normalized_rule['max_occurrences'],
+				'conditions_json'  => $normalized_rule['conditions_json'],
+				'exclusions_json'  => $normalized_rule['exclusions_json'],
+				'date_window_json' => $normalized_rule['date_window_json'],
+				'enabled'          => 1,
+			);
+
+			$current_evaluation = $this->matcher_service->evaluate_component_rule($current_component, $current_rule, $context);
+			if (!empty($current_evaluation['matched'])) {
+				$prepared = $this->injection_service->prepare_manual_component(
+					$content,
+					$current_component,
+					$current_rule,
+					$context,
+					array(
+						'strip_existing_markers' => true,
+					)
+				);
+
+				array_unshift(
+					$evaluation['matched'],
+					array(
+						'component' => $current_component,
+						'rule'      => $current_rule,
+						'priority'  => 1000,
+					)
+				);
+			} else {
+				array_unshift(
+					$evaluation['rejected'],
+					array(
+						'component' => $current_component,
+						'rule'      => $current_rule,
+						'reason'    => isset($current_evaluation['reason']) ? $current_evaluation['reason'] : __('Not matched.', 'ai-post-scheduler'),
+					)
+				);
+			}
+		}
+
+		AIPS_Ajax_Response::success(
+			array(
+				'matched_components'  => $this->normalize_dry_run_matches($evaluation['matched']),
+				'rejected_components' => $this->normalize_dry_run_rejections($evaluation['rejected']),
+				'before_content'      => $prepared['base'],
+				'after_content'       => $prepared['content'],
+				'preview_html'        => $this->highlight_component_markers($prepared['content']),
+				'diff_summary'        => sprintf(
+					/* translators: 1: matched component count, 2: rejected component count */
+					__('Matched %1$d component(s) and rejected %2$d component(s).', 'ai-post-scheduler'),
+					count($evaluation['matched']),
+					count($evaluation['rejected'])
+				),
 			)
 		);
 	}
@@ -324,6 +525,13 @@ class AIPS_Content_Components_Controller {
 			'logic'      => $logic,
 			'action'     => $action,
 			'conditions' => $conditions,
+			'date_window'=> isset($decoded['date_window']) && is_array($decoded['date_window'])
+				? array(
+					'start'    => isset($decoded['date_window']['start']) ? sanitize_text_field((string) $decoded['date_window']['start']) : '',
+					'end'      => isset($decoded['date_window']['end']) ? sanitize_text_field((string) $decoded['date_window']['end']) : '',
+					'timezone' => isset($decoded['date_window']['timezone']) ? sanitize_text_field((string) $decoded['date_window']['timezone']) : wp_timezone_string(),
+				)
+				: array(),
 		);
 	}
 
@@ -383,6 +591,14 @@ class AIPS_Content_Components_Controller {
 			'qa_status'      => (string) $component->qa_status,
 			'qa_notes'       => (string) $component->qa_notes,
 			'is_active'      => (int) $component->is_active,
+			'status'         => isset($component->status) ? (string) $component->status : ((int) $component->is_active === 1 ? 'active' : 'draft'),
+			'rule_summary'   => $this->rule_summary_service->summarize(
+				array(
+					'title' => (string) $component->title,
+				),
+				$rules
+			),
+			'analytics'      => $this->get_component_analytics((int) $component->id),
 			'created_at'     => (int) $component->created_at,
 			'updated_at'     => (int) $component->updated_at,
 		);
@@ -400,5 +616,125 @@ class AIPS_Content_Components_Controller {
 			$normalized[] = $this->normalize_component($component);
 		}
 		return $normalized;
+	}
+
+	/**
+	 * @param string $csv CSV-ish user input.
+	 * @return string[]
+	 */
+	private function csv_tokens($csv) {
+		return array_values(
+			array_filter(
+				array_map(
+					static function ($value) {
+						return strtolower(trim(sanitize_text_field((string) $value)));
+					},
+					explode(',', (string) $csv)
+				)
+			)
+		);
+	}
+
+	/**
+	 * Highlight saved marker comments for preview output.
+	 *
+	 * @param string $html Rendered HTML.
+	 * @return string
+	 */
+	private function highlight_component_markers($html) {
+		$html = preg_replace(
+			'/<!--\s*aips:component:start:(\d+):([a-f0-9]{64})\s*-->/i',
+			'<div class="aips-dry-run-highlight" data-component-id="$1">',
+			(string) $html
+		);
+
+		return preg_replace(
+			'/<!--\s*aips:component:end:(\d+):([a-f0-9]{64})\s*-->/i',
+			'</div>',
+			(string) $html
+		);
+	}
+
+	/**
+	 * @param array $matches Detailed matcher payload.
+	 * @return array
+	 */
+	private function normalize_dry_run_matches($matches) {
+		$normalized = array();
+		foreach ((array) $matches as $match) {
+			$component = $match['component'];
+			$normalized[] = array(
+				'id'          => (int) $component->id,
+				'title'       => (string) $component->title,
+				'type'        => (string) $component->component_type,
+				'placement'   => (string) ($match['rule']['placement'] ?? 'end_of_post'),
+				'priority'    => (int) ($match['rule']['priority'] ?? 0),
+				'rule_summary'=> $this->rule_summary_service->summarize(
+					array('title' => (string) $component->title),
+					$this->legacy_rules_from_rule_record($match['rule'])
+				),
+			);
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * @param array $rejections Detailed matcher payload.
+	 * @return array
+	 */
+	private function normalize_dry_run_rejections($rejections) {
+		$normalized = array();
+		foreach ((array) $rejections as $rejection) {
+			$component = $rejection['component'];
+			$normalized[] = array(
+				'id'     => (int) $component->id,
+				'title'  => (string) $component->title,
+				'type'   => (string) $component->component_type,
+				'reason' => isset($rejection['reason']) ? (string) $rejection['reason'] : __('Not matched.', 'ai-post-scheduler'),
+			);
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * Convert a Phase 1 rule row back into the simpler legacy UI payload shape.
+	 *
+	 * @param array $rule Rule record.
+	 * @return array
+	 */
+	private function legacy_rules_from_rule_record($rule) {
+		$placement = isset($rule['placement']) ? (string) $rule['placement'] : 'end_of_post';
+		$action = 'add_at_end';
+		if (0 === strpos($placement, 'after_intro')) {
+			$action = 'prepend_intro';
+		} elseif (0 === strpos($placement, 'before_content')) {
+			$action = 'add_before_first_heading';
+		} elseif (0 === strpos($placement, 'after_nth_h2')) {
+			$action = 'add_middle_paragraph';
+		} elseif (0 === strpos($placement, 'before_conclusion')) {
+			$action = 'replace_summary';
+		}
+
+		return array(
+			'logic'      => isset($rule['conditions_json']['logic']) ? $rule['conditions_json']['logic'] : 'and',
+			'action'     => $action,
+			'conditions' => isset($rule['conditions_json']['conditions']) ? $rule['conditions_json']['conditions'] : array(),
+			'date_window'=> isset($rule['date_window_json']) ? $rule['date_window_json'] : array(),
+		);
+	}
+
+	/**
+	 * @param int $component_id Component ID.
+	 * @return array
+	 */
+	private function get_component_analytics($component_id) {
+		$usage_map = $this->analytics_repository->get_usage_map();
+		return isset($usage_map[$component_id]) ? $usage_map[$component_id] : array(
+			'impressions' => 0,
+			'injections'  => 0,
+			'regeneration_reinjections' => 0,
+		);
 	}
 }

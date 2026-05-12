@@ -37,9 +37,23 @@ class AIPS_Post_Component_Matcher_Service {
 	 * @return array<int,array<string,mixed>>
 	 */
 	public function resolve_plan( AIPS_Post_Component_Run_Context $context ) {
+		$evaluation = $this->evaluate_components_detailed( $context );
+		return $evaluation['matched'];
+	}
+
+	/**
+	 * Evaluate all active components with match/reject reasons for dry-run UX.
+	 *
+	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @return array<string,array<int,array<string,mixed>>>
+	 */
+	public function evaluate_components_detailed( AIPS_Post_Component_Run_Context $context ) {
 		$components = $this->components_repository->get_active_components();
 		if ( empty( $components ) ) {
-			return array();
+			return array(
+				'matched'  => array(),
+				'rejected' => array(),
+			);
 		}
 
 		$component_ids = array_map(
@@ -49,29 +63,52 @@ class AIPS_Post_Component_Matcher_Service {
 			$components
 		);
 		$rules_by_component = $this->rules_repository->get_enabled_rules_for_component_ids( $component_ids );
-		$resolved          = array();
-		$disclaimer_taken  = false;
+		$resolved         = array();
+		$rejected         = array();
+		$disclaimer_taken = false;
 
 		foreach ( $components as $component ) {
 			$component_rules = $rules_by_component[ (int) $component->id ] ?? array();
+			if ( empty( $component_rules ) ) {
+				$rejected[] = array(
+					'component' => $component,
+					'reason'    => __( 'No enabled rules found for this component.', 'ai-post-scheduler' ),
+				);
+				continue;
+			}
+
+			$component_matched = false;
 			foreach ( $component_rules as $rule ) {
-				if ( ! $this->rule_matches( $rule, $component, $context ) ) {
+				$rule_evaluation = $this->evaluate_rule( $rule, $component, $context );
+				if ( ! $rule_evaluation['matched'] ) {
+					$rejected[] = array(
+						'component' => $component,
+						'rule'      => $rule,
+						'reason'    => $rule_evaluation['reason'],
+					);
 					continue;
 				}
 
 				if ( 'disclaimer' === (string) $component->component_type ) {
 					if ( $disclaimer_taken ) {
+						$rejected[] = array(
+							'component' => $component,
+							'rule'      => $rule,
+							'reason'    => __( 'Skipped because another disclaimer already occupies this slot.', 'ai-post-scheduler' ),
+						);
 						continue;
 					}
 					$disclaimer_taken = true;
 				}
 
+				$component_matched = true;
 				$resolved[] = array(
 					'component' => $component,
 					'rule'      => $rule,
 					'priority'  => (int) $rule['priority'],
 				);
 			}
+
 		}
 
 		usort(
@@ -86,7 +123,22 @@ class AIPS_Post_Component_Matcher_Service {
 			}
 		);
 
-		return $resolved;
+		return array(
+			'matched'  => $resolved,
+			'rejected' => $rejected,
+		);
+	}
+
+	/**
+	 * Public wrapper for ad-hoc dry-run evaluation of one component/rule pair.
+	 *
+	 * @param object                          $component Component-like object.
+	 * @param array<string,mixed>             $rule Normalized Phase 1 rule record.
+	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @return array<string,mixed>
+	 */
+	public function evaluate_component_rule( $component, array $rule, AIPS_Post_Component_Run_Context $context ) {
+		return $this->evaluate_rule( $rule, $component, $context );
 	}
 
 	/**
@@ -97,24 +149,46 @@ class AIPS_Post_Component_Matcher_Service {
 	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
 	 * @return bool
 	 */
-	private function rule_matches( array $rule, $component, AIPS_Post_Component_Run_Context $context ) {
+	private function evaluate_rule( array $rule, $component, AIPS_Post_Component_Run_Context $context ) {
 		if ( ! empty( $component->status ) && 'active' !== (string) $component->status ) {
-			return false;
+			return array(
+				'matched' => false,
+				'reason'  => __( 'Component status is not active.', 'ai-post-scheduler' ),
+			);
 		}
 
 		if ( ! $this->evaluate_condition_set( $rule['conditions_json'] ?? array(), $component, $context, true ) ) {
-			return false;
+			return array(
+				'matched' => false,
+				'reason'  => __( 'Rule conditions did not match this post context.', 'ai-post-scheduler' ),
+			);
 		}
 
 		if ( $this->evaluate_condition_set( $rule['exclusions_json'] ?? array(), $component, $context, false ) ) {
-			return false;
+			return array(
+				'matched' => false,
+				'reason'  => __( 'An exclusion rule blocked this component.', 'ai-post-scheduler' ),
+			);
 		}
 
 		if ( ! $this->evaluate_date_window( $rule['date_window_json'] ?? array(), $context ) ) {
-			return false;
+			return array(
+				'matched' => false,
+				'reason'  => __( 'The current date is outside the configured date window.', 'ai-post-scheduler' ),
+			);
 		}
 
-		return $this->passes_frequency( $rule, $context );
+		if ( ! $this->passes_frequency( $rule, $context ) ) {
+			return array(
+				'matched' => false,
+				'reason'  => __( 'Frequency limits prevented another injection.', 'ai-post-scheduler' ),
+			);
+		}
+
+		return array(
+			'matched' => true,
+			'reason'  => __( 'Matched.', 'ai-post-scheduler' ),
+		);
 	}
 
 	/**
@@ -269,6 +343,14 @@ class AIPS_Post_Component_Matcher_Service {
 		foreach ( $values as $value ) {
 			if ( '' === $value ) {
 				continue;
+			}
+			if ( 'starts_with' === $operator && 0 === strpos( $actual, $value ) ) {
+				$matches = true;
+				break;
+			}
+			if ( 'ends_with' === $operator && substr( $actual, -strlen( $value ) ) === $value ) {
+				$matches = true;
+				break;
 			}
 			if ( false !== strpos( $actual, $value ) ) {
 				$matches = true;
