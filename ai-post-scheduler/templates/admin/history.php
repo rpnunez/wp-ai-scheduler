@@ -316,3 +316,19 @@ if (is_object($history)) {
 <script type="text/html" id="aips-tmpl-history-summary-duration-row">
 	<tr><th>{{label}}</th><td>{{value}}</td></tr>
 </script>
+<script type="text/html" id="aips-tmpl-history-modal-tabs">
+	<div class="aips-log-type-filter" style="margin-bottom:12px;display:flex;gap:8px;">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-history-modal-tab" data-tab="summary">{{summaryLabel}}</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-modal-tab" data-tab="technical">{{technicalLabel}}</button>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-history-summary-timeline-item">
+	<li><span class="aips-badge {{severityClass}}">{{severity}}</span> <strong>{{label}}</strong> <span style="color:#666;">{{timestamp}}</span></li>
+</script>
+
+<script type="text/html" id="aips-tmpl-history-summary-section">
+	<div data-tab-panel="summary">{{content}}</div>
+	<div data-tab-panel="technical" style="display:none;">{{technical}}</div>
+</script>
+
