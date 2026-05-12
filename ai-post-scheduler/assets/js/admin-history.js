@@ -429,29 +429,29 @@
 			}
 
 			rows = T.render('aips-tmpl-history-summary-row', {
-				label: 'What happened',
+				label: aipsHistoryL10n.labelWhatHappened || 'What happened',
 				value: inferredAction
 			}) + rows;
 
 			rows += T.render('aips-tmpl-history-summary-row', {
-				label: 'Outcome',
+				label: aipsHistoryL10n.labelOutcome || 'Outcome',
 				value: inferredOutcome
 			});
 
 			var relatedEntities = self.collectRelatedEntities(container, logs);
 			if (relatedEntities) {
 				rows += T.render('aips-tmpl-history-summary-row', {
-					label: 'Related entities',
+					label: aipsHistoryL10n.labelRelatedEntities || 'Related entities',
 					value: relatedEntities
 				});
 			}
 
 			rows += T.render('aips-tmpl-history-summary-row', {
-				label: 'What changed',
+				label: aipsHistoryL10n.labelWhatChanged || 'What changed',
 				value: changedHighlights
 			});
 
-			html += '<h4 style="margin:0 0 8px;">Summary</h4>';
+			html += '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>';
 			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
 
 			// ---- Log type filter toolbar ----
@@ -496,7 +496,7 @@
 
 			// ---- Log entries heading ----
 			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
-			html += '<summary style="cursor:pointer;font-weight:600;">Advanced details</summary>';
+			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
 			html += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
 				count:   logs.length
@@ -562,10 +562,10 @@
 
 		inferWhatHappened: function (container, logs) {
 			var text = ((container.creation_method || '') + ' ' + (container.template_name || '')).toLowerCase();
-			if (text.indexOf('research') !== -1) { return 'Research run'; }
-			if (text.indexOf('embedding') !== -1) { return 'Embeddings processing'; }
-			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return 'Author topic generation'; }
-			if (text.indexOf('schedule') !== -1) { return 'Scheduled post generation'; }
+			if (text.indexOf('research') !== -1) { return aipsHistoryL10n.summaryActionResearchRun || 'Research run'; }
+			if (text.indexOf('embedding') !== -1) { return aipsHistoryL10n.summaryActionEmbeddings || 'Embeddings processing'; }
+			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return aipsHistoryL10n.summaryActionAuthorTopics || 'Author topic generation'; }
+			if (text.indexOf('schedule') !== -1) { return aipsHistoryL10n.summaryActionScheduledPosts || 'Scheduled post generation'; }
 
 			var sawAI = false;
 			$.each(logs || [], function (i, log) {
@@ -573,34 +573,71 @@
 					sawAI = true;
 				}
 			});
-			return sawAI ? 'Post generation' : 'Automation task';
+			return sawAI
+				? (aipsHistoryL10n.summaryActionPostGeneration || 'Post generation')
+				: (aipsHistoryL10n.summaryActionAutomationTask || 'Automation task');
 		},
 
 		humanizeOutcome: function (status) {
-			if (status === 'completed') { return 'Success'; }
-			if (status === 'failed') { return 'Failed'; }
-			return 'In progress';
+			if (status === 'completed') { return aipsHistoryL10n.summaryOutcomeSuccess || 'Success'; }
+			if (status === 'failed') { return aipsHistoryL10n.summaryOutcomeFailed || 'Failed'; }
+			return aipsHistoryL10n.summaryOutcomeInProgress || 'In progress';
 		},
 
-		collectRelatedEntities: function (container) {
+		collectRelatedEntities: function (container, logs) {
 			var entities = [];
-			if (container.generated_title) { entities.push('Post: ' + container.generated_title); }
-			if (container.template_name) { entities.push('Template: ' + container.template_name); }
-			if (container.post_id) { entities.push('Post ID: ' + container.post_id); }
-			if (container.creation_method) { entities.push('Method: ' + container.creation_method.replace(/_/g, ' ')); }
-			return entities.length ? entities.join(' | ') : 'No related entities detected';
+			if (container.generated_title) { entities.push((aipsHistoryL10n.summaryEntityPost || 'Post') + ': ' + container.generated_title); }
+			if (container.template_name) { entities.push((aipsHistoryL10n.summaryEntityTemplate || 'Template') + ': ' + container.template_name); }
+			if (container.post_id) { entities.push((aipsHistoryL10n.summaryEntityPostId || 'Post ID') + ': ' + container.post_id); }
+			if (container.creation_method) { entities.push((aipsHistoryL10n.summaryEntityMethod || 'Method') + ': ' + container.creation_method.replace(/_/g, ' ')); }
+			return entities.length ? entities.join(' | ') : (aipsHistoryL10n.summaryNoRelatedEntities || 'No related entities detected');
 		},
 
 		detectWhatChanged: function (logs, container) {
 			var details = [];
-			var flat = JSON.stringify(logs || []).toLowerCase();
-			if (flat.indexOf('title') !== -1) { details.push('Title updated'); }
-			if (flat.indexOf('content') !== -1 || flat.indexOf('body') !== -1) { details.push('Content updated'); }
-			if (flat.indexOf('featured image') !== -1 || flat.indexOf('image') !== -1) { details.push('Image generated/updated'); }
-			if (flat.indexOf('publish') !== -1) { details.push('Published result'); }
-			else if (flat.indexOf('draft') !== -1) { details.push('Draft result'); }
-			if (container.status === 'failed') { details.push('Run ended with an error'); }
-			return details.length ? details.join('; ') : 'No major content changes detected';
+			var sawTitleChange = false;
+			var sawContentChange = false;
+			var sawImageChange = false;
+			var sawPublishedResult = false;
+			var sawDraftResult = false;
+			var scanTextForKeywords = function (value) {
+				if (typeof value !== 'string' || value === '') {
+					return;
+				}
+				var normalized = value.toLowerCase();
+				if (normalized.indexOf('title') !== -1) { sawTitleChange = true; }
+				if (normalized.indexOf('content') !== -1 || normalized.indexOf('body') !== -1) { sawContentChange = true; }
+				if (normalized.indexOf('featured image') !== -1 || normalized.indexOf('image') !== -1) { sawImageChange = true; }
+				if (normalized.indexOf('publish') !== -1) { sawPublishedResult = true; }
+				if (normalized.indexOf('draft') !== -1) { sawDraftResult = true; }
+			};
+
+			$.each(logs || [], function (i, log) {
+				if (!log || !log.details) {
+					return;
+				}
+				$.each(log.details, function (key, val) {
+					if (typeof val === 'string') {
+						scanTextForKeywords(val);
+						return;
+					}
+					if (val && typeof val === 'object') {
+						$.each(val, function (nestedKey, nestedVal) {
+							if (typeof nestedVal === 'string') {
+								scanTextForKeywords(nestedVal);
+							}
+						});
+					}
+				});
+			});
+
+			if (sawTitleChange) { details.push(aipsHistoryL10n.summaryChangedTitle || 'Title updated'); }
+			if (sawContentChange) { details.push(aipsHistoryL10n.summaryChangedContent || 'Content updated'); }
+			if (sawImageChange) { details.push(aipsHistoryL10n.summaryChangedImage || 'Image generated/updated'); }
+			if (sawPublishedResult) { details.push(aipsHistoryL10n.summaryChangedPublished || 'Published result'); }
+			else if (sawDraftResult) { details.push(aipsHistoryL10n.summaryChangedDraft || 'Draft result'); }
+			if (container.status === 'failed') { details.push(aipsHistoryL10n.summaryChangedError || 'Run ended with an error'); }
+			return details.length ? details.join('; ') : (aipsHistoryL10n.summaryChangedNone || 'No major content changes detected');
 		},
 
 		/**
