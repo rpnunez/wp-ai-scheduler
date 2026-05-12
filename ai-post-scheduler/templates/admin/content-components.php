@@ -273,6 +273,54 @@ if (!defined('ABSPATH')) {
 				<?php esc_html_e('Save Content Component', 'ai-post-scheduler'); ?>
 			</button>
 		</div>
+
+		<div class="aips-content-panel aips-backfill-panel" id="aips-content-components-backfill-panel">
+			<div class="aips-backfill-panel-header" id="aips-backfill-toggle" role="button" tabindex="0"
+				aria-expanded="false" aria-controls="aips-backfill-panel-body"
+				style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding:12px 16px;">
+				<h2 style="margin:0; font-size:1rem;"><?php esc_html_e('Backfill Existing Posts', 'ai-post-scheduler'); ?></h2>
+				<span class="dashicons dashicons-arrow-down-alt2 aips-backfill-toggle-icon"></span>
+			</div>
+			<div class="aips-panel-body aips-backfill-panel-body" id="aips-backfill-panel-body" style="display:none; padding:16px;">
+				<p class="description" style="margin-bottom:16px;">
+					<?php esc_html_e('Preview and apply Content Component injection to posts published before components were set up.', 'ai-post-scheduler'); ?>
+				</p>
+
+				<div class="aips-backfill-form" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+					<div class="aips-form-row">
+						<label for="aips-backfill-post-type"><?php esc_html_e('Post Type', 'ai-post-scheduler'); ?></label>
+						<select id="aips-backfill-post-type" class="aips-form-select">
+							<option value="post"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></option>
+							<option value="page"><?php esc_html_e('Page', 'ai-post-scheduler'); ?></option>
+						</select>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-backfill-limit"><?php esc_html_e('Limit (max 200)', 'ai-post-scheduler'); ?></label>
+						<input type="number" id="aips-backfill-limit" class="small-text" value="50" min="1" max="200" step="1">
+					</div>
+					<div class="aips-form-row" style="flex:1; min-width:200px;">
+						<label for="aips-backfill-post-ids"><?php esc_html_e('Specific Post IDs (optional)', 'ai-post-scheduler'); ?></label>
+						<input type="text" id="aips-backfill-post-ids" class="regular-text" placeholder="<?php esc_attr_e('e.g. 1, 2, 3', 'ai-post-scheduler'); ?>">
+					</div>
+				</div>
+
+				<div class="aips-backfill-actions" style="margin-bottom:16px;">
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-backfill-preview-btn">
+						<?php esc_html_e('Preview Backfill', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+
+				<div id="aips-backfill-preview-results"></div>
+
+				<div id="aips-backfill-apply-wrap" style="display:none; margin-top:16px;">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-backfill-apply-btn">
+						<?php esc_html_e('Apply Backfill', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+
+				<div id="aips-backfill-apply-results"></div>
+			</div>
+		</div>
 	</div>
 </div>
 
