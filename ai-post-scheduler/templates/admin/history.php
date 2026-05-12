@@ -8,6 +8,8 @@ if (!defined('ABSPATH')) {
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
+$task_type_filter = isset($task_type_filter) ? $task_type_filter : (isset($_GET['task_type']) ? sanitize_key(wp_unslash($_GET['task_type'])) : '');
+$task_type_options = isset($history_handler) ? $history_handler->get_task_type_options() : array();
 
 $items       = array();
 $total_items = 0;
@@ -52,7 +54,7 @@ if (is_object($history)) {
         </div>
 
         <?php
-        $has_active_filter = !empty($status_filter) || !empty($search_query);
+        $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($task_type_filter);
         $show_panel        = $total_items > 0 || $has_active_filter;
         ?>
         <?php if ($show_panel): ?>
@@ -65,6 +67,11 @@ if (is_object($history)) {
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
+                    </select>
+                    <select id="aips-filter-task-type" class="aips-form-select">
+                        <?php foreach ($task_type_options as $task_key => $task_label): ?>
+                            <option value="<?php echo esc_attr($task_key); ?>" <?php selected($task_type_filter, $task_key); ?>><?php echo esc_html($task_label); ?></option>
+                        <?php endforeach; ?>
                     </select>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
                         <span class="dashicons dashicons-filter"></span>
@@ -100,7 +107,7 @@ if (is_object($history)) {
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>
                     <?php if (isset($history_handler)): ?>
-                        <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
+                        <?php $history_handler->render_pagination_html($history, $status_filter, $search_query, $task_type_filter); ?>
                     <?php elseif ($total_items > 0): ?>
                         <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
                     <?php endif; ?>

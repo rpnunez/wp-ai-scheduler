@@ -31,6 +31,9 @@
 		/** @type {string} Current status filter value */
 		statusFilter: '',
 
+		/** @type {string} Current task-type filter value */
+		taskTypeFilter: '',
+
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
 
@@ -43,6 +46,7 @@
 		 */
 		init: function () {
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.taskTypeFilter = $('#aips-filter-task-type').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
@@ -877,6 +881,7 @@
 					action: 'aips_reload_history',
 					nonce: aipsAjax.nonce,
 					status: self.statusFilter,
+					task_type: self.taskTypeFilter,
 					search: self.searchQuery,
 					paged: paged
 				},
@@ -968,6 +973,7 @@
 				e.preventDefault();
 			}
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.taskTypeFilter = $('#aips-filter-task-type').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
@@ -975,6 +981,11 @@
 				url.searchParams.set('status', this.statusFilter);
 			} else {
 				url.searchParams.delete('status');
+			}
+			if (this.taskTypeFilter) {
+				url.searchParams.set('task_type', this.taskTypeFilter);
+			} else {
+				url.searchParams.delete('task_type');
 			}
 			url.searchParams.delete('paged');
 			window.history.pushState({}, '', url.toString());
@@ -1073,6 +1084,7 @@
 			form.append($('<input type="hidden" name="action" value="aips_export_history">'));
 			form.append($('<input type="hidden" name="nonce">').val(aipsAjax.nonce));
 			form.append($('<input type="hidden" name="status">').val(this.statusFilter));
+			form.append($('<input type="hidden" name="task_type">').val(this.taskTypeFilter));
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
 			$('body').append(form);
 			form.submit();

@@ -199,6 +199,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'search' => '',
             'template_id' => 0,
             'author_id' => 0,
+            'task_type' => '',
             'correlation_id' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
@@ -243,6 +244,32 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['author_id'])) {
             $where_clauses[] = "h.author_id = %d";
             $where_args[] = $args['author_id'];
+        }
+
+
+        if (!empty($args['task_type'])) {
+            $task_type = sanitize_key($args['task_type']);
+            $task_methods = array(
+                'post_generation' => array('manual', 'scheduled', 'post', 'template', 'generator'),
+                'research' => array('research'),
+                'sources_fetch' => array('source'),
+                'embeddings' => array('embedding'),
+                'internal_links' => array('internal_link'),
+                'author_topics' => array('author_topic'),
+                'bulk_batch' => array('bulk', 'batch'),
+                'taxonomy' => array('taxonomy'),
+            );
+
+            if ($task_type === 'other') {
+                $where_clauses[] = "(h.creation_method IS NULL OR h.creation_method = '')";
+            } elseif (isset($task_methods[$task_type])) {
+                $likes = array();
+                foreach ($task_methods[$task_type] as $fragment) {
+                    $likes[] = 'h.creation_method LIKE %s';
+                    $where_args[] = '%' . $this->wpdb->esc_like($fragment) . '%';
+                }
+                $where_clauses[] = '(' . implode(' OR ', $likes) . ')';
+            }
         }
 
         if (!empty($args['correlation_id'])) {

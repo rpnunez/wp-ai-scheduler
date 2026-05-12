@@ -124,7 +124,8 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
-            KEY correlation_id (correlation_id)
+            KEY correlation_id (correlation_id),
+            KEY creation_method (creation_method)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (

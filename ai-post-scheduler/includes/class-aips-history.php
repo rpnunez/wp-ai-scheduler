@@ -98,6 +98,7 @@ class AIPS_History {
         }
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+        $task_type_filter = isset($_POST['task_type']) ? sanitize_key(wp_unslash($_POST['task_type'])) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 
         // Get max records limit from configuration
@@ -109,6 +110,7 @@ class AIPS_History {
             'page' => 1,
             'per_page' => $max_records,
             'status' => $status_filter,
+            'task_type' => $task_type_filter,
             'search' => $search_query,
         ));
 
@@ -320,12 +322,14 @@ class AIPS_History {
         }
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+        $task_type_filter = isset($_POST['task_type']) ? sanitize_key(wp_unslash($_POST['task_type'])) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
             'page'   => $paged,
             'status' => $status_filter,
+            'task_type' => $task_type_filter,
             'search' => $search_query,
             'fields' => 'list',
         ));
@@ -341,7 +345,7 @@ class AIPS_History {
         $items_html = ob_get_clean();
 
         ob_start();
-        $this->render_pagination_html($history, $status_filter, $search_query);
+        $this->render_pagination_html($history, $status_filter, $search_query, $task_type_filter);
         $pagination_html = ob_get_clean();
 
         AIPS_Ajax_Response::success(array(
@@ -453,7 +457,7 @@ class AIPS_History {
      * @param string $status_filter Status filter value.
      * @param string $search_query  Search query.
      */
-    public function render_pagination_html($history, $status_filter = '', $search_query = '') {
+    public function render_pagination_html($history, $status_filter = '', $search_query = '', $task_type_filter = '') {
         include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
     }
     
@@ -492,11 +496,13 @@ class AIPS_History {
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
+        $task_type_filter = isset($_GET['task_type']) ? sanitize_key(wp_unslash($_GET['task_type'])) : '';
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 
         $history = $this->get_history(array(
             'page'   => $current_page,
             'status' => $status_filter,
+            'task_type' => $task_type_filter,
             'search' => $search_query,
             'fields' => 'list',
         ));
@@ -509,6 +515,37 @@ class AIPS_History {
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }
 
+
+    public function get_task_type_options() {
+        return array(
+            '' => __('All Task Types', 'ai-post-scheduler'),
+            'post_generation' => __('Post Generation', 'ai-post-scheduler'),
+            'research' => __('Research', 'ai-post-scheduler'),
+            'sources_fetch' => __('Sources Fetch', 'ai-post-scheduler'),
+            'embeddings' => __('Embeddings', 'ai-post-scheduler'),
+            'internal_links' => __('Internal Links', 'ai-post-scheduler'),
+            'author_topics' => __('Author Topics', 'ai-post-scheduler'),
+            'bulk_batch' => __('Bulk Batch', 'ai-post-scheduler'),
+            'taxonomy' => __('Taxonomy', 'ai-post-scheduler'),
+            'other' => __('Other', 'ai-post-scheduler'),
+        );
+    }
+
+    private function map_task_type($item) {
+        $type = isset($item->type) ? strtolower((string) $item->type) : '';
+        $method = isset($item->creation_method) ? strtolower((string) $item->creation_method) : '';
+
+        if (strpos($type, 'research') !== false || strpos($method, 'research') !== false) { return 'research'; }
+        if (strpos($type, 'source') !== false || strpos($method, 'source') !== false) { return 'sources_fetch'; }
+        if (strpos($type, 'embedding') !== false || strpos($method, 'embedding') !== false) { return 'embeddings'; }
+        if (strpos($type, 'internal_link') !== false || strpos($method, 'internal_link') !== false) { return 'internal_links'; }
+        if (strpos($type, 'author_topic') !== false || strpos($method, 'author_topic') !== false) { return 'author_topics'; }
+        if (strpos($type, 'bulk') !== false || strpos($method, 'bulk') !== false || strpos($method, 'batch') !== false) { return 'bulk_batch'; }
+        if (strpos($type, 'taxonomy') !== false || strpos($method, 'taxonomy') !== false) { return 'taxonomy'; }
+        if (strpos($type, 'post') !== false || strpos($method, 'post') !== false || strpos($method, 'manual') !== false || strpos($method, 'schedule') !== false) { return 'post_generation'; }
+
+        return 'other';
+    }
     /**
      * Enrich a list of history items with display-ready fields.
      *
@@ -520,11 +557,14 @@ class AIPS_History {
      */
     private function prepare_items_for_display( array &$items ) {
         $date_format = get_option('date_format');
+        $task_type_options = $this->get_task_type_options();
         $time_format = get_option('time_format');
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
             $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $item->task_type = $this->map_task_type($item);
+            $item->task_type_label = isset($task_type_options[$item->task_type]) ? $task_type_options[$item->task_type] : __('Other', 'ai-post-scheduler');
         }
     }
 }

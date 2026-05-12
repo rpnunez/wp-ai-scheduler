@@ -41,6 +41,11 @@ if (!defined('ABSPATH')) {
           }
           ?>
         </span>
+        <?php if (!empty($item->task_type_label)): ?>
+        <span class="aips-badge aips-badge-info" style="font-size:10px;margin-left:4px;">
+            <?php echo esc_html($item->task_type_label); ?>
+        </span>
+        <?php endif; ?>
         <?php if (!empty($item->creation_method)): ?>
         <span class="aips-badge aips-badge-neutral aips-creation-method-badge" style="font-size:10px;margin-left:4px;">
             <?php echo esc_html(ucfirst(str_replace('_', ' ', $item->creation_method))); ?>
