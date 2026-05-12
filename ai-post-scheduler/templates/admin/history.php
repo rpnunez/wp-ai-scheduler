@@ -185,7 +185,7 @@ if (is_object($history)) {
             <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         </div>
         <div class="aips-modal-body" id="aips-history-logs-content">
-            <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
+            <p><?php esc_html_e('Preparing plain-language summary and technical logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
 </div>

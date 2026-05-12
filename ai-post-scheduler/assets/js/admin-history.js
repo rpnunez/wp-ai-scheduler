@@ -332,6 +332,9 @@
 			var self = this;
 			var T    = AIPS.Templates;
 			var html = '';
+			var inferredAction = self.inferWhatHappened(container, logs);
+			var inferredOutcome = self.humanizeOutcome(container.status);
+			var changedHighlights = self.detectWhatChanged(logs, container);
 
 			// ---- Container summary ----
 			var rows = '';
@@ -415,6 +418,30 @@
 				});
 			}
 
+			rows = T.render('aips-tmpl-history-summary-row', {
+				label: 'What happened',
+				value: inferredAction
+			}) + rows;
+
+			rows += T.render('aips-tmpl-history-summary-row', {
+				label: 'Outcome',
+				value: inferredOutcome
+			});
+
+			var relatedEntities = self.collectRelatedEntities(container, logs);
+			if (relatedEntities) {
+				rows += T.render('aips-tmpl-history-summary-row', {
+					label: 'Related entities',
+					value: relatedEntities
+				});
+			}
+
+			rows += T.render('aips-tmpl-history-summary-row', {
+				label: 'What changed',
+				value: changedHighlights
+			});
+
+			html += '<h4 style="margin:0 0 8px;">Summary</h4>';
 			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
 
 			// ---- Log type filter toolbar ----
@@ -458,6 +485,8 @@
 			}
 
 			// ---- Log entries heading ----
+			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
+			html += '<summary style="cursor:pointer;font-weight:600;">Advanced details</summary>';
 			html += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
 				count:   logs.length
@@ -467,6 +496,7 @@
 				html += T.render('aips-tmpl-history-no-logs', {
 					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
 				});
+				html += '</details>';
 				return html;
 			}
 
@@ -515,7 +545,52 @@
 				rows:         rowsHtml
 			});
 
+			html += '</details>';
+
 			return html;
+		},
+
+		inferWhatHappened: function (container, logs) {
+			var text = ((container.creation_method || '') + ' ' + (container.template_name || '')).toLowerCase();
+			if (text.indexOf('research') !== -1) { return 'Research run'; }
+			if (text.indexOf('embedding') !== -1) { return 'Embeddings processing'; }
+			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return 'Author topic generation'; }
+			if (text.indexOf('schedule') !== -1) { return 'Scheduled post generation'; }
+
+			var sawAI = false;
+			$.each(logs || [], function (i, log) {
+				if (String(log.history_type_id) === '5' || String(log.history_type_id) === '6') {
+					sawAI = true;
+				}
+			});
+			return sawAI ? 'Post generation' : 'Automation task';
+		},
+
+		humanizeOutcome: function (status) {
+			if (status === 'completed') { return 'Success'; }
+			if (status === 'failed') { return 'Failed'; }
+			return 'In progress';
+		},
+
+		collectRelatedEntities: function (container) {
+			var entities = [];
+			if (container.generated_title) { entities.push('Post: ' + container.generated_title); }
+			if (container.template_name) { entities.push('Template: ' + container.template_name); }
+			if (container.post_id) { entities.push('Post ID: ' + container.post_id); }
+			if (container.creation_method) { entities.push('Method: ' + container.creation_method.replace(/_/g, ' ')); }
+			return entities.length ? entities.join(' | ') : 'No related entities detected';
+		},
+
+		detectWhatChanged: function (logs, container) {
+			var details = [];
+			var flat = JSON.stringify(logs || []).toLowerCase();
+			if (flat.indexOf('title') !== -1) { details.push('Title updated'); }
+			if (flat.indexOf('content') !== -1 || flat.indexOf('body') !== -1) { details.push('Content updated'); }
+			if (flat.indexOf('featured image') !== -1 || flat.indexOf('image') !== -1) { details.push('Image generated/updated'); }
+			if (flat.indexOf('publish') !== -1) { details.push('Published result'); }
+			else if (flat.indexOf('draft') !== -1) { details.push('Draft result'); }
+			if (container.status === 'failed') { details.push('Run ended with an error'); }
+			return details.length ? details.join('; ') : 'No major content changes detected';
 		},
 
 		/**
