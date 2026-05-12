@@ -191,6 +191,8 @@ class AIPS_Config {
             'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
+            // Content Components
+            'aips_content_components_max_total' => 3,
             // Telemetry
             'aips_enable_telemetry' => false,
         );
@@ -670,6 +672,11 @@ class AIPS_Config {
             'batch_generation' => array(
                 'name' => __('Batch Generation', 'ai-post-scheduler'),
                 'description' => __('Generate multiple posts in a single batch.', 'ai-post-scheduler'),
+                'default' => true,
+            ),
+            'content_components_engine' => array(
+                'name' => __('Content Components Engine', 'ai-post-scheduler'),
+                'description' => __('Enable rule-based Content Components matching and injection during generation and regeneration.', 'ai-post-scheduler'),
                 'default' => true,
             ),
         );

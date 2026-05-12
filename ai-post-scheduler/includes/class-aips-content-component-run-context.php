@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Run Context
+ * Content Component Run Context
  *
  * DTO for runtime component evaluation.
  *
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Run_Context {
+class AIPS_Content_Component_Run_Context {
 
 	/**
 	 * @var array<string,mixed>
