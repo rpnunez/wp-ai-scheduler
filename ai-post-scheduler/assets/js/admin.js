@@ -3378,9 +3378,11 @@
             $modal.find('.aips-wizard-progress').hide();
             $modal.find('.aips-wizard-footer').hide();
 
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
+            if (typeof aipsAjax === 'undefined' || !aipsAjax.schedulePageUrl) {
+                return;
+            }
+
+            var scheduleUrl = aipsAjax.schedulePageUrl + '&schedule_template=' + templateId;
             $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
         },
@@ -3402,9 +3404,11 @@
             if (!templateId) return;
 
             // Use the aipsAjax.schedulePageUrl if available or fallback
-            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl
-                : 'admin.php?page=aips-schedule';
+            if (typeof aipsAjax === 'undefined' || !aipsAjax.schedulePageUrl) {
+                return;
+            }
+
+            var scheduleUrlBase = aipsAjax.schedulePageUrl;
 
             // Build the URL safely, handling whether scheduleUrlBase already contains a query string
             var url = new URL(scheduleUrlBase, window.location.href);

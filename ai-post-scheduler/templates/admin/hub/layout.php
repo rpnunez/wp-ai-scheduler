@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="wrap aips-wrap">
-	<div class="aips-page-container aips-hub-page" data-aips-hub-page="<?php echo esc_attr($hub['slug']); ?>" data-aips-active-tab="<?php echo esc_attr($active_tab_key); ?>"<?php echo !empty($hub['render_active_only']) ? ' data-aips-hub-server-tabs="true"' : ''; ?>>
+	<div class="aips-page-container aips-hub-page" data-aips-hub-page="<?php echo esc_attr($hub['slug']); ?>" data-aips-active-tab="<?php echo esc_attr($active_tab_key); ?>">
 		<div class="aips-page-header aips-hub-header">
 			<?php if (!empty($context_breadcrumbs)) : ?>
 				<nav class="aips-hub-breadcrumbs" aria-label="<?php esc_attr_e('Breadcrumb', 'ai-post-scheduler'); ?>">

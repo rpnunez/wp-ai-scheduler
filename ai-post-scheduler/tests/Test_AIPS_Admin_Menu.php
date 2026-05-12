@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for AIPS_Admin_Menu
+ * Tests for AIPS_Admin_Menu.
  *
  * @package AI_Post_Scheduler
  */
@@ -18,66 +18,50 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	public function tearDown(): void {
+		unset($_GET['page']);
 		parent::tearDown();
 	}
 
-	/**
-	 * Test that admin menu hooks are correctly registered
-	 */
 	public function test_hooks_registered() {
-		if ( ! function_exists( 'has_action' ) || ! function_exists( 'has_filter' ) ) {
-			$this->markTestSkipped( 'WordPress environment required for hook testing.' );
+		if (!function_exists('has_action') || !function_exists('has_filter')) {
+			$this->markTestSkipped('WordPress environment required for hook testing.');
 			return;
 		}
 
 		$this->assertNotFalse(
-			has_action('admin_menu', array($this->admin_menu, 'add_menu_pages')),
-			'admin_menu hook should be registered'
+			has_action('admin_menu', array($this->admin_menu, 'add_menu_pages'))
 		);
 		$this->assertNotFalse(
-			has_filter('parent_file', array($this->admin_menu, 'fix_author_topics_parent_file')),
-			'parent_file hook should be registered'
+			has_filter('parent_file', array($this->admin_menu, 'filter_parent_file'))
 		);
 		$this->assertNotFalse(
-			has_filter('submenu_file', array($this->admin_menu, 'fix_author_topics_submenu_file')),
-			'submenu_file hook should be registered'
+			has_filter('submenu_file', array($this->admin_menu, 'filter_submenu_file'))
 		);
 	}
 
-	/**
-	 * Test that the parent_file filter returns correct values
-	 */
-	public function test_fix_author_topics_parent_file() {
+	public function test_filter_parent_file_returns_plugin_parent_for_hidden_hub_pages() {
 		$_GET['page'] = 'aips-author-topics';
-		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
-		$this->assertEquals('ai-post-scheduler', $result);
+		$this->assertSame('ai-post-scheduler', $this->admin_menu->filter_parent_file('tools.php'));
+
+		$_GET['page'] = 'aips-post-slices';
+		$this->assertSame('ai-post-scheduler', $this->admin_menu->filter_parent_file('tools.php'));
 
 		$_GET['page'] = 'some-other-page';
-		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
-		$this->assertEquals('some-other-file', $result);
-
-		unset($_GET['page']);
+		$this->assertSame('tools.php', $this->admin_menu->filter_parent_file('tools.php'));
 	}
 
-	/**
-	 * Test that the submenu_file filter returns correct values
-	 */
-	public function test_fix_author_topics_submenu_file() {
+	public function test_filter_submenu_file_returns_visible_hub_slug_for_hidden_pages() {
 		$_GET['page'] = 'aips-author-topics';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-authors', $result);
+		$this->assertSame('aips-automation', $this->admin_menu->filter_submenu_file('tools.php'));
+
+		$_GET['page'] = 'aips-post-slices';
+		$this->assertSame('aips-content-setup', $this->admin_menu->filter_submenu_file('tools.php'));
 
 		$_GET['page'] = 'some-other-page';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('some-other-file', $result);
-
-		unset($_GET['page']);
+		$this->assertSame('tools.php', $this->admin_menu->filter_submenu_file('tools.php'));
 	}
 
-	/**
-	 * Regression test: hidden Author Topics page must remain URL-accessible.
-	 */
-	public function test_author_topics_is_registered_as_hidden_page() {
+	public function test_hidden_pages_remain_registered_for_direct_access() {
 		global $submenu, $_registered_pages;
 
 		$submenu           = array();
@@ -85,18 +69,12 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
-		$this->assertArrayHasKey(
-			'admin_page_aips-author-topics',
-			$_registered_pages,
-			'Author Topics page should be registered for direct admin.php?page= access.'
-		);
+		$this->assertArrayHasKey('admin_page_aips-author-topics', $_registered_pages);
+		$this->assertArrayHasKey('admin_page_aips-post-slices', $_registered_pages);
 
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
-		$this->assertNotContains(
-			'aips-author-topics',
-			$submenu_pages,
-			'Author Topics page should remain hidden from the visible submenu.'
-		);
+		$this->assertNotContains('aips-author-topics', $submenu_pages);
+		$this->assertNotContains('aips-post-slices', $submenu_pages);
 	}
 }

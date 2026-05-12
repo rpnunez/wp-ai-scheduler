@@ -384,7 +384,7 @@ class AIPS_Notification_Senders {
 
 		$title   = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
 		$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
-		$url     = !empty($payload['url']) ? $payload['url'] : admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
+		$url     = !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-partial-generations'));
 
 		call_user_func(
 			$this->dispatcher,
@@ -546,7 +546,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
 				'message' => $message_raw,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('aips-seeder'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('seeder'),
 				'level'   => 'info',
 				'meta'    => $payload,
 			)
@@ -722,7 +722,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'         => sprintf(__('Research topics ready (%d)', 'ai-post-scheduler'), $count),
 				'message'       => sprintf(__('Scheduled research found %1$d new topic(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
-				'url'           => AIPS_Admin_Menu_Helper::get_page_url('aips-research'),
+				'url'           => AIPS_Admin_Menu_Helper::get_page_url('research'),
 				'level'         => 'info',
 				'meta'          => array(
 					'niche' => $niche,

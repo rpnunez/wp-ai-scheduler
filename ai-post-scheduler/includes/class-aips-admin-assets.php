@@ -125,7 +125,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_operations_assets();
 		}
 
-        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
+        if (self::PAGE_POST_SLICES === $page || $this->is_hub_tab($page, $tab, self::PAGE_CONTENT_SETUP_HUB, array('post-slices')) || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
 			$this->enqueue_post_slices_assets();
 		}
 

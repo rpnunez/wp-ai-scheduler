@@ -235,7 +235,7 @@ final class AI_Post_Scheduler {
                     'title'         => __('Database installation failed', 'ai-post-scheduler'),
                     'error_code'    => $install_result->get_error_code(),
                     'error_message' => $install_result->get_error_message(),
-                    'url'           => admin_url('admin.php?page=aips-status'),
+                    'url'           => AIPS_Admin_Menu_Helper::get_page_url('system_status'),
                     'dedupe_key'    => 'db_install_failed_activation',
                     'dedupe_window' => 1800,
                 ));

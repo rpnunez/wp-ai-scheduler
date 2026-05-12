@@ -103,6 +103,12 @@ class AIPS_Admin_Menu_Helper {
 					'tab' => 'prompt-blocks',
 				);
 				break;
+			case 'post_slices':
+				$slug         = self::$page_slugs['content_setup_hub'];
+				$default_args = array(
+					'tab' => 'post-slices',
+				);
+				break;
 			case 'authors':
 				$slug         = self::$page_slugs['automation_hub'];
 				$default_args = array(

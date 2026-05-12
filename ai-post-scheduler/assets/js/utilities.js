@@ -38,55 +38,20 @@
         },
 
         /**
-         * Initialize shared hub-page tab behavior.
+         * Initialize shared hub-page tab behavior for server-rendered hubs.
          *
-         * Hub pages use lightweight cards and route users into the existing
-         * detailed managers. Tabs stay client-side for quick switching while
-         * the active tab key is mirrored into the query string so refreshes and
-         * copied URLs preserve context.
+         * The active tab/panel is determined on the server. JavaScript only
+         * handles navigation and keyboard affordances so hub URLs remain the
+         * source of truth for the current workspace state.
          */
         initHubPages: function() {
-            var self = this;
-
-            $('[data-aips-hub-page]').each(function() {
-                var $page = $(this);
-                var requestedTabKey = self.getQueryParam('tab');
-                var $requestedTab = requestedTabKey ? $page.find('[data-aips-hub-tab-link][data-tab-key="' + requestedTabKey + '"]').first() : $();
-                var $defaultTab = $page.find('[data-aips-hub-tab-link].active').first();
-
-                if (!$defaultTab.length) {
-                    $defaultTab = $page.find('[data-aips-hub-tab-link]').first();
-                }
-
-                if ($requestedTab.length) {
-                    self.activateHubTab($page, $requestedTab);
-                } else if ($defaultTab.length) {
-                    self.activateHubTab($page, $defaultTab, false);
-                }
-            });
-
             $(document).on('click', '[data-aips-hub-tab-link]', function(e) {
-                var $tab = $(this);
-                var $page = $tab.closest('[data-aips-hub-page]');
-                var href;
+                var href = $(this).attr('href');
 
-                if (!$page.length) {
-                    return;
+                if (href) {
+                    e.preventDefault();
+                    window.location.assign(href);
                 }
-
-                if ($page.is('[data-aips-hub-server-tabs]')) {
-                    href = $tab.attr('href');
-
-                    if (href) {
-                        e.preventDefault();
-                        window.location.assign(href);
-                    }
-
-                    return;
-                }
-
-                e.preventDefault();
-                self.activateHubTab($page, $tab);
             });
 
             $(document).on('keydown', '[data-aips-hub-tab-link]', function(e) {
@@ -112,62 +77,6 @@
                 e.preventDefault();
                 $tabs.eq(targetIndex).trigger('click').trigger('focus');
             });
-        },
-
-        /**
-         * Activate one hub tab and reveal its linked panel.
-         *
-         * @param {jQuery} $page      Hub page wrapper.
-         * @param {jQuery} $tab       Clicked tab link.
-         * @param {boolean} updateUrl Whether to write the tab key into the URL.
-         */
-        activateHubTab: function($page, $tab, updateUrl) {
-            var panelId;
-            var tabKey;
-            var $tabs;
-            var $panels;
-
-            if (updateUrl === undefined) {
-                updateUrl = true;
-            }
-
-            panelId = $tab.data('tab');
-            tabKey = $tab.data('tab-key');
-            $tabs = $page.find('[data-aips-hub-tab-link]');
-            $panels = $page.find('[data-aips-hub-panel]');
-
-            $tabs.removeClass('active').attr('aria-selected', 'false').attr('tabindex', '-1');
-            $tab.addClass('active').attr('aria-selected', 'true').attr('tabindex', '0');
-
-            $panels.attr('hidden', 'hidden').attr('aria-hidden', 'true').removeClass('active');
-            $page.find('#' + panelId).removeAttr('hidden').attr('aria-hidden', 'false').addClass('active');
-
-            if (updateUrl && tabKey) {
-                this.setQueryParam('tab', tabKey);
-            }
-        },
-
-        /**
-         * Read a single query parameter from the current URL.
-         *
-         * @param {string} key Query-string key.
-         * @return {string}
-         */
-        getQueryParam: function(key) {
-            var params = new URLSearchParams(window.location.search);
-            return params.get(key) || '';
-        },
-
-        /**
-         * Update a single query parameter without reloading the page.
-         *
-         * @param {string} key   Query-string key.
-         * @param {string} value Query-string value.
-         */
-        setQueryParam: function(key, value) {
-            var url = new URL(window.location.href);
-            url.searchParams.set(key, value);
-            window.history.replaceState({}, '', url.toString());
         },
 
         /**

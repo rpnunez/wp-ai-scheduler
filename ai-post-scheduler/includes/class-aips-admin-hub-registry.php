@@ -100,6 +100,7 @@ class AIPS_Admin_Hub_Registry {
 					'aips-voices',
 					'aips-structures',
 					'aips-sections',
+					'aips-post-slices',
 				),
 				'tabs'         => array(
 					array(
@@ -176,6 +177,13 @@ class AIPS_Admin_Hub_Registry {
 							),
 						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/prompt-blocks.php',
+					),
+					array(
+						'key'     => 'post-slices',
+						'label'   => __('Post Slices', 'ai-post-scheduler'),
+						'title'   => __('Post Slices', 'ai-post-scheduler'),
+						'description' => __('Manage reusable editorial angles that diversify prompts and shape how generated posts are framed.', 'ai-post-scheduler'),
+						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/content-setup/post-slices.php',
 					),
 				),
 			),
