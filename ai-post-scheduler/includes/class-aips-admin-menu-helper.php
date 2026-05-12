@@ -29,6 +29,7 @@ class AIPS_Admin_Menu_Helper {
 		'content_setup_hub'    => 'aips-content-setup',
 		'automation_hub'       => 'aips-automation',
 		'outputs_hub'          => 'aips-outputs',
+		'operations_hub'       => 'aips-operations',
 		'site_context_hub'     => 'aips-site-context',
 		'settings_hub'         => 'aips-settings-hub',
 		'templates'            => 'aips-templates',
@@ -42,6 +43,7 @@ class AIPS_Admin_Menu_Helper {
 		'schedule_calendar'    => 'aips-schedule-calendar',
 		'generated_posts'      => 'aips-generated-posts',
 		'history'              => 'aips-history',
+		'operations_insights'  => 'aips-operations-insights',
 		'research'             => 'aips-research',
 		'sources'              => 'aips-sources',
 		'taxonomy'             => 'aips-taxonomy',
@@ -140,6 +142,10 @@ class AIPS_Admin_Menu_Helper {
 			case 'history':
 				$slug         = self::$page_slugs['outputs_hub'];
 				$default_args = array('tab' => 'history');
+				break;
+			case 'operations_insights':
+				$slug         = self::$page_slugs['operations_hub'];
+				$default_args = array('tab' => 'insights');
 				break;
 			case 'sources':
 				$slug         = self::$page_slugs['site_context_hub'];

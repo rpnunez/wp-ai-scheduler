@@ -343,8 +343,33 @@ class AIPS_Admin_Hub_Registry {
 								'icon'  => 'dashicons-download',
 								'id'    => 'aips-export-history-btn',
 							),
+							array(
+								'label' => __('Operations Insights', 'ai-post-scheduler'),
+								'class' => 'aips-btn aips-btn-secondary',
+								'icon'  => 'dashicons-chart-area',
+								'url'   => AIPS_Admin_Menu_Helper::get_page_url('operations_insights'),
+							),
 						),
 						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/outputs/history.php',
+					),
+				),
+			),
+			'operations'    => array(
+				'slug'         => 'aips-operations',
+				'menu_title'   => __('Operations', 'ai-post-scheduler'),
+				'page_title'   => __('Operations', 'ai-post-scheduler'),
+				'description'  => __('Monitor operational signals, failure trends, and reliability patterns from one workspace.', 'ai-post-scheduler'),
+				'render_active_only' => true,
+				'legacy_pages' => array(
+					'aips-operations-insights',
+				),
+				'tabs'         => array(
+					array(
+						'key'     => 'insights',
+						'label'   => __('Insights', 'ai-post-scheduler'),
+						'title'   => __('Operations Insights', 'ai-post-scheduler'),
+						'description' => __('Review generation reliability, runtime trends, and exportable diagnostics for support and tuning.', 'ai-post-scheduler'),
+						'partial' => AIPS_PLUGIN_DIR . 'templates/admin/hub/tabs/operations/insights.php',
 					),
 				),
 			),
@@ -544,6 +569,12 @@ class AIPS_Admin_Hub_Registry {
 				'title'   => __('System Status', 'ai-post-scheduler'),
 				'description' => __('Monitor system health, diagnostics, queue pressure, and recovery guidance in one place.', 'ai-post-scheduler'),
 				'actions' => array(
+					array(
+						'label' => __('Operations Insights', 'ai-post-scheduler'),
+						'class' => 'aips-btn aips-btn-secondary',
+						'icon'  => 'dashicons-chart-area',
+						'url'   => AIPS_Admin_Menu_Helper::get_page_url('operations_insights'),
+					),
 					array(
 						'label' => __('Run Onboarding Wizard', 'ai-post-scheduler'),
 						'class' => 'aips-btn aips-btn-primary',

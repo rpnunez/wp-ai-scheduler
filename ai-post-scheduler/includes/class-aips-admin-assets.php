@@ -52,6 +52,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_CONTENT_SETUP_HUB = 'aips-content-setup';
 	private const PAGE_AUTOMATION_HUB = 'aips-automation';
 	private const PAGE_OUTPUTS_HUB = 'aips-outputs';
+	private const PAGE_OPERATIONS_HUB = 'aips-operations';
 	private const PAGE_SITE_CONTEXT_HUB = 'aips-site-context';
 	private const PAGE_SETTINGS_HUB = 'aips-settings-hub';
 
@@ -118,6 +119,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_HISTORY === $page || $this->is_hub_tab($page, $tab, self::PAGE_OUTPUTS_HUB, array('history')) || $this->hook_contains($hook, self::PAGE_HISTORY)) {
 			$this->enqueue_history_assets();
+		}
+
+        if (self::PAGE_OPERATIONS_HUB === $page || $this->is_hub_tab($page, $tab, self::PAGE_OPERATIONS_HUB, array('insights')) || $this->hook_contains($hook, self::PAGE_OPERATIONS_HUB)) {
+			$this->enqueue_operations_assets();
 		}
 
         if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
@@ -1197,6 +1202,22 @@ class AIPS_Admin_Assets {
             'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
         ));
     }
+
+	/**
+	 * Enqueue assets for the Operations hub.
+	 */
+	private function enqueue_operations_assets() {
+		wp_enqueue_script(
+			'aips-chartjs',
+			apply_filters(
+				'aips_chartjs_src',
+				AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+			),
+			array(),
+			'4.4.2',
+			true
+		);
+	}
 
     /**
      * Enqueue assets for the telemetry page.

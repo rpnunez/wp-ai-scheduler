@@ -171,6 +171,15 @@ class AIPS_Admin_Menu {
 	}
 
 	/**
+	 * Render the Operations hub page.
+	 *
+	 * @return void
+	 */
+	public function render_operations_hub_page() {
+		$this->render_hub_page('operations');
+	}
+
+	/**
 	 * Render the Site Context hub page.
 	 *
 	 * @return void
@@ -334,8 +343,7 @@ class AIPS_Admin_Menu {
 	 * @return void
 	 */
 	public function render_operations_insights_page() {
-		$controller = new AIPS_Operations_Insights_Controller();
-		$controller->render_page();
+		$this->redirect_legacy_page('operations_insights');
 	}
 
 	/**
