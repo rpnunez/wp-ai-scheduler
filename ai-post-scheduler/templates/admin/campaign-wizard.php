@@ -150,6 +150,49 @@ $authors = get_users(array(
 							<td><select id="aips_post_author" name="post_author"><?php foreach ($authors as $author) : ?><option value="<?php echo esc_attr($author->ID); ?>" <?php selected($draft['post_author'] ?? $current_user_id, $author->ID); ?>><?php echo esc_html($author->display_name); ?></option><?php endforeach; ?></select></td>
 						</tr>
 					</tbody></table>
+
+					<h3 style="margin-top: 24px;"><?php esc_html_e('Multi-Post-Type Rules (Optional)', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Generate multiple post types per cycle with different quantities and prompt variations. Leave empty to use the single post type from Step 1.', 'ai-post-scheduler'); ?></p>
+
+					<div id="aips-post-type-rules-container" style="margin-top: 12px;">
+						<?php
+						$saved_rules = isset($draft['post_type_rules']) ? json_decode($draft['post_type_rules'], true) : array();
+						if (!empty($saved_rules) && is_array($saved_rules)) :
+							foreach ($saved_rules as $index => $rule) :
+								?>
+								<div class="aips-post-type-rule" data-rule-index="<?php echo esc_attr($index); ?>" style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 10px;">
+									<div style="display: grid; grid-template-columns: 1fr 1fr 80px 50px; gap: 10px; align-items: start;">
+										<div>
+											<label><?php esc_html_e('Post Type', 'ai-post-scheduler'); ?></label>
+											<select name="post_type_rules[<?php echo esc_attr($index); ?>][post_type]" class="regular-text">
+												<?php foreach ($post_types as $post_type => $post_type_obj) : ?>
+													<option value="<?php echo esc_attr($post_type); ?>" <?php selected($rule['post_type'] ?? 'post', $post_type); ?>><?php echo esc_html($post_type_obj->labels->singular_name); ?></option>
+												<?php endforeach; ?>
+											</select>
+										</div>
+										<div>
+											<label><?php esc_html_e('Prompt Override (Optional)', 'ai-post-scheduler'); ?></label>
+											<input type="text" name="post_type_rules[<?php echo esc_attr($index); ?>][prompt_override]" class="regular-text" value="<?php echo esc_attr($rule['prompt_override'] ?? ''); ?>" placeholder="<?php esc_attr_e('Leave empty to use main template', 'ai-post-scheduler'); ?>">
+										</div>
+										<div>
+											<label><?php esc_html_e('Quantity', 'ai-post-scheduler'); ?></label>
+											<input type="number" name="post_type_rules[<?php echo esc_attr($index); ?>][quantity]" min="1" max="100" value="<?php echo esc_attr($rule['quantity'] ?? 1); ?>" style="width: 100%;">
+										</div>
+										<div style="padding-top: 20px;">
+											<button type="button" class="button button-small aips-remove-post-type-rule" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>
+											</button>
+										</div>
+									</div>
+								</div>
+								<?php
+							endforeach;
+						endif;
+						?>
+					</div>
+					<button type="button" id="aips-add-post-type-rule" class="button" style="margin-top: 10px;">
+						<span class="dashicons dashicons-plus-alt2" style="margin-top: 2px;"></span> <?php esc_html_e('Add Post Type Rule', 'ai-post-scheduler'); ?>
+					</button>
 				</section>
 
 				<section class="aips-wizard-step" data-step="schedule" style="display:none;">

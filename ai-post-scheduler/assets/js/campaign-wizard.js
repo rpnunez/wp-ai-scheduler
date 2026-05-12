@@ -50,6 +50,8 @@
 			$(document).on('click', '#aips-wizard-prev', AIPS.CampaignWizard.onPreviousClick);
 			$(document).on('click', '.aips-wizard-step-tab', AIPS.CampaignWizard.onStepTabClick);
 			$(document).on('click', '#aips-wizard-finalize', AIPS.CampaignWizard.onFinalizeClick);
+			$(document).on('click', '#aips-add-post-type-rule', AIPS.CampaignWizard.onAddPostTypeRule);
+			$(document).on('click', '.aips-remove-post-type-rule', AIPS.CampaignWizard.onRemovePostTypeRule);
 		},
 
 		/**
@@ -438,6 +440,64 @@
 					window.location.href = redirectUrl;
 				}
 			}
+		},
+
+		/**
+		 * Handle adding a new post-type rule row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onAddPostTypeRule: function(e) {
+			e.preventDefault();
+
+			var $container = $('#aips-post-type-rules-container');
+			var nextIndex = $container.find('.aips-post-type-rule').length;
+			var postTypesJson = $('#aips_post_type').find('option').map(function() {
+				return { value: $(this).val(), label: $(this).text() };
+			}).get();
+
+			var $newRule = $(
+				'<div class="aips-post-type-rule" data-rule-index="' + nextIndex + '" style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 10px;">' +
+					'<div style="display: grid; grid-template-columns: 1fr 1fr 80px 50px; gap: 10px; align-items: start;">' +
+						'<div>' +
+							'<label>Post Type</label>' +
+							'<select name="post_type_rules[' + nextIndex + '][post_type]" class="regular-text"></select>' +
+						'</div>' +
+						'<div>' +
+							'<label>Prompt Override (Optional)</label>' +
+							'<input type="text" name="post_type_rules[' + nextIndex + '][prompt_override]" class="regular-text" placeholder="Leave empty to use main template">' +
+						'</div>' +
+						'<div>' +
+							'<label>Quantity</label>' +
+							'<input type="number" name="post_type_rules[' + nextIndex + '][quantity]" min="1" max="100" value="1" style="width: 100%;">' +
+						'</div>' +
+						'<div style="padding-top: 20px;">' +
+							'<button type="button" class="button button-small aips-remove-post-type-rule" title="Remove">' +
+								'<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>' +
+							'</button>' +
+						'</div>' +
+					'</div>' +
+				'</div>'
+			);
+
+			var $select = $newRule.find('select');
+			for (var i = 0; i < postTypesJson.length; i++) {
+				$select.append('<option value="' + postTypesJson[i].value + '">' + postTypesJson[i].label + '</option>');
+			}
+
+			$container.append($newRule);
+		},
+
+		/**
+		 * Handle removing a post-type rule row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRemovePostTypeRule: function(e) {
+			e.preventDefault();
+			$(this).closest('.aips-post-type-rule').remove();
 		},
 
 		/**

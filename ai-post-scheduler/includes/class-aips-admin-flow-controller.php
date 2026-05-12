@@ -152,6 +152,7 @@ class AIPS_Admin_Flow_Controller {
 				'rotation_pattern'      => $payload['rotation_pattern'],
 				'author_id'             => $payload['author_id'],
 				'campaign_mode'         => $payload['campaign_mode'],
+				'post_type_rules'       => $payload['post_type_rules'],
 			));
 
 			if (!$schedule_id) {
@@ -231,6 +232,7 @@ class AIPS_Admin_Flow_Controller {
 			'rotation_pattern'       => isset($payload['rotation_pattern']) ? sanitize_key($payload['rotation_pattern']) : 'sequential',
 			'author_id'              => isset($payload['author_id']) ? absint($payload['author_id']) : 0,
 			'campaign_mode'          => isset($payload['campaign_mode']) ? sanitize_key($payload['campaign_mode']) : 'template',
+			'post_type_rules'        => $this->normalise_post_type_rules($payload),
 			'post_category'          => isset($payload['post_category']) ? absint($payload['post_category']) : absint($this->config->get_option('aips_default_category')),
 			'post_tags'              => isset($payload['post_tags']) ? sanitize_text_field($payload['post_tags']) : '',
 			'post_author'            => isset($payload['post_author']) ? absint($payload['post_author']) : absint($this->config->get_option('aips_default_post_author')),
@@ -389,6 +391,32 @@ class AIPS_Admin_Flow_Controller {
 	private function normalise_post_type($post_type) {
 		$post_type = sanitize_key((string) $post_type);
 		return $this->post_type_exists($post_type) ? $post_type : 'post';
+	}
+
+	private function normalise_post_type_rules($payload) {
+		if (!isset($payload['post_type_rules']) || !is_array($payload['post_type_rules'])) {
+			return '';
+		}
+
+		$rules = array();
+		foreach ($payload['post_type_rules'] as $rule) {
+			if (!is_array($rule)) {
+				continue;
+			}
+
+			$post_type = isset($rule['post_type']) ? sanitize_key($rule['post_type']) : '';
+			if (!$this->post_type_exists($post_type)) {
+				continue;
+			}
+
+			$rules[] = array(
+				'post_type'       => $post_type,
+				'quantity'        => isset($rule['quantity']) ? absint($rule['quantity']) : 1,
+				'prompt_override' => isset($rule['prompt_override']) ? sanitize_text_field($rule['prompt_override']) : '',
+			);
+		}
+
+		return !empty($rules) ? wp_json_encode($rules) : '';
 	}
 
 	private function post_type_exists($post_type) {
