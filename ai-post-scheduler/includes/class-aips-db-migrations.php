@@ -374,6 +374,7 @@ class AIPS_DB_Migrations {
 		$this->rename_legacy_content_component_table( $legacy_rules_table, $rules_table );
 		$this->rename_legacy_content_component_table( $legacy_analytics_table, $analytics_table );
 		$this->rename_legacy_content_component_table( $legacy_injections_table, $injections_table );
+		$this->ensure_content_component_analytics_columns( $analytics_table );
 
 		$components_exist = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $components_table ) );
 		if ( $components_exist !== $components_table ) {
@@ -487,6 +488,42 @@ class AIPS_DB_Migrations {
 
 		if ( $legacy_exists === $legacy_table && $new_exists !== $new_table ) {
 			$wpdb->query( "RENAME TABLE `{$legacy_table}` TO `{$new_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+		}
+	}
+
+	/**
+	 * Ensure Phase 3 analytics columns exist on upgraded installs.
+	 *
+	 * @param string $table Analytics table name.
+	 * @return void
+	 */
+	private function ensure_content_component_analytics_columns( $table ) {
+		global $wpdb;
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$columns = array(
+			'matched_count'           => 'ADD COLUMN matched_count bigint(20) unsigned NOT NULL DEFAULT 0 AFTER regeneration_reinjections',
+			'skipped_conflict_count'  => 'ADD COLUMN skipped_conflict_count bigint(20) unsigned NOT NULL DEFAULT 0 AFTER matched_count',
+			'skipped_exclusion_count' => 'ADD COLUMN skipped_exclusion_count bigint(20) unsigned NOT NULL DEFAULT 0 AFTER skipped_conflict_count',
+			'dry_run_matches'         => 'ADD COLUMN dry_run_matches bigint(20) unsigned NOT NULL DEFAULT 0 AFTER skipped_exclusion_count',
+			'dry_run_total'           => 'ADD COLUMN dry_run_total bigint(20) unsigned NOT NULL DEFAULT 0 AFTER dry_run_matches',
+		);
+
+		foreach ( $columns as $column_name => $add_clause ) {
+			$exists = $wpdb->get_row(
+				$wpdb->prepare(
+					"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$column_name
+				)
+			);
+
+			if ( ! $exists ) {
+				$wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			}
 		}
 	}
 }

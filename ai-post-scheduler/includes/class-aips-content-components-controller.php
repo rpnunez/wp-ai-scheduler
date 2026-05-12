@@ -80,6 +80,8 @@ class AIPS_Content_Components_Controller {
 		add_action( 'wp_ajax_aips_validate_content_component', array( $this, 'ajax_validate_content_component' ) );
 		add_action( 'wp_ajax_aips_get_content_component_examples', array( $this, 'ajax_get_content_component_examples' ) );
 		add_action( 'wp_ajax_aips_content_components_dry_run', array( $this, 'ajax_content_components_dry_run' ) );
+		add_action( 'wp_ajax_aips_content_components_backfill_preview', array( $this, 'ajax_content_components_backfill_preview' ) );
+		add_action( 'wp_ajax_aips_content_components_backfill_apply', array( $this, 'ajax_content_components_backfill_apply' ) );
 	}
 
 	/**
@@ -364,9 +366,10 @@ class AIPS_Content_Components_Controller {
 			$context = AIPS_Content_Component_Run_Context::from_post(
 				$post,
 				array(
-					'content' => $content,
-					'region'  => $region,
-					'locale'  => $locale,
+					'content'    => $content,
+					'region'     => $region,
+					'locale'     => $locale,
+					'is_dry_run' => true,
 				)
 			);
 		} else {
@@ -389,6 +392,7 @@ class AIPS_Content_Components_Controller {
 					'policy_tags'     => array(),
 					'run_timestamp'   => AIPS_DateTime::now()->timestamp(),
 					'site_timezone'   => wp_timezone_string(),
+					'is_dry_run'      => true,
 				)
 			);
 			$content = $draft_body;
@@ -460,6 +464,14 @@ class AIPS_Content_Components_Controller {
 			}
 		}
 
+		foreach ( (array) $evaluation['matched'] as $match ) {
+			$this->analytics_repository->record_dry_run( (int) $match['component']->id, true );
+		}
+
+		foreach ( (array) $evaluation['rejected'] as $rejection ) {
+			$this->analytics_repository->record_dry_run( (int) $rejection['component']->id, false );
+		}
+
 		AIPS_Ajax_Response::success(
 			array(
 				'matched_components'  => $this->normalize_dry_run_matches($evaluation['matched']),
@@ -475,6 +487,198 @@ class AIPS_Content_Components_Controller {
 				),
 			)
 		);
+	}
+
+	/**
+	 * Preview how many existing posts match and would change if backfilled.
+	 *
+	 * @return void
+	 */
+	public function ajax_content_components_backfill_preview() {
+		$this->authorize();
+
+		$posts = $this->resolve_backfill_posts();
+		if (empty($posts)) {
+			AIPS_Ajax_Response::success(array(
+				'total_posts'     => 0,
+				'matched_posts'   => 0,
+				'would_update'    => 0,
+				'preview'         => array(),
+			));
+		}
+
+		$preview       = array();
+		$matched_posts = 0;
+		$would_update  = 0;
+
+		foreach ($posts as $post) {
+			$context = AIPS_Content_Component_Run_Context::from_post(
+				$post,
+				array(
+					'content'    => (string) $post->post_content,
+					'is_dry_run' => true,
+				)
+			);
+
+			$evaluation = $this->matcher_service->evaluate_components_detailed($context);
+			$prepared   = $this->injection_service->prepare_content(
+				(string) $post->post_content,
+				$context,
+				array(
+					'strip_existing_markers' => true,
+				)
+			);
+
+			if (!empty($evaluation['matched'])) {
+				$matched_posts++;
+			}
+			if ((string) $prepared['content'] !== (string) $post->post_content) {
+				$would_update++;
+			}
+
+			$preview[] = array(
+				'post_id'           => (int) $post->ID,
+				'post_title'        => (string) get_the_title($post),
+				'matched_count'     => count($evaluation['matched']),
+				'rejected_count'    => count($evaluation['rejected']),
+				'will_update'       => (string) $prepared['content'] !== (string) $post->post_content,
+			);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'total_posts'     => count($posts),
+			'matched_posts'   => $matched_posts,
+			'would_update'    => $would_update,
+			'preview'         => $preview,
+		));
+	}
+
+	/**
+	 * Apply content component backfill to existing posts.
+	 *
+	 * @return void
+	 */
+	public function ajax_content_components_backfill_apply() {
+		$this->authorize();
+
+		if (!AIPS_Config::get_instance()->is_feature_enabled('content_components_engine', true)) {
+			AIPS_Ajax_Response::error(__('Content Components engine is currently disabled.', 'ai-post-scheduler'));
+		}
+
+		$posts = $this->resolve_backfill_posts();
+		if (empty($posts)) {
+			AIPS_Ajax_Response::success(array(
+				'total_posts' => 0,
+				'updated'     => 0,
+				'skipped'     => 0,
+				'failed'      => 0,
+				'details'     => array(),
+			));
+		}
+
+		$run_id   = AIPS_Correlation_ID::generate();
+		$updated  = 0;
+		$skipped  = 0;
+		$failed   = 0;
+		$details  = array();
+
+		foreach ($posts as $post) {
+			$context = AIPS_Content_Component_Run_Context::from_post(
+				$post,
+				array(
+					'content' => (string) $post->post_content,
+				)
+			);
+
+			$prepared = $this->injection_service->prepare_content(
+				(string) $post->post_content,
+				$context,
+				array(
+					'strip_existing_markers' => true,
+				)
+			);
+
+			if ((string) $prepared['content'] === (string) $post->post_content) {
+				$skipped++;
+				$details[] = array(
+					'post_id' => (int) $post->ID,
+					'status'  => 'skipped',
+					'reason'  => 'unchanged',
+				);
+				continue;
+			}
+
+			$save_result = wp_update_post(
+				array(
+					'ID'           => (int) $post->ID,
+					'post_content' => (string) $prepared['content'],
+				),
+				true
+			);
+
+			if (is_wp_error($save_result)) {
+				$failed++;
+				$details[] = array(
+					'post_id' => (int) $post->ID,
+					'status'  => 'failed',
+					'reason'  => $save_result->get_error_message(),
+				);
+				continue;
+			}
+
+			$this->injection_service->record_injections_from_content((int) $post->ID, (string) $prepared['content'], $run_id, false);
+			$updated++;
+			$details[] = array(
+				'post_id' => (int) $post->ID,
+				'status'  => 'updated',
+				'matched' => count((array) $prepared['plan']),
+			);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'run_id'      => $run_id,
+			'total_posts' => count($posts),
+			'updated'     => $updated,
+			'skipped'     => $skipped,
+			'failed'      => $failed,
+			'details'     => $details,
+		));
+	}
+
+	/**
+	 * Resolve posts targeted by backfill preview/apply requests.
+	 *
+	 * @return array<int,WP_Post>
+	 */
+	private function resolve_backfill_posts() {
+		$post_ids_raw = isset($_POST['post_ids']) ? sanitize_text_field(wp_unslash($_POST['post_ids'])) : '';
+		$limit        = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+		$post_type    = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : 'post';
+
+		$limit = max(1, min(200, $limit));
+		$ids   = array_values(array_filter(array_map('absint', explode(',', $post_ids_raw))));
+
+		if (!empty($ids)) {
+			$posts = get_posts(array(
+				'post_type'      => $post_type,
+				'post_status'    => array('publish', 'draft', 'future'),
+				'post__in'       => $ids,
+				'orderby'        => 'post__in',
+				'posts_per_page' => $limit,
+			));
+
+			return is_array($posts) ? $posts : array();
+		}
+
+		$posts = get_posts(array(
+			'post_type'      => $post_type,
+			'post_status'    => array('publish', 'draft', 'future'),
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'posts_per_page' => $limit,
+		));
+
+		return is_array($posts) ? $posts : array();
 	}
 
 	/**
@@ -735,6 +939,15 @@ class AIPS_Content_Components_Controller {
 			'impressions' => 0,
 			'injections'  => 0,
 			'regeneration_reinjections' => 0,
+			'matched_count' => 0,
+			'skipped_conflict_count' => 0,
+			'skipped_exclusion_count' => 0,
+			'dry_run_matches' => 0,
+			'dry_run_total' => 0,
+			'dry_run_match_rate' => 0,
+			'last_seen_at' => 0,
+			'unique_posts' => 0,
+			'last_injected_at' => 0,
 		);
 	}
 }

@@ -66,6 +66,15 @@ class AIPS_Content_Component_Injection_Service {
 	 * @return array<string,mixed>
 	 */
 	public function prepare_content( $content, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
+		if ( ! AIPS_Config::get_instance()->is_feature_enabled( 'content_components_engine', true ) ) {
+			return array(
+				'content' => (string) $content,
+				'plan'    => array(),
+				'base'    => (string) $content,
+			);
+		}
+
+		$started_at   = microtime( true );
 		$base_content = ! empty( $options['strip_existing_markers'] )
 			? $this->strip_injected_components( (string) $content )
 			: (string) $content;
@@ -90,11 +99,26 @@ class AIPS_Content_Component_Injection_Service {
 			);
 		}
 
-		return array(
+		$result = array(
 			'content' => $this->apply_plan( $base_content, $plan ),
 			'plan'    => $plan,
 			'base'    => $base_content,
 		);
+
+		if ( AIPS_Telemetry::is_enabled() ) {
+			AIPS_Telemetry::instance()->add_event(
+				'content_components',
+				array(
+					'type'         => 'prepare_content',
+					'plan_size'    => count( $plan ),
+					'elapsed_ms'   => round( ( microtime( true ) - $started_at ) * 1000, 2 ),
+					'post_id'      => (int) $context->get( 'post_id', 0 ),
+					'is_dry_run'   => (bool) $context->get( 'is_dry_run', false ),
+				)
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -108,6 +132,14 @@ class AIPS_Content_Component_Injection_Service {
 	 * @return array<string,mixed>
 	 */
 	public function prepare_manual_component( $content, $component, array $rule, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
+		if ( ! AIPS_Config::get_instance()->is_feature_enabled( 'content_components_engine', true ) ) {
+			return array(
+				'content' => (string) $content,
+				'plan'    => array(),
+				'base'    => (string) $content,
+			);
+		}
+
 		$base_content = ! empty( $options['strip_existing_markers'] )
 			? $this->strip_injected_components( (string) $content )
 			: (string) $content;
@@ -403,6 +435,7 @@ class AIPS_Content_Component_Injection_Service {
 			return substr( $content, 0, $offset ) . "\n\n" . $insertion . "\n\n" . substr( $content, $offset );
 		}
 
+		$this->record_fallback_telemetry( 'after_nth_h2_fallback', array( 'nth' => $nth ) );
 		return rtrim( $content ) . "\n\n" . $insertion;
 	}
 
@@ -420,6 +453,21 @@ class AIPS_Content_Component_Injection_Service {
 			return substr( $content, 0, $offset ) . $insertion . "\n\n" . substr( $content, $offset );
 		}
 
+		$this->record_fallback_telemetry( 'before_conclusion_fallback' );
 		return rtrim( $content ) . "\n\n" . $insertion;
+	}
+
+	/**
+	 * @param string               $type Telemetry event type.
+	 * @param array<string,mixed>  $data Event payload.
+	 * @return void
+	 */
+	private function record_fallback_telemetry( $type, array $data = array() ) {
+		if ( ! AIPS_Telemetry::is_enabled() ) {
+			return;
+		}
+
+		$data['type'] = $type;
+		AIPS_Telemetry::instance()->add_event( 'content_components', $data );
 	}
 }

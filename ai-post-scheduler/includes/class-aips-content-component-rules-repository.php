@@ -22,10 +22,16 @@ class AIPS_Content_Component_Rules_Repository {
 	 */
 	private $table_name;
 
+	/**
+	 * @var AIPS_Cache
+	 */
+	private $cache;
+
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb       = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_content_component_rules';
+		$this->cache      = AIPS_Cache_Factory::named( 'aips_content_component_rules_repository' );
 	}
 
 	/**
@@ -45,6 +51,12 @@ class AIPS_Content_Component_Rules_Repository {
 			return array();
 		}
 
+		sort( $component_ids );
+		$cache_key = 'enabled:' . md5( wp_json_encode( $component_ids ) );
+		if ( $this->cache->has( $cache_key ) ) {
+			return (array) $this->cache->get( $cache_key );
+		}
+
 		$placeholders = implode( ',', array_fill( 0, count( $component_ids ), '%d' ) );
 		$sql          = $this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} WHERE enabled = 1 AND component_id IN ({$placeholders}) ORDER BY priority DESC, component_id ASC, id ASC",
@@ -60,6 +72,8 @@ class AIPS_Content_Component_Rules_Repository {
 			}
 			$rules[ $component_id ][] = $this->normalize_rule( $row );
 		}
+
+		$this->cache->set( $cache_key, $rules, 300 );
 
 		return $rules;
 	}
@@ -104,22 +118,40 @@ class AIPS_Content_Component_Rules_Repository {
 		);
 
 		if ( $existing ) {
-			return false !== $this->wpdb->update(
+			$result = false !== $this->wpdb->update(
 				$this->table_name,
 				$data,
 				array( 'id' => (int) $existing->id ),
 				array( '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d' ),
 				array( '%d' )
 			);
+			if ( $result ) {
+				$this->flush_caches();
+			}
+			return $result;
 		}
 
 		$data['created_at'] = $timestamp;
 
-		return false !== $this->wpdb->insert(
+		$result = false !== $this->wpdb->insert(
 			$this->table_name,
 			$data,
 			array( '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d', '%d' )
 		);
+		if ( $result ) {
+			$this->flush_caches();
+		}
+		return $result;
+	}
+
+	/**
+	 * Flush repository and matcher caches after rule writes.
+	 *
+	 * @return void
+	 */
+	private function flush_caches() {
+		$this->cache->flush();
+		AIPS_Cache_Factory::named( 'aips_content_component_matcher' )->flush();
 	}
 
 	/**

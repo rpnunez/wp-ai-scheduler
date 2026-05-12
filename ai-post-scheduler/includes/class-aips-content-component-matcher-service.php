@@ -22,12 +22,25 @@ class AIPS_Content_Component_Matcher_Service {
 	 */
 	private $rules_repository;
 
+	/**
+	 * @var AIPS_Content_Component_Analytics_Repository
+	 */
+	private $analytics_repository;
+
+	/**
+	 * @var AIPS_Cache
+	 */
+	private $cache;
+
 	public function __construct(
 		?AIPS_Content_Components_Repository $components_repository = null,
-		?AIPS_Content_Component_Rules_Repository $rules_repository = null
+		?AIPS_Content_Component_Rules_Repository $rules_repository = null,
+		?AIPS_Content_Component_Analytics_Repository $analytics_repository = null
 	) {
 		$this->components_repository = $components_repository ?: new AIPS_Content_Components_Repository();
 		$this->rules_repository      = $rules_repository ?: new AIPS_Content_Component_Rules_Repository();
+		$this->analytics_repository  = $analytics_repository ?: new AIPS_Content_Component_Analytics_Repository();
+		$this->cache                 = AIPS_Cache_Factory::named( 'aips_content_component_matcher' );
 	}
 
 	/**
@@ -48,6 +61,19 @@ class AIPS_Content_Component_Matcher_Service {
 	 * @return array<string,array<int,array<string,mixed>>>
 	 */
 	public function evaluate_components_detailed( AIPS_Content_Component_Run_Context $context ) {
+		if ( ! AIPS_Config::get_instance()->is_feature_enabled( 'content_components_engine', true ) ) {
+			return array(
+				'matched'  => array(),
+				'rejected' => array(),
+			);
+		}
+
+		$cache_key = $this->build_cache_key( $context );
+		if ( $this->cache->has( $cache_key ) ) {
+			return (array) $this->cache->get( $cache_key );
+		}
+
+		$started_at = microtime( true );
 		$components = $this->components_repository->get_active_components();
 		if ( empty( $components ) ) {
 			return array(
@@ -63,9 +89,9 @@ class AIPS_Content_Component_Matcher_Service {
 			$components
 		);
 		$rules_by_component = $this->rules_repository->get_enabled_rules_for_component_ids( $component_ids );
-		$resolved         = array();
-		$rejected         = array();
-		$disclaimer_taken = false;
+		$candidates         = array();
+		$rejected           = array();
+		$is_dry_run         = (bool) $context->get( 'is_dry_run', false );
 
 		foreach ( $components as $component ) {
 			$component_rules = $rules_by_component[ (int) $component->id ] ?? array();
@@ -77,7 +103,6 @@ class AIPS_Content_Component_Matcher_Service {
 				continue;
 			}
 
-			$component_matched = false;
 			foreach ( $component_rules as $rule ) {
 				$rule_evaluation = $this->evaluate_rule( $rule, $component, $context );
 				if ( ! $rule_evaluation['matched'] ) {
@@ -86,29 +111,29 @@ class AIPS_Content_Component_Matcher_Service {
 						'rule'      => $rule,
 						'reason'    => $rule_evaluation['reason'],
 					);
+					if ( ! $is_dry_run && 'exclusion_blocked' === (string) ( $rule_evaluation['code'] ?? '' ) ) {
+						$this->analytics_repository->record_event( (int) $component->id, 'skipped_exclusion' );
+					}
 					continue;
 				}
 
-				if ( 'disclaimer' === (string) $component->component_type ) {
-					if ( $disclaimer_taken ) {
-						$rejected[] = array(
-							'component' => $component,
-							'rule'      => $rule,
-							'reason'    => __( 'Skipped because another disclaimer already occupies this slot.', 'ai-post-scheduler' ),
-						);
-						continue;
-					}
-					$disclaimer_taken = true;
-				}
-
-				$component_matched = true;
-				$resolved[] = array(
+				$candidates[] = array(
 					'component' => $component,
 					'rule'      => $rule,
 					'priority'  => (int) $rule['priority'],
+					'placement' => (string) ( $rule['placement'] ?? 'end_of_post' ),
+					'score'     => 0,
+					'rotation_score' => $this->get_rotation_score( $component, $rule, $context ),
 				);
 			}
+		}
 
+		$resolved = $this->arbitrate_candidates( $candidates, $rejected, $context );
+
+		if ( ! $is_dry_run ) {
+			foreach ( $resolved as $match ) {
+				$this->analytics_repository->record_event( (int) $match['component']->id, 'matched' );
+			}
 		}
 
 		usort(
@@ -123,10 +148,28 @@ class AIPS_Content_Component_Matcher_Service {
 			}
 		);
 
-		return array(
+		$evaluation = array(
 			'matched'  => $resolved,
 			'rejected' => $rejected,
 		);
+
+		$this->cache->set( $cache_key, $evaluation, 300 );
+
+		if ( AIPS_Telemetry::is_enabled() ) {
+			AIPS_Telemetry::instance()->add_event(
+				'content_components',
+				array(
+					'type'            => 'matcher_evaluation',
+					'matched_count'   => count( $resolved ),
+					'rejected_count'  => count( $rejected ),
+					'candidate_count' => count( $candidates ),
+					'elapsed_ms'      => round( ( microtime( true ) - $started_at ) * 1000, 2 ),
+					'is_dry_run'      => $is_dry_run,
+				)
+			);
+		}
+
+		return $evaluation;
 	}
 
 	/**
@@ -144,15 +187,16 @@ class AIPS_Content_Component_Matcher_Service {
 	/**
 	 * Evaluate a rule against the run context.
 	 *
-	 * @param array<string,mixed>             $rule Rule payload.
-	 * @param object                          $component Component row.
+	 * @param array<string,mixed>                $rule Rule payload.
+	 * @param object                             $component Component row.
 	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
-	 * @return bool
+	 * @return array<string,mixed>
 	 */
 	private function evaluate_rule( array $rule, $component, AIPS_Content_Component_Run_Context $context ) {
 		if ( ! empty( $component->status ) && 'active' !== (string) $component->status ) {
 			return array(
 				'matched' => false,
+				'code'    => 'inactive_status',
 				'reason'  => __( 'Component status is not active.', 'ai-post-scheduler' ),
 			);
 		}
@@ -160,6 +204,7 @@ class AIPS_Content_Component_Matcher_Service {
 		if ( ! $this->evaluate_condition_set( $rule['conditions_json'] ?? array(), $component, $context, true ) ) {
 			return array(
 				'matched' => false,
+				'code'    => 'conditions_unmatched',
 				'reason'  => __( 'Rule conditions did not match this post context.', 'ai-post-scheduler' ),
 			);
 		}
@@ -167,6 +212,7 @@ class AIPS_Content_Component_Matcher_Service {
 		if ( $this->evaluate_condition_set( $rule['exclusions_json'] ?? array(), $component, $context, false ) ) {
 			return array(
 				'matched' => false,
+				'code'    => 'exclusion_blocked',
 				'reason'  => __( 'An exclusion rule blocked this component.', 'ai-post-scheduler' ),
 			);
 		}
@@ -174,6 +220,7 @@ class AIPS_Content_Component_Matcher_Service {
 		if ( ! $this->evaluate_date_window( $rule['date_window_json'] ?? array(), $context ) ) {
 			return array(
 				'matched' => false,
+				'code'    => 'outside_date_window',
 				'reason'  => __( 'The current date is outside the configured date window.', 'ai-post-scheduler' ),
 			);
 		}
@@ -181,12 +228,14 @@ class AIPS_Content_Component_Matcher_Service {
 		if ( ! $this->passes_frequency( $rule, $context ) ) {
 			return array(
 				'matched' => false,
+				'code'    => 'frequency_limited',
 				'reason'  => __( 'Frequency limits prevented another injection.', 'ai-post-scheduler' ),
 			);
 		}
 
 		return array(
 			'matched' => true,
+			'code'    => 'matched',
 			'reason'  => __( 'Matched.', 'ai-post-scheduler' ),
 		);
 	}
@@ -475,5 +524,242 @@ class AIPS_Content_Component_Matcher_Service {
 
 		$max_occurrences = max( 1, (int) ( $rule['max_occurrences'] ?? 1 ) );
 		return $max_occurrences >= 1 && $context->get( 'post_id', 0 ) >= 0;
+	}
+
+	/**
+	 * @param array<int,array<string,mixed>>               $candidates Candidate matches.
+	 * @param array<int,array<string,mixed>>               $rejected Rejected collection.
+	 * @param AIPS_Content_Component_Run_Context           $context Runtime context.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function arbitrate_candidates( array $candidates, array &$rejected, AIPS_Content_Component_Run_Context $context ) {
+		if ( empty( $candidates ) ) {
+			return array();
+		}
+
+		$ranked = $this->resolve_variant_rotation( $candidates, $rejected );
+		usort(
+			$ranked,
+			static function ( $left, $right ) {
+				$priority_compare = (int) $right['priority'] <=> (int) $left['priority'];
+				if ( 0 !== $priority_compare ) {
+					return $priority_compare;
+				}
+
+				$score_compare = (float) $right['score'] <=> (float) $left['score'];
+				if ( 0 !== $score_compare ) {
+					return $score_compare;
+				}
+
+				$rotation_compare = (float) $right['rotation_score'] <=> (float) $left['rotation_score'];
+				if ( 0 !== $rotation_compare ) {
+					return $rotation_compare;
+				}
+
+				return (int) $left['component']->id <=> (int) $right['component']->id;
+			}
+		);
+
+		$global_cap = max( 1, (int) AIPS_Config::get_instance()->get_option( 'aips_content_components_max_total', 3 ) );
+		$resolved   = array();
+		$type_usage = array();
+		$slot_usage = array();
+		$is_dry_run = (bool) $context->get( 'is_dry_run', false );
+
+		foreach ( $ranked as $candidate ) {
+			if ( count( $resolved ) >= $global_cap ) {
+				$rejected[] = array(
+					'component' => $candidate['component'],
+					'rule'      => $candidate['rule'],
+					'reason'    => __( 'Skipped because the per-post component cap was reached.', 'ai-post-scheduler' ),
+				);
+				if ( ! $is_dry_run ) {
+					$this->analytics_repository->record_event( (int) $candidate['component']->id, 'skipped_conflict' );
+				}
+				continue;
+			}
+
+			$type = sanitize_key( (string) $candidate['component']->component_type );
+			$slot = $this->slot_key_for_candidate( $candidate );
+
+			$type_cap = $this->get_type_cap( $type );
+			if ( isset( $type_usage[ $type ] ) && $type_usage[ $type ] >= $type_cap ) {
+				$rejected[] = array(
+					'component' => $candidate['component'],
+					'rule'      => $candidate['rule'],
+					'reason'    => __( 'Skipped because the component-type cap was reached.', 'ai-post-scheduler' ),
+				);
+				if ( ! $is_dry_run ) {
+					$this->analytics_repository->record_event( (int) $candidate['component']->id, 'skipped_conflict' );
+				}
+				continue;
+			}
+
+			$slot_cap = $this->get_slot_cap( $type, $candidate['placement'] );
+			if ( isset( $slot_usage[ $slot ] ) && $slot_usage[ $slot ] >= $slot_cap ) {
+				$rejected[] = array(
+					'component' => $candidate['component'],
+					'rule'      => $candidate['rule'],
+					'reason'    => __( 'Skipped because another component already occupies this slot.', 'ai-post-scheduler' ),
+				);
+				if ( ! $is_dry_run ) {
+					$this->analytics_repository->record_event( (int) $candidate['component']->id, 'skipped_conflict' );
+				}
+				continue;
+			}
+
+			$resolved[]           = $candidate;
+			$type_usage[ $type ]  = isset( $type_usage[ $type ] ) ? $type_usage[ $type ] + 1 : 1;
+			$slot_usage[ $slot ]  = isset( $slot_usage[ $slot ] ) ? $slot_usage[ $slot ] + 1 : 1;
+		}
+
+		return $resolved;
+	}
+
+	/**
+	 * Reduce equivalent candidates to one stable winner per slot/priority/type group.
+	 *
+	 * @param array<int,array<string,mixed>> $candidates Candidate matches.
+	 * @param array<int,array<string,mixed>> $rejected Rejected collection.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function resolve_variant_rotation( array $candidates, array &$rejected ) {
+		$grouped = array();
+		foreach ( $candidates as $candidate ) {
+			$type      = sanitize_key( (string) $candidate['component']->component_type );
+			$placement = $this->base_placement( $candidate['placement'] );
+			$key       = $placement . '|' . $type . '|' . (int) $candidate['priority'];
+
+			if ( ! isset( $grouped[ $key ] ) ) {
+				$grouped[ $key ] = array();
+			}
+			$grouped[ $key ][] = $candidate;
+		}
+
+		$ranked = array();
+		foreach ( $grouped as $group ) {
+			if ( 1 === count( $group ) ) {
+				$ranked[] = $group[0];
+				continue;
+			}
+
+			usort(
+				$group,
+				static function ( $left, $right ) {
+					$rotation_compare = (float) $right['rotation_score'] <=> (float) $left['rotation_score'];
+					if ( 0 !== $rotation_compare ) {
+						return $rotation_compare;
+					}
+
+					return (int) $left['component']->id <=> (int) $right['component']->id;
+				}
+			);
+
+			$winner = array_shift( $group );
+			$ranked[] = $winner;
+
+			foreach ( $group as $loser ) {
+				$rejected[] = array(
+					'component' => $loser['component'],
+					'rule'      => $loser['rule'],
+					'reason'    => __( 'Skipped because an equivalent-priority variant won the rotation tie-breaker.', 'ai-post-scheduler' ),
+				);
+			}
+		}
+
+		return $ranked;
+	}
+
+	/**
+	 * @param object                        $component Component row.
+	 * @param array<string,mixed>           $rule Rule payload.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
+	 * @return float
+	 */
+	private function get_rotation_score( $component, array $rule, AIPS_Content_Component_Run_Context $context ) {
+		$weight = 1.0;
+		if ( isset( $rule['rotation_weight'] ) ) {
+			$weight = max( 0.1, (float) $rule['rotation_weight'] );
+		} elseif ( ! empty( $component->cta_payload ) ) {
+			$payload = json_decode( (string) $component->cta_payload, true );
+			if ( is_array( $payload ) && isset( $payload['rotation_weight'] ) ) {
+				$weight = max( 0.1, (float) $payload['rotation_weight'] );
+			}
+		}
+
+		$seed = implode(
+			'|',
+			array(
+				(string) $context->get( 'post_id', 0 ),
+				(string) $context->get( 'topic', '' ),
+				(string) $rule['placement'],
+				(string) $component->id,
+			)
+		);
+
+		return $weight * ( hexdec( substr( hash( 'sha256', $seed ), 0, 8 ) ) / 4294967295 );
+	}
+
+	/**
+	 * @param string $component_type Component type.
+	 * @return int
+	 */
+	private function get_type_cap( $component_type ) {
+		switch ( $component_type ) {
+			case 'disclaimer':
+				return 1;
+			case 'internal_link_pod':
+				return 1;
+			default:
+				return 99;
+		}
+	}
+
+	/**
+	 * @param string $component_type Component type.
+	 * @param string $placement Placement string.
+	 * @return int
+	 */
+	private function get_slot_cap( $component_type, $placement ) {
+		$base_placement = $this->base_placement( $placement );
+
+		if ( 'disclaimer' === $component_type ) {
+			return 1;
+		}
+
+		if ( 'internal_link_pod' === $component_type ) {
+			return 1;
+		}
+
+		if ( 'cta' === $component_type && 'end_of_post' === $base_placement ) {
+			return 1;
+		}
+
+		return 99;
+	}
+
+	/**
+	 * @param array<string,mixed> $candidate Candidate match payload.
+	 * @return string
+	 */
+	private function slot_key_for_candidate( array $candidate ) {
+		return $this->base_placement( (string) $candidate['placement'] ) . ':' . sanitize_key( (string) $candidate['component']->component_type );
+	}
+
+	/**
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
+	 * @return string
+	 */
+	private function build_cache_key( AIPS_Content_Component_Run_Context $context ) {
+		return 'evaluation:' . md5( wp_json_encode( $context->to_array() ) );
+	}
+
+	/**
+	 * @param string $placement Placement string.
+	 * @return string
+	 */
+	private function base_placement( $placement ) {
+		$parts = explode( ':', (string) $placement );
+		return sanitize_key( $parts[0] );
 	}
 }

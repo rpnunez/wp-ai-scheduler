@@ -111,7 +111,7 @@
 			var qaBadge = '<span class="aips-badge ' + qaBadgeClass + '">' + this.getQaLabel(component.qa_status) + '</span>';
 			var usage = component.analytics || {};
 			var usageSummary = usage.injections && usage.injections > 0
-				? usage.injections + ' injections'
+				? usage.injections + ' injections / ' + (usage.unique_posts || 0) + ' posts'
 				: '0 injections';
 
 			return AIPS.Templates.renderRaw('aips-tmpl-content-component-row', {
@@ -616,16 +616,28 @@
 		},
 
 		renderAnalytics: function (component) {
+			if (!aipsContentComponentsConfig.featureEnabled) {
+				$('#aips-content-component-analytics').html('<p class="description">' + AIPS.Templates.escape(aipsContentComponentsL10n.engineDisabled) + '</p>');
+				return;
+			}
 			var analytics = component && component.analytics ? component.analytics : null;
 			if (!analytics) {
 				$('#aips-content-component-analytics').html('<p class="description">' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsEmpty) + '</p>');
 				return;
 			}
+			var dryRunRate = String(analytics.dry_run_match_rate || 0) + '%';
+			var lastInjectedAt = analytics.last_injected_at ? AIPS.DateTime.formatDate(analytics.last_injected_at) : 'N/A';
 			$('#aips-content-component-analytics').html(
 				'<div class="aips-content-component-analytics-grid">'
 				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.impressions || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsImpressions) + '</span></div>'
 				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.injections || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsInjections) + '</span></div>'
 				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.regeneration_reinjections || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsReinjections) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.unique_posts || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsUniquePosts) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(dryRunRate) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsDryRunRate) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(lastInjectedAt) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsLastSeen) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.matched_count || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsMatched) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.skipped_conflict_count || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsConflictSkips) + '</span></div>'
+				+ '<div><strong>' + AIPS.Templates.escape(String(analytics.skipped_exclusion_count || 0)) + '</strong><span>' + AIPS.Templates.escape(aipsContentComponentsL10n.analyticsExclusionSkips) + '</span></div>'
 				+ '</div>'
 			);
 		},
