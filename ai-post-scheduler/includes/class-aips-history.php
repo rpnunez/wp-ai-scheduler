@@ -367,11 +367,11 @@ class AIPS_History {
             );
         }
 
-        // Calculate duration
+        // Calculate duration (created_at / completed_at are UNIX timestamps stored as bigint)
         $duration_seconds = null;
         if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
-            $start = strtotime( $history_item->created_at );
-            $end   = strtotime( $history_item->completed_at );
+            $start = absint( $history_item->created_at );
+            $end   = absint( $history_item->completed_at );
             if ( $start && $end && $end >= $start ) {
                 $duration_seconds = $end - $start;
             }
@@ -394,14 +394,14 @@ class AIPS_History {
             }
         }
 
-        // Prepare container data
+        // Prepare container data; format timestamps for human-readable display.
         $container = array(
             'id'               => (int) $history_item->id,
             'status'           => $history_item->status,
             'generated_title'  => $history_item->generated_title,
             'template_name'    => isset( $history_item->template_name ) ? $history_item->template_name : '',
-            'created_at'       => $history_item->created_at,
-            'completed_at'     => $history_item->completed_at,
+            'created_at'       => AIPS_DateTime::formatRelativeOrAbsolute( $history_item->created_at ),
+            'completed_at'     => AIPS_DateTime::formatRelativeOrAbsolute( $history_item->completed_at ),
             'error_message'    => $history_item->error_message,
             'post_id'          => $history_item->post_id ? (int) $history_item->post_id : null,
             'post_url'         => $post_url,

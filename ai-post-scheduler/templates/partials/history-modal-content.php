@@ -131,12 +131,12 @@ $logs = !empty($logs) ? $logs : array();
 			<tr>
 				<td style="font-weight:600;"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></td>
 				<td>
-					<a href="<?php echo esc_url($container['post_url']); ?>" target="_blank">
+					<a href="<?php echo esc_url($container['post_url']); ?>" target="_blank" rel="noopener noreferrer">
 						<?php echo esc_html(sprintf(__('View Post (ID: %d)', 'ai-post-scheduler'), $container['post_id'])); ?>
 					</a>
 					<?php if (!empty($container['post_edit_url'])): ?>
 					&nbsp;|&nbsp;
-					<a href="<?php echo esc_url($container['post_edit_url']); ?>" target="_blank">
+					<a href="<?php echo esc_url($container['post_edit_url']); ?>" target="_blank" rel="noopener noreferrer">
 						<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 					</a>
 					<?php endif; ?>

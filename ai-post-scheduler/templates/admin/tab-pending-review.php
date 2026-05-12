@@ -142,7 +142,7 @@ if (!defined('ABSPATH')) {
 												)));
 											?>
 										<a class="aips-btn aips-btn-sm aips-btn-secondary aips-open-history-modal"
-											href="#"
+											href="<?php echo esc_url($history_url); ?>"
 												data-history-id="<?php echo esc_attr($item->id); ?>"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
 												title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">

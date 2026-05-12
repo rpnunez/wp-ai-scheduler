@@ -170,12 +170,16 @@ class AIPS_Admin_Assets {
             return false;
         }
 
-        $post_type = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
-        if ('' !== $post_type && 'post' !== $post_type) {
+        if (!current_user_can('manage_options')) {
             return false;
         }
 
-        return current_user_can('manage_options');
+        $screen = get_current_screen();
+        if (!$screen) {
+            return false;
+        }
+
+        return 'post' === $screen->post_type;
     }
 
     /**
@@ -386,6 +390,36 @@ class AIPS_Admin_Assets {
             'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
             'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
         ));
+
+        static $scaffold_registered = false;
+        if (!$scaffold_registered) {
+            add_action('admin_footer', array($this, 'render_history_modal_scaffold'));
+            $scaffold_registered = true;
+        }
+    }
+
+    /**
+     * Output the History modal scaffold HTML in the admin footer.
+     *
+     * The scaffold is an empty shell; AJAX populates #aips-history-modal-content
+     * when a user triggers a modal open. Rendering server-side keeps the structure
+     * consistent with the plugin's other modal partials and avoids JS string
+     * concatenation.
+     *
+     * @return void
+     */
+    public function render_history_modal_scaffold() {
+        ?>
+        <div id="aips-history-modal" class="aips-modal" style="display: none;" aria-hidden="true">
+            <div class="aips-modal-content aips-modal-large">
+                <div class="aips-modal-header">
+                    <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                    <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                </div>
+                <div class="aips-modal-body" id="aips-history-modal-content"></div>
+            </div>
+        </div>
+        <?php
     }
 
     /**

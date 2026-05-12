@@ -3,6 +3,7 @@
  *
  * Opens the History modal directly via AJAX without navigating to the History page.
  * Works globally on all admin pages where the `aips-open-history-modal` button class is used.
+ * The modal scaffold (#aips-history-modal) is rendered server-side via admin_footer.
  *
  * @package AI_Post_Scheduler
  * @since 2.6.0
@@ -15,15 +16,52 @@
 	var AIPS = window.AIPS;
 
 	AIPS.HistoryModalOpener = {
+
+		/* ------------------------------------------------------------------ */
+		/* Init / events                                                        */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Initialise the HistoryModalOpener module.
+		 */
 		init: function () {
-			var self = this;
-			$(document).on('click', '.aips-open-history-modal', function (e) {
-				e.preventDefault();
-				e.stopPropagation();
-				self.openHistoryModal($(this));
-			});
+			this.bindEvents();
 		},
 
+		/**
+		 * Register all event listeners for the History modal opener.
+		 */
+		bindEvents: function () {
+			$(document).on('click', '.aips-open-history-modal', this.handleHistoryModalClick.bind(this));
+		},
+
+		/* ------------------------------------------------------------------ */
+		/* Handlers                                                             */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Handle a click on an `.aips-open-history-modal` element.
+		 *
+		 * @param {Event} e jQuery click event.
+		 */
+		handleHistoryModalClick: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			this.openHistoryModal($(e.currentTarget));
+		},
+
+		/* ------------------------------------------------------------------ */
+		/* Core                                                                 */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Retrieve the AJAX configuration object (URL + nonce).
+		 *
+		 * Prefers the global `aipsAjax` object used on plugin admin pages; falls
+		 * back to `aipsHistoryModalAjax` injected on native WP post screens.
+		 *
+		 * @return {Object|null} Config object or null when unavailable.
+		 */
 		getAjaxConfig: function () {
 			if (window.aipsAjax && window.aipsAjax.ajaxUrl && window.aipsAjax.nonce) {
 				return window.aipsAjax;
@@ -36,27 +74,27 @@
 			return null;
 		},
 
+		/**
+		 * Open the History modal for the history entry referenced by a button.
+		 *
+		 * @param {jQuery} $button The clicked `.aips-open-history-modal` element.
+		 */
 		openHistoryModal: function ($button) {
-			var historyId = parseInt($button.data('history-id') || 0, 10);
+			var historyId  = parseInt($button.data('history-id') || 0, 10);
 			var ajaxConfig = this.getAjaxConfig();
 
 			if (!historyId) {
-				AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.invalidHistoryId || 'Invalid history ID.', 'error');
+				AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.invalidHistoryId, 'error');
 				return;
 			}
 
 			if (!ajaxConfig) {
-				AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.loadingError || 'Error loading history modal.', 'error');
+				AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.loadingError, 'error');
 				return;
 			}
 
-			var self = this;
+			var self   = this;
 			var $modal = $('#aips-history-modal');
-
-			if (!$modal.length) {
-				self.createModalElement();
-				$modal = $('#aips-history-modal');
-			}
 
 			self.showLoading($modal);
 
@@ -72,7 +110,7 @@
 					if (!response || !response.success || !response.data) {
 						var message = response && response.data && response.data.message
 							? response.data.message
-							: (aipsHistoryModalOpenerL10n.loadingFailed || 'Failed to load history modal.');
+							: aipsHistoryModalOpenerL10n.loadingFailed;
 						AIPS.Utilities.showToast(message, 'error');
 						$modal.fadeOut(200);
 						return;
@@ -83,7 +121,7 @@
 
 					var title = container.generated_title
 						? container.generated_title
-						: (aipsHistoryModalOpenerL10n.historyDetails || 'History Details') + (container.id ? ' #' + container.id : '');
+						: aipsHistoryModalOpenerL10n.historyDetails + (container.id ? ' #' + container.id : '');
 
 					$modal.find('#aips-history-modal-title').text(title);
 					$modal.find('#aips-history-modal-content').html(modalHtml);
@@ -91,33 +129,28 @@
 					$modal.fadeIn(200);
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.loadingError || 'Error loading history modal.', 'error');
+					AIPS.Utilities.showToast(aipsHistoryModalOpenerL10n.loadingError, 'error');
 					$modal.fadeOut(200);
 				}
 			});
 		},
 
-		createModalElement: function () {
-			var modalHtml = '';
-			modalHtml += '<div id="aips-history-modal" class="aips-modal" style="display: none;">';
-			modalHtml += '<div class="aips-modal-content aips-modal-large">';
-			modalHtml += '<div class="aips-modal-header">';
-			modalHtml += '<h3 id="aips-history-modal-title">' + (aipsHistoryModalOpenerL10n.historyDetails || 'History Details') + '</h3>';
-			modalHtml += '<button type="button" class="aips-modal-close" aria-label="' + (aipsHistoryModalOpenerL10n.closeModal || 'Close modal') + '">&times;</button>';
-			modalHtml += '</div>';
-			modalHtml += '<div class="aips-modal-body" id="aips-history-modal-content"></div>';
-			modalHtml += '</div>';
-			modalHtml += '</div>';
-
-			$('body').append(modalHtml);
-		},
-
+		/**
+		 * Show a loading indicator inside the modal and make it visible.
+		 *
+		 * @param {jQuery} $modal The #aips-history-modal element.
+		 */
 		showLoading: function ($modal) {
-			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' + (aipsHistoryModalOpenerL10n.loading || 'Loading…') + '</div>';
+			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' + aipsHistoryModalOpenerL10n.loading + '</div>';
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
 			$modal.fadeIn(200);
 		},
 
+		/**
+		 * Attach interactive event handlers to the loaded modal content.
+		 *
+		 * @param {jQuery} $modal The #aips-history-modal element.
+		 */
 		bindModalEvents: function ($modal) {
 			var self = this;
 
@@ -154,6 +187,16 @@
 			});
 		},
 
+		/* ------------------------------------------------------------------ */
+		/* Log interaction helpers                                              */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Filter the log rows inside the modal to show only a specific type.
+		 *
+		 * @param {jQuery} $modal  The #aips-history-modal element.
+		 * @param {jQuery} $button The clicked filter button.
+		 */
 		filterLogsByType: function ($modal, $button) {
 			var typeId = $button.data('type-id');
 
@@ -174,6 +217,12 @@
 			});
 		},
 
+		/**
+		 * Toggle the expanded detail section for a log row.
+		 *
+		 * @param {jQuery} $modal  The #aips-history-modal element.
+		 * @param {jQuery} $button The clicked toggle button.
+		 */
 		toggleLogDetail: function ($modal, $button) {
 			var targetSelector = $button.data('target');
 			var $target = $modal.find(targetSelector);
@@ -182,14 +231,20 @@
 				return;
 			}
 
-			var showLabel = aipsHistoryModalOpenerL10n.showDetails || 'Show details';
-			var hideLabel = aipsHistoryModalOpenerL10n.hideDetails || 'Hide details';
+			var showLabel = aipsHistoryModalOpenerL10n.showDetails;
+			var hideLabel = aipsHistoryModalOpenerL10n.hideDetails;
 
 			$target.slideToggle(150, function () {
 				$button.text($target.is(':visible') ? hideLabel : showLabel);
 			});
 		},
 
+		/**
+		 * Copy the log detail content to the clipboard.
+		 *
+		 * @param {jQuery} $modal  The #aips-history-modal element.
+		 * @param {jQuery} $button The clicked copy button.
+		 */
 		copyLogDetail: function ($modal, $button) {
 			var targetSelector = $button.data('copy-target');
 			var $target = $modal.find(targetSelector);
@@ -199,9 +254,9 @@
 				return;
 			}
 
-			var self = this;
-			var copyLabel = aipsHistoryModalOpenerL10n.copy || 'Copy';
-			var copiedLabel = aipsHistoryModalOpenerL10n.copied || 'Copied!';
+			var self        = this;
+			var copyLabel   = aipsHistoryModalOpenerL10n.copy;
+			var copiedLabel = aipsHistoryModalOpenerL10n.copied;
 
 			if (navigator.clipboard && navigator.clipboard.writeText) {
 				navigator.clipboard.writeText(text)
@@ -221,6 +276,12 @@
 			}
 		},
 
+		/**
+		 * Fallback clipboard copy using execCommand for older browsers.
+		 *
+		 * @param {jQuery} $target Element whose `<pre>` content should be copied.
+		 * @return {boolean} Whether the copy succeeded.
+		 */
 		copyDetailFallback: function ($target) {
 			try {
 				var sel = window.getSelection();
@@ -235,6 +296,13 @@
 			}
 		},
 
+		/**
+		 * Briefly change a copy button's label to confirm success then restore it.
+		 *
+		 * @param {jQuery} $button     The copy button.
+		 * @param {string} copyLabel   Label to restore after 1.5 s.
+		 * @param {string} copiedLabel Temporary success label.
+		 */
 		showCopySuccess: function ($button, copyLabel, copiedLabel) {
 			$button.text(copiedLabel).prop('disabled', true);
 			setTimeout(function () {

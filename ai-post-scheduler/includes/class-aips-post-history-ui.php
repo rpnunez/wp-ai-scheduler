@@ -20,6 +20,13 @@ class AIPS_Post_History_UI {
 	private $history_repository;
 
 	/**
+	 * Request-level cache of history objects keyed by post_id.
+	 *
+	 * @var array
+	 */
+	private $history_cache = array();
+
+	/**
 	 * @param AIPS_History_Repository_Interface|null $history_repository Optional repository override.
 	 */
 	public function __construct($history_repository = null) {
@@ -44,15 +51,18 @@ class AIPS_Post_History_UI {
 		}
 
 		$post_id = (int) $post->ID;
-		$history = $this->history_repository->get_by_post_id($post_id);
+		$history = $this->get_cached_history($post_id);
 		$history_id = (is_object($history) && !empty($history->id)) ? absint($history->id) : 0;
 
 		if (!$history_id) {
 			return $actions;
 		}
 
+		$history_url = $this->get_post_history_url($post_id);
+
 		$actions['aips_history'] = sprintf(
-			'<a href="#" class="aips-open-history-modal" data-history-id="%1$s" data-post-id="%2$s">%3$s</a>',
+			'<a href="%1$s" class="aips-open-history-modal" data-history-id="%2$s" data-post-id="%3$s">%4$s</a>',
+			esc_url($history_url),
 			esc_attr($history_id),
 			esc_attr($post_id),
 			esc_html__('History', 'ai-post-scheduler')
@@ -74,17 +84,19 @@ class AIPS_Post_History_UI {
 		}
 
 		$post_id = (int) $post->ID;
-		$history = $this->history_repository->get_by_post_id($post_id);
+		$history = $this->get_cached_history($post_id);
 		$history_id = (is_object($history) && !empty($history->id)) ? absint($history->id) : 0;
 
 		if (!$history_id) {
 			return;
 		}
+
+		$history_url = $this->get_post_history_url($post_id);
 		?>
 		<div class="misc-pub-section aips-post-history-link">
 			<span class="dashicons dashicons-backup" aria-hidden="true"></span>
-			<a href="#" 
-			   class="aips-open-history-modal" 
+			<a href="<?php echo esc_url($history_url); ?>"
+			   class="aips-open-history-modal"
 			   data-history-id="<?php echo esc_attr($history_id); ?>"
 			   data-post-id="<?php echo esc_attr($post_id); ?>">
 				<?php esc_html_e('View AI History', 'ai-post-scheduler'); ?>
@@ -94,11 +106,29 @@ class AIPS_Post_History_UI {
 	}
 
 	/**
-	 * Build history page URL for a post (kept for backward compatibility).
+	 * Return a cached history object for a given post, performing the DB
+	 * lookup at most once per post per request.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return object|null
+	 */
+	private function get_cached_history($post_id) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return null;
+		}
+		if (!array_key_exists($post_id, $this->history_cache)) {
+			$this->history_cache[$post_id] = $this->history_repository->get_by_post_id($post_id);
+		}
+		return $this->history_cache[$post_id];
+	}
+
+	/**
+	 * Build the History admin page URL for a post, including query args for
+	 * deep-linking to the correct history entry.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return string
-	 * @deprecated Use add_post_row_action() or render_submitbox_action() instead
 	 */
 	private function get_post_history_url($post_id) {
 		$post_id = absint($post_id);
@@ -106,7 +136,7 @@ class AIPS_Post_History_UI {
 			return '';
 		}
 
-		$history = $this->history_repository->get_by_post_id($post_id);
+		$history = $this->get_cached_history($post_id);
 		$args = array(
 			'post_id' => $post_id,
 		);
