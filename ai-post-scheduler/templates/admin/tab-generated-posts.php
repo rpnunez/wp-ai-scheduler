@@ -94,6 +94,17 @@ if (!defined('ABSPATH')) {
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
 									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
+									<?php if (!empty($post_data['history_id'])): ?>
+									<div class="cell-actions">
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('History', 'ai-post-scheduler'); ?>"
+											aria-label="<?php esc_attr_e('View generation history for this post', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-backup"></span>
+											<?php esc_html_e('History', 'ai-post-scheduler'); ?>
+										</button>
+									</div>
+									<?php endif; ?>
 								</td>
 								<td>
 									<div class="cell-meta">
@@ -240,4 +251,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

@@ -819,6 +819,7 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
+        new AIPS_Post_Edit_History();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
