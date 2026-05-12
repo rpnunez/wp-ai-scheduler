@@ -1,0 +1,153 @@
+/**
+ * AI Assistance Styles
+ *
+ * Styles for the AI field-assist button system, history button,
+ * button groups, and suggestion history modal.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.4.2
+ */
+
+/* --------------------------------------------------------
+   Wrap
+   -------------------------------------------------------- */
+.aips-ai-assist-wrap {
+	position: relative;
+}
+
+/* --------------------------------------------------------
+   Button Group
+   -------------------------------------------------------- */
+.aips-ai-assist-btn-group {
+	display: flex;
+	gap: 4px;
+	margin-top: 6px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------
+   AI Suggest Button
+   -------------------------------------------------------- */
+.aips-ai-assist-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	font-size: 12px;
+	line-height: 1.4;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.aips-ai-assist-btn .aips-ai-sparkle {
+	font-size: 14px;
+	line-height: 1;
+}
+
+.aips-ai-assist-btn.loading {
+	opacity: 0.6;
+	cursor: wait;
+	pointer-events: none;
+}
+
+.aips-ai-assist-btn.loading .aips-ai-sparkle {
+	display: inline-block;
+	animation: aips-sparkle-spin 1s linear infinite;
+}
+
+@keyframes aips-sparkle-spin {
+	0%   { transform: rotate(0deg) scale(1); }
+	50%  { transform: rotate(180deg) scale(1.2); }
+	100% { transform: rotate(360deg) scale(1); }
+}
+
+/* --------------------------------------------------------
+   History (Backup) Button
+   -------------------------------------------------------- */
+.aips-ai-assist-history-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	font-size: 12px;
+	line-height: 1.4;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: opacity 0.15s ease;
+}
+
+.aips-ai-assist-history-btn .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 1;
+}
+
+/* --------------------------------------------------------
+   History Modal
+   -------------------------------------------------------- */
+#aips-ai-assist-history-modal .aips-modal-content {
+	max-width: 640px;
+}
+
+#aips-ai-assist-history-field-label {
+	margin-bottom: 12px;
+	font-style: italic;
+}
+
+/* --------------------------------------------------------
+   History Tab Nav
+   -------------------------------------------------------- */
+.aips-tab-nav {
+	display: flex;
+	gap: 0;
+	border-bottom: 2px solid #ddd;
+	margin-bottom: 16px;
+}
+
+.aips-tab-nav .aips-tab-link {
+	padding: 8px 16px;
+	text-decoration: none;
+	color: #555;
+	font-size: 13px;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -2px;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aips-tab-nav .aips-tab-link.active,
+.aips-tab-nav .aips-tab-link:hover {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+}
+
+/* --------------------------------------------------------
+   History Items
+   -------------------------------------------------------- */
+.aips-ai-assist-history-item {
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	padding: 12px;
+	margin-bottom: 10px;
+	background: #fafafa;
+}
+
+.aips-ai-assist-history-response {
+	font-size: 13px;
+	color: #1e1e1e;
+	margin-bottom: 6px;
+	line-height: 1.5;
+	word-break: break-word;
+}
+
+.aips-ai-assist-history-meta {
+	font-size: 11px;
+	color: #888;
+	margin-bottom: 8px;
+}
+
+.aips-ai-assist-tab-content {
+	min-height: 60px;
+}
