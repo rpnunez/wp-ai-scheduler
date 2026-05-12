@@ -32,6 +32,16 @@ class AIPS_Generator {
      */
     private $current_history;
 
+	/**
+	 * @var AIPS_Generation_Context|null Current generation context for explainability logging.
+	 */
+	private $current_generation_context;
+
+	/**
+	 * @var array Current resolved AI variables (name => value) for explainability logging.
+	 */
+	private $current_ai_variables;
+
     /**
      * @var AIPS_Generation_Logger Handles logging logic.
      */
@@ -127,6 +137,14 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
+        // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
+        // Only set it when the caller has not already provided an explicit token override.
+        if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
+            $options['request_type'] = $log_type;
+        }
+
+		$explainability_context = $this->build_ai_request_explainability_context($log_type, $prompt, $options);
+
         // Log AI request before making the call
         if ($this->current_history) {
             $this->current_history->record(
@@ -137,14 +155,8 @@ class AIPS_Generator {
                     'options' => $options,
                 ),
                 null,
-                array('component' => $log_type)
+                $explainability_context
             );
-        }
-
-        // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
-        // Only set it when the caller has not already provided an explicit token override.
-        if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
-            $options['request_type'] = $log_type;
         }
 
         $result = $this->ai_service->generate_text($prompt, $options);
@@ -180,7 +192,7 @@ class AIPS_Generator {
                     "AI generation successful for {$log_type}",
                     null,
                     $result,
-                    array('component' => $log_type)
+                    $explainability_context
                 );
             }
 
@@ -684,6 +696,9 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+		$this->current_generation_context = $context;
+		$this->current_ai_variables = array();
+
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
@@ -758,6 +773,7 @@ class AIPS_Generator {
 
         // Resolve AI variables from the title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+		$this->current_ai_variables = is_array($ai_variables) ? $ai_variables : array();
 
         // Generate the title using the context and content.
         $title = $this->generate_title_from_context($context, $content, $ai_variables);
@@ -951,6 +967,147 @@ class AIPS_Generator {
 
         return $post_id;
     }
+
+	/**
+	 * Build explainability context for AI request/response log entries.
+	 *
+	 * @param string $component Component key.
+	 * @param string $prompt Prompt text.
+	 * @param array  $options Options passed to the AI request.
+	 * @return array
+	 */
+	private function build_ai_request_explainability_context($component, $prompt, $options) {
+		$context = array(
+			'component' => (string) $component,
+			'source' => 'generator',
+		);
+
+		if ($this->current_generation_context && is_object($this->current_generation_context)) {
+			if (method_exists($this->current_generation_context, 'get_type')) {
+				$context['context_type'] = (string) $this->current_generation_context->get_type();
+			}
+			if (method_exists($this->current_generation_context, 'get_id')) {
+				$context['context_id'] = (int) $this->current_generation_context->get_id();
+			}
+			if (method_exists($this->current_generation_context, 'get_creation_method')) {
+				$context['creation_method'] = (string) $this->current_generation_context->get_creation_method();
+			}
+			if (method_exists($this->current_generation_context, 'get_voice_id')) {
+				$context['voice_id'] = (int) $this->current_generation_context->get_voice_id();
+			}
+			if (method_exists($this->current_generation_context, 'get_article_structure_id')) {
+				$context['article_structure_id'] = (int) $this->current_generation_context->get_article_structure_id();
+			}
+			if (method_exists($this->current_generation_context, 'get_topic')) {
+				$context['topic'] = (string) $this->current_generation_context->get_topic();
+			}
+
+			// Provide canonical IDs that explainability UI can reference.
+			if (method_exists($this->current_generation_context, 'get_type') && method_exists($this->current_generation_context, 'get_id')) {
+				if ('template' === (string) $this->current_generation_context->get_type()) {
+					$context['template_id'] = (int) $this->current_generation_context->get_id();
+				} elseif ('topic' === (string) $this->current_generation_context->get_type()) {
+					$context['topic_id'] = (int) $this->current_generation_context->get_id();
+					if (method_exists($this->current_generation_context, 'get_author')) {
+						$author = $this->current_generation_context->get_author();
+						if ($author && isset($author->id)) {
+							$context['author_id'] = (int) $author->id;
+						}
+					}
+				}
+			}
+		}
+
+		$context['token_budget'] = $this->calculate_token_budget_meta($prompt, $component, $options);
+
+		// Attach AI variable provenance when available (title/excerpt prompts typically use these).
+		if (!empty($this->current_ai_variables) && is_array($this->current_ai_variables)) {
+			$names = array();
+			$values = array();
+
+			foreach ($this->current_ai_variables as $name => $value) {
+				$safe_name = sanitize_key((string) $name);
+				$names[] = $safe_name;
+
+				if (is_array($value) || is_object($value)) {
+					$value = wp_json_encode($value);
+				}
+				$value = sanitize_textarea_field((string) $value);
+				$values[$safe_name] = (strlen($value) > 140) ? substr($value, 0, 140) . '...' : $value;
+			}
+
+			$context['ai_variables'] = array(
+				'names' => array_values(array_unique($names)),
+				'values' => $values,
+			);
+		}
+
+		return $context;
+	}
+
+	/**
+	 * Calculate token budget metadata for explainability.
+	 *
+	 * Mirrors the AI service budgeting logic without mutating request options.
+	 *
+	 * @param string $prompt Prompt text.
+	 * @param string $component Component key.
+	 * @param array  $options Request options.
+	 * @return array
+	 */
+	private function calculate_token_budget_meta($prompt, $component, $options) {
+		$config = AIPS_Config::get_instance();
+		$request_type = isset($options['request_type']) ? (string) $options['request_type'] : (string) $component;
+
+		$output_tokens = 0;
+		switch ($request_type) {
+			case 'title':
+				$output_tokens = (int) $config->get_option('aips_max_tokens_title');
+				break;
+			case 'excerpt':
+				$output_tokens = (int) $config->get_option('aips_max_tokens_excerpt');
+				break;
+			default:
+				$output_tokens = (int) $config->get_option('aips_max_tokens_content');
+				break;
+		}
+
+		$explicit_override = isset($options['maxTokens']) || isset($options['max_tokens']);
+		$max_tokens_limit = (int) $config->get_option('aips_max_tokens_limit');
+
+		$unclamped = AIPS_Token_Budget::calculate(
+			(string) $prompt,
+			$output_tokens,
+			array(
+				'buffer_ratio' => 0.25,
+				'minimum_tokens' => 1,
+				'respect_config_limit' => false,
+			)
+		);
+
+		$clamped = AIPS_Token_Budget::calculate(
+			(string) $prompt,
+			$output_tokens,
+			array(
+				'buffer_ratio' => 0.25,
+				'minimum_tokens' => 1,
+				'respect_config_limit' => true,
+			)
+		);
+
+		return array(
+			'request_type' => $request_type,
+			'prompt_tokens_estimate' => AIPS_Token_Budget::estimate_prompt_tokens((string) $prompt),
+			'output_tokens' => $output_tokens,
+			'max_tokens' => $explicit_override
+				? (isset($options['maxTokens']) ? (int) $options['maxTokens'] : (int) $options['max_tokens'])
+				: (int) $clamped,
+			'max_tokens_unclamped' => (int) $unclamped,
+			'max_tokens_limit' => $max_tokens_limit,
+			'was_clamped' => ($max_tokens_limit > 0 && (int) $unclamped !== (int) $clamped),
+			'explicit_override' => $explicit_override,
+		);
+	}
 
     /**
      * Emit a generation failure notification for non-scheduled runs.
