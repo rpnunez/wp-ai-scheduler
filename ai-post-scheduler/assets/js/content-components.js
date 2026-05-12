@@ -51,6 +51,10 @@
 			$(document).on('input change', '#aips-content-component-form input, #aips-content-component-form textarea, #aips-content-component-form select', this.onFormChanged.bind(this));
 			$(document).on('click', '#aips-content-component-run-qa', this.runQaValidation.bind(this));
 			$(document).on('click', '#aips-content-component-dry-run-btn', this.runDryRun.bind(this));
+			$(document).on('click', '#aips-backfill-toggle', this.toggleBackfillPanel.bind(this));
+			$(document).on('keydown', '#aips-backfill-toggle', this.onBackfillToggleKey.bind(this));
+			$(document).on('click', '#aips-backfill-preview-btn', this.runBackfillPreview.bind(this));
+			$(document).on('click', '#aips-backfill-apply-btn', this.runBackfillApply.bind(this));
 		},
 
 		render: function () {
@@ -822,6 +826,180 @@
 			function operatorLabelToPhrase(label) {
 				return String(label || '').toLowerCase();
 			}
+		},
+
+		toggleBackfillPanel: function () {
+			var $body = $('#aips-backfill-panel-body');
+			var $icon = $('#aips-backfill-toggle .aips-backfill-toggle-icon');
+			var expanded = $('#aips-backfill-toggle').attr('aria-expanded') === 'true';
+			$body.toggle(!expanded);
+			$('#aips-backfill-toggle').attr('aria-expanded', !expanded ? 'true' : 'false');
+			$icon.toggleClass('dashicons-arrow-down-alt2', expanded);
+			$icon.toggleClass('dashicons-arrow-up-alt2', !expanded);
+		},
+
+		onBackfillToggleKey: function (e) {
+			if (e.which === 13 || e.which === 32) {
+				e.preventDefault();
+				this.toggleBackfillPanel();
+			}
+		},
+
+		runBackfillPreview: function (e) {
+			e.preventDefault();
+
+			if (!aipsContentComponentsConfig.featureEnabled) {
+				$('#aips-backfill-preview-results').html('<p class="notice notice-warning inline" style="padding:8px;">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillDisabled) + '</p>');
+				return;
+			}
+
+			var $btn = $('#aips-backfill-preview-btn');
+			AIPS.Utilities.setButtonLoading($btn, aipsContentComponentsL10n.backfillPreviewing);
+			$('#aips-backfill-apply-wrap').hide();
+			$('#aips-backfill-apply-results').empty();
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:    'aips_content_components_backfill_preview',
+				nonce:     aipsAjax.nonce,
+				post_type: $('#aips-backfill-post-type').val() || 'post',
+				limit:     parseInt($('#aips-backfill-limit').val(), 10) || 50,
+				post_ids:  $('#aips-backfill-post-ids').val() || ''
+			}).done(function (response) {
+				AIPS.Utilities.resetButton($btn);
+				if (!response.success) {
+					$('#aips-backfill-preview-results').html('<p class="notice notice-error inline" style="padding:8px;">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillPreviewError) + '</p>');
+					return;
+				}
+				AIPS.ContentComponents.renderBackfillPreviewResults(response.data);
+			}).fail(function () {
+				AIPS.Utilities.resetButton($btn);
+				$('#aips-backfill-preview-results').html('<p class="notice notice-error inline" style="padding:8px;">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillPreviewError) + '</p>');
+			});
+		},
+
+		renderBackfillPreviewResults: function (data) {
+			var totalPosts = parseInt(data.total_posts || 0, 10);
+
+			if (totalPosts === 0) {
+				$('#aips-backfill-preview-results').html('<p class="description">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillNoPosts) + '</p>');
+				$('#aips-backfill-apply-wrap').hide();
+				return;
+			}
+
+			var html = '<div class="aips-backfill-summary" style="display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap;">'
+				+ '<div class="aips-stat-card"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.total_posts || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillTotalPosts) + '</span></div>'
+				+ '<div class="aips-stat-card aips-stat-approved"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.matched_posts || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillMatched) + '</span></div>'
+				+ '<div class="aips-stat-card aips-stat-generated"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.would_update || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillWouldUpdate) + '</span></div>'
+				+ '</div>';
+
+			var preview = data.preview || [];
+			if (preview.length) {
+				html += '<table class="aips-table widefat" style="margin-bottom:8px;">'
+					+ '<thead><tr><th>ID</th><th>Title</th><th>Matched</th><th>Rejected</th><th>Will Update</th></tr></thead>'
+					+ '<tbody>';
+				preview.forEach(function (row) {
+					var willUpdate = row.will_update ? '<span class="aips-badge aips-badge-success">Yes</span>' : '<span class="aips-badge aips-badge-neutral">No</span>';
+					html += '<tr>'
+						+ '<td>' + AIPS.Templates.escape(String(row.post_id || '')) + '</td>'
+						+ '<td>' + AIPS.Templates.escape(row.post_title || '') + '</td>'
+						+ '<td>' + AIPS.Templates.escape(String(row.matched_count || 0)) + '</td>'
+						+ '<td>' + AIPS.Templates.escape(String(row.rejected_count || 0)) + '</td>'
+						+ '<td>' + willUpdate + '</td>'
+						+ '</tr>';
+				});
+				html += '</tbody></table>';
+			}
+
+			$('#aips-backfill-preview-results').html(html);
+
+			if (parseInt(data.would_update || 0, 10) > 0) {
+				$('#aips-backfill-apply-wrap').show();
+			} else {
+				$('#aips-backfill-apply-wrap').hide();
+			}
+		},
+
+		runBackfillApply: function (e) {
+			e.preventDefault();
+
+			if (!AIPS.Utilities.confirm) {
+				if (!window.confirm(aipsContentComponentsL10n.backfillApplyConfirm)) {
+					return;
+				}
+				this._doBackfillApply();
+				return;
+			}
+
+			var self = this;
+			AIPS.Utilities.confirm(
+				aipsContentComponentsL10n.backfillApplyConfirm,
+				aipsContentComponentsL10n.confirmHeading,
+				[
+					{ label: aipsContentComponentsL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+					{
+						label: aipsContentComponentsL10n.backfillApplyBtn,
+						className: 'aips-btn aips-btn-primary',
+						action: function () { self._doBackfillApply(); }
+					}
+				]
+			);
+		},
+
+		_doBackfillApply: function () {
+			var $btn = $('#aips-backfill-apply-btn');
+			AIPS.Utilities.setButtonLoading($btn, aipsContentComponentsL10n.backfillApplying);
+			$('#aips-backfill-apply-results').empty();
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:    'aips_content_components_backfill_apply',
+				nonce:     aipsAjax.nonce,
+				post_type: $('#aips-backfill-post-type').val() || 'post',
+				limit:     parseInt($('#aips-backfill-limit').val(), 10) || 50,
+				post_ids:  $('#aips-backfill-post-ids').val() || ''
+			}).done(function (response) {
+				AIPS.Utilities.resetButton($btn);
+				if (!response.success) {
+					$('#aips-backfill-apply-results').html('<p class="notice notice-error inline" style="padding:8px;">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillApplyError) + '</p>');
+					return;
+				}
+				AIPS.ContentComponents.renderBackfillApplyResults(response.data);
+			}).fail(function () {
+				AIPS.Utilities.resetButton($btn);
+				$('#aips-backfill-apply-results').html('<p class="notice notice-error inline" style="padding:8px;">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillApplyError) + '</p>');
+			});
+		},
+
+		renderBackfillApplyResults: function (data) {
+			var html = '<div class="aips-backfill-apply-summary" style="display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap;">'
+				+ '<div class="aips-stat-card"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.total_posts || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillTotalPosts) + '</span></div>'
+				+ '<div class="aips-stat-card aips-stat-approved"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.updated || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillUpdated) + '</span></div>'
+				+ '<div class="aips-stat-card"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.skipped || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillSkipped) + '</span></div>'
+				+ '<div class="aips-stat-card aips-stat-rejected"><span class="aips-stat-value">' + AIPS.Templates.escape(String(data.failed || 0)) + '</span><span class="aips-stat-label">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillFailed) + '</span></div>'
+				+ '</div>';
+
+			if (data.run_id) {
+				html += '<p class="description">' + AIPS.Templates.escape(aipsContentComponentsL10n.backfillRunId) + ': <code>' + AIPS.Templates.escape(data.run_id) + '</code></p>';
+			}
+
+			var details = data.details || [];
+			if (details.length) {
+				html += '<table class="aips-table widefat" style="margin-top:8px;">'
+					+ '<thead><tr><th>Post ID</th><th>Status</th><th>Detail</th></tr></thead>'
+					+ '<tbody>';
+				details.forEach(function (row) {
+					var badgeClass = row.status === 'updated' ? 'aips-badge-success' : (row.status === 'failed' ? 'aips-badge-danger' : 'aips-badge-neutral');
+					var detail = row.status === 'updated' ? (row.matched + ' matched') : (row.reason || '');
+					html += '<tr>'
+						+ '<td>' + AIPS.Templates.escape(String(row.post_id || '')) + '</td>'
+						+ '<td><span class="aips-badge ' + badgeClass + '">' + AIPS.Templates.escape(row.status || '') + '</span></td>'
+						+ '<td>' + AIPS.Templates.escape(detail) + '</td>'
+						+ '</tr>';
+				});
+				html += '</tbody></table>';
+			}
+
+			$('#aips-backfill-apply-results').html(html);
+			$('#aips-backfill-apply-wrap').hide();
 		}
 	};
 
