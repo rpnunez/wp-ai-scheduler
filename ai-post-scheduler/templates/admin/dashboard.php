@@ -55,6 +55,28 @@ $schedule_type_labels = array(
             </div>
         </div>
 
+
+        <?php if ($pending_reviews > 0): ?>
+        <div class="aips-content-panel">
+            <div class="aips-panel-body" style="padding: 16px 20px;">
+                <div class="aips-summary-card warning" style="margin: 0; justify-content: space-between; flex-wrap: wrap;">
+                    <div style="display:flex; align-items:center; gap: var(--aips-space-4);">
+                        <span class="dashicons dashicons-warning aips-summary-icon" aria-hidden="true"></span>
+                        <div class="aips-summary-content">
+                            <span class="aips-summary-number"><?php echo esc_html($pending_reviews); ?></span>
+                            <span class="aips-summary-label"><?php esc_html_e('Needs Review', 'ai-post-scheduler'); ?></span>
+                            <span class="aips-badge aips-badge-warning"><?php esc_html_e('Review queue waiting', 'ai-post-scheduler'); ?></span>
+                        </div>
+                    </div>
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-btn aips-btn-primary">
+                        <span class="dashicons dashicons-visibility"></span>
+                        <?php esc_html_e('Review Now', 'ai-post-scheduler'); ?>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Compact Stats List (full width, above tables) -->
         <div class="aips-content-panel">
             <div class="aips-panel-body" style="padding: 0 4px;">
