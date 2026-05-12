@@ -31,6 +31,7 @@ class AIPS_Admin_Menu_Helper {
 		'post_slices'          => 'aips-post-slices',
 		'schedule'             => 'aips-schedule',
 		'generated_posts'      => 'aips-generated-posts',
+		'review_queue'         => 'aips-review-queue',
 		'author_topics'        => 'aips-author-topics',
 		'system_status'        => 'aips-status',
 		'telemetry'            => 'aips-telemetry',

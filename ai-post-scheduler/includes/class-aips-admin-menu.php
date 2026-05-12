@@ -147,6 +147,22 @@ class AIPS_Admin_Menu {
             array($this, 'render_generated_posts_page')
         );
 
+        $pending_review_count = (new AIPS_Post_Review_Repository())->get_draft_count();
+        $review_queue_label = __('Review Queue', 'ai-post-scheduler');
+
+        if ($pending_review_count > 0) {
+            $review_queue_label .= ' <span class="awaiting-mod"><span class="pending-count">' . number_format_i18n($pending_review_count) . '</span></span>';
+        }
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Review Queue', 'ai-post-scheduler'),
+            $review_queue_label,
+            'manage_options',
+            'aips-review-queue',
+            array($this, 'render_review_queue_page')
+        );
+
         add_submenu_page(
             'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
@@ -389,6 +405,23 @@ class AIPS_Admin_Menu {
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
         $controller->render_page();
+    }
+
+    /**
+     * Render the Review Queue page.
+     *
+     * Redirects to the Content page and forces the Pending Review tab.
+     *
+     * @return void
+     */
+    public function render_review_queue_page() {
+        $url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+        $url = add_query_arg(array(
+            'aips_tab' => 'aips-pending-review',
+        ), $url);
+
+        wp_safe_redirect($url . '#aips-pending-review');
+        exit;
     }
 
     /*
