@@ -174,16 +174,29 @@ class AIPS_DB_Manager {
             circuit_state varchar(20) NOT NULL DEFAULT 'closed',
             run_state text DEFAULT NULL,
             batch_progress longtext DEFAULT NULL,
+            author_id bigint(20) DEFAULT NULL,
+            campaign_mode varchar(20) DEFAULT 'template',
+            post_type_rules longtext DEFAULT NULL,
+            blackout_dates text DEFAULT NULL,
+            time_window_start varchar(5) DEFAULT NULL,
+            time_window_end varchar(5) DEFAULT NULL,
+            day_preferences varchar(255) DEFAULT NULL,
+            season_end_date bigint(20) unsigned DEFAULT NULL,
+            dynamic_quantity_rules text DEFAULT NULL,
+            campaign_metadata longtext DEFAULT NULL,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
+            KEY author_id (author_id),
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
             KEY status (status),
             KEY schedule_history_id (schedule_history_id),
             KEY schedule_type (schedule_type),
-            KEY circuit_state (circuit_state)
+            KEY circuit_state (circuit_state),
+            KEY campaign_mode (campaign_mode),
+            KEY season_end_date (season_end_date)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (

@@ -59,6 +59,13 @@ class AIPS_Ajax_Registry {
 		'aips_campaign_wizard_validate_step' => 'AIPS_Admin_Flow_Controller',
 		'aips_campaign_wizard_finalize'      => 'AIPS_Admin_Flow_Controller',
 
+		// Campaigns Controller
+		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
+
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
 		'aips_reject_topic'               => 'AIPS_Author_Topics_Controller',
