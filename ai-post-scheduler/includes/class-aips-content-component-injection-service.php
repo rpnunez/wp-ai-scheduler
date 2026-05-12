@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Injection Service
+ * Content Component Injection Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,25 +10,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Injection_Service {
+class AIPS_Content_Component_Injection_Service {
 
 	/**
-	 * @var AIPS_Post_Component_Matcher_Service
+	 * @var AIPS_Content_Component_Matcher_Service
 	 */
 	private $matcher;
 
 	/**
-	 * @var AIPS_Post_Component_Renderer_Service
+	 * @var AIPS_Content_Component_Renderer_Service
 	 */
 	private $renderer;
 
 	/**
-	 * @var AIPS_Post_Component_Fingerprint_Service
+	 * @var AIPS_Content_Component_Fingerprint_Service
 	 */
 	private $fingerprints;
 
 	/**
-	 * @var AIPS_Post_Component_Analytics_Repository
+	 * @var AIPS_Content_Component_Analytics_Repository
 	 */
 	private $analytics_repository;
 
@@ -43,29 +43,38 @@ class AIPS_Post_Component_Injection_Service {
 	private $injections_table;
 
 	public function __construct(
-		?AIPS_Post_Component_Matcher_Service $matcher = null,
-		?AIPS_Post_Component_Renderer_Service $renderer = null,
-		?AIPS_Post_Component_Fingerprint_Service $fingerprints = null,
-		?AIPS_Post_Component_Analytics_Repository $analytics_repository = null
+		?AIPS_Content_Component_Matcher_Service $matcher = null,
+		?AIPS_Content_Component_Renderer_Service $renderer = null,
+		?AIPS_Content_Component_Fingerprint_Service $fingerprints = null,
+		?AIPS_Content_Component_Analytics_Repository $analytics_repository = null
 	) {
 		global $wpdb;
 		$this->wpdb                 = $wpdb;
-		$this->injections_table     = $wpdb->prefix . 'aips_post_component_injections';
-		$this->matcher              = $matcher ?: new AIPS_Post_Component_Matcher_Service();
-		$this->renderer             = $renderer ?: new AIPS_Post_Component_Renderer_Service();
-		$this->fingerprints         = $fingerprints ?: new AIPS_Post_Component_Fingerprint_Service();
-		$this->analytics_repository = $analytics_repository ?: new AIPS_Post_Component_Analytics_Repository();
+		$this->injections_table     = $wpdb->prefix . 'aips_content_component_injections';
+		$this->matcher              = $matcher ?: new AIPS_Content_Component_Matcher_Service();
+		$this->renderer             = $renderer ?: new AIPS_Content_Component_Renderer_Service();
+		$this->fingerprints         = $fingerprints ?: new AIPS_Content_Component_Fingerprint_Service();
+		$this->analytics_repository = $analytics_repository ?: new AIPS_Content_Component_Analytics_Repository();
 	}
 
 	/**
 	 * Build the resolved plan and inject it into the content string.
 	 *
 	 * @param string                          $content Raw post content.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @param array<string,mixed>             $options Options.
 	 * @return array<string,mixed>
 	 */
-	public function prepare_content( $content, AIPS_Post_Component_Run_Context $context, array $options = array() ) {
+	public function prepare_content( $content, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
+		if ( ! AIPS_Config::get_instance()->is_feature_enabled( 'content_components_engine', true ) ) {
+			return array(
+				'content' => (string) $content,
+				'plan'    => array(),
+				'base'    => (string) $content,
+			);
+		}
+
+		$started_at   = microtime( true );
 		$base_content = ! empty( $options['strip_existing_markers'] )
 			? $this->strip_injected_components( (string) $content )
 			: (string) $content;
@@ -89,6 +98,71 @@ class AIPS_Post_Component_Injection_Service {
 				'rendered'     => $this->wrap_with_markers( (int) $match['component']->id, $hash, $rendered ),
 			);
 		}
+
+		$result = array(
+			'content' => $this->apply_plan( $base_content, $plan ),
+			'plan'    => $plan,
+			'base'    => $base_content,
+		);
+
+		if ( AIPS_Telemetry::is_enabled() ) {
+			AIPS_Telemetry::instance()->add_event(
+				'content_components',
+				array(
+					'type'         => 'prepare_content',
+					'plan_size'    => count( $plan ),
+					'elapsed_ms'   => round( ( microtime( true ) - $started_at ) * 1000, 2 ),
+					'post_id'      => (int) $context->get( 'post_id', 0 ),
+					'is_dry_run'   => (bool) $context->get( 'is_dry_run', false ),
+				)
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Prepare content for a single ad-hoc component/rule pair.
+	 *
+	 * @param string                          $content Base content.
+	 * @param object                          $component Component-like object.
+	 * @param array<string,mixed>             $rule Normalized Phase 1 rule record.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
+	 * @param array<string,mixed>             $options Options.
+	 * @return array<string,mixed>
+	 */
+	public function prepare_manual_component( $content, $component, array $rule, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
+		if ( ! AIPS_Config::get_instance()->is_feature_enabled( 'content_components_engine', true ) ) {
+			return array(
+				'content' => (string) $content,
+				'plan'    => array(),
+				'base'    => (string) $content,
+			);
+		}
+
+		$base_content = ! empty( $options['strip_existing_markers'] )
+			? $this->strip_injected_components( (string) $content )
+			: (string) $content;
+
+		$rendered = $this->renderer->render_component( $component, $rule, $context );
+		if ( '' === trim( $rendered ) ) {
+			return array(
+				'content' => $base_content,
+				'plan'    => array(),
+				'base'    => $base_content,
+			);
+		}
+
+		$placement = (string) ( $rule['placement'] ?? 'end_of_post' );
+		$hash      = $this->fingerprints->generate( (int) $component->id, $placement, $rendered );
+		$plan      = array(
+			array(
+				'component_id' => (int) $component->id,
+				'placement'    => $placement,
+				'hash'         => $hash,
+				'rendered'     => $this->wrap_with_markers( (int) $component->id, $hash, $rendered ),
+			),
+		);
 
 		return array(
 			'content' => $this->apply_plan( $base_content, $plan ),
@@ -361,6 +435,7 @@ class AIPS_Post_Component_Injection_Service {
 			return substr( $content, 0, $offset ) . "\n\n" . $insertion . "\n\n" . substr( $content, $offset );
 		}
 
+		$this->record_fallback_telemetry( 'after_nth_h2_fallback', array( 'nth' => $nth ) );
 		return rtrim( $content ) . "\n\n" . $insertion;
 	}
 
@@ -378,6 +453,21 @@ class AIPS_Post_Component_Injection_Service {
 			return substr( $content, 0, $offset ) . $insertion . "\n\n" . substr( $content, $offset );
 		}
 
+		$this->record_fallback_telemetry( 'before_conclusion_fallback' );
 		return rtrim( $content ) . "\n\n" . $insertion;
+	}
+
+	/**
+	 * @param string               $type Telemetry event type.
+	 * @param array<string,mixed>  $data Event payload.
+	 * @return void
+	 */
+	private function record_fallback_telemetry( $type, array $data = array() ) {
+		if ( ! AIPS_Telemetry::is_enabled() ) {
+			return;
+		}
+
+		$data['type'] = $type;
+		AIPS_Telemetry::instance()->add_event( 'content_components', $data );
 	}
 }

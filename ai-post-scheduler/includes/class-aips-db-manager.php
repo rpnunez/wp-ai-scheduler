@@ -17,9 +17,9 @@ class AIPS_DB_Manager {
         'aips_authors',
         'aips_post_slices',
         'aips_content_components',
-        'aips_post_component_rules',
-        'aips_post_component_injections',
-        'aips_post_component_analytics',
+        'aips_content_component_rules',
+        'aips_content_component_injections',
+        'aips_content_component_analytics',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -78,9 +78,9 @@ class AIPS_DB_Manager {
         $table_authors = $tables['aips_authors'];
         $table_post_slices = $tables['aips_post_slices'];
         $table_content_components = $tables['aips_content_components'];
-        $table_post_component_rules = $tables['aips_post_component_rules'];
-        $table_post_component_injections = $tables['aips_post_component_injections'];
-        $table_post_component_analytics = $tables['aips_post_component_analytics'];
+        $table_content_component_rules = $tables['aips_content_component_rules'];
+        $table_content_component_injections = $tables['aips_content_component_injections'];
+        $table_content_component_analytics = $tables['aips_content_component_analytics'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
@@ -334,7 +334,7 @@ class AIPS_DB_Manager {
             KEY updated_at (updated_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_post_component_rules (
+        $sql[] = "CREATE TABLE $table_content_component_rules (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             component_id bigint(20) NOT NULL,
             priority int NOT NULL DEFAULT 100,
@@ -354,7 +354,7 @@ class AIPS_DB_Manager {
             KEY placement (placement)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_post_component_injections (
+        $sql[] = "CREATE TABLE $table_content_component_injections (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             post_id bigint(20) NOT NULL,
             component_id bigint(20) NOT NULL,
@@ -369,12 +369,17 @@ class AIPS_DB_Manager {
             KEY inserted_at (inserted_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_post_component_analytics (
+        $sql[] = "CREATE TABLE $table_content_component_analytics (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             component_id bigint(20) NOT NULL,
             impressions bigint(20) unsigned NOT NULL DEFAULT 0,
             injections bigint(20) unsigned NOT NULL DEFAULT 0,
             regeneration_reinjections bigint(20) unsigned NOT NULL DEFAULT 0,
+            matched_count bigint(20) unsigned NOT NULL DEFAULT 0,
+            skipped_conflict_count bigint(20) unsigned NOT NULL DEFAULT 0,
+            skipped_exclusion_count bigint(20) unsigned NOT NULL DEFAULT 0,
+            dry_run_matches bigint(20) unsigned NOT NULL DEFAULT 0,
+            dry_run_total bigint(20) unsigned NOT NULL DEFAULT 0,
             last_seen_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY component_id (component_id),

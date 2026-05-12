@@ -46,7 +46,7 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
-    private $post_component_injection_service;
+    private $content_component_injection_service;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -94,7 +94,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
-        $this->post_component_injection_service = new AIPS_Post_Component_Injection_Service();
+        $this->content_component_injection_service = new AIPS_Content_Component_Injection_Service();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -819,41 +819,43 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
 
         $component_injection_result = null;
-        try {
-            $run_context = AIPS_Post_Component_Run_Context::from_generation_context(
-                $context,
-                $content,
-                array(
-                    'run_timestamp' => AIPS_DateTime::now()->timestamp(),
-                )
-            );
-            $component_injection_result = $this->post_component_injection_service->prepare_content(
-                $content,
-                $run_context,
-                array(
-                    'strip_existing_markers' => true,
-                )
-            );
-
-            if (!empty($component_injection_result['content'])) {
-                $content = $component_injection_result['content'];
-            }
-
-            if ($this->current_history && !empty($component_injection_result['plan'])) {
-                $this->current_history->record(
-                    'activity',
-                    'Applied post component injection plan before post save',
+        if (AIPS_Config::get_instance()->is_feature_enabled('content_components_engine', true)) {
+            try {
+                $run_context = AIPS_Content_Component_Run_Context::from_generation_context(
+                    $context,
+                    $content,
                     array(
-                        'matched_components' => count($component_injection_result['plan']),
-                    ),
-                    null,
-                    array(
-                        'component' => 'post_components',
+                        'run_timestamp' => AIPS_DateTime::now()->timestamp(),
                     )
                 );
+                $component_injection_result = $this->content_component_injection_service->prepare_content(
+                    $content,
+                    $run_context,
+                    array(
+                        'strip_existing_markers' => true,
+                    )
+                );
+
+                if (!empty($component_injection_result['content'])) {
+                    $content = $component_injection_result['content'];
+                }
+
+                if ($this->current_history && !empty($component_injection_result['plan'])) {
+                    $this->current_history->record(
+                        'activity',
+                        'Applied Content Component injection plan before post save',
+                        array(
+                            'matched_components' => count($component_injection_result['plan']),
+                        ),
+                        null,
+                        array(
+                            'component' => 'content_components',
+                        )
+                    );
+                }
+            } catch (Throwable $throwable) {
+                $this->logger->log('Content Component injection failed during generation: ' . $throwable->getMessage(), 'warning');
             }
-        } catch (Throwable $throwable) {
-            $this->logger->log('Post component injection failed during generation: ' . $throwable->getMessage(), 'warning');
         }
 
         // Use Post Manager Service to save the generated post in WP
@@ -900,7 +902,7 @@ class AIPS_Generator {
         }
 
         if (is_array($component_injection_result) && !empty($component_injection_result['plan'])) {
-            $this->post_component_injection_service->record_injections(
+            $this->content_component_injection_service->record_injections(
                 $post_id,
                 $component_injection_result['plan'],
                 $this->current_history ? (string) $this->current_history->get_correlation_id() : '',
