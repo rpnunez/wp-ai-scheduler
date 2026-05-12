@@ -54,11 +54,6 @@
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
-			this.domainFilter = $('#aips-filter-domain').val() || '';
-			this.actorFilter = $('#aips-filter-actor').val() || '';
-			this.correlationId = $('#aips-filter-correlation').val() || '';
-			this.dateFrom = $('#aips-filter-date-from').val() || '';
-			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
 		},

@@ -132,10 +132,24 @@ if (is_object($history)) {
 
             <div class="aips-panel-body">
                 <h3><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></h3>
-                <?php $now = current_time('timestamp'); foreach (array('today' => 'Today', 'yesterday' => 'Yesterday', 'earlier' => 'Earlier') as $bucket_key => $bucket_label): ?>
+                <?php
+                $now = current_time('timestamp', true);
+                $utc_timezone = new DateTimeZone('UTC');
+                $today = wp_date('Y-m-d', $now, $utc_timezone);
+                $yesterday = wp_date('Y-m-d', $now - DAY_IN_SECONDS, $utc_timezone);
+                foreach (array('today' => 'Today', 'yesterday' => 'Yesterday', 'earlier' => 'Earlier') as $bucket_key => $bucket_label):
+                ?>
                     <div class="aips-timeline-group">
                         <h4><?php echo esc_html($bucket_label); ?></h4>
-                        <?php $has_bucket = false; foreach ($items as $item): $ts = strtotime($item->created_at); $days = floor(($now - $ts) / DAY_IN_SECONDS); $bucket = $days === 0 ? 'today' : ($days === 1 ? 'yesterday' : 'earlier'); if ($bucket !== $bucket_key) { continue; } $has_bucket = true; ?>
+                        <?php
+                        $has_bucket = false;
+                        foreach ($items as $item):
+                            $ts = (int) $item->created_at;
+                            $item_date = wp_date('Y-m-d', $ts, $utc_timezone);
+                            $bucket = ($item_date === $today) ? 'today' : (($item_date === $yesterday) ? 'yesterday' : 'earlier');
+                            if ($bucket !== $bucket_key) { continue; }
+                            $has_bucket = true;
+                            ?>
                             <details class="aips-timeline-card">
                                 <summary><strong><?php echo esc_html(!empty($item->event_label) ? $item->event_label : __('Generation Event', 'ai-post-scheduler')); ?></strong> — <?php echo esc_html($item->formatted_date); ?> <span class="aips-badge aips-badge-neutral"><?php echo esc_html($item->event_domain); ?></span></summary>
                                 <div style="padding:8px 0;">
