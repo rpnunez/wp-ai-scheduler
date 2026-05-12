@@ -168,6 +168,7 @@ class AIPS_Bulk_Batch_Processor {
 		int    $total_quantity,
 		string $correlation_id = ''
 	): void {
+		$started_at = microtime( true );
 		if ( ! empty( $correlation_id ) ) {
 			AIPS_Correlation_ID::set( $correlation_id );
 		}
@@ -263,6 +264,7 @@ class AIPS_Bulk_Batch_Processor {
 				'job_type'    => $job_type,
 				'start_index' => $start_index,
 				'batch_size'  => $batch_size,
+				'trigger_source' => 'cron',
 			)
 		);
 
@@ -271,6 +273,13 @@ class AIPS_Bulk_Batch_Processor {
 		$failed_count  = 0;
 
 		foreach ( $items_slice as $item ) {
+			$history->record(
+				'activity',
+				__( 'Starting bulk item processing.', 'ai-post-scheduler' ),
+				array( 'event_type' => 'bulk_item_started', 'event_status' => 'processing' ),
+				null,
+				array( 'item' => $item )
+			);
 			try {
 				$result = call_user_func( $strategy, $item, $job_id, $job );
 
@@ -348,11 +357,23 @@ class AIPS_Bulk_Batch_Processor {
 			$history->complete_failure(
 				/* translators: %d: failures */
 				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
-				array( 'success_count' => $success_count, 'failed_count' => $failed_count )
+				array(
+					'success_count'   => $success_count,
+					'failed_count'    => $failed_count,
+					'items_processed' => count( $items_slice ),
+					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+					'trigger_source'  => 'cron',
+				)
 			);
 		} else {
 			$history->complete_success(
-				array( 'success_count' => $success_count, 'failed_count' => 0 )
+				array(
+					'success_count'   => $success_count,
+					'failed_count'    => 0,
+					'items_processed' => count( $items_slice ),
+					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+					'trigger_source'  => 'cron',
+				)
 			);
 		}
 

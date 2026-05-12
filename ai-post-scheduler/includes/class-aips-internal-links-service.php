@@ -42,6 +42,11 @@ class AIPS_Internal_Links_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_History_Service
+	 */
+	private $history_service;
+
+	/**
 	 * Default minimum similarity score to include a suggestion.
 	 *
 	 * A value of 0.70 means posts must share at least 70% semantic similarity
@@ -73,12 +78,14 @@ class AIPS_Internal_Links_Service {
 		$embeddings_repo = null,
 		$links_repo = null,
 		$embeddings_service = null,
-		$logger = null
+		$logger = null,
+		$history_service = null
 	) {
 		$this->embeddings_repo    = $embeddings_repo    ?: new AIPS_Post_Embeddings_Repository();
 		$this->links_repo         = $links_repo         ?: new AIPS_Internal_Links_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->logger             = $logger             ?: new AIPS_Logger();
+		$this->history_service    = $history_service    ?: new AIPS_History_Service();
 	}
 
 	// -------------------------------------------------------------------------
@@ -136,6 +143,21 @@ class AIPS_Internal_Links_Service {
 		$post_type = 'post',
 		$post_status = 'publish'
 	) {
+		$started_at      = microtime( true );
+		$correlation_id  = AIPS_Correlation_ID::generate();
+		AIPS_Correlation_ID::set( $correlation_id );
+		$history = $this->history_service->create(
+			'internal_links_indexing',
+			array(
+				'batch_size'      => (int) $batch_size,
+				'last_post_id'    => (int) $last_post_id,
+				'post_type'       => $post_type,
+				'post_status'     => $post_status,
+				'trigger_source'  => 'cron',
+				'correlation_id'  => $correlation_id,
+			)
+		);
+
 		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
 			$batch_size,
 			$last_post_id,
@@ -148,6 +170,13 @@ class AIPS_Internal_Links_Service {
 		$new_last_id    = $last_post_id;
 
 		foreach ($post_ids as $post_id) {
+			$history->record(
+				'activity',
+				sprintf( __( 'Starting indexing for post %d', 'ai-post-scheduler' ), (int) $post_id ),
+				array( 'event_type' => 'indexing_step_started', 'event_status' => 'processing' ),
+				null,
+				array( 'post_id' => (int) $post_id )
+			);
 			$result = $this->index_post($post_id);
 
 			if (is_wp_error($result)) {
@@ -160,14 +189,40 @@ class AIPS_Internal_Links_Service {
 					'error'
 				);
 				$failed++;
+				$history->record(
+					'warning',
+					sprintf( __( 'Failed indexing post %d', 'ai-post-scheduler' ), (int) $post_id ),
+					array( 'event_type' => 'indexing_step_failed', 'event_status' => 'failed' ),
+					null,
+					array( 'post_id' => (int) $post_id, 'error' => $result->get_error_message() )
+				);
 			} else {
 				$success++;
+				$history->record(
+					'activity',
+					sprintf( __( 'Completed indexing for post %d', 'ai-post-scheduler' ), (int) $post_id ),
+					array( 'event_type' => 'indexing_step_completed', 'event_status' => 'success' ),
+					null,
+					array( 'post_id' => (int) $post_id )
+				);
 			}
 
 			$new_last_id = max($new_last_id, $post_id);
 		}
 
 		$done = count($post_ids) < $batch_size;
+		$summary = array(
+			'items_processed' => $success,
+			'items_failed'    => $failed,
+			'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+			'trigger_source'  => 'cron',
+		);
+		if ( $failed > 0 ) {
+			$history->complete_failure( __( 'Internal links indexing batch finished with failures.', 'ai-post-scheduler' ), $summary );
+		} else {
+			$history->complete_success( $summary );
+		}
+		AIPS_Correlation_ID::reset();
 
 		return array(
 			'success'      => $success,

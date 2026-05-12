@@ -83,9 +83,12 @@ class AIPS_Embeddings_Cron {
 	 * @return void
 	 */
 	public function process_author_embeddings($args) {
+		$started_at = microtime( true );
 		$author_id = isset($args['author_id']) ? absint($args['author_id']) : 0;
 		$batch_size = isset($args['batch_size']) ? absint($args['batch_size']) : 20;
 		$last_processed_id = isset($args['last_processed_id']) ? absint($args['last_processed_id']) : 0;
+		$correlation_id = isset( $args['correlation_id'] ) ? sanitize_text_field( (string) $args['correlation_id'] ) : AIPS_Correlation_ID::generate();
+		AIPS_Correlation_ID::set( $correlation_id );
 
 		if (!$author_id) {
 			$this->logger->log('Embeddings cron: Invalid author_id', 'error');
@@ -154,9 +157,20 @@ class AIPS_Embeddings_Cron {
 				),
 				$result
 			);
+			$history->complete_failure(
+				__( 'Embeddings batch failed.', 'ai-post-scheduler' ),
+				array(
+					'author_id'       => $author_id,
+					'items_processed' => 0,
+					'items_failed'    => 1,
+					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+					'trigger_source'  => 'cron',
+				)
+			);
 
 			// Delete progress transient on error
 			delete_transient("aips_embeddings_progress_{$author_id}");
+			AIPS_Correlation_ID::reset();
 			return;
 		}
 
@@ -228,6 +242,10 @@ class AIPS_Embeddings_Cron {
 				'total_success' => $result['success'],
 				'total_failed' => $result['failed'],
 				'total_skipped' => $result['skipped'],
+				'items_processed' => $result['processed_count'],
+				'items_failed' => $result['failed'],
+				'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+				'trigger_source' => 'cron',
 			));
 
 			// Delete progress transient on completion
@@ -236,6 +254,7 @@ class AIPS_Embeddings_Cron {
 			// Fire completion action hook
 			do_action('aips_author_embeddings_completed', $author_id, $result);
 		}
+		AIPS_Correlation_ID::reset();
 	}
 
 	/**
@@ -259,6 +278,8 @@ class AIPS_Embeddings_Cron {
 		// Create new history container
 		return $this->history_service->create('author_embeddings', array(
 			'author_id' => $author_id,
+			'correlation_id' => (string) AIPS_Correlation_ID::get(),
+			'trigger_source' => 'cron',
 		));
 	}
 
@@ -275,6 +296,7 @@ class AIPS_Embeddings_Cron {
 			'author_id'         => $author_id,
 			'batch_size'        => $batch_size,
 			'last_processed_id' => $last_processed_id,
+			'correlation_id'    => (string) AIPS_Correlation_ID::get(),
 		);
 
 		// Schedule to run in a few seconds
