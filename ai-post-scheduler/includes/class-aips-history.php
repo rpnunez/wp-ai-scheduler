@@ -99,6 +99,11 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+        $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
+        $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
+        $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
+        $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
 
         // Get max records limit from configuration
         $config = AIPS_Config::get_instance();
@@ -110,6 +115,11 @@ class AIPS_History {
             'per_page' => $max_records,
             'status' => $status_filter,
             'search' => $search_query,
+            'domain' => $domain_filter,
+            'actor' => $actor_filter,
+            'correlation_id' => $correlation_id,
+            'date_from' => $date_from,
+            'date_to' => $date_to,
         ));
 
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
@@ -321,12 +331,22 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+        $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
+        $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
+        $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
+        $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
             'page'   => $paged,
             'status' => $status_filter,
             'search' => $search_query,
+            'domain' => $domain_filter,
+            'actor' => $actor_filter,
+            'correlation_id' => $correlation_id,
+            'date_from' => $date_from,
+            'date_to' => $date_to,
             'fields' => 'list',
         ));
 
@@ -493,11 +513,21 @@ class AIPS_History {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+        $domain_filter = isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '';
+        $actor_filter = isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '';
+        $correlation_id = isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '';
+        $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
+        $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
 
         $history = $this->get_history(array(
             'page'   => $current_page,
             'status' => $status_filter,
             'search' => $search_query,
+            'domain' => $domain_filter,
+            'actor' => $actor_filter,
+            'correlation_id' => $correlation_id,
+            'date_from' => $date_from,
+            'date_to' => $date_to,
             'fields' => 'list',
         ));
 
