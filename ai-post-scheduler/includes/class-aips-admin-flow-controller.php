@@ -153,6 +153,11 @@ class AIPS_Admin_Flow_Controller {
 				'author_id'             => $payload['author_id'],
 				'campaign_mode'         => $payload['campaign_mode'],
 				'post_type_rules'       => $payload['post_type_rules'],
+				'blackout_dates'        => $payload['blackout_dates'],
+				'time_window_start'     => $payload['time_window_start'],
+				'time_window_end'       => $payload['time_window_end'],
+				'day_preferences'       => $payload['day_preferences'],
+				'season_end_date'       => $this->normalise_season_end_date($payload['season_end_date']),
 			));
 
 			if (!$schedule_id) {
@@ -239,6 +244,11 @@ class AIPS_Admin_Flow_Controller {
 			'frequency'              => isset($payload['frequency']) ? sanitize_key($payload['frequency']) : 'daily',
 			'start_time'             => isset($payload['start_time']) ? sanitize_text_field($payload['start_time']) : AIPS_DateTime::now()->toDisplay('Y-m-d\TH:i'),
 			'is_active'              => isset($payload['is_active']) ? absint($payload['is_active']) : 1,
+			'time_window_start'      => isset($payload['time_window_start']) ? sanitize_text_field($payload['time_window_start']) : '',
+			'time_window_end'        => isset($payload['time_window_end']) ? sanitize_text_field($payload['time_window_end']) : '',
+			'day_preferences'        => $this->normalise_day_preferences($payload),
+			'blackout_dates'         => isset($payload['blackout_dates']) ? sanitize_textarea_field($payload['blackout_dates']) : '',
+			'season_end_date'        => isset($payload['season_end_date']) ? sanitize_text_field($payload['season_end_date']) : '',
 			'review_policy'          => $review_policy,
 			'post_status'            => $post_status,
 		);
@@ -417,6 +427,31 @@ class AIPS_Admin_Flow_Controller {
 		}
 
 		return !empty($rules) ? wp_json_encode($rules) : '';
+	}
+
+	private function normalise_day_preferences($payload) {
+		if (!isset($payload['day_preferences']) || !is_array($payload['day_preferences'])) {
+			return '';
+		}
+
+		$valid_days = array();
+		foreach ($payload['day_preferences'] as $day) {
+			$day = absint($day);
+			if ($day >= 1 && $day <= 7) {
+				$valid_days[] = $day;
+			}
+		}
+
+		return !empty($valid_days) ? implode(',', $valid_days) : '';
+	}
+
+	private function normalise_season_end_date($date_string) {
+		if (empty($date_string)) {
+			return 0;
+		}
+
+		$timestamp = strtotime($date_string);
+		return $timestamp !== false ? $timestamp : 0;
 	}
 
 	private function post_type_exists($post_type) {

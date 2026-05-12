@@ -211,6 +211,63 @@ $authors = get_users(array(
 							<td><label><input type="checkbox" name="is_active" value="1" <?php checked($draft['is_active'] ?? 1, 1); ?>> <?php esc_html_e('Activate schedule after creation', 'ai-post-scheduler'); ?></label></td>
 						</tr>
 					</tbody></table>
+
+					<h3 style="margin-top: 24px;"><?php esc_html_e('Advanced Scheduling (Optional)', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Fine-tune when posts are generated with time windows, day preferences, blackout dates, and seasonal end dates.', 'ai-post-scheduler'); ?></p>
+
+					<table class="form-table" role="presentation" style="margin-top: 12px;"><tbody>
+						<tr>
+							<th scope="row"><label for="aips_time_window_start"><?php esc_html_e('Time Window', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<div style="display: flex; gap: 8px; align-items: center;">
+									<input type="time" id="aips_time_window_start" name="time_window_start" value="<?php echo esc_attr($draft['time_window_start'] ?? ''); ?>" placeholder="09:00" style="width: 120px;">
+									<span><?php esc_html_e('to', 'ai-post-scheduler'); ?></span>
+									<input type="time" id="aips_time_window_end" name="time_window_end" value="<?php echo esc_attr($draft['time_window_end'] ?? ''); ?>" placeholder="17:00" style="width: 120px;">
+								</div>
+								<p class="description"><?php esc_html_e('Only generate posts during this time range (24-hour format). Leave empty for no restriction.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label><?php esc_html_e('Day Preferences', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<?php
+								$saved_days = isset($draft['day_preferences']) ? explode(',', $draft['day_preferences']) : array();
+								$days = array(
+									'1' => __('Monday', 'ai-post-scheduler'),
+									'2' => __('Tuesday', 'ai-post-scheduler'),
+									'3' => __('Wednesday', 'ai-post-scheduler'),
+									'4' => __('Thursday', 'ai-post-scheduler'),
+									'5' => __('Friday', 'ai-post-scheduler'),
+									'6' => __('Saturday', 'ai-post-scheduler'),
+									'7' => __('Sunday', 'ai-post-scheduler'),
+								);
+								?>
+								<div style="display: flex; flex-wrap: wrap; gap: 12px;">
+									<?php foreach ($days as $day_num => $day_name) : ?>
+										<label style="display: inline-flex; align-items: center; gap: 4px;">
+											<input type="checkbox" name="day_preferences[]" value="<?php echo esc_attr($day_num); ?>" <?php checked(in_array($day_num, $saved_days, true)); ?>>
+											<?php echo esc_html($day_name); ?>
+										</label>
+									<?php endforeach; ?>
+								</div>
+								<p class="description"><?php esc_html_e('Only generate posts on selected days of the week. Leave all unchecked for no restriction.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="aips_blackout_dates"><?php esc_html_e('Blackout Dates', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<textarea id="aips_blackout_dates" name="blackout_dates" class="regular-text" rows="3" placeholder="2026-12-25&#10;2026-01-01&#10;2026-07-04"><?php echo esc_textarea($draft['blackout_dates'] ?? ''); ?></textarea>
+								<p class="description"><?php esc_html_e('Dates to skip posting (one per line, YYYY-MM-DD format). Posts will be skipped on these dates.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="aips_season_end_date"><?php esc_html_e('Seasonal End Date', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<input type="date" id="aips_season_end_date" name="season_end_date" value="<?php echo esc_attr($draft['season_end_date'] ?? ''); ?>">
+								<p class="description"><?php esc_html_e('Automatically deactivate this campaign after this date. Leave empty for no end date.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
+					</tbody></table>
 				</section>
 
 				<section class="aips-wizard-step" data-step="review" style="display:none;">
