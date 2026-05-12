@@ -144,7 +144,7 @@ if (is_object($history)) {
                         <?php
                         $has_bucket = false;
                         foreach ($items as $item):
-                            $ts = (int) $item->created_at;
+                            $ts = (int) $item->created_at; // created_at is stored as a Unix timestamp.
                             $item_date = wp_date('Y-m-d', $ts, $utc_timezone);
                             $bucket = ($item_date === $today) ? 'today' : (($item_date === $yesterday) ? 'yesterday' : 'earlier');
                             if ($bucket !== $bucket_key) { continue; }
