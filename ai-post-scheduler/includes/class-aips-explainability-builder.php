@@ -192,6 +192,89 @@ class AIPS_Explainability_Builder {
 	}
 
 	/**
+	 * Convenience: build explainability payload from a fully loaded history item.
+	 *
+	 * @param object $history_item History item with ->log entries.
+	 * @param array  $component_revisions Optional component revisions.
+	 * @return array
+	 */
+	public function build_from_history_item($history_item, $component_revisions = array()) {
+		$entries = array();
+		$ai_calls = array();
+
+		if (isset($history_item->log) && is_array($history_item->log)) {
+			foreach ($history_item->log as $log_entry) {
+				$details = isset($log_entry->details) ? json_decode($log_entry->details, true) : array();
+				if (!is_array($details)) {
+					$details = array();
+				}
+
+				$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG;
+				$entries[] = array(
+					'type_id' => $type_id,
+					'log_type' => (string) $log_entry->log_type,
+					'timestamp' => (string) $log_entry->timestamp,
+					'details' => $details,
+				);
+
+				if (AIPS_History_Type::AI_REQUEST === $type_id || AIPS_History_Type::AI_RESPONSE === $type_id) {
+					$component_type = isset($details['context']['component']) ? $details['context']['component'] : 'unknown';
+
+					if (!isset($ai_calls[$component_type])) {
+						$ai_calls[$component_type] = array(
+							'type' => $component_type,
+							'label' => ucfirst(str_replace('_', ' ', $component_type)),
+							'request' => null,
+							'response' => null,
+						);
+					}
+
+					if (AIPS_History_Type::AI_REQUEST === $type_id) {
+						$ai_calls[$component_type]['request'] = $details;
+					} else {
+						if (isset($details['output']) && !empty($details['output_encoded'])) {
+							$details['output'] = base64_decode($details['output']);
+						}
+						$ai_calls[$component_type]['response'] = $details;
+					}
+				}
+			}
+		}
+
+		return $this->build($history_item, $entries, array_values($ai_calls), $component_revisions);
+	}
+
+	/**
+	 * Compact an explainability payload for immutable snapshot storage.
+	 *
+	 * @param array $payload Full explainability payload.
+	 * @return array
+	 */
+	public function compact_snapshot($payload) {
+		if (empty($payload) || !is_array($payload)) {
+			return array();
+		}
+
+		$compact = array(
+			'schema_version' => isset($payload['schema_version']) ? $payload['schema_version'] : self::SCHEMA_VERSION,
+			'generation' => isset($payload['generation']) ? $payload['generation'] : array(),
+			'trigger' => isset($payload['trigger']) ? $payload['trigger'] : array(),
+			'why' => isset($payload['why']) ? $payload['why'] : array(),
+			'prompt_components' => isset($payload['prompt_components']) ? $payload['prompt_components'] : array(),
+			'sources' => isset($payload['sources']) ? $payload['sources'] : array(),
+			'model_runs' => isset($payload['model_runs']) ? $payload['model_runs'] : array(),
+			'validation_checks' => isset($payload['validation_checks']) ? $payload['validation_checks'] : array(),
+			'attempts' => isset($payload['attempts']) ? $payload['attempts'] : array(),
+			'timeline' => isset($payload['timeline']) ? array_slice((array) $payload['timeline'], 0, 50) : array(),
+			'final_outcome' => isset($payload['final_outcome']) ? $payload['final_outcome'] : array(),
+			'redactions' => isset($payload['redactions']) ? $payload['redactions'] : array(),
+			'warnings' => isset($payload['warnings']) ? $payload['warnings'] : array(),
+		);
+
+		return $compact;
+	}
+
+	/**
 	 * Extract an immutable stored snapshot from entries, when present.
 	 *
 	 * @param array $entries Parsed entries.
@@ -728,4 +811,3 @@ class AIPS_Explainability_Builder {
 		return $unique;
 	}
 }
-
