@@ -69,6 +69,9 @@ class AIPS_Admin_Assets {
         $page = $this->get_current_page_slug();
 
         if (!$this->is_plugin_admin_page($hook, $page)) {
+            if ($this->is_native_post_admin_page($hook)) {
+                $this->enqueue_history_modal_opener_assets();
+            }
 			return;
 		}
 
@@ -152,6 +155,28 @@ class AIPS_Admin_Assets {
 		}
 
 	}
+
+    /**
+     * Determine whether current admin hook is a native WP post screen where
+     * the plugin injects History links.
+     *
+     * @param string $hook Current admin page hook.
+     * @return bool
+     */
+    private function is_native_post_admin_page($hook) {
+        $allowed_hooks = array('edit.php', 'post.php', 'post-new.php');
+
+        if (!in_array($hook, $allowed_hooks, true)) {
+            return false;
+        }
+
+        $post_type = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
+        if ('' !== $post_type && 'post' !== $post_type) {
+            return false;
+        }
+
+        return current_user_can('manage_options');
+    }
 
     /**
      * Determine whether the current request is one of this plugin's admin pages.
@@ -259,6 +284,8 @@ class AIPS_Admin_Assets {
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 
+        $this->enqueue_history_modal_opener_script();
+
         // Shared strings needed on every plugin admin page.
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
             // Generic error/status strings used across multiple pages
@@ -280,6 +307,84 @@ class AIPS_Admin_Assets {
             // "None" placeholder for the *template* wizard summary (schedule wizard uses
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
+        ));
+    }
+
+    /**
+     * Enqueue only the assets required for the History modal opener on native
+     * WordPress post/admin screens.
+     *
+     * @return void
+     */
+    private function enqueue_history_modal_opener_assets() {
+        wp_enqueue_style(
+            'aips-admin-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-datetime-script',
+            AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-utilities-script',
+            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            array('jquery', 'aips-datetime-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+            'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
+            'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+            'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
+            'seconds'                  => __('seconds', 'ai-post-scheduler'),
+            'minute'                   => __('1 minute', 'ai-post-scheduler'),
+            'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
+            'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
+        ));
+
+        $this->enqueue_history_modal_opener_script();
+    }
+
+    /**
+     * Enqueue/localize the History modal opener script.
+     *
+     * @return void
+     */
+    private function enqueue_history_modal_opener_script() {
+        wp_enqueue_script(
+            'aips-history-modal-opener',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history-modal-opener.js',
+            array('jquery', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalAjax', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+        ));
+
+        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalOpenerL10n', array(
+            'historyDetails'  => __('History Details', 'ai-post-scheduler'),
+            'closeModal'      => __('Close modal', 'ai-post-scheduler'),
+            'loading'         => __('Loading…', 'ai-post-scheduler'),
+            'showDetails'     => __('Show details', 'ai-post-scheduler'),
+            'hideDetails'     => __('Hide details', 'ai-post-scheduler'),
+            'copy'            => __('Copy', 'ai-post-scheduler'),
+            'copied'          => __('Copied!', 'ai-post-scheduler'),
+            'invalidHistoryId' => __('Invalid history ID.', 'ai-post-scheduler'),
+            'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
+            'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
         ));
     }
 

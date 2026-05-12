@@ -137,8 +137,8 @@ if (!defined('ABSPATH')) {
 												'post_id'    => !empty($post_data['post_id']) ? absint($post_data['post_id']) : 0,
 											)));
 										?>
-										<a class="aips-btn aips-btn-sm aips-btn-secondary aips-open-history"
-										   href="<?php echo esc_url($history_url); ?>"
+										<a class="aips-btn aips-btn-sm aips-btn-secondary aips-open-history-modal"
+										   href="#"
 										   data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 										   data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 										   title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">

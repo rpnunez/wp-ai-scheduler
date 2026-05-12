@@ -43,14 +43,18 @@ class AIPS_Post_History_UI {
 			return $actions;
 		}
 
-		$history_url = $this->get_post_history_url((int) $post->ID);
-		if (!$history_url) {
+		$post_id = (int) $post->ID;
+		$history = $this->history_repository->get_by_post_id($post_id);
+		$history_id = (is_object($history) && !empty($history->id)) ? absint($history->id) : 0;
+
+		if (!$history_id) {
 			return $actions;
 		}
 
 		$actions['aips_history'] = sprintf(
-			'<a href="%1$s">%2$s</a>',
-			esc_url($history_url),
+			'<a href="#" class="aips-open-history-modal" data-history-id="%1$s" data-post-id="%2$s">%3$s</a>',
+			esc_attr($history_id),
+			esc_attr($post_id),
 			esc_html__('History', 'ai-post-scheduler')
 		);
 
@@ -69,23 +73,32 @@ class AIPS_Post_History_UI {
 			return;
 		}
 
-		$history_url = $this->get_post_history_url((int) $post->ID);
-		if (!$history_url) {
+		$post_id = (int) $post->ID;
+		$history = $this->history_repository->get_by_post_id($post_id);
+		$history_id = (is_object($history) && !empty($history->id)) ? absint($history->id) : 0;
+
+		if (!$history_id) {
 			return;
 		}
 		?>
 		<div class="misc-pub-section aips-post-history-link">
 			<span class="dashicons dashicons-backup" aria-hidden="true"></span>
-			<a href="<?php echo esc_url($history_url); ?>"><?php esc_html_e('View AI History', 'ai-post-scheduler'); ?></a>
+			<a href="#" 
+			   class="aips-open-history-modal" 
+			   data-history-id="<?php echo esc_attr($history_id); ?>"
+			   data-post-id="<?php echo esc_attr($post_id); ?>">
+				<?php esc_html_e('View AI History', 'ai-post-scheduler'); ?>
+			</a>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Build history page URL for a post.
+	 * Build history page URL for a post (kept for backward compatibility).
 	 *
 	 * @param int $post_id Post ID.
 	 * @return string
+	 * @deprecated Use add_post_row_action() or render_submitbox_action() instead
 	 */
 	private function get_post_history_url($post_id) {
 		$post_id = absint($post_id);
