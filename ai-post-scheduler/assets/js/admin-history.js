@@ -586,10 +586,43 @@
 
 		collectRelatedEntities: function (container, logs) {
 			var entities = [];
-			if (container.generated_title) { entities.push((aipsHistoryL10n.summaryEntityPost || 'Post') + ': ' + container.generated_title); }
-			if (container.template_name) { entities.push((aipsHistoryL10n.summaryEntityTemplate || 'Template') + ': ' + container.template_name); }
-			if (container.post_id) { entities.push((aipsHistoryL10n.summaryEntityPostId || 'Post ID') + ': ' + container.post_id); }
-			if (container.creation_method) { entities.push((aipsHistoryL10n.summaryEntityMethod || 'Method') + ': ' + container.creation_method.replace(/_/g, ' ')); }
+			var seen = {};
+			var addEntity = function (label, value) {
+				if (!value) {
+					return;
+				}
+				var text = String(value);
+				var key = label + '|' + text;
+				if (seen[key]) {
+					return;
+				}
+				seen[key] = true;
+				entities.push(label + ': ' + text);
+			};
+			addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', container.generated_title);
+			addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', container.template_name);
+			addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', container.post_id);
+			addEntity(
+				aipsHistoryL10n.summaryEntityMethod || 'Method',
+				container.creation_method ? container.creation_method.replace(/_/g, ' ') : ''
+			);
+
+			$.each(logs || [], function (i, log) {
+				var details = log && log.details ? log.details : null;
+				if (!details) {
+					return;
+				}
+				if (!container.generated_title) {
+					addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', details.generated_title || details.title);
+				}
+				if (!container.template_name) {
+					addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', details.template_name);
+				}
+				if (!container.post_id) {
+					addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', details.post_id);
+				}
+			});
+
 			return entities.length ? entities.join(' | ') : (aipsHistoryL10n.summaryNoRelatedEntities || 'No related entities detected');
 		},
 
