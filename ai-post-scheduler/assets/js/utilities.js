@@ -34,7 +34,49 @@
          * future setup that must run once the DOM is ready.
          */
         init: function() {
-            // Nothing needed on init currently; reserved for future use.
+            this.initHubPages();
+        },
+
+        /**
+         * Initialize shared hub-page tab behavior for server-rendered hubs.
+         *
+         * The active tab/panel is determined on the server. JavaScript only
+         * handles navigation and keyboard affordances so hub URLs remain the
+         * source of truth for the current workspace state.
+         */
+        initHubPages: function() {
+            $(document).on('click', '[data-aips-hub-tab-link]', function(e) {
+                var href = $(this).attr('href');
+
+                if (href) {
+                    e.preventDefault();
+                    window.location.assign(href);
+                }
+            });
+
+            $(document).on('keydown', '[data-aips-hub-tab-link]', function(e) {
+                var keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+                if (keys.indexOf(e.key) === -1) {
+                    return;
+                }
+
+                var $tabs = $(this).closest('[data-aips-hub-tabs]').find('[data-aips-hub-tab-link]');
+                var currentIndex = $tabs.index(this);
+                var targetIndex = currentIndex;
+
+                if (e.key === 'ArrowLeft') {
+                    targetIndex = currentIndex === 0 ? $tabs.length - 1 : currentIndex - 1;
+                } else if (e.key === 'ArrowRight') {
+                    targetIndex = currentIndex === $tabs.length - 1 ? 0 : currentIndex + 1;
+                } else if (e.key === 'Home') {
+                    targetIndex = 0;
+                } else if (e.key === 'End') {
+                    targetIndex = $tabs.length - 1;
+                }
+
+                e.preventDefault();
+                $tabs.eq(targetIndex).trigger('click').trigger('focus');
+            });
         },
 
         /**

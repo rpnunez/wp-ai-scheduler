@@ -23,6 +23,17 @@ class AIPS_Dashboard_Controller {
      * @return void
      */
     public function render_page() {
+        $view_data = $this->get_view_data();
+        extract($view_data, EXTR_SKIP);
+        include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+    }
+
+    /**
+     * Build the dashboard view model.
+     *
+     * @return array<string, mixed>
+     */
+    public function get_view_data() {
         // Use repositories instead of direct SQL
         $history_repo        = new AIPS_History_Repository();
         $schedule_repo       = new AIPS_Schedule_Repository();
@@ -69,6 +80,12 @@ class AIPS_Dashboard_Controller {
         $upcoming         = array_slice( array_filter( $all_schedules, function ( $s ) {
             return ! empty( $s['is_active'] );
         } ), 0, 7 );
+
+        $schedule_type_labels = array(
+            'template_schedule' => __( 'Template', 'ai-post-scheduler' ),
+            'author_topic_gen'  => __( 'Topic Gen', 'ai-post-scheduler' ),
+            'author_post_gen'   => __( 'Post Gen', 'ai-post-scheduler' ),
+        );
 
         // Build chart data (last 14 days).
         $days              = self::CHART_DAYS;
@@ -125,7 +142,23 @@ class AIPS_Dashboard_Controller {
         }
         unset( $item );
 
-        include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+        return array(
+            'total_generated'      => $total_generated,
+            'pending_scheduled'    => $pending_scheduled,
+            'total_templates'      => $total_templates,
+            'failed_count'         => $failed_count,
+            'partial_generations'  => $partial_generations,
+            'pending_reviews'      => $pending_reviews,
+            'topics_in_queue'      => $topics_in_queue,
+            'recent_posts'         => $recent_posts,
+            'upcoming'             => $upcoming,
+            'chart_data'           => $chart_data,
+            'chart_completed'      => $chart_completed,
+            'chart_failed'         => $chart_failed,
+            'chart_topics'         => $chart_topics,
+            'chart_error_rate'     => $chart_error_rate,
+            'schedule_type_labels' => $schedule_type_labels,
+        );
     }
 
     /**

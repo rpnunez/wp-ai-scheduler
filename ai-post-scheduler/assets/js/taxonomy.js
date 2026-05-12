@@ -22,8 +22,11 @@
 		 * Initialize the Taxonomy module.
 		 */
 		init: function() {
+			var initialTab = this.getInitialTab();
+
+			this.currentTab = initialTab;
 			this.bindEvents();
-			this.loadTaxonomyItems('categories');
+			this.loadTaxonomyItems(initialTab);
 		},
 
 		/**
@@ -36,7 +39,6 @@
 			$(document).on('keyup', '#base_posts', this.searchPosts.bind(this));
 			$(document).on('click', '.aips-remove-post', this.removeSelectedPost.bind(this));
 			$(document).on('click', '.aips-search-result', this.selectSearchResult.bind(this));
-			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
 			$(document).on('click', '.aips-select-all-taxonomy', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-taxonomy-checkbox', this.syncSelectAllState.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
@@ -46,6 +48,22 @@
 			$(document).on('click', '.aips-create-term', this.createTerm.bind(this));
 			$(document).on('keyup search', '#aips-taxonomy-search', this.filterItems.bind(this));
 			$(document).on('click', '#aips-taxonomy-search-clear', this.clearSearch.bind(this));
+		},
+
+		/**
+		 * Resolve the initial active taxonomy tab from the current page state.
+		 *
+		 * @return {string}
+		 */
+		getInitialTab: function() {
+			var params = new URLSearchParams(window.location.search);
+			var requested = params.get('subtab') || '';
+
+			if (requested === 'categories' || requested === 'tags') {
+				return requested;
+			}
+
+			return 'categories';
 		},
 
 		/**
@@ -234,22 +252,6 @@
 					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
 				}
 			});
-		},
-
-		/**
-		 * Switch between category/tag tabs.
-		 *
-		 * @param {Event} e Click event.
-		 */
-		switchTab: function(e) {
-			e.preventDefault();
-			var tab = $(e.currentTarget).data('tab');
-
-			$('.aips-tab-link').removeClass('active');
-			$(e.currentTarget).addClass('active');
-
-			this.currentTab = tab;
-			this.loadTaxonomyItems(tab);
 		},
 
 		/**

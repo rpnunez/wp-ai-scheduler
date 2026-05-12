@@ -114,6 +114,24 @@ class AIPS_Internal_Links_Controller {
 		include AIPS_PLUGIN_DIR . 'templates/admin/internal-links.php';
 	}
 
+	/**
+	 * Return the internal links service.
+	 *
+	 * @return AIPS_Internal_Links_Service
+	 */
+	public function get_service() {
+		return $this->service;
+	}
+
+	/**
+	 * Return the internal links repository.
+	 *
+	 * @return AIPS_Internal_Links_Repository
+	 */
+	public function get_links_repo() {
+		return $this->links_repo;
+	}
+
 	// -------------------------------------------------------------------------
 	// AJAX Handlers
 	// -------------------------------------------------------------------------

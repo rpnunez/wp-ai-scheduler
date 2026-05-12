@@ -19,7 +19,8 @@ class AIPS_Onboarding_Wizard_Test extends WP_UnitTestCase {
 
 	public function test_admin_menu_helper_builds_onboarding_url() {
 		$url = AIPS_Admin_Menu_Helper::get_page_url('onboarding');
-		$this->assertStringContainsString('admin.php?page=aips-onboarding', $url);
+		$this->assertStringContainsString('admin.php?page=ai-post-scheduler', $url);
+		$this->assertStringContainsString('tab=onboarding', $url);
 	}
 }
 

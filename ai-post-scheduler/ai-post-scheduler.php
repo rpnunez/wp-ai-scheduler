@@ -235,7 +235,7 @@ final class AI_Post_Scheduler {
                     'title'         => __('Database installation failed', 'ai-post-scheduler'),
                     'error_code'    => $install_result->get_error_code(),
                     'error_message' => $install_result->get_error_message(),
-                    'url'           => admin_url('admin.php?page=aips-status'),
+                    'url'           => AIPS_Admin_Menu_Helper::get_page_url('system_status'),
                     'dedupe_key'    => 'db_install_failed_activation',
                     'dedupe_window' => 1800,
                 ));
@@ -820,11 +820,14 @@ final class AI_Post_Scheduler {
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
 
-        // Internal Links controller must be available globally so the admin-menu
-        // render callback can call $controller->render_page() without reconstructing
-        // the object (which would double-register all AJAX hooks).
+        // Internal Links and Operations controllers must be available globally so
+        // admin render callbacks can reuse the same objects without duplicate hook
+        // registration during the request lifecycle.
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        global $aips_operations_insights_controller;
+        $aips_operations_insights_controller = new AIPS_Operations_Insights_Controller();
     }
 
     /**

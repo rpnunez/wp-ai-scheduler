@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) {
 }
 
 $aips_config     = AIPS_Config::get_instance();
-$wizard_url       = AIPS_Admin_Menu_Helper::get_page_url(AIPS_Onboarding_Wizard::PAGE_SLUG);
+$wizard_url       = AIPS_Admin_Menu_Helper::get_page_url('onboarding');
 $completed        = (bool) $aips_config->get_option('aips_onboarding_completed');
 
 $strategy_complete = !empty($aips_config->get_option('aips_site_niche'));
@@ -17,51 +17,29 @@ $default_template_prompt = "Write a high-quality blog post about {{topic}}.\n\nR
 $default_title_prompt = __('Create a concise, SEO-friendly title for this article.', 'ai-post-scheduler');
 ?>
 
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top" style="align-items: center; justify-content: space-between;">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Onboarding Wizard', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Get AI Post Scheduler ready by setting your site strategy, creating an author and template, and generating your first post.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-btn-group" style="gap: 8px;">
-					<button type="button" class="aips-btn aips-btn-secondary" id="aips-onboarding-skip">
-						<span class="dashicons dashicons-dismiss"></span>
-						<?php esc_html_e('Skip Onboarding', 'ai-post-scheduler'); ?>
-					</button>
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings') . '#content-strategy'); ?>">
-						<span class="dashicons dashicons-admin-settings"></span>
-						<?php esc_html_e('Open Settings', 'ai-post-scheduler'); ?>
-					</a>
-					<button type="button" class="aips-btn aips-btn-danger" id="aips-onboarding-reset">
-						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e('Restart Wizard', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-
+<div class="aips-hub-content-stack aips-onboarding-flow">
+	<div class="aips-hub-notice-stack">
 		<?php if (!$ai_engine_active) : ?>
-			<div class="notice notice-error" style="margin: 16px 0;">
+			<div class="notice notice-error">
 				<p><?php esc_html_e('AI Engine is not installed or activated. You can complete the setup steps, but topic/post generation requires AI Engine to be active.', 'ai-post-scheduler'); ?></p>
 			</div>
 		<?php endif; ?>
 
 		<?php if ($completed) : ?>
-			<div class="notice notice-success" style="margin: 16px 0;">
+			<div class="notice notice-success">
 				<p><?php esc_html_e('Onboarding is marked as completed. You can restart the wizard if you want to run it again.', 'ai-post-scheduler'); ?></p>
 			</div>
 		<?php endif; ?>
 
-		<div id="aips-onboarding-notice" style="margin: 16px 0;"></div>
+		<div id="aips-onboarding-notice"></div>
+	</div>
 
 		<div class="aips-content-panel">
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Plugin Concepts (Quick Tour)', 'ai-post-scheduler'); ?></h2>
 			</div>
 			<div class="aips-panel-body">
-				<ul style="margin: 0; padding-left: 18px;">
+				<ul class="aips-onboarding-concepts-list">
 					<li><strong><?php esc_html_e('Site Content Strategy', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('Site-wide settings that shape tone, audience, and constraints across all generations.', 'ai-post-scheduler'); ?></li>
 					<li><strong><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('Reusable personas that define a niche, voice, and cadence for generating topics and posts.', 'ai-post-scheduler'); ?></li>
 					<li><strong><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('AI-generated topic ideas for an author; you can review and use them to create posts.', 'ai-post-scheduler'); ?></li>
@@ -71,12 +49,12 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px;">
+		<div class="aips-content-panel aips-onboarding-step">
 			<div class="aips-panel-header">
 				<h2>
 					<?php esc_html_e('1) Site Content Strategy', 'ai-post-scheduler'); ?>
 					<?php if ($strategy_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-success aips-onboarding-step-badge"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
 				</h2>
 			</div>
@@ -143,12 +121,12 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $strategy_complete ? '1' : '0.6'; ?>;">
+		<div class="aips-content-panel aips-onboarding-step<?php echo $strategy_complete ? '' : ' is-locked'; ?>">
 			<div class="aips-panel-header">
 				<h2>
 					<?php esc_html_e('2) Create an Author', 'ai-post-scheduler'); ?>
 					<?php if ($author_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-success aips-onboarding-step-badge"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
 				</h2>
 			</div>
@@ -162,7 +140,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 							'<strong>' . esc_html($author->name) . '</strong>'
 						);
 						?>
-						<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" style="margin-left: 8px;"><?php esc_html_e('Manage Authors', 'ai-post-scheduler'); ?></a>
+						<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-inline-link-action"><?php esc_html_e('Manage Authors', 'ai-post-scheduler'); ?></a>
 					</p>
 				<?php else : ?>
 					<form id="aips-onboarding-author-form">
@@ -209,12 +187,12 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $author_complete ? '1' : '0.6'; ?>;">
+		<div class="aips-content-panel aips-onboarding-step<?php echo $author_complete ? '' : ' is-locked'; ?>">
 			<div class="aips-panel-header">
 				<h2>
 					<?php esc_html_e('3) Create a Template', 'ai-post-scheduler'); ?>
 					<?php if ($template_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-success aips-onboarding-step-badge"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
 				</h2>
 			</div>
@@ -228,7 +206,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 							'<strong>' . esc_html($template->name) . '</strong>'
 						);
 						?>
-						<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" style="margin-left: 8px;"><?php esc_html_e('Manage Templates', 'ai-post-scheduler'); ?></a>
+						<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-inline-link-action"><?php esc_html_e('Manage Templates', 'ai-post-scheduler'); ?></a>
 					</p>
 				<?php else : ?>
 					<form id="aips-onboarding-template-form">
@@ -262,12 +240,12 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $template_complete ? '1' : '0.6'; ?>;">
+		<div class="aips-content-panel aips-onboarding-step<?php echo $template_complete ? '' : ' is-locked'; ?>">
 			<div class="aips-panel-header">
 				<h2>
 					<?php esc_html_e('4) Generate Author Topics', 'ai-post-scheduler'); ?>
 					<?php if ($topics_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-success aips-onboarding-step-badge"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
 				</h2>
 			</div>
@@ -286,19 +264,19 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 							<span class="dashicons dashicons-lightbulb"></span>
 							<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 						</button>
-						<span class="spinner" id="aips-onboarding-topics-spinner" style="float:none;"></span>
+						<span class="spinner aips-spinner-inline" id="aips-onboarding-topics-spinner"></span>
 					</p>
-					<div id="aips-onboarding-topics-preview" style="display:none;"></div>
+					<div id="aips-onboarding-topics-preview" class="hidden"></div>
 				<?php endif; ?>
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $topics_complete ? '1' : '0.6'; ?>;">
+		<div class="aips-content-panel aips-onboarding-step<?php echo $topics_complete ? '' : ' is-locked'; ?>">
 			<div class="aips-panel-header">
 				<h2>
 					<?php esc_html_e('5) Generate Your First Post', 'ai-post-scheduler'); ?>
 					<?php if ($post_complete) : ?>
-						<span class="aips-badge aips-badge-success" style="margin-left: 10px;"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-success aips-onboarding-step-badge"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></span>
 					<?php endif; ?>
 				</h2>
 			</div>
@@ -306,13 +284,13 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 				<?php if ($post_complete) : ?>
 					<p>
 						<?php esc_html_e('Your first post is generated!', 'ai-post-scheduler'); ?>
-						<a href="<?php echo esc_url(get_edit_post_link((int) $state['post_id'], 'raw')); ?>" style="margin-left: 8px;"><?php esc_html_e('Edit Post', 'ai-post-scheduler'); ?></a>
-						<a href="<?php echo esc_url(get_permalink((int) $state['post_id'])); ?>" style="margin-left: 8px;"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
+						<a href="<?php echo esc_url(get_edit_post_link((int) $state['post_id'], 'raw')); ?>" class="aips-inline-link-action"><?php esc_html_e('Edit Post', 'ai-post-scheduler'); ?></a>
+						<a href="<?php echo esc_url(get_permalink((int) $state['post_id'])); ?>" class="aips-inline-link-action"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
 					</p>
 				<?php else : ?>
 					<p class="description"><?php esc_html_e('Generate a post using the onboarding template, with the first generated topic as {{topic}}.', 'ai-post-scheduler'); ?></p>
 					<p>
-						<label for="aips-onboarding-topic" style="display:block; font-weight:600; margin-bottom:6px;"><?php esc_html_e('Topic to Use', 'ai-post-scheduler'); ?></label>
+						<label for="aips-onboarding-topic" class="aips-form-label-block"><?php esc_html_e('Topic to Use', 'ai-post-scheduler'); ?></label>
 						<input type="text" class="regular-text" id="aips-onboarding-topic" value="<?php echo esc_attr(!empty($state['first_topic']) ? $state['first_topic'] : ''); ?>" <?php disabled(!$topics_complete); ?>>
 					</p>
 					<p>
@@ -320,14 +298,14 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 							<span class="dashicons dashicons-edit"></span>
 							<?php esc_html_e('Generate Post', 'ai-post-scheduler'); ?>
 						</button>
-						<span class="spinner" id="aips-onboarding-post-spinner" style="float:none;"></span>
+						<span class="spinner aips-spinner-inline" id="aips-onboarding-post-spinner"></span>
 					</p>
-					<div id="aips-onboarding-post-result" style="display:none;"></div>
+					<div id="aips-onboarding-post-result" class="hidden"></div>
 				<?php endif; ?>
 			</div>
 		</div>
 
-		<div class="aips-content-panel" style="margin-top: 20px; opacity: <?php echo $post_complete ? '1' : '0.6'; ?>;">
+		<div class="aips-content-panel aips-onboarding-step<?php echo $post_complete ? '' : ' is-locked'; ?>">
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Finish', 'ai-post-scheduler'); ?></h2>
 			</div>
@@ -338,18 +316,16 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						<span class="dashicons dashicons-yes"></span>
 						<?php esc_html_e('Finish Onboarding', 'ai-post-scheduler'); ?>
 					</button>
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('dashboard')); ?>" style="margin-left: 8px;">
+					<a class="aips-btn aips-btn-secondary aips-inline-button-action" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('dashboard')); ?>">
 						<span class="dashicons dashicons-admin-home"></span>
 						<?php esc_html_e('Go to Dashboard', 'ai-post-scheduler'); ?>
 					</a>
 				</p>
 			</div>
 		</div>
-	</div>
-</div>
-
 <script>
 window.aipsOnboarding = window.aipsOnboarding || {};
 window.aipsOnboarding.pageUrl = <?php echo wp_json_encode($wizard_url); ?>;
 </script>
+</div>
 

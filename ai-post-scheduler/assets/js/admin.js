@@ -71,29 +71,7 @@
         init: function() {
             this.bindEvents();
             this.initAIVariablesScanner();
-            this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
-        },
-
-        /**
-         * Activate the tab matching the current URL hash on page load.
-         *
-         * Reads `window.location.hash`, strips the leading `#`, and triggers
-         * a click on the corresponding `.nav-tab[data-tab]` element so the
-         * correct tab panel is displayed immediately after navigation.
-         */
-        handleInitialTabFromHash: function() {
-            // Check for hash in URL and activate the corresponding tab
-            var hash = window.location.hash;
-            if (hash) {
-                var tabId = hash.substring(1); // Remove the # prefix
-                var $tabLink = $('.nav-tab[data-tab], .aips-tab-link[data-tab]').filter(function() {
-                    return $(this).data('tab') === tabId;
-                });
-                if ($tabLink.length) {
-                    $tabLink.trigger('click');
-                }
-            }
         },
 
         /**
@@ -229,13 +207,6 @@
             // Settings
             $(document).on('click', '#aips-test-connection', this.testConnection);
 
-            // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
-            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
-            
-            // Preserve tab hash on form submissions
-            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
-
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
 
@@ -365,111 +336,6 @@
                     $spinner.removeClass('is-active');
                 }
             });
-        },
-
-        /**
-         * Switch to the tab identified by the clicked `.nav-tab`'s `data-tab`
-         * attribute.
-         *
-         * Updates `window.location.hash`, toggles `.nav-tab-active` and ARIA
-         * attributes on the tab links, and shows/hides the corresponding
-         * `.aips-tab-content` panel.
-         *
-         * @param {Event} e - Click event from a `.nav-tab` element.
-         */
-        switchTab: function(e) {
-            e.preventDefault();
-            var tabId = $(this).data('tab');
-
-            // Update the URL hash instead of query parameter
-            window.location.hash = '#' + tabId;
-
-            // Update nav-tab states and accessibility
-            $('.nav-tab')
-                .removeClass('nav-tab-active')
-                .attr('aria-selected', 'false')
-                .attr('tabindex', '-1');
-            $(this)
-                .addClass('nav-tab-active')
-                .attr('aria-selected', 'true')
-                .attr('tabindex', '0')
-                .focus();
-
-            // Update tab content visibility and ARIA attributes
-            $('.aips-tab-content')
-                .hide()
-                .attr('hidden', 'hidden')
-                .attr('aria-hidden', 'true');
-            $('#' + tabId + '-tab')
-                .show()
-                .removeAttr('hidden')
-                .attr('aria-hidden', 'false');
-        },
-        
-        /**
-         * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
-         * `data-tab` attribute.
-         *
-         * Toggles the `.active` class on the tab links, shows the matching
-         * `.aips-tab-content` panel, and fires the custom `aips:tabSwitch` event
-         * on `document` so other modules can react.
-         *
-         * @param {Event} e - Click event from an `.aips-tab-link` element.
-         */
-        switchAipsTab: function(e) {
-            e.preventDefault();
-            var $tabLink = $(e.currentTarget);
-            var tabId = $tabLink.data('tab');
-            var $tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
-
-            if (!$tabNav.length) {
-                $tabNav = $tabLink.parent();
-            }
-
-            var $scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
-
-            if (!$scope.length) {
-                $scope = $(document);
-            }
-
-            // Update active state only for the local tab nav
-            $tabNav.find('.aips-tab-link').removeClass('active');
-            $tabLink.addClass('active');
-
-            // Show corresponding tab content only within local scope
-            $scope.find('.aips-tab-content').hide();
-            var $targetTab = $scope.find('#' + tabId + '-tab').first();
-            if ($targetTab.length) {
-                $targetTab.show();
-            }
-
-            // Notify other modules of the tab switch.
-            // Passes tabId (string) as the first argument: $(document).on('aips:tabSwitch', function(e, tabId) { ... })
-            $(document).trigger('aips:tabSwitch', [tabId]);
-        },
-
-        /**
-         * Append the current URL hash to a form's `action` attribute before
-         * submission so that the active tab is preserved after the page reloads.
-         *
-         * Bound to the `submit` event on `.aips-post-review-filters` and
-         * `form[action*="aips-generated-posts"]`.
-         *
-         * @param {Event} e - Submit event from the form element.
-         */
-        preserveTabOnSubmit: function(e) {
-            // Append current hash to form action to preserve active tab
-            var hash = window.location.hash;
-            if (hash) {
-                var $form = $(this);
-                var action = $form.attr('action') || window.location.pathname + window.location.search;
-                
-                // Remove existing hash if present
-                action = action.split('#')[0];
-                
-                // Add the hash to the action
-                $form.attr('action', action + hash);
-            }
         },
 
         /**
@@ -3512,9 +3378,11 @@
             $modal.find('.aips-wizard-progress').hide();
             $modal.find('.aips-wizard-footer').hide();
 
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
+            if (typeof aipsAjax === 'undefined' || !aipsAjax.schedulePageUrl) {
+                return;
+            }
+
+            var scheduleUrl = aipsAjax.schedulePageUrl + '&schedule_template=' + templateId;
             $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
         },
@@ -3536,9 +3404,11 @@
             if (!templateId) return;
 
             // Use the aipsAjax.schedulePageUrl if available or fallback
-            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl
-                : 'admin.php?page=aips-schedule';
+            if (typeof aipsAjax === 'undefined' || !aipsAjax.schedulePageUrl) {
+                return;
+            }
+
+            var scheduleUrlBase = aipsAjax.schedulePageUrl;
 
             // Build the URL safely, handling whether scheduleUrlBase already contains a query string
             var url = new URL(scheduleUrlBase, window.location.href);

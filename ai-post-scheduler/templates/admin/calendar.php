@@ -2,29 +2,8 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-calendar-alt" style="font-size: 28px; width: 28px; height: 28px; margin-right: 8px;"></span>
-						<?php esc_html_e('Schedule Calendar', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('View all scheduled posts in a calendar format. Switch between month, week, and day views to see your content schedule.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-list-view"></span>
-						<?php esc_html_e('List View', 'ai-post-scheduler'); ?>
-					</a>
-				</div>
-			</div>
-		</div>
 
 		<!-- Calendar Content Panel -->
 		<div class="aips-content-panel">
@@ -120,9 +99,6 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
-	</div>
-	
-	
 	<!-- Event Details Modal -->
 	<div id="aips-calendar-event-modal" class="aips-calendar-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-calendar-event-modal-title">
 		<div class="aips-calendar-modal-overlay"></div>
@@ -153,4 +129,3 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 	</div>
-</div>

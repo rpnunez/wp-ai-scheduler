@@ -428,7 +428,7 @@ class AIPS_Notifications_Event_Handler {
 			'history_id'         => absint($history_id),
 			'source'             => $this->get_source_label($context),
 			'missing_components' => $missing_components,
-			'url'                => admin_url('admin.php?page=aips-generated-posts#aips-partial-generations'),
+			'url'                => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('subtab' => 'aips-partial-generations')),
 			'dedupe_key'         => 'partial_generation_completed_' . $post_id,
 			'dedupe_window'      => 60,
 		));

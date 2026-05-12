@@ -19,6 +19,10 @@
 		 */
 		init: function () {
 			this.bindEvents();
+
+			if ($('#generation-queue-tab').hasClass('active') || $('#generation-queue-tab:visible').length) {
+				this.loadQueueTopics();
+			}
 		},
 
 		/**
@@ -54,8 +58,8 @@
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
-			// Tab switching in topics modal
-			$(document).on('aips:tabSwitch', this.onTabSwitch.bind(this));
+			// Author Topics status tabs
+			$(document).on('click', '.aips-author-topics-tab', this.onAuthorTopicsTabClick.bind(this));
 
 			// Topic actions
 			$(document).on('click', '.aips-approve-topic', this.approveTopic.bind(this));
@@ -302,8 +306,6 @@
 						$('#author_preferred_content_length').val(author.preferred_content_length || '');
 						$('#author_language').val(author.language || 'en');
 						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
-						$('#author_manual_post_generation_quantity').val(author.manual_post_generation_quantity || 1);
-						$('#author_scheduled_post_generation_quantity').val(author.scheduled_post_generation_quantity || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
@@ -496,108 +498,62 @@
 				return;
 			}
 
-			// Get the default quantity from the author's manual_post_generation_quantity data attribute
-			const defaultQuantity = this.getAuthorManualPostQuantity($btn);
+			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePosts, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, generate',
+					className: 'aips-btn aips-btn-author-posts',
+					action: () => {
+						AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
 
-			// Use the new reusable showModal method
-			AIPS.Utilities.showModal({
-				heading: aipsAuthorsL10n.generatePostsModalTitle || 'Generate Posts',
-				message: aipsAuthorsL10n.generatePostsModalMessage || 'How many posts would you like to generate for this author?',
-				fields: [
-					{
-						type: 'number',
-						name: 'quantity',
-						label: aipsAuthorsL10n.numberOfPostsLabel || 'Number of Posts to Generate',
-						value: defaultQuantity,
-						min: 1,
-						max: 10,
-						required: true,
-						validate: function(value) {
-							const num = parseInt(value, 10);
-							if (!num || num < 1 || num > 10) {
-								return aipsAuthorsL10n.invalidQuantityError || 'Please enter a valid quantity between 1 and 10.';
-							}
-							return null;
-						}
-					}
-				],
-				buttons: [
-					{
-						label: aipsAuthorsL10n.cancel || 'Cancel',
-						className: 'aips-btn aips-btn-primary'
-					},
-					{
-						label: aipsAuthorsL10n.generateButtonLabel || 'Generate',
-						className: 'aips-btn aips-btn-author-posts',
-						submit: true,
-						action: (formData) => {
-							// Set button to loading state
-							AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+						$.ajax({
+							url: aipsAjax.ajaxUrl,
+							type: 'POST',
+							data: {
+								action: 'aips_unified_run_now',
+								nonce: aipsAjax.nonce,
+								id: authorId,
+								type: type
+							},
+							success: (response) => {
+								if (response.success) {
+									let message = AIPS.Utilities.escapeHtml(
+										response.data && response.data.message
+											? response.data.message
+											: aipsAuthorsL10n.postsGenerated
+									);
 
-							$.ajax({
-								url: aipsAjax.ajaxUrl,
-								type: 'POST',
-								data: {
-									action: 'aips_unified_run_now',
-									nonce: aipsAjax.nonce,
-									id: authorId,
-									type: type,
-									quantity: formData.quantity
-								},
-								success: (response) => {
-									if (response.success) {
-										let message = AIPS.Utilities.escapeHtml(
-											response.data && response.data.message
-												? response.data.message
-												: aipsAuthorsL10n.postsGenerated
-										);
+									if (response.data && response.data.edit_url) {
+										const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
 
-										if (response.data && response.data.edit_url) {
-											const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
-
-											if (safeEditUrl) {
-												message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
-													AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
-												'</a>';
-											}
+										if (safeEditUrl) {
+											message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
+												AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
+											'</a>';
 										}
-
-										AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
-									} else {
-										AIPS.Utilities.showToast(
-											response.data && response.data.message
-												? response.data.message
-												: aipsAuthorsL10n.errorGeneratingPosts,
-											'error'
-										);
 									}
-								},
-								error: () => {
-									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
-								},
-								complete: () => {
-									AIPS.Utilities.resetButton($btn);
+
+									AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
+								} else {
+									AIPS.Utilities.showToast(
+										response.data && response.data.message
+											? response.data.message
+											: aipsAuthorsL10n.errorGeneratingPosts,
+										'error'
+									);
 								}
-							});
-						}
+							},
+							error: () => {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
+							},
+							complete: () => {
+								AIPS.Utilities.resetButton($btn);
+							}
+						});
 					}
-				]
-			});
+				}
+			]);
 		},
-
-		/**
-		 * Get the manual_post_generation_quantity for a specific author from the
-		 * button's data-quantity attribute.
-		 *
-		 * @param {jQuery} $btn - The "Generate Posts" button element.
-		 * @return {number} The manual post generation quantity (defaults to 1).
-		 */
-		getAuthorManualPostQuantity: function($btn) {
-			const quantity = parseInt($btn.data('quantity'), 10);
-			return (!isNaN(quantity) && quantity >= 1) ? quantity : 1;
-		},
-
-
 
 		/**
 		 * Fetch topics for the current author filtered by status.
@@ -1012,26 +968,33 @@
 			$('#stat-pending-count').text(pending);
 			$('#stat-approved-count').text(approved);
 			$('#stat-rejected-count').text(rejected);
+			$('#stat-posts-generated-count').text(postsGenerated);
 		},
 
 		/**
-		 * Handles the custom aips:tabSwitch event fired by admin.js after a .aips-tab-link click.
+		 * Resolve the currently active Author Topics status tab.
 		 *
-		 * @param {jQuery.Event} e      - The jQuery event object.
-		 * @param {string}       status - The tab ID (data-tab value) of the newly active tab.
+		 * @return {string}
 		 */
-		onTabSwitch: function (e, status) {
-			// Only handle authors-page-specific behaviour
-			if (!$('#aips-topics-content').length) {
-				return;
-			}
+		getActiveAuthorTopicsTab: function () {
+			const $activeTab = $('.aips-author-topics-tab.active').first();
+			const status = $activeTab.data('topic-tab');
 
-			// Reset topic search when switching tabs
+			return status || 'pending';
+		},
+
+		onAuthorTopicsTabClick: function (e) {
+			e.preventDefault();
+
+			const $tab = $(e.currentTarget);
+			const status = $tab.data('topic-tab') || 'pending';
+
+			$('.aips-author-topics-tab').removeClass('active');
+			$tab.addClass('active');
+
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-			
-			// Immediately switch to the loading skeleton, then fetch the
-			// appropriate content for the selected tab.
+
 			if (status === 'feedback') {
 				this.showTopicsLoading();
 				this.loadFeedback();
@@ -1039,7 +1002,12 @@
 				this.loadTopics(status);
 			}
 
-			// Update bulk action dropdown options based on tab
+			if (window.history && window.history.replaceState) {
+				const url = new URL(window.location.href);
+				url.searchParams.set('topic_status', status);
+				window.history.replaceState({}, '', url.toString());
+			}
+
 			this.updateBulkActionDropdown(status);
 		},
 
@@ -1421,7 +1389,7 @@
 							},
 							success: (response) => {
 								if (response.success) {
-									const activeTab = $('.aips-tab-link.active').data('tab');
+									const activeTab = this.getActiveAuthorTopicsTab();
 									this.loadTopics(activeTab);
 								} else {
 									AIPS.Utilities.showToast(
@@ -1562,7 +1530,7 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
-									const activeTab = $('.aips-tab-link.active').data('tab');
+									const activeTab = this.getActiveAuthorTopicsTab();
 									this.loadTopics(activeTab);
 								} else {
 									AIPS.Utilities.showToast(
@@ -1898,7 +1866,7 @@
 			const $button = $(e.currentTarget);
 			const $dropdown = $button.siblings('.aips-bulk-action-select');
 			const action = $dropdown.val();
-			const activeTab = $('.aips-tab-link.active').data('tab');
+			const activeTab = this.getActiveAuthorTopicsTab();
 
 			if (!action) {
 				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
@@ -2395,9 +2363,6 @@
 		 * execution.
 		 */
 		bindEvents: function () {
-			// React to shared tab switching events for top-level Authors tabs.
-			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
-			
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -2407,22 +2372,6 @@
 			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
 			$(document).on('click', '#aips-queue-reload-btn', this.loadQueueTopics.bind(this));
 			$(document).on('click', '.aips-queue-page-link', this.goToQueuePage.bind(this));
-		},
-
-		/**
-		 * Handle shared AIPS tab-switch events for the Authors page top tabs.
-		 *
-		 * @param {jQuery.Event} e     - Custom event object.
-		 * @param {string}       tabId - The activated tab ID.
-		 */
-		handleSharedTabSwitch: function (e, tabId) {
-			if (!$('#generation-queue-tab').length) {
-				return;
-			}
-
-			if (tabId === 'generation-queue') {
-				this.loadQueueTopics();
-			}
 		},
 
 		/**
@@ -2786,9 +2735,17 @@
 		// The author ID is passed via aipsAuthorContext.authorId (set by PHP when the
 		// page param is 'aips-author-topics'), so no inline script injection is needed.
 		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.authorId ) {
+			const initialTopicTab = aipsAuthorContext.topicTab || AuthorsModule.getActiveAuthorTopicsTab();
 			AuthorsModule.currentAuthorId = aipsAuthorContext.authorId;
-			AuthorsModule.updateBulkActionDropdown('pending');
-			AuthorsModule.loadTopics('pending');
+			$('.aips-author-topics-tab').removeClass('active');
+			$('.aips-author-topics-tab[data-topic-tab="' + initialTopicTab + '"]').addClass('active');
+			AuthorsModule.updateBulkActionDropdown(initialTopicTab);
+			if (initialTopicTab === 'feedback') {
+				AuthorsModule.showTopicsLoading();
+				AuthorsModule.loadFeedback();
+			} else {
+				AuthorsModule.loadTopics(initialTopicTab);
+			}
 		}
 
 		// Deep-link: on the Authors list page, open the Edit modal directly when

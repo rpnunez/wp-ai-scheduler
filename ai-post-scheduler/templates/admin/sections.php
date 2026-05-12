@@ -6,24 +6,8 @@ if (!defined('ABSPATH')) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Prompt Sections', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Create and manage reusable prompt sections that can be inserted into your templates using placeholders.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-add-section-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
 
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
@@ -116,7 +100,6 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 			<?php endif; ?>
 		</div>
-	</div>
 
 	<!-- Section Modal (kept as-is for JavaScript compatibility) --><div id="aips-section-modal" class="aips-modal" style="display: none;">
 		<div class="aips-modal-content">

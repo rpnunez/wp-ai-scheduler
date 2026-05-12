@@ -868,7 +868,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'error_message'  => $error->get_error_message(),
             'dedupe_key'     => 'integration_error_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
-            'url'            => admin_url('admin.php?page=aips-settings'),
+            'url'            => AIPS_Admin_Menu_Helper::get_page_url('settings'),
             'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }
@@ -888,7 +888,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'error_message'  => $error->get_error_message(),
             'dedupe_key'     => 'quota_alert_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
             'dedupe_window'  => 1800,
-            'url'            => admin_url('admin.php?page=aips-settings'),
+            'url'            => AIPS_Admin_Menu_Helper::get_page_url('settings'),
             'ai_model'       => isset($options['model']) ? $options['model'] : AIPS_Config::get_instance()->get_option('aips_ai_model'),
         ));
     }

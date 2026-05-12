@@ -3,19 +3,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Developer Tools', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Generate test data and template scaffolds using AI to quickly prototype and test your workflow.', 'ai-post-scheduler'); ?></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Content Panel -->
         <div class="aips-content-panel">
             <div class="aips-panel-body">
                 <form id="aips-dev-scaffold-form">
@@ -81,5 +68,3 @@ if (!defined('ABSPATH')) {
                 <div id="aips-dev-scaffold-log" style="background: #f0f0f1; padding: 15px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.6;"></div>
             </div>
         </div>
-    </div>
-</div>

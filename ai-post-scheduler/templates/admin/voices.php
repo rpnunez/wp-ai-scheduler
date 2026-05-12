@@ -2,26 +2,8 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
 ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description">
-                        <?php esc_html_e('Define consistent tone and style templates for AI-generated content.', 'ai-post-scheduler'); ?>
-                    </p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
-                        <span class="dashicons dashicons-plus-alt2"></span>
-                        <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <!-- Content Panel -->
         <div class="aips-content-panel">
@@ -127,53 +109,50 @@ if (!defined('ABSPATH')) {
                 <?php endif; ?>
             </div>
         </div>
-    </div>
-    
-    <div id="aips-voice-modal" class="aips-modal" style="display: none;">
-        <div class="aips-modal-content">
-            <div class="aips-modal-header">
-                <h2 id="aips-voice-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-            </div>
-            <div class="aips-modal-body">
-                <form id="aips-voice-form">
-                    <input type="hidden" name="voice_id" id="voice_id" value="">
-                    
-                    <div class="aips-form-row">
-                        <label for="voice_name"><?php esc_html_e('Voice Name', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
-                        <input type="text" id="voice_name" name="name" required class="regular-text" placeholder="e.g., Professional, Casual, Humorous">
-                    </div>
-                    
-                    <div class="aips-form-row">
-                        <label for="voice_title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
-                        <textarea id="voice_title_prompt" name="title_prompt" rows="3" required class="large-text" placeholder="<?php esc_attr_e('e.g., Generate a compelling blog post title for the following topic. The title should be engaging and SEO-optimized. Return only the title, nothing else.', 'ai-post-scheduler'); ?>"></textarea>
-                        <p class="description"><?php esc_html_e('Instructions for generating the post title.', 'ai-post-scheduler'); ?></p>
-                    </div>
-                    
-                    <div class="aips-form-row">
-                        <label for="voice_content_instructions"><?php esc_html_e('Content Instructions', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
-                        <textarea id="voice_content_instructions" name="content_instructions" rows="4" required class="large-text" placeholder="<?php esc_attr_e('e.g., Write in a professional tone. Include practical examples. Use short paragraphs. Add a compelling conclusion.', 'ai-post-scheduler'); ?>"></textarea>
-                        <p class="description"><?php esc_html_e('These instructions will be prepended to the template prompt when generating content.', 'ai-post-scheduler'); ?></p>
-                    </div>
-                    
-                    <div class="aips-form-row">
-                        <label for="voice_excerpt_instructions"><?php esc_html_e('Excerpt Instructions (Optional)', 'ai-post-scheduler'); ?></label>
-                        <textarea id="voice_excerpt_instructions" name="excerpt_instructions" rows="3" class="large-text" placeholder="<?php esc_attr_e('e.g., Write a compelling summary. Use an engaging tone. Keep the excerpt concise.', 'ai-post-scheduler'); ?>"></textarea>
-                        <p class="description"><?php esc_html_e('Optional. These instructions will influence excerpt generation for posts using this voice.', 'ai-post-scheduler'); ?></p>
-                    </div>
-                    
-                    <div class="aips-form-row">
-                        <label class="aips-checkbox-label">
-                            <input type="checkbox" id="voice_is_active" name="is_active" value="1" checked>
-                            <?php esc_html_e('Voice is active', 'ai-post-scheduler'); ?>
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="aips-modal-footer">
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-                <button type="button" class="button button-primary aips-save-voice"><?php esc_html_e('Save Voice', 'ai-post-scheduler'); ?></button>
-            </div>
-        </div>
-    </div>
+<div id="aips-voice-modal" class="aips-modal" style="display: none;">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-voice-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
+			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<form id="aips-voice-form">
+				<input type="hidden" name="voice_id" id="voice_id" value="">
+				
+				<div class="aips-form-row">
+					<label for="voice_name"><?php esc_html_e('Voice Name', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+					<input type="text" id="voice_name" name="name" required class="regular-text" placeholder="e.g., Professional, Casual, Humorous">
+				</div>
+				
+				<div class="aips-form-row">
+					<label for="voice_title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+					<textarea id="voice_title_prompt" name="title_prompt" rows="3" required class="large-text" placeholder="<?php esc_attr_e('e.g., Generate a compelling blog post title for the following topic. The title should be engaging and SEO-optimized. Return only the title, nothing else.', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('Instructions for generating the post title.', 'ai-post-scheduler'); ?></p>
+				</div>
+				
+				<div class="aips-form-row">
+					<label for="voice_content_instructions"><?php esc_html_e('Content Instructions', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+					<textarea id="voice_content_instructions" name="content_instructions" rows="4" required class="large-text" placeholder="<?php esc_attr_e('e.g., Write in a professional tone. Include practical examples. Use short paragraphs. Add a compelling conclusion.', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('These instructions will be prepended to the template prompt when generating content.', 'ai-post-scheduler'); ?></p>
+				</div>
+				
+				<div class="aips-form-row">
+					<label for="voice_excerpt_instructions"><?php esc_html_e('Excerpt Instructions (Optional)', 'ai-post-scheduler'); ?></label>
+					<textarea id="voice_excerpt_instructions" name="excerpt_instructions" rows="3" class="large-text" placeholder="<?php esc_attr_e('e.g., Write a compelling summary. Use an engaging tone. Keep the excerpt concise.', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('Optional. These instructions will influence excerpt generation for posts using this voice.', 'ai-post-scheduler'); ?></p>
+				</div>
+				
+				<div class="aips-form-row">
+					<label class="aips-checkbox-label">
+						<input type="checkbox" id="voice_is_active" name="is_active" value="1" checked>
+						<?php esc_html_e('Voice is active', 'ai-post-scheduler'); ?>
+					</label>
+				</div>
+			</form>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="button button-primary aips-save-voice"><?php esc_html_e('Save Voice', 'ai-post-scheduler'); ?></button>
+		</div>
+	</div>
 </div>

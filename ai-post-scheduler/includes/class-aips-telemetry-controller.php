@@ -47,7 +47,6 @@ class AIPS_Telemetry_Controller {
 		$start_date = date_i18n('Y-m-d', strtotime('-29 days', current_time('timestamp')));
 		$per_page   = 25;
 		$filter_options = $this->get_filter_options();
-
 		include AIPS_PLUGIN_DIR . 'templates/admin/telemetry.php';
 	}
 

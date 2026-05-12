@@ -23,7 +23,9 @@ if (!defined('ABSPATH')) {
 			<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<form method="get" class="aips-post-review-filters aips-filter-form">
-						<input type="hidden" name="page" value="aips-generated-posts">
+						<input type="hidden" name="page" value="aips-outputs">
+						<input type="hidden" name="tab" value="content-queue">
+						<input type="hidden" name="content_tab" value="aips-pending-review">
 						<div class="aips-filter-left">
 								<?php if (!empty($templates)): ?>
 							<label class="screen-reader-text" for="aips-filter-template"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>

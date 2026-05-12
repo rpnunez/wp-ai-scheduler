@@ -48,10 +48,13 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 			$this->markTestSkipped( 'get_daily_topic_counts requires a real wpdb instance.' );
 		}
 
-		$table     = $wpdb->prefix . 'aips_author_topics';
-		$today     = gmdate( 'Y-m-d' );
-		$yesterday = gmdate( 'Y-m-d', time() - DAY_IN_SECONDS );
-		$extra_ids = array();
+		$table        = $wpdb->prefix . 'aips_author_topics';
+		$timezone     = wp_timezone();
+		$today        = wp_date( 'Y-m-d', current_time( 'timestamp', true ), $timezone );
+		$yesterday    = wp_date( 'Y-m-d', current_time( 'timestamp', true ) - DAY_IN_SECONDS, $timezone );
+		$today_ts     = current_time( 'timestamp', true );
+		$yesterday_ts = $today_ts - DAY_IN_SECONDS;
+		$extra_ids    = array();
 
 		// Insert 3 topics for today and 2 for yesterday.
 		foreach ( range( 1, 3 ) as $i ) {
@@ -61,9 +64,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 					'author_id'   => $this->author_id,
 					'topic_title' => 'Today topic ' . $i,
 					'status'      => 'pending',
-					'created_at'  => $today . ' 09:00:00',
+					'generated_at'=> $today_ts,
 				),
-				array( '%d', '%s', '%s', '%s' )
+				array( '%d', '%s', '%s', '%d' )
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -75,9 +78,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 					'author_id'   => $this->author_id,
 					'topic_title' => 'Yesterday topic ' . $i,
 					'status'      => 'pending',
-					'created_at'  => $yesterday . ' 09:00:00',
+					'generated_at'=> $yesterday_ts,
 				),
-				array( '%d', '%s', '%s', '%s' )
+				array( '%d', '%s', '%s', '%d' )
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -139,7 +142,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 		}
 
 		$table        = $wpdb->prefix . 'aips_author_topics';
-		$far_past_day = gmdate( 'Y-m-d', time() - 60 * DAY_IN_SECONDS );
+		$timezone     = wp_timezone();
+		$far_past_ts  = current_time( 'timestamp', true ) - 60 * DAY_IN_SECONDS;
+		$far_past_day = wp_date( 'Y-m-d', $far_past_ts, $timezone );
 
 		// Insert a topic 60 days ago (outside the 14-day window).
 		$wpdb->insert(
@@ -148,9 +153,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 				'author_id'   => $this->author_id,
 				'topic_title' => 'Old topic outside window',
 				'status'      => 'pending',
-				'created_at'  => $far_past_day . ' 12:00:00',
+				'generated_at'=> $far_past_ts,
 			),
-			array( '%d', '%s', '%s', '%s' )
+			array( '%d', '%s', '%s', '%d' )
 		);
 		$inserted_id = $wpdb->insert_id;
 

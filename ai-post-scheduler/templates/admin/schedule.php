@@ -105,33 +105,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	}
 }
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
 
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Schedules', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('All scheduled processes — template post generation, author topic generation, and author post generation — in one view.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<?php if (!empty($templates)): ?>
-					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
-					</button>
-					<?php else: ?>
-					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-media-document"></span>
-						<?php esc_html_e('Create Template First', 'ai-post-scheduler'); ?>
-					</a>
-					<?php endif; ?>
-				</div>
-			</div>
-		</div>
-
-		<!-- Content Panel -->
 		<div class="aips-content-panel">
 
 			<!-- Filter Bar -->
@@ -509,8 +483,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
 			<button type="button" class="button button-primary aips-save-schedule"><?php esc_html_e('Save Schedule', 'ai-post-scheduler'); ?></button>
 		</div>
-	</div>
-</div>
 
 <!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->

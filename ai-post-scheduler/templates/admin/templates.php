@@ -2,24 +2,8 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
 ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Post Templates', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Create and manage AI post generation templates with custom prompts and settings.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-template-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Add Template', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
         
         <?php if (!empty($templates)): ?>
         <!-- Content Panel with Filter Bar -->
@@ -83,7 +67,7 @@ if (!defined('ABSPATH')) {
                                     <div>
                                         <strong style="font-size: 14px;"><?php echo esc_html($generated_count); ?></strong>
                                         <span class="cell-meta"><?php esc_html_e('generated', 'ai-post-scheduler'); ?></span>
-                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" style="font-size: 12px; margin-left: 4px;">
+                                        <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts', array( 'template_id' => absint( $template->id ) ) ) ); ?>" style="font-size: 12px; margin-left: 4px;">
                                             <?php esc_html_e('(view)', 'ai-post-scheduler'); ?>
                                         </a>
                                     </div>
@@ -110,11 +94,11 @@ if (!defined('ABSPATH')) {
                             </td>
                             <td>
                                 <div class="cell-actions">
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-edit"></span>
                                         <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
@@ -122,11 +106,11 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                     </button>
@@ -179,7 +163,7 @@ if (!defined('ABSPATH')) {
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Yet', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <button class="aips-btn aips-btn-primary aips-add-template-btn">
+                        <button type="button" class="aips-btn aips-btn-primary aips-add-template-btn">
                             <span class="dashicons dashicons-plus-alt"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </button>
@@ -188,8 +172,6 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
         <?php endif; ?>
-    </div>
-</div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
     <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
@@ -383,7 +365,7 @@ if (!defined('ABSPATH')) {
                                 <?php else: ?>
                                     <p class="description">
                                         <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
                                     </p>
                                 <?php endif; ?>
                             </div>

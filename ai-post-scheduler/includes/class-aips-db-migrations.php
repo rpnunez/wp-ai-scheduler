@@ -122,7 +122,7 @@ class AIPS_DB_Migrations {
 					'error_code'    => $install_result->get_error_code(),
 					'error_message' => $install_result->get_error_message(),
 					'from_version'  => $from_version,
-					'url'           => admin_url( 'admin.php?page=aips-status' ),
+					'url'           => AIPS_Admin_Menu_Helper::get_page_url( 'system_status' ),
 					'dedupe_key'    => 'db_upgrade_failed_' . sanitize_key( (string) $from_version ),
 					'dedupe_window' => 1800,
 				) );

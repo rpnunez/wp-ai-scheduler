@@ -37,28 +37,6 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 	$source_term_ids_map = array();
 }
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Trusted Sources', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Assign Sources to Source Groups to allow Authors and Templates to selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
-						<span class="dashicons dashicons-category"></span>
-						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Source', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
 
 		<div class="aips-content-panel">
 			<?php if (!empty($sources)): ?>
@@ -246,8 +224,6 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<?php endif; ?>
 		</div>
 
-	</div><!-- .aips-page-container -->
-</div><!-- .wrap -->
 
 <!-- Add / Edit Source Modal -->
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">

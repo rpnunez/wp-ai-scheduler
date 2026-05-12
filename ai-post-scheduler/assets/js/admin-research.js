@@ -673,13 +673,13 @@
                     niche: niche
                 },
                 success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        $('.aips-tab-link[data-tab="trending"]').trigger('click');
-                        setTimeout(function() {
-                            $('#load-topics').trigger('click');
-                        }, 500);
-                    } else {
+					if (response.success) {
+						AIPS.Utilities.showToast(response.data.message, 'success');
+						var url = new URL(window.location.href);
+						url.searchParams.set('subtab', 'trending');
+						url.searchParams.set('aips_reload_topics', '1');
+						window.location.assign(url.toString());
+					} else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },
@@ -1028,5 +1028,12 @@
 
     $(document).ready(function() {
         AIPS.initResearch();
+
+        if (new URLSearchParams(window.location.search).get('aips_reload_topics') === '1') {
+            $('#load-topics').trigger('click');
+            var cleanupUrl = new URL(window.location.href);
+            cleanupUrl.searchParams.delete('aips_reload_topics');
+            window.history.replaceState({}, '', cleanupUrl.toString());
+        }
     });
 })(jQuery);

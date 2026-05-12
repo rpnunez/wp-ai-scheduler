@@ -89,7 +89,7 @@
 	border-bottom: 1px solid #ddd;
 }
 
-.aips-tab-link {
+.aips-author-topics-tab {
 	background: none;
 	border: none;
 	padding: 10px 20px;
@@ -99,13 +99,13 @@
 	font-size: 14px;
 }
 
-.aips-tab-link.active {
+.aips-author-topics-tab.active {
 	border-bottom-color: #2271b1;
 	font-weight: 600;
 	color: #2271b1;
 }
 
-.aips-tab-link:hover {
+.aips-author-topics-tab:hover {
 	color: #2271b1;
 }
 
@@ -328,7 +328,7 @@
 		margin: 10px auto;
 	}
 	
-	.aips-tab-link {
+	.aips-author-topics-tab {
 		padding: 8px 12px;
 		font-size: 12px;
 	}
@@ -678,84 +678,6 @@
    Author Topics Page
    ========================================================= */
 
-/* Breadcrumb Navigation */
-.aips-breadcrumb {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font-size: 13px;
-	color: #50575e;
-	margin-bottom: 12px;
-}
-
-.aips-breadcrumb a {
-	color: #2271b1;
-	text-decoration: none;
-}
-
-.aips-breadcrumb a:hover {
-	text-decoration: underline;
-}
-
-.aips-breadcrumb-sep {
-	color: #a7aaad;
-	font-size: 16px;
-	line-height: 1;
-}
-
-/* Author Topics Statistics */
-.aips-author-topics-stats {
-	display: flex;
-	gap: 16px;
-	margin-bottom: 24px;
-	flex-wrap: wrap;
-}
-
-.aips-author-topics-stats .aips-stat-card {
-	flex: 1;
-	min-width: 120px;
-	padding: 16px 20px;
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
-	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-.aips-author-topics-stats .aips-stat-value {
-	font-size: 28px;
-	font-weight: 700;
-	line-height: 1;
-	color: #1d2327;
-}
-
-.aips-author-topics-stats .aips-stat-label {
-	font-size: 12px;
-	color: #50575e;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	text-align: center;
-}
-
-.aips-author-topics-stats .aips-stat-pending .aips-stat-value {
-	color: #d63638;
-}
-
-.aips-author-topics-stats .aips-stat-approved .aips-stat-value {
-	color: #00a32a;
-}
-
-.aips-author-topics-stats .aips-stat-rejected .aips-stat-value {
-	color: #50575e;
-}
-
-.aips-author-topics-stats .aips-stat-generated .aips-stat-value {
-	color: #2271b1;
-}
-
 /* Page-level Topics Tabs (full page variant) */
 .aips-page-tabs {
 	border-bottom: 1px solid #c3c4c7;
@@ -763,7 +685,7 @@
 	padding: 0 20px;
 }
 
-.aips-page-tabs .aips-tab-link {
+.aips-page-tabs .aips-author-topics-tab {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -778,13 +700,13 @@
 	transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.aips-page-tabs .aips-tab-link.active {
+.aips-page-tabs .aips-author-topics-tab.active {
 	color: #2271b1;
 	border-bottom-color: #2271b1;
 	font-weight: 600;
 }
 
-.aips-page-tabs .aips-tab-link:hover {
+.aips-page-tabs .aips-author-topics-tab:hover {
 	color: #2271b1;
 }
 
@@ -803,24 +725,13 @@
 	line-height: 1;
 }
 
-.aips-tab-link.active .aips-tab-count {
+.aips-author-topics-tab.active .aips-tab-count {
 	background: #2271b1;
 	color: #fff;
 }
 
 #aips-author-topics-panel .aips-filter-bar .aips-filter-left {
 	flex-wrap: nowrap;
-}
-
-@media screen and (max-width: 782px) {
-	.aips-author-topics-stats {
-		gap: 10px;
-	}
-
-	.aips-author-topics-stats .aips-stat-card {
-		min-width: calc(50% - 5px);
-		flex: none;
-	}
 }
 
 /* Inline similarity indicator for pending topic rows */
