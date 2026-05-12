@@ -8,6 +8,11 @@ if (!defined('ABSPATH')) {
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
+$domain_filter = isset($domain_filter) ? $domain_filter : (isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '');
+$actor_filter = isset($actor_filter) ? $actor_filter : (isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '');
+$correlation_filter = isset($correlation_id) ? $correlation_id : (isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '');
+$date_from = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '');
+$date_to = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '');
 
 $items       = array();
 $total_items = 0;
@@ -60,6 +65,21 @@ if (is_object($history)) {
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <div class="aips-filter-left">
+                    <select id="aips-filter-domain" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
+                        <option value="post_generation" <?php selected($domain_filter, 'post_generation'); ?>>Post Generation</option>
+                        <option value="author_topics" <?php selected($domain_filter, 'author_topics'); ?>>Author Topics</option>
+                        <option value="research" <?php selected($domain_filter, 'research'); ?>>Research</option>
+                        <option value="sources" <?php selected($domain_filter, 'sources'); ?>>Sources</option>
+                        <option value="embeddings" <?php selected($domain_filter, 'embeddings'); ?>>Embeddings</option>
+                        <option value="internal_links" <?php selected($domain_filter, 'internal_links'); ?>>Internal Links</option>
+                        <option value="batch_jobs" <?php selected($domain_filter, 'batch_jobs'); ?>>Batch Jobs</option>
+                    </select>
+                    <select id="aips-filter-actor" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Actors', 'ai-post-scheduler'); ?></option>
+                        <option value="system" <?php selected($actor_filter, 'system'); ?>>System</option>
+                        <option value="admin" <?php selected($actor_filter, 'admin'); ?>>Admin</option>
+                    </select>
                     <select id="aips-filter-status" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
@@ -73,6 +93,9 @@ if (is_object($history)) {
                 </div>
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
+                    <input type="date" id="aips-filter-date-from" class="aips-form-input" value="<?php echo esc_attr($date_from); ?>">
+                    <input type="date" id="aips-filter-date-to" class="aips-form-input" value="<?php echo esc_attr($date_to); ?>">
+                    <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="Correlation ID" value="<?php echo esc_attr($correlation_filter); ?>">
                     <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
@@ -105,6 +128,39 @@ if (is_object($history)) {
                         <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
                     <?php endif; ?>
                 </div>
+            </div>
+
+            <div class="aips-panel-body">
+                <h3><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></h3>
+                <?php
+                $now = current_time('timestamp', true);
+                $utc_timezone = new DateTimeZone('UTC');
+                $today = wp_date('Y-m-d', $now, $utc_timezone);
+                $yesterday = wp_date('Y-m-d', $now - DAY_IN_SECONDS, $utc_timezone);
+                foreach (array('today' => 'Today', 'yesterday' => 'Yesterday', 'earlier' => 'Earlier') as $bucket_key => $bucket_label):
+                ?>
+                    <div class="aips-timeline-group">
+                        <h4><?php echo esc_html($bucket_label); ?></h4>
+                        <?php
+                        $has_bucket = false;
+                        foreach ($items as $item):
+                            $ts = (int) $item->created_at; // created_at is stored as a Unix timestamp.
+                            $item_date = wp_date('Y-m-d', $ts, $utc_timezone);
+                            $bucket = ($item_date === $today) ? 'today' : (($item_date === $yesterday) ? 'yesterday' : 'earlier');
+                            if ($bucket !== $bucket_key) { continue; }
+                            $has_bucket = true;
+                            ?>
+                            <details class="aips-timeline-card">
+                                <summary><strong><?php echo esc_html(!empty($item->event_label) ? $item->event_label : __('Generation Event', 'ai-post-scheduler')); ?></strong> — <?php echo esc_html($item->formatted_date); ?> <span class="aips-badge aips-badge-neutral"><?php echo esc_html($item->event_domain); ?></span></summary>
+                                <div style="padding:8px 0;">
+                                    <p><strong>Status:</strong> <?php echo esc_html($item->status); ?> | <strong>Actor:</strong> <?php echo esc_html(isset($item->actor_type) ? $item->actor_type : 'system'); ?></p>
+                                    <?php if (!empty($item->correlation_id)): ?><p><strong>Correlation ID:</strong> <?php echo esc_html($item->correlation_id); ?></p><?php endif; ?>
+                                    <?php if (!empty($item->error_message)): ?><p style="color:#b32d2e;"><?php echo esc_html($item->error_message); ?></p><?php endif; ?>
+                                </div>
+                            </details>
+                        <?php endforeach; if (!$has_bucket): ?><p class="aips-meta-text">No events.</p><?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
             </div>
 
             <!-- History Containers Table -->

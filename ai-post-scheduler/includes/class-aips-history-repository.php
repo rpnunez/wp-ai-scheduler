@@ -200,6 +200,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'template_id' => 0,
             'author_id' => 0,
             'correlation_id' => '',
+            'domain' => '',
+            'actor' => '',
+            'date_from' => '',
+            'date_to' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
             'fields' => 'all',
@@ -209,12 +213,50 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         $offset = ($args['page'] - 1) * $args['per_page'];
 
+        $domain_patterns = array(
+            'author_topics' => 'author_topic%',
+            'research' => '%research%',
+            'sources' => '%source%',
+            'embeddings' => '%embedding%',
+            'internal_links' => '%internal_link%',
+            'batch_jobs' => '%batch%',
+        );
+
+        $event_domain_case_parts = array('CASE');
+        foreach ($domain_patterns as $domain_key => $domain_pattern) {
+            $event_domain_case_parts[] = sprintf(
+                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
+                esc_sql($domain_pattern),
+                esc_sql($domain_key)
+            );
+        }
+        $event_domain_case_parts[] = "ELSE 'post_generation'";
+        $event_domain_case_parts[] = 'END';
+        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
+        $event_label_case_sql = "CASE
+                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
+                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
+                ELSE 'Generation Event'
+            END";
+        $actor_type_case_sql = "CASE
+                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
+                ELSE 'system'
+            END";
+
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name";
         } else {
             // For specifically 'performance' or any other restricted fields
             $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
@@ -248,6 +290,56 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['correlation_id'])) {
             $where_clauses[] = "h.correlation_id = %s";
             $where_args[] = sanitize_text_field($args['correlation_id']);
+        }
+
+        if (!empty($args['domain'])) {
+            $domain = sanitize_key($args['domain']);
+
+            if (isset($domain_patterns[$domain])) {
+                $where_clauses[] = "COALESCE(h.creation_method, '') LIKE %s";
+                $where_args[] = $domain_patterns[$domain];
+            } elseif ($domain === 'post_generation') {
+                $post_generation_clauses = array();
+                foreach ($domain_patterns as $pattern) {
+                    $post_generation_clauses[] = "COALESCE(h.creation_method, '') LIKE %s";
+                    $where_args[] = $pattern;
+                }
+                $where_clauses[] = 'NOT (' . implode(' OR ', $post_generation_clauses) . ')';
+            }
+        }
+
+        if (!empty($args['actor'])) {
+            $actor = sanitize_key($args['actor']);
+
+            if ($actor === 'admin') {
+                $where_clauses[] = "(COALESCE(h.creation_method, '') LIKE %s OR COALESCE(h.creation_method, '') LIKE %s)";
+                $where_args[] = '%manual%';
+                $where_args[] = '%admin%';
+            } elseif ($actor === 'system') {
+                $where_clauses[] = "(COALESCE(h.creation_method, '') NOT LIKE %s AND COALESCE(h.creation_method, '') NOT LIKE %s)";
+                $where_args[] = '%manual%';
+                $where_args[] = '%admin%';
+            }
+        }
+
+        if (!empty($args['date_from'])) {
+            $date_from = sanitize_text_field($args['date_from']);
+            $date_from_ts = strtotime($date_from . ' 00:00:00');
+
+            if ($date_from_ts !== false) {
+                $where_clauses[] = "h.created_at >= %d";
+                $where_args[] = $date_from_ts;
+            }
+        }
+
+        if (!empty($args['date_to'])) {
+            $date_to = sanitize_text_field($args['date_to']);
+            $date_to_ts = strtotime($date_to . ' 23:59:59');
+
+            if ($date_to_ts !== false) {
+                $where_clauses[] = "h.created_at <= %d";
+                $where_args[] = $date_to_ts;
+            }
         }
 
         if (!empty($args['search'])) {

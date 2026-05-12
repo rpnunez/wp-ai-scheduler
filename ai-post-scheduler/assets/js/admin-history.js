@@ -33,6 +33,11 @@
 
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
+		domainFilter: '',
+		actorFilter: '',
+		correlationId: '',
+		dateFrom: '',
+		dateTo: '',
 
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
@@ -43,6 +48,11 @@
 		 */
 		init: function () {
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.domainFilter = $('#aips-filter-domain').val() || '';
+			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
+			this.dateFrom = $('#aips-filter-date-from').val() || '';
+			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
@@ -878,6 +888,11 @@
 					nonce: aipsAjax.nonce,
 					status: self.statusFilter,
 					search: self.searchQuery,
+					domain: self.domainFilter,
+					actor: self.actorFilter,
+					correlation_id: self.correlationId,
+					date_from: self.dateFrom,
+					date_to: self.dateTo,
 					paged: paged
 				},
 				success: function (response) {
@@ -968,14 +983,21 @@
 				e.preventDefault();
 			}
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.domainFilter = $('#aips-filter-domain').val() || '';
+			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
+			this.dateFrom = $('#aips-filter-date-from').val() || '';
+			this.dateTo = $('#aips-filter-date-to').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
-			if (this.statusFilter) {
-				url.searchParams.set('status', this.statusFilter);
-			} else {
-				url.searchParams.delete('status');
-			}
+			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
+				if (entry[1]) {
+					url.searchParams.set(entry[0], entry[1]);
+				} else {
+					url.searchParams.delete(entry[0]);
+				}
+			});
 			url.searchParams.delete('paged');
 			window.history.pushState({}, '', url.toString());
 
@@ -1074,6 +1096,11 @@
 			form.append($('<input type="hidden" name="nonce">').val(aipsAjax.nonce));
 			form.append($('<input type="hidden" name="status">').val(this.statusFilter));
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
+			form.append($('<input type="hidden" name="domain">').val(this.domainFilter));
+			form.append($('<input type="hidden" name="actor">').val(this.actorFilter));
+			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
+			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
+			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));
 			$('body').append(form);
 			form.submit();
 			form.remove();
