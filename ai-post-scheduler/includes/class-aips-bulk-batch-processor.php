@@ -353,28 +353,22 @@ class AIPS_Bulk_Batch_Processor {
 		}
 
 		// Complete the history container for this slice.
+		$summary = array(
+			'success_count'   => $success_count,
+			'failed_count'    => $failed_count,
+			'items_processed' => count( $items_slice ),
+			'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+			'trigger_source'  => 'cron',
+		);
+
 		if ( $failed_count > 0 ) {
 			$history->complete_failure(
 				/* translators: %d: failures */
 				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
-				array(
-					'success_count'   => $success_count,
-					'failed_count'    => $failed_count,
-					'items_processed' => count( $items_slice ),
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-					'trigger_source'  => 'cron',
-				)
+				$summary
 			);
 		} else {
-			$history->complete_success(
-				array(
-					'success_count'   => $success_count,
-					'failed_count'    => 0,
-					'items_processed' => count( $items_slice ),
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-					'trigger_source'  => 'cron',
-				)
-			);
+			$history->complete_success( $summary );
 		}
 
 		$this->logger->log(

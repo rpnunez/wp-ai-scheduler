@@ -133,6 +133,10 @@ class AIPS_Research_Controller {
             'correlation_id' => $correlation_id,
         ) );
 
+        $get_duration_ms = function() use ( $started_at ) {
+            return (int) round( ( microtime( true ) - $started_at ) * 1000 );
+        };
+
         // Execute research
         $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
         
@@ -140,7 +144,7 @@ class AIPS_Research_Controller {
             $history->complete_failure( $topics->get_error_message(), array(
                 'items_processed' => 0,
                 'items_failed' => 1,
-                'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+                'duration_ms' => $get_duration_ms(),
                 'trigger_source' => 'manual_ui',
             ) );
             AIPS_Correlation_ID::reset();
@@ -154,7 +158,7 @@ class AIPS_Research_Controller {
             $history->complete_failure( __( 'Failed to save research results.', 'ai-post-scheduler' ), array(
                 'items_processed' => 0,
                 'items_failed' => 1,
-                'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+                'duration_ms' => $get_duration_ms(),
                 'trigger_source' => 'manual_ui',
             ) );
             AIPS_Correlation_ID::reset();
@@ -167,7 +171,7 @@ class AIPS_Research_Controller {
         $history->complete_success( array(
             'items_processed' => (int) $saved_count,
             'items_failed' => 0,
-            'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+            'duration_ms' => $get_duration_ms(),
             'trigger_source' => 'manual_ui',
         ) );
         AIPS_Correlation_ID::reset();
@@ -827,20 +831,18 @@ class AIPS_Research_Controller {
         }
         
         $this->logger->log("Scheduled research completed. Total topics: {$total_researched}", 'info');
+
+        $summary = array(
+            'items_processed' => $total_researched,
+            'items_failed'    => $failed_niches,
+            'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+            'trigger_source'  => 'cron',
+        );
+
         if ( $failed_niches > 0 ) {
-            $history->complete_failure( __( 'Scheduled research finished with niche failures.', 'ai-post-scheduler' ), array(
-                'items_processed' => $total_researched,
-                'items_failed' => $failed_niches,
-                'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-                'trigger_source' => 'cron',
-            ) );
+            $history->complete_failure( __( 'Scheduled research finished with niche failures.', 'ai-post-scheduler' ), $summary );
         } else {
-            $history->complete_success( array(
-                'items_processed' => $total_researched,
-                'items_failed' => 0,
-                'duration_ms' => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-                'trigger_source' => 'cron',
-            ) );
+            $history->complete_success( $summary );
         }
         AIPS_Correlation_ID::reset();
     }

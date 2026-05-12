@@ -205,25 +205,20 @@ class AIPS_Sources_Cron {
 			);
 		}
 
+		$summary = array(
+			'items_processed' => $success_count,
+			'items_failed'    => $failed_count,
+			'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+			'trigger_source'  => 'cron',
+		);
+
 		if ( $failed_count > 0 ) {
 			$history->complete_failure(
 				__( 'Sources fetch run completed with failures.', 'ai-post-scheduler' ),
-				array(
-					'items_processed' => $success_count,
-					'items_failed'    => $failed_count,
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-					'trigger_source'  => 'cron',
-				)
+				$summary
 			);
 		} else {
-			$history->complete_success(
-				array(
-					'items_processed' => $success_count,
-					'items_failed'    => 0,
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
-					'trigger_source'  => 'cron',
-				)
-			);
+			$history->complete_success( $summary );
 		}
 		AIPS_Correlation_ID::reset();
 	}

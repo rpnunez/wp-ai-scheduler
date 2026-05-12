@@ -192,12 +192,14 @@ class AIPS_Job_Dispatcher {
 		if (!$success && $log_to_history) {
 			$this->log_dispatch_failure($job, $max_attempts, $last_error);
 		}
+		$duration_ms = (int) round( ( microtime( true ) - $started_at ) * 1000 );
+
 		if ( $success ) {
 			$history->complete_success(
 				array(
 					'items_processed' => 1,
 					'items_failed'    => 0,
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+					'duration_ms'     => $duration_ms,
 					'trigger_source'  => 'scheduler',
 				)
 			);
@@ -207,7 +209,7 @@ class AIPS_Job_Dispatcher {
 				array(
 					'items_processed' => 0,
 					'items_failed'    => 1,
-					'duration_ms'     => (int) round( ( microtime( true ) - $started_at ) * 1000 ),
+					'duration_ms'     => $duration_ms,
 					'trigger_source'  => 'scheduler',
 				)
 			);

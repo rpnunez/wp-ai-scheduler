@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => 'c1af8f978eef17eab045af13c8f7caf53eb71c8f',
+        'pretty_version' => 'dev-codex/define-shared-observability-contract-for-workflows',
+        'version' => 'dev-codex/define-shared-observability-contract-for-workflows',
+        'reference' => '0c96bab8f250ee9f05c0635fb88648a79dd003e9',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => 'c1af8f978eef17eab045af13c8f7caf53eb71c8f',
+            'pretty_version' => 'dev-codex/define-shared-observability-contract-for-workflows',
+            'version' => 'dev-codex/define-shared-observability-contract-for-workflows',
+            'reference' => '0c96bab8f250ee9f05c0635fb88648a79dd003e9',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
