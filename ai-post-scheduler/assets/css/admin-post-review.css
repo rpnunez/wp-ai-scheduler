@@ -227,6 +227,13 @@
 	border-radius: 6px;
 	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 	background: #fff;
+	margin-top: 6px;
+	position: absolute;
+	z-index: 12;
+}
+
+.aips-row-action-menu[hidden] {
+	display: none !important;
 }
 
 .aips-row-action-menu .aips-row-action-item {
@@ -237,6 +244,14 @@
 	text-decoration: none;
 	color: #1d2327;
 	border-top: 1px solid #f0f0f1;
+	border-right: 0;
+	border-bottom: 0;
+	border-left: 0;
+	background: transparent;
+	font: inherit;
+	cursor: pointer;
+	width: 100%;
+	text-align: left;
 }
 
 .aips-row-action-menu .aips-row-action-item:first-child {
@@ -247,6 +262,28 @@
 .aips-row-action-menu .aips-row-action-item:focus-visible {
 	background: #f6f7f7;
 	color: #1d2327;
+}
+
+.cell-actions {
+	position: relative;
+}
+
+.aips-row-action-group .aips-publish-post {
+	background: #00a32a;
+	color: #fff;
+}
+
+.aips-row-action-group .aips-publish-post:hover,
+.aips-row-action-group .aips-publish-post:focus-visible {
+	background: #007c21;
+}
+
+.aips-row-action-menu .aips-ai-edit-btn {
+	color: #4a2ca3;
+}
+
+.aips-row-action-menu .aips-regenerate-post {
+	color: #8a4b00;
 }
 
 /* Compact responsive mode */

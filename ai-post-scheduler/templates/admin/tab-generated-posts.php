@@ -112,31 +112,42 @@ if (!defined('ABSPATH')) {
 								</td>
 								<td>
 									<div class="cell-actions">
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
-										        data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
-										        title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-edit"></span>
-											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-admin-customizer"></span>
-											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
-								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-										</button>
+										<div class="aips-row-action-group">
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
+												data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
+												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-edit"></span>
+												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
+												aria-haspopup="true"
+												aria-expanded="false"
+												aria-controls="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('More actions', 'ai-post-scheduler'); ?>">
+												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
+											</button>
+										</div>
+										<div id="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" role="menu" hidden>
+											<button type="button" class="aips-row-action-item aips-preview-post"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility"></span>
+												<span><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></span>
+											</button>
+											<button type="button" class="aips-row-action-item aips-ai-edit-btn"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-admin-customizer"></span>
+												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
+											</button>
+											<button type="button" class="aips-row-action-item aips-view-session"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility"></span>
+												<span><?php esc_html_e('View Session', 'ai-post-scheduler'); ?></span>
+											</button>
+										</div>
 									</div>
 								</td>
 							</tr>
