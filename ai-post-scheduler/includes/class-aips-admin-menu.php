@@ -13,6 +13,13 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Admin_Menu {
 
+	/**
+	 * Cached pending review count for current request.
+	 *
+	 * @var int|null
+	 */
+	private $pending_review_count = null;
+
     /**
      * Initialize the admin menu class.
      *
@@ -138,10 +145,12 @@ class AIPS_Admin_Menu {
             array($this, 'render_schedule_calendar_page')
         );
 
+		$content_menu_label = $this->get_content_menu_label();
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Content', 'ai-post-scheduler'),
-            __('Content', 'ai-post-scheduler'),
+            $content_menu_label,
             'manage_options',
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
@@ -240,6 +249,43 @@ class AIPS_Admin_Menu {
             );
         }
     }
+
+
+	/**
+	 * Build the Content submenu label, optionally including a WP update bubble.
+	 *
+	 * @return string
+	 */
+	private function get_content_menu_label() {
+		$base_label = esc_html__( 'Content', 'ai-post-scheduler' );
+		$count      = $this->get_pending_review_count();
+
+		if ( $count <= 0 ) {
+			return $base_label;
+		}
+
+		$count = (int) $count;
+
+		return sprintf(
+			'%1$s <span class="update-plugins count-%2$d"><span class="plugin-count">%2$d</span></span>',
+			$base_label,
+			$count
+		);
+	}
+
+	/**
+	 * Get pending post-review count, cached for the current request.
+	 *
+	 * @return int
+	 */
+	private function get_pending_review_count() {
+		if ( null === $this->pending_review_count ) {
+			$post_review_repo = new AIPS_Post_Review_Repository();
+			$this->pending_review_count = (int) $post_review_repo->get_draft_count();
+		}
+
+		return $this->pending_review_count;
+	}
 
     /**
      * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
