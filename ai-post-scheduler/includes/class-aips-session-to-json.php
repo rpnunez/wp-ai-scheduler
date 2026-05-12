@@ -72,7 +72,7 @@ class AIPS_Session_To_JSON {
 	 */
 	private function get_metadata() {
 		return array(
-			'generated_at' => current_time('mysql'),
+			'generated_at' => AIPS_DateTime::now()->toMysql(),
 			'generated_by' => 'AI Post Scheduler',
 			'version' => AIPS_VERSION,
 			'wordpress_version' => get_bloginfo('version'),
@@ -338,7 +338,7 @@ class AIPS_Session_To_JSON {
 		}
 		
 		// Generate filename with random component for security
-		$timestamp = current_time('Ymd-His');
+		$timestamp = AIPS_DateTime::now()->toDisplay('Ymd-His');
 		$random = wp_generate_password(12, false);
 		$filename = sprintf('aips-session-%d-%s-%s.json', $history_id, $timestamp, $random);
 		$filepath = trailingslashit($base_dir) . $filename;
@@ -452,7 +452,7 @@ class AIPS_Session_To_JSON {
 			return $result;
 		}
 		
-		$current_time = time();
+		$current_time = AIPS_DateTime::now()->timestamp();
 		$files = glob($base_dir . '/aips-session-*.json');
 		
 		if ($files === false) {

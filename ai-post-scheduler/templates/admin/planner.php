@@ -107,7 +107,7 @@ $default_planner_frequency = 'daily';
 
                     <div class="aips-form-field">
                         <label for="bulk-start-date" class="aips-form-label"><?php echo esc_html__('Start Date', 'ai-post-scheduler'); ?></label>
-                        <input type="datetime-local" id="bulk-start-date" class="aips-form-input" value="<?php echo date('Y-m-d\TH:i'); ?>">
+                        <input type="datetime-local" id="bulk-start-date" class="aips-form-input" value="<?php echo esc_attr( AIPS_DateTime::now()->toDisplay('Y-m-d\\TH:i') ); ?>">
                     </div>
 
                     <div class="aips-form-field">

@@ -32,6 +32,7 @@ class AIPS_Admin_Assets {
 	 */
 	private const PAGE_AUTHORS = 'aips-authors';
 	private const PAGE_AUTHOR_TOPICS = 'aips-author-topics';
+	private const PAGE_POST_SLICES = 'aips-post-slices';
 	private const PAGE_TEMPLATES = 'aips-templates';
 	private const PAGE_VOICES = 'aips-voices';
 	private const PAGE_STRUCTURES = 'aips-structures';
@@ -65,86 +66,122 @@ class AIPS_Admin_Assets {
 	 * @return void
 	 */
 	public function enqueue_admin_assets($hook) {
-		if (!$this->hook_contains($hook, self::PAGE_DASHBOARD) && !$this->hook_contains($hook, self::PAGE_PREFIX)) {
+        $page = $this->get_current_page_slug();
+
+        if (!$this->is_plugin_admin_page($hook, $page)) {
 			return;
 		}
 
 		$this->enqueue_global_assets();
 
-		if ($this->hook_contains($hook, self::HOOK_DASHBOARD)) {
+        if ($this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page) {
 			$this->enqueue_dashboard_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
+			$this->enqueue_post_slices_assets();
+		}
+
+        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
 			$this->enqueue_templates_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_VOICES)) {
+        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
 			$this->enqueue_voices_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_STRUCTURES)) {
+        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
 			$this->enqueue_structures_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SCHEDULE) && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_RESEARCH)) {
+        if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
 			$this->enqueue_research_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
+        if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_calendar_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_HISTORY)) {
+        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
 			$this->enqueue_history_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_ONBOARDING)) {
+        if (self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
 			$this->enqueue_onboarding_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_STATUS)) {
+        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
 			$this->enqueue_sources_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_SETTINGS)) {
+        if (self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS)) {
 			$this->enqueue_settings_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
 			$this->enqueue_telemetry_assets();
 		}
 
-		if ($this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
 			$this->enqueue_internal_links_assets();
 		}
 
 	}
+
+    /**
+     * Determine whether the current request is one of this plugin's admin pages.
+     *
+     * @param string $hook Current admin page hook.
+     * @param string $page Current sanitized page slug.
+     * @return bool
+     */
+    private function is_plugin_admin_page($hook, $page) {
+        if (self::PAGE_DASHBOARD === $page || 0 === strpos($page, self::PAGE_PREFIX)) {
+            return true;
+        }
+
+        return $this->hook_contains($hook, self::PAGE_DASHBOARD) || $this->hook_contains($hook, self::PAGE_PREFIX);
+    }
+
+    /**
+     * Get the current sanitized admin page slug from the request.
+     *
+     * @return string
+     */
+    private function get_current_page_slug() {
+        $page = filter_input(INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+        if (!is_string($page) || '' === $page) {
+            return '';
+        }
+
+        return sanitize_key(wp_unslash($page));
+    }
 
 	/**
 	 * Check whether the current admin hook includes a page slug.
@@ -189,6 +226,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
@@ -279,7 +317,13 @@ class AIPS_Admin_Assets {
             'confirmDelete' => __('Are you sure you want to delete this author? This will also delete all associated topics and logs.', 'ai-post-scheduler'),
             'confirmDeleteTopic' => __('Are you sure you want to delete this topic?', 'ai-post-scheduler'),
             'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
+            'confirmGeneratePosts' => __('Generate posts for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePost' => __('Generate a post from this topic now?', 'ai-post-scheduler'),
+            'generatePostsModalTitle' => __('Generate Posts', 'ai-post-scheduler'),
+            'generatePostsModalMessage' => __('How many posts would you like to generate for this author?', 'ai-post-scheduler'),
+            'numberOfPostsLabel' => __('Number of Posts to Generate', 'ai-post-scheduler'),
+            'generateButtonLabel' => __('Generate', 'ai-post-scheduler'),
+            'invalidQuantityError' => __('Please enter a valid quantity between 1 and 10.', 'ai-post-scheduler'),
             'authorSaved' => __('Author saved successfully.', 'ai-post-scheduler'),
             'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
             'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
@@ -290,6 +334,7 @@ class AIPS_Admin_Assets {
             'errorSaving' => __('Error saving author.', 'ai-post-scheduler'),
             'errorDeleting' => __('Error deleting author.', 'ai-post-scheduler'),
             'errorGenerating' => __('Error generating topics.', 'ai-post-scheduler'),
+            'errorGeneratingPosts' => __('Error generating posts.', 'ai-post-scheduler'),
             'errorLoadingTopics' => __('Error loading topics.', 'ai-post-scheduler'),
             'errorApproving' => __('Error approving topic.', 'ai-post-scheduler'),
             'errorRejecting' => __('Error rejecting topic.', 'ai-post-scheduler'),
@@ -1028,12 +1073,16 @@ class AIPS_Admin_Assets {
                 true
             );
             wp_localize_script('aips-admin-system-status', 'aipsSystemStatusL10n', array(
-                'nonce'              => wp_create_nonce('aips_reset_circuit_breaker'),
-                'hideDetails'        => __('Hide Details', 'ai-post-scheduler'),
-                'showDetails'        => __('Show Details', 'ai-post-scheduler'),
-                'resetSuccess'       => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
-                'resetFailed'        => __('Reset failed.', 'ai-post-scheduler'),
-                'requestFailed'      => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
+                'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
+                'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
+                'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
+                'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
+                'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
+                'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
+                'resetFailed'                           => __('Reset failed.', 'ai-post-scheduler'),
+                'requestFailed'                         => __('Request failed. Please try again.', 'ai-post-scheduler'),
             ));
     }
 

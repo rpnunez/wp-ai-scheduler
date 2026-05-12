@@ -36,6 +36,9 @@
 			// Generate Topics Now Button
 			$(document).on('click', '.aips-generate-topics-now', this.generateTopicsNow.bind(this));
 
+			// Generate Posts Now Button
+			$(document).on('click', '.aips-generate-author-posts-now', this.generateAuthorPostsNow.bind(this));
+
 			// Delete Author Button
 			$(document).on('click', '.aips-delete-author', this.deleteAuthor.bind(this));
 
@@ -299,6 +302,8 @@
 						$('#author_preferred_content_length').val(author.preferred_content_length || '');
 						$('#author_language').val(author.language || 'en');
 						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
+						$('#author_manual_post_generation_quantity').val(author.manual_post_generation_quantity || 1);
+						$('#author_scheduled_post_generation_quantity').val(author.scheduled_post_generation_quantity || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
@@ -473,6 +478,126 @@
 				}
 			]);
 		},
+
+		/**
+		 * Confirm and immediately trigger post generation for an author via the
+		 * unified schedule run-now endpoint used on the Schedule page.
+		 *
+		 * @param {Event} e - Click event from an `.aips-generate-author-posts-now` element.
+		 */
+		generateAuthorPostsNow: function (e) {
+			e.preventDefault();
+
+			const $btn = $(e.currentTarget);
+			const authorId = parseInt($btn.data('id'), 10);
+			const type = $btn.data('type') || 'author_post_gen';
+
+			if (!Number.isInteger(authorId) || authorId <= 0) {
+				return;
+			}
+
+			// Get the default quantity from the author's manual_post_generation_quantity data attribute
+			const defaultQuantity = this.getAuthorManualPostQuantity($btn);
+
+			// Use the new reusable showModal method
+			AIPS.Utilities.showModal({
+				heading: aipsAuthorsL10n.generatePostsModalTitle || 'Generate Posts',
+				message: aipsAuthorsL10n.generatePostsModalMessage || 'How many posts would you like to generate for this author?',
+				fields: [
+					{
+						type: 'number',
+						name: 'quantity',
+						label: aipsAuthorsL10n.numberOfPostsLabel || 'Number of Posts to Generate',
+						value: defaultQuantity,
+						min: 1,
+						max: 10,
+						required: true,
+						validate: function(value) {
+							const num = parseInt(value, 10);
+							if (!num || num < 1 || num > 10) {
+								return aipsAuthorsL10n.invalidQuantityError || 'Please enter a valid quantity between 1 and 10.';
+							}
+							return null;
+						}
+					}
+				],
+				buttons: [
+					{
+						label: aipsAuthorsL10n.cancel || 'Cancel',
+						className: 'aips-btn aips-btn-primary'
+					},
+					{
+						label: aipsAuthorsL10n.generateButtonLabel || 'Generate',
+						className: 'aips-btn aips-btn-author-posts',
+						submit: true,
+						action: (formData) => {
+							// Set button to loading state
+							AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+
+							$.ajax({
+								url: aipsAjax.ajaxUrl,
+								type: 'POST',
+								data: {
+									action: 'aips_unified_run_now',
+									nonce: aipsAjax.nonce,
+									id: authorId,
+									type: type,
+									quantity: formData.quantity
+								},
+								success: (response) => {
+									if (response.success) {
+										let message = AIPS.Utilities.escapeHtml(
+											response.data && response.data.message
+												? response.data.message
+												: aipsAuthorsL10n.postsGenerated
+										);
+
+										if (response.data && response.data.edit_url) {
+											const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+
+											if (safeEditUrl) {
+												message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
+													AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
+												'</a>';
+											}
+										}
+
+										AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
+									} else {
+										AIPS.Utilities.showToast(
+											response.data && response.data.message
+												? response.data.message
+												: aipsAuthorsL10n.errorGeneratingPosts,
+											'error'
+										);
+									}
+								},
+								error: () => {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
+								},
+								complete: () => {
+									AIPS.Utilities.resetButton($btn);
+								}
+							});
+						}
+					}
+				]
+			});
+		},
+
+		/**
+		 * Get the manual_post_generation_quantity for a specific author from the
+		 * button's data-quantity attribute.
+		 *
+		 * @param {jQuery} $btn - The "Generate Posts" button element.
+		 * @return {number} The manual post generation quantity (defaults to 1).
+		 */
+		getAuthorManualPostQuantity: function($btn) {
+			const quantity = parseInt($btn.data('quantity'), 10);
+			return (!isNaN(quantity) && quantity >= 1) ? quantity : 1;
+		},
+
+
 
 		/**
 		 * Fetch topics for the current author filtered by status.

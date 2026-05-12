@@ -273,10 +273,26 @@ final class AI_Post_Scheduler {
     /**
      * Run versioned upgrade checks.
      *
+     * Called both on plugin activation (via activate()) and on every page load
+     * via the plugins_loaded hook. WordPress plugin auto-updates skip activation,
+     * so this must be self-contained: AIPS_DB_Migrations::check_and_run() runs
+     * migrations AND install_tables() (dbDelta) when an upgrade is detected,
+     * ensuring the schema is fully applied regardless of the call path.
+     *
+     * Call-order guarantee inside AIPS_DB_Migrations::run_upgrade() (must not change):
+     *   1. Versioned migrations run first — column renames/type changes/index ops
+     *      that dbDelta cannot perform. Schema must be consistent before dbDelta.
+     *   2. AIPS_DB_Manager::install_tables() (dbDelta) runs second — adds any new
+     *      tables/columns introduced in the current plugin version.
+     *
+     * Note: activate() also calls install_tables() directly afterward for the
+     * fresh-install / re-activation edge case. The double invocation is harmless
+     * because dbDelta is fully idempotent.
+     *
      * @return void
      */
     public function check_upgrades() {
-        AIPS_Upgrades::check_and_run();
+        AIPS_DB_Migrations::check_and_run();
     }
 
     /**
@@ -558,6 +574,15 @@ final class AI_Post_Scheduler {
             );
         }, 10, 2);
 
+        // Retry failed topic-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_topics', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->retry_failed_topic_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
         // Lazy-resolve the author-post generator only when its hook fires.
         add_action('aips_generate_author_posts', function() {
             AIPS_Author_Post_Generator::instance()->process();
@@ -568,6 +593,15 @@ final class AI_Post_Scheduler {
         add_action('aips_process_author_post_slice', function( $author_id, $correlation_id = '' ) {
             AIPS_Author_Post_Generator::instance()->process_author_slice(
                 (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed post-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_posts', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->retry_failed_post_slices(
+                (string) $author_ids_json,
                 (string) $correlation_id
             );
         }, 10, 2);

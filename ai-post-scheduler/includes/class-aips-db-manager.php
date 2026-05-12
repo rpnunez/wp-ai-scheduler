@@ -15,6 +15,7 @@ class AIPS_DB_Manager {
         'aips_prompt_sections',
         'aips_trending_topics',
         'aips_authors',
+        'aips_post_slices',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -72,6 +73,7 @@ class AIPS_DB_Manager {
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
         $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
@@ -271,6 +273,8 @@ class AIPS_DB_Manager {
             preferred_content_length varchar(50) DEFAULT NULL,
             language varchar(10) DEFAULT 'en',
             max_posts_per_topic int DEFAULT 1,
+            manual_post_generation_quantity int DEFAULT 1,
+            scheduled_post_generation_quantity int DEFAULT 1,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
@@ -279,8 +283,22 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY article_structure_id (article_structure_id),
             KEY is_active (is_active),
-            KEY topic_generation_next_run (topic_generation_next_run),
-            KEY post_generation_next_run (post_generation_next_run)
+          KEY topic_generation_next_run (topic_generation_next_run),
+          KEY post_generation_next_run (post_generation_next_run)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_slices (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            sort_order int(11) NOT NULL DEFAULT 0,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY name (name),
+            KEY is_active (is_active),
+            KEY sort_order (sort_order)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_author_topics (
@@ -547,6 +565,14 @@ class AIPS_DB_Manager {
             dbDelta($sql);
 
             if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
+                if (self::is_ignorable_dbdelta_error($wpdb->last_error)) {
+                    // dbDelta can report duplicate index/column messages on some
+                    // MariaDB/MySQL versions for already-existing schema elements.
+                    // Treat these as no-op so upgrades remain idempotent.
+                    $wpdb->last_error = $pre_error;
+                    continue;
+                }
+
                 return new WP_Error('db_install_failed', $wpdb->last_error);
             }
         }
@@ -558,6 +584,23 @@ class AIPS_DB_Manager {
         update_option('aips_db_version', AIPS_VERSION);
 
         return true;
+    }
+
+    /**
+     * Determine whether a dbDelta error is a safe no-op for existing schema.
+     *
+     * @param string $error_message Raw database error message.
+     * @return bool
+     */
+    private static function is_ignorable_dbdelta_error($error_message) {
+        if (!is_string($error_message) || '' === $error_message) {
+            return false;
+        }
+
+        $normalized = strtolower($error_message);
+
+        return false !== strpos($normalized, 'duplicate key name')
+            || false !== strpos($normalized, 'duplicate column name');
     }
 
     /**
@@ -602,6 +645,10 @@ class AIPS_DB_Manager {
                 array( 'topic_generation_last_run', false ),
                 array( 'post_generation_next_run', false ),
                 array( 'post_generation_last_run', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_slices' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
@@ -652,6 +699,66 @@ class AIPS_DB_Manager {
                 array( 'inserted_at', false ),
             ),
         );
+    }
+
+    /**
+     * Convert a single DATETIME or TIMESTAMP column to BIGINT UNSIGNED on an
+     * existing table, preserving data via a temporary column rename strategy:
+     *
+     *   1. ADD a temporary BIGINT column.
+     *   2. UPDATE it with UNIX_TIMESTAMP(original) for all rows.
+     *   3. DROP the original DATETIME column.
+     *   4. RENAME the temporary column to the original name.
+     *
+     * If the column is already BIGINT, or does not exist, the method returns
+     * false immediately (no-op). This makes it safe to call on fresh installs
+     * where dbDelta has already created BIGINT columns from get_schema().
+     *
+     * This is the single canonical implementation. Both AIPS_DB_Migrations and
+     * AIPS_Date_Time_DB_Repair delegate here rather than duplicating the logic.
+     *
+     * @param string $table    Full table name including WordPress prefix.
+     * @param string $col_name Name of the column to convert.
+     * @return bool            True if the conversion was performed; false if it
+     *                         was a no-op (column absent or already BIGINT).
+     */
+    public static function convert_datetime_column_to_bigint( $table, $col_name ) {
+        global $wpdb;
+
+        $col_info = $wpdb->get_row( $wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $col_name
+        ) );
+
+        if ( ! $col_info ) {
+            return false; // Column doesn't exist; dbDelta will create it.
+        }
+
+        $type_lower = strtolower( $col_info->Type );
+
+        if ( false !== strpos( $type_lower, 'bigint' ) ) {
+            return false; // Already BIGINT — nothing to do.
+        }
+
+        if ( false === strpos( $type_lower, 'datetime' ) && false === strpos( $type_lower, 'timestamp' ) ) {
+            return false; // Not a temporal column — skip.
+        }
+
+        $tmp_col = $col_name . '_ts_tmp';
+
+        // 1. Add temporary BIGINT column.
+        $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$tmp_col}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 2. Populate from the existing DATETIME.
+        $wpdb->query( "UPDATE `{$table}` SET `{$tmp_col}` = IFNULL(UNIX_TIMESTAMP(`{$col_name}`), 0)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 3. Drop the original DATETIME column.
+        $wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$col_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        // 4. Rename temp column to the original name.
+        $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        return true;
     }
 
     public function drop_tables() {
@@ -925,6 +1032,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
         $table_sections = $tables['aips_prompt_sections'];
         $table_structures = $tables['aips_article_structures'];
+        $table_post_slices = $tables['aips_post_slices'];
 
         // Seed default prompt sections
         $default_sections = array(
@@ -986,6 +1094,47 @@ class AIPS_DB_Manager {
 
             if (!$exists) {
                 $wpdb->insert($table_sections, $section);
+            }
+        }
+
+        $default_post_slices = array(
+            'beginner onboarding',
+            'tool selection',
+            'prompt design',
+            'memory patterns',
+            'agent orchestration',
+            'human-in-the-loop approval',
+            'failure modes',
+            'observability',
+            'security and permissions',
+            'testing and evaluation',
+            'cost control',
+            'real business use cases',
+            'build vs buy',
+            'multi-agent coordination',
+            'production rollout mistakes',
+        );
+
+        foreach ($default_post_slices as $index => $slice_name) {
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_post_slices WHERE name = %s",
+                $slice_name
+            ));
+
+            if (!$exists) {
+                $now = AIPS_DateTime::now()->timestamp();
+                $wpdb->insert(
+                    $table_post_slices,
+                    array(
+                        'name' => $slice_name,
+                        'description' => '',
+                        'sort_order' => $index + 1,
+                        'is_active' => 1,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ),
+                    array('%s', '%s', '%d', '%d', '%d', '%d')
+                );
             }
         }
 

@@ -28,6 +28,7 @@ class AIPS_Admin_Menu_Helper {
 		'dashboard'            => 'ai-post-scheduler',
 		'templates'            => 'aips-templates',
 		'authors'              => 'aips-authors',
+		'post_slices'          => 'aips-post-slices',
 		'schedule'             => 'aips-schedule',
 		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',

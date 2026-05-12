@@ -33,12 +33,19 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $article_structure_section_builder;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
+	 */
+	private $diversity_injector;
+
+	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
 	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null  $diversity_injector            Optional diversity injector.
 	 */
-	public function __construct($template_processor = null, $article_structure_section_builder = null) {
+	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -71,16 +78,20 @@ class AIPS_Prompt_Builder_Post_Content {
 		$processed_prompt = $context->get_content_prompt();
 		$article_structure_id = $context->get_article_structure_id();
 		$topic = $context->get_topic();
+		$used_structured_prompt = false;
 
 		if ($article_structure_id && $topic) {
 			$structured_prompt = $this->article_structure_section_builder->build($article_structure_id, $topic);
 
 			if (!is_wp_error($structured_prompt)) {
 				$processed_prompt = $structured_prompt;
-			} else {
-				$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+				$used_structured_prompt = true;
 			}
-		} elseif ($topic) {
+		}
+
+		if (!$used_structured_prompt) {
+			// Always process template variables, even when topic is empty.
+			// This prevents raw placeholders like {{topic}} from leaking into prompts.
 			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
 		}
 
@@ -90,6 +101,26 @@ class AIPS_Prompt_Builder_Post_Content {
 				$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
 				$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 			}
+		}
+
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
+		if (!empty($diversity_block)) {
+			$processed_prompt .= "\n\n" . $diversity_block;
+		}
+
+		$content_format_block = $this->diversity_injector->build_content_format_block($context);
+		if (!empty($content_format_block)) {
+			$processed_prompt .= "\n\n" . $content_format_block;
+		}
+
+		$post_slice_block = $this->diversity_injector->build_post_slice_block($context);
+		if (!empty($post_slice_block)) {
+			$processed_prompt .= "\n\n" . $post_slice_block;
+		}
+
+		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);
+		if (!empty($uniqueness_seed_line_block)) {
+			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
@@ -110,6 +141,26 @@ class AIPS_Prompt_Builder_Post_Content {
 		if ($voice) {
 			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+		}
+
+		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
+		if (!empty($diversity_block)) {
+			$processed_prompt .= "\n\n" . $diversity_block;
+		}
+
+		$content_format_block = $this->diversity_injector->build_content_format_block($template);
+		if (!empty($content_format_block)) {
+			$processed_prompt .= "\n\n" . $content_format_block;
+		}
+
+		$post_slice_block = $this->diversity_injector->build_post_slice_block($template);
+		if (!empty($post_slice_block)) {
+			$processed_prompt .= "\n\n" . $post_slice_block;
+		}
+
+		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($template);
+		if (!empty($uniqueness_seed_line_block)) {
+			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);

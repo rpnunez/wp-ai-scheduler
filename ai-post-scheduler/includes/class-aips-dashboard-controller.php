@@ -51,6 +51,16 @@ class AIPS_Dashboard_Controller {
         ));
         $recent_posts = $recent_posts_data['items'];
 
+        // Pre-format dates for recent posts
+        if (!empty($recent_posts)) {
+            foreach ($recent_posts as $item) {
+                $item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
+                    $item->created_at,
+                    get_option('date_format')
+                );
+            }
+        }
+
         // Upcoming Scheduled Activity — sourced from all schedule types, matching Schedules page.
         // Pass include_stats=false to skip expensive aggregate COUNT queries since the dashboard
         // only needs schedule metadata (title, type, next_run) for the upcoming list.
@@ -139,14 +149,15 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        // Convert site-local datetime to a true UTC timestamp.
+        // Convert site-local datetime to UTC via AIPS_DateTime for consistent parsing.
         $next_run_gmt = get_gmt_from_date( $next_run );
-        $run_ts       = strtotime( $next_run_gmt );
-        if ( false === $run_ts ) {
+        $run_at       = AIPS_DateTime::fromMysqlOrNull( $next_run_gmt );
+        if ( null === $run_at ) {
             return '—';
         }
+        $run_ts = $run_at->timestamp();
 
-        $now_ts = current_time( 'timestamp', true ); // UTC
+        $now_ts = AIPS_DateTime::now()->timestamp(); // UTC
         $diff   = $run_ts - $now_ts;
 
         // Already in the past or within a minute — show absolute.
