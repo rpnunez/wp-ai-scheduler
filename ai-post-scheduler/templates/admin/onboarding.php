@@ -246,6 +246,17 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 									</td>
 								</tr>
 								<tr>
+									<th scope="row"><label for="aips_onboarding_template_preset"><?php esc_html_e('Preset Baseline', 'ai-post-scheduler'); ?></label></th>
+									<td>
+										<select id="aips_onboarding_template_preset" name="preset_id" <?php disabled(!$author_complete); ?>>
+											<option value=""><?php esc_html_e('None', 'ai-post-scheduler'); ?></option>
+											<?php foreach ((array) $presets as $preset_id => $preset) : ?>
+												<option value="<?php echo esc_attr($preset_id); ?>"><?php echo esc_html($preset['name']); ?></option>
+											<?php endforeach; ?>
+										</select>
+									</td>
+								</tr>
+								<tr>
 									<th scope="row"><label for="aips_onboarding_template_title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></label></th>
 									<td><input type="text" class="regular-text" id="aips_onboarding_template_title_prompt" name="title_prompt" value="<?php echo esc_attr($default_title_prompt); ?>" <?php disabled(!$author_complete); ?>></td>
 								</tr>
@@ -352,4 +363,3 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 window.aipsOnboarding = window.aipsOnboarding || {};
 window.aipsOnboarding.pageUrl = <?php echo wp_json_encode($wizard_url); ?>;
 </script>
-

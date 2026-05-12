@@ -563,7 +563,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         $values = array();
         $placeholders = array();
-        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES ";
+        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern, run_state) VALUES ";
 
         foreach ($schedules as $data) {
             array_push($values,
@@ -573,9 +573,10 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
                 isset($data['is_active']) ? (int) $data['is_active'] : 0,
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
-                isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
+                isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+                isset($data['run_state']) && is_scalar($data['run_state']) ? wp_unslash((string) $data['run_state']) : null
             );
-            $placeholders[] = "(%d, %s, %d, %d, %s, %d, %s)";
+            $placeholders[] = "(%d, %s, %d, %d, %s, %d, %s, %s)";
         }
 
         $query .= implode(', ', $placeholders);

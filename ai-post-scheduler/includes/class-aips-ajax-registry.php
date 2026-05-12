@@ -183,6 +183,7 @@ class AIPS_Ajax_Registry {
 		'aips_generate_topics'            => 'AIPS_Planner',
 		'aips_bulk_schedule'              => 'AIPS_Planner',
 		'aips_bulk_generate_now'          => 'AIPS_Planner',
+		'aips_save_preset_from_campaign'  => 'AIPS_Planner',
 
 		// Taxonomy Controller
 		'aips_get_taxonomy_items'         => 'AIPS_Taxonomy_Controller',
