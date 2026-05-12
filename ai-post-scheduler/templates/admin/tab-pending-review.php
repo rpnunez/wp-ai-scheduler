@@ -92,7 +92,8 @@ if (!defined('ABSPATH')) {
 								</tr>
 							</thead>
 							<tbody>
-								<?php foreach ($draft_posts['items'] as $item): ?>
+								<?php foreach ($draft_posts['items'] as $index => $item): ?>
+								<?php $pending_actions_menu_id = 'aips-pending-actions-menu-' . absint($item->post_id) . '-' . absint($index); ?>
 								<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 									<td>
 										<label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->post_id); ?>"><?php esc_html_e('Select Post', 'ai-post-scheduler'); ?></label>
@@ -113,35 +114,7 @@ if (!defined('ABSPATH')) {
 										</div>
 									</td>
 									<td>
-										<div class="cell-actions aips-actions-grid-3">
-											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
-												data-edit-url="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
-												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-edit"></span>
-												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-visibility"></span>
-												<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												data-history-id="<?php echo esc_attr($item->id); ?>"
-												title="<?php esc_attr_e('AI Edit - Regenerate components', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-admin-customizer"></span>
-												<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
-												data-history-id="<?php echo esc_attr($item->id); ?>"
-												title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-visibility"></span>
-												<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-											</button>
+										<div class="cell-actions aips-row-actions-menu">
 											<button type="button"
 												class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
@@ -150,13 +123,51 @@ if (!defined('ABSPATH')) {
 												<?php esc_html_e('Publish', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-row-actions-toggle"
+												aria-expanded="false"
+												aria-haspopup="menu"
+												aria-controls="<?php echo esc_attr($pending_actions_menu_id); ?>">
+												<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
+											</button>
+											<div id="<?php echo esc_attr($pending_actions_menu_id); ?>" class="aips-row-actions-dropdown" role="menu" hidden>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post" role="menuitem"
+												data-edit-url="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
+												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-edit"></span>
+												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post" role="menuitem"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility"></span>
+												<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" role="menuitem"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												data-history-id="<?php echo esc_attr($item->id); ?>"
+												title="<?php esc_attr_e('AI Edit - Regenerate components', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-admin-customizer"></span>
+												<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" role="menuitem"
+												data-history-id="<?php echo esc_attr($item->id); ?>"
+												title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility"></span>
+												<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post" role="menuitem"
 												data-history-id="<?php echo esc_attr($item->id); ?>"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
 												title="<?php esc_attr_e('Regenerate this post', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-update"></span>
 												<?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?>
 											</button>
+											</div>
 										</div>
 									</td>
 								</tr>
@@ -256,4 +267,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

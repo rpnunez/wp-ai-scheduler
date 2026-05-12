@@ -766,6 +766,14 @@ class AIPS_Admin_Assets {
                 true
             );
 
+			wp_enqueue_script(
+				'aips-admin-actions-menu',
+				AIPS_PLUGIN_URL . 'assets/js/admin-actions-menu.js',
+				array('jquery', 'aips-admin-script'),
+				AIPS_VERSION,
+				true
+			);
+
             wp_enqueue_script(
                 'aips-admin-generated-posts',
                 AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',

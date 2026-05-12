@@ -145,3 +145,12 @@
 	width: 100%;
 	text-align: center;
 }
+
+/* ==========================================================================
+   Split-button row action menus — post review / content page overrides
+   ========================================================================== */
+
+/* Ensure the cell itself creates a positioning context for the dropdown. */
+.cell-actions.aips-row-actions-menu {
+	position: relative;
+}
