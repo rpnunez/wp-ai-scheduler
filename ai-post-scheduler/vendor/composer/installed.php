@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-fix/author-post-gen',
-        'version' => 'dev-fix/author-post-gen',
-        'reference' => '831addbc7b558e26a94396c0957bab494367f939',
+        'pretty_version' => 'dev-codex/implement-reusable-split-button-component',
+        'version' => 'dev-codex/implement-reusable-split-button-component',
+        'reference' => 'ff8656ab10ae2f2061af37f82e028cc94c5ec1fa',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-fix/author-post-gen',
-            'version' => 'dev-fix/author-post-gen',
-            'reference' => '831addbc7b558e26a94396c0957bab494367f939',
+            'pretty_version' => 'dev-codex/implement-reusable-split-button-component',
+            'version' => 'dev-codex/implement-reusable-split-button-component',
+            'reference' => 'ff8656ab10ae2f2061af37f82e028cc94c5ec1fa',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

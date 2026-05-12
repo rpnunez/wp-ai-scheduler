@@ -125,26 +125,27 @@ if (!defined('ABSPATH')) {
 											<button type="button"
 												class="aips-btn aips-btn-sm aips-btn-secondary aips-row-actions-toggle"
 												aria-expanded="false"
+												aria-haspopup="menu"
 												aria-controls="<?php echo esc_attr($pending_actions_menu_id); ?>">
 												<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
 												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
 											</button>
-											<div id="<?php echo esc_attr($pending_actions_menu_id); ?>" class="aips-row-actions-dropdown" hidden>
-											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
+											<div id="<?php echo esc_attr($pending_actions_menu_id); ?>" class="aips-row-actions-dropdown" role="menu" hidden>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post" role="menuitem"
 												data-edit-url="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
 												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-edit"></span>
 												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post" role="menuitem"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
 												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-visibility"></span>
 												<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" role="menuitem"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
 												data-history-id="<?php echo esc_attr($item->id); ?>"
 												title="<?php esc_attr_e('AI Edit - Regenerate components', 'ai-post-scheduler'); ?>">
@@ -152,14 +153,14 @@ if (!defined('ABSPATH')) {
 												<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" role="menuitem"
 												data-history-id="<?php echo esc_attr($item->id); ?>"
 												title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-visibility"></span>
 												<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post" role="menuitem"
 												data-history-id="<?php echo esc_attr($item->id); ?>"
 												data-post-id="<?php echo esc_attr($item->post_id); ?>"
 												title="<?php esc_attr_e('Regenerate this post', 'ai-post-scheduler'); ?>">
