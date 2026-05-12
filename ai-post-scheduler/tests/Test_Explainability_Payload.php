@@ -106,7 +106,31 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 				'type' => 'content',
 				'label' => 'Content',
 				'request' => array(
-					'prompt' => 'Write content for topic.',
+					'input' => array(
+						'prompt' => 'Write content for topic.',
+						'options' => array(
+							'request_type' => 'content',
+							'context' => 'Site context details: example.',
+						),
+					),
+					'context' => array(
+						'component' => 'content',
+						'context_type' => 'template',
+						'context_id' => 4,
+						'template_id' => 4,
+						'creation_method' => 'scheduled',
+						'token_budget' => array(
+							'request_type' => 'content',
+							'prompt_tokens_estimate' => 10,
+							'output_tokens' => 100,
+							'max_tokens' => 200,
+							'was_clamped' => false,
+						),
+						'ai_variables' => array(
+							'names' => array('productcategory'),
+							'values' => array('productcategory' => 'Widgets'),
+						),
+					),
 					'api_key' => 'secret',
 				),
 				'response' => array(
@@ -127,7 +151,7 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 		$result = $method->invokeArgs($this->controller, array($history_item, $entries, $ai_calls, $component_revisions));
 
 		$this->assertIsArray($result);
-		$this->assertSame('1.0.0', $result['schema_version']);
+		$this->assertSame(AIPS_Explainability_Builder::SCHEMA_VERSION, $result['schema_version']);
 		$this->assertArrayHasKey('generation', $result);
 		$this->assertArrayHasKey('trigger', $result);
 		$this->assertArrayHasKey('context_snapshot', $result);
@@ -141,8 +165,21 @@ class Test_Explainability_Payload extends WP_UnitTestCase {
 		$this->assertArrayHasKey('redactions', $result);
 		$this->assertArrayHasKey('warnings', $result);
 		$this->assertArrayHasKey('timeline', $result);
+		$this->assertArrayHasKey('why', $result);
+		$this->assertArrayHasKey('summary', $result['why']);
+		$this->assertNotEmpty($result['why']['summary']);
 
 		$this->assertNotEmpty($result['sources']['used']);
 		$this->assertGreaterThan(0, $result['redactions']['count']);
+
+		$this->assertNotEmpty($result['validation_checks']);
+		$this->assertArrayHasKey('severity', $result['validation_checks'][0]);
+		$this->assertArrayHasKey('stage', $result['validation_checks'][0]);
+		$this->assertArrayHasKey('suggested_fix', $result['validation_checks'][0]);
+
+		$this->assertNotEmpty($result['prompt_components']);
+		$this->assertArrayHasKey('context', $result['prompt_components'][0]);
+		$this->assertArrayHasKey('token_budget', $result['prompt_components'][0]);
+		$this->assertArrayHasKey('site_context', $result['prompt_components'][0]);
 	}
 }

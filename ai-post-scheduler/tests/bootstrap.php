@@ -1342,7 +1342,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
-    $files = [
+	    $files = [
         'class-aips-autoloader.php',
         'class-aips-container.php',
         'class-aips-logger.php',
@@ -1373,8 +1373,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
-        'class-aips-token-budget.php',
-        'class-aips-research-service.php',
+	        'class-aips-token-budget.php',
+	        'class-aips-explainability-builder.php',
+	        'class-aips-research-service.php',
         'class-aips-internal-links-repository.php',
         'class-aips-internal-link-inserter-service.php',
         'interface-aips-generation-context.php',
