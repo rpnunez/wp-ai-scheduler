@@ -123,7 +123,7 @@
 				this.searchQuery = String(postId);
 				$('#aips-history-search-input').val(String(postId));
 				this.syncSearchClearButton();
-				this.filterRowsBySearch(postId);
+				$('#aips-history-search-input').trigger('input');
 			}
 
 			if (historyId > 0) {
