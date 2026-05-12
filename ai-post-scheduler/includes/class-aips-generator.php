@@ -46,6 +46,7 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
+    private $post_component_injection_service;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -93,6 +94,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_component_injection_service = new AIPS_Post_Component_Injection_Service();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -816,6 +818,44 @@ class AIPS_Generator {
 
         $generation_incomplete = in_array(false, $component_statuses, true);
 
+        $component_injection_result = null;
+        try {
+            $run_context = AIPS_Post_Component_Run_Context::from_generation_context(
+                $context,
+                $content,
+                array(
+                    'run_timestamp' => AIPS_DateTime::now()->timestamp(),
+                )
+            );
+            $component_injection_result = $this->post_component_injection_service->prepare_content(
+                $content,
+                $run_context,
+                array(
+                    'strip_existing_markers' => true,
+                )
+            );
+
+            if (!empty($component_injection_result['content'])) {
+                $content = $component_injection_result['content'];
+            }
+
+            if ($this->current_history && !empty($component_injection_result['plan'])) {
+                $this->current_history->record(
+                    'activity',
+                    'Applied post component injection plan before post save',
+                    array(
+                        'matched_components' => count($component_injection_result['plan']),
+                    ),
+                    null,
+                    array(
+                        'component' => 'post_components',
+                    )
+                );
+            }
+        } catch (Throwable $throwable) {
+            $this->logger->log('Post component injection failed during generation: ' . $throwable->getMessage(), 'warning');
+        }
+
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
@@ -857,6 +897,15 @@ class AIPS_Generator {
             );
 
             return $post_id;
+        }
+
+        if (is_array($component_injection_result) && !empty($component_injection_result['plan'])) {
+            $this->post_component_injection_service->record_injections(
+                $post_id,
+                $component_injection_result['plan'],
+                $this->current_history ? (string) $this->current_history->get_correlation_id() : '',
+                false
+            );
         }
 
         // Handle featured image generation/selection.

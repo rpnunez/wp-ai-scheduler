@@ -17,6 +17,9 @@ class AIPS_DB_Manager {
         'aips_authors',
         'aips_post_slices',
         'aips_content_components',
+        'aips_post_component_rules',
+        'aips_post_component_injections',
+        'aips_post_component_analytics',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -75,6 +78,9 @@ class AIPS_DB_Manager {
         $table_authors = $tables['aips_authors'];
         $table_post_slices = $tables['aips_post_slices'];
         $table_content_components = $tables['aips_content_components'];
+        $table_post_component_rules = $tables['aips_post_component_rules'];
+        $table_post_component_injections = $tables['aips_post_component_injections'];
+        $table_post_component_analytics = $tables['aips_post_component_analytics'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
@@ -304,9 +310,15 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_content_components (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             title varchar(255) NOT NULL,
+            slug varchar(191) DEFAULT NULL,
             description text,
+            status varchar(20) NOT NULL DEFAULT 'draft',
             component_type varchar(50) NOT NULL DEFAULT 'custom',
+            content_mode varchar(20) NOT NULL DEFAULT 'html',
             content longtext,
+            content_payload longtext,
+            media_payload longtext,
+            cta_payload longtext,
             rules_json longtext,
             qa_status varchar(30) NOT NULL DEFAULT 'untested',
             qa_notes text,
@@ -314,10 +326,59 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
+            KEY slug (slug),
+            KEY status (status),
             KEY is_active (is_active),
             KEY component_type (component_type),
             KEY qa_status (qa_status),
             KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_component_rules (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            component_id bigint(20) NOT NULL,
+            priority int NOT NULL DEFAULT 100,
+            placement varchar(50) NOT NULL DEFAULT 'end_of_post',
+            frequency_mode varchar(50) NOT NULL DEFAULT 'once_per_post',
+            max_occurrences int NOT NULL DEFAULT 1,
+            conditions_json longtext,
+            exclusions_json longtext,
+            date_window_json longtext,
+            enabled tinyint(1) NOT NULL DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY component_id (component_id),
+            KEY enabled (enabled),
+            KEY priority (priority),
+            KEY placement (placement)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_component_injections (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            component_id bigint(20) NOT NULL,
+            run_id varchar(36) DEFAULT NULL,
+            placement_resolved varchar(50) NOT NULL DEFAULT 'end_of_post',
+            hash varchar(64) NOT NULL,
+            inserted_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY post_id (post_id),
+            KEY component_id (component_id),
+            KEY run_id (run_id),
+            KEY inserted_at (inserted_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_component_analytics (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            component_id bigint(20) NOT NULL,
+            impressions bigint(20) unsigned NOT NULL DEFAULT 0,
+            injections bigint(20) unsigned NOT NULL DEFAULT 0,
+            regeneration_reinjections bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_seen_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY component_id (component_id),
+            KEY last_seen_at (last_seen_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_author_topics (

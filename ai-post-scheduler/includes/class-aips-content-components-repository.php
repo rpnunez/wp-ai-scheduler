@@ -91,12 +91,20 @@ class AIPS_Content_Components_Repository {
 	 */
 	public function create($data) {
 		$now = AIPS_DateTime::now()->timestamp();
+		$title = isset($data['title']) ? sanitize_text_field($data['title']) : '';
+		$content = isset($data['content']) ? wp_kses_post($data['content']) : '';
 
 		$insert_data = array(
-			'title'          => isset($data['title']) ? sanitize_text_field($data['title']) : '',
+			'title'          => $title,
+			'slug'           => isset($data['slug']) ? sanitize_title($data['slug']) : sanitize_title($title),
 			'description'    => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
+			'status'         => !empty($data['is_active']) ? 'active' : 'draft',
 			'component_type' => isset($data['component_type']) ? sanitize_key($data['component_type']) : 'custom',
-			'content'        => isset($data['content']) ? wp_kses_post($data['content']) : '',
+			'content_mode'   => isset($data['content_mode']) ? sanitize_key($data['content_mode']) : 'html',
+			'content'        => $content,
+			'content_payload'=> isset($data['content_payload']) ? wp_kses_post($data['content_payload']) : $content,
+			'media_payload'  => isset($data['media_payload']) ? wp_json_encode($data['media_payload']) : wp_json_encode(array()),
+			'cta_payload'    => isset($data['cta_payload']) ? wp_json_encode($data['cta_payload']) : wp_json_encode(array()),
 			'rules_json'     => isset($data['rules_json']) ? wp_json_encode($data['rules_json']) : wp_json_encode(array()),
 			'qa_status'      => isset($data['qa_status']) ? sanitize_key($data['qa_status']) : 'untested',
 			'qa_notes'       => isset($data['qa_notes']) ? sanitize_textarea_field($data['qa_notes']) : '',
@@ -108,7 +116,7 @@ class AIPS_Content_Components_Repository {
 		$result = $this->wpdb->insert(
 			$this->table_name,
 			$insert_data,
-			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d')
+			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d')
 		);
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -135,13 +143,43 @@ class AIPS_Content_Components_Repository {
 			$formats[] = '%s';
 		}
 
+		if (array_key_exists('slug', $data)) {
+			$update_data['slug'] = sanitize_title($data['slug']);
+			$formats[] = '%s';
+		}
+
+		if (array_key_exists('status', $data) && !array_key_exists('is_active', $data)) {
+			$update_data['status'] = sanitize_key($data['status']);
+			$formats[] = '%s';
+		}
+
 		if (array_key_exists('component_type', $data)) {
 			$update_data['component_type'] = sanitize_key($data['component_type']);
 			$formats[] = '%s';
 		}
 
+		if (array_key_exists('content_mode', $data)) {
+			$update_data['content_mode'] = sanitize_key($data['content_mode']);
+			$formats[] = '%s';
+		}
+
 		if (array_key_exists('content', $data)) {
 			$update_data['content'] = wp_kses_post($data['content']);
+			$formats[] = '%s';
+		}
+
+		if (array_key_exists('content_payload', $data)) {
+			$update_data['content_payload'] = wp_kses_post($data['content_payload']);
+			$formats[] = '%s';
+		}
+
+		if (array_key_exists('media_payload', $data)) {
+			$update_data['media_payload'] = wp_json_encode($data['media_payload']);
+			$formats[] = '%s';
+		}
+
+		if (array_key_exists('cta_payload', $data)) {
+			$update_data['cta_payload'] = wp_json_encode($data['cta_payload']);
 			$formats[] = '%s';
 		}
 
@@ -163,6 +201,8 @@ class AIPS_Content_Components_Repository {
 		if (array_key_exists('is_active', $data)) {
 			$update_data['is_active'] = !empty($data['is_active']) ? 1 : 0;
 			$formats[] = '%d';
+			$update_data['status'] = !empty($data['is_active']) ? 'active' : 'draft';
+			$formats[] = '%s';
 		}
 
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();

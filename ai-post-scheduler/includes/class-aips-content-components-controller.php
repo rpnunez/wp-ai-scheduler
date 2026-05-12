@@ -31,10 +31,16 @@ class AIPS_Content_Components_Controller {
 	private $repository;
 
 	/**
+	 * @var AIPS_Post_Component_Rules_Repository
+	 */
+	private $rules_repository;
+
+	/**
 	 * Initialize controller.
 	 */
 	public function __construct() {
 		$this->repository = new AIPS_Content_Components_Repository();
+		$this->rules_repository = new AIPS_Post_Component_Rules_Repository();
 
 		add_action('wp_ajax_aips_get_content_components', array($this, 'ajax_get_content_components'));
 		add_action('wp_ajax_aips_get_content_component', array($this, 'ajax_get_content_component'));
@@ -124,9 +130,15 @@ class AIPS_Content_Components_Controller {
 
 		$data = array(
 			'title'          => $title,
+			'slug'           => sanitize_title($title),
 			'description'    => $description,
+			'status'         => $is_active ? 'active' : 'draft',
 			'component_type' => $component_type,
+			'content_mode'   => 'html',
 			'content'        => $content,
+			'content_payload'=> $content,
+			'media_payload'  => array(),
+			'cta_payload'    => array(),
 			'rules_json'     => $rules,
 			'qa_status'      => $qa_result['status'],
 			'qa_notes'       => $qa_result['notes'],
@@ -144,6 +156,8 @@ class AIPS_Content_Components_Controller {
 				AIPS_Ajax_Response::error(__('Failed to update content component.', 'ai-post-scheduler'));
 			}
 
+			$this->rules_repository->upsert_legacy_rule_for_component($component_id, $rules, $is_active ? true : false, 100);
+
 			$component = $this->repository->get_by_id($component_id);
 			AIPS_Ajax_Response::success(
 				array(
@@ -159,6 +173,8 @@ class AIPS_Content_Components_Controller {
 		if (!$new_id) {
 			AIPS_Ajax_Response::error(__('Failed to create content component.', 'ai-post-scheduler'));
 		}
+
+		$this->rules_repository->upsert_legacy_rule_for_component($new_id, $rules, $is_active ? true : false, 100);
 
 		$component = $this->repository->get_by_id($new_id);
 		AIPS_Ajax_Response::success(
