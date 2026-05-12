@@ -113,51 +113,34 @@ if (!defined('ABSPATH')) {
 										</div>
 									</td>
 									<td>
-										<div class="cell-actions aips-actions-grid-3">
-											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
-												data-edit-url="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
-												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-edit"></span>
-												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-visibility"></span>
-												<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												data-history-id="<?php echo esc_attr($item->id); ?>"
-												title="<?php esc_attr_e('AI Edit - Regenerate components', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-admin-customizer"></span>
-												<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
-												data-history-id="<?php echo esc_attr($item->id); ?>"
-												title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-visibility"></span>
-												<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												title="<?php esc_attr_e('Publish this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-upload"></span>
-												<?php esc_html_e('Publish', 'ai-post-scheduler'); ?>
-											</button>
-											<button type="button"
-												class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post"
-												data-history-id="<?php echo esc_attr($item->id); ?>"
-												data-post-id="<?php echo esc_attr($item->post_id); ?>"
-												title="<?php esc_attr_e('Regenerate this post', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-update"></span>
-												<?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?>
-											</button>
-										</div>
+										<?php
+										// UX hierarchy: "Publish" is primary in review mode because approvers are completing workflow decisions.
+										// Overflow keeps supporting tools (edit, preview, AI utilities) available without changing JS hooks.
+										$aips_action_config = array(
+											'container_classes' => 'cell-actions aips-actions-grid-3',
+											'row_identifiers' => array(
+												'post_id' => $item->post_id,
+												'history_id' => $item->id,
+												'edit_url' => get_edit_post_link($item->post_id),
+											),
+											'state_flags' => array('pending_review' => true),
+											'primary_action' => array(
+												'label' => __('Publish', 'ai-post-scheduler'),
+												'classes' => 'aips-btn aips-btn-sm aips-btn-primary aips-publish-post',
+												'icon' => 'dashicons-upload',
+												'title' => __('Publish this post', 'ai-post-scheduler'),
+												'data' => array('post-id' => 'post_id'),
+											),
+											'overflow_actions' => array(
+												array('label' => __('Edit', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-edit-post', 'icon' => 'dashicons-edit', 'title' => __('Edit this post', 'ai-post-scheduler'), 'data' => array('edit-url' => 'edit_url')),
+												array('label' => __('Preview', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-preview-post', 'icon' => 'dashicons-visibility', 'title' => __('Preview this post', 'ai-post-scheduler'), 'data' => array('post-id' => 'post_id')),
+												array('label' => __('AI Edit', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn', 'icon' => 'dashicons-admin-customizer', 'title' => __('AI Edit - Regenerate components', 'ai-post-scheduler'), 'data' => array('post-id' => 'post_id', 'history-id' => 'history_id')),
+												array('label' => __('View Session', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-view-session', 'icon' => 'dashicons-visibility', 'title' => __('View generation session', 'ai-post-scheduler'), 'data' => array('history-id' => 'history_id')),
+												array('label' => __('Re-generate', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post', 'icon' => 'dashicons-update', 'title' => __('Regenerate this post', 'ai-post-scheduler'), 'data' => array('history-id' => 'history_id', 'post-id' => 'post_id')),
+											),
+										);
+										include AIPS_PLUGIN_DIR . 'templates/partials/post-row-actions.php';
+										?>
 									</td>
 								</tr>
 								<?php endforeach; ?>
