@@ -58,6 +58,7 @@ class AIPS_Admin_Flow_Controller {
 		$post_types      = $this->get_supported_post_types();
 		$voices          = class_exists('AIPS_Voices_Repository') ? (new AIPS_Voices_Repository())->get_all() : array();
 		$structures      = class_exists('AIPS_Article_Structure_Repository') ? (new AIPS_Article_Structure_Repository())->get_all(true) : array();
+		$authors         = class_exists('AIPS_Authors_Repository') ? AIPS_Authors_Repository::instance()->get_all(true) : array();
 		$frequencies     = (new AIPS_Interval_Calculator())->get_intervals();
 		$aips_config     = $this->config;
 		$default_summary = $this->build_summary($this->normalise_payload($draft));
@@ -149,6 +150,8 @@ class AIPS_Admin_Flow_Controller {
 				'topic'                 => $payload['content_goal'],
 				'article_structure_id'  => $payload['article_structure_id'],
 				'rotation_pattern'      => $payload['rotation_pattern'],
+				'author_id'             => $payload['author_id'],
+				'campaign_mode'         => $payload['campaign_mode'],
 			));
 
 			if (!$schedule_id) {
@@ -226,6 +229,8 @@ class AIPS_Admin_Flow_Controller {
 			'voice_id'               => isset($payload['voice_id']) ? absint($payload['voice_id']) : 0,
 			'article_structure_id'   => isset($payload['article_structure_id']) ? absint($payload['article_structure_id']) : absint($this->config->get_option('aips_default_article_structure_id')),
 			'rotation_pattern'       => isset($payload['rotation_pattern']) ? sanitize_key($payload['rotation_pattern']) : 'sequential',
+			'author_id'              => isset($payload['author_id']) ? absint($payload['author_id']) : 0,
+			'campaign_mode'          => isset($payload['campaign_mode']) ? sanitize_key($payload['campaign_mode']) : 'template',
 			'post_category'          => isset($payload['post_category']) ? absint($payload['post_category']) : absint($this->config->get_option('aips_default_category')),
 			'post_tags'              => isset($payload['post_tags']) ? sanitize_text_field($payload['post_tags']) : '',
 			'post_author'            => isset($payload['post_author']) ? absint($payload['post_author']) : absint($this->config->get_option('aips_default_post_author')),

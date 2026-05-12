@@ -99,6 +99,30 @@ $authors = get_users(array(
 							<th scope="row"><label for="aips_title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></label></th>
 							<td><input type="text" class="large-text" id="aips_title_prompt" name="title_prompt" value="<?php echo esc_attr($draft['title_prompt'] ?? __('Create a concise SEO-friendly title.', 'ai-post-scheduler')); ?>"></td>
 						</tr>
+						<tr>
+							<th scope="row"><label for="aips_author_id"><?php esc_html_e('Author Persona (Optional)', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<select id="aips_author_id" name="author_id">
+									<option value="0"><?php esc_html_e('None - Use template-based generation', 'ai-post-scheduler'); ?></option>
+									<?php if (!empty($authors)) : ?>
+										<?php foreach ($authors as $author) : ?>
+											<option value="<?php echo esc_attr($author->id); ?>" <?php selected($draft['author_id'] ?? 0, $author->id); ?>><?php echo esc_html($author->name); ?></option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
+								<p class="description"><?php esc_html_e('Link this campaign to an author persona to generate topics through their lens and writing style.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="aips_campaign_mode"><?php esc_html_e('Campaign Mode', 'ai-post-scheduler'); ?></label></th>
+							<td>
+								<select id="aips_campaign_mode" name="campaign_mode">
+									<option value="template" <?php selected($draft['campaign_mode'] ?? 'template', 'template'); ?>><?php esc_html_e('Template-based', 'ai-post-scheduler'); ?></option>
+									<option value="author" <?php selected($draft['campaign_mode'] ?? '', 'author'); ?>><?php esc_html_e('Author-based (use author persona workflow)', 'ai-post-scheduler'); ?></option>
+								</select>
+								<p class="description"><?php esc_html_e('Choose how content is generated: directly from template or through author topic approval workflow.', 'ai-post-scheduler'); ?></p>
+							</td>
+						</tr>
 					</tbody></table>
 				</section>
 
