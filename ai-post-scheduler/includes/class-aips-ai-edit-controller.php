@@ -32,9 +32,9 @@ class AIPS_AI_Edit_Controller {
 	private $history_repository;
 
 	/**
-	 * @var AIPS_Post_Component_Injection_Service
+	 * @var AIPS_Content_Component_Injection_Service
 	 */
-	private $post_component_injection_service;
+	private $content_component_injection_service;
 	
 	/**
 	 * Constructor
@@ -46,7 +46,7 @@ class AIPS_AI_Edit_Controller {
 		$container = AIPS_Container::get_instance();
 		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
 		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->post_component_injection_service = new AIPS_Post_Component_Injection_Service();
+		$this->content_component_injection_service = new AIPS_Content_Component_Injection_Service();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -396,7 +396,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (isset($components['content'])) {
-			$post_data['post_content'] = AIPS_Post_Component_Injection_Service::sanitize_content_preserving_markers(wp_unslash($components['content']));
+			$post_data['post_content'] = AIPS_Content_Component_Injection_Service::sanitize_content_preserving_markers(wp_unslash($components['content']));
 			$updated_components[] = 'content';
 		}
 		
@@ -428,7 +428,7 @@ class AIPS_AI_Edit_Controller {
 			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
 		}
 		if (isset($components['content'])) {
-			$sanitized_components['content'] = AIPS_Post_Component_Injection_Service::sanitize_content_preserving_markers(wp_unslash($components['content']));
+			$sanitized_components['content'] = AIPS_Content_Component_Injection_Service::sanitize_content_preserving_markers(wp_unslash($components['content']));
 		}
 		if (isset($components['featured_image_id'])) {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
@@ -438,7 +438,7 @@ class AIPS_AI_Edit_Controller {
 
 		if (isset($sanitized_components['content'])) {
 			$history_record = $this->history_repository->get_by_post_id($post_id);
-			$this->post_component_injection_service->record_injections_from_content(
+			$this->content_component_injection_service->record_injections_from_content(
 				$post_id,
 				$sanitized_components['content'],
 				$history_record && !empty($history_record->correlation_id) ? (string) $history_record->correlation_id : '',

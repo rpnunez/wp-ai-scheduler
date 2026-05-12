@@ -31,32 +31,32 @@ class AIPS_Content_Components_Controller {
 	private $repository;
 
 	/**
-	 * @var AIPS_Post_Component_Rules_Repository
+	 * @var AIPS_Content_Component_Rules_Repository
 	 */
 	private $rules_repository;
 
 	/**
-	 * @var AIPS_Post_Component_Example_Service
+	 * @var AIPS_Content_Component_Example_Service
 	 */
 	private $example_service;
 
 	/**
-	 * @var AIPS_Post_Component_Rule_Summary_Service
+	 * @var AIPS_Content_Component_Rule_Summary_Service
 	 */
 	private $rule_summary_service;
 
 	/**
-	 * @var AIPS_Post_Component_Matcher_Service
+	 * @var AIPS_Content_Component_Matcher_Service
 	 */
 	private $matcher_service;
 
 	/**
-	 * @var AIPS_Post_Component_Injection_Service
+	 * @var AIPS_Content_Component_Injection_Service
 	 */
 	private $injection_service;
 
 	/**
-	 * @var AIPS_Post_Component_Analytics_Repository
+	 * @var AIPS_Content_Component_Analytics_Repository
 	 */
 	private $analytics_repository;
 
@@ -65,12 +65,12 @@ class AIPS_Content_Components_Controller {
 	 */
 	public function __construct() {
 		$this->repository           = new AIPS_Content_Components_Repository();
-		$this->rules_repository     = new AIPS_Post_Component_Rules_Repository();
-		$this->example_service      = new AIPS_Post_Component_Example_Service();
-		$this->rule_summary_service = new AIPS_Post_Component_Rule_Summary_Service();
-		$this->matcher_service      = new AIPS_Post_Component_Matcher_Service();
-		$this->injection_service    = new AIPS_Post_Component_Injection_Service();
-		$this->analytics_repository = new AIPS_Post_Component_Analytics_Repository();
+		$this->rules_repository     = new AIPS_Content_Component_Rules_Repository();
+		$this->example_service      = new AIPS_Content_Component_Example_Service();
+		$this->rule_summary_service = new AIPS_Content_Component_Rule_Summary_Service();
+		$this->matcher_service      = new AIPS_Content_Component_Matcher_Service();
+		$this->injection_service    = new AIPS_Content_Component_Injection_Service();
+		$this->analytics_repository = new AIPS_Content_Component_Analytics_Repository();
 
 		add_action( 'wp_ajax_aips_get_content_components', array( $this, 'ajax_get_content_components' ) );
 		add_action( 'wp_ajax_aips_get_content_component', array( $this, 'ajax_get_content_component' ) );
@@ -79,7 +79,7 @@ class AIPS_Content_Components_Controller {
 		add_action( 'wp_ajax_aips_toggle_content_component_active', array( $this, 'ajax_toggle_content_component_active' ) );
 		add_action( 'wp_ajax_aips_validate_content_component', array( $this, 'ajax_validate_content_component' ) );
 		add_action( 'wp_ajax_aips_get_content_component_examples', array( $this, 'ajax_get_content_component_examples' ) );
-		add_action( 'wp_ajax_aips_post_components_dry_run', array( $this, 'ajax_post_components_dry_run' ) );
+		add_action( 'wp_ajax_aips_content_components_dry_run', array( $this, 'ajax_content_components_dry_run' ) );
 	}
 
 	/**
@@ -334,7 +334,7 @@ class AIPS_Content_Components_Controller {
 	 *
 	 * @return void
 	 */
-	public function ajax_post_components_dry_run() {
+	public function ajax_content_components_dry_run() {
 		$this->authorize();
 
 		$post_id      = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
@@ -361,7 +361,7 @@ class AIPS_Content_Components_Controller {
 
 		if ($post instanceof WP_Post) {
 			$content = '' !== trim($draft_body) ? $draft_body : (string) $post->post_content;
-			$context = AIPS_Post_Component_Run_Context::from_post(
+			$context = AIPS_Content_Component_Run_Context::from_post(
 				$post,
 				array(
 					'content' => $content,
@@ -370,7 +370,7 @@ class AIPS_Content_Components_Controller {
 				)
 			);
 		} else {
-			$context = new AIPS_Post_Component_Run_Context(
+			$context = new AIPS_Content_Component_Run_Context(
 				array(
 					'post_id'         => 0,
 					'post_type'       => $post_type,

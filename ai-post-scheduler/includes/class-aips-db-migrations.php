@@ -354,7 +354,7 @@ class AIPS_DB_Migrations {
 	/**
 	 * Migration for version 2.8.0.
 	 *
-	 * Backfills the new post-components Phase 1 schema from the existing
+	 * Backfills the new content-components Phase 1 schema from the existing
 	 * content-components table so current admin records become injectable without
 	 * forcing users to recreate them.
 	 *
@@ -363,8 +363,17 @@ class AIPS_DB_Migrations {
 	private function migrate_to_2_8_0() {
 		global $wpdb;
 
-		$components_table = $wpdb->prefix . 'aips_content_components';
-		$rules_table      = $wpdb->prefix . 'aips_post_component_rules';
+		$components_table       = $wpdb->prefix . 'aips_content_components';
+		$rules_table            = $wpdb->prefix . 'aips_content_component_rules';
+		$legacy_rules_table     = $wpdb->prefix . 'aips_post_component_rules';
+		$analytics_table        = $wpdb->prefix . 'aips_content_component_analytics';
+		$legacy_analytics_table = $wpdb->prefix . 'aips_post_component_analytics';
+		$injections_table       = $wpdb->prefix . 'aips_content_component_injections';
+		$legacy_injections_table = $wpdb->prefix . 'aips_post_component_injections';
+
+		$this->rename_legacy_content_component_table( $legacy_rules_table, $rules_table );
+		$this->rename_legacy_content_component_table( $legacy_analytics_table, $analytics_table );
+		$this->rename_legacy_content_component_table( $legacy_injections_table, $injections_table );
 
 		$components_exist = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $components_table ) );
 		if ( $components_exist !== $components_table ) {
@@ -436,17 +445,17 @@ class AIPS_DB_Migrations {
 		global $wpdb;
 
 		$components_table = $wpdb->prefix . 'aips_content_components';
-		$rules_table      = $wpdb->prefix . 'aips_post_component_rules';
+		$rules_table      = $wpdb->prefix . 'aips_content_component_rules';
 
 		$components_exist = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $components_table ) );
 		$rules_exist      = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $rules_table ) );
 
-		if ( $components_exist !== $components_table || $rules_exist !== $rules_table || ! class_exists( 'AIPS_Post_Component_Rules_Repository' ) ) {
+		if ( $components_exist !== $components_table || $rules_exist !== $rules_table || ! class_exists( 'AIPS_Content_Component_Rules_Repository' ) ) {
 			return;
 		}
 
 		$rows             = $wpdb->get_results( "SELECT id, rules_json, is_active FROM {$components_table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rules_repository = new AIPS_Post_Component_Rules_Repository();
+		$rules_repository = new AIPS_Content_Component_Rules_Repository();
 
 		foreach ( (array) $rows as $row ) {
 			$legacy_rules = json_decode( (string) $row->rules_json, true );
@@ -460,6 +469,24 @@ class AIPS_DB_Migrations {
 				( (int) $row->is_active ) === 1,
 				100
 			);
+		}
+	}
+
+	/**
+	 * Rename a legacy Content Components table forward to the corrected naming.
+	 *
+	 * @param string $legacy_table Legacy table name.
+	 * @param string $new_table Corrected table name.
+	 * @return void
+	 */
+	private function rename_legacy_content_component_table( $legacy_table, $new_table ) {
+		global $wpdb;
+
+		$legacy_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) );
+		$new_exists    = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
+
+		if ( $legacy_exists === $legacy_table && $new_exists !== $new_table ) {
+			$wpdb->query( "RENAME TABLE `{$legacy_table}` TO `{$new_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 		}
 	}
 }

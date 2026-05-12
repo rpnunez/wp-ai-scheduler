@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Analytics Repository
+ * Content Component Analytics Repository
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Analytics_Repository {
+class AIPS_Content_Component_Analytics_Repository {
 
 	/**
 	 * @var wpdb
@@ -25,7 +25,7 @@ class AIPS_Post_Component_Analytics_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb       = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_post_component_analytics';
+		$this->table_name = $wpdb->prefix . 'aips_content_component_analytics';
 	}
 
 	/**

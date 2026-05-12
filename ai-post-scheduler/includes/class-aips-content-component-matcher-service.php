@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Matcher Service
+ * Content Component Matcher Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,33 +10,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Matcher_Service {
+class AIPS_Content_Component_Matcher_Service {
 
 	/**
-	 * @var AIPS_Post_Components_Repository
+	 * @var AIPS_Content_Components_Repository
 	 */
 	private $components_repository;
 
 	/**
-	 * @var AIPS_Post_Component_Rules_Repository
+	 * @var AIPS_Content_Component_Rules_Repository
 	 */
 	private $rules_repository;
 
 	public function __construct(
-		?AIPS_Post_Components_Repository $components_repository = null,
-		?AIPS_Post_Component_Rules_Repository $rules_repository = null
+		?AIPS_Content_Components_Repository $components_repository = null,
+		?AIPS_Content_Component_Rules_Repository $rules_repository = null
 	) {
-		$this->components_repository = $components_repository ?: new AIPS_Post_Components_Repository();
-		$this->rules_repository      = $rules_repository ?: new AIPS_Post_Component_Rules_Repository();
+		$this->components_repository = $components_repository ?: new AIPS_Content_Components_Repository();
+		$this->rules_repository      = $rules_repository ?: new AIPS_Content_Component_Rules_Repository();
 	}
 
 	/**
 	 * Resolve a sorted injection plan from active components and rules.
 	 *
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return array<int,array<string,mixed>>
 	 */
-	public function resolve_plan( AIPS_Post_Component_Run_Context $context ) {
+	public function resolve_plan( AIPS_Content_Component_Run_Context $context ) {
 		$evaluation = $this->evaluate_components_detailed( $context );
 		return $evaluation['matched'];
 	}
@@ -44,10 +44,10 @@ class AIPS_Post_Component_Matcher_Service {
 	/**
 	 * Evaluate all active components with match/reject reasons for dry-run UX.
 	 *
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return array<string,array<int,array<string,mixed>>>
 	 */
-	public function evaluate_components_detailed( AIPS_Post_Component_Run_Context $context ) {
+	public function evaluate_components_detailed( AIPS_Content_Component_Run_Context $context ) {
 		$components = $this->components_repository->get_active_components();
 		if ( empty( $components ) ) {
 			return array(
@@ -134,10 +134,10 @@ class AIPS_Post_Component_Matcher_Service {
 	 *
 	 * @param object                          $component Component-like object.
 	 * @param array<string,mixed>             $rule Normalized Phase 1 rule record.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return array<string,mixed>
 	 */
-	public function evaluate_component_rule( $component, array $rule, AIPS_Post_Component_Run_Context $context ) {
+	public function evaluate_component_rule( $component, array $rule, AIPS_Content_Component_Run_Context $context ) {
 		return $this->evaluate_rule( $rule, $component, $context );
 	}
 
@@ -146,10 +146,10 @@ class AIPS_Post_Component_Matcher_Service {
 	 *
 	 * @param array<string,mixed>             $rule Rule payload.
 	 * @param object                          $component Component row.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return bool
 	 */
-	private function evaluate_rule( array $rule, $component, AIPS_Post_Component_Run_Context $context ) {
+	private function evaluate_rule( array $rule, $component, AIPS_Content_Component_Run_Context $context ) {
 		if ( ! empty( $component->status ) && 'active' !== (string) $component->status ) {
 			return array(
 				'matched' => false,
@@ -196,11 +196,11 @@ class AIPS_Post_Component_Matcher_Service {
 	 *
 	 * @param array<string,mixed>             $condition_set Condition set.
 	 * @param object                          $component Component row.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @param bool                            $empty_result Default value for empty sets.
 	 * @return bool
 	 */
-	private function evaluate_condition_set( array $condition_set, $component, AIPS_Post_Component_Run_Context $context, $empty_result ) {
+	private function evaluate_condition_set( array $condition_set, $component, AIPS_Content_Component_Run_Context $context, $empty_result ) {
 		$conditions = isset( $condition_set['conditions'] ) && is_array( $condition_set['conditions'] )
 			? $condition_set['conditions']
 			: array();
@@ -233,10 +233,10 @@ class AIPS_Post_Component_Matcher_Service {
 	 *
 	 * @param array<string,mixed>             $condition Condition payload.
 	 * @param object                          $component Component row.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return bool
 	 */
-	private function evaluate_condition( array $condition, $component, AIPS_Post_Component_Run_Context $context ) {
+	private function evaluate_condition( array $condition, $component, AIPS_Content_Component_Run_Context $context ) {
 		$field    = isset( $condition['field'] ) ? sanitize_key( (string) $condition['field'] ) : '';
 		$operator = isset( $condition['operator'] ) ? sanitize_key( (string) $condition['operator'] ) : 'is';
 		$values   = array_values(
@@ -411,10 +411,10 @@ class AIPS_Post_Component_Matcher_Service {
 	 * Evaluate a rule date window.
 	 *
 	 * @param array<string,mixed>             $date_window Date window payload.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return bool
 	 */
-	private function evaluate_date_window( array $date_window, AIPS_Post_Component_Run_Context $context ) {
+	private function evaluate_date_window( array $date_window, AIPS_Content_Component_Run_Context $context ) {
 		if ( empty( $date_window ) ) {
 			return true;
 		}
@@ -464,10 +464,10 @@ class AIPS_Post_Component_Matcher_Service {
 	 * Enforce simple per-post frequency limits.
 	 *
 	 * @param array<string,mixed>             $rule Rule payload.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return bool
 	 */
-	private function passes_frequency( array $rule, AIPS_Post_Component_Run_Context $context ) {
+	private function passes_frequency( array $rule, AIPS_Content_Component_Run_Context $context ) {
 		$mode = isset( $rule['frequency_mode'] ) ? sanitize_key( (string) $rule['frequency_mode'] ) : 'once_per_post';
 		if ( 'unlimited' === $mode ) {
 			return true;

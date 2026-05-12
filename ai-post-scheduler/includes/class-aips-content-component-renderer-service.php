@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Renderer Service
+ * Content Component Renderer Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Renderer_Service {
+class AIPS_Content_Component_Renderer_Service {
 
 	/**
 	 * @var AIPS_Internal_Links_Repository
@@ -26,10 +26,10 @@ class AIPS_Post_Component_Renderer_Service {
 	 *
 	 * @param object                          $component Component row.
 	 * @param array<string,mixed>             $rule Rule payload.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return string
 	 */
-	public function render_component( $component, array $rule, AIPS_Post_Component_Run_Context $context ) {
+	public function render_component( $component, array $rule, AIPS_Content_Component_Run_Context $context ) {
 		if ( 'internal_link_pod' === (string) $component->component_type ) {
 			$pod = $this->render_internal_link_pod( $component, $context );
 			if ( '' !== $pod ) {
@@ -61,7 +61,7 @@ class AIPS_Post_Component_Renderer_Service {
 		$placement      = sanitize_html_class( str_replace( ':', '-', (string) ( $rule['placement'] ?? 'end_of_post' ) ) );
 
 		return sprintf(
-			'<div class="aips-post-component aips-post-component--%1$s aips-post-component--%2$s" data-aips-component-id="%3$d">%4$s</div>',
+			'<div class="aips-content-component aips-content-component--%1$s aips-content-component--%2$s" data-aips-component-id="%3$d">%4$s</div>',
 			esc_attr( $component_type ),
 			esc_attr( $placement ),
 			$component_id,
@@ -73,10 +73,10 @@ class AIPS_Post_Component_Renderer_Service {
 	 * Replace simple template tokens from run context.
 	 *
 	 * @param string                          $payload Template payload.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return string
 	 */
-	private function replace_template_tokens( $payload, AIPS_Post_Component_Run_Context $context ) {
+	private function replace_template_tokens( $payload, AIPS_Content_Component_Run_Context $context ) {
 		$replacements = array(
 			'{{topic}}'          => (string) $context->get( 'topic', '' ),
 			'{{locale}}'         => (string) $context->get( 'locale', '' ),
@@ -91,10 +91,10 @@ class AIPS_Post_Component_Renderer_Service {
 	 * Render a dynamic internal-link pod.
 	 *
 	 * @param object                          $component Component row.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @return string
 	 */
-	private function render_internal_link_pod( $component, AIPS_Post_Component_Run_Context $context ) {
+	private function render_internal_link_pod( $component, AIPS_Content_Component_Run_Context $context ) {
 		$post_id = absint( $context->get( 'post_id', 0 ) );
 		if ( $post_id < 1 ) {
 			return $this->render_component_fallback( $component );
@@ -123,7 +123,7 @@ class AIPS_Post_Component_Renderer_Service {
 		}
 
 		return sprintf(
-			'<div class="aips-post-component aips-post-component--internal-link-pod" data-aips-component-id="%1$d"><div class="aips-related-links-pod"><h3>%2$s</h3><ul>%3$s</ul></div></div>',
+			'<div class="aips-content-component aips-content-component--internal-link-pod" data-aips-component-id="%1$d"><div class="aips-related-links-pod"><h3>%2$s</h3><ul>%3$s</ul></div></div>',
 			absint( $component->id ),
 			esc_html__( 'Related Reading', 'ai-post-scheduler' ),
 			implode( '', $items )
@@ -150,7 +150,7 @@ class AIPS_Post_Component_Renderer_Service {
 		}
 
 		return sprintf(
-			'<div class="aips-post-component aips-post-component--internal-link-pod" data-aips-component-id="%1$d">%2$s</div>',
+			'<div class="aips-content-component aips-content-component--internal-link-pod" data-aips-component-id="%1$d">%2$s</div>',
 			absint( $component->id ),
 			wp_kses_post( $payload )
 		);

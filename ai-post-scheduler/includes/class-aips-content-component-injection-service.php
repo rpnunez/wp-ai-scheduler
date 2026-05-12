@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Injection Service
+ * Content Component Injection Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,25 +10,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Injection_Service {
+class AIPS_Content_Component_Injection_Service {
 
 	/**
-	 * @var AIPS_Post_Component_Matcher_Service
+	 * @var AIPS_Content_Component_Matcher_Service
 	 */
 	private $matcher;
 
 	/**
-	 * @var AIPS_Post_Component_Renderer_Service
+	 * @var AIPS_Content_Component_Renderer_Service
 	 */
 	private $renderer;
 
 	/**
-	 * @var AIPS_Post_Component_Fingerprint_Service
+	 * @var AIPS_Content_Component_Fingerprint_Service
 	 */
 	private $fingerprints;
 
 	/**
-	 * @var AIPS_Post_Component_Analytics_Repository
+	 * @var AIPS_Content_Component_Analytics_Repository
 	 */
 	private $analytics_repository;
 
@@ -43,29 +43,29 @@ class AIPS_Post_Component_Injection_Service {
 	private $injections_table;
 
 	public function __construct(
-		?AIPS_Post_Component_Matcher_Service $matcher = null,
-		?AIPS_Post_Component_Renderer_Service $renderer = null,
-		?AIPS_Post_Component_Fingerprint_Service $fingerprints = null,
-		?AIPS_Post_Component_Analytics_Repository $analytics_repository = null
+		?AIPS_Content_Component_Matcher_Service $matcher = null,
+		?AIPS_Content_Component_Renderer_Service $renderer = null,
+		?AIPS_Content_Component_Fingerprint_Service $fingerprints = null,
+		?AIPS_Content_Component_Analytics_Repository $analytics_repository = null
 	) {
 		global $wpdb;
 		$this->wpdb                 = $wpdb;
-		$this->injections_table     = $wpdb->prefix . 'aips_post_component_injections';
-		$this->matcher              = $matcher ?: new AIPS_Post_Component_Matcher_Service();
-		$this->renderer             = $renderer ?: new AIPS_Post_Component_Renderer_Service();
-		$this->fingerprints         = $fingerprints ?: new AIPS_Post_Component_Fingerprint_Service();
-		$this->analytics_repository = $analytics_repository ?: new AIPS_Post_Component_Analytics_Repository();
+		$this->injections_table     = $wpdb->prefix . 'aips_content_component_injections';
+		$this->matcher              = $matcher ?: new AIPS_Content_Component_Matcher_Service();
+		$this->renderer             = $renderer ?: new AIPS_Content_Component_Renderer_Service();
+		$this->fingerprints         = $fingerprints ?: new AIPS_Content_Component_Fingerprint_Service();
+		$this->analytics_repository = $analytics_repository ?: new AIPS_Content_Component_Analytics_Repository();
 	}
 
 	/**
 	 * Build the resolved plan and inject it into the content string.
 	 *
 	 * @param string                          $content Raw post content.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @param array<string,mixed>             $options Options.
 	 * @return array<string,mixed>
 	 */
-	public function prepare_content( $content, AIPS_Post_Component_Run_Context $context, array $options = array() ) {
+	public function prepare_content( $content, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
 		$base_content = ! empty( $options['strip_existing_markers'] )
 			? $this->strip_injected_components( (string) $content )
 			: (string) $content;
@@ -103,11 +103,11 @@ class AIPS_Post_Component_Injection_Service {
 	 * @param string                          $content Base content.
 	 * @param object                          $component Component-like object.
 	 * @param array<string,mixed>             $rule Normalized Phase 1 rule record.
-	 * @param AIPS_Post_Component_Run_Context $context Runtime context.
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
 	 * @param array<string,mixed>             $options Options.
 	 * @return array<string,mixed>
 	 */
-	public function prepare_manual_component( $content, $component, array $rule, AIPS_Post_Component_Run_Context $context, array $options = array() ) {
+	public function prepare_manual_component( $content, $component, array $rule, AIPS_Content_Component_Run_Context $context, array $options = array() ) {
 		$base_content = ! empty( $options['strip_existing_markers'] )
 			? $this->strip_injected_components( (string) $content )
 			: (string) $content;

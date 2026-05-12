@@ -1,9 +1,9 @@
 <?php
 /**
- * Post Component Example Service
+ * Content Component Example Service
  *
  * Provides deterministic runtime-generated starter examples for the
- * "Add New Post Component" flow.
+ * "Add New Content Component" flow.
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Example_Service {
+class AIPS_Content_Component_Example_Service {
 
 	/**
 	 * Return a random set of starter examples.

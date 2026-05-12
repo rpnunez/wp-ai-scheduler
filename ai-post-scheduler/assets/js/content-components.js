@@ -498,7 +498,7 @@
 		runDryRun: function (e) {
 			e.preventDefault();
 			var payload = {
-				action: 'aips_post_components_dry_run',
+				action: 'aips_content_components_dry_run',
 				nonce: aipsAjax.nonce,
 				post_id: parseInt($('#aips-content-component-dry-run-post-id').val(), 10) || 0,
 				draft_body: $('#aips-content-component-dry-run-draft-body').val() || $('#aips-content-component-content').val() || '',

@@ -568,9 +568,9 @@ class AIPS_Admin_Assets {
 			);
 
 			$repository = new AIPS_Content_Components_Repository();
-			$analytics_repository = new AIPS_Post_Component_Analytics_Repository();
-			$rule_summary_service = new AIPS_Post_Component_Rule_Summary_Service();
-			$example_service = new AIPS_Post_Component_Example_Service();
+			$analytics_repository = new AIPS_Content_Component_Analytics_Repository();
+			$rule_summary_service = new AIPS_Content_Component_Rule_Summary_Service();
+			$example_service = new AIPS_Content_Component_Example_Service();
 			$rows       = $repository->get_all(false);
 			$usage_map  = $analytics_repository->get_usage_map();
 			$normalized = array();

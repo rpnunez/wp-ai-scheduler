@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Rule Summary Service
+ * Content Component Rule Summary Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Rule_Summary_Service {
+class AIPS_Content_Component_Rule_Summary_Service {
 
 	/**
 	 * Create a readable summary from the component and rules payload.

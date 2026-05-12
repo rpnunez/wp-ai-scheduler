@@ -72,9 +72,9 @@ class AIPS_Component_Regeneration_Service {
 	private $structure_manager;
 
 	/**
-	 * @var AIPS_Post_Component_Injection_Service
+	 * @var AIPS_Content_Component_Injection_Service
 	 */
-	private $post_component_injection_service;
+	private $content_component_injection_service;
 	
 	/**
 	 * Constructor
@@ -84,7 +84,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
-		$this->post_component_injection_service = new AIPS_Post_Component_Injection_Service();
+		$this->content_component_injection_service = new AIPS_Content_Component_Injection_Service();
 		
 		// Initialize AI services
 		$ai_service = new AIPS_AI_Service();
@@ -251,7 +251,7 @@ class AIPS_Component_Regeneration_Service {
 			if ($post_id > 0) {
 				$post = get_post($post_id);
 				if ($post instanceof WP_Post) {
-					$run_context = AIPS_Post_Component_Run_Context::from_post(
+					$run_context = AIPS_Content_Component_Run_Context::from_post(
 						$post,
 						array(
 							'content' => (string) $result,
@@ -259,7 +259,7 @@ class AIPS_Component_Regeneration_Service {
 						)
 					);
 				} else {
-					$run_context = AIPS_Post_Component_Run_Context::from_generation_context(
+					$run_context = AIPS_Content_Component_Run_Context::from_generation_context(
 						$generation_context,
 						(string) $result,
 						array(
@@ -269,7 +269,7 @@ class AIPS_Component_Regeneration_Service {
 					);
 				}
 			} else {
-				$run_context = AIPS_Post_Component_Run_Context::from_generation_context(
+				$run_context = AIPS_Content_Component_Run_Context::from_generation_context(
 					$generation_context,
 					(string) $result,
 					array(
@@ -278,7 +278,7 @@ class AIPS_Component_Regeneration_Service {
 				);
 			}
 
-			$prepared = $this->post_component_injection_service->prepare_content(
+			$prepared = $this->content_component_injection_service->prepare_content(
 				(string) $result,
 				$run_context,
 				array(

@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Component Fingerprint Service
+ * Content Component Fingerprint Service
  *
  * @package AI_Post_Scheduler
  * @since 2.8.0
@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Post_Component_Fingerprint_Service {
+class AIPS_Content_Component_Fingerprint_Service {
 
 	/**
 	 * Generate an idempotency fingerprint for an injected block.
