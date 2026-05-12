@@ -111,33 +111,33 @@ if (!defined('ABSPATH')) {
 									</div>
 								</td>
 								<td>
-									<div class="cell-actions">
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
-										        data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
-										        title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-edit"></span>
-											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-admin-customizer"></span>
-											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
-								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-										</button>
-									</div>
+									<?php
+									// UX hierarchy: Keep "Edit" as the primary action because it is the most common follow-up task on published content.
+									// Overflow keeps less-frequent tools grouped while preserving exact classes/data attributes required by JS handlers.
+									$aips_action_config = array(
+										'container_classes' => 'cell-actions',
+										'row_identifiers' => array(
+											'post_id' => $post_data['post_id'],
+											'history_id' => $post_data['history_id'],
+											'edit_url' => $post_data['edit_link'],
+										),
+										'primary_action' => array(
+											'label' => __('Edit', 'ai-post-scheduler'),
+											'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-edit-post',
+											'icon' => 'dashicons-edit',
+											'title' => __('Edit this post', 'ai-post-scheduler'),
+											'data' => array(
+												'edit-url' => 'edit_url',
+											),
+										),
+										'overflow_actions' => array(
+											array('label' => __('Preview', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-preview-post', 'icon' => 'dashicons-visibility', 'title' => __('Preview this post', 'ai-post-scheduler'), 'data' => array('post-id' => 'post_id')),
+											array('label' => __('AI Edit', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn', 'icon' => 'dashicons-admin-customizer', 'title' => __('AI Edit', 'ai-post-scheduler'), 'data' => array('post-id' => 'post_id', 'history-id' => 'history_id')),
+											array('label' => __('View Session', 'ai-post-scheduler'), 'classes' => 'aips-btn aips-btn-sm aips-btn-secondary aips-view-session', 'icon' => 'dashicons-visibility', 'title' => __('View Session', 'ai-post-scheduler'), 'data' => array('history-id' => 'history_id')),
+										),
+									);
+									include AIPS_PLUGIN_DIR . 'templates/partials/post-row-actions.php';
+									?>
 								</td>
 							</tr>
 							<?php endforeach; ?>
@@ -240,4 +240,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-
