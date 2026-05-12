@@ -14,6 +14,18 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 1. **Check Existing PRs:** Before making any file modifications, you MUST use the GitHub CLI (`gh pr list`) or check the repository's open pull requests.
 2. **De-duplication:** When determining what to work on (unless given specific instructions), the agent MUST pull the current open PR list before making a decision and choose work that is not already addressed by an open PR to avoid wasted time and resources. If a PR already exists that addresses the same feature, ABORT the task immediately, UNLESS the text "@ignore-existing-prs" (without quotes) is present anywhere in the prompt.
 
+## Branch/Base Sanity Check (Required Before Coding)
+- Verify remote + branch alignment before modifying files.
+- Run:
+  - `git remote -v`
+  - `git branch -a`
+  - `git symbolic-ref refs/remotes/origin/HEAD` (when `origin` exists)
+  - `gh pr list` (when GitHub CLI is available)
+- Fail fast:
+  - If no `origin` remote exists, STOP and report the environment issue.
+  - If the intended PR base is not `main` and no explicit override was provided, STOP and report the mismatch.
+- Default policy: **Always open PRs against `main` unless explicitly told otherwise.**
+
 ## Current runtime shape
 
 `AI_Post_Scheduler::init()` dispatches to one of four context-specific boot methods. Only subsystems needed for that request type are instantiated.
