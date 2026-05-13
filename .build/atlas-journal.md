@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2025-10-01 - [Extract History Stats Repository]
+**Context:** The `AIPS_History_Repository` class had grown to over 1300 lines and acted as a "God Object", handling not just database persistence for history logs, but also complex statistical and analytical operations like estimating generation time, calculating daily trends, and pulling top failure reasons. This violated the Single Responsibility Principle.
+**Decision:** Applied "Separation of Concerns". Created `AIPS_History_Stats_Repository` to house all analytical operations (`get_estimated_generation_time`, `get_stats`, `get_daily_success_failure_trend`, etc.). The `AIPS_History_Repository` now instantiates this stats repository internally and maintains proxy methods for backward compatibility.
+**Consequence:**
+* `AIPS_History_Repository` is strictly focused on CRUD operations for the history logs, shrinking its code footprint significantly.
+* `AIPS_History_Stats_Repository` isolates complex metrics logic.
+* Maintains 100% backward compatibility for existing code that uses the `AIPS_History_Repository` stats methods.
+**Tests:** The autoloader test suite was updated to cover the new class. Existing test suites run with the same results (some skipped due to limited environment mocking, but syntax fully functional).
