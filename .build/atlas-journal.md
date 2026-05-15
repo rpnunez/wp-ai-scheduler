@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-29 - [Extract History Stats Repository]
+**Context:** The `AIPS_History_Repository` class was a "God Object" (1300+ lines) handling both core CRUD operations for history and complex analytical queries (`get_stats`, `get_daily_success_failure_trend`, etc.). This violated the Single Responsibility Principle and made the file difficult to navigate.
+**Decision:** Applied "Separation of Concerns". Extracted 10 analytical query methods into a new `AIPS_History_Stats_Repository` class. The `AIPS_History_Repository` constructor was updated to instantiate this stats repository, and the original methods were converted to proxies that delegate to the stats repository.
+**Consequence:**
+* `AIPS_History_Repository` is more focused on CRUD operations and core history management.
+* Analytical queries are isolated in `AIPS_History_Stats_Repository`, improving cohesion.
+* Maintains 100% backward compatibility because the public API of `AIPS_History_Repository` remains unchanged via the proxy methods (with updated DocBlocks indicating legacy status).
+**Tests:** The autoloader test suite was updated to cover `AIPS_History_Stats_Repository`. A new test class `Test_AIPS_History_Stats_Repository` was created to verify the extracted methods.
