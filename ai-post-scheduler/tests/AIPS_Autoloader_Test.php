@@ -78,6 +78,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	public function test_autoloader_converts_class_names_correctly() {
 		$test_cases = array(
 			'AIPS_History_Repository' => 'class-aips-history-repository.php',
+			'AIPS_History_Stats_Repository' => 'class-aips-history-stats-repository.php',
 			'AIPS_Template_Processor' => 'class-aips-template-processor.php',
 			'AIPS_AI_Service' => 'class-aips-ai-service.php',
 			'AIPS_Config' => 'class-aips-config.php',
@@ -171,6 +172,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	public function test_autoloader_loads_repository_classes() {
 		$repositories = array(
 			'AIPS_History_Repository',
+			'AIPS_History_Stats_Repository',
 			'AIPS_Schedule_Repository',
 			'AIPS_Template_Repository',
 		);
