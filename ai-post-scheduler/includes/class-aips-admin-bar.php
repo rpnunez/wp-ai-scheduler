@@ -201,34 +201,36 @@ class AIPS_Admin_Bar {
 					$title_markup = '<span class="aips-notif-title">' . esc_html($notif->title) . '</span>';
 				}
 
+				// Truncate long messages for better readability in toolbar
+				$message = $notif->message;
+				$max_length = 80;
+				if (mb_strlen($message) > $max_length) {
+					$message = mb_substr($message, 0, $max_length) . '...';
+				}
+
 				$node_title = $title_markup . '<span class="aips-notif-message">';
 
 				if (!empty($notif->url)) {
-					$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
+					$node_title .= '<a href="' . esc_url($notif->url) . '" title="' . esc_attr($notif->message) . '">' . esc_html($message) . '</a>';
 				} else {
-					$node_title .= esc_html($notif->message);
+					$node_title .= '<span title="' . esc_attr($notif->message) . '">' . esc_html($message) . '</span>';
+
+					$level_class = '';
+					if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
+						$level_class = ' aips-notif-level-' . $notif->level;
+					}
+
+					$wp_admin_bar->add_node(array(
+						'id'     => 'aips-notif-' . absint($notif->id),
+						'parent' => 'aips-toolbar-notifications',
+						'title'  => $node_title,
+						'href'   => false,
+						'meta'   => array(
+							'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
+							'data-notif-id' => absint($notif->id),
+						),
+					));
 				}
-
-				$node_title .= '</span>'
-					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
-					. '<span class="dashicons dashicons-yes-alt"></span>'
-					. '</button>';
-
-				$level_class = '';
-				if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
-					$level_class = ' aips-notif-level-' . $notif->level;
-				}
-
-				$wp_admin_bar->add_node(array(
-					'id'     => 'aips-notif-' . absint($notif->id),
-					'parent' => 'aips-toolbar-notifications',
-					'title'  => $node_title,
-					'href'   => false,
-					'meta'   => array(
-						'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
-						'data-notif-id' => absint($notif->id),
-					),
-				));
 			}
 		}
 	}
