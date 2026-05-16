@@ -142,19 +142,16 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Regression: all topics must share the same next_run
+	// Staggering Scheduled Topics
 	// -------------------------------------------------------------------------
 
 	/**
 	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
+	 * produce N schedule entries that are staggered by 1 day (default).
 	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * This prevents API rate limit issues and server spikes.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_topics_are_staggered_daily() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -174,22 +171,26 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// Values should stagger by 1 day because frequency='once' defaults to 'daily' staggering
+		$base_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_time = date('Y-m-d H:i:s', strtotime("+$i days", $base_time));
 			$this->assertEquals(
-				$start_date,
+				$expected_time,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_time, $schedule['next_run'])
 			);
+
+			// Even though staggering is daily, frequency stored is still 'once'
+			$this->assertEquals('once', $schedule['frequency']);
 		}
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * When scheduling multiple topics as 'daily', the staggering should use
+	 * the provided 'daily' frequency to increment the start dates.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_daily_topics_are_staggered_daily() {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
@@ -208,11 +209,47 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		$base_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_time = date('Y-m-d H:i:s', strtotime("+$i days", $base_time));
 			$this->assertEquals(
-				$start_date,
+				$expected_time,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_time, $schedule['next_run'])
+			);
+		}
+	}
+
+	/**
+	 * When scheduling multiple topics as 'weekly', the staggering should use
+	 * the provided 'weekly' frequency to increment the start dates by 1 week each.
+	 */
+	public function test_ajax_bulk_schedule_weekly_topics_are_staggered_weekly() {
+		$this->set_admin_user();
+
+		$start_date = '2030-08-01 09:00:00';
+
+		$this->set_valid_post(array(
+			'topics'      => array('Weekly A', 'Weekly B', 'Weekly C'),
+			'template_id' => 1,
+			'start_date'  => $start_date,
+			'frequency'   => 'weekly',
+		));
+
+		$response = $this->capture_json(array($this->planner, 'ajax_bulk_schedule'));
+
+		$this->assertTrue($response['success'], 'Expected success. Got: ' . wp_json_encode($response));
+
+		$schedules = $this->mock_scheduler->last_schedules;
+		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
+
+		$base_time = strtotime($start_date);
+		foreach ($schedules as $i => $schedule) {
+			$expected_time = date('Y-m-d H:i:s', strtotime("+$i weeks", $base_time));
+			$this->assertEquals(
+				$expected_time,
+				$schedule['next_run'],
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_time, $schedule['next_run'])
 			);
 		}
 	}
