@@ -1581,3 +1581,17 @@ if (!function_exists('_get_cron_array')) {
             : array();
     }
 }
+
+// Mock esc_sql for tests
+if (!function_exists('esc_sql')) {
+    function esc_sql($data) {
+        return $data;
+    }
+}
+
+// Mock wp_date for tests
+if (!function_exists('wp_date')) {
+    function wp_date($format, $timestamp = null, $timezone = null) {
+        return date($format, $timestamp !== null ? $timestamp : time());
+    }
+}
