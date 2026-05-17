@@ -56,6 +56,7 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.maybeOpenFromQuery();
 		},
 
 		/**
@@ -117,6 +118,42 @@
 
 			// Export CSV.
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+		},
+
+
+
+		/**
+		 * Auto-open a specific history container from query args when available.
+		 */
+		maybeOpenFromQuery: function () {
+			var params = new URLSearchParams(window.location.search || '');
+			var historyId = parseInt(params.get('history_id') || 0, 10);
+			var postId = parseInt(params.get('post_id') || 0, 10);
+
+			if (postId > 0 && !this.searchQuery) {
+				this.searchQuery = String(postId);
+				$('#aips-history-search-input').val(String(postId));
+				this.syncSearchClearButton();
+				$('#aips-history-search-input').trigger('input');
+			}
+
+			if (historyId > 0) {
+				this.openLogsModalFromId(historyId);
+			}
+		},
+
+		/**
+		 * Open history logs modal for a known history id.
+		 *
+		 * @param {number} historyId History container id.
+		 */
+		openLogsModalFromId: function (historyId) {
+			var $trigger = $('<button type="button" class="aips-view-history-logs" data-id="' + historyId + '"></button>');
+			this.openLogsModal({
+				preventDefault: function () {},
+				stopPropagation: function () {},
+				currentTarget: $trigger.get(0)
+			});
 		},
 
 		/* ------------------------------------------------------------------ */

@@ -29,6 +29,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
+        add_action('wp_ajax_aips_get_history_modal_html', array($this, 'ajax_get_history_modal_html'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
     }
@@ -310,6 +311,113 @@ class AIPS_History {
             ),
             'summary'   => $summary,
             'logs'      => $logs,
+        ));
+    }
+
+    /**
+     * AJAX handler to retrieve and return the full modal HTML for a history container.
+     *
+     * This returns the pre-rendered modal with all content, allowing it to be opened
+     * directly without navigating to the History page.
+     *
+     * @return void
+     */
+    public function ajax_get_history_modal_html() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+
+        if (!$history_id) {
+            AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
+        }
+
+        $history_item = $this->repository->get_by_id($history_id);
+
+        if (!$history_item) {
+            AIPS_Ajax_Response::error(__('History container not found.', 'ai-post-scheduler'));
+        }
+
+        // Get raw logs
+        $raw_logs = isset($history_item->log) ? $history_item->log : array();
+
+        $logs = array();
+        foreach ($raw_logs as $log) {
+            $details = array();
+            if (!empty($log->details)) {
+                $decoded = json_decode($log->details, true);
+                if (is_array($decoded)) {
+                    $details = $decoded;
+                }
+            }
+
+            $logs[] = array(
+                'id'               => (int) $log->id,
+                'log_type'         => $log->log_type,
+                'history_type_id'  => (int) $log->history_type_id,
+                'type_label'       => AIPS_History_Type::get_label((int) $log->history_type_id),
+                'timestamp'        => $log->timestamp,
+                'details'          => $details,
+            );
+        }
+
+        // Calculate duration (created_at / completed_at are UNIX timestamps stored as bigint)
+        $duration_seconds = null;
+        if ( ! empty( $history_item->created_at ) && ! empty( $history_item->completed_at ) ) {
+            $start = absint( $history_item->created_at );
+            $end   = absint( $history_item->completed_at );
+            if ( $start && $end && $end >= $start ) {
+                $duration_seconds = $end - $start;
+            }
+        }
+
+        // Build post URLs
+        $post_url      = null;
+        $post_edit_url = null;
+        if ( ! empty( $history_item->post_id ) ) {
+            $raw_post_url = get_permalink( (int) $history_item->post_id );
+            if ( ! empty( $raw_post_url ) ) {
+                $sanitized_post_url = esc_url_raw( $raw_post_url );
+                $post_url           = ! empty( $sanitized_post_url ) ? $sanitized_post_url : null;
+            }
+
+            $raw_post_edit_url = get_edit_post_link( (int) $history_item->post_id, 'raw' );
+            if ( ! empty( $raw_post_edit_url ) ) {
+                $sanitized_post_edit_url = esc_url_raw( $raw_post_edit_url );
+                $post_edit_url           = ! empty( $sanitized_post_edit_url ) ? $sanitized_post_edit_url : null;
+            }
+        }
+
+        // Prepare container data; format timestamps for human-readable display.
+        $container = array(
+            'id'               => (int) $history_item->id,
+            'status'           => $history_item->status,
+            'generated_title'  => $history_item->generated_title,
+            'template_name'    => isset( $history_item->template_name ) ? $history_item->template_name : '',
+            'created_at'       => AIPS_DateTime::formatRelativeOrAbsolute( $history_item->created_at ),
+            'completed_at'     => AIPS_DateTime::formatRelativeOrAbsolute( $history_item->completed_at ),
+            'error_message'    => $history_item->error_message,
+            'post_id'          => $history_item->post_id ? (int) $history_item->post_id : null,
+            'post_url'         => $post_url,
+            'post_edit_url'    => $post_edit_url,
+            'creation_method'  => isset( $history_item->creation_method ) ? $history_item->creation_method : null,
+            'duration_seconds' => $duration_seconds,
+        );
+
+        // Render the modal HTML
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-modal-content.php';
+        $modal_html = ob_get_clean();
+
+        AIPS_Ajax_Response::success(array(
+            'modal_html' => $modal_html,
+            'container'  => $container,
+            'logs'       => $logs,
         ));
     }
 
