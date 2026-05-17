@@ -214,6 +214,19 @@
 	padding: 0;
 }
 
+.aips-schedule-status-strip {
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-schedule-status-timeline,
+.aips-schedule-status-warnings {
+	margin-top: var(--aips-space-2);
+}
+
+.aips-schedule-status-item {
+	margin-right: var(--aips-space-2);
+}
+
 /* Filter Bar */
 .aips-filter-bar {
 	background: var(--aips-gray-50);

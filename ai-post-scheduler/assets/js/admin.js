@@ -73,6 +73,51 @@
             this.initAIVariablesScanner();
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
+            this.initScheduleStatusStrip();
+        },
+
+        initScheduleStatusStrip: function() {
+            if (!$('#aips-schedule-status-strip').length) {
+                return;
+            }
+
+            $.post(ajaxurl, { action: 'aips_get_schedule_status_read_model', nonce: aipsAdmin.nonce }, function(resp) {
+                if (!resp || !resp.success || !resp.data) {
+                    $('#aips-schedule-status-summary').text(aipsScheduleL10n.scheduleStatusLoadFailed);
+                    return;
+                }
+
+                var d = resp.data;
+                var queueTotal = 0;
+                $.each(d.queue_depth || {}, function(_, count) {
+                    queueTotal += parseInt(count || 0, 10);
+                });
+
+                var summary = [
+                    aipsScheduleL10n.queueDepthLabel + ' ' + queueTotal,
+                    aipsScheduleL10n.bulkPendingLabel + ' ' + (d.bulk_jobs.pending || 0),
+                    aipsScheduleL10n.bulkFailedLabel + ' ' + (d.bulk_jobs.failed || 0)
+                ].join(' · ');
+                $('#aips-schedule-status-summary').text(summary);
+
+                var timelineItems = (d.timeline || []).sort(function(a, b) {
+                    return a.timestamp - b.timestamp;
+                }).slice(0, 12).map(function(item) {
+                    var dt = new Date(item.timestamp * 1000);
+                    return '<span class="aips-badge aips-badge-neutral aips-schedule-status-item">' + item.hook + ' @ ' + dt.toLocaleString() + ' (' + item.count + ')</span>';
+                });
+
+                $('#aips-schedule-status-timeline').html(timelineItems.length ? timelineItems.join('') : aipsScheduleL10n.noQueueEventsNext24h);
+
+                var warnings = [];
+                if (d.last_error) {
+                    warnings.push('<div class="notice notice-error inline"><p>' + aipsScheduleL10n.lastErrorDetected + ' <a href="' + d.quick_links.history + '">' + aipsScheduleL10n.viewHistory + '</a> · <a href="' + d.quick_links.system_status + '">' + aipsScheduleL10n.systemStatus + '</a></p></div>');
+                }
+                if (d.retry_pending) {
+                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.retryPending + ' <a href="' + d.quick_links.notifications + '">' + aipsScheduleL10n.notifications + '</a> · <a href="' + d.quick_links.telemetry + '">' + aipsScheduleL10n.telemetry + '</a></p></div>');
+                }
+                $('#aips-schedule-status-warnings').html(warnings.join(''));
+            });
         },
 
         /**

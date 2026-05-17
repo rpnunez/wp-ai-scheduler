@@ -795,6 +795,18 @@ class AIPS_Admin_Assets {
                 'deleteSchedulesFinalConfirm'    => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
                 /* translators: %d: number of selected schedules that are not deletable */
                 'deleteSchedulesSkipNotice'      => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
+                // Status strip
+                'scheduleStatusLoadFailed'       => __('Unable to load schedule status.', 'ai-post-scheduler'),
+                'queueDepthLabel'                => __('Queue depth:', 'ai-post-scheduler'),
+                'bulkPendingLabel'               => __('Bulk pending:', 'ai-post-scheduler'),
+                'bulkFailedLabel'                => __('Bulk failed:', 'ai-post-scheduler'),
+                'noQueueEventsNext24h'           => __('No queue events in next 24h.', 'ai-post-scheduler'),
+                'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
+                'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
+                'viewHistory'                    => __('View history', 'ai-post-scheduler'),
+                'systemStatus'                   => __('System status', 'ai-post-scheduler'),
+                'notifications'                  => __('Notifications', 'ai-post-scheduler'),
+                'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
             ));
     }
 
