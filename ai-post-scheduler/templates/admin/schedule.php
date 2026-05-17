@@ -130,6 +130,22 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				</div>
 			</div>
 		</div>
+		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
+			<div class="aips-panel-body">
+				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
+				<div class="aips-schedule-status-columns">
+					<div class="aips-schedule-status-column">
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
+					</div>
+					<div class="aips-schedule-status-column">
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
+					</div>
+				</div>
+				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
+			</div>
+		</div>
 
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
@@ -511,7 +527,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
-
 <!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
@@ -536,4 +551,3 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
-

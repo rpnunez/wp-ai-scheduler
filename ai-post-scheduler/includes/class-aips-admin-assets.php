@@ -795,6 +795,27 @@ class AIPS_Admin_Assets {
                 'deleteSchedulesFinalConfirm'    => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
                 /* translators: %d: number of selected schedules that are not deletable */
                 'deleteSchedulesSkipNotice'      => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
+                // Status strip
+                'scheduleStatusLoadFailed'       => __('Unable to load schedule status.', 'ai-post-scheduler'),
+                'queueDepthLabel'                => __('Queue depth:', 'ai-post-scheduler'),
+                'bulkPendingLabel'               => __('Bulk pending:', 'ai-post-scheduler'),
+                'bulkFailedLabel'                => __('Bulk failed:', 'ai-post-scheduler'),
+                'activeSchedulesLabel'           => __('Active schedules', 'ai-post-scheduler'),
+                'upcomingSchedulesLabel'         => __('Upcoming in next 24h', 'ai-post-scheduler'),
+                'overdueSchedulesLabel'          => __('Overdue schedules', 'ai-post-scheduler'),
+                'noQueueEventsNext24h'           => __('No queue events in next 24h.', 'ai-post-scheduler'),
+                'noScheduleRunsNext24h'          => __('No schedule runs in next 24h.', 'ai-post-scheduler'),
+                'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
+                'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
+                'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
+                'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
+                'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
+                /* translators: %d: number of overdue schedules */
+                'overdueSchedulesWarning'        => __('%d schedule(s) are overdue.', 'ai-post-scheduler'),
+                'viewHistory'                    => __('View history', 'ai-post-scheduler'),
+                'systemStatus'                   => __('System status', 'ai-post-scheduler'),
+                'notifications'                  => __('Notifications', 'ai-post-scheduler'),
+                'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
             ));
     }
 
