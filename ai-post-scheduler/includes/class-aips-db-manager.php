@@ -724,6 +724,16 @@ class AIPS_DB_Manager {
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
+            'aips_content_component_rules' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_content_component_injections' => array(
+                array( 'inserted_at', false ),
+            ),
+            'aips_content_component_analytics' => array(
+                array( 'last_seen_at', false ),
+            ),
             'aips_author_topics' => array(
                 array( 'generated_at', false ),
                 array( 'reviewed_at', false ),
