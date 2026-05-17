@@ -44,13 +44,15 @@ class AIPS_Schedule_Controller {
     }
 
     public function ajax_get_schedule_status_read_model() {
-        check_ajax_referer('aips_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::error(__('Unauthorized.', 'ai-post-scheduler'));
         }
 
-        $cache = AIPS_Cache_Factory::create();
-        $cache_key = 'aips_schedule_status_strip_v1';
+        $cache = AIPS_Cache_Factory::make();
+        $cache_key = 'aips_schedule_status_strip_v2';
         $cached = $cache->get($cache_key);
         if (is_array($cached)) {
             AIPS_Ajax_Response::success($cached);
@@ -78,7 +80,7 @@ class AIPS_Schedule_Controller {
             'aips_index_posts_batch',
         );
         $queue_depth = array_fill_keys($queue_hooks, 0);
-        $timeline = array();
+        $queue_timeline = array();
         $now = time();
         $next_24h = $now + DAY_IN_SECONDS;
         $cron = _get_cron_array();
@@ -93,7 +95,7 @@ class AIPS_Schedule_Controller {
                     }
                     $count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
                     $queue_depth[$hook] += $count;
-                    $timeline[] = array(
+                    $queue_timeline[] = array(
                         'hook' => $hook,
                         'timestamp' => (int) $timestamp,
                         'count' => $count,
@@ -101,6 +103,47 @@ class AIPS_Schedule_Controller {
                 }
             }
         }
+
+        // Build schedule timeline from the same unified source the table uses,
+        // so the strip matches "Next Run" values shown to operators.
+        $unified_service = new AIPS_Unified_Schedule_Service();
+        $all_schedules = $unified_service->get_all('', false);
+        $timeline = array();
+        $active_schedules = 0;
+        $overdue_schedules = 0;
+
+        foreach ($all_schedules as $schedule) {
+            $is_active = !empty($schedule['is_active']);
+            if ($is_active) {
+                $active_schedules++;
+            }
+
+            $next_run = isset($schedule['next_run']) ? (int) $schedule['next_run'] : 0;
+            if (!$is_active || $next_run <= 0) {
+                continue;
+            }
+
+            if ($next_run < $now) {
+                $overdue_schedules++;
+                continue;
+            }
+
+            if ($next_run > $next_24h) {
+                continue;
+            }
+
+            $timeline[] = array(
+                'id' => isset($schedule['id']) ? (int) $schedule['id'] : 0,
+                'type' => isset($schedule['type']) ? (string) $schedule['type'] : '',
+                'title' => isset($schedule['title']) ? sanitize_text_field((string) $schedule['title']) : '',
+                'cron_hook' => isset($schedule['cron_hook']) ? (string) $schedule['cron_hook'] : '',
+                'timestamp' => $next_run,
+            );
+        }
+
+        usort($timeline, function ($a, $b) {
+            return (int) $a['timestamp'] - (int) $b['timestamp'];
+        });
 
         $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
@@ -118,8 +161,14 @@ class AIPS_Schedule_Controller {
         $payload = array(
             'next_runs' => $next_runs,
             'timeline' => $timeline,
+            'queue_timeline' => $queue_timeline,
             'queue_depth' => $queue_depth,
             'bulk_jobs' => $bulk_counts,
+            'schedule_counts' => array(
+                'active' => $active_schedules,
+                'upcoming_24h' => count($timeline),
+                'overdue' => $overdue_schedules,
+            ),
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,

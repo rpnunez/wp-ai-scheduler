@@ -81,33 +81,99 @@
                 return;
             }
 
-            $.post(ajaxurl, { action: 'aips_get_schedule_status_read_model', nonce: aipsAdmin.nonce }, function(resp) {
+            $.post(ajaxurl, { action: 'aips_get_schedule_status_read_model', nonce: aipsAjax.nonce }, function(resp) {
                 if (!resp || !resp.success || !resp.data) {
                     $('#aips-schedule-status-summary').text(aipsScheduleL10n.scheduleStatusLoadFailed);
                     return;
                 }
 
                 var d = resp.data;
+                var escapeHtml = function(value) {
+                    return String(value || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/\"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+
+                var typeLabels = {
+                    template_schedule: aipsScheduleL10n.typeTemplateLabel,
+                    author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
+                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel
+                };
+
                 var queueTotal = 0;
                 $.each(d.queue_depth || {}, function(_, count) {
                     queueTotal += parseInt(count || 0, 10);
                 });
 
-                var summary = [
-                    aipsScheduleL10n.queueDepthLabel + ' ' + queueTotal,
-                    aipsScheduleL10n.bulkPendingLabel + ' ' + (d.bulk_jobs.pending || 0),
-                    aipsScheduleL10n.bulkFailedLabel + ' ' + (d.bulk_jobs.failed || 0)
-                ].join(' · ');
-                $('#aips-schedule-status-summary').text(summary);
+                var counts = d.schedule_counts || {};
+                var cards = [
+                    {
+                        label: aipsScheduleL10n.activeSchedulesLabel,
+                        value: parseInt(counts.active || 0, 10),
+                        tone: 'neutral'
+                    },
+                    {
+                        label: aipsScheduleL10n.upcomingSchedulesLabel,
+                        value: parseInt(counts.upcoming_24h || 0, 10),
+                        tone: 'success'
+                    },
+                    {
+                        label: aipsScheduleL10n.queueDepthLabel,
+                        value: queueTotal,
+                        tone: 'info'
+                    },
+                    {
+                        label: aipsScheduleL10n.bulkFailedLabel,
+                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
+                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                    }
+                ];
 
-                var timelineItems = (d.timeline || []).sort(function(a, b) {
+                var cardsHtml = cards.map(function(card) {
+                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
+                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
+                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
+                    '</div>';
+                });
+                $('#aips-schedule-status-summary').html(cardsHtml.join(''));
+
+                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
+                    return a.timestamp - b.timestamp;
+                }).slice(0, 12).map(function(item) {
+                    var typeLabel = typeLabels[item.type] || item.type || '';
+                    var dt = new Date(item.timestamp * 1000);
+                    return '<div class="aips-schedule-status-event">' +
+                        '<div class="aips-schedule-status-event-top">' +
+                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                        '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
+                    '</div>';
+                });
+
+                $('#aips-schedule-status-timeline').html(
+                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
+                );
+
+                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
                     return a.timestamp - b.timestamp;
                 }).slice(0, 12).map(function(item) {
                     var dt = new Date(item.timestamp * 1000);
-                    return '<span class="aips-badge aips-badge-neutral aips-schedule-status-item">' + item.hook + ' @ ' + dt.toLocaleString() + ' (' + item.count + ')</span>';
+                    return '<div class="aips-schedule-status-event">' +
+                        '<div class="aips-schedule-status-event-top">' +
+                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                        '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
+                    '</div>';
                 });
 
-                $('#aips-schedule-status-timeline').html(timelineItems.length ? timelineItems.join('') : aipsScheduleL10n.noQueueEventsNext24h);
+                $('#aips-schedule-status-queue-timeline').html(
+                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
+                );
 
                 var warnings = [];
                 if (d.last_error) {
@@ -115,6 +181,9 @@
                 }
                 if (d.retry_pending) {
                     warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.retryPending + ' <a href="' + d.quick_links.notifications + '">' + aipsScheduleL10n.notifications + '</a> · <a href="' + d.quick_links.telemetry + '">' + aipsScheduleL10n.telemetry + '</a></p></div>');
+                }
+                if (parseInt((counts.overdue || 0), 10) > 0) {
+                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
                 }
                 $('#aips-schedule-status-warnings').html(warnings.join(''));
             });

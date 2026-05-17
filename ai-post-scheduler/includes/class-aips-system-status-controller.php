@@ -127,7 +127,7 @@ class AIPS_System_Status_Controller {
 		}
 		$cache_flushed = false;
 		if (class_exists('AIPS_Cache_Factory')) {
-			$cache = AIPS_Cache_Factory::create();
+			$cache = AIPS_Cache_Factory::make();
 			$cache_flushed = $cache ? (bool) $cache->flush() : false;
 		}
 		AIPS_Ajax_Response::success(array('message' => sprintf(__('Cleaned %1$d stale jobs. Cache flushed: %2$s.', 'ai-post-scheduler'), $deleted, $cache_flushed ? __('yes', 'ai-post-scheduler') : __('no', 'ai-post-scheduler'))));
