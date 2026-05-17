@@ -90,9 +90,26 @@ if (!defined('ABSPATH')) {
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
 								<td>
-									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
-										<?php echo esc_html($post_data['title']); ?>
-									</a>
+									<div style="display: flex; align-items: center; gap: 8px;">
+										<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
+											<?php echo esc_html($post_data['title']); ?>
+										</a>
+										<button type="button"
+											class="aips-btn aips-btn-icon aips-view-accessibility-report"
+											data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>"
+											aria-label="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-universal-access-alt"></span>
+										</button>
+										<button type="button"
+											class="aips-btn aips-btn-icon aips-view-session"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>"
+											aria-label="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-book-alt"></span>
+										</button>
+									</div>
 									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
 								</td>
 								<td>
@@ -254,4 +271,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

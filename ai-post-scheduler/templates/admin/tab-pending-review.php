@@ -102,9 +102,26 @@ if (!defined('ABSPATH')) {
 											data-history-id="<?php echo esc_attr($item->id); ?>">
 									</td>
 									<td>
-										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
-											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-										</a>
+										<div style="display: flex; align-items: center; gap: 8px;">
+											<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
+												<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+											</a>
+											<button type="button"
+												class="aips-btn aips-btn-icon aips-view-accessibility-report"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												data-history-id="<?php echo esc_attr($item->id); ?>"
+												title="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>"
+												aria-label="<?php esc_attr_e('View Accessibility Report', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-universal-access-alt"></span>
+											</button>
+											<button type="button"
+												class="aips-btn aips-btn-icon aips-view-session"
+												data-history-id="<?php echo esc_attr($item->id); ?>"
+												title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>"
+												aria-label="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-book-alt"></span>
+											</button>
+										</div>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
@@ -270,4 +287,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

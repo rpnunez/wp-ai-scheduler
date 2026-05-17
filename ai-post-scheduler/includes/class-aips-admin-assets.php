@@ -889,6 +889,30 @@ class AIPS_Admin_Assets {
                 true
             );
 
+			wp_enqueue_script(
+				'aips-admin-accessibility-report',
+				AIPS_PLUGIN_URL . 'assets/js/admin-accessibility-report.js',
+				array('aips-admin-script', 'aips-templates-script'),
+				AIPS_VERSION,
+				true
+			);
+
+			wp_localize_script('aips-admin-accessibility-report', 'aipsAccessibilityReportL10n', array(
+				'loading'      => __('Loading report\u2026', 'ai-post-scheduler'),
+				'errorLoading' => __('Error loading report.', 'ai-post-scheduler'),
+				'noReport'     => __('No Accessibility Report is available for this post.', 'ai-post-scheduler'),
+				'noFindings'   => __('No findings.', 'ai-post-scheduler'),
+				'statusOk'     => __('Looks good', 'ai-post-scheduler'),
+				'statusIssues' => __('Issues found', 'ai-post-scheduler'),
+				'reportTitle'  => __('Accessibility & Readability', 'ai-post-scheduler'),
+				'findings'     => __('Findings', 'ai-post-scheduler'),
+				'headings'     => __('Headings', 'ai-post-scheduler'),
+				'images'       => __('Images', 'ai-post-scheduler'),
+				'readability'  => __('Readability', 'ai-post-scheduler'),
+				'links'        => __('Links', 'ai-post-scheduler'),
+				'formatting'   => __('Formatting', 'ai-post-scheduler'),
+			));
+
             // Enqueue Post Review module (for Pending Review tab)
             wp_enqueue_style(
                 'aips-admin-post-review',

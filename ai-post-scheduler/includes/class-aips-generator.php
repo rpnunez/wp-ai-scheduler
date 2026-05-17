@@ -46,6 +46,7 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
+    private $accessibility_guardrails;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -67,18 +68,20 @@ class AIPS_Generator {
     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
-     */
-    public function __construct(
-        ?AIPS_Logger_Interface $logger = null,
-        ?AIPS_AI_Service_Interface $ai_service = null,
-        $template_processor = null,
+     * @param AIPS_Accessibility_Guardrails|null $accessibility_guardrails
+      */
+     public function __construct(
+         ?AIPS_Logger_Interface $logger = null,
+         ?AIPS_AI_Service_Interface $ai_service = null,
+         $template_processor = null,
         $image_service = null,
         $structure_manager = null,
-        $post_manager = null,
-        ?AIPS_History_Service_Interface $history_service = null,
-        $prompt_builder = null,
-        $markdown_parser = null
-    ) {
+         $post_manager = null,
+         ?AIPS_History_Service_Interface $history_service = null,
+         $prompt_builder = null,
+         $markdown_parser = null,
+         ?AIPS_Accessibility_Guardrails $accessibility_guardrails = null
+     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
@@ -93,6 +96,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+         $this->accessibility_guardrails = $accessibility_guardrails ?: new AIPS_Accessibility_Guardrails();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -756,6 +760,18 @@ class AIPS_Generator {
         $content = $this->normalize_generated_content_for_wordpress($content);
         $component_statuses['post_content'] = ($content !== '');
 
+        $accessibility_report = $this->accessibility_guardrails->analyze($content);
+
+        if ($this->current_history && !empty($accessibility_report['warnings'])) {
+            $this->current_history->record(
+                'warning',
+                'Accessibility guardrails found content issues.',
+                array('accessibility_report' => $accessibility_report),
+                null,
+                array('component' => 'content_accessibility')
+            );
+        }
+
         // Resolve AI variables from the title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
@@ -828,6 +844,7 @@ class AIPS_Generator {
             'seo_title' => $title,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
         );
 
         // Allow integrations to hook before the post is created.
@@ -878,6 +895,7 @@ class AIPS_Generator {
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
         ));
 
         // Write a structured metric snapshot to history_log.  The metrics
@@ -907,6 +925,7 @@ class AIPS_Generator {
                     'context_type' => $context->get_type(),
                     'context_id' => $context->get_id(),
                     'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
                 )
             );
 
@@ -916,6 +935,7 @@ class AIPS_Generator {
                 'context_id' => $context->get_id(),
                 'title' => $title,
                 'component_statuses' => $component_statuses,
+            'accessibility_report' => $accessibility_report,
             ));
         } else {
             $this->current_history->record(
