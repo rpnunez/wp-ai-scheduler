@@ -733,9 +733,9 @@
 }
 
 .aips-btn:focus-visible {
-	outline: 2px solid #2271b1;
+	outline: 2px solid var(--aips-primary);
 	outline-offset: 2px;
-	box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(34, 113, 177, 0.35);
+	box-shadow: 0 0 0 2px var(--aips-white), 0 0 0 4px rgba(34, 113, 177, 0.35);
 }
 
 .aips-btn-primary {
