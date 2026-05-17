@@ -53,6 +53,7 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_run_upcoming_event'         => 'AIPS_Upcoming_Events_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',

@@ -30,6 +30,7 @@ class AIPS_Admin_Menu_Helper {
 		'authors'              => 'aips-authors',
 		'post_slices'          => 'aips-post-slices',
 		'schedule'             => 'aips-schedule',
+		'upcoming'             => 'aips-upcoming',
 		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',
 		'system_status'        => 'aips-status',
