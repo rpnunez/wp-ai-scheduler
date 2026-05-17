@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-fix/author-post-gen',
-        'version' => 'dev-fix/author-post-gen',
-        'reference' => '831addbc7b558e26a94396c0957bab494367f939',
+        'pretty_version' => 'dev-codex/add-history-button-to-post-actions-pqbnkl',
+        'version' => 'dev-codex/add-history-button-to-post-actions-pqbnkl',
+        'reference' => 'ad2b843139271e08a2a43b35e9057eaa7c313a1d',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -101,9 +101,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-fix/author-post-gen',
-            'version' => 'dev-fix/author-post-gen',
-            'reference' => '831addbc7b558e26a94396c0957bab494367f939',
+            'pretty_version' => 'dev-codex/add-history-button-to-post-actions-pqbnkl',
+            'version' => 'dev-codex/add-history-button-to-post-actions-pqbnkl',
+            'reference' => 'ad2b843139271e08a2a43b35e9057eaa7c313a1d',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
