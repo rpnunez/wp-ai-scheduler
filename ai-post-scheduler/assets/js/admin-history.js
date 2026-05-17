@@ -33,6 +33,11 @@
 
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
+		domainFilter: '',
+		actorFilter: '',
+		correlationId: '',
+		dateFrom: '',
+		dateTo: '',
 
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
@@ -43,9 +48,15 @@
 		 */
 		init: function () {
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.domainFilter = $('#aips-filter-domain').val() || '';
+			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
+			this.dateFrom = $('#aips-filter-date-from').val() || '';
+			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.maybeOpenFromQuery();
 		},
 
 		/**
@@ -106,6 +117,42 @@
 
 			// Export CSV.
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+		},
+
+
+
+		/**
+		 * Auto-open a specific history container from query args when available.
+		 */
+		maybeOpenFromQuery: function () {
+			var params = new URLSearchParams(window.location.search || '');
+			var historyId = parseInt(params.get('history_id') || 0, 10);
+			var postId = parseInt(params.get('post_id') || 0, 10);
+
+			if (postId > 0 && !this.searchQuery) {
+				this.searchQuery = String(postId);
+				$('#aips-history-search-input').val(String(postId));
+				this.syncSearchClearButton();
+				$('#aips-history-search-input').trigger('input');
+			}
+
+			if (historyId > 0) {
+				this.openLogsModalFromId(historyId);
+			}
+		},
+
+		/**
+		 * Open history logs modal for a known history id.
+		 *
+		 * @param {number} historyId History container id.
+		 */
+		openLogsModalFromId: function (historyId) {
+			var $trigger = $('<button type="button" class="aips-view-history-logs" data-id="' + historyId + '"></button>');
+			this.openLogsModal({
+				preventDefault: function () {},
+				stopPropagation: function () {},
+				currentTarget: $trigger.get(0)
+			});
 		},
 
 		/* ------------------------------------------------------------------ */
@@ -332,6 +379,9 @@
 			var self = this;
 			var T    = AIPS.Templates;
 			var html = '';
+			var inferredAction = self.inferWhatHappened(container, logs);
+			var inferredOutcome = self.humanizeOutcome(container.status);
+			var changedHighlights = self.detectWhatChanged(logs, container);
 
 			// ---- Container summary ----
 			var rows = '';
@@ -415,6 +465,30 @@
 				});
 			}
 
+			rows = T.render('aips-tmpl-history-summary-row', {
+				label: aipsHistoryL10n.labelWhatHappened || 'What happened',
+				value: inferredAction
+			}) + rows;
+
+			rows += T.render('aips-tmpl-history-summary-row', {
+				label: aipsHistoryL10n.labelOutcome || 'Outcome',
+				value: inferredOutcome
+			});
+
+			var relatedEntities = self.collectRelatedEntities(container, logs);
+			if (relatedEntities) {
+				rows += T.render('aips-tmpl-history-summary-row', {
+					label: aipsHistoryL10n.labelRelatedEntities || 'Related entities',
+					value: relatedEntities
+				});
+			}
+
+			rows += T.render('aips-tmpl-history-summary-row', {
+				label: aipsHistoryL10n.labelWhatChanged || 'What changed',
+				value: changedHighlights
+			});
+
+			html += '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>';
 			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
 
 			// ---- Log type filter toolbar ----
@@ -458,6 +532,8 @@
 			}
 
 			// ---- Log entries heading ----
+			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
+			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
 			html += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
 				count:   logs.length
@@ -467,6 +543,7 @@
 				html += T.render('aips-tmpl-history-no-logs', {
 					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
 				});
+				html += '</details>';
 				return html;
 			}
 
@@ -515,7 +592,122 @@
 				rows:         rowsHtml
 			});
 
+			html += '</details>';
+
 			return html;
+		},
+
+		inferWhatHappened: function (container, logs) {
+			var text = ((container.creation_method || '') + ' ' + (container.template_name || '')).toLowerCase();
+			if (text.indexOf('research') !== -1) { return aipsHistoryL10n.summaryActionResearchRun || 'Research run'; }
+			if (text.indexOf('embedding') !== -1) { return aipsHistoryL10n.summaryActionEmbeddings || 'Embeddings processing'; }
+			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return aipsHistoryL10n.summaryActionAuthorTopics || 'Author topic generation'; }
+			if (text.indexOf('schedule') !== -1) { return aipsHistoryL10n.summaryActionScheduledPosts || 'Scheduled post generation'; }
+
+			var sawAI = false;
+			$.each(logs || [], function (i, log) {
+				if (String(log.history_type_id) === '5' || String(log.history_type_id) === '6') {
+					sawAI = true;
+				}
+			});
+			return sawAI
+				? (aipsHistoryL10n.summaryActionPostGeneration || 'Post generation')
+				: (aipsHistoryL10n.summaryActionAutomationTask || 'Automation task');
+		},
+
+		humanizeOutcome: function (status) {
+			if (status === 'completed') { return aipsHistoryL10n.summaryOutcomeSuccess || 'Success'; }
+			if (status === 'failed') { return aipsHistoryL10n.summaryOutcomeFailed || 'Failed'; }
+			return aipsHistoryL10n.summaryOutcomeInProgress || 'In progress';
+		},
+
+		collectRelatedEntities: function (container, logs) {
+			var entities = [];
+			var seen = {};
+			var addEntity = function (label, value) {
+				if (!value) {
+					return;
+				}
+				var text = String(value);
+				var key = label + '|' + text;
+				if (seen[key]) {
+					return;
+				}
+				seen[key] = true;
+				entities.push(label + ': ' + text);
+			};
+			addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', container.generated_title);
+			addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', container.template_name);
+			addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', container.post_id);
+			addEntity(
+				aipsHistoryL10n.summaryEntityMethod || 'Method',
+				container.creation_method ? container.creation_method.replace(/_/g, ' ') : ''
+			);
+
+			$.each(logs || [], function (i, log) {
+				var details = log && log.details ? log.details : null;
+				if (!details) {
+					return;
+				}
+				if (!container.generated_title) {
+					addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', details.generated_title || details.title);
+				}
+				if (!container.template_name) {
+					addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', details.template_name);
+				}
+				if (!container.post_id) {
+					addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', details.post_id);
+				}
+			});
+
+			return entities.length ? entities.join(' | ') : (aipsHistoryL10n.summaryNoRelatedEntities || 'No related entities detected');
+		},
+
+		detectWhatChanged: function (logs, container) {
+			var details = [];
+			var sawTitleChange = false;
+			var sawContentChange = false;
+			var sawImageChange = false;
+			var sawPublishedResult = false;
+			var sawDraftResult = false;
+			var scanTextForKeywords = function (value) {
+				if (typeof value !== 'string' || value === '') {
+					return;
+				}
+				var normalized = value.toLowerCase();
+				if (normalized.indexOf('title') !== -1) { sawTitleChange = true; }
+				if (normalized.indexOf('content') !== -1 || normalized.indexOf('body') !== -1) { sawContentChange = true; }
+				if (normalized.indexOf('featured image') !== -1 || normalized.indexOf('image') !== -1) { sawImageChange = true; }
+				if (normalized.indexOf('publish') !== -1) { sawPublishedResult = true; }
+				if (normalized.indexOf('draft') !== -1) { sawDraftResult = true; }
+			};
+
+			$.each(logs || [], function (i, log) {
+				if (!log || !log.details) {
+					return;
+				}
+				$.each(log.details, function (key, val) {
+					if (typeof val === 'string') {
+						scanTextForKeywords(val);
+						return;
+					}
+					if (val && typeof val === 'object') {
+						$.each(val, function (nestedKey, nestedVal) {
+							if (typeof nestedVal === 'string') {
+								scanTextForKeywords(nestedVal);
+							}
+						});
+					}
+				});
+			});
+
+			if (sawTitleChange) { details.push(aipsHistoryL10n.summaryChangedTitle || 'Title updated'); }
+			if (sawContentChange) { details.push(aipsHistoryL10n.summaryChangedContent || 'Content updated'); }
+			if (sawImageChange) { details.push(aipsHistoryL10n.summaryChangedImage || 'Image generated/updated'); }
+			if (sawPublishedResult) { details.push(aipsHistoryL10n.summaryChangedPublished || 'Published result'); }
+			else if (sawDraftResult) { details.push(aipsHistoryL10n.summaryChangedDraft || 'Draft result'); }
+			if (container.status === 'failed') { details.push(aipsHistoryL10n.summaryChangedError || 'Run ended with an error'); }
+			return details.length ? details.join('; ') : (aipsHistoryL10n.summaryChangedNone || 'No major content changes detected');
 		},
 
 		/**
@@ -878,6 +1070,11 @@
 					nonce: aipsAjax.nonce,
 					status: self.statusFilter,
 					search: self.searchQuery,
+					domain: self.domainFilter,
+					actor: self.actorFilter,
+					correlation_id: self.correlationId,
+					date_from: self.dateFrom,
+					date_to: self.dateTo,
 					paged: paged
 				},
 				success: function (response) {
@@ -968,14 +1165,21 @@
 				e.preventDefault();
 			}
 			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.domainFilter = $('#aips-filter-domain').val() || '';
+			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
+			this.dateFrom = $('#aips-filter-date-from').val() || '';
+			this.dateTo = $('#aips-filter-date-to').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
-			if (this.statusFilter) {
-				url.searchParams.set('status', this.statusFilter);
-			} else {
-				url.searchParams.delete('status');
-			}
+			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
+				if (entry[1]) {
+					url.searchParams.set(entry[0], entry[1]);
+				} else {
+					url.searchParams.delete(entry[0]);
+				}
+			});
 			url.searchParams.delete('paged');
 			window.history.pushState({}, '', url.toString());
 
@@ -1074,6 +1278,11 @@
 			form.append($('<input type="hidden" name="nonce">').val(aipsAjax.nonce));
 			form.append($('<input type="hidden" name="status">').val(this.statusFilter));
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
+			form.append($('<input type="hidden" name="domain">').val(this.domainFilter));
+			form.append($('<input type="hidden" name="actor">').val(this.actorFilter));
+			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
+			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
+			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));
 			$('body').append(form);
 			form.submit();
 			form.remove();

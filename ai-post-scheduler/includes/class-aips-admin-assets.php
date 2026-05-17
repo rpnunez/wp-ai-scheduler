@@ -71,6 +71,9 @@ class AIPS_Admin_Assets {
         $page = $this->get_current_page_slug();
 
         if (!$this->is_plugin_admin_page($hook, $page)) {
+            if ($this->is_native_post_admin_page($hook)) {
+                $this->enqueue_history_modal_opener_assets();
+            }
 			return;
 		}
 
@@ -162,6 +165,32 @@ class AIPS_Admin_Assets {
 		}
 
 	}
+
+    /**
+     * Determine whether current admin hook is a native WP post screen where
+     * the plugin injects History links.
+     *
+     * @param string $hook Current admin page hook.
+     * @return bool
+     */
+    private function is_native_post_admin_page($hook) {
+        $allowed_hooks = array('edit.php', 'post.php', 'post-new.php');
+
+        if (!in_array($hook, $allowed_hooks, true)) {
+            return false;
+        }
+
+        if (!current_user_can('manage_options')) {
+            return false;
+        }
+
+        $screen = get_current_screen();
+        if (!$screen) {
+            return false;
+        }
+
+        return 'post' === $screen->post_type;
+    }
 
     /**
      * Determine whether the current request is one of this plugin's admin pages.
@@ -269,6 +298,8 @@ class AIPS_Admin_Assets {
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 
+        $this->enqueue_history_modal_opener_script();
+
         // Shared strings needed on every plugin admin page.
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
             // Generic error/status strings used across multiple pages
@@ -291,6 +322,114 @@ class AIPS_Admin_Assets {
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
+    }
+
+    /**
+     * Enqueue only the assets required for the History modal opener on native
+     * WordPress post/admin screens.
+     *
+     * @return void
+     */
+    private function enqueue_history_modal_opener_assets() {
+        wp_enqueue_style(
+            'aips-admin-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-datetime-script',
+            AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-utilities-script',
+            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            array('jquery', 'aips-datetime-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+            'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
+            'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+            'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
+            'seconds'                  => __('seconds', 'ai-post-scheduler'),
+            'minute'                   => __('1 minute', 'ai-post-scheduler'),
+            'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
+            'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
+        ));
+
+        $this->enqueue_history_modal_opener_script();
+    }
+
+    /**
+     * Enqueue/localize the History modal opener script.
+     *
+     * @return void
+     */
+    private function enqueue_history_modal_opener_script() {
+        wp_enqueue_script(
+            'aips-history-modal-opener',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history-modal-opener.js',
+            array('jquery', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalAjax', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+        ));
+
+        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalOpenerL10n', array(
+            'historyDetails'  => __('History Details', 'ai-post-scheduler'),
+            'closeModal'      => __('Close modal', 'ai-post-scheduler'),
+            'loading'         => __('Loading…', 'ai-post-scheduler'),
+            'showDetails'     => __('Show details', 'ai-post-scheduler'),
+            'hideDetails'     => __('Hide details', 'ai-post-scheduler'),
+            'copy'            => __('Copy', 'ai-post-scheduler'),
+            'copied'          => __('Copied!', 'ai-post-scheduler'),
+            'invalidHistoryId' => __('Invalid history ID.', 'ai-post-scheduler'),
+            'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
+            'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
+        ));
+
+        static $scaffold_registered = false;
+        if (!$scaffold_registered) {
+            add_action('admin_footer', array($this, 'render_history_modal_scaffold'));
+            $scaffold_registered = true;
+        }
+    }
+
+    /**
+     * Output the History modal scaffold HTML in the admin footer.
+     *
+     * The scaffold is an empty shell; AJAX populates #aips-history-modal-content
+     * when a user triggers a modal open. Rendering server-side keeps the structure
+     * consistent with the plugin's other modal partials and avoids JS string
+     * concatenation.
+     *
+     * @return void
+     */
+    public function render_history_modal_scaffold() {
+        ?>
+        <div id="aips-history-modal" class="aips-modal" style="display: none;" aria-hidden="true">
+            <div class="aips-modal-content aips-modal-large">
+                <div class="aips-modal-header">
+                    <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                    <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                </div>
+                <div class="aips-modal-body" id="aips-history-modal-content"></div>
+            </div>
+        </div>
+        <?php
     }
 
     /**
@@ -929,6 +1068,33 @@ class AIPS_Admin_Assets {
                 'labelPostId'          => __('Post', 'ai-post-scheduler'),
                 'labelDuration'        => __('Duration', 'ai-post-scheduler'),
                 'labelCreationMethod'  => __('Method', 'ai-post-scheduler'),
+                'labelWhatHappened'    => __('What happened', 'ai-post-scheduler'),
+                'labelOutcome'         => __('Outcome', 'ai-post-scheduler'),
+                'labelRelatedEntities' => __('Related entities', 'ai-post-scheduler'),
+                'labelWhatChanged'     => __('What changed', 'ai-post-scheduler'),
+                'summaryHeading'       => __('Summary', 'ai-post-scheduler'),
+                'labelAdvancedDetails' => __('Advanced details', 'ai-post-scheduler'),
+                'summaryActionResearchRun' => __('Research run', 'ai-post-scheduler'),
+                'summaryActionEmbeddings' => __('Embeddings processing', 'ai-post-scheduler'),
+                'summaryActionAuthorTopics' => __('Author topic generation', 'ai-post-scheduler'),
+                'summaryActionScheduledPosts' => __('Scheduled post generation', 'ai-post-scheduler'),
+                'summaryActionPostGeneration' => __('Post generation', 'ai-post-scheduler'),
+                'summaryActionAutomationTask' => __('Automation task', 'ai-post-scheduler'),
+                'summaryOutcomeSuccess' => __('Success', 'ai-post-scheduler'),
+                'summaryOutcomeFailed' => __('Failed', 'ai-post-scheduler'),
+                'summaryOutcomeInProgress' => __('In progress', 'ai-post-scheduler'),
+                'summaryEntityPost'    => __('Post', 'ai-post-scheduler'),
+                'summaryEntityTemplate' => __('Template', 'ai-post-scheduler'),
+                'summaryEntityPostId'  => __('Post ID', 'ai-post-scheduler'),
+                'summaryEntityMethod'  => __('Method', 'ai-post-scheduler'),
+                'summaryNoRelatedEntities' => __('No related entities detected', 'ai-post-scheduler'),
+                'summaryChangedTitle'  => __('Title updated', 'ai-post-scheduler'),
+                'summaryChangedContent' => __('Content updated', 'ai-post-scheduler'),
+                'summaryChangedImage'  => __('Image generated/updated', 'ai-post-scheduler'),
+                'summaryChangedPublished' => __('Published result', 'ai-post-scheduler'),
+                'summaryChangedDraft'  => __('Draft result', 'ai-post-scheduler'),
+                'summaryChangedError'  => __('Run ended with an error', 'ai-post-scheduler'),
+                'summaryChangedNone'   => __('No major content changes detected', 'ai-post-scheduler'),
                 'editPostLabel'        => __('Edit', 'ai-post-scheduler'),
                 'filterAll'            => __('All', 'ai-post-scheduler'),
                 'filterByType'         => __('Filter:', 'ai-post-scheduler'),
