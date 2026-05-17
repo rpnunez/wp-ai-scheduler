@@ -25,6 +25,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'generate_featured_image' => 1,
 			'featured_image_source' => 'ai_prompt',
 			'post_status' => 'draft',
+			'post_type' => 'page',
 			'post_category' => 1,
 			'post_tags' => 'test,example',
 			'post_author' => 1,
@@ -42,6 +43,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertTrue($context->should_generate_featured_image());
 		$this->assertEquals('ai_prompt', $context->get_featured_image_source());
 		$this->assertEquals('draft', $context->get_post_status());
+		$this->assertEquals('page', $context->get_post_type());
 		$this->assertEquals(1, $context->get_post_category());
 		$this->assertEquals('test,example', $context->get_post_tags());
 		$this->assertEquals(1, $context->get_post_author());
@@ -62,6 +64,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'generate_featured_image' => 1,
 			'featured_image_source' => 'ai_prompt',
 			'post_status' => 'publish',
+			'post_type' => 'page',
 			'post_category' => 2,
 			'post_tags' => 'coding,dev',
 			'post_author' => 2,
@@ -89,6 +92,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertTrue($context->should_generate_featured_image());
 		$this->assertEquals('ai_prompt', $context->get_featured_image_source());
 		$this->assertEquals('publish', $context->get_post_status());
+		$this->assertEquals('page', $context->get_post_type());
 		$this->assertEquals(2, $context->get_post_category());
 		$this->assertEquals('coding,dev', $context->get_post_tags());
 		$this->assertEquals(2, $context->get_post_author());
@@ -109,6 +113,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Generate a title',
 			'post_status' => 'draft',
+			'post_type' => 'page',
 			'post_category' => 1,
 			'post_tags' => 'test',
 			'post_author' => 1,
@@ -141,6 +146,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Generate a title',
 			'post_status' => 'draft',
+			'post_type' => 'page',
 			'post_category' => 1,
 			'post_tags' => 'test',
 			'post_author' => 1,
@@ -199,6 +205,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Generate a title',
 			'post_status' => 'draft',
+			'post_type' => 'page',
 			'post_category' => 1,
 			'post_tags' => 'test',
 			'post_author' => 1,
@@ -214,6 +221,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Test Template', $array['name']);
 		$this->assertEquals('Write about {{topic}}', $array['content_prompt']);
 		$this->assertEquals('Test Topic', $array['topic']);
+		$this->assertEquals('page', $array['post_type']);
 		$this->assertEquals(5, $array['article_structure_id']);
 	}
 	
@@ -229,6 +237,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Template title prompt',
 			'post_status' => 'draft',
+			'post_type' => 'page',
 			'post_category' => 1,
 			'post_tags' => 'test',
 			'post_author' => 1,

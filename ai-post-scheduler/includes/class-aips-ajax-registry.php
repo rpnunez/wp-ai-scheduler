@@ -54,6 +54,18 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
 
+		// Admin Campaign Wizard
+		'aips_campaign_wizard_save_draft'    => 'AIPS_Admin_Flow_Controller',
+		'aips_campaign_wizard_validate_step' => 'AIPS_Admin_Flow_Controller',
+		'aips_campaign_wizard_finalize'      => 'AIPS_Admin_Flow_Controller',
+
+		// Campaigns Controller
+		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
+
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
 		'aips_reject_topic'               => 'AIPS_Author_Topics_Controller',

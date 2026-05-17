@@ -96,6 +96,13 @@ interface AIPS_Generation_Context {
 	public function get_post_status();
 
 	/**
+	 * Get the post type for the generated post.
+	 *
+	 * @return string Post type slug.
+	 */
+	public function get_post_type();
+
+	/**
 	 * Get the post category ID(s).
 	 *
 	 * @return int|string Category ID or comma-separated IDs.
