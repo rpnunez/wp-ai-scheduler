@@ -751,7 +751,30 @@ class AIPS_Content_Component_Matcher_Service {
 	 * @return string
 	 */
 	private function build_cache_key( AIPS_Content_Component_Run_Context $context ) {
-		return 'evaluation:' . md5( wp_json_encode( $context->to_array() ) );
+		return 'evaluation:' . md5( wp_json_encode( $this->build_cache_context_array( $context ) ) );
+	}
+
+	/**
+	 * Build a normalized cache-key payload without storing the full content body.
+	 *
+	 * @param AIPS_Content_Component_Run_Context $context Runtime context.
+	 * @return array<string,mixed>
+	 */
+	private function build_cache_context_array( AIPS_Content_Component_Run_Context $context ) {
+		$cache_context = $context->to_array();
+		$content       = '';
+
+		if ( isset( $cache_context['content'] ) ) {
+			$content = (string) $cache_context['content'];
+			unset( $cache_context['content'] );
+		}
+
+		$cache_context['content_length'] = strlen( $content );
+		$cache_context['has_headings']   = (bool) preg_match( '/<h[1-6]\b/i', $content );
+		$cache_context['has_h2']         = (bool) preg_match( '/<h2\b/i', $content );
+		$cache_context['content_hash']   = md5( $content );
+
+		return $cache_context;
 	}
 
 	/**
