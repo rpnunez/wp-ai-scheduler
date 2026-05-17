@@ -210,8 +210,8 @@ class AIPS_Post_Slices_Controller {
 	public function ajax_bulk_toggle_post_slices() {
 		$this->authorize();
 
-		$ids = isset($_POST['slice_ids']) ? array_map('absint', (array) $_POST['slice_ids']) : array();
-		$is_active = isset($_POST['is_active']) ? (int) $_POST['is_active'] : 0;
+		$ids = isset($_POST['slice_ids']) && is_array($_POST['slice_ids']) ? array_map('absint', wp_unslash($_POST['slice_ids'])) : array();
+		$is_active = isset($_POST['is_active']) ? (int) wp_unslash($_POST['is_active']) : 0;
 		$ids = array_values(array_filter($ids));
 
 		if (empty($ids)) {
@@ -237,7 +237,7 @@ class AIPS_Post_Slices_Controller {
 	public function ajax_bulk_delete_post_slices() {
 		$this->authorize();
 
-		$ids = isset($_POST['slice_ids']) ? array_map('absint', (array) $_POST['slice_ids']) : array();
+		$ids = isset($_POST['slice_ids']) && is_array($_POST['slice_ids']) ? array_map('absint', wp_unslash($_POST['slice_ids'])) : array();
 		$ids = array_values(array_filter($ids));
 
 		if (empty($ids)) {
