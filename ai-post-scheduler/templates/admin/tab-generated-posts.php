@@ -127,7 +127,7 @@ if (!defined('ABSPATH')) {
 												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
 											</button>
 										</div>
-										<div id="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" role="menu" hidden>
+										<div id="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" hidden>
 											<button type="button" class="aips-row-action-item aips-preview-post"
 												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
@@ -141,6 +141,20 @@ if (!defined('ABSPATH')) {
 												<span class="dashicons dashicons-admin-customizer"></span>
 												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
 											</button>
+											<?php
+												$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+													'history_id' => !empty($post_data['history_id']) ? absint($post_data['history_id']) : 0,
+													'post_id'    => !empty($post_data['post_id']) ? absint($post_data['post_id']) : 0,
+												)));
+											?>
+											<a class="aips-row-action-item aips-open-history-modal"
+												href="<?php echo esc_url($history_url); ?>"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-backup"></span>
+												<span><?php esc_html_e('History', 'ai-post-scheduler'); ?></span>
+											</a>
 											<button type="button" class="aips-row-action-item aips-view-session"
 												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 												title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">

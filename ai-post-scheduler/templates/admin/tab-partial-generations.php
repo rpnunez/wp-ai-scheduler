@@ -139,7 +139,7 @@ if (!defined('ABSPATH')) {
 												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
 											</button>
 										</div>
-										<div id="aips-partial-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" role="menu" hidden>
+										<div id="aips-partial-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" hidden>
 											<button type="button" class="aips-row-action-item aips-preview-post"
 												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">

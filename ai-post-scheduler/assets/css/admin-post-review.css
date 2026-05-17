@@ -100,91 +100,6 @@
 	font-weight: 400;
 }
 
-/* ==========================================================================
-   Pending Review — 3-column action button grid
-   ========================================================================== */
-
-.aips-actions-grid-3 {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 6px;
-	align-items: center;
-}
-
-.aips-actions-grid-3 .aips-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	justify-content: center;
-	width: 100%;
-	text-align: center;
-}
-
-.aips-actions-grid-3 .aips-btn .dashicons {
-	font-size: 15px;
-	width: 15px;
-	height: 15px;
-	line-height: 15px;
-	flex: 0 0 15px;
-}
-
-/* Semantic row action variants */
-.aips-actions-grid-3 .aips-publish-post {
-	background: #00a32a;
-	border-color: #007c21;
-	color: #fff;
-}
-
-.aips-actions-grid-3 .aips-publish-post:hover,
-.aips-actions-grid-3 .aips-publish-post:focus-visible {
-	background: #007c21;
-	border-color: #00631b;
-}
-
-.aips-actions-grid-3 .aips-regenerate-post {
-	background: #fff8f5;
-	border-color: #f0b849;
-	color: #8a4b00;
-}
-
-.aips-actions-grid-3 .aips-regenerate-post:hover,
-.aips-actions-grid-3 .aips-regenerate-post:focus-visible {
-	background: #fef1e6;
-	border-color: #dba617;
-	color: #703c00;
-}
-
-.aips-actions-grid-3 .aips-ai-edit-btn {
-	background: #f3f0ff;
-	border-color: #b9a7ff;
-	color: #4a2ca3;
-}
-
-.aips-actions-grid-3 .aips-ai-edit-btn:hover,
-.aips-actions-grid-3 .aips-ai-edit-btn:focus-visible {
-	background: #e9e2ff;
-	border-color: #9c86ff;
-	color: #3b2384;
-}
-
-.aips-actions-grid-3 .aips-edit-post,
-.aips-actions-grid-3 .aips-preview-post,
-.aips-actions-grid-3 .aips-view-session {
-	background: #fff;
-	border-color: #c3c4c7;
-	color: #2c3338;
-}
-
-.aips-actions-grid-3 .aips-edit-post:hover,
-.aips-actions-grid-3 .aips-preview-post:hover,
-.aips-actions-grid-3 .aips-view-session:hover,
-.aips-actions-grid-3 .aips-edit-post:focus-visible,
-.aips-actions-grid-3 .aips-preview-post:focus-visible,
-.aips-actions-grid-3 .aips-view-session:focus-visible {
-	background: #f6f7f7;
-	border-color: #8c8f94;
-}
-
 /* Action groups (split primary + overflow menu) */
 .aips-row-action-group {
 	display: inline-flex;
@@ -193,7 +108,14 @@
 	border: 1px solid #dcdcde;
 	border-radius: 6px;
 	background: #fff;
-	overflow: hidden;
+}
+
+.aips-row-action-group .aips-btn:first-child {
+	border-radius: 5px 0 0 5px;
+}
+
+.aips-row-action-group .aips-btn:last-child {
+	border-radius: 0 5px 5px 0;
 }
 
 .aips-row-action-group .aips-btn {
@@ -287,23 +209,7 @@
 }
 
 /* Compact responsive mode */
-@media (max-width: 1100px) {
-	.aips-actions-grid-3 {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-}
-
 @media (max-width: 860px) {
-	.aips-actions-grid-3 {
-		grid-template-columns: minmax(0, 1fr);
-		gap: 4px;
-	}
-
-	.aips-actions-grid-3 .aips-btn {
-		justify-content: flex-start;
-		padding-left: 8px;
-	}
-
 	.aips-row-action-group {
 		width: 100%;
 	}

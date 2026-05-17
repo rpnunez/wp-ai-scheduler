@@ -130,7 +130,7 @@ if (!defined('ABSPATH')) {
 													<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
 												</button>
 											</div>
-											<div id="aips-review-row-actions-<?php echo esc_attr($item->post_id); ?>" class="aips-row-action-menu" role="menu" hidden>
+											<div id="aips-review-row-actions-<?php echo esc_attr($item->post_id); ?>" class="aips-row-action-menu" hidden>
 												<button type="button" class="aips-row-action-item aips-edit-post"
 													data-edit-url="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
 													title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
@@ -150,6 +150,20 @@ if (!defined('ABSPATH')) {
 													<span class="dashicons dashicons-admin-customizer"></span>
 													<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
 												</button>
+												<?php
+													$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+														'history_id' => !empty($item->id) ? absint($item->id) : 0,
+														'post_id'    => !empty($item->post_id) ? absint($item->post_id) : 0,
+													)));
+												?>
+												<a class="aips-row-action-item aips-open-history-modal"
+													href="<?php echo esc_url($history_url); ?>"
+													data-history-id="<?php echo esc_attr($item->id); ?>"
+													data-post-id="<?php echo esc_attr($item->post_id); ?>"
+													title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">
+													<span class="dashicons dashicons-backup"></span>
+													<span><?php esc_html_e('History', 'ai-post-scheduler'); ?></span>
+												</a>
 												<button type="button" class="aips-row-action-item aips-view-session"
 													data-history-id="<?php echo esc_attr($item->id); ?>"
 													title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
