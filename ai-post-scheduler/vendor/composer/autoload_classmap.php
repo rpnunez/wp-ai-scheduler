@@ -123,6 +123,7 @@ return array(
     'AIPS_Post_Creator' => $baseDir . '/includes/class-aips-post-creator.php',
     'AIPS_Post_Creator_SEO_Test' => $baseDir . '/tests/AIPS_Post_Creator_SEO_Test.php',
     'AIPS_Post_Embeddings_Repository' => $baseDir . '/includes/class-aips-post-embeddings-repository.php',
+    'AIPS_Post_History_UI' => $baseDir . '/includes/class-aips-post-history-ui.php',
     'AIPS_Post_Manager' => $baseDir . '/includes/class-aips-post-manager.php',
     'AIPS_Post_Manager_SEO_Metadata_Test' => $baseDir . '/tests/AIPS_Post_Manager_SEO_Metadata_Test.php',
     'AIPS_Post_Review' => $baseDir . '/includes/class-aips-post-review.php',

@@ -153,6 +153,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Post_Creator' => __DIR__ . '/../..' . '/includes/class-aips-post-creator.php',
         'AIPS_Post_Creator_SEO_Test' => __DIR__ . '/../..' . '/tests/AIPS_Post_Creator_SEO_Test.php',
         'AIPS_Post_Embeddings_Repository' => __DIR__ . '/../..' . '/includes/class-aips-post-embeddings-repository.php',
+        'AIPS_Post_History_UI' => __DIR__ . '/../..' . '/includes/class-aips-post-history-ui.php',
         'AIPS_Post_Manager' => __DIR__ . '/../..' . '/includes/class-aips-post-manager.php',
         'AIPS_Post_Manager_SEO_Metadata_Test' => __DIR__ . '/../..' . '/tests/AIPS_Post_Manager_SEO_Metadata_Test.php',
         'AIPS_Post_Review' => __DIR__ . '/../..' . '/includes/class-aips-post-review.php',

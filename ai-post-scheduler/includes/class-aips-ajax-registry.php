@@ -153,6 +153,7 @@ class AIPS_Ajax_Registry {
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',
+		'aips_get_history_modal_html'     => 'AIPS_History',
 		'aips_reload_history'             => 'AIPS_History',
 		'aips_retry_generation'           => 'AIPS_History',
 
