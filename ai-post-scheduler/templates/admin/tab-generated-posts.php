@@ -143,6 +143,20 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
+										<?php
+											$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+												'history_id' => !empty($post_data['history_id']) ? absint($post_data['history_id']) : 0,
+												'post_id'    => !empty($post_data['post_id']) ? absint($post_data['post_id']) : 0,
+											)));
+										?>
+										<a class="aips-btn aips-btn-sm aips-btn-secondary aips-open-history-modal"
+										   href="<?php echo esc_url($history_url); ?>"
+										   data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										   data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+										   title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-backup"></span>
+											<?php esc_html_e('History', 'ai-post-scheduler'); ?>
+										</a>
 										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
 								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
