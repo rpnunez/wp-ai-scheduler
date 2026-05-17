@@ -3,7 +3,7 @@
  * Content Components admin page template.
  *
  * @package AI_Post_Scheduler
- * @since 2.7.0
+ * @since 2.8.0
  */
 
 if (!defined('ABSPATH')) {
