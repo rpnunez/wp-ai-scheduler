@@ -75,6 +75,26 @@ class AIPS_Job_Dispatcher {
 	 * @return bool True if successfully scheduled, false otherwise.
 	 */
 	public function dispatch(AIPS_Job_Definition $job, array $retry_options = array()): bool {
+		$started_at = microtime( true );
+		if ( ! empty( $job->get_correlation_id() ) ) {
+			AIPS_Correlation_ID::set( $job->get_correlation_id() );
+		}
+		$history = $this->history_service->create(
+			'job_dispatch',
+			array(
+				'job_type'       => $job->get_job_type(),
+				'hook'           => $job->get_hook(),
+				'trigger_source' => 'scheduler',
+				'correlation_id' => $job->get_correlation_id(),
+			)
+		);
+		$history->record(
+			'activity',
+			__( 'Job dispatch started.', 'ai-post-scheduler' ),
+			array( 'event_type' => 'dispatch_started', 'event_status' => 'processing' ),
+			null,
+			array( 'hook' => $job->get_hook() )
+		);
 		// Check if already scheduled to avoid duplicates
 		$existing_timestamp = $this->get_scheduled_timestamp($job);
 		if (false !== $existing_timestamp) {
@@ -171,6 +191,31 @@ class AIPS_Job_Dispatcher {
 		// Log to history if requested and dispatch failed
 		if (!$success && $log_to_history) {
 			$this->log_dispatch_failure($job, $max_attempts, $last_error);
+		}
+		$duration_ms = (int) round( ( microtime( true ) - $started_at ) * 1000 );
+
+		if ( $success ) {
+			$history->complete_success(
+				array(
+					'items_processed' => 1,
+					'items_failed'    => 0,
+					'duration_ms'     => $duration_ms,
+					'trigger_source'  => 'scheduler',
+				)
+			);
+		} else {
+			$history->complete_failure(
+				__( 'Job dispatch failed.', 'ai-post-scheduler' ),
+				array(
+					'items_processed' => 0,
+					'items_failed'    => 1,
+					'duration_ms'     => $duration_ms,
+					'trigger_source'  => 'scheduler',
+				)
+			);
+		}
+		if ( ! empty( $job->get_correlation_id() ) ) {
+			AIPS_Correlation_ID::reset();
 		}
 
 		return $success;
