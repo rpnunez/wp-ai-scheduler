@@ -33,6 +33,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_AUTHORS = 'aips-authors';
 	private const PAGE_AUTHOR_TOPICS = 'aips-author-topics';
 	private const PAGE_POST_SLICES = 'aips-post-slices';
+	private const PAGE_CONTENT_COMPONENTS = 'aips-content-components';
 	private const PAGE_TEMPLATES = 'aips-templates';
 	private const PAGE_VOICES = 'aips-voices';
 	private const PAGE_STRUCTURES = 'aips-structures';
@@ -87,6 +88,9 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
 			$this->enqueue_post_slices_assets();
+		}
+        if (self::PAGE_CONTENT_COMPONENTS === $page || $this->hook_contains($hook, self::PAGE_CONTENT_COMPONENTS)) {
+			$this->enqueue_content_components_assets();
 		}
 
         if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
@@ -680,6 +684,243 @@ class AIPS_Admin_Assets {
             ));
     }
 
+	/**
+	 * Enqueue assets for the Content Components page.
+	 *
+	 * @return void
+	 */
+	private function enqueue_content_components_assets() {
+			wp_enqueue_style(
+				'aips-content-components-style',
+				AIPS_PLUGIN_URL . 'assets/css/content-components.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+
+			wp_enqueue_script(
+				'aips-content-components-script',
+				AIPS_PLUGIN_URL . 'assets/js/content-components.js',
+				array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-datetime-script'),
+				AIPS_VERSION,
+				true
+			);
+
+			$repository = new AIPS_Content_Components_Repository();
+			$analytics_repository = new AIPS_Content_Component_Analytics_Repository();
+			$rule_summary_service = new AIPS_Content_Component_Rule_Summary_Service();
+			$example_service = new AIPS_Content_Component_Example_Service();
+			$rows       = $repository->get_all(false);
+			$usage_map  = $analytics_repository->get_usage_map();
+			$normalized = array();
+			foreach ($rows as $row) {
+				$rules = json_decode((string) $row->rules_json, true);
+				if (!is_array($rules)) {
+					$rules = array(
+						'logic'      => 'and',
+						'action'     => 'add_at_end',
+						'conditions' => array(),
+					);
+				}
+				$normalized[] = array(
+					'id'             => (int) $row->id,
+					'title'          => (string) $row->title,
+					'description'    => (string) $row->description,
+					'component_type' => (string) $row->component_type,
+					'content'        => (string) $row->content,
+					'rules'          => $rules,
+					'qa_status'      => (string) $row->qa_status,
+					'qa_notes'       => (string) $row->qa_notes,
+					'is_active'      => (int) $row->is_active,
+					'status'         => isset($row->status) ? (string) $row->status : ((int) $row->is_active === 1 ? 'active' : 'draft'),
+					'rule_summary'   => $rule_summary_service->summarize(
+						array(
+							'title' => (string) $row->title,
+						),
+						$rules
+					),
+					'analytics'      => isset($usage_map[(int) $row->id]) ? $usage_map[(int) $row->id] : array(
+						'impressions' => 0,
+						'injections'  => 0,
+						'regeneration_reinjections' => 0,
+						'matched_count' => 0,
+						'skipped_conflict_count' => 0,
+						'skipped_exclusion_count' => 0,
+						'dry_run_matches' => 0,
+						'dry_run_total' => 0,
+						'dry_run_match_rate' => 0,
+						'last_seen_at' => 0,
+						'unique_posts' => 0,
+						'last_injected_at' => 0,
+					),
+					'created_at'     => (int) $row->created_at,
+					'updated_at'     => (int) $row->updated_at,
+				);
+			}
+
+			wp_localize_script('aips-content-components-script', 'aipsContentComponentsConfig', array(
+				'components' => $normalized,
+				'counts'     => $repository->get_counts(),
+				'exampleCatalog' => $example_service->get_capability_map(),
+				'conditions' => array(
+					array('value' => 'category',       'label' => __('Category', 'ai-post-scheduler')),
+					array('value' => 'post_type',      'label' => __('Post Type', 'ai-post-scheduler')),
+					array('value' => 'tag',            'label' => __('Tag', 'ai-post-scheduler')),
+					array('value' => 'keyword',        'label' => __('Keyword', 'ai-post-scheduler')),
+					array('value' => 'title_contains', 'label' => __('Title Contains', 'ai-post-scheduler')),
+					array('value' => 'author_persona', 'label' => __('Author Persona', 'ai-post-scheduler')),
+					array('value' => 'region',         'label' => __('Region', 'ai-post-scheduler')),
+					array('value' => 'locale',         'label' => __('Locale', 'ai-post-scheduler')),
+					array('value' => 'content_length', 'label' => __('Content Length', 'ai-post-scheduler')),
+					array('value' => 'heading_presence', 'label' => __('Has Headings', 'ai-post-scheduler')),
+					array('value' => 'has_h2',         'label' => __('Has H2 Headings', 'ai-post-scheduler')),
+				),
+				'operators' => array(
+					array('value' => 'is',               'label' => __('is', 'ai-post-scheduler')),
+					array('value' => 'is_not',           'label' => __('is not', 'ai-post-scheduler')),
+					array('value' => 'contains',         'label' => __('contains', 'ai-post-scheduler')),
+					array('value' => 'does_not_contain', 'label' => __('does not contain', 'ai-post-scheduler')),
+					array('value' => 'starts_with',      'label' => __('starts with', 'ai-post-scheduler')),
+					array('value' => 'ends_with',        'label' => __('ends with', 'ai-post-scheduler')),
+					array('value' => 'gte',             'label' => __('is at least', 'ai-post-scheduler')),
+					array('value' => 'lte',             'label' => __('is at most', 'ai-post-scheduler')),
+					array('value' => 'gt',              'label' => __('is greater than', 'ai-post-scheduler')),
+					array('value' => 'lt',              'label' => __('is less than', 'ai-post-scheduler')),
+				),
+				'actions' => array(
+					array('value' => 'add_at_end',               'label' => __('Add at the end of the post', 'ai-post-scheduler')),
+					array('value' => 'add_middle_paragraph',     'label' => __('Add a new paragraph in the middle', 'ai-post-scheduler')),
+					array('value' => 'add_before_first_heading', 'label' => __('Add before the first heading', 'ai-post-scheduler')),
+					array('value' => 'prepend_intro',            'label' => __('Add near the introduction', 'ai-post-scheduler')),
+					array('value' => 'replace_summary',          'label' => __('Replace summary section', 'ai-post-scheduler')),
+				),
+				'typeLabels' => array(
+					'cta'       => __('CTA Card', 'ai-post-scheduler'),
+					'faq'       => __('FAQ', 'ai-post-scheduler'),
+					'pros_cons' => __('Pros/Cons', 'ai-post-scheduler'),
+					'summary'   => __('Summary', 'ai-post-scheduler'),
+					'disclaimer'=> __('Disclaimer', 'ai-post-scheduler'),
+					'internal_link_pod' => __('Internal Link Pod', 'ai-post-scheduler'),
+					'custom'    => __('Custom', 'ai-post-scheduler'),
+				),
+				'usageFilters' => array(
+					array('value' => 'all', 'label' => __('All Usage', 'ai-post-scheduler')),
+					array('value' => 'used', 'label' => __('Used', 'ai-post-scheduler')),
+					array('value' => 'never_used', 'label' => __('Never Used', 'ai-post-scheduler')),
+				),
+				'featureEnabled' => AIPS_Config::get_instance()->is_feature_enabled('content_components_engine', true),
+			));
+
+			wp_localize_script('aips-content-components-script', 'aipsContentComponentsL10n', array(
+				'addTitle'           => __('Add Content Component', 'ai-post-scheduler'),
+				'chooseExampleTitle' => __('Choose a Starter Example', 'ai-post-scheduler'),
+				'editTitle'          => __('Edit Content Component', 'ai-post-scheduler'),
+				'titleRequired'      => __('A title is required.', 'ai-post-scheduler'),
+				'saveError'          => __('Failed to save content component.', 'ai-post-scheduler'),
+				'loadExamplesError'  => __('Failed to load starter examples.', 'ai-post-scheduler'),
+				'dryRunError'        => __('Failed to simulate this component.', 'ai-post-scheduler'),
+				'deleteError'        => __('Failed to delete content component.', 'ai-post-scheduler'),
+				'toggleError'        => __('Failed to update content component status.', 'ai-post-scheduler'),
+				'saving'             => __('Saving...', 'ai-post-scheduler'),
+				'simulating'         => __('Simulating...', 'ai-post-scheduler'),
+				'saved'              => __('Content component saved.', 'ai-post-scheduler'),
+				'deleted'            => __('Content component deleted.', 'ai-post-scheduler'),
+				'toggled'            => __('Content component status updated.', 'ai-post-scheduler'),
+				'deleteConfirm'      => __('Are you sure you want to delete this content component?', 'ai-post-scheduler'),
+				'confirmHeading'     => __('Confirm', 'ai-post-scheduler'),
+				'cancel'             => __('Cancel', 'ai-post-scheduler'),
+				'deleteLabel'        => __('Delete', 'ai-post-scheduler'),
+				'edit'               => __('Edit', 'ai-post-scheduler'),
+				'activate'           => __('Activate', 'ai-post-scheduler'),
+				'deactivate'         => __('Deactivate', 'ai-post-scheduler'),
+				'active'             => __('Active', 'ai-post-scheduler'),
+				'inactive'           => __('Inactive', 'ai-post-scheduler'),
+				'emptyTitle'         => __('No Content Components Yet', 'ai-post-scheduler'),
+				'emptyDescription'   => __('Create your first component to start rule-based content insertion.', 'ai-post-scheduler'),
+				'addFirst'           => __('Add Your First Content Component', 'ai-post-scheduler'),
+				'tableTitle'         => __('Title', 'ai-post-scheduler'),
+				'tableType'          => __('Type', 'ai-post-scheduler'),
+				'tableStatus'        => __('Status', 'ai-post-scheduler'),
+				'tableQa'            => __('QA Gate', 'ai-post-scheduler'),
+				'tableUpdated'       => __('Updated', 'ai-post-scheduler'),
+				'tableActions'       => __('Actions', 'ai-post-scheduler'),
+				'tableRules'         => __('Rule Summary', 'ai-post-scheduler'),
+				'tableUsage'         => __('Usage', 'ai-post-scheduler'),
+				'componentSingular'  => __('component', 'ai-post-scheduler'),
+				'componentPlural'    => __('components', 'ai-post-scheduler'),
+				'noDescription'      => __('No description', 'ai-post-scheduler'),
+				'noRuleSummary'      => __('No rules yet.', 'ai-post-scheduler'),
+				'qaPassed'           => __('Passed', 'ai-post-scheduler'),
+				'qaNeedsReview'      => __('Needs Review', 'ai-post-scheduler'),
+				'qaUntested'         => __('Untested', 'ai-post-scheduler'),
+				'qaError'            => __('Unable to run QA validation.', 'ai-post-scheduler'),
+				'qaDone'             => __('QA validation completed.', 'ai-post-scheduler'),
+				'previewEmpty'       => __('No preview content yet.', 'ai-post-scheduler'),
+				'analyticsEmpty'     => __('No analytics yet.', 'ai-post-scheduler'),
+				'dryRunEmpty'        => __('Run a simulation to preview matched components and insertions.', 'ai-post-scheduler'),
+				'examplesIntro'      => __('Pick one of these runtime-generated examples to prefill the component form.', 'ai-post-scheduler'),
+				'useExample'         => __('Use This Example', 'ai-post-scheduler'),
+				'refreshExamples'    => __('Refresh Examples', 'ai-post-scheduler'),
+				'ruleSummaryLabel'   => __('Rule Summary', 'ai-post-scheduler'),
+				'simulateLabel'      => __('Simulate', 'ai-post-scheduler'),
+				'previewLabel'       => __('Preview', 'ai-post-scheduler'),
+				'analyticsLabel'     => __('Analytics', 'ai-post-scheduler'),
+				'analyticsImpressions' => __('Impressions', 'ai-post-scheduler'),
+				'analyticsInjections'  => __('Injections', 'ai-post-scheduler'),
+				'analyticsReinjections'=> __('Reinjections', 'ai-post-scheduler'),
+				'analyticsUniquePosts' => __('Unique Posts', 'ai-post-scheduler'),
+				'analyticsLastSeen'    => __('Last Injection', 'ai-post-scheduler'),
+				'analyticsDryRunRate'  => __('Dry-run Match Rate', 'ai-post-scheduler'),
+				'analyticsMatched'     => __('Matches', 'ai-post-scheduler'),
+				'analyticsConflictSkips' => __('Conflict Skips', 'ai-post-scheduler'),
+				'analyticsExclusionSkips' => __('Exclusion Skips', 'ai-post-scheduler'),
+				'engineDisabled'       => __('Content Components engine is currently disabled by feature flag.', 'ai-post-scheduler'),
+				'matchedLabel'       => __('Matched Components', 'ai-post-scheduler'),
+				'rejectedLabel'      => __('Rejected Components', 'ai-post-scheduler'),
+				'noneMatched'        => __('No components matched.', 'ai-post-scheduler'),
+				'noneRejected'       => __('No components were rejected.', 'ai-post-scheduler'),
+				'beforeLabel'        => __('Before', 'ai-post-scheduler'),
+				'afterLabel'         => __('After', 'ai-post-scheduler'),
+				'summaryUpdated'     => __('Rule summary updated.', 'ai-post-scheduler'),
+				'exampleApplied'     => __('Example applied. Review and save when ready.', 'ai-post-scheduler'),
+				'remove'             => __('Remove', 'ai-post-scheduler'),
+				'when'               => __('When', 'ai-post-scheduler'),
+				'valuePlaceholder'   => __('Value(s), comma-separated', 'ai-post-scheduler'),
+				'typeFilterLabel'    => __('Type', 'ai-post-scheduler'),
+				'usageFilterLabel'   => __('Usage', 'ai-post-scheduler'),
+				'dryRunPostId'       => __('Existing Post ID', 'ai-post-scheduler'),
+				'dryRunDraftBody'    => __('Draft Body', 'ai-post-scheduler'),
+				'dryRunCategories'   => __('Categories', 'ai-post-scheduler'),
+				'dryRunTags'         => __('Tags', 'ai-post-scheduler'),
+				'dryRunPersona'      => __('Author Persona', 'ai-post-scheduler'),
+				'dryRunRegion'       => __('Region', 'ai-post-scheduler'),
+				'dryRunLocale'       => __('Locale', 'ai-post-scheduler'),
+				'dryRunRun'          => __('Run Simulation', 'ai-post-scheduler'),
+				'backfillToggle'     => __('Backfill Existing Posts', 'ai-post-scheduler'),
+				'backfillDescription'=> __('Preview and apply Content Component injection to posts that were published before components were set up.', 'ai-post-scheduler'),
+				'backfillPostType'   => __('Post Type', 'ai-post-scheduler'),
+				'backfillLimit'      => __('Limit (max 200)', 'ai-post-scheduler'),
+				'backfillPostIds'    => __('Specific Post IDs (optional)', 'ai-post-scheduler'),
+				'backfillPostIdsPlaceholder' => __('e.g. 1, 2, 3', 'ai-post-scheduler'),
+				'backfillPreviewBtn' => __('Preview Backfill', 'ai-post-scheduler'),
+				'backfillPreviewing' => __('Previewing...', 'ai-post-scheduler'),
+				'backfillApplyBtn'   => __('Apply Backfill', 'ai-post-scheduler'),
+				'backfillApplying'   => __('Applying...', 'ai-post-scheduler'),
+				'backfillPreviewError'  => __('Failed to preview backfill.', 'ai-post-scheduler'),
+				'backfillApplyError'    => __('Failed to apply backfill.', 'ai-post-scheduler'),
+				'backfillApplyConfirm'  => __('This will update existing post content. Are you sure?', 'ai-post-scheduler'),
+				'backfillNoPosts'    => __('No posts found for the selected criteria.', 'ai-post-scheduler'),
+				'backfillSummaryLabel'  => __('Preview Summary', 'ai-post-scheduler'),
+				'backfillApplyResultLabel' => __('Apply Results', 'ai-post-scheduler'),
+				'backfillTotalPosts' => __('Total Posts', 'ai-post-scheduler'),
+				'backfillMatched'    => __('With Matches', 'ai-post-scheduler'),
+				'backfillWouldUpdate'=> __('Would Update', 'ai-post-scheduler'),
+				'backfillUpdated'    => __('Updated', 'ai-post-scheduler'),
+				'backfillSkipped'    => __('Skipped (unchanged)', 'ai-post-scheduler'),
+				'backfillFailed'     => __('Failed', 'ai-post-scheduler'),
+				'backfillRunId'      => __('Run ID', 'ai-post-scheduler'),
+				'backfillDisabled'   => __('Backfill is unavailable: Content Components engine is disabled.', 'ai-post-scheduler'),
+			));
+	}
     /**
      * Enqueue assets for the templates page.
      */

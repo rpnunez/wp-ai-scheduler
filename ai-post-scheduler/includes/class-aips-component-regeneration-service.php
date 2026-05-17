@@ -70,6 +70,11 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Article_Structure_Manager Structure manager
 	 */
 	private $structure_manager;
+
+	/**
+	 * @var AIPS_Content_Component_Injection_Service
+	 */
+	private $content_component_injection_service;
 	
 	/**
 	 * Constructor
@@ -79,6 +84,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
+		$this->content_component_injection_service = new AIPS_Content_Component_Injection_Service();
 		
 		// Initialize AI services
 		$ai_service = new AIPS_AI_Service();
@@ -240,7 +246,55 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($result)) {
 			return $result;
 		}
-		
+
+		if (AIPS_Config::get_instance()->is_feature_enabled('content_components_engine', true)) {
+			try {
+				if ($post_id > 0) {
+					$post = get_post($post_id);
+					if ($post instanceof WP_Post) {
+						$run_context = AIPS_Content_Component_Run_Context::from_post(
+							$post,
+							array(
+								'content' => (string) $result,
+								'run_timestamp' => AIPS_DateTime::now()->timestamp(),
+							)
+						);
+					} else {
+						$run_context = AIPS_Content_Component_Run_Context::from_generation_context(
+							$generation_context,
+							(string) $result,
+							array(
+								'post_id' => $post_id,
+								'run_timestamp' => AIPS_DateTime::now()->timestamp(),
+							)
+						);
+					}
+				} else {
+					$run_context = AIPS_Content_Component_Run_Context::from_generation_context(
+						$generation_context,
+						(string) $result,
+						array(
+							'run_timestamp' => AIPS_DateTime::now()->timestamp(),
+						)
+					);
+				}
+
+				$prepared = $this->content_component_injection_service->prepare_content(
+					(string) $result,
+					$run_context,
+					array(
+						'strip_existing_markers' => true,
+					)
+				);
+
+				if (!empty($prepared['content'])) {
+					$result = $prepared['content'];
+				}
+			} catch (Throwable $throwable) {
+				AIPS_Logger::instance()->warning('Content Component reinjection failed during regenerate_content: ' . $throwable->getMessage());
+			}
+		}
+
 		return $result;
 	}
 

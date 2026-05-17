@@ -96,6 +96,18 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_toggle_post_slices'    => 'AIPS_Post_Slices_Controller',
 		'aips_bulk_delete_post_slices'    => 'AIPS_Post_Slices_Controller',
 
+		// Content Components Controller
+		'aips_get_content_components'           => 'AIPS_Content_Components_Controller',
+		'aips_get_content_component'            => 'AIPS_Content_Components_Controller',
+		'aips_save_content_component'           => 'AIPS_Content_Components_Controller',
+		'aips_delete_content_component'         => 'AIPS_Content_Components_Controller',
+		'aips_toggle_content_component_active'  => 'AIPS_Content_Components_Controller',
+		'aips_validate_content_component'       => 'AIPS_Content_Components_Controller',
+		'aips_get_content_component_examples'   => 'AIPS_Content_Components_Controller',
+		'aips_content_components_dry_run'       => 'AIPS_Content_Components_Controller',
+		'aips_content_components_backfill_preview' => 'AIPS_Content_Components_Controller',
+		'aips_content_components_backfill_apply'   => 'AIPS_Content_Components_Controller',
+
 		// AI Edit Controller
 		'aips_get_post_components'        => 'AIPS_AI_Edit_Controller',
 		'aips_regenerate_component'       => 'AIPS_AI_Edit_Controller',

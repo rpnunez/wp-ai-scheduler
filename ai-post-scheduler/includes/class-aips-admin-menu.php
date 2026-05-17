@@ -101,6 +101,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_post_slices_page')
         );
 
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Content Components', 'ai-post-scheduler'),
+            __('Content Components', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-components',
+            array($this, 'render_content_components_page')
+        );
+
         // Author Topics page - hidden from menu navigation, accessible via URL.
         add_submenu_page(
             null,
@@ -367,6 +376,15 @@ class AIPS_Admin_Menu {
         $post_slice_counts  = $post_slices_repo->get_counts();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
+    }
+
+    /**
+     * Render the Content Components management page.
+     *
+     * @return void
+     */
+    public function render_content_components_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/content-components.php';
     }
 
     /**
