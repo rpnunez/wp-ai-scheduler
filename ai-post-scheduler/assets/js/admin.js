@@ -177,10 +177,10 @@
 
                 var warnings = [];
                 if (d.last_error) {
-                    warnings.push('<div class="notice notice-error inline"><p>' + aipsScheduleL10n.lastErrorDetected + ' <a href="' + d.quick_links.history + '">' + aipsScheduleL10n.viewHistory + '</a> · <a href="' + d.quick_links.system_status + '">' + aipsScheduleL10n.systemStatus + '</a></p></div>');
+                    warnings.push('<div class="notice notice-error inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.lastErrorDetected) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.history) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.viewHistory) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.system_status) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.systemStatus) + '</a></p></div>');
                 }
                 if (d.retry_pending) {
-                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.retryPending + ' <a href="' + d.quick_links.notifications + '">' + aipsScheduleL10n.notifications + '</a> · <a href="' + d.quick_links.telemetry + '">' + aipsScheduleL10n.telemetry + '</a></p></div>');
+                    warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
                 }
                 if (parseInt((counts.overdue || 0), 10) > 0) {
                     warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
