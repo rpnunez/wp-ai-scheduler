@@ -745,6 +745,12 @@
 	outline-offset: 2px;
 }
 
+.aips-btn:focus-visible {
+	outline: 2px solid var(--aips-primary);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 2px var(--aips-white), 0 0 0 4px rgba(34, 113, 177, 0.35);
+}
+
 .aips-btn-primary {
 	background: var(--aips-primary);
 	color: var(--aips-white);
@@ -819,6 +825,15 @@
 	font-size: 16px;
 	width: 16px;
 	height: 16px;
+	line-height: 16px;
+	flex: 0 0 16px;
+	margin: 0;
+}
+
+.aips-btn .dashicons + span,
+.aips-btn .dashicons + strong,
+.aips-btn .dashicons + em {
+	margin-left: 0;
 }
 
 /* ==========================================================================
