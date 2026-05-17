@@ -3150,6 +3150,116 @@
     font-style: italic;
 }
 
+.aips-explainability-summary,
+.aips-explainability-warnings,
+.aips-explainability-timeline,
+.aips-explainability-details {
+	padding: 15px;
+	margin-bottom: 15px;
+	background: #f9f9f9;
+	border-left: 4px solid #2271b1;
+	border-radius: 4px;
+}
+
+.aips-explainability-summary-row {
+	margin: 6px 0;
+}
+
+.aips-explainability-safety-note {
+	margin: 0 0 15px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.aips-explainability-warnings {
+	border-left-color: #dba617;
+	background: #fffdf5;
+}
+
+.aips-explainability-timeline ol,
+.aips-explainability-warnings ul {
+	margin: 10px 0 0 20px;
+}
+
+.aips-explainability-details summary {
+	cursor: pointer;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+
+.aips-explainability-why,
+.aips-explainability-validation {
+	padding: 15px;
+	margin-bottom: 15px;
+	background: #f9f9f9;
+	border-left: 4px solid #2271b1;
+	border-radius: 4px;
+}
+
+.aips-validation-card {
+	background: #ffffff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 12px 12px 10px;
+	margin-top: 10px;
+}
+
+.aips-validation-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 8px;
+}
+
+.aips-validation-card-title {
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aips-validation-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 9999px;
+	font-size: 12px;
+	line-height: 1.6;
+	border: 1px solid #c3c4c7;
+	background: #f0f0f1;
+	color: #50575e;
+	white-space: nowrap;
+}
+
+.aips-validation-badge-success {
+	border-color: #00a32a;
+	background: rgba(0, 163, 42, 0.1);
+	color: #00a32a;
+}
+
+.aips-validation-badge-warning {
+	border-color: #dba617;
+	background: rgba(219, 166, 23, 0.12);
+	color: #8a6a00;
+}
+
+.aips-validation-badge-error {
+	border-color: #d63638;
+	background: rgba(214, 54, 56, 0.12);
+	color: #b32d2e;
+}
+
+.aips-validation-badge-neutral {
+	border-color: #c3c4c7;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.aips-validation-card-meta,
+.aips-validation-card-reason,
+.aips-validation-card-fix,
+.aips-validation-card-settings {
+	margin: 6px 0 0;
+}
+
 /* Responsive Styles */
 @media screen and (max-width: 782px) {
     .aips-modal-content {

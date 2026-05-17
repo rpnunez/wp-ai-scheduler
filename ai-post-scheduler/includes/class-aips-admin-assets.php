@@ -888,6 +888,7 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+			wp_localize_script('aips-admin-view-session', 'aipsViewSessionL10n', $this->get_view_session_l10n());
 
             // Enqueue Post Review module (for Pending Review tab)
             wp_enqueue_style(
@@ -1027,6 +1028,7 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+			wp_localize_script('aips-admin-view-session', 'aipsViewSessionL10n', $this->get_view_session_l10n());
 
             wp_enqueue_script(
                 'aips-admin-history',
@@ -1113,6 +1115,49 @@ class AIPS_Admin_Assets {
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
             ));
     }
+
+	/**
+	 * Localized strings for the shared View Session modal script.
+	 *
+	 * @return array
+	 */
+	private function get_view_session_l10n() {
+		return array(
+			'loadingExplainability' => __('Loading explainability...', 'ai-post-scheduler'),
+			'noExplainabilityData' => __('Explainability data is not available for this session.', 'ai-post-scheduler'),
+			'summaryStatus' => __('Status', 'ai-post-scheduler'),
+			'summaryTrigger' => __('Trigger', 'ai-post-scheduler'),
+			'summarySourcesUsed' => __('Sources Used', 'ai-post-scheduler'),
+			'summaryRetries' => __('Retries/Regenerations', 'ai-post-scheduler'),
+			'summaryValidationChecks' => __('Validation Checks', 'ai-post-scheduler'),
+			'summarySchemaVersion' => __('Schema Version', 'ai-post-scheduler'),
+			'whyHeading' => __('Why this happened', 'ai-post-scheduler'),
+			'validationHeading' => __('Validation cards', 'ai-post-scheduler'),
+			'validationStageLabel' => __('Stage', 'ai-post-scheduler'),
+			'validationSuggestedFixLabel' => __('Suggested fix', 'ai-post-scheduler'),
+			'validationSettingsLabel' => __('Open settings', 'ai-post-scheduler'),
+			'validationStatusLabels' => array(
+				'passed' => __('Pass', 'ai-post-scheduler'),
+				'warning' => __('Warn', 'ai-post-scheduler'),
+				'failed' => __('Fail', 'ai-post-scheduler'),
+				'skipped' => __('Skipped', 'ai-post-scheduler'),
+				'info' => __('Info', 'ai-post-scheduler'),
+			),
+			'unknown' => __('unknown', 'ai-post-scheduler'),
+			'safetyNotePattern' => __('Safety note: sensitive values are redacted where detected. Redactions applied: %d.', 'ai-post-scheduler'),
+			'warningsHeading' => __('Warnings', 'ai-post-scheduler'),
+			'timelineHeading' => __('Generation Timeline', 'ai-post-scheduler'),
+			'sectionPromptComponents' => __('Prompt Components', 'ai-post-scheduler'),
+			'sectionSources' => __('Sources', 'ai-post-scheduler'),
+			'sectionModelRuns' => __('Model Runs', 'ai-post-scheduler'),
+			'sectionValidationChecks' => __('Validation Checks', 'ai-post-scheduler'),
+			'sectionTransformations' => __('Transformations', 'ai-post-scheduler'),
+			'sectionAttempts' => __('Attempts & Revisions', 'ai-post-scheduler'),
+			'sectionFinalOutcome' => __('Final Outcome', 'ai-post-scheduler'),
+			'sectionRedactions' => __('Redactions', 'ai-post-scheduler'),
+			'activity' => __('activity', 'ai-post-scheduler'),
+		);
+	}
 
     /**
      * Enqueue assets for the onboarding page.

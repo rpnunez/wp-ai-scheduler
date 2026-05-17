@@ -128,6 +128,7 @@
 		$('#aips-session-completed').text('');
 		$('#aips-logs-list').html('<p>Loading logs...</p>');
 		$('#aips-ai-list').html('<p>Loading AI calls...</p>');
+		$('#aips-explainability-list').html('<p>' + aipsViewSessionL10n.loadingExplainability + '</p>');
 	}
 	
 	/**
@@ -149,8 +150,202 @@
 		// Display AI calls (including regenerations)
 		renderAICalls(data.ai_calls, data.component_revisions || {});
 		
+		// Display explainability payload
+		renderExplainability(data.explainability || {});
+		
 		// Show modal
 		$('#aips-session-modal').show();
+	}
+
+	/**
+	 * Render explainability tab content.
+	 */
+	function renderExplainability(explainability) {
+		var $container = $('#aips-explainability-list');
+		$container.empty();
+		
+		if (!explainability || typeof explainability !== 'object' || !explainability.generation) {
+			$container.append($('<p class="aips-no-data"></p>').text(aipsViewSessionL10n.noExplainabilityData));
+			return;
+		}
+		
+		var retryCount = explainability.attempts && typeof explainability.attempts.retries_or_regenerations !== 'undefined'
+			? explainability.attempts.retries_or_regenerations
+			: 0;
+		var sourceCount = explainability.sources && Array.isArray(explainability.sources.used)
+			? explainability.sources.used.length
+			: 0;
+		var validationCount = Array.isArray(explainability.validation_checks)
+			? explainability.validation_checks.length
+			: 0;
+		
+		var $summary = $('<div class="aips-explainability-summary"></div>');
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryStatus, explainability.generation.status || aipsViewSessionL10n.unknown));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryTrigger, explainability.trigger && explainability.trigger.origin ? explainability.trigger.origin : aipsViewSessionL10n.unknown));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summarySourcesUsed, String(sourceCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryRetries, String(retryCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summaryValidationChecks, String(validationCount)));
+		$summary.append(createSummaryRow(aipsViewSessionL10n.summarySchemaVersion, explainability.schema_version || '1.0.0'));
+		$container.append($summary);
+
+		if (explainability.why && typeof explainability.why === 'object' && explainability.why.summary) {
+			$container.append(renderExplainabilityWhy(explainability.why));
+		}
+		
+		var redactionCount = explainability.redactions && typeof explainability.redactions.count !== 'undefined'
+			? explainability.redactions.count
+			: 0;
+		$container.append(
+			$('<p class="aips-explainability-safety-note"></p>').text(
+				aipsViewSessionL10n.safetyNotePattern.replace('%d', String(redactionCount))
+			)
+		);
+		
+		if (Array.isArray(explainability.warnings) && explainability.warnings.length > 0) {
+			var $warnings = $('<div class="aips-explainability-warnings"></div>');
+			$warnings.append($('<h4></h4>').text(aipsViewSessionL10n.warningsHeading));
+			var $warningsList = $('<ul></ul>');
+			explainability.warnings.forEach(function(warningText) {
+				$warningsList.append($('<li></li>').text(warningText));
+			});
+			$warnings.append($warningsList);
+			$container.append($warnings);
+		}
+		
+		if (Array.isArray(explainability.timeline) && explainability.timeline.length > 0) {
+			var $timeline = $('<div class="aips-explainability-timeline"></div>');
+			$timeline.append($('<h4></h4>').text(aipsViewSessionL10n.timelineHeading));
+			var $timelineList = $('<ol></ol>');
+			explainability.timeline.forEach(function(item) {
+				var stage = item.stage || aipsViewSessionL10n.activity;
+				var timestamp = item.timestamp ? ' (' + item.timestamp + ')' : '';
+				var summary = item.summary ? ' — ' + item.summary : '';
+				$timelineList.append(
+					$('<li></li>').text(stage + timestamp + summary)
+				);
+			});
+			$timeline.append($timelineList);
+			$container.append($timeline);
+		}
+
+		if (Array.isArray(explainability.validation_checks) && explainability.validation_checks.length > 0) {
+			$container.append(renderValidationCards(explainability.validation_checks));
+		}
+		
+		var detailSections = [
+			{ key: 'prompt_components', title: aipsViewSessionL10n.sectionPromptComponents },
+			{ key: 'sources', title: aipsViewSessionL10n.sectionSources },
+			{ key: 'model_runs', title: aipsViewSessionL10n.sectionModelRuns },
+			{ key: 'validation_checks', title: aipsViewSessionL10n.sectionValidationChecks },
+			{ key: 'transformations', title: aipsViewSessionL10n.sectionTransformations },
+			{ key: 'attempts', title: aipsViewSessionL10n.sectionAttempts },
+			{ key: 'final_outcome', title: aipsViewSessionL10n.sectionFinalOutcome },
+			{ key: 'redactions', title: aipsViewSessionL10n.sectionRedactions }
+		];
+		
+		detailSections.forEach(function(section) {
+			var value = explainability[section.key];
+			if (typeof value === 'undefined' || value === null) {
+				return;
+			}
+			var $details = $('<details class="aips-explainability-details"></details>');
+			$details.append($('<summary></summary>').text(section.title));
+			var $detailsPre = $('<pre></pre>').text(JSON.stringify(value, null, 2));
+			var $detailsViewer = $('<div class="aips-json-viewer"></div>').append($detailsPre);
+			$details.append($detailsViewer);
+			$container.append($details);
+		});
+	}
+
+	/**
+	 * Render plain-English narrative panel.
+	 *
+	 * @param {Object} why Why payload.
+	 * @returns {jQuery}
+	 */
+	function renderExplainabilityWhy(why) {
+		var $panel = $('<div class="aips-explainability-why"></div>');
+		$panel.append($('<h4></h4>').text(aipsViewSessionL10n.whyHeading));
+		$panel.append($('<p></p>').text(String(why.summary)));
+		return $panel;
+	}
+
+	/**
+	 * Render validation checks as human-readable cards.
+	 *
+	 * @param {Array} checks Validation checks.
+	 * @returns {jQuery}
+	 */
+	function renderValidationCards(checks) {
+		var $wrap = $('<div class="aips-explainability-validation"></div>');
+		$wrap.append($('<h4></h4>').text(aipsViewSessionL10n.validationHeading));
+
+		checks.forEach(function(check) {
+			var safeCheck = (check && typeof check === 'object') ? check : {};
+			var status = safeCheck.status ? String(safeCheck.status) : 'info';
+			var severity = safeCheck.severity ? String(safeCheck.severity) : '';
+
+			var $card = $('<div class="aips-validation-card"></div>');
+			var $header = $('<div class="aips-validation-card-header"></div>');
+
+			var badgeText = status;
+			if (aipsViewSessionL10n.validationStatusLabels && aipsViewSessionL10n.validationStatusLabels[status]) {
+				badgeText = aipsViewSessionL10n.validationStatusLabels[status];
+			}
+
+			var $badge = $('<span class="aips-validation-badge"></span>').text(badgeText);
+			if (severity) {
+				$badge.addClass('aips-validation-badge-' + severity);
+			}
+
+			$header.append(
+				$('<div class="aips-validation-card-title"></div>').text(safeCheck.name ? String(safeCheck.name) : aipsViewSessionL10n.unknown),
+				$badge
+			);
+
+			$card.append($header);
+
+			if (safeCheck.stage) {
+				$card.append(
+					$('<p class="aips-validation-card-meta"></p>')
+						.append($('<strong></strong>').text(aipsViewSessionL10n.validationStageLabel + ': '))
+						.append(document.createTextNode(String(safeCheck.stage)))
+				);
+			}
+
+			if (safeCheck.reason) {
+				$card.append($('<p class="aips-validation-card-reason"></p>').text(String(safeCheck.reason)));
+			}
+
+			if (safeCheck.suggested_fix) {
+				$card.append(
+					$('<p class="aips-validation-card-fix"></p>')
+						.append($('<strong></strong>').text(aipsViewSessionL10n.validationSuggestedFixLabel + ': '))
+						.append(document.createTextNode(String(safeCheck.suggested_fix)))
+				);
+			}
+
+			if (safeCheck.settings && typeof safeCheck.settings === 'object' && safeCheck.settings.url) {
+				var label = safeCheck.settings.label ? String(safeCheck.settings.label) : aipsViewSessionL10n.validationSettingsLabel;
+				var $link = $('<a target=\"_blank\" rel=\"noopener noreferrer\"></a>')
+					.attr('href', String(safeCheck.settings.url))
+					.text(label);
+				$card.append($('<p class=\"aips-validation-card-settings\"></p>').append($link));
+			}
+
+			$wrap.append($card);
+		});
+
+		return $wrap;
+	}
+		
+	/**
+	 * Create a summary row.
+	 */
+	function createSummaryRow(label, value) {
+		return $('<p class="aips-explainability-summary-row"></p>')
+			.append($('<strong></strong>').text(label + ': '))
+			.append(document.createTextNode(value));
 	}
 	
 	/**

@@ -19,6 +19,10 @@ if (!defined('ABSPATH')) {
  * Manages the Generated Posts admin interface and AJAX endpoints for viewing post generation sessions.
  */
 class AIPS_Generated_Posts_Controller {
+	/**
+	 * Maximum explainability prompt preview length.
+	 */
+	private const EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH = 800;
 	
 	/**
 	 * @var AIPS_History_Repository Repository for database operations
@@ -268,9 +272,20 @@ class AIPS_Generated_Posts_Controller {
 		// Organize logs by type
 		$logs = array();
 		$ai_calls = array();
+		$explainability_entries = array();
 		
 		foreach ($history_item->log as $log_entry) {
 			$details = json_decode($log_entry->details, true);
+			if (!is_array($details)) {
+				$details = array();
+			}
+			
+			$explainability_entries[] = array(
+				'type_id' => isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG,
+				'log_type' => (string) $log_entry->log_type,
+				'timestamp' => (string) $log_entry->timestamp,
+				'details' => $details,
+			);
 			
 			// Categorize based on history_type_id
 			$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG;
@@ -345,7 +360,362 @@ class AIPS_Generated_Posts_Controller {
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
 			'component_revisions' => $component_revisions,
+			'explainability' => $this->build_explainability_payload($history_item, $explainability_entries, $ai_calls, $component_revisions),
 		));
+	}
+	
+	/**
+	 * Build a structured explainability payload for the View Session modal.
+	 *
+	 * @param object $history_item         History item.
+	 * @param array  $entries              Parsed log entries.
+	 * @param array  $ai_calls             AI request/response calls grouped by component.
+	 * @param array  $component_revisions  Regeneration history grouped by component.
+	 * @return array
+	 */
+	private function build_explainability_payload($history_item, $entries, $ai_calls, $component_revisions) {
+		$builder = new AIPS_Explainability_Builder();
+		return $builder->build($history_item, $entries, $ai_calls, $component_revisions);
+	}
+	
+	/**
+	 * Build prompt component records from AI call data.
+	 *
+	 * @param array $ai_calls Redacted AI calls.
+	 * @return array
+	 */
+	private function build_prompt_components($ai_calls) {
+		$components = array();
+		
+		foreach ($ai_calls as $call) {
+			$request = isset($call['request']) && is_array($call['request']) ? $call['request'] : array();
+			$prompt_preview = '';
+			
+			if (isset($request['prompt']) && is_string($request['prompt'])) {
+				$prompt_preview = $request['prompt'];
+			} elseif (isset($request['messages']) && is_array($request['messages'])) {
+				$prompt_preview = wp_json_encode($request['messages']);
+			}
+			
+			$prompt_preview = trim((string) $prompt_preview);
+			$prompt_length = function_exists('mb_strlen')
+				? mb_strlen($prompt_preview)
+				: strlen($prompt_preview);
+			if ($prompt_length > self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH) {
+				$prompt_preview = function_exists('mb_substr')
+					? mb_substr($prompt_preview, 0, self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH)
+					: substr($prompt_preview, 0, self::EXPLAINABILITY_PROMPT_PREVIEW_MAX_LENGTH);
+				$prompt_preview .= '...';
+			}
+			
+			$components[] = array(
+				'name' => isset($call['type']) ? (string) $call['type'] : 'unknown',
+				'label' => isset($call['label']) ? (string) $call['label'] : ucfirst(str_replace('_', ' ', isset($call['type']) ? (string) $call['type'] : 'unknown')),
+				'included' => !empty($request),
+				'prompt_preview' => $prompt_preview,
+				'prompt_length' => $prompt_length,
+				'prompt_preview_length' => function_exists('mb_strlen') ? mb_strlen($prompt_preview) : strlen($prompt_preview),
+				'source' => isset($request['context']['source']) ? (string) $request['context']['source'] : 'ai_request',
+			);
+		}
+		
+		return $components;
+	}
+	
+	/**
+	 * Recursively redact sensitive values from arrays/strings.
+	 *
+	 * @param mixed $value           Value to redact.
+	 * @param int   $redaction_count Redaction count (by reference).
+	 * @param string $parent_key     Parent key context.
+	 * @return mixed
+	 */
+	private function redact_sensitive_data($value, &$redaction_count, $parent_key = '') {
+		if (is_array($value)) {
+			$clean = array();
+			foreach ($value as $key => $item) {
+				$key_name = is_string($key) ? $key : $parent_key;
+				if ($this->is_sensitive_key($key_name)) {
+					$redaction_count++;
+					$clean[$key] = '[REDACTED]';
+					continue;
+				}
+				$clean[$key] = $this->redact_sensitive_data($item, $redaction_count, (string) $key_name);
+			}
+			return $clean;
+		}
+		
+		if (is_string($value)) {
+			if ($this->is_sensitive_key($parent_key) || $this->contains_sensitive_token($value)) {
+				$redaction_count++;
+				return '[REDACTED]';
+			}
+		}
+		
+		return $value;
+	}
+	
+	/**
+	 * Check whether key name is considered sensitive.
+	 *
+	 * @param string $key Key name.
+	 * @return bool
+	 */
+	private function is_sensitive_key($key) {
+		$key = strtolower((string) $key);
+		return preg_match('/(password|token|secret|api[_-]?key|authorization|cookie|nonce|bearer|private[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)/', $key) === 1;
+	}
+	
+	/**
+	 * Check whether a string appears to contain credential-like content.
+	 *
+	 * @param string $value Candidate value.
+	 * @return bool
+	 */
+	private function contains_sensitive_token($value) {
+		$value = (string) $value;
+		return preg_match('/(sk-[a-z0-9]{16,}|akia[a-z0-9]{16}|aiza[a-z0-9\-_]{20,}|gh[pousr]_[a-z0-9]{20,}|bearer\s+[a-z0-9\-_\.]{16,}|-----begin[^-]*private key-----)/i', $value) === 1;
+	}
+	
+	/**
+	 * Derive a human-readable trigger origin.
+	 *
+	 * @param object $history_item History item.
+	 * @return string
+	 */
+	private function derive_trigger_origin($history_item) {
+		if (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
+			return 'author_topic';
+		}
+		if (!empty($history_item->template_id) && isset($history_item->creation_method) && 'scheduled' === $history_item->creation_method) {
+			return 'scheduled_post';
+		}
+		if (!empty($history_item->template_id) && isset($history_item->creation_method) && 'manual' === $history_item->creation_method) {
+			return 'manual_generation';
+		}
+		return 'unknown';
+	}
+	
+	/**
+	 * Map log entry to a timeline stage.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return string
+	 */
+	private function map_log_to_timeline_stage($entry) {
+		$log_type = strtolower(isset($entry['log_type']) ? (string) $entry['log_type'] : '');
+		$type_id = isset($entry['type_id']) ? (int) $entry['type_id'] : 0;
+		
+		if (AIPS_History_Type::AI_REQUEST === $type_id) {
+			return 'model_called';
+		}
+		if (AIPS_History_Type::AI_RESPONSE === $type_id) {
+			return 'model_responded';
+		}
+		if (strpos($log_type, 'source') !== false || strpos($log_type, 'fetch') !== false) {
+			return 'sources_fetched';
+		}
+		if (strpos($log_type, 'prompt') !== false) {
+			return 'prompt_built';
+		}
+		if (strpos($log_type, 'validat') !== false || strpos($log_type, 'check') !== false) {
+			return 'validation';
+		}
+		if (strpos($log_type, 'retry') !== false || strpos($log_type, 'regener') !== false) {
+			return 'retry_or_regeneration';
+		}
+		if (strpos($log_type, 'save') !== false || strpos($log_type, 'post') !== false) {
+			return 'final_save';
+		}
+		return 'activity';
+	}
+	
+	/**
+	 * Build a short summary for a timeline entry.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return string
+	 */
+	private function build_entry_summary($entry) {
+		$details = isset($entry['details']) && is_array($entry['details']) ? $entry['details'] : array();
+		if (isset($details['message']) && is_string($details['message']) && '' !== trim($details['message'])) {
+			return trim($details['message']);
+		}
+		if (isset($details['error']) && is_string($details['error']) && '' !== trim($details['error'])) {
+			return trim($details['error']);
+		}
+		return isset($entry['log_type']) ? (string) $entry['log_type'] : '';
+	}
+	
+	/**
+	 * Extract source records from a log entry.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return array
+	 */
+	private function extract_sources_from_entry($entry) {
+		$details = isset($entry['details']) && is_array($entry['details']) ? $entry['details'] : array();
+		$found = array();
+		$this->collect_sources_recursive($details, $found);
+		return $found;
+	}
+	
+	/**
+	 * Recursively collect source objects from nested details.
+	 *
+	 * @param mixed $node  Current node.
+	 * @param array $found Collected sources.
+	 * @return void
+	 */
+	private function collect_sources_recursive($node, &$found) {
+		if (!is_array($node)) {
+			return;
+		}
+		
+		$has_url = isset($node['url']) && is_string($node['url']) && '' !== trim($node['url']);
+		if ($has_url) {
+			$url = esc_url_raw($node['url']);
+			
+			if ('' !== $url) {
+				$domain = function_exists('wp_parse_url') ? wp_parse_url($url, PHP_URL_HOST) : parse_url($url, PHP_URL_HOST);
+				$found[] = array(
+					'url' => $url,
+					'title' => isset($node['title']) ? (string) $node['title'] : '',
+					'domain' => is_string($domain) ? $domain : '',
+				);
+			}
+		}
+		
+		foreach ($node as $child) {
+			if (is_array($child)) {
+				$this->collect_sources_recursive($child, $found);
+			}
+		}
+	}
+	
+	/**
+	 * Determine whether log entry indicates that source was used.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return bool
+	 */
+	private function entry_indicates_source_usage($entry) {
+		$log_type = strtolower(isset($entry['log_type']) ? (string) $entry['log_type'] : '');
+		$details = isset($entry['details']) && is_array($entry['details']) ? $entry['details'] : array();
+		
+		if (strpos($log_type, 'used') !== false || strpos($log_type, 'selected') !== false) {
+			return true;
+		}
+		
+		if (isset($details['used']) && true === $details['used']) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Extract validation check record from an entry when available.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return array
+	 */
+	private function extract_validation_check($entry) {
+		$log_type = strtolower(isset($entry['log_type']) ? (string) $entry['log_type'] : '');
+		if (strpos($log_type, 'validat') === false && strpos($log_type, 'check') === false && strpos($log_type, 'policy') === false && strpos($log_type, 'guard') === false) {
+			return array();
+		}
+		
+		$details = isset($entry['details']) && is_array($entry['details']) ? $entry['details'] : array();
+		$status = isset($details['status']) ? strtolower((string) $details['status']) : 'info';
+		if (!in_array($status, array('passed', 'failed', 'warning', 'skipped'), true)) {
+			$status = 'info';
+		}
+		
+		return array(
+			'name' => isset($details['check_name']) ? (string) $details['check_name'] : (isset($entry['log_type']) ? (string) $entry['log_type'] : 'validation_check'),
+			'status' => $status,
+			'reason' => $this->build_entry_summary($entry),
+			'timestamp' => isset($entry['timestamp']) ? (string) $entry['timestamp'] : '',
+		);
+	}
+	
+	/**
+	 * Extract transformation record from an entry when available.
+	 *
+	 * @param array $entry Explainability entry.
+	 * @return array
+	 */
+	private function extract_transformation($entry) {
+		$log_type = strtolower(isset($entry['log_type']) ? (string) $entry['log_type'] : '');
+		if (strpos($log_type, 'transform') === false && strpos($log_type, 'normalize') === false && strpos($log_type, 'sanitize') === false && strpos($log_type, 'internal_link') === false && strpos($log_type, 'citation') === false) {
+			return array();
+		}
+		
+		return array(
+			'stage' => isset($entry['log_type']) ? (string) $entry['log_type'] : 'transformation',
+			'summary' => $this->build_entry_summary($entry),
+			'timestamp' => isset($entry['timestamp']) ? (string) $entry['timestamp'] : '',
+		);
+	}
+	
+	/**
+	 * Build explainability-level warnings.
+	 *
+	 * @param array $entries            Explainability entries.
+	 * @param array $sources_used       Sources used list.
+	 * @param array $validation_checks  Validation checks list.
+	 * @param int   $retry_count        Retry count.
+	 * @return array
+	 */
+	private function build_explainability_warnings($entries, $sources_used, $validation_checks, $retry_count) {
+		$warnings = array();
+		
+		if (empty($entries)) {
+			$warnings[] = __('Limited lineage data is available for this generation.', 'ai-post-scheduler');
+		}
+		
+		if (empty($sources_used)) {
+			$warnings[] = __('No explicitly used sources were detected in available logs.', 'ai-post-scheduler');
+		}
+		
+		if ($retry_count > 0) {
+			$warnings[] = sprintf(
+				/* translators: %d: retry/regeneration count */
+				__('This generation included %d retry/regeneration attempts.', 'ai-post-scheduler'),
+				$retry_count
+			);
+		}
+		
+		foreach ($validation_checks as $check) {
+			if (isset($check['status']) && 'failed' === $check['status']) {
+				$warnings[] = __('At least one validation check failed during generation.', 'ai-post-scheduler');
+				break;
+			}
+		}
+		
+		return array_values(array_unique($warnings));
+	}
+	
+	/**
+	 * Remove duplicate arrays while preserving order.
+	 *
+	 * @param array $rows Rows to deduplicate.
+	 * @return array
+	 */
+	private function unique_multidimensional($rows) {
+		$unique = array();
+		$seen = array();
+		
+		foreach ($rows as $row) {
+			$key = wp_json_encode($row);
+			if (!isset($seen[$key])) {
+				$seen[$key] = true;
+				$unique[] = $row;
+			}
+		}
+		
+		return $unique;
 	}
 	
 	/**
