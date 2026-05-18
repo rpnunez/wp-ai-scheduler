@@ -55,7 +55,7 @@ class AIPS_Post_Slices_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_post_slices';
-		$this->cache = AIPS_Cache_Factory::named('aips_post_slices_repository');
+		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY ) );
 	}
 
 	/**
@@ -65,7 +65,7 @@ class AIPS_Post_Slices_Repository {
 	 * @return array
 	 */
 	public function get_all($active_only = false) {
-		$key = 'all:' . ($active_only ? '1' : '0');
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'all', array('active_only' => $active_only) );
 		if ($this->cache->has($key)) {
 			return $this->cache->get($key);
 		}
@@ -96,7 +96,7 @@ class AIPS_Post_Slices_Repository {
 	 * @return object|null
 	 */
 	public function get_by_id($id) {
-		$key = 'id:' . (int) $id;
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'id', array('id' => $id) );
 		if ($this->cache->has($key)) {
 			return $this->cache->get($key);
 		}
@@ -139,7 +139,7 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -188,7 +188,7 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result !== false) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
 		}
 
 		return $result;
@@ -208,7 +208,7 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result !== false) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
 		}
 
 		return $result;
@@ -261,7 +261,7 @@ class AIPS_Post_Slices_Repository {
 		$result = $this->wpdb->query($sql);
 
 		if ($result !== false) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
 		}
 
 		return $result;
@@ -295,7 +295,7 @@ class AIPS_Post_Slices_Repository {
 		$result = $this->wpdb->query($sql);
 
 		if ($result !== false) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
 		}
 
 		return $result;

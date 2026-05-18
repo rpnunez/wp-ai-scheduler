@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+
 /**
  * Class AIPS_System_Status_Controller
  *
@@ -25,6 +26,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_retry_failed_slices', array($this, 'ajax_retry_failed_slices'));
 		add_action('wp_ajax_aips_status_clear_partial_generations', array($this, 'ajax_clear_partial_generations'));
 		add_action('wp_ajax_aips_status_cleanup_stale_jobs_cache', array($this, 'ajax_cleanup_stale_jobs_cache'));
+		add_action('wp_ajax_aips_rebuild_caches', array($this, 'ajax_rebuild_caches'));
 	}
 
 	/**
@@ -132,5 +134,32 @@ class AIPS_System_Status_Controller {
 		}
 		AIPS_Ajax_Response::success(array('message' => sprintf(__('Cleaned %1$d stale jobs. Cache flushed: %2$s.', 'ai-post-scheduler'), $deleted, $cache_flushed ? __('yes', 'ai-post-scheduler') : __('no', 'ai-post-scheduler'))));
 	}
-}
 
+	public function ajax_rebuild_caches() {
+		if ( ! check_ajax_referer('aips_rebuild_caches', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$subsystem = isset($_POST['subsystem']) ? sanitize_key(wp_unslash($_POST['subsystem'])) : 'all';
+		$subsystems = AIPS_Cache_Policy::get_subsystems();
+		$allowed_subsystems = array_keys($subsystems);
+		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
+			$subsystem = 'all';
+		}
+
+		$affected = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
+		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
+		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+
+		AIPS_Logger::instance()->info('Cache rebuild requested from admin tool.', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+		AIPS_Ajax_Response::success(array(
+			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
+			'subsystem' => $subsystem,
+			'affected' => $affected,
+		));
+	}
+
+}
