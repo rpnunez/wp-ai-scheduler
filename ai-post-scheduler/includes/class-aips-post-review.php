@@ -837,7 +837,7 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
-		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? $_POST['items'] : array();
+		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? wp_unslash($_POST['items']) : array();
 		
 		if (empty($items)) {
 			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
