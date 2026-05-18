@@ -100,7 +100,7 @@ class AIPS_Cache_Factory {
 
 		switch ( (string) $driver_name ) {
 			case 'db':
-				$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
+				$prefix = self::build_namespaced_prefix( (string) get_option( 'aips_cache_db_prefix', '' ) );
 				return new AIPS_Cache_Db_Driver( $prefix );
 
 			case 'session':
@@ -117,7 +117,7 @@ class AIPS_Cache_Factory {
 				return new AIPS_Cache_Array_Driver();
 
 			case 'wp_object_cache':
-				return new AIPS_Cache_Wp_Object_Cache_Driver();
+				return new AIPS_Cache_Wp_Object_Cache_Driver( self::build_namespaced_prefix( 'aips' ) );
 
 			case 'array':
 			default:
@@ -134,6 +134,22 @@ class AIPS_Cache_Factory {
 	public static function reset() {
 		self::$instance = null;
 		self::$named    = array();
+	}
+
+	/**
+	 * Force cache rebuild by bumping namespace version.
+	 *
+	 * Existing cache entries become unreachable for drivers that include the
+	 * version in their key prefix.
+	 *
+	 * @return int New namespace version.
+	 */
+	public static function force_rebuild() {
+		$current = (int) get_option( 'aips_cache_namespace_version', 1 );
+		$next    = max( 1, $current + 1 );
+		update_option( 'aips_cache_namespace_version', $next );
+		self::reset();
+		return $next;
 	}
 
 	// -----------------------------------------------------------------------
@@ -215,7 +231,7 @@ class AIPS_Cache_Factory {
 		$port     = (int) get_option( 'aips_cache_redis_port', 6379 );
 		$password = (string) get_option( 'aips_cache_redis_password', '' );
 		$db       = (int) get_option( 'aips_cache_redis_db', 0 );
-		$prefix   = (string) get_option( 'aips_cache_redis_prefix', 'aips' );
+		$prefix   = self::build_namespaced_prefix( (string) get_option( 'aips_cache_redis_prefix', 'aips' ) );
 		$timeout  = (float) get_option( 'aips_cache_redis_timeout', 2.0 );
 
 		$driver = new AIPS_Cache_Redis_Driver( $host, $port, $password, $db, $prefix, $timeout );
@@ -233,6 +249,18 @@ class AIPS_Cache_Factory {
 		}
 
 		return $driver;
+	}
+
+	/**
+	 * Build a cache-key prefix with namespace version suffix.
+	 *
+	 * @param string $base_prefix Base prefix from settings.
+	 * @return string Versioned prefix.
+	 */
+	private static function build_namespaced_prefix( $base_prefix ) {
+		$base_prefix = !empty( $base_prefix ) ? (string) $base_prefix : 'aips';
+		$version     = (int) get_option( 'aips_cache_namespace_version', 1 );
+		return $base_prefix . '_v' . max( 1, $version );
 	}
 
 	/**

@@ -155,6 +155,42 @@ class AIPS_Cache_Session_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function flush_group( $group ) {
+		if (!$this->session_available) {
+			return false;
+		}
+
+		$group_prefix = $this->namespace . '::' . (string) $group . ':';
+		foreach (array_keys( $_SESSION ) as $k) {
+			if (str_starts_with( $k, $group_prefix )) {
+				unset( $_SESSION[ $k ] );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		if (!$this->session_available) {
+			return false;
+		}
+
+		$key_prefix = $this->namespace . '::' . (string) $group . ':' . (string) $prefix;
+		foreach (array_keys( $_SESSION ) as $k) {
+			if (str_starts_with( $k, $key_prefix )) {
+				unset( $_SESSION[ $k ] );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function has( $key, $group = 'default' ) {
 		return $this->get( $key, $group ) !== null;
 	}

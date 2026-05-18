@@ -115,6 +115,20 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function flush_group( $group ) {
+		return $this->flush();
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		return $this->flush();
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function has( $key, $group = 'default' ) {
 		$found = false;
 		wp_cache_get( $key, $this->resolve_group( $group ), false, $found );

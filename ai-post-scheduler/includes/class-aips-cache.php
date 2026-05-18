@@ -214,6 +214,50 @@ class AIPS_Cache {
 		return $result;
 	}
 
+	/**
+	 * Flush all values for a single logical cache group.
+	 *
+	 * @param string $group Cache group to clear.
+	 * @return bool True on success.
+	 */
+	public function flush_group( $group ) {
+		if (!self::is_system_enabled()) {
+			return true;
+		}
+		$result = $this->driver->flush_group( $group );
+		$this->record_cache_event(
+			'flush_group',
+			array(
+				'group'   => (string) $group,
+				'success' => (bool) $result,
+			)
+		);
+		return $result;
+	}
+
+	/**
+	 * Flush values by key prefix inside a logical cache group.
+	 *
+	 * @param string $prefix Key prefix namespace.
+	 * @param string $group  Cache group. Default 'default'.
+	 * @return bool True on success.
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return true;
+		}
+		$result = $this->driver->flush_prefix( $prefix, $group );
+		$this->record_cache_event(
+			'flush_prefix',
+			array(
+				'prefix'  => (string) $prefix,
+				'group'   => (string) $group,
+				'success' => (bool) $result,
+			)
+		);
+		return $result;
+	}
+
 	// -----------------------------------------------------------------------
 	// Higher-level helpers
 	// -----------------------------------------------------------------------
