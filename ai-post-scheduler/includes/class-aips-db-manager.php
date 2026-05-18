@@ -179,6 +179,7 @@ class AIPS_DB_Manager {
             KEY article_structure_id (article_structure_id),
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
+            KEY template_active_next_run (template_id, is_active, next_run),
             KEY status (status),
             KEY schedule_history_id (schedule_history_id),
             KEY schedule_type (schedule_type),
@@ -423,7 +424,9 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY source_content_hash (source_id, content_hash),
             KEY source_id (source_id),
+            KEY source_id_id (source_id, id),
             KEY fetch_status (fetch_status),
+            KEY source_id_fetch_status_id (source_id, fetch_status, id),
             KEY fetched_at (fetched_at),
             KEY num_used (num_used)
         ) $charset_collate;";
@@ -469,6 +472,8 @@ class AIPS_DB_Manager {
             KEY source_post_id (source_post_id),
             KEY target_post_id (target_post_id),
             KEY status (status),
+            KEY status_created_at (status, created_at),
+            KEY status_updated_at (status, updated_at),
             KEY similarity_score (similarity_score),
             UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
