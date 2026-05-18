@@ -60,7 +60,7 @@ class AIPS_Prompt_Section_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_prompt_sections';
-		$this->cache = AIPS_Cache_Factory::named( 'aips_prompt_section_repository' );
+		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY ) );
 	}
 	
 	/**
@@ -74,7 +74,7 @@ class AIPS_Prompt_Section_Repository {
 	 * @return array Array of section objects.
 	 */
 	public function get_all($active_only = false) {
-		$key = 'all:' . ( $active_only ? '1' : '0' );
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'all', array('active_only' => $active_only) );
 		if ( $this->cache->has( $key ) ) {
 			return $this->cache->get( $key );
 		}
@@ -94,7 +94,7 @@ class AIPS_Prompt_Section_Repository {
 	 * @return object|null Section object or null if not found.
 	 */
 	public function get_by_id($id) {
-		$key = 'id:' . (int) $id;
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'id', array('id' => $id) );
 		if ( $this->cache->has( $key ) ) {
 			return $this->cache->get( $key );
 		}
@@ -118,7 +118,7 @@ class AIPS_Prompt_Section_Repository {
 	 * @return object|null Section object or null if not found.
 	 */
 	public function get_by_key($section_key) {
-		$key = 'key:' . $section_key;
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'key', array('section_key' => $section_key) );
 		if ( $this->cache->has( $key ) ) {
 			return $this->cache->get( $key );
 		}
@@ -190,7 +190,7 @@ class AIPS_Prompt_Section_Repository {
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -248,7 +248,7 @@ class AIPS_Prompt_Section_Repository {
 		) !== false;
 
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
 		}
 
 		return $result;
@@ -263,7 +263,7 @@ class AIPS_Prompt_Section_Repository {
 	public function delete($id) {
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
 		}
 		return $result;
 	}

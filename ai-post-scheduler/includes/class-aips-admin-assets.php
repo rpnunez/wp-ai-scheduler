@@ -1275,6 +1275,7 @@ class AIPS_Admin_Assets {
                 'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
                 'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
                 'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
+                'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),
                 'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
                 'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
                 'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),
