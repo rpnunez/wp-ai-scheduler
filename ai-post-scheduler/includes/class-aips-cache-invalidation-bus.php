@@ -17,16 +17,15 @@ class AIPS_Cache_Invalidation_Bus {
 	}
 
 	public static function rebuild($subsystem = 'all') {
-		$subsystems = array(
-			AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR,
-			AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY,
-			AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY,
-			AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY,
-			AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY,
-		);
+		if ('all' !== $subsystem && !AIPS_Cache_Policy::is_valid_subsystem($subsystem)) {
+			$subsystem = 'all';
+		}
+
+		$subsystems = array_keys(AIPS_Cache_Policy::get_subsystems());
 		if ('all' !== $subsystem) {
 			$subsystems = array($subsystem);
 		}
+
 		$affected = array();
 		foreach ($subsystems as $item) {
 			$affected = array_merge($affected, self::invalidate($item, 'update'));

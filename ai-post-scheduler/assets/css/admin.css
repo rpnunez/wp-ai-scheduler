@@ -3726,6 +3726,10 @@ margin-right: 5px;
 font-size: 13px;
 }
 
+.aips-cache-rebuild-controls {
+	margin-top: 12px;
+}
+
 /* Dashboard stats bar: stack vertically on mobile — see consolidated @media below */
 
 /* Dashboard stats bar */

@@ -134,6 +134,7 @@ class AIPS_System_Status_Controller {
 		}
 		AIPS_Ajax_Response::success(array('message' => sprintf(__('Cleaned %1$d stale jobs. Cache flushed: %2$s.', 'ai-post-scheduler'), $deleted, $cache_flushed ? __('yes', 'ai-post-scheduler') : __('no', 'ai-post-scheduler'))));
 	}
+
 	public function ajax_rebuild_caches() {
 		if ( ! check_ajax_referer('aips_rebuild_caches', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -143,15 +144,22 @@ class AIPS_System_Status_Controller {
 		}
 
 		$subsystem = isset($_POST['subsystem']) ? sanitize_key(wp_unslash($_POST['subsystem'])) : 'all';
-		$allowed = array('all','admin_bar','schedule_repository','article_structure_repository','prompt_section_repository','post_slices_repository');
-		if (!in_array($subsystem, $allowed, true)) {
+		$subsystems = AIPS_Cache_Policy::get_subsystems();
+		$allowed_subsystems = array_keys($subsystems);
+		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
 			$subsystem = 'all';
 		}
 
 		$affected = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
+		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
+		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+
 		AIPS_Logger::instance()->info('Cache rebuild requested from admin tool.', array('subsystem' => $subsystem, 'affected_caches' => $affected));
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem, implode(', ', $affected)), 'subsystem' => $subsystem));
+		AIPS_Ajax_Response::success(array(
+			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
+			'subsystem' => $subsystem,
+			'affected' => $affected,
+		));
 	}
 
 }
-
