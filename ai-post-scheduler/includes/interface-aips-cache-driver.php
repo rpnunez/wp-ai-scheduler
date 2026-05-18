@@ -54,6 +54,23 @@ interface AIPS_Cache_Driver {
 	public function flush();
 
 	/**
+	 * Flush all values in a specific cache group.
+	 *
+	 * @param string $group Cache group to clear.
+	 * @return bool True on success, false on failure.
+	 */
+	public function flush_group( $group );
+
+	/**
+	 * Flush all values whose cache key starts with a prefix.
+	 *
+	 * @param string $prefix Cache key prefix (namespace) to clear.
+	 * @param string $group  Optional group scope. Default 'default'.
+	 * @return bool True on success, false on failure.
+	 */
+	public function flush_prefix( $prefix, $group = 'default' );
+
+	/**
 	 * Check whether a key exists in the cache and has not expired.
 	 *
 	 * @param string $key   Cache key.

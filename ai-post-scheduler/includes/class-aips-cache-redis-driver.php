@@ -184,6 +184,36 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function flush_group( $group ) {
+		if (!$this->connected) {
+			return false;
+		}
+		$pattern = $this->prefix_key( '*', $group );
+		$keys    = $this->redis->keys( $pattern );
+		if (empty( $keys )) {
+			return true;
+		}
+		return false !== $this->redis->del( $keys );
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		if (!$this->connected) {
+			return false;
+		}
+		$pattern = $this->prefix_key( (string) $prefix . '*', $group );
+		$keys    = $this->redis->keys( $pattern );
+		if (empty( $keys )) {
+			return true;
+		}
+		return false !== $this->redis->del( $keys );
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function has( $key, $group = 'default' ) {
 		if (!$this->connected) {
 			return false;

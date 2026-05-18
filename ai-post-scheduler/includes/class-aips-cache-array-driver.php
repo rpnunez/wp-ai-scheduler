@@ -81,6 +81,32 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function flush_group( $group ) {
+		$group_prefix = (string) $group . ':';
+		foreach (array_keys( $this->store ) as $composite_key) {
+			if (str_starts_with( $composite_key, $group_prefix )) {
+				unset( $this->store[ $composite_key ], $this->expiries[ $composite_key ] );
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		$key_prefix = (string) $group . ':' . (string) $prefix;
+		foreach (array_keys( $this->store ) as $composite_key) {
+			if (str_starts_with( $composite_key, $key_prefix )) {
+				unset( $this->store[ $composite_key ], $this->expiries[ $composite_key ] );
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function has( $key, $group = 'default' ) {
 		return $this->get( $key, $group ) !== null;
 	}

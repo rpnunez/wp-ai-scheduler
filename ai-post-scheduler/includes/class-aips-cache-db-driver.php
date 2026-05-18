@@ -149,6 +149,43 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function flush_group( $group ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_cache';
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"DELETE FROM `{$table}` WHERE cache_group = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				(string) $group
+			)
+		);
+
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function flush_prefix( $prefix, $group = 'default' ) {
+		global $wpdb;
+
+		$table          = $wpdb->prefix . 'aips_cache';
+		$key_namespace  = $this->namespace_key( (string) $prefix );
+		$prefix_pattern = $wpdb->esc_like( $key_namespace ) . '%';
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"DELETE FROM `{$table}` WHERE cache_group = %s AND cache_key LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				(string) $group,
+				$prefix_pattern
+			)
+		);
+
+		return true;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function has( $key, $group = 'default' ) {
 		return $this->get( $key, $group ) !== null;
 	}
