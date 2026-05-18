@@ -234,9 +234,9 @@ class AIPS_Feedback_Repository {
 		));
 		
 		return array(
-			'total' => isset($results->total) ? (int) $results->total : 0,
-			'approved' => isset($results->approved) ? (int) $results->approved : 0,
-			'rejected' => isset($results->rejected) ? (int) $results->rejected : 0
+			'total' => is_object($results) && isset($results->total) ? (int) $results->total : 0,
+			'approved' => is_object($results) && isset($results->approved) ? (int) $results->approved : 0,
+			'rejected' => is_object($results) && isset($results->rejected) ? (int) $results->rejected : 0
 		);
 	}
 	

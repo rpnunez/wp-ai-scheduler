@@ -707,7 +707,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $items     = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+        $items     = isset($_POST['items']) && is_array($_POST['items']) ? wp_unslash($_POST['items']) : array();
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (empty($items)) {
@@ -763,7 +763,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+        $items = isset($_POST['items']) && is_array($_POST['items']) ? wp_unslash($_POST['items']) : array();
 
         if (empty($items)) {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
@@ -862,7 +862,7 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+        $items = isset($_POST['items']) && is_array($_POST['items']) ? wp_unslash($_POST['items']) : array();
 
         if (empty($items)) {
             AIPS_Ajax_Response::error(__('No items provided.', 'ai-post-scheduler'));
