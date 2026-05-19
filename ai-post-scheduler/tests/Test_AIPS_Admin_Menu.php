@@ -25,7 +25,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->admin_menu         = new AIPS_Admin_Menu();
-		$this->admin_user_id     = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->admin_user_id      = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		$this->subscriber_user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 	}
 
@@ -156,12 +156,13 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	 * Invoke a private method on the admin menu instance.
 	 *
 	 * @param string $method Method name.
+	 * @param mixed  ...$args Method arguments.
 	 * @return mixed
 	 */
-	private function invoke_private_method( $method ) {
+	private function invoke_private_method( $method, ...$args ) {
 		$reflection = new ReflectionMethod( $this->admin_menu, $method );
 		$reflection->setAccessible( true );
 
-		return $reflection->invoke( $this->admin_menu );
+		return $reflection->invoke( $this->admin_menu, ...$args );
 	}
 }
