@@ -409,6 +409,11 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register Twig-backed view renderer used by admin pages.
+        $container->singleton(AIPS_View::class, function( $container ) {
+            return new AIPS_View();
+        });
     }
 
     /**

@@ -1,0 +1,34 @@
+{#
+Reusable list page shell for admin tables.
+Use via Twig embed to override blocks while preserving consistent DOM hooks.
+#}
+<div class="aips-list-layout">
+	<div class="aips-list-header">
+		{% block list_header %}{% endblock %}
+	</div>
+
+	{% block list_toolbar %}
+		<div class="aips-table-controls aips-table-controls--top">
+			<div class="aips-bulk-actions"></div>
+			<div class="aips-search-control"></div>
+			<div class="aips-filter-control"></div>
+		</div>
+	{% endblock %}
+
+	<div class="aips-list-content">
+		{% block list_content %}{% endblock %}
+	</div>
+
+	<div class="aips-list-empty-state" hidden>
+		{% block list_empty_state %}{% endblock %}
+	</div>
+
+	<div class="aips-list-footer">
+		<div class="aips-table-footer-count">
+			{% block list_footer_count %}{% endblock %}
+		</div>
+		<div class="aips-pagination">
+			{% block list_footer_pagination %}{% endblock %}
+		</div>
+	</div>
+</div>

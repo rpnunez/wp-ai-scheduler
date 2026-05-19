@@ -61,9 +61,13 @@
 			$(document).on('click', '#aips-source-modal .aips-modal-close', this.closeModal.bind(this));
 			$(document).on('click', '#aips-source-modal', this.onOverlayClick.bind(this));
 
-			// Live search / filter.
-			$(document).on('input', '#aips-source-search', this.filterSources.bind(this));
-			$(document).on('click', '#aips-source-search-clear, #aips-source-search-clear-2', this.clearSearch.bind(this));
+			// Live search / filter via shared controls helper.
+			AIPS.Utilities.bindSearchControl({
+				inputSelector: '#aips-source-search',
+				clearSelector: '#aips-source-search-clear, #aips-source-search-clear-2',
+				onChange: this.filterSources.bind(this),
+				debounceMs: 120
+			});
 
 			// Source Groups modal.
 			$(document).on('click', '#aips-manage-source-groups-btn', this.openGroupsModal.bind(this));
@@ -453,15 +457,21 @@
 		/**
 		 * Filter the sources table rows based on the search input value.
 		 *
-		 * @param {Event} e Input event.
+		 * @param {string|Event} value Input text or triggering event.
 		 * @return {void}
 		 */
-		filterSources: function (e) {
-			var term   = $(e.currentTarget).val().toLowerCase().trim();
+		filterSources: function (value) {
+			var term = '';
+			if (typeof value === 'string') {
+				term = value.toLowerCase().trim();
+			} else if (value && value.currentTarget) {
+				term = $(value.currentTarget).val().toLowerCase().trim();
+			} else {
+				term = $('#aips-source-search').val().toLowerCase().trim();
+			}
+
 			var $rows  = $('#aips-sources-table tbody tr');
 			var visible = 0;
-
-			$('#aips-source-search-clear').toggle(term.length > 0);
 
 			$rows.each(function () {
 				var text = $(this).text().toLowerCase();
@@ -483,7 +493,7 @@
 		 */
 		clearSearch: function (e) {
 			e.preventDefault();
-			$('#aips-source-search').val('').trigger('input');
+			AIPS.Utilities.clearSearchControl('#aips-source-search', '#aips-source-search-clear, #aips-source-search-clear-2', this.filterSources.bind(this));
 		},
 
 		// -----------------------------------------------------------------

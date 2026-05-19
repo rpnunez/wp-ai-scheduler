@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
             <!-- Filter Bar -->
-            <div class="aips-filter-bar">
-                <div class="aips-filter-right">
+            <div class="aips-filter-bar aips-table-controls aips-table-controls--top">
+                <div class="aips-filter-right aips-search-control">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
                     <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
@@ -151,7 +151,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
             <!-- Table footer -->
-            <div class="tablenav">
+            <div class="tablenav aips-list-footer">
                 <span class="aips-table-footer-count">
                     <?php
                     $template_count = count( $templates );

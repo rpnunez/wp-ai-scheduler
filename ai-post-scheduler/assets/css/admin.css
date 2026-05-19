@@ -379,6 +379,45 @@
 	min-width: 200px;
 }
 
+/* Shared list controls contract used by list/table admin screens. */
+.aips-table-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-3);
+    padding: var(--aips-space-4) var(--aips-space-5);
+    border-bottom: 1px solid var(--aips-gray-200);
+    background: var(--aips-gray-50);
+    flex-wrap: wrap;
+}
+
+.aips-table-controls--bottom {
+    border-top: 1px solid var(--aips-gray-200);
+    border-bottom: 0;
+    background: var(--aips-white);
+}
+
+.aips-bulk-actions,
+.aips-search-control,
+.aips-filter-control {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-2);
+}
+
+.aips-search-control {
+    margin-left: auto;
+}
+
+.aips-filter-control {
+    flex-wrap: wrap;
+}
+
+.aips-pagination {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-2);
+}
+
 /* Pagination tablenav inside content panels.
    Override WordPress float-based layout with flexbox:
    count on the left, pagination links on the right. */
@@ -391,6 +430,16 @@
 	height: auto;
 	margin: 0;
 	clear: both;
+}
+
+.aips-list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--aips-space-3) var(--aips-space-5);
+    border-top: 1px solid var(--aips-gray-100);
+    margin: 0;
+    gap: var(--aips-space-3);
 }
 
 .aips-content-panel .tablenav .tablenav-pages {
