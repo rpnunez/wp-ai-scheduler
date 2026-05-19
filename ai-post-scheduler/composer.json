@@ -30,7 +30,8 @@
   "scripts": {
     "test": "vendor/bin/phpunit",
     "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
-    "test:verbose": "vendor/bin/phpunit --verbose"
+    "test:verbose": "vendor/bin/phpunit --verbose",
+    "qa:inline-styles": "bash scripts/check-inline-styles.sh"
   },
   "config": {
     "allow-plugins": {

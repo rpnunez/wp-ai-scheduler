@@ -29,7 +29,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal is-hidden" data-wizard-steps="4">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -269,7 +269,7 @@ if (!defined('ABSPATH')) {
                         </div>
 
                         <!-- AI Variables Panel -->
-                        <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
+                        <div class="aips-form-row aips-ai-variables-panel is-hidden">
                             <div class="aips-ai-variables-header">
                                 <span class="dashicons dashicons-admin-generic"></span>
                                 <strong><?php esc_html_e('AI Variables Detected', 'ai-post-scheduler'); ?></strong>
@@ -312,7 +312,7 @@ if (!defined('ABSPATH')) {
                     </div>
                     
                     <!-- Step 2: Content -->
-                    <div class="aips-wizard-step-content" data-step="2" style="display: none;">
+                    <div class="aips-wizard-step-content" data-step="2" class="is-hidden">
                         <h3>
                             <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
                             <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
@@ -370,7 +370,7 @@ if (!defined('ABSPATH')) {
                                 <?php if (!empty($template_source_groups)): ?>
                                     <div class="aips-checkbox-group">
                                         <?php foreach ($template_source_groups as $sg): ?>
-                                            <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                            <label class="aips-checkbox-label aips-display-block aips-mb-1">
                                                 <input type="checkbox"
                                                     name="source_group_ids[]"
                                                     class="aips-template-source-group-cb"
@@ -391,7 +391,7 @@ if (!defined('ABSPATH')) {
                     </div>
                     
                     <!-- Step 3: Featured Image -->
-                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
+                    <div class="aips-wizard-step-content" data-step="3" class="is-hidden">
                         <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Configure whether and how to generate featured images for your posts.', 'ai-post-scheduler'); ?></p>
                         
@@ -403,7 +403,7 @@ if (!defined('ABSPATH')) {
                             <p class="description"><?php esc_html_e('If checked, a featured image will be attached to the generated post.', 'ai-post-scheduler'); ?></p>
                         </div>
 
-                        <div class="aips-featured-image-settings" style="display: none;">
+                        <div class="aips-featured-image-settings is-hidden">
                             <div class="aips-form-row">
                                 <label for="featured_image_source"><?php esc_html_e('Featured Image Source', 'ai-post-scheduler'); ?></label>
                                 <select id="featured_image_source" name="featured_image_source">
@@ -420,13 +420,13 @@ if (!defined('ABSPATH')) {
                                 <p class="description"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
                             </div>
 
-                            <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
+                            <div class="aips-form-row aips-image-source aips-image-source-unsplash is-hidden">
                                 <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
                                 <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
                                 <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
                             </div>
 
-                            <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
+                            <div class="aips-form-row aips-image-source aips-image-source-media is-hidden">
                                 <label><?php esc_html_e('Media Library Images', 'ai-post-scheduler'); ?></label>
                                 <div class="aips-media-library-picker">
                                     <input type="hidden" id="featured_image_media_ids" name="featured_image_media_ids" value="">
@@ -440,7 +440,7 @@ if (!defined('ABSPATH')) {
                     </div>
                     
                     <!-- Step 4: Summary & Post Settings -->
-                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
+                    <div class="aips-wizard-step-content" data-step="4" class="is-hidden">
                         <h3><?php esc_html_e('Review & Post Settings', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Review your template configuration and set post publishing options.', 'ai-post-scheduler'); ?></p>
                         
@@ -529,7 +529,7 @@ if (!defined('ABSPATH')) {
                     </div>
                     
                     <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
-                    <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
+                    <div class="aips-wizard-step-content aips-post-save-step" data-step="5" class="is-hidden">
                         <div style="text-align: center; padding: 30px 20px;">
                             <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
                             <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
@@ -555,7 +555,7 @@ if (!defined('ABSPATH')) {
             </div>
             <div class="aips-modal-footer aips-wizard-footer">
                 <div class="aips-footer-left">
-                    <button type="button" class="button aips-wizard-back" style="display: none;">
+                    <button type="button" class="button aips-wizard-back is-hidden">
                         <span class="dashicons dashicons-arrow-left-alt2"></span>
                         <?php esc_html_e('Back', 'ai-post-scheduler'); ?>
                     </button>
@@ -596,19 +596,19 @@ if (!defined('ABSPATH')) {
                         <span class="aips-preview-drawer-label"><?php esc_html_e('Prompt Preview', 'ai-post-scheduler'); ?></span>
                     </button>
                 </div>
-                <div class="aips-preview-drawer-content" style="display: none;">
-                    <div class="aips-preview-loading" style="display: none;">
+                <div class="aips-preview-drawer-content is-hidden">
+                    <div class="aips-preview-loading is-hidden">
                         <span class="spinner is-active"></span>
                         <span><?php esc_html_e('Generating preview...', 'ai-post-scheduler'); ?></span>
                     </div>
-                    <div class="aips-preview-error" style="display: none;"></div>
-                    <div class="aips-preview-sections" style="display: none;">
+                    <div class="aips-preview-error is-hidden"></div>
+                    <div class="aips-preview-sections is-hidden">
                         <div class="aips-preview-metadata">
-                            <div class="aips-preview-meta-item" id="aips-preview-voice" style="display: none;">
+                            <div class="aips-preview-meta-item" id="aips-preview-voice" class="is-hidden">
                                 <strong><?php esc_html_e('Voice:', 'ai-post-scheduler'); ?></strong>
                                 <span class="aips-preview-voice-name"></span>
                             </div>
-                            <div class="aips-preview-meta-item" id="aips-preview-structure" style="display: none;">
+                            <div class="aips-preview-meta-item" id="aips-preview-structure" class="is-hidden">
                                 <strong><?php esc_html_e('Article Structure:', 'ai-post-scheduler'); ?></strong>
                                 <span class="aips-preview-structure-name"></span>
                             </div>
@@ -633,7 +633,7 @@ if (!defined('ABSPATH')) {
                             <div class="aips-preview-prompt-text" id="aips-preview-excerpt-prompt"></div>
                         </div>
                         
-                        <div class="aips-preview-section" id="aips-preview-image-section" style="display: none;">
+                        <div class="aips-preview-section" id="aips-preview-image-section" class="is-hidden">
                             <h4><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></h4>
                             <div class="aips-preview-prompt-text" id="aips-preview-image-prompt"></div>
                         </div>
@@ -643,7 +643,7 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
     
-    <div id="aips-test-result-modal" class="aips-modal" style="display: none;">
+    <div id="aips-test-result-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
@@ -661,7 +661,7 @@ if (!defined('ABSPATH')) {
                         <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
                     </div>
 
-                    <div class="aips-form-row" id="aips-test-image-row" style="display: none;">
+                    <div class="aips-form-row" id="aips-test-image-row" class="is-hidden">
                         <label><strong><?php esc_html_e('Image Preview (Prompt/Keywords):', 'ai-post-scheduler'); ?></strong></label>
                         <div id="aips-test-image" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
                     </div>
@@ -678,7 +678,7 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 
-    <div id="aips-post-success-modal" class="aips-modal" style="display: none;">
+    <div id="aips-post-success-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2
@@ -692,7 +692,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-post-success-summary">
                     <span class="dashicons dashicons-yes-alt aips-post-success-icon"></span>
                     <p class="aips-post-success-message" id="aips-success-message"><?php esc_html_e('1 post has been generated.', 'ai-post-scheduler'); ?></p>
-                    <p id="aips-success-note" class="description aips-post-success-note" style="display: none;"></p>
+                    <p id="aips-success-note" class="description aips-post-success-note is-hidden"></p>
                 </div>
                 <div id="aips-post-results-container" class="aips-post-results-container"></div>
             </div>
@@ -741,7 +741,7 @@ if (!defined('ABSPATH')) {
         </tr>
     </script>
 
-    <div id="aips-post-quick-preview-modal" class="aips-modal" style="display: none;">
+    <div id="aips-post-quick-preview-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Post Quick Preview', 'ai-post-scheduler'); ?></h2>

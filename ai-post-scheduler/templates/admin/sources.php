@@ -67,7 +67,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -221,7 +221,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				</span>
 			</div>
 
-			<div id="aips-source-search-no-results" class="aips-empty-state" style="display:none;">
+			<div id="aips-source-search-no-results" class="aips-empty-state is-hidden">
 				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
 				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
 				<p class="aips-empty-state-description"><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
@@ -250,7 +250,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 </div><!-- .wrap -->
 
 <!-- Add / Edit Source Modal -->
-<div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
+<div id="aips-source-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 id="aips-source-modal-title"><?php esc_html_e('Add New Source', 'ai-post-scheduler'); ?></h2>
@@ -305,7 +305,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 					<div id="aips-source-groups-checkboxes" class="aips-checkbox-group">
 						<?php if (!empty($source_groups)): ?>
 							<?php foreach ($source_groups as $group): ?>
-								<label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+								<label class="aips-checkbox-label aips-display-block aips-mb-1">
 									<input type="checkbox"
 										name="term_ids[]"
 										class="aips-source-group-checkbox"
@@ -340,7 +340,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 </div>
 
 <!-- Manage Source Groups Modal -->
-<div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
+<div id="aips-groups-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 id="aips-groups-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>

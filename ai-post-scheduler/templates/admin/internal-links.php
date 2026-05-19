@@ -111,7 +111,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-il-search"><?php esc_html_e('Search posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-il-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search by post title…', 'ai-post-scheduler'); ?>">
-						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 
@@ -146,7 +146,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 		</div><!-- /#suggestions-tab -->
 
 		<!-- Generate for Post Tab -->
-		<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
+		<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" class="is-hidden">
 			<div class="aips-content-panel">
 				<div class="aips-panel-body" style="padding:24px;">
 					<h2 style="margin-top:0;"><?php esc_html_e('Generate Suggestions for a Post', 'ai-post-scheduler'); ?></h2>
@@ -201,7 +201,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 </div><!-- /.wrap -->
 
 <!-- Insert Link Modal -->
-<div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
+<div id="aips-insert-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
 	<div class="aips-modal-content" style="max-width:860px;width:94%;">
 		<div class="aips-modal-header">
 			<h2 id="aips-insert-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
@@ -416,7 +416,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 </script>
 
 <!-- Edit Anchor Text Modal -->
-<div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
+<div id="aips-anchor-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 id="aips-anchor-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>

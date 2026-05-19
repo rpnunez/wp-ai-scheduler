@@ -234,7 +234,7 @@ if (is_object($history)) {
 </div><!-- .wrap.aips-wrap -->
 
 <!-- History Logs Modal -->
-<div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
+<div id="aips-history-logs-modal" class="aips-modal is-hidden">
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
             <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
