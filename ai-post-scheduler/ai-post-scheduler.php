@@ -137,6 +137,7 @@ final class AI_Post_Scheduler {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_enable_logging' => 1,
+            'aips_enable_retry' => 0,
             'aips_retry_max_attempts' => 3,
             'aips_ai_model' => '',
             'aips_unsplash_access_key' => '',
