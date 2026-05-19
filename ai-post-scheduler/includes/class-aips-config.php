@@ -182,6 +182,7 @@ class AIPS_Config {
             'aips_enable_cache_system'  => true,
             'aips_cache_driver'         => 'array',
             'aips_cache_db_prefix'      => '',
+            'aips_cache_namespace_version' => 1,
             'aips_cache_default_ttl'    => 3600,
             'aips_cache_redis_host'     => '127.0.0.1',
             'aips_cache_redis_port'     => 6379,
