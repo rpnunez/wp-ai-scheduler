@@ -73,6 +73,92 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	public function create($type, $metadata = array()) {
 		return new AIPS_History_Container($this->repository, $type, $metadata);
 	}
+
+	/**
+	 * Create a history container and record a single log entry.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Container metadata.
+	 * @param string $log_type Log type.
+	 * @param string $message Human readable message.
+	 * @param mixed  $input Optional input payload.
+	 * @param mixed  $output Optional output payload.
+	 * @param array  $context Optional context payload.
+	 * @return AIPS_History_Container
+	 */
+	public function create_and_record($history_type, $metadata, $log_type, $message, $input = null, $output = null, $context = array()) {
+		$history = $this->create($history_type, $metadata);
+		$history->record($log_type, $message, $input, $output, $context);
+
+		return $history;
+	}
+
+	/**
+	 * Create a history container, record a single entry, and complete success.
+	 *
+	 * @param string $history_type Container type.
+	 * @param array  $metadata Container metadata.
+	 * @param string $log_type Log type.
+	 * @param string $message Human readable message.
+	 * @param mixed  $input Optional input payload.
+	 * @param mixed  $output Optional output payload.
+	 * @param array  $context Optional context payload.
+	 * @param array  $result_data Optional completion payload.
+	 * @return AIPS_History_Container
+	 */
+	public function create_record_and_complete_success($history_type, $metadata, $log_type, $message, $input = null, $output = null, $context = array(), $result_data = array()) {
+		$history = $this->create_and_record($history_type, $metadata, $log_type, $message, $input, $output, $context);
+		$history->complete_success($result_data);
+
+		return $history;
+	}
+
+	/**
+	 * Static convenience wrapper for activity-style logs.
+	 *
+	 * @param string $history_type History container type.
+	 * @param string $message Human-readable message.
+	 * @param string $event_type Event type key.
+	 * @param string $event_status Event status key.
+	 * @param array  $metadata Optional container metadata.
+	 * @param array  $context Optional log context.
+	 * @return AIPS_History_Container
+	 */
+	public static function log_activity($history_type, $message, $event_type, $event_status, $metadata = array(), $context = array()) {
+		$service = self::instance();
+
+		return $service->create_and_record(
+			$history_type,
+			$metadata,
+			'activity',
+			$message,
+			array(
+				'event_type' => $event_type,
+				'event_status' => $event_status,
+			),
+			null,
+			$context
+		);
+	}
+
+	/**
+	 * Record on an existing container only when available.
+	 *
+	 * @param AIPS_History_Container|null $history History container.
+	 * @param string $log_type Log type.
+	 * @param string $message Message.
+	 * @param mixed $input Optional input.
+	 * @param mixed $output Optional output.
+	 * @param array $context Optional context.
+	 * @return int|false
+	 */
+	public static function record_on_container($history, $log_type, $message, $input = null, $output = null, $context = array()) {
+		if (!$history) {
+			return false;
+		}
+
+		return $history->record($log_type, $message, $input, $output, $context);
+	}
 	
 	/**
 	 * Get activity feed (high-level events)
@@ -145,7 +231,9 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 		}
 
 		foreach ($history['items'] as $item) {
-			if (!empty($type) && isset($item->creation_method) && !empty($item->creation_method) && $item->creation_method !== $type) {
+			$item_type = isset($item->creation_method) ? (string) $item->creation_method : '';
+
+			if (!empty($type) && !empty($item_type) && $item_type !== $type) {
 				continue;
 			}
 
