@@ -40,6 +40,148 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
+        add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+    }
+
+    public function ajax_get_schedule_status_read_model() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::error(__('Unauthorized.', 'ai-post-scheduler'));
+        }
+
+        $cache = AIPS_Cache_Factory::make();
+        $cache_key = 'aips_schedule_status_strip_v2';
+        $cached = $cache->get($cache_key);
+        if (is_array($cached)) {
+            AIPS_Ajax_Response::success($cached);
+        }
+
+        $families = array(
+            AIPS_Unified_Schedule_Service::TYPE_TEMPLATE => 'aips_generate_scheduled_posts',
+            AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC => 'aips_generate_author_topics',
+            AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST => 'aips_generate_author_posts',
+        );
+
+        $next_runs = array();
+        foreach ($families as $family => $hook) {
+            $next_runs[$family] = wp_next_scheduled($hook) ?: null;
+        }
+
+        $queue_hooks = array(
+            'aips_process_schedule_batch',
+            'aips_process_author_topics_slice',
+            'aips_retry_failed_author_slices_topics',
+            'aips_process_author_post_slice',
+            'aips_retry_failed_author_slices_posts',
+            'aips_process_bulk_batch',
+            'aips_process_author_embeddings',
+            'aips_index_posts_batch',
+        );
+        $queue_depth = array_fill_keys($queue_hooks, 0);
+        $queue_timeline = array();
+        $now = time();
+        $next_24h = $now + DAY_IN_SECONDS;
+        $cron = _get_cron_array();
+        if (is_array($cron)) {
+            foreach ($cron as $timestamp => $hooks) {
+                if ((int) $timestamp > $next_24h) {
+                    continue;
+                }
+                foreach ($queue_hooks as $hook) {
+                    if (!isset($hooks[$hook])) {
+                        continue;
+                    }
+                    $count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
+                    $queue_depth[$hook] += $count;
+                    $queue_timeline[] = array(
+                        'hook' => $hook,
+                        'timestamp' => (int) $timestamp,
+                        'count' => $count,
+                    );
+                }
+            }
+        }
+
+        // Build schedule timeline from the same unified source the table uses,
+        // so the strip matches "Next Run" values shown to operators.
+        $unified_service = new AIPS_Unified_Schedule_Service();
+        $all_schedules = $unified_service->get_all('', false);
+        $timeline = array();
+        $active_schedules = 0;
+        $overdue_schedules = 0;
+
+        foreach ($all_schedules as $schedule) {
+            $is_active = !empty($schedule['is_active']);
+            if ($is_active) {
+                $active_schedules++;
+            }
+
+            $next_run = isset($schedule['next_run']) ? (int) $schedule['next_run'] : 0;
+            if (!$is_active || $next_run <= 0) {
+                continue;
+            }
+
+            if ($next_run < $now) {
+                $overdue_schedules++;
+                continue;
+            }
+
+            if ($next_run > $next_24h) {
+                continue;
+            }
+
+            $timeline[] = array(
+                'id' => isset($schedule['id']) ? (int) $schedule['id'] : 0,
+                'type' => isset($schedule['type']) ? (string) $schedule['type'] : '',
+                'title' => isset($schedule['title']) ? sanitize_text_field((string) $schedule['title']) : '',
+                'cron_hook' => isset($schedule['cron_hook']) ? (string) $schedule['cron_hook'] : '',
+                'timestamp' => $next_run,
+            );
+        }
+
+        usort($timeline, function ($a, $b) {
+            return (int) $a['timestamp'] - (int) $b['timestamp'];
+        });
+
+        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
+        $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+
+        $last_success = array();
+        foreach ($families as $family => $hook) {
+            $runs = $this->history_repository->get_history(array(
+                'creation_method' => $family,
+                'status' => 'completed',
+                'per_page' => 1,
+            ));
+            $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
+        }
+
+        $payload = array(
+            'next_runs' => $next_runs,
+            'timeline' => $timeline,
+            'queue_timeline' => $queue_timeline,
+            'queue_depth' => $queue_depth,
+            'bulk_jobs' => $bulk_counts,
+            'schedule_counts' => array(
+                'active' => $active_schedules,
+                'upcoming_24h' => count($timeline),
+                'overdue' => $overdue_schedules,
+            ),
+            'last_success' => $last_success,
+            'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
+            'last_error' => $bulk_counts['failed'] > 0,
+            'quick_links' => array(
+                'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
+                'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
+                'telemetry' => AIPS_Admin_Menu_Helper::get_page_url('telemetry'),
+                'system_status' => AIPS_Admin_Menu_Helper::get_page_url('system-status'),
+            ),
+        );
+
+        $cache->set($cache_key, $payload, 60);
+        AIPS_Ajax_Response::success($payload);
     }
 
     /**

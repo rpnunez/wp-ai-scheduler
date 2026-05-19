@@ -35,10 +35,10 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **166 core classes** and **10 interfaces** organized into **18 functional categories**.
+This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **167 core classes** and **10 interfaces** organized into **18 functional categories**.
 
-- **Total Lines of Code**: 60,346
-- **Total Classes**: 166
+- **Total Lines of Code**: 61,117
+- **Total Classes**: 167
 - **Total Interfaces**: 10
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, AI Integration, Infrastructure & DI, Caching, Telemetry & Observability, Notifications, Sources & Research, Internal Links & Embeddings, Resilience & Reliability, User Interface & Admin, Data Management, Database & Repositories, Diagnostics, Configuration & Settings, Onboarding, Utilities
 
@@ -731,6 +731,7 @@ flowchart TD
     Admin_Menu --> Dev_Tools
     Admin_Menu --> Generated_Posts_Controller
     Admin_Menu --> Operations_Insights_Controller
+    Schedule_Controller --> Admin_Menu_Helper
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -908,7 +909,7 @@ flowchart TD
 
 ### Utilities
 
-This category contains 16 classes:
+This category contains 17 classes:
 
 - **Batch Queue Service** (`AIPS_Batch_Queue_Service`): Batch Queue Service
 - **Bulk Batch Job Store** (`AIPS_Bulk_Batch_Job_Store`): Bulk Batch Job Store
@@ -918,6 +919,7 @@ This category contains 16 classes:
 - **Db Migrations** (`AIPS_DB_Migrations`): No description available
 - **History Service** (`AIPS_History_Service`): History Service
 - **History** (`AIPS_History`): Handles history management for AI post generation runs.
+- **Post History Ui** (`AIPS_Post_History_UI`): No description available
 - **Schedule Result Handler** (`AIPS_Schedule_Result_Handler`): No description available
 - **Session To Json** (`AIPS_Session_To_JSON`): Session To JSON Converter
 - **Utilities** (`AIPS_Utilities`): General Utilities
@@ -941,6 +943,7 @@ flowchart TD
     DB_Migrations["Db Migrations"]
     History_Service{"History Service"}
     History["History"]
+    Post_History_UI["Post History Ui"]
     Schedule_Result_Handler["Schedule Result Handler"]
     Session_To_JSON["Session To Json"]
     Utilities["Utilities"]
@@ -956,6 +959,7 @@ flowchart TD
     Bulk_Batch_Processor --> History_Service
     Date_Time_DB_Repair --> DateTime
     DateTime --> DateTime
+    History --> DateTime
     Session_To_JSON --> DateTime
     Job_Dispatcher --> Dispatch_Summary
     Job_Dispatcher --> History_Service
@@ -1072,13 +1076,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 1308
+**Lines of Code**: 1495
 
 **Technical Details**:
 
-- **Public Methods** (2): `__construct()`, `enqueue_admin_assets()`
+- **Public Methods** (3): `__construct()`, `enqueue_admin_assets()`, `render_history_modal_scaffold()`
 - **Dependencies** (3): `AIPS_Admin_Menu_Helper`, `AIPS_Config`, `AIPS_History_Type`
-- **Action Hooks** (1): `admin_enqueue_scripts`
+- **Action Hooks** (2): `admin_enqueue_scripts`, `admin_footer`
 - **Filter Hooks** (2): `aips_chartjs_src`
 - **WordPress APIs Used**: Options
 - **Infrastructure**: Config
@@ -1087,7 +1091,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1308 lines (may violate SRP)
+1. Consider refactoring — class has 1495 lines (may violate SRP)
 2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -1175,7 +1179,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Ajax_Registry`
 
-**Lines of Code**: 291
+**Lines of Code**: 293
 
 **Technical Details**:
 
@@ -1619,11 +1623,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Bulk_Batch_Job_Store`
 
-**Lines of Code**: 341
+**Lines of Code**: 378
 
 **Technical Details**:
 
-- **Public Methods** (8): `create()`, `get()`, `mark_failed()`, `mark_completed()`, `start_processing()`, `update_status()`, `increment_processed()`, `cleanup_old_jobs()`
+- **Public Methods** (9): `create()`, `get()`, `get_status_counts()`, `mark_failed()`, `mark_completed()`, `start_processing()`, `update_status()`, `increment_processed()`, `cleanup_old_jobs()`
 - **Dependencies** (1): `AIPS_DB_Manager`
 - **Database Operations**: Uses Wpdb, Has Repository
 
@@ -2626,14 +2630,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History`
 
-**Lines of Code**: 531
+**Lines of Code**: 669
 
 **Technical Details**:
 
-- **Public Methods** (15): `__construct()`, `ajax_bulk_delete_history()`, `ajax_clear_history()`, `ajax_export_history()`, `ajax_get_history_details()`, `ajax_get_history_logs()`, `ajax_reload_history()`, `ajax_retry_generation()`, `get_history()`, `get_stats()`, ... and 5 more
-- **Dependencies** (6): `AIPS_Ajax_Response`, `AIPS_Config`, `AIPS_Generator`, `AIPS_History_Repository`, `AIPS_History_Type`, `AIPS_Templates`
-- **Action Hooks** (7): `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, ... and 2 more
-- **AJAX Handlers**: `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, `wp_ajax_aips_reload_history`, `wp_ajax_aips_retry_generation`
+- **Public Methods** (16): `__construct()`, `ajax_bulk_delete_history()`, `ajax_clear_history()`, `ajax_export_history()`, `ajax_get_history_details()`, `ajax_get_history_logs()`, `ajax_get_history_modal_html()`, `ajax_reload_history()`, `ajax_retry_generation()`, `get_history()`, ... and 6 more
+- **Dependencies** (7): `AIPS_Ajax_Response`, `AIPS_Config`, `AIPS_DateTime`, `AIPS_Generator`, `AIPS_History_Repository`, `AIPS_History_Type`, `AIPS_Templates`
+- **Action Hooks** (8): `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, ... and 3 more
+- **AJAX Handlers**: `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, `wp_ajax_aips_get_history_modal_html`, `wp_ajax_aips_reload_history`, `wp_ajax_aips_retry_generation`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Options
 - **Infrastructure**: Config, Ajax Response
@@ -2642,8 +2646,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. [WARNING] Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
-2. Consider refactoring — class has 531 lines (may violate SRP)
+1. [WARNING] Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
+2. Consider refactoring — class has 669 lines (may violate SRP)
 
 ---
 
@@ -2676,7 +2680,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Repository`
 
-**Lines of Code**: 1276
+**Lines of Code**: 1368
 
 **Implements**: `AIPS_History_Repository_Interface`
 
@@ -2691,7 +2695,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1276 lines (may violate SRP)
+1. Consider refactoring — class has 1368 lines (may violate SRP)
 2. High method count (31+ methods) — consider splitting responsibilities
 
 ---
@@ -3380,6 +3384,32 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
+### Post History Ui
+
+**Summary**: No description available
+
+**File**: `ai-post-scheduler/includes/class-aips-post-history-ui.php`
+
+**Class**: `AIPS_Post_History_UI`
+
+**Lines of Code**: 173
+
+**Technical Details**:
+
+- **Public Methods** (3): `__construct()`, `add_post_row_action()`, `render_submitbox_action()`
+- **Dependencies** (2): `AIPS_Admin_Menu_Helper`, `AIPS_History_Repository`
+- **Action Hooks** (1): `post_submitbox_misc_actions`
+- **Filter Hooks** (1): `post_row_actions`
+- **Database Operations**: Has Repository
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. Add comprehensive class-level PHPDoc documentation
+
+---
+
 ### Post Manager
 
 **Summary**: Post Manager Service
@@ -3897,16 +3927,16 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Controller`
 
-**Lines of Code**: 957
+**Lines of Code**: 1099
 
 **Technical Details**:
 
-- **Public Methods** (16): `__construct()`, `ajax_save_schedule()`, `ajax_delete_schedule()`, `ajax_toggle_schedule()`, `ajax_run_now()`, `ajax_bulk_delete_schedules()`, `ajax_bulk_toggle_schedules()`, `ajax_bulk_run_now_schedules()`, `ajax_get_schedules_post_count()`, `ajax_get_schedule_history()`, ... and 6 more
-- **Dependencies** (16): `AIPS_Ajax_Response`, `AIPS_Author_Post_Generator`, `AIPS_Batch_Slicer`, `AIPS_Container`, `AIPS_Generator`, `AIPS_History_Repository`, `AIPS_History_Repository_Interface`, `AIPS_History_Service`, `AIPS_History_Type`, `AIPS_Interval_Calculator`, `AIPS_Schedule_Repository`, `AIPS_Schedule_Repository_Interface`, `AIPS_Scheduler`, `AIPS_Templates`, `AIPS_Unified_Schedule_Service`, `AIPS_Voices`
-- **Action Hooks** (15): `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_save_schedule`, `wp_ajax_aips_toggle_schedule`, ... and 10 more
-- **AJAX Handlers**: `wp_ajax_aips_save_schedule`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_toggle_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_bulk_toggle_schedules`, `wp_ajax_aips_bulk_run_now_schedules`, `wp_ajax_aips_get_schedules_post_count`, `wp_ajax_aips_get_schedule_history`, `wp_ajax_aips_unified_run_now`, `wp_ajax_aips_unified_toggle`, `wp_ajax_aips_unified_bulk_toggle`, `wp_ajax_aips_unified_bulk_run_now`, `wp_ajax_aips_unified_bulk_delete`, `wp_ajax_aips_get_unified_schedule_history`
+- **Public Methods** (17): `__construct()`, `ajax_get_schedule_status_read_model()`, `ajax_save_schedule()`, `ajax_delete_schedule()`, `ajax_toggle_schedule()`, `ajax_run_now()`, `ajax_bulk_delete_schedules()`, `ajax_bulk_toggle_schedules()`, `ajax_bulk_run_now_schedules()`, `ajax_get_schedules_post_count()`, ... and 7 more
+- **Dependencies** (19): `AIPS_Admin_Menu_Helper`, `AIPS_Ajax_Response`, `AIPS_Author_Post_Generator`, `AIPS_Batch_Slicer`, `AIPS_Bulk_Batch_Job_Store`, `AIPS_Cache_Factory`, `AIPS_Container`, `AIPS_Generator`, `AIPS_History_Repository`, `AIPS_History_Repository_Interface`, `AIPS_History_Service`, `AIPS_History_Type`, `AIPS_Interval_Calculator`, `AIPS_Schedule_Repository`, `AIPS_Schedule_Repository_Interface`, `AIPS_Scheduler`, `AIPS_Templates`, `AIPS_Unified_Schedule_Service`, `AIPS_Voices`
+- **Action Hooks** (16): `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_save_schedule`, `wp_ajax_aips_toggle_schedule`, ... and 11 more
+- **AJAX Handlers**: `wp_ajax_aips_save_schedule`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_toggle_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_bulk_toggle_schedules`, `wp_ajax_aips_bulk_run_now_schedules`, `wp_ajax_aips_get_schedules_post_count`, `wp_ajax_aips_get_schedule_history`, `wp_ajax_aips_unified_run_now`, `wp_ajax_aips_unified_toggle`, `wp_ajax_aips_unified_bulk_toggle`, `wp_ajax_aips_unified_bulk_run_now`, `wp_ajax_aips_unified_bulk_delete`, `wp_ajax_aips_get_unified_schedule_history`, `wp_ajax_aips_get_schedule_status_read_model`
 - **Database Operations**: Has Repository
-- **Infrastructure**: Container, Ajax Response, History Service
+- **Infrastructure**: Container, Cache, Ajax Response, History Service
 
 **Missing Functionality**:
 
@@ -3914,9 +3944,9 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. [WARNING] Registers 15 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules
-2. Consider refactoring — class has 957 lines (may violate SRP)
-3. High coupling — depends on 16 classes
+1. [WARNING] Registers 16 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules
+2. Consider refactoring — class has 1099 lines (may violate SRP)
+3. High coupling — depends on 19 classes
 4. Add comprehensive class-level PHPDoc documentation
 
 ---
@@ -5224,14 +5254,14 @@ This section reports on adherence to the project's architectural standards.
 | `AIPS_DB_Manager` | warning | Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_fix_datetime_values, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events |
 | `AIPS_Dev_Tools` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_generate_scaffold |
 | `AIPS_Generated_Posts_Controller` | warning | Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_session, aips_get_session_json, aips_download_session_json |
-| `AIPS_History` | warning | Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs |
+| `AIPS_History` | warning | Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs |
 | `AIPS_Internal_Links_Controller` | warning | Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_internal_links_get_suggestions, aips_internal_links_generate_suggestions, aips_internal_links_update_status, aips_internal_links_update_anchor, aips_internal_links_delete |
 | `AIPS_Onboarding_Wizard` | warning | Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_onboarding_save_strategy, aips_onboarding_create_author, aips_onboarding_create_template, aips_onboarding_generate_topics, aips_onboarding_generate_post |
 | `AIPS_Planner` | warning | Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_generate_topics, aips_bulk_schedule, aips_bulk_generate_now |
 | `AIPS_Post_Review` | warning | Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_draft_posts, aips_publish_post, aips_bulk_publish_posts, aips_regenerate_post, aips_delete_draft_post |
 | `AIPS_Post_Slices_Controller` | warning | Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_slices, aips_get_post_slice, aips_save_post_slice, aips_delete_post_slice, aips_toggle_post_slice_active |
 | `AIPS_Prompt_Sections_Controller` | warning | Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_prompt_sections, aips_get_prompt_section, aips_save_prompt_section, aips_delete_prompt_section, aips_toggle_prompt_section_active |
-| `AIPS_Schedule_Controller` | warning | Registers 15 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules |
+| `AIPS_Schedule_Controller` | warning | Registers 16 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules |
 | `AIPS_Seeder_Admin` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_process_seeder |
 | `AIPS_Settings_AJAX` | warning | Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_test_connection, aips_notifications_data_hygiene |
 | `AIPS_Sources_Controller` | warning | Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_sources, aips_save_source, aips_delete_source, aips_toggle_source_active, aips_fetch_source_now |
@@ -5329,7 +5359,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 |--------------------------|------------------|------------|
 | AIPS_Container (DI) | 29 | 17% |
 | AIPS_Config | 31 | 19% |
-| AIPS_Cache | 13 | 8% |
+| AIPS_Cache | 14 | 8% |
 | AIPS_Ajax_Response | 28 | 17% |
 | AIPS_Logger | 37 | 22% |
 | AIPS_Telemetry | 8 | 5% |
@@ -5369,20 +5399,20 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 | Diagnostics | 6 | System_Diagnostics_Service, System_Status, System_Diagnostics_Environment_Provider, ... (3 more) |
 | Configuration & Settings | 6 | Config, Settings_AJAX, Settings_UI, ... (3 more) |
 | Onboarding | 1 | Onboarding_Wizard |
-| Utilities | 16 | Batch_Queue_Service, Bulk_Batch_Job_Store, Bulk_Batch_Processor, ... (13 more) |
+| Utilities | 17 | Batch_Queue_Service, Bulk_Batch_Job_Store, Bulk_Batch_Processor, ... (14 more) |
 
 ### Largest Classes (by Lines of Code)
 
 | Class | Lines | File |
 |-------|-------|------|
-| Admin Assets | 1308 | `class-aips-admin-assets.php` |
-| History Repository | 1276 | `class-aips-history-repository.php` |
+| Admin Assets | 1495 | `class-aips-admin-assets.php` |
+| History Repository | 1368 | `class-aips-history-repository.php` |
 | Db Manager | 1188 | `class-aips-db-manager.php` |
 | Generator | 1155 | `class-aips-generator.php` |
 | Author Topics Controller | 1125 | `class-aips-author-topics-controller.php` |
+| Schedule Controller | 1099 | `class-aips-schedule-controller.php` |
 | Schedule Processor | 1076 | `class-aips-schedule-processor.php` |
 | Ai Service | 1042 | `class-aips-ai-service.php` |
-| Schedule Controller | 957 | `class-aips-schedule-controller.php` |
 | Post Review | 949 | `class-aips-post-review.php` |
 | Research Controller | 906 | `class-aips-research-controller.php` |
 
@@ -5392,7 +5422,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 |-------|--------------|------------|
 | Schedule Processor | 21 | Admin_Menu_Helper, Batch_Queue_Service, Container, ... (18 more) |
 | Generator | 20 | AI_Service, AI_Service_Interface, Admin_Menu_Helper, ... (17 more) |
-| Schedule Controller | 16 | Ajax_Response, Author_Post_Generator, Batch_Slicer, ... (13 more) |
+| Schedule Controller | 19 | Admin_Menu_Helper, Ajax_Response, Author_Post_Generator, ... (16 more) |
 | Admin Menu | 15 | Article_Structure_Repository, Config, Dashboard_Controller, ... (12 more) |
 | Author Topics Controller | 15 | Ajax_Response, Author_Post_Generator, Author_Topic_Logs_Repository, ... (12 more) |
 | Author Post Generator | 14 | Admin_Menu_Helper, Author_Topic_Logs_Repository, Author_Topics_Repository, ... (11 more) |

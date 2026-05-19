@@ -109,6 +109,17 @@ if (!defined('ABSPATH')) {
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_cleanup_stale_jobs_cache"><?php esc_html_e('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'); ?></button>
                     </div>
                     <div class="aips-status-op-result"></div>
+                    <?php $cache_subsystems = AIPS_Cache_Policy::get_subsystems(); ?>
+                    <div class="aips-cache-rebuild-controls">
+                        <label for="aips-cache-subsystem"><strong><?php esc_html_e('Rebuild caches:', 'ai-post-scheduler'); ?></strong></label>
+                        <select id="aips-cache-subsystem">
+                            <option value="all"><?php esc_html_e('All subsystems', 'ai-post-scheduler'); ?></option>
+                            <?php foreach ($cache_subsystems as $key => $info) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($info['label']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
+                    </div>
                 </div>
             </div>
 
