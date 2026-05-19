@@ -36,6 +36,11 @@ class AIPS_Job_Dispatcher {
 	private $history_service;
 
 	/**
+	 * @var array|null Per-instance hook-indexed cron cache (null = not yet built).
+	 */
+	private $cron_hook_index = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
@@ -225,6 +230,11 @@ class AIPS_Job_Dispatcher {
 	/**
 	 * Get the timestamp of an already scheduled matching job.
 	 *
+	 * wp_next_scheduled() is tried first. When it returns false a single
+	 * per-instance hook-indexed cache built from _get_cron_array() is used as
+	 * a fallback, so repeated calls during batch dispatch never traverse the
+	 * full cron structure more than once per dispatcher instance (one request).
+	 *
 	 * @param AIPS_Job_Definition $job Job to check.
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
@@ -234,26 +244,39 @@ class AIPS_Job_Dispatcher {
 			return (int) $timestamp;
 		}
 
-		if (function_exists('wp_get_scheduled_event')) {
-			$event = wp_get_scheduled_event($job->get_hook(), $job->get_args());
-			if ($event && isset($event->timestamp)) {
-				return (int) $event->timestamp;
+		// Fallback: build a hook-indexed cron structure once per instance so
+		// batch dispatch stays O(1) per hook lookup instead of O(cron_size)
+		// per job. wp_get_scheduled_event() is intentionally skipped because
+		// it duplicates the same _get_cron_array() scan that wp_next_scheduled()
+		// already performed above.
+		if ($this->cron_hook_index === null) {
+			$this->cron_hook_index = array();
+			if (function_exists('_get_cron_array')) {
+				$cron = _get_cron_array();
+				if (is_array($cron)) {
+					foreach ($cron as $ts => $hooks) {
+						foreach ($hooks as $hook_name => $events) {
+							if (!isset($this->cron_hook_index[$hook_name])) {
+								$this->cron_hook_index[$hook_name] = array();
+							}
+							foreach ($events as $event_data) {
+								$this->cron_hook_index[$hook_name][] = array(
+									'timestamp' => (int) $ts,
+									'args'      => isset($event_data['args']) ? $event_data['args'] : array(),
+								);
+							}
+						}
+					}
+				}
 			}
 		}
 
-		if (function_exists('_get_cron_array')) {
-			$cron = _get_cron_array();
-			if (is_array($cron)) {
-				foreach ($cron as $scheduled_timestamp => $hooks) {
-					if (!isset($hooks[$job->get_hook()]) || !is_array($hooks[$job->get_hook()])) {
-						continue;
-					}
-
-					foreach ($hooks[$job->get_hook()] as $event_data) {
-						if (isset($event_data['args']) && $event_data['args'] === $job->get_args()) {
-							return (int) $scheduled_timestamp;
-						}
-					}
+		$hook = $job->get_hook();
+		if (!empty($this->cron_hook_index[$hook])) {
+			$job_args = $job->get_args();
+			foreach ($this->cron_hook_index[$hook] as $entry) {
+				if ($entry['args'] === $job_args) {
+					return $entry['timestamp'];
 				}
 			}
 		}
