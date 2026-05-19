@@ -87,6 +87,44 @@
     background: #f9f9f9;
 }
 
+.aips-research-row-highlight {
+    animation: aips-research-row-highlight 5s ease-out;
+}
+
+@keyframes aips-research-row-highlight {
+    0% {
+        background-color: #fff8cf;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.aips-research-actions-toolbar {
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.aips-research-results {
+    padding: 16px 20px 0;
+}
+
+.aips-research-modal-actions {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.aips-research-modal-actions .spinner {
+    float: none;
+    margin: 0;
+}
+
+.aips-source-group-label {
+    display: block;
+    margin-bottom: 4px;
+}
+
 /* Topic Badge */
 .topic-badge {
     display: inline-block;

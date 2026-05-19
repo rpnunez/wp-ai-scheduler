@@ -194,6 +194,24 @@ class AIPS_Research_Controller {
                 $topic['keywords'] = json_decode($topic['keywords'], true);
             }
 
+            if (isset($topic['researched_at'])) {
+                $researched_at_raw = $topic['researched_at'];
+
+                if (is_numeric($researched_at_raw)) {
+                    $researched_at = absint($researched_at_raw);
+                    // Guard against legacy values like "2026" caused by truncating a MySQL datetime string.
+                    $topic['researched_at'] = $researched_at >= 946684800 ? $researched_at : '';
+                } else {
+                    $topic['researched_at'] = '';
+                    if (is_string($researched_at_raw)) {
+                        $mysql_datetime = AIPS_DateTime::fromMysqlOrNull($researched_at_raw);
+                        if ($mysql_datetime instanceof AIPS_DateTime) {
+                            $topic['researched_at'] = $mysql_datetime->timestamp();
+                        }
+                    }
+                }
+            }
+
             $topic_id = isset($topic['id']) ? absint($topic['id']) : 0;
             $topic['generated_post_count'] = isset($post_counts[$topic_id]) ? (int) $post_counts[$topic_id] : 0;
         }

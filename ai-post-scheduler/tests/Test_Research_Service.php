@@ -81,6 +81,8 @@ class Test_Research_Service extends WP_UnitTestCase {
         $this->assertCount(2, $result);
         $this->assertEquals(95, $result[0]['score']);
         $this->assertEquals('How AI is Transforming Content Marketing in 2025', $result[0]['topic']);
+        $this->assertIsInt($result[0]['researched_at']);
+        $this->assertGreaterThan(1000000000, $result[0]['researched_at']);
     }
     
     /**
