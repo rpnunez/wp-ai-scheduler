@@ -60,7 +60,7 @@ class AIPS_Article_Structure_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_article_structures';
-		$this->cache = AIPS_Cache_Factory::named( 'aips_article_structure_repository' );
+		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY ) );
 	}
 	
 	/**
@@ -74,7 +74,7 @@ class AIPS_Article_Structure_Repository {
 	 * @return array Array of structure objects.
 	 */
 	public function get_all($active_only = false) {
-		$key = 'all:' . ( $active_only ? '1' : '0' );
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'all', array('active_only' => $active_only) );
 		if ( $this->cache->has( $key ) ) {
 			return $this->cache->get( $key );
 		}
@@ -94,7 +94,7 @@ class AIPS_Article_Structure_Repository {
 	 * @return object|null Structure object or null if not found.
 	 */
 	public function get_by_id($id) {
-		$key = 'id:' . (int) $id;
+		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'id', array('id' => $id) );
 		if ( $this->cache->has( $key ) ) {
 			return $this->cache->get( $key );
 		}
@@ -167,7 +167,7 @@ class AIPS_Article_Structure_Repository {
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -220,7 +220,7 @@ class AIPS_Article_Structure_Repository {
 		) !== false;
 
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
 		}
 
 		return $result;
@@ -235,7 +235,7 @@ class AIPS_Article_Structure_Repository {
 	public function delete($id) {
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 		if ( $result ) {
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
 		}
 		return $result;
 	}
