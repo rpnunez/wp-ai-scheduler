@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2024-05-28 - [Extract AI Variable Resolver]
+**Context:** The `AIPS_Generator` class was exhibiting "God Object" tendencies by handling prompt building, AI orchestration, WordPress post creation logic, and AI variable extraction/resolution. The AI variable logic specifically was complex and mixed deeply with orchestration.
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility" principles by extracting AI Variable extraction, context generation, and resolution into `AIPS_AI_Variable_Resolver`. To prevent circular dependencies, a callback array (`$content_generator_callback`) is passed to the resolver to perform the actual AI generation (`$this->generate_content`). `AIPS_Generator` now uses proxy methods to maintain 100% backward compatibility for all usages inside and outside the class.
+**Consequence:**
+* `AIPS_Generator` delegates variable processing to `AIPS_AI_Variable_Resolver`, improving internal class cohesion.
+* Maintains 100% backward compatibility.
+* Trade-off: slightly more complex initialization with the closure injection in the constructor, and 1 additional file added to the autoloader.
+**Tests:** Created `class-aips-ai-variable-resolver.php` and verified it has no syntax errors. Updated `tests/AIPS_Autoloader_Test.php` to include the new file and confirmed autoloading functions properly.

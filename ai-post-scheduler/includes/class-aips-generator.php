@@ -37,6 +37,11 @@ class AIPS_Generator {
      */
     private $generation_logger;
 
+    /**
+     * @var AIPS_AI_Variable_Resolver Extracted logic for AI Variables resolution.
+     */
+    private $ai_variable_resolver;
+
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -104,6 +109,13 @@ class AIPS_Generator {
 
         // Initialize logger wrapper
         $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
+        $this->ai_variable_resolver = new AIPS_AI_Variable_Resolver(
+            $this->template_processor,
+            $this->generation_logger,
+            function($prompt, $options, $log_type) {
+                return $this->generate_content($prompt, $options, $log_type);
+            }
+        );
     }
 
     /**
@@ -206,55 +218,27 @@ class AIPS_Generator {
      * @return array Associative array of resolved AI variable values.
      */
     public function resolve_ai_variables($template, $content, $voice = null) {
-        // For backward compatibility, convert to context and delegate
-        $context = new AIPS_Template_Context($template, $voice, null);
-        return $this->resolve_ai_variables_from_context($context, $content);
+        // Proxy method for backward compatibility. Extracted to AIPS_AI_Variable_Resolver.
+        return $this->ai_variable_resolver->resolve_ai_variables($template, $content, $voice);
     }
 
     /**
      * Resolve AI Variables from a generation context.
      *
-     * Extracts AI Variables from the title prompt and uses AI to generate
-     * appropriate values based on the content context.
+     * Proxy method for backward compatibility. Extracted to AIPS_AI_Variable_Resolver.
      *
      * @param AIPS_Generation_Context $context Generation context.
      * @param string                  $content Generated article content for context.
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_from_context($context, $content) {
-        // Get the title prompt from context
-        $title_prompt = $context->get_title_prompt();
-
-        // For template contexts with voice, voice takes precedence
-        if ($context->get_type() === 'template' && $context->get_voice_id()) {
-            $voice_obj = $context->get_voice();
-            if ($voice_obj && !empty($voice_obj->title_prompt)) {
-                $title_prompt = $voice_obj->title_prompt;
-            }
-        }
-
-        // Avoid building the content context when the title prompt does not
-        // contain any AI variables to resolve.
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
-        $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
-        if (empty($ai_variables)) {
-            return array();
-        }
-
-        // Build context from content prompt and generated content only when AI
-        // variables are present. Use smart truncation to preserve context from
-        // both beginning and end of content.
-        $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
-        $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
-
-        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+        return $this->ai_variable_resolver->resolve_ai_variables_from_context($context, $content);
     }
 
     /**
      * Resolve AI variables for a template string using context text.
+     *
+     * Proxy method for backward compatibility. Extracted to AIPS_AI_Variable_Resolver.
      *
      * @param string $template_string Template that may include AI variables.
      * @param string $context_str     Context used to resolve variable values.
@@ -262,48 +246,13 @@ class AIPS_Generator {
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_for_template_string($template_string, $context_str, $log_type = 'ai_variables') {
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
-        $ai_variables = $this->template_processor->extract_ai_variables($template_string);
-
-        if (empty($ai_variables)) {
-            return array();
-        }
-
-        $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
-
-        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('max_tokens' => 200);
-        $result = $this->generate_content($resolve_prompt, $options, $log_type);
-
-        if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
-            return array();
-        }
-
-        $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
-
-        if (empty($resolved_values)) {
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-                'component' => $log_type,
-            ));
-        } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-                'component' => $log_type,
-            ));
-        }
-
-        return $resolved_values;
+        return $this->ai_variable_resolver->resolve_ai_variables_for_template_string($template_string, $context_str, $log_type);
     }
 
     /**
      * Build context text for featured image AI variable resolution.
+     *
+     * Proxy method for backward compatibility. Extracted to AIPS_AI_Variable_Resolver.
      *
      * @param AIPS_Generation_Context $context Generation context.
      * @param string                  $content Generated content.
@@ -311,25 +260,7 @@ class AIPS_Generator {
      * @return string
      */
     private function build_featured_image_variable_context($context, $content = '', $title = '') {
-        $context_parts = array();
-
-        if (!empty($context->get_content_prompt())) {
-            $context_parts[] = 'Content Prompt: ' . $context->get_content_prompt();
-        }
-
-        if (!empty($title)) {
-            $context_parts[] = 'Generated Post Title: ' . $title;
-        }
-
-        if (!empty($content)) {
-            $context_parts[] = "Generated Article Content:\n" . $this->smart_truncate_content($content, 1600);
-        }
-
-        if (!empty($context->get_topic())) {
-            $context_parts[] = 'Topic: ' . $context->get_topic();
-        }
-
-        return implode("\n\n", $context_parts);
+        return $this->ai_variable_resolver->build_featured_image_variable_context($context, $content, $title);
     }
 
     /**
@@ -402,33 +333,8 @@ class AIPS_Generator {
      * @return string Truncated content with beginning and end preserved.
      */
     private function smart_truncate_content($content, $max_length = 2000) {
-        $content_length = mb_strlen($content);
-
-        // If content fits within limit, return as-is
-        if ($content_length <= $max_length) {
-            return $content;
-        }
-
-        // Define separator and calculate its length
-        $separator = "\n\n[...]\n\n";
-        $separator_length = mb_strlen($separator);
-
-        // Ensure minimum length to avoid negative values
-        $min_length = $separator_length + 40; // At least 20 chars on each end
-        if ($max_length < $min_length) {
-            $max_length = $min_length;
-        }
-
-        // Calculate how much to take from each end
-        // Take 60% from the beginning (introductions, key points) and 40% from the end (conclusions)
-        $available_length = $max_length - $separator_length;
-        $start_length = (int) ($available_length * 0.6);
-        $end_length = $available_length - $start_length;
-
-        $start_content = mb_substr($content, 0, $start_length);
-        $end_content = mb_substr($content, -$end_length);
-
-        return $start_content . $separator . $end_content;
+        // Proxy method for backward compatibility. Extracted to AIPS_AI_Variable_Resolver.
+        return $this->ai_variable_resolver->smart_truncate_content($content, $max_length);
     }
 
     /**
