@@ -249,6 +249,7 @@ class AIPS_History {
         // avoid a second trip to aips_history_log.
         $raw_logs = isset($history_item->log) ? $history_item->log : array();
 
+        $presenter = new AIPS_History_Run_Presenter();
         $logs = array();
         foreach ($raw_logs as $log) {
             $details = array();
@@ -259,14 +260,9 @@ class AIPS_History {
                 }
             }
 
-            $logs[] = array(
-                'id'               => (int) $log->id,
-                'log_type'         => $log->log_type,
-                'history_type_id'  => (int) $log->history_type_id,
-                'type_label'       => AIPS_History_Type::get_label((int) $log->history_type_id),
-                'timestamp'        => $log->timestamp,
-                'details'          => $details,
-            );
+            $presented_log = $presenter->present_log($log);
+            $presented_log['details'] = $details;
+            $logs[] = $presented_log;
         }
 
         // Calculate duration between created_at and completed_at.
@@ -296,6 +292,8 @@ class AIPS_History {
             }
         }
 
+        $summary = $presenter->present_container($history_item, $raw_logs);
+
         AIPS_Ajax_Response::success(array(
             'container' => array(
                 'id'               => (int) $history_item->id,
@@ -311,6 +309,7 @@ class AIPS_History {
                 'creation_method'  => isset( $history_item->creation_method ) ? $history_item->creation_method : null,
                 'duration_seconds' => $duration_seconds,
             ),
+            'summary'   => $summary,
             'logs'      => $logs,
         ));
     }

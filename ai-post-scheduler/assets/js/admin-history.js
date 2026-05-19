@@ -72,7 +72,8 @@
 			// Copy log detail to clipboard.
 			$(document).on('click', '.aips-log-copy', this.copyLogDetail.bind(this));
 
-			// Log type filter tabs inside the modal.
+			// Modal tabs and log type filter tabs.
+			$(document).on('click', '.aips-history-modal-tab', this.switchModalTab.bind(this));
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
 
 			// Close modal via close button or backdrop click.
@@ -205,6 +206,7 @@
 
 					var container = response.data.container;
 					var logs      = response.data.logs;
+					var summary   = response.data.summary || {};
 
 					// Set modal title to the generated post title when available.
 					if (container.generated_title) {
@@ -216,7 +218,7 @@
 						);
 					}
 
-					$content.html(self.renderLogsModalContent(container, logs));
+					$content.html(self.renderLogsModalContent(container, logs, summary));
 				},
 				error: function () {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
@@ -346,6 +348,18 @@
 		 *
 		 * @param {Event} e - Click event from an `.aips-log-type-filter-btn` element.
 		 */
+
+		switchModalTab: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var tab = $btn.data('tab');
+			var $modal = $('#aips-history-logs-modal');
+			$modal.find('.aips-history-modal-tab').removeClass('aips-btn-primary').addClass('aips-btn-ghost');
+			$btn.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
+			$modal.find('[data-tab-panel]').hide();
+			$modal.find('[data-tab-panel="' + tab + '"]').show();
+		},
+
 		filterLogsByType: function (e) {
 			e.preventDefault();
 			var $btn    = $(e.currentTarget);
@@ -375,10 +389,16 @@
 		 * @param {Object[]} logs      Array of log entry objects.
 		 * @return {string} HTML string.
 		 */
-		renderLogsModalContent: function (container, logs) {
+		renderLogsModalContent: function (container, logs, summaryData) {
 			var self = this;
 			var T    = AIPS.Templates;
 			var html = '';
+			var technicalHtml = '';
+			summaryData = summaryData || {};
+			html += T.render('aips-tmpl-history-modal-tabs', {
+				summaryLabel: aipsHistoryL10n.summaryTabLabel || 'Summary',
+				technicalLabel: aipsHistoryL10n.technicalTabLabel || 'Technical'
+			});
 			var inferredAction = self.inferWhatHappened(container, logs);
 			var inferredOutcome = self.humanizeOutcome(container.status);
 			var changedHighlights = self.detectWhatChanged(logs, container);
@@ -488,8 +508,24 @@
 				value: changedHighlights
 			});
 
-			html += '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>';
-			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
+			var summaryHtml = T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
+			summaryHtml = '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>' + summaryHtml;
+			if (summaryData.task_type) { summaryHtml += '<h4>Run synopsis</h4><p><strong>Task type:</strong> ' + T.escape(summaryData.task_type) + '</p>'; }
+			if (summaryData.timeline && summaryData.timeline.length) {
+				var tl = '<h4>What happened</h4><ul>';
+				$.each(summaryData.timeline, function(i, item){
+					var sevClass = item.severity === 'error' ? 'aips-badge-error' : (item.severity === 'warning' ? 'aips-badge-warning' : 'aips-badge-neutral');
+					tl += T.renderRaw('aips-tmpl-history-summary-timeline-item', { severityClass: T.escape(sevClass), severity: T.escape(item.severity || 'info'), label: T.escape(item.label || ''), timestamp: T.escape(item.timestamp || '') });
+				});
+				tl += '</ul>';
+				summaryHtml += tl;
+			}
+			if (summaryData.result) {
+				summaryHtml += '<h4>Result</h4><p><strong>Template:</strong> ' + T.escape(summaryData.result.template || '—') + ' | <strong>Author:</strong> ' + T.escape(summaryData.result.author || '—') + ' | <strong>Topic:</strong> ' + T.escape(summaryData.result.topic || '—') + ' | <strong>Source:</strong> ' + T.escape(summaryData.result.source || '—') + '</p>';
+			}
+			if (container.status === 'failed') {
+				summaryHtml += '<h4>If failed</h4><p><strong>Reason:</strong> ' + T.escape(summaryData.failure_reason || container.error_message || 'Unknown') + '</p><p><strong>Suggested next action:</strong> ' + T.escape(summaryData.next_action || 'Retry, edit prompt, or check source configuration.') + '</p>';
+			}
 
 			// ---- Log type filter toolbar ----
 			var typeCounts = { all: logs.length };
@@ -525,26 +561,23 @@
 					});
 				});
 
-				html += T.renderRaw('aips-tmpl-history-log-type-filter', {
+				technicalHtml += T.renderRaw('aips-tmpl-history-log-type-filter', {
 					filterLabel: T.escape(aipsHistoryL10n.filterByType || 'Filter:'),
 					buttons:     filterButtons
 				});
 			}
 
 			// ---- Log entries heading ----
-			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
-			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
-			html += T.renderRaw('aips-tmpl-history-logs-heading', {
+			technicalHtml += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
 				count:   logs.length
 			});
 
 			if (logs.length === 0) {
-				html += T.render('aips-tmpl-history-no-logs', {
+				technicalHtml += T.render('aips-tmpl-history-no-logs', {
 					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
 				});
-				html += '</details>';
-				return html;
+				return T.renderRaw('aips-tmpl-history-summary-section', { content: summaryHtml, technical: technicalHtml });
 			}
 
 			var rowsHtml = '';
@@ -584,7 +617,7 @@
 				});
 			});
 
-			html += T.renderRaw('aips-tmpl-history-logs-table', {
+			technicalHtml += T.renderRaw('aips-tmpl-history-logs-table', {
 				colTimestamp: T.escape(aipsHistoryL10n.colTimestamp || 'Timestamp'),
 				colType:      T.escape(aipsHistoryL10n.colType || 'Type'),
 				colLogType:   T.escape(aipsHistoryL10n.colLogType || 'Log Type'),
@@ -592,9 +625,7 @@
 				rows:         rowsHtml
 			});
 
-			html += '</details>';
-
-			return html;
+			return T.renderRaw('aips-tmpl-history-summary-section', { content: summaryHtml, technical: technicalHtml });
 		},
 
 		inferWhatHappened: function (container, logs) {
