@@ -93,14 +93,26 @@ class AIPS_Schedule_Processor {
         $result_handler = null
     ) {
         $container = AIPS_Container::get_instance();
-        $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
-        $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
-        $this->generator = $generator ?: new AIPS_Generator();
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
-        $this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service($this->history_repository));
+        $this->repository = $repository ?: $container->makeIfExists(
+            AIPS_Schedule_Repository_Interface::class,
+            AIPS_Schedule_Repository::class
+        );
+        $this->template_repository = $template_repository ?: $container->makeIfExists(
+            AIPS_Template_Repository::class,
+            AIPS_Template_Repository::class
+        );
+        $this->generator = $generator ?: $container->makeIfExists(AIPS_Generator::class, AIPS_Generator::class);
+        $this->history_repository = $container->makeIfExists(
+            AIPS_History_Repository_Interface::class,
+            AIPS_History_Repository::class
+        );
+        $this->history_service = $history_service ?: $container->makeIfExists(
+            AIPS_History_Service_Interface::class,
+            AIPS_History_Service::class
+        );
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
-        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
         $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
         $this->result_handler = $result_handler ?: new AIPS_Schedule_Result_Handler($this->repository, $this->history_service, $this->history_repository, $this->logger);
     }
@@ -140,7 +152,11 @@ class AIPS_Schedule_Processor {
      */
     private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
         if ($this->batch_queue_service === null) {
-            $this->batch_queue_service = new AIPS_Batch_Queue_Service();
+            $container = AIPS_Container::get_instance();
+            $this->batch_queue_service = $container->makeIfExists(
+                AIPS_Batch_Queue_Service::class,
+                AIPS_Batch_Queue_Service::class
+            );
         }
         return $this->batch_queue_service;
     }

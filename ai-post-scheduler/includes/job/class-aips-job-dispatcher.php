@@ -39,23 +39,28 @@ class AIPS_Job_Dispatcher {
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
-	 * @param AIPS_Logger|null                    $logger             Optional logger.
+	 * @param AIPS_Logger_Interface|null          $logger             Optional logger.
 	 * @param AIPS_History_Service_Interface|null $history_service    Optional history service.
 	 */
 	public function __construct(
 		?AIPS_Resilience_Service $resilience_service = null,
-		?AIPS_Logger $logger = null,
+		?AIPS_Logger_Interface $logger = null,
 		?AIPS_History_Service_Interface $history_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
-			? $container->make(AIPS_History_Service_Interface::class)
-			: new AIPS_History_Service());
+		$this->resilience_service = $resilience_service ?: $container->makeIfExists(
+			AIPS_Resilience_Service::class,
+			AIPS_Resilience_Service::class
+		);
+		$this->logger = $logger ?: $container->makeIfExists(
+			AIPS_Logger_Interface::class,
+			AIPS_Logger::class
+		);
+		$this->history_service = $history_service ?: $container->makeIfExists(
+			AIPS_History_Service_Interface::class,
+			AIPS_History_Service::class
+		);
 	}
 
 	/**
@@ -224,7 +229,36 @@ class AIPS_Job_Dispatcher {
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
 	private function get_scheduled_timestamp(AIPS_Job_Definition $job): int|false {
-		return wp_next_scheduled($job->get_hook(), $job->get_args());
+		$timestamp = wp_next_scheduled($job->get_hook(), $job->get_args());
+		if ($timestamp !== false) {
+			return (int) $timestamp;
+		}
+
+		if (function_exists('wp_get_scheduled_event')) {
+			$event = wp_get_scheduled_event($job->get_hook(), $job->get_args());
+			if ($event && isset($event->timestamp)) {
+				return (int) $event->timestamp;
+			}
+		}
+
+		if (function_exists('_get_cron_array')) {
+			$cron = _get_cron_array();
+			if (is_array($cron)) {
+				foreach ($cron as $scheduled_timestamp => $hooks) {
+					if (!isset($hooks[$job->get_hook()]) || !is_array($hooks[$job->get_hook()])) {
+						continue;
+					}
+
+					foreach ($hooks[$job->get_hook()] as $event_data) {
+						if (isset($event_data['args']) && $event_data['args'] === $job->get_args()) {
+							return (int) $scheduled_timestamp;
+						}
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**

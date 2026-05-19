@@ -84,7 +84,7 @@ class AIPS_Batch_Queue_Service {
 	const HOOK = 'aips_process_schedule_batch';
 
 	/**
-	 * @var AIPS_Logger
+	 * @var AIPS_Logger_Interface
 	 */
 	private $logger;
 
@@ -96,12 +96,19 @@ class AIPS_Batch_Queue_Service {
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Logger|null        $logger        Optional logger for dispatch diagnostics.
+	 * @param AIPS_Logger_Interface|null $logger     Optional logger for dispatch diagnostics.
 	 * @param AIPS_Job_Scheduler|null $job_scheduler Optional job scheduler service.
 	 */
-	public function __construct( ?AIPS_Logger $logger = null, ?AIPS_Job_Scheduler $job_scheduler = null ) {
-		$this->logger = $logger ?: new AIPS_Logger();
-		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler(null, null, $this->logger);
+	public function __construct( ?AIPS_Logger_Interface $logger = null, ?AIPS_Job_Scheduler $job_scheduler = null ) {
+		$container = AIPS_Container::get_instance();
+
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
+		$this->job_scheduler = $job_scheduler ?: $container->makeIfExists(
+			AIPS_Job_Scheduler::class,
+			function() {
+				return new AIPS_Job_Scheduler();
+			}
+		);
 	}
 
 	// -----------------------------------------------------------------------

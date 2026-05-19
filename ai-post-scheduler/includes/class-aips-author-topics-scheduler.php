@@ -79,13 +79,15 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->authors_repository = $container->makeIfExists(AIPS_Authors_Repository::class, AIPS_Authors_Repository::class);
+		$this->topics_generator = $container->makeIfExists(AIPS_Author_Topics_Generator::class, AIPS_Author_Topics_Generator::class);
+		$this->logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_service = new AIPS_History_Service();
-		$this->notifications = new AIPS_Notifications();
-		$this->job_scheduler = new AIPS_Job_Scheduler();
+		$this->history_service = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+		$this->notifications = $container->makeIfExists(AIPS_Notifications::class, AIPS_Notifications::class);
+		$this->job_scheduler = $container->makeIfExists(AIPS_Job_Scheduler::class, AIPS_Job_Scheduler::class);
 	}
 
 	/**
@@ -149,7 +151,11 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 */
 	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
 		if ( $this->batch_queue_service === null ) {
-			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+			$container = AIPS_Container::get_instance();
+			$this->batch_queue_service = $container->makeIfExists(
+				AIPS_Batch_Queue_Service::class,
+				AIPS_Batch_Queue_Service::class
+			);
 		}
 		return $this->batch_queue_service;
 	}
