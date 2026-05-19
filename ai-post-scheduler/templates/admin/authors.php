@@ -365,7 +365,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </div>
                 </div>
 
-                <div class="tablenav" id="aips-queue-tablenav" class="is-hidden">
+                <div class="tablenav is-hidden" id="aips-queue-tablenav">
                     <span class="aips-table-footer-count" id="aips-queue-table-footer-count"></span>
                     <div class="aips-history-pagination-links" id="aips-queue-pagination-links"></div>
                 </div>
@@ -718,7 +718,7 @@ $site_ctx = AIPS_Site_Context::get();
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-detail-section">
-<div class="aips-topic-detail-content" id="aips-topic-details-{{id}}" class="is-hidden">
+<div class="aips-topic-detail-content is-hidden" id="aips-topic-details-{{id}}">
     {{content}}
 </div>
 </script>
@@ -913,4 +913,3 @@ $site_ctx = AIPS_Site_Context::get();
 <script type="text/html" id="aips-tmpl-suggestion-meta-row">
 <span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
 </script>
-

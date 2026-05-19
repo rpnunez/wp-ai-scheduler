@@ -3500,7 +3500,8 @@
    Utility Classes
    ========================================================================== */
 
-.hidden {
+.hidden,
+.is-hidden {
 display: none !important;
 }
 
@@ -3724,6 +3725,10 @@ margin-right: 5px;
 /* Log-details toggle link */
 .aips-toggle-log-details {
 font-size: 13px;
+}
+
+.aips-cache-rebuild-controls {
+	margin-top: 12px;
 }
 
 /* Dashboard stats bar: stack vertically on mobile — see consolidated @media below */
@@ -3980,7 +3985,6 @@ margin-top: 10px;
 /* ==========================================================================
    Utility classes (admin templates)
    ========================================================================== */
-.is-hidden { display: none !important; }
 .is-flex { display: flex !important; }
 .aips-display-block { display: block !important; }
 .aips-flex { display: flex; }

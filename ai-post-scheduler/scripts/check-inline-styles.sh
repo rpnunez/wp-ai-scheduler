@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-added_lines="$(git diff --unified=0 -- templates/admin/*.php | rg '^\+[^+].*style="' || true)"
+added_lines="$(git diff --unified=0 -- templates/admin/*.php | grep -E '^\+[^+].*style="' || true)"
 if [ -n "$added_lines" ]; then
   echo "New inline style attributes were introduced in templates/admin/*.php:" 
   echo "$added_lines"

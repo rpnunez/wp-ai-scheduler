@@ -146,7 +146,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 		</div><!-- /#suggestions-tab -->
 
 		<!-- Generate for Post Tab -->
-		<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" class="is-hidden">
+		<div id="generate-tab" class="aips-tab-content is-hidden" role="tabpanel" aria-hidden="true">
 			<div class="aips-content-panel">
 				<div class="aips-panel-body" style="padding:24px;">
 					<h2 style="margin-top:0;"><?php esc_html_e('Generate Suggestions for a Post', 'ai-post-scheduler'); ?></h2>

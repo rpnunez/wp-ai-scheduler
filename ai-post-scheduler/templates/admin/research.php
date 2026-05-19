@@ -184,7 +184,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         <span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
                         <?php esc_html_e('Research from Sources', 'ai-post-scheduler'); ?>
                     </button>
-                    <span class="spinner" id="source-research-spinner" class="aips-spinner-reset"></span>
+                    <span class="spinner aips-spinner-reset" id="source-research-spinner"></span>
                 </div>
             </form>
             <?php endif; ?>
@@ -276,7 +276,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             </div>
 
             <!-- Table Footer -->
-            <div class="tablenav" id="topics-tablenav" class="is-hidden">
+            <div class="tablenav is-hidden" id="topics-tablenav">
                 <span class="aips-table-footer-count" id="topics-count"></span>
             </div>
         </div><!-- .aips-content-panel (library) -->

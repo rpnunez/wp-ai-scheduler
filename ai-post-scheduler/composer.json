@@ -31,7 +31,8 @@
     "test": "vendor/bin/phpunit",
     "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
     "test:verbose": "vendor/bin/phpunit --verbose",
-    "qa:inline-styles": "bash scripts/check-inline-styles.sh"
+    "qa:inline-styles": "bash scripts/check-inline-styles.sh",
+    "lint:repository-boundary": "php tools/check-repository-boundary.php"
   },
   "config": {
     "allow-plugins": {
