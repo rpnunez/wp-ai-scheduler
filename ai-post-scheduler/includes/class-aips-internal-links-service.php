@@ -75,10 +75,21 @@ class AIPS_Internal_Links_Service {
 		$embeddings_service = null,
 		$logger = null
 	) {
-		$this->embeddings_repo    = $embeddings_repo    ?: new AIPS_Post_Embeddings_Repository();
-		$this->links_repo         = $links_repo         ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
-		$this->logger             = $logger             ?: new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->embeddings_repo = $embeddings_repo ?: $container->makeIfExists(
+			AIPS_Post_Embeddings_Repository::class,
+			AIPS_Post_Embeddings_Repository::class
+		);
+		$this->links_repo = $links_repo ?: $container->makeIfExists(
+			AIPS_Internal_Links_Repository::class,
+			AIPS_Internal_Links_Repository::class
+		);
+		$this->embeddings_service = $embeddings_service ?: $container->makeIfExists(
+			AIPS_Embeddings_Service::class,
+			AIPS_Embeddings_Service::class
+		);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
 	// -------------------------------------------------------------------------

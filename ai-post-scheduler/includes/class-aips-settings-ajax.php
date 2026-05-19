@@ -33,8 +33,8 @@ class AIPS_Settings_AJAX {
 	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$container = AIPS_Container::get_instance();
 
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->ai_service = $ai_service ?: $container->makeIfExists(AIPS_AI_Service_Interface::class, AIPS_AI_Service::class);
+		$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
 		add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));

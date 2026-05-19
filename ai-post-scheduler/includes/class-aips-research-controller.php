@@ -71,11 +71,13 @@ class AIPS_Research_Controller {
      * Initialize the controller.
      */
     public function __construct() {
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
+        $container = AIPS_Container::get_instance();
+
+        $this->research_service       = $container->makeIfExists(AIPS_Research_Service::class, AIPS_Research_Service::class);
+        $this->repository             = $container->makeIfExists(AIPS_Trending_Topics_Repository::class, AIPS_Trending_Topics_Repository::class);
+        $this->logger                 = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
+        $this->history_service        = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+        $this->content_auditor        = $container->makeIfExists(AIPS_Content_Auditor::class, AIPS_Content_Auditor::class);
         $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
         
         $this->init_hooks();

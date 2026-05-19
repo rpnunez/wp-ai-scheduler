@@ -42,17 +42,22 @@ class AIPS_System_Status_Controller {
 	public function __construct() {
 		$this->container = AIPS_Container::get_instance();
 
-		$this->resilience_service = $this->container->has(AIPS_Resilience_Service::class)
-			? $this->container->make(AIPS_Resilience_Service::class)
-			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null);
+		$this->resilience_service = $this->container->makeIfExists(
+			AIPS_Resilience_Service::class,
+			null
+		);
 
-		$this->history_repository = $this->container->has(AIPS_History_Repository::class)
-			? $this->container->make(AIPS_History_Repository::class)
-			: new AIPS_History_Repository();
+		$this->history_repository = $this->container->makeIfExists(
+			AIPS_History_Repository::class,
+			AIPS_History_Repository::class
+		);
 
-		$this->bulk_batch_job_store = $this->container->has(AIPS_Bulk_Batch_Job_Store::class)
-			? $this->container->make(AIPS_Bulk_Batch_Job_Store::class)
-			: (class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null);
+		$this->bulk_batch_job_store = $this->container->makeIfExists(
+			AIPS_Bulk_Batch_Job_Store::class,
+			function() {
+				return class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null;
+			}
+		);
 
 		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
 		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
@@ -185,7 +190,7 @@ class AIPS_System_Status_Controller {
 		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
 		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
 
-		AIPS_Logger::instance()->info('Cache rebuild requested from admin tool.', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
 		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
 			'subsystem' => $subsystem,

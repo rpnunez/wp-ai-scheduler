@@ -17,15 +17,20 @@ class AIPS_Schedule_Controller {
      */
     private $history_repository;
 
+    /**
+     * @var AIPS_Container
+     */
+    private $container;
+
     public function __construct($scheduler = null, ?AIPS_Schedule_Repository_Interface $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
-        $container = AIPS_Container::get_instance();
-        $this->scheduler           = $scheduler ?: $container->makeIfExists(AIPS_Scheduler::class, function() {
+        $this->container = AIPS_Container::get_instance();
+        $this->scheduler           = $scheduler ?: $this->container->makeIfExists(AIPS_Scheduler::class, function() {
             return new AIPS_Scheduler();
         });
-        $this->schedule_repository = $schedule_repository ?: $container->makeIfExists(AIPS_Schedule_Repository_Interface::class, function() {
+        $this->schedule_repository = $schedule_repository ?: $this->container->makeIfExists(AIPS_Schedule_Repository_Interface::class, function() {
             return new AIPS_Schedule_Repository();
         });
-        $this->history_repository  = $history_repository ?: $container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
+        $this->history_repository  = $history_repository ?: $this->container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
             return new AIPS_History_Repository();
         });
 
@@ -112,7 +117,10 @@ class AIPS_Schedule_Controller {
 
         // Build schedule timeline from the same unified source the table uses,
         // so the strip matches "Next Run" values shown to operators.
-        $unified_service = new AIPS_Unified_Schedule_Service();
+        $unified_service = $this->container->makeIfExists(
+            AIPS_Unified_Schedule_Service::class,
+            AIPS_Unified_Schedule_Service::class
+        );
         $all_schedules = $unified_service->get_all('', false);
         $timeline = array();
         $active_schedules = 0;
@@ -151,7 +159,10 @@ class AIPS_Schedule_Controller {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
-        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
+        $bulk_job_store = $this->container->makeIfExists(
+            AIPS_Bulk_Batch_Job_Store::class,
+            AIPS_Bulk_Batch_Job_Store::class
+        );
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
 
         $last_success = array();
@@ -263,7 +274,10 @@ class AIPS_Schedule_Controller {
      * @return void
      */
     private function log_bulk_slicing_notice($history_type, $message, $context = array()) {
-        $history_service = new AIPS_History_Service($this->history_repository);
+        $history_service = $this->container->makeIfExists(
+            AIPS_History_Service_Interface::class,
+            AIPS_History_Service::class
+        );
         $history = $history_service->create($history_type, array(
             'creation_method' => $history_type,
             'user_id'         => get_current_user_id(),
