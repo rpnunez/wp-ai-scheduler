@@ -32,21 +32,34 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	 */
 	public function test_preview_requires_nonce() {
 		$_POST['prompt_template'] = 'Test content prompt';
-		$_POST['nonce'] = 'invalid_nonce';
+		$_REQUEST['nonce'] = $_POST['nonce'] = 'invalid_nonce';
 
-		$this->expectException(WPAjaxDieStopException::class);
-		$this->controller->ajax_preview_template_prompts();
+		ob_start();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertFalse($response['success']);
+		$this->assertEquals('error', $response['data']['code']);
 	}
 
 	/**
 	 * Test that preview requires content prompt
 	 */
 	public function test_preview_requires_content_prompt() {
-		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = '';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -58,7 +71,7 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	 * Test successful preview generation
 	 */
 	public function test_preview_generates_prompts() {
-		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Write a blog post about {{topic}}';
 		$_POST['title_prompt'] = 'Create a catchy title';
 		$_POST['voice_id'] = 0;
@@ -67,7 +80,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['generate_featured_image'] = 0;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -99,7 +116,7 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 			'content_instructions' => 'Write in a formal style',
 		));
 
-		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Write about {{topic}}';
 		$_POST['title_prompt'] = '';
 		$_POST['voice_id'] = $voice_id;
@@ -107,7 +124,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['generate_featured_image'] = 0;
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -126,7 +147,7 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	 * Test preview with image prompt
 	 */
 	public function test_preview_with_image() {
-		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Write about {{topic}}';
 		$_POST['title_prompt'] = '';
 		$_POST['voice_id'] = 0;
@@ -136,7 +157,11 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['image_prompt'] = 'A beautiful landscape with {{topic}}';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
@@ -154,11 +179,15 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$subscriber = $this->factory->user->create(array('role' => 'subscriber'));
 		wp_set_current_user($subscriber);
 
-		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_POST['prompt_template'] = 'Test content';
 
 		ob_start();
-		$this->controller->ajax_preview_template_prompts();
+		try {
+			$this->controller->ajax_preview_template_prompts();
+		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieStopException $e) {
+		}
 		$output = ob_get_clean();
 
 		$response = json_decode($output, true);
