@@ -732,25 +732,25 @@
 			}
 			this.syncBulkUiState();
 		},
-+
-+		/**
-+		 * Sync shared bulk-control state and selected-row count.
-+		 *
-+		 * @return {void}
-+		 */
-+		syncBulkUiState: function () {
-+			AIPS.Utilities.updateSelectedRowCount({
-+				checkboxSelector: '.aips-post-checkbox:checked',
-+				outputSelector: '#aips-post-review-selected-count',
-+				format: '%d selected',
-+			});
-+
-+			AIPS.Utilities.updateBulkActionState({
-+				buttonSelector: '#aips-bulk-action-btn',
-+				checkboxSelector: '.aips-post-checkbox:checked',
-+				actionSelector: '#bulk-action-selector-top',
-+			});
-+		},
+
+		/**
+		 * Sync shared bulk-control state and selected-row count.
+		 *
+		 * @return {void}
+		 */
+		syncBulkUiState: function () {
+			AIPS.Utilities.updateSelectedRowCount({
+				checkboxSelector: '.aips-post-checkbox:checked',
+				outputSelector: '#aips-post-review-selected-count',
+				format: '%d selected',
+			});
+
+			AIPS.Utilities.updateBulkActionState({
+				buttonSelector: '#aips-bulk-action-btn',
+				checkboxSelector: '.aips-post-checkbox:checked',
+				actionSelector: '#bulk-action-selector-top',
+			});
+		},
 	};
 
 	$(document).ready(function () {

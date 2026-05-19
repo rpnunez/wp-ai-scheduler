@@ -130,10 +130,8 @@ class AIPS_Sources_Controller {
 					'rows' => $source_rows,
 					'total' => count($source_rows),
 				),
-				'sources_modals' => $this->render_php_template('templates/partials/sources-modals.php', array(
-					'source_groups' => $source_groups,
-					'interval_displays' => $interval_displays,
-				)),
+				'source_groups' => $source_groups,
+				'interval_displays' => $interval_displays,
 			));
 
 			return;
@@ -142,27 +140,6 @@ class AIPS_Sources_Controller {
 		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
 	}
 
-	/**
-	 * Render an existing PHP template to a string.
-	 *
-	 * @param string $relative_path Template path relative to plugin root.
-	 * @param array  $vars Variables extracted into the template scope.
-	 * @return string
-	 */
-	private function render_php_template($relative_path, $vars = array()) {
-		$template_file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
-		if (!file_exists($template_file)) {
-			return '';
-		}
-
-		if (!empty($vars) && is_array($vars)) {
-			extract($vars, EXTR_SKIP);
-		}
-
-		ob_start();
-		include $template_file;
-		return (string) ob_get_clean();
-	}
 
 	/**
 	 * Return all sources (including inactive) for the admin UI.

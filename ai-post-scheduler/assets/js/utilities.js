@@ -861,6 +861,10 @@
             var onChange = typeof opts.onChange === 'function' ? opts.onChange : function() {};
             var debounceMs = parseInt(opts.debounceMs || 0, 10);
 
+            if ($(inputSelector).length === 0 || $(clearSelector).length === 0) {
+                return function() {};
+            }
+
             var run = function(e) {
                 var term = $(inputSelector).val().toLowerCase().trim();
                 $(clearSelector).toggle(term.length > 0);
@@ -869,7 +873,7 @@
 
             var handler = debounceMs > 0 ? this.debounce(run, debounceMs) : run;
 
-            $(document).on('input search keyup', inputSelector, handler);
+            $(document).on('input search', inputSelector, handler);
             $(document).on('click', clearSelector, function(e) {
                 e.preventDefault();
                 $(inputSelector).val('');

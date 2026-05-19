@@ -1,0 +1,141 @@
+<!-- Add / Edit Source Modal -->
+{% set interval_displays = interval_displays|default([]) %}
+{% set source_groups = source_groups|default([]) %}
+<div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-source-modal-title">{{ t('Add New Source') }}</h2>
+			<button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<form id="aips-source-form" novalidate>
+				<input type="hidden" name="source_id" id="aips-source-id" value="0">
+
+				<div class="aips-form-row">
+					<label for="aips-source-url">
+						{{ t('URL') }}
+						<span class="required" aria-hidden="true">*</span>
+					</label>
+					<input type="url" id="aips-source-url" name="url" required class="regular-text"
+						placeholder="{{ t('https://example.com')|esc_attr }}">
+					<p class="description">{{ t('The full URL of the website (e.g. https://example.com or https://example.com/blog).') }}</p>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-source-label">{{ t('Label') }}</label>
+					<input type="text" id="aips-source-label" name="label" class="regular-text"
+						placeholder="{{ t('e.g. Official Docs, Industry Leader')|esc_attr }}">
+					<p class="description">{{ t('Optional short name to help you identify this source.') }}</p>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-source-description">{{ t('Notes') }}</label>
+					<textarea id="aips-source-description" name="description" rows="3" class="large-text"
+						placeholder="{{ t('Optional notes about why this source is trusted.')|esc_attr }}"></textarea>
+				</div>
+
+				<!-- Fetch Interval -->
+				<div class="aips-form-row">
+					<label for="aips-source-fetch-interval">{{ t('Auto-Fetch Frequency') }}</label>
+					<select id="aips-source-fetch-interval" name="fetch_interval" class="aips-form-select">
+						<option value="">{{ t('— No automatic fetching —') }}</option>
+						{% for key, label in interval_displays %}
+							<option value="{{ key|e('html_attr') }}">{{ label|e }}</option>
+						{% endfor %}
+					</select>
+					<p class="description">{{ t('How often to automatically fetch and cache this source\'s content. Leave blank to disable auto-fetching (you can still use "Fetch Now" manually).') }}</p>
+				</div>
+
+				<!-- Source Groups -->
+				<div class="aips-form-row">
+					<label>{{ t('Source Groups') }}</label>
+					<div id="aips-source-groups-checkboxes" class="aips-checkbox-group">
+						{% if source_groups %}
+							{% for group in source_groups %}
+								<label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+									<input type="checkbox"
+										name="term_ids[]"
+										class="aips-source-group-checkbox"
+										value="{{ group.term_id|e('html_attr') }}">
+									{{ group.name|e }}
+								</label>
+							{% endfor %}
+						{% else %}
+							<p class="description" id="aips-no-groups-msg">
+								{{ t('No Source Groups exist yet. Create groups using the "Manage Groups" button.') }}
+							</p>
+						{% endif %}
+					</div>
+					<p class="description">{{ t('Assign this source to one or more Source Groups. Authors and Templates can then choose which groups to include in their prompts.') }}</p>
+				</div>
+
+				<div class="aips-form-row">
+					<label class="aips-checkbox-label">
+						<input type="checkbox" id="aips-source-is-active" name="is_active" value="1" checked>
+						{{ t('Active') }}
+					</label>
+				</div>
+			</form>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="button aips-modal-close">{{ t('Cancel') }}</button>
+			<button type="button" class="button button-primary" id="aips-save-source-btn">
+				{{ t('Save Source') }}
+			</button>
+		</div>
+	</div>
+</div>
+
+<!-- Manage Source Groups Modal -->
+<div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-groups-modal-title">{{ t('Manage Source Groups') }}</h2>
+			<button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<p class="description" style="margin-bottom:16px;">{{ t('Source Groups let you categorize sources. Authors and Templates can then specify which groups to include in their AI prompts.') }}</p>
+
+			<!-- Existing groups list -->
+			<div id="aips-groups-list" style="margin-bottom:20px;">
+				{% if source_groups %}
+					<table class="aips-table" style="width:100%;">
+						<thead><tr>
+							<th>{{ t('Group Name') }}</th>
+							<th style="width:80px;">{{ t('Actions') }}</th>
+						</tr></thead>
+						<tbody id="aips-groups-table-body">
+							{% for group in source_groups %}
+								<tr data-term-id="{{ group.term_id|e('html_attr') }}">
+									<td>{{ group.name|e }}</td>
+									<td>
+										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-group"
+											data-term-id="{{ group.term_id|e('html_attr') }}"
+											title="{{ t('Delete group')|esc_attr }}">
+											<span class="dashicons dashicons-trash"></span>
+										</button>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% else %}
+					<p id="aips-groups-empty-msg" class="description">{{ t('No Source Groups yet.') }}</p>
+				{% endif %}
+			</div>
+
+			<!-- Add new group inline -->
+			<div style="display:flex; gap:8px; align-items:center;">
+				<input type="text" id="aips-new-group-name" class="regular-text"
+					placeholder="{{ t('New group name…')|esc_attr }}" style="flex:1;">
+				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-group-btn">
+					<span class="dashicons dashicons-plus-alt2"></span>
+					{{ t('Add Group') }}
+				</button>
+			</div>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="button aips-modal-close">{{ t('Close') }}</button>
+		</div>
+	</div>
+</div>

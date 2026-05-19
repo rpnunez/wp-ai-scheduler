@@ -289,11 +289,10 @@ class AIPS_Templates {
                     'rows' => $template_rows,
                     'total' => count($template_rows),
                 ),
-                'templates_modals' => $this->render_php_template('templates/partials/templates-modals.php', array(
-                    'categories' => $categories,
-                    'users' => $users,
-                    'template_source_groups' => $template_source_groups,
-                )),
+                'categories' => $categories,
+                'users' => $users,
+                'template_source_groups' => $template_source_groups,
+                'current_user_id' => get_current_user_id(),
             ));
 
             return;
@@ -302,25 +301,4 @@ class AIPS_Templates {
         include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
     }
 
-    /**
-     * Render an existing PHP template to a string.
-     *
-     * @param string $relative_path Template path relative to plugin root.
-     * @param array  $vars Variables extracted into the template scope.
-     * @return string
-     */
-    private function render_php_template($relative_path, $vars = array()) {
-        $template_file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
-        if (!file_exists($template_file)) {
-            return '';
-        }
-
-        if (!empty($vars) && is_array($vars)) {
-            extract($vars, EXTR_SKIP);
-        }
-
-        ob_start();
-        include $template_file;
-        return (string) ob_get_clean();
-    }
 }

@@ -1,0 +1,563 @@
+<!-- Keep the original modal markup below (not redesigned yet) -->
+{% set categories = categories|default([]) %}
+{% set users = users|default([]) %}
+{% set template_source_groups = template_source_groups|default([]) %}
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2 id="aips-modal-title">{{ t('Add New Template') }}</h2>
+                <button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+            </div>
+            
+            <!-- Wizard Progress Indicator -->
+            <div class="aips-wizard-progress">
+                <div class="aips-wizard-step" data-step="1">
+                    <div class="aips-step-number">1</div>
+                    <div class="aips-step-label">{{ t('Basic Info & Title') }}</div>
+                </div>
+                <div class="aips-wizard-step" data-step="2">
+                    <div class="aips-step-number">2</div>
+                    <div class="aips-step-label">{{ t('Content') }}</div>
+                </div>
+                <div class="aips-wizard-step" data-step="3">
+                    <div class="aips-step-number">3</div>
+                    <div class="aips-step-label">{{ t('Featured Image') }}</div>
+                </div>
+                <div class="aips-wizard-step" data-step="4">
+                    <div class="aips-step-number">4</div>
+                    <div class="aips-step-label">{{ t('Summary') }}</div>
+                </div>
+            </div>
+            
+            <div class="aips-modal-body">
+                <form id="aips-template-form">
+                    <input type="hidden" name="template_id" id="template_id" value="">
+                    
+                    <!-- Step 1: Basic Info & Title -->
+                    <div class="aips-wizard-step-content" data-step="1">
+                        <h3>
+                            {{ t('Basic Information') }}
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Give your template a unique name and optional description to help organize your templates.')|esc_attr }}"></span>
+                        </h3>
+                        <p class="description">{{ t('Give your template a name and brief description to help you identify it later.') }}</p>
+                        
+                        <div class="aips-form-row">
+                            <label for="template_name">
+                                {{ t('Template Name') }} <span class="required">*</span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Enter a unique, descriptive name for this template. This helps you identify it when creating schedules.')|esc_attr }}"></span>
+                            </label>
+                            <input type="text" id="template_name" name="name" required class="regular-text" placeholder="{{ t('e.g., Tech News Blog Post')|esc_attr }}">
+                            <p class="description">{{ t('A descriptive name for your template') }}</p>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="template_description">
+                                {{ t('Template Description') }}
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Optional notes about what this template is used for, target audience, or any special instructions.')|esc_attr }}"></span>
+                            </label>
+                            <textarea id="template_description" name="description" rows="4" class="large-text" placeholder="{{ t('Optional: Describe what this template is used for...')|esc_attr }}"></textarea>
+                            <p class="description">{{ t('Optional. Helps you remember the purpose of this template.') }}</p>
+                        </div>
+
+                        <hr style="margin: 20px 0;">
+
+                        <h3>
+                            {{ t('Title & Excerpt Settings') }}
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.')|esc_attr }}"></span>
+                        </h3>
+                        <p class="description">{{ t('Configure how the AI generates titles and excerpts for your posts.') }}</p>
+                        
+                        <div class="aips-form-row">
+                            <label for="title_prompt">
+                                {{ t('Title Prompt') }}
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Optional. Instruct the AI how to generate titles. Leave empty to auto-generate based on content. Supports AI variables like {{Framework1}}.')|esc_attr }}"></span>
+                            </label>
+                            <input type="text" id="title_prompt" name="title_prompt" class="regular-text aips-ai-var-input" placeholder="{{ t('Leave empty to auto-generate from content prompt')|esc_attr }}">
+                            <p class="description">
+                                {{ t('Supports AI Variables: Use custom variables like {{PHPFramework1Name}} that AI will dynamically resolve based on your content. Example: "PHP Framework Comparison: {{Framework1}} vs. {{Framework2}}"') }}
+                            </p>
+                        </div>
+
+                        <!-- AI Variables Panel -->
+                        <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
+                            <div class="aips-ai-variables-header">
+                                <span class="dashicons dashicons-admin-generic"></span>
+                                <strong>{{ t('AI Variables Detected') }}</strong>
+                                <span class="aips-ai-variables-hint">{{ t('(Click to copy)') }}</span>
+                            </div>
+                            <div class="aips-ai-variables-list" id="aips-ai-variables-list">
+                                <!-- AI Variables will be rendered here by JavaScript -->
+                            </div>
+                            <div class="aips-ai-variables-info">
+                                <p class="description">
+                                    <span class="dashicons dashicons-info"></span>
+                                    {{ t('These variables will be dynamically resolved by AI based on your generated content. Each post generation may produce different values.') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="aips-form-row aips-ai-variables-instructions">
+                            <details class="aips-collapsible">
+                                <summary>
+                                    <span class="dashicons dashicons-editor-help"></span>
+                                    {{ t('How to use AI Variables') }}
+                                </summary>
+                                <div class="aips-collapsible-content">
+                                    <p>{{ t('AI Variables allow you to create dynamic, context-aware titles. The AI will automatically fill in values based on the content it generates.') }}</p>
+                                    <h4>{{ t('Examples:') }}</h4>
+                                    <ul>
+                                        <li><code>{{Framework1}} vs {{Framework2}}</code> → <em>"Laravel vs Symfony"</em></li>
+                                        <li><code>Top {{Number}} {{Topic}} Tips</code> → <em>"Top 10 SEO Tips"</em></li>
+                                        <li><code>{{ProductName}} Review: Is it worth it?</code> → <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
+                                    </ul>
+                                    <h4>{{ t('Tips:') }}</h4>
+                                    <ul>
+                                        <li>{{ t('Use descriptive variable names (e.g., {{PHPFramework}} instead of {{X}})') }}</li>
+                                        <li>{{ t('AI Variables work best with comparison or list-based content prompts') }}</li>
+                                        <li>{{ t('System variables like {{date}}, {{site_name}} are NOT AI Variables') }}</li>
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Content -->
+                    <div class="aips-wizard-step-content" data-step="2" style="display: none;">
+                        <h3>
+                            {{ t('Content Settings') }}
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Define the main content prompt that guides AI to generate your blog post content.')|esc_attr }}"></span>
+                        </h3>
+                        <p class="description">{{ t('Define the content prompt that guides AI to generate your post content.') }}</p>
+                        
+                        <div class="aips-form-row">
+                            <label for="prompt_template">
+                                {{ t('Content Prompt') }} <span class="required">*</span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="{{ t('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.')|esc_attr }}"></span>
+                            </label>
+                            <textarea id="prompt_template" name="prompt_template" rows="8" required class="large-text" placeholder="{{ t('Write a detailed blog post about...')|esc_attr }}"></textarea>
+                            <p class="description">
+                                {{ t('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}') }}
+                            </p>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="voice_id">{{ t('Voice') }}</label>
+                            <div class="aips-voice-selector">
+                                <input type="text" id="voice_search" class="regular-text" placeholder="{{ t('Search voices...')|esc_attr }}" style="margin-bottom: 8px;">
+                                <select id="voice_id" name="voice_id" class="regular-text">
+                                    <option value="0">{{ t('No Voice (Use Default)') }}</option>
+                                </select>
+                                <p class="description">{{ t('Optional. A voice provides pre-configured title and content instructions.') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="post_quantity">{{ t('Number of Posts to Generate') }}</label>
+                            <input type="number" id="post_quantity" name="post_quantity" min="1" value="1" class="small-text">
+                            <p class="description">{{ t('Generate one or more posts when running this template. Useful for batch generation.') }}</p>
+                        </div>
+
+						
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="include_sources" name="include_sources" value="1">
+                                {{ t('Include Sources?') }}
+                            </label>
+                            <p class="description">{{ t('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt.') }}</p>
+                        </div>
+
+                        <div id="template-source-groups-selector" style="display:none; margin-top:8px;">
+                            <div class="aips-form-row">
+                                <label>{{ t('Source Groups') }}</label>
+                                {% if template_source_groups %}
+                                    <div class="aips-checkbox-group">
+                                        {% for sg in template_source_groups %}
+                                            <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                                <input type="checkbox"
+                                                    name="source_group_ids[]"
+                                                    class="aips-template-source-group-cb"
+                                                    value="{{ sg.term_id|e('html_attr') }}">
+                                                {{ sg.name|e }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                    <p class="description">{{ t('Select one or more Source Groups whose active sources will be included in the prompt.') }}</p>
+                                {% else %}
+                                    <p class="description">
+                                        {{ t('No Source Groups found. Create groups on the') }}
+                                        <a href="{{ esc_url(aips_page_url('sources', {})) }}" target="_blank">{{ t('Trusted Sources page') }}</a>.
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Featured Image -->
+                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
+                        <h3>{{ t('Featured Image Options') }}</h3>
+                        <p class="description">{{ t('Configure whether and how to generate featured images for your posts.') }}</p>
+                        
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1">
+                                {{ t('Generate Featured Image?') }}
+                            </label>
+                            <p class="description">{{ t('If checked, a featured image will be attached to the generated post.') }}</p>
+                        </div>
+
+                        <div class="aips-featured-image-settings" style="display: none;">
+                            <div class="aips-form-row">
+                                <label for="featured_image_source">{{ t('Featured Image Source') }}</label>
+                                <select id="featured_image_source" name="featured_image_source">
+                                    <option value="ai_prompt">{{ t('Generate with AI Prompt') }}</option>
+                                    <option value="unsplash">{{ t('Unsplash (keywords)') }}</option>
+                                    <option value="media_library">{{ t('Media Library (select images)') }}</option>
+                                </select>
+                                <p class="description">{{ t('Choose how the featured image should be sourced for this template.') }}</p>
+                            </div>
+
+                            <div class="aips-form-row aips-image-source aips-image-source-ai">
+                                <label for="image_prompt">{{ t('Image Prompt') }}</label>
+                                <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="{{ t('Describe the image you want generated...')|esc_attr }}"></textarea>
+                                <p class="description">{{ t('Used when generating the image with AI.') }}</p>
+                            </div>
+
+                            <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
+                                <label for="featured_image_unsplash_keywords">{{ t('Unsplash Keywords') }}</label>
+                                <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="{{ t('e.g. sunrise, mountains, drone view')|esc_attr }}">
+                                <p class="description">{{ t('Unsplash will return a random image that matches these keywords.') }}</p>
+                            </div>
+
+                            <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
+                                <label>{{ t('Media Library Images') }}</label>
+                                <div class="aips-media-library-picker">
+                                    <input type="hidden" id="featured_image_media_ids" name="featured_image_media_ids" value="">
+                                    <button type="button" class="button" id="featured_image_media_select">{{ t('Select Images') }}</button>
+                                    <button type="button" class="button-link" id="featured_image_media_clear">{{ t('Clear Selection') }}</button>
+                                    <div id="featured_image_media_preview" class="description" style="margin-top: 6px;">{{ t('No images selected.') }}</div>
+                                </div>
+                                <p class="description">{{ t('One image will be chosen at random from the selected media library items.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4: Summary & Post Settings -->
+                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
+                        <h3>{{ t('Review & Post Settings') }}</h3>
+                        <p class="description">{{ t('Review your template configuration and set post publishing options.') }}</p>
+                        
+                        <!-- Summary Display -->
+                        <div class="aips-template-summary">
+                            <h4>{{ t('Template Summary') }}</h4>
+                            <div class="aips-summary-grid">
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Template Name:') }}</strong>
+                                    <span id="summary_name">-</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Description:') }}</strong>
+                                    <span id="summary_description">-</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Title Prompt:') }}</strong>
+                                    <span id="summary_title_prompt">{{ t('Auto-generate from content') }}</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Content Prompt:') }}</strong>
+                                    <span id="summary_content_prompt">-</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Voice:') }}</strong>
+                                    <span id="summary_voice">{{ t('None') }}</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Post Quantity:') }}</strong>
+                                    <span id="summary_quantity">1</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong>{{ t('Featured Image:') }}</strong>
+                                    <span id="summary_featured_image">{{ t('No') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Post Settings -->
+                        <h4 style="margin-top: 20px;">{{ t('Post Settings') }}</h4>
+                        
+                        <div class="aips-form-columns">
+                            <div class="aips-form-row">
+                                <label for="post_status">{{ t('Post Status') }}</label>
+                                <select id="post_status" name="post_status">
+                                    <option value="draft">{{ t('Draft') }}</option>
+                                    <option value="pending">{{ t('Pending Review') }}</option>
+                                    <option value="publish">{{ t('Published') }}</option>
+                                </select>
+                            </div>
+                            
+                            <div class="aips-form-row">
+                                <label for="post_category">{{ t('Category') }}</label>
+                                <select id="post_category" name="post_category">
+                                    <option value="0">{{ t('Select Category') }}</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.term_id|e('html_attr') }}">{{ cat.name|e }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="post_tags">{{ t('Tags') }}</label>
+                            <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="{{ t('tag1, tag2, tag3')|esc_attr }}">
+                            <p class="description">{{ t('Comma-separated list of tags') }}</p>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="post_author">{{ t('Author') }}</label>
+                            <select id="post_author" name="post_author">
+                                {% for user in users %}
+                                <option value="{{ user.ID|e('html_attr') }}" {{ selected(user.ID, current_user_id)|raw }}>
+                                    {{ user.display_name|e }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="is_active" name="is_active" value="1" checked>
+                                {{ t('Template is active') }}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
+                    <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
+                        <div style="text-align: center; padding: 30px 20px;">
+                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
+                            <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title">{{ t('Template Saved Successfully!') }}</h3>
+                            <p class="description" style="font-size: 14px; margin-bottom: 24px;">{{ t('Your template is ready. What would you like to do next?') }}</p>
+                            
+                            <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
+                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
+                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    {{ t('Schedule This Template') }}
+                                </a>
+                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                    <span class="dashicons dashicons-controls-play"></span>
+                                    {{ t('Run Now') }}
+                                </button>
+                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                    <span class="dashicons dashicons-dismiss"></span>
+                                    {{ t('Done') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="aips-modal-footer aips-wizard-footer">
+                <div class="aips-footer-left">
+                    <button type="button" class="button aips-wizard-back" style="display: none;">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span>
+                        {{ t('Back') }}
+                    </button>
+                </div>
+                <div class="aips-footer-center">
+                    <button type="button" class="button aips-save-draft-template" title="{{ t('Save current progress as inactive template')|esc_attr }}">
+                        <span class="dashicons dashicons-cloud-saved"></span>
+                        {{ t('Save Draft') }}
+                    </button>
+                    <button type="button" class="button aips-test-template" title="{{ t('Generate a sample post using current settings')|esc_attr }}">
+                        <span class="dashicons dashicons-controls-play"></span>
+                        {{ t('Test Generation') }}
+                    </button>
+                    <button type="button" class="button aips-preview-prompts" title="{{ t('Preview the prompts that will be sent to AI')|esc_attr }}">
+                        <span class="dashicons dashicons-visibility"></span>
+                        {{ t('Preview Prompts') }}
+                    </button>
+                </div>
+                <div class="aips-footer-right">
+                    <button type="button" class="button aips-modal-close">
+                        {{ t('Cancel') }}
+                    </button>
+                    <button type="button" class="button button-primary aips-wizard-next">
+                        {{ t('Next') }}
+                        <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </button>
+                    <button type="button" class="button button-secondary aips-save-template aips-wizard-save-btn">
+                        {{ t('Save Template') }}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Preview Drawer -->
+            <div class="aips-preview-drawer" id="aips-preview-drawer">
+                <div class="aips-preview-drawer-toggle">
+                    <button type="button" class="aips-preview-drawer-handle" aria-label="{{ t('Toggle preview drawer')|esc_attr }}">
+                        <span class="dashicons dashicons-arrow-down-alt2"></span>
+                        <span class="aips-preview-drawer-label">{{ t('Prompt Preview') }}</span>
+                    </button>
+                </div>
+                <div class="aips-preview-drawer-content" style="display: none;">
+                    <div class="aips-preview-loading" style="display: none;">
+                        <span class="spinner is-active"></span>
+                        <span>{{ t('Generating preview...') }}</span>
+                    </div>
+                    <div class="aips-preview-error" style="display: none;"></div>
+                    <div class="aips-preview-sections" style="display: none;">
+                        <div class="aips-preview-metadata">
+                            <div class="aips-preview-meta-item" id="aips-preview-voice" style="display: none;">
+                                <strong>{{ t('Voice:') }}</strong>
+                                <span class="aips-preview-voice-name"></span>
+                            </div>
+                            <div class="aips-preview-meta-item" id="aips-preview-structure" style="display: none;">
+                                <strong>{{ t('Article Structure:') }}</strong>
+                                <span class="aips-preview-structure-name"></span>
+                            </div>
+                            <div class="aips-preview-meta-item">
+                                <strong>{{ t('Sample Topic:') }}</strong>
+                                <span class="aips-preview-sample-topic"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4>{{ t('Content Prompt') }}</h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-content-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4>{{ t('Title Prompt') }}</h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-title-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4>{{ t('Excerpt Prompt') }}</h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-excerpt-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section" id="aips-preview-image-section" style="display: none;">
+                            <h4>{{ t('Image Prompt') }}</h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-image-prompt"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="aips-test-result-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2>{{ t('Test Generation Result') }}</h2>
+                <button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div id="aips-test-result-container">
+                    <div class="aips-form-row">
+                        <label><strong>{{ t('Generated Title:') }}</strong></label>
+                        <div id="aips-test-title" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label><strong>{{ t('Generated Excerpt:') }}</strong></label>
+                        <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row" id="aips-test-image-row" style="display: none;">
+                        <label><strong>{{ t('Image Preview (Prompt/Keywords):') }}</strong></label>
+                        <div id="aips-test-image" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label><strong>{{ t('Generated Content:') }}</strong></label>
+                        <div id="aips-test-content" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">{{ t('Close') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="aips-post-success-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2
+                    id="aips-post-success-modal-title"
+                    data-singular-title="{{ t('Post Successfully Generated')|esc_attr }}"
+                    data-plural-title="{{ t('Posts Successfully Generated')|esc_attr }}"
+                >{{ t('Post Successfully Generated') }}</h2>
+                <button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div class="aips-post-success-summary">
+                    <span class="dashicons dashicons-yes-alt aips-post-success-icon"></span>
+                    <p class="aips-post-success-message" id="aips-success-message">{{ t('1 post has been generated.') }}</p>
+                    <p id="aips-success-note" class="description aips-post-success-note" style="display: none;"></p>
+                </div>
+                <div id="aips-post-results-container" class="aips-post-results-container"></div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close">{{ t('Close') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="aips-tmpl-generated-posts-table">
+        <table class="aips-table aips-generated-posts-modal-table">
+            <thead>
+                <tr>
+                    <th class="column-title">{{ t('Title') }}</th>
+                    <th class="column-excerpt">{{ t('Excerpt') }}</th>
+                    <th class="column-actions">{{ t('Actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>{{rows}}</tbody>
+        </table>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-generated-post-row">
+        <tr class="aips-generated-post-result-row">
+            <td class="column-title"><div class="cell-primary"><strong>{{title}}</strong></div></td>
+            <td class="column-excerpt">{{excerpt}}</td>
+            <td class="column-actions">
+                <div class="cell-actions">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{edit_url}}" target="_blank" rel="noopener noreferrer">
+                        {{ t('Edit Post') }}
+                    </a>
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{view_url}}" target="_blank" rel="noopener noreferrer">
+                        {{ t('View Post') }}
+                    </a>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-preview-post" data-post-id="{{post_id}}">
+                        {{ t('Quick Preview') }}
+                    </button>
+                </div>
+            </td>
+        </tr>
+        <tr class="aips-generated-post-result-snippet-row">
+            <td colspan="3">
+                <div class="cell-meta"><strong>{{ t('Content Snippet') }}</strong></div>
+                <div>{{content_snippet}}</div>
+            </td>
+        </tr>
+    </script>
+
+    <div id="aips-post-quick-preview-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2>{{ t('Post Quick Preview') }}</h2>
+                <button class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div class="aips-preview-content">
+                    <h3 id="aips-post-preview-title"></h3>
+                    <p id="aips-post-preview-excerpt" class="description"></p>
+                    <div id="aips-post-preview-content" class="aips-post-preview-content-body"></div>
+                </div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close">{{ t('Close') }}</button>
+            </div>
+        </div>
+    </div>
