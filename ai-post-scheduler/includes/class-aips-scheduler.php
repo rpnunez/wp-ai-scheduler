@@ -30,8 +30,6 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         return self::$instance;
     }
 
-    private $schedule_table;
-    private $templates_table;
     private $interval_calculator;
     private $template_type_selector;
     
@@ -66,9 +64,6 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     private $processor;
     
     public function __construct() {
-        global $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
         $this->template_repository = new AIPS_Template_Repository();

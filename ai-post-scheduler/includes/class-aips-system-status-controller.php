@@ -124,8 +124,8 @@ class AIPS_System_Status_Controller {
 		}
 
 		$deleted = 0;
-		if (class_exists('AIPS_Bulk_Batch_Job_Store')) {
-			$deleted = (new AIPS_Bulk_Batch_Job_Store())->cleanup_old_jobs();
+		if (class_exists('AIPS_Bulk_Batch_Jobs_Repository')) {
+			$deleted = (new AIPS_Bulk_Batch_Jobs_Repository())->cleanup_old_jobs();
 		}
 		$cache_flushed = false;
 		if (class_exists('AIPS_Cache_Factory')) {

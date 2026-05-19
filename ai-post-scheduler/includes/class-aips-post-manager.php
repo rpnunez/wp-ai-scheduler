@@ -20,6 +20,15 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Post_Manager {
 
+	/**
+	 * @var AIPS_Post_Repository
+	 */
+	private $post_repository;
+
+	public function __construct($post_repository = null) {
+		$this->post_repository = $post_repository instanceof AIPS_Post_Repository ? $post_repository : new AIPS_Post_Repository();
+	}
+
     /**
      * Create a new post from generated content.
      *
@@ -180,19 +189,7 @@ class AIPS_Post_Manager {
      * @return bool True when a matching title exists.
      */
     private function post_title_exists($title, $post_type = 'post') {
-        global $wpdb;
-
-        $existing_id = $wpdb->get_var($wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts}
-            WHERE post_type = %s
-            AND post_title = %s
-            AND post_status NOT IN ('trash', 'auto-draft', 'inherit')
-            LIMIT 1",
-            $post_type,
-            $title
-        ));
-
-        return !empty($existing_id);
+        return null !== $this->post_repository->find_existing_generated_post($title, $post_type);
     }
 
     /**
