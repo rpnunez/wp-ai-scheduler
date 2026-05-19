@@ -57,6 +57,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_Logger_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_AI_Service::class));
 		$this->assertTrue($this->container->has(AIPS_AI_Service_Interface::class));
+		$this->assertTrue($this->container->has(AIPS_Resilience_Service::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Telemetry_Repository::class));
@@ -109,6 +110,11 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$telemetry_b = $this->container->make(AIPS_Telemetry_Repository::class);
 		$this->assertSame($telemetry_a, $telemetry_b);
 		$this->assertSame(AIPS_Telemetry_Repository::instance(), $telemetry_a);
+
+		// Test AIPS_Resilience_Service
+		$resilience_a = $this->container->make(AIPS_Resilience_Service::class);
+		$resilience_b = $this->container->make(AIPS_Resilience_Service::class);
+		$this->assertSame($resilience_a, $resilience_b);
 	}
 
 	/**
@@ -137,6 +143,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_Logger_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_AI_Service::class]);
 		$this->assertEquals('singleton', $registered[AIPS_AI_Service_Interface::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Resilience_Service::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Telemetry_Repository::class]);
@@ -157,9 +164,9 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 15 singleton bindings and no transient bindings
+		// Should have 16 singleton bindings and no transient bindings
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(15, $counts['singleton']);
-		$this->assertEquals(15, $counts['total']);
+		$this->assertEquals(16, $counts['singleton']);
+		$this->assertEquals(16, $counts['total']);
 	}
 }
