@@ -148,6 +148,27 @@ class AIPS_Settings {
             'sanitize_callback' => array($this->ui, 'sanitize_similarity_threshold'),
             'default'           => $defaults['aips_topic_similarity_threshold'],
         ));
+
+        register_setting('aips_settings', 'aips_automation_policy_preset', array(
+            'sanitize_callback' => array($this, 'sanitize_automation_policy_preset'),
+            'default'           => $defaults['aips_automation_policy_preset'],
+        ));
+        register_setting('aips_settings', 'aips_automation_policy_per_run_max_items', array(
+            'sanitize_callback' => array($this, 'sanitize_automation_policy_per_run_max_items'),
+            'default'           => $defaults['aips_automation_policy_per_run_max_items'],
+        ));
+        register_setting('aips_settings', 'aips_automation_policy_retry_profile', array(
+            'sanitize_callback' => array($this, 'sanitize_automation_policy_retry_profile'),
+            'default'           => $defaults['aips_automation_policy_retry_profile'],
+        ));
+        register_setting('aips_settings', 'aips_automation_policy_require_approval', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_automation_policy_require_approval'],
+        ));
+        register_setting('aips_settings', 'aips_automation_policy_require_sources', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_automation_policy_require_sources'],
+        ));
         
         // -----------------------------------------------------------------------
         // General section: Default Post Status, Default Category
@@ -415,6 +436,49 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
+        // Automation policy (used across cron-driven schedulers)
+        // -----------------------------------------------------------------------
+        add_settings_field(
+            'aips_automation_policy_preset',
+            __('Automation Policy Preset', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_preset_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_per_run_max_items',
+            __('Per-Run Max Items', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_per_run_max_items_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_retry_profile',
+            __('Automation Retry Profile', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_retry_profile_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_require_approval',
+            __('Require Approval', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_require_approval_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_automation_policy_require_sources',
+            __('Require Sources', 'ai-post-scheduler'),
+            array($this->ui, 'automation_policy_require_sources_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        // -----------------------------------------------------------------------
         // Site-wide Content Strategy settings
         //
         // Options are defined via self::get_content_strategy_options(), so the
@@ -651,6 +715,23 @@ class AIPS_Settings {
      * @return array<string, array{key: string, sanitize_callback: callable, default: mixed}>
      *     Associative array keyed by the full WordPress option name.
      */
+
+    public function sanitize_automation_policy_preset($value) {
+        $allowed = array('steady_publishing', 'research_first_weekly', 'high_volume_bulk_review');
+        $value = sanitize_text_field($value);
+        return in_array($value, $allowed, true) ? $value : 'steady_publishing';
+    }
+
+    public function sanitize_automation_policy_per_run_max_items($value) {
+        return max(1, min(100, absint($value)));
+    }
+
+    public function sanitize_automation_policy_retry_profile($value) {
+        $allowed = array('conservative', 'balanced', 'aggressive');
+        $value = sanitize_text_field($value);
+        return in_array($value, $allowed, true) ? $value : 'balanced';
+    }
+
     public static function get_content_strategy_options() {
         $config_defaults = AIPS_Config::get_instance()->get_default_options();
         return array(

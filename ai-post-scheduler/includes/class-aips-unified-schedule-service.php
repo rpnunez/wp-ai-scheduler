@@ -126,6 +126,18 @@ class AIPS_Unified_Schedule_Service {
 		return $schedules;
 	}
 
+
+	public static function get_automation_policy() {
+		$config = AIPS_Config::get_instance();
+		return array(
+			'preset' => $config->get_option('aips_automation_policy_preset', 'steady_publishing'),
+			'per_run_max_items' => (int) $config->get_option('aips_automation_policy_per_run_max_items', 5),
+			'retry_profile' => $config->get_option('aips_automation_policy_retry_profile', 'balanced'),
+			'require_approval' => (bool) $config->get_option('aips_automation_policy_require_approval', false),
+			'require_sources' => (bool) $config->get_option('aips_automation_policy_require_sources', false),
+		);
+	}
+
 	/**
 	 * Toggle the active status of any schedule type.
 	 *
