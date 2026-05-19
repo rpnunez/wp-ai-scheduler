@@ -76,27 +76,21 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 			$expires_at = $now_ts + (int) $ttl;
 
 			$result = $this->repository->replace(
-				array(
-					'cache_key'   => $cache_key,
-					'cache_group' => $cache_group,
-					'value'       => $cache_value,
-					'expires_at'  => $expires_at,
-					'updated_at'  => $now_ts,
-				),
-				array( '%s', '%s', '%s', '%d', '%d' )
+				$cache_key,
+				$cache_group,
+				$cache_value,
+				$expires_at,
+				$now_ts
 			);
 		} else {
 			// TTL = 0 means "never expires". Store expires_at = 0 to match the NOT NULL DEFAULT 0
 			// schema contract. The get() and purge_expired() methods treat 0 as "never expires".
 			$result = $this->repository->replace(
-				array(
-					'cache_key'   => $cache_key,
-					'cache_group' => $cache_group,
-					'value'       => $cache_value,
-					'expires_at'  => 0,
-					'updated_at'  => $now_ts,
-				),
-				array( '%s', '%s', '%s', '%d', '%d' )
+				$cache_key,
+				$cache_group,
+				$cache_value,
+				0,
+				$now_ts
 			);
 		}
 

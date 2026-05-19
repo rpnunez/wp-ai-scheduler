@@ -177,7 +177,7 @@ class AIPS_DB_Migrations {
 			) );
 
 			if ( ! $exists ) {
-				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( $table, $add_clause );
 			}
 		}
 	}
@@ -214,7 +214,7 @@ class AIPS_DB_Migrations {
 			$exists = $this->schema_repository->column_exists( $table, $col_name );
 
 			if ( ! $exists ) {
-				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( $table, $add_clause );
 			}
 		}
 
@@ -224,7 +224,7 @@ class AIPS_DB_Migrations {
 		if ( $sources_data_exists === $table_sources_data ) {
 			$old_col = $this->schema_repository->column_exists( $table_sources_data, 'word_count' );
 			if ( $old_col ) {
-				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table_sources_data}` CHANGE COLUMN `word_count` `char_count` int NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( $table_sources_data, 'CHANGE COLUMN `word_count` `char_count` int NOT NULL DEFAULT 0' );
 			}
 		}
 	}
