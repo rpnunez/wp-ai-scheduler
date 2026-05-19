@@ -1,0 +1,20 @@
+name: Enforce PR Base Branch
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+jobs:
+  enforce-base:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure pull request targets main
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ "$BASE_REF" != "main" ]; then
+            echo "This repository requires PRs to target 'main'. Current base: '$BASE_REF'."
+            echo "If an exception is intended, update this workflow or use a dedicated exception workflow."
+            exit 1
+          fi
+          echo "PR base branch is main."
