@@ -31,7 +31,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		global $wpdb;
-		$wpdb->get_var_return_val = null;
+		if ( is_object( $wpdb ) && property_exists( $wpdb, 'get_var_return_val' ) ) {
+			$wpdb->get_var_return_val = null;
+		}
+
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
