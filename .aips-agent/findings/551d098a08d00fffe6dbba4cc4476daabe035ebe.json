@@ -1,0 +1,21 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "551d098a08d00fffe6dbba4cc4476daabe035ebe",
+    "type":  "controller_datetime_gap",
+    "severity":  "medium",
+    "status":  "open",
+    "path":  "ai-post-scheduler/includes/class-aips-telemetry-controller.php",
+    "symbol":  "AIPS_Telemetry_Controller",
+    "anchor":  "render_page/ajax_get_telemetry:current_time-strtotime-date-range",
+    "lines":  [
+                  46,
+                  47,
+                  72,
+                  75
+              ],
+    "rationale":  "Telemetry date defaults are calculated in the controller with current_time() plus strtotime().",
+    "remediation":  "Centralize default date-range calculation with AIPS_DateTime and reuse it for render and AJAX defaults.",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}

@@ -1,0 +1,18 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "3d6aaddba33f8346e45d0d904488f969ac2d969b",
+    "type":  "controller_datetime_gap",
+    "severity":  "medium",
+    "status":  "open",
+    "path":  "ai-post-scheduler/includes/class-aips-research-controller.php",
+    "symbol":  "AIPS_Research_Controller",
+    "anchor":  "ajax_schedule_trending_topics:strtotime-start_date",
+    "lines":  [
+                  334
+              ],
+    "rationale":  "Bulk trending-topic scheduling parses a submitted start date with strtotime() inside the controller.",
+    "remediation":  "Validate via AIPS_DateTime and move schedule timestamp calculation into a service/repository boundary.",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}

@@ -1,0 +1,18 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "3a869b73e2333af6f2e640029c374bd23ccea09c",
+    "type":  "god_object",
+    "severity":  "medium",
+    "status":  "open",
+    "path":  "ai-post-scheduler/includes/class-aips-admin-assets.php",
+    "symbol":  "AIPS_Admin_Assets",
+    "anchor":  "file_size:73113",
+    "lines":  [
+                  1
+              ],
+    "rationale":  "Admin asset orchestration is over 73KB, indicating mixed responsibilities and a high-change surface.",
+    "remediation":  "Incrementally extract page-specific asset/l10n providers as adjacent changes create safe boundaries.",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}

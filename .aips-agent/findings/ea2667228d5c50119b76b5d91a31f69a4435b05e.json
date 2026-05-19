@@ -1,0 +1,24 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "ea2667228d5c50119b76b5d91a31f69a4435b05e",
+    "type":  "batch_job_store_datetime_gap",
+    "severity":  "medium",
+    "status":  "resolved",
+    "path":  "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php",
+    "symbol":  "AIPS_Bulk_Batch_Job_Store",
+    "anchor":  "write-timestamps:raw-time-lifecycle",
+    "lines":  [
+                  109,
+                  197,
+                  222,
+                  244,
+                  281,
+                  303,
+                  324
+              ],
+    "rationale":  "Async bulk job created_at and updated_at were sourced from raw time() instead of AIPS_DateTime.",
+    "remediation":  "Replaced lifecycle timestamp writes with a now_timestamp() helper backed by AIPS_DateTime::now()-\u003etimestamp().",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}
