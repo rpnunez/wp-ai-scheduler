@@ -56,10 +56,10 @@ class AIPS_Topic_Expansion_Service {
 	 */
 	public function __construct($embeddings_service = null, $topics_repository = null, ?AIPS_Logger_Interface $logger = null, $authors_repository = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$container = AIPS_Container::get_instance();
-		$this->embeddings_service = $embeddings_service ?: $container->makeIfExists(AIPS_Embeddings_Service::class, AIPS_Embeddings_Service::class);
-		$this->topics_repository = $topics_repository ?: $container->makeIfExists(AIPS_Author_Topics_Repository::class, AIPS_Author_Topics_Repository::class);
+		$this->embeddings_service = $embeddings_service ?: $container->makeIfExists(AIPS_Embeddings_Service::class);
+		$this->topics_repository = $topics_repository ?: $container->makeIfExists(AIPS_Author_Topics_Repository::class);
 		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
-		$this->authors_repository = $authors_repository ?: $container->makeIfExists(AIPS_Authors_Repository::class, AIPS_Authors_Repository::class);
+		$this->authors_repository = $authors_repository ?: $container->makeIfExists(AIPS_Authors_Repository::class);
 		$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 	}
 	

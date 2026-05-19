@@ -101,7 +101,7 @@ class AIPS_Schedule_Processor {
             AIPS_Template_Repository::class,
             AIPS_Template_Repository::class
         );
-        $this->generator = $generator ?: $container->makeIfExists(AIPS_Generator::class, AIPS_Generator::class);
+        $this->generator = $generator ?: $container->makeIfExists(AIPS_Generator::class);
         $this->history_repository = $container->makeIfExists(
             AIPS_History_Repository_Interface::class,
             AIPS_History_Repository::class

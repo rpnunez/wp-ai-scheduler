@@ -81,13 +81,13 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	public function __construct() {
 		$container = AIPS_Container::get_instance();
 
-		$this->authors_repository = $container->makeIfExists(AIPS_Authors_Repository::class, AIPS_Authors_Repository::class);
-		$this->topics_generator = $container->makeIfExists(AIPS_Author_Topics_Generator::class, AIPS_Author_Topics_Generator::class);
+		$this->authors_repository = $container->makeIfExists(AIPS_Authors_Repository::class);
+		$this->topics_generator = $container->makeIfExists(AIPS_Author_Topics_Generator::class);
 		$this->logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
-		$this->notifications = $container->makeIfExists(AIPS_Notifications::class, AIPS_Notifications::class);
-		$this->job_scheduler = $container->makeIfExists(AIPS_Job_Scheduler::class, AIPS_Job_Scheduler::class);
+		$this->notifications = $container->makeIfExists(AIPS_Notifications::class);
+		$this->job_scheduler = $container->makeIfExists(AIPS_Job_Scheduler::class);
 	}
 
 	/**

@@ -57,7 +57,7 @@ class AIPS_Post_Review {
 	 */
 	public function __construct() {
 		$container = AIPS_Container::get_instance();
-		$this->repository             = $container->makeIfExists(AIPS_Post_Review_Repository::class, AIPS_Post_Review_Repository::class);
+		$this->repository             = $container->makeIfExists(AIPS_Post_Review_Repository::class);
 		$this->history_service        = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
 		

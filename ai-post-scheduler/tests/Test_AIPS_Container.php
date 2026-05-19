@@ -167,6 +167,15 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that makeIfExists with one argument instantiates that class when missing.
+	 */
+	public function test_make_if_exists_one_argument_instantiates_id_class() {
+		$result = $this->container->makeIfExists(stdClass::class);
+
+		$this->assertInstanceOf(stdClass::class, $result);
+	}
+
+	/**
 	 * Test that bind_alias maps abstract ids to existing bindings.
 	 */
 	public function test_bind_alias_maps_to_existing_binding() {

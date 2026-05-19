@@ -246,6 +246,7 @@ class AIPS_Container {
 	 *
 	 * @param string $id       Class name or abstract identifier.
 	 * @param mixed  $fallback Optional fallback when binding is not registered.
+	 *                         When omitted, defaults to $id.
 	 *                         Supported forms:
 	 *                         - Closure: called with container and return value used.
 	 *                         - class-string: instantiated when class exists.
@@ -253,6 +254,10 @@ class AIPS_Container {
 	 * @return mixed
 	 */
 	public function makeIfExists($id, $fallback = null) {
+		if (func_num_args() < 2) {
+			$fallback = $id;
+		}
+
 		if ($this->has($id)) {
 			return $this->make($id);
 		}

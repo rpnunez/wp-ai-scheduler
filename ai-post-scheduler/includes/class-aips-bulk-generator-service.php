@@ -244,7 +244,7 @@ class AIPS_Bulk_Generator_Service {
 	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
 		if ( $this->job_store === null ) {
 			$container = AIPS_Container::get_instance();
-			$this->job_store = $container->makeIfExists(AIPS_Bulk_Batch_Job_Store::class, AIPS_Bulk_Batch_Job_Store::class);
+			$this->job_store = $container->makeIfExists(AIPS_Bulk_Batch_Job_Store::class);
 		}
 		return $this->job_store;
 	}
@@ -257,7 +257,7 @@ class AIPS_Bulk_Generator_Service {
 	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
 		if ( $this->batch_queue_service === null ) {
 			$container = AIPS_Container::get_instance();
-			$this->batch_queue_service = $container->makeIfExists(AIPS_Batch_Queue_Service::class, AIPS_Batch_Queue_Service::class);
+			$this->batch_queue_service = $container->makeIfExists(AIPS_Batch_Queue_Service::class);
 		}
 		return $this->batch_queue_service;
 	}

@@ -85,8 +85,8 @@ class AIPS_Sources_Cron {
 	 */
 	public function __construct( $sources_repo = null, $fetcher = null, $logger = null ) {
 		$container = AIPS_Container::get_instance();
-		$this->sources_repo = $sources_repo ?: $container->makeIfExists(AIPS_Sources_Repository::class, AIPS_Sources_Repository::class);
-		$this->fetcher = $fetcher ?: $container->makeIfExists(AIPS_Sources_Fetcher::class, AIPS_Sources_Fetcher::class);
+		$this->sources_repo = $sources_repo ?: $container->makeIfExists(AIPS_Sources_Repository::class);
+		$this->fetcher = $fetcher ?: $container->makeIfExists(AIPS_Sources_Fetcher::class);
 		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 
 		add_action( self::HOOK, array( $this, 'run' ) );

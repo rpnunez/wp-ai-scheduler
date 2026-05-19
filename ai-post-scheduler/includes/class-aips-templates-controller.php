@@ -9,7 +9,7 @@ class AIPS_Templates_Controller {
 
     public function __construct($templates = null) {
         $container = AIPS_Container::get_instance();
-        $this->templates = $templates ?: $container->makeIfExists(AIPS_Templates::class, AIPS_Templates::class);
+        $this->templates = $templates ?: $container->makeIfExists(AIPS_Templates::class);
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -30,7 +30,7 @@ class AIPS_Templates_Controller {
     private function maybe_log_template_slicing_notice($template_id, $template_name, $post_quantity) {
         $post_quantity = max(1, absint($post_quantity));
         $container     = AIPS_Container::get_instance();
-        $batch_service = $container->makeIfExists(AIPS_Batch_Queue_Service::class, AIPS_Batch_Queue_Service::class);
+        $batch_service = $container->makeIfExists(AIPS_Batch_Queue_Service::class);
         $threshold     = $batch_service->get_large_batch_threshold();
 
         if ($post_quantity <= $threshold) {

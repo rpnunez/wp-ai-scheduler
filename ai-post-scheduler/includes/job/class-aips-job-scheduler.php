@@ -50,8 +50,8 @@ class AIPS_Job_Scheduler {
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->slicer = $slicer ?: $container->makeIfExists(AIPS_Batch_Slicer::class, AIPS_Batch_Slicer::class);
-		$this->dispatcher = $dispatcher ?: $container->makeIfExists(AIPS_Job_Dispatcher::class, AIPS_Job_Dispatcher::class);
+		$this->slicer = $slicer ?: $container->makeIfExists(AIPS_Batch_Slicer::class);
+		$this->dispatcher = $dispatcher ?: $container->makeIfExists(AIPS_Job_Dispatcher::class);
 		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
