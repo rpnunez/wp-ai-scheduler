@@ -29,6 +29,16 @@ class AIPS_Cache {
 	private $driver;
 
 	/**
+	 * Internal sentinel used by remember() to detect cache misses.
+	 *
+	 * Must remain distinct from null so cached null values can still be
+	 * treated as cache hits on drivers that support them.
+	 *
+	 * @var object|null
+	 */
+	private $remember_sentinel = null;
+
+	/**
 	 * Per-request memoised result of the system-enabled check.
 	 *
 	 * Null means "not yet read". Populated on the first call to
@@ -235,7 +245,9 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return $callback();
 		}
-		if ($this->has( $key, $group )) {
+		$sentinel = $this->get_remember_sentinel();
+		$cached   = $this->get( $key, $group, $sentinel );
+		if ($cached !== $sentinel) {
 			$this->record_cache_event(
 				'remember',
 				array(
@@ -245,7 +257,7 @@ class AIPS_Cache {
 					'hit'   => true,
 				)
 			);
-			return $this->get( $key, $group );
+			return $cached;
 		}
 
 		$value = $callback();
@@ -261,6 +273,18 @@ class AIPS_Cache {
 		);
 
 		return $value;
+	}
+
+	/**
+	 * Return the remember() miss sentinel, initialising it lazily.
+	 *
+	 * @return object
+	 */
+	private function get_remember_sentinel() {
+		if ($this->remember_sentinel === null) {
+			$this->remember_sentinel = new stdClass();
+		}
+		return $this->remember_sentinel;
 	}
 
 	/**
