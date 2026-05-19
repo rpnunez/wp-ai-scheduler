@@ -638,6 +638,41 @@
 	text-decoration: underline;
 }
 
+
+.aips-table .aips-status-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: var(--aips-space-1);
+	padding: 1px 8px;
+	border-radius: var(--aips-radius-full);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-medium);
+	line-height: 1.35;
+	white-space: nowrap;
+}
+
+.aips-table .aips-status-chip .dashicons {
+	font-size: 12px;
+	width: 12px;
+	height: 12px;
+}
+
+.aips-table .aips-status-chip--published {
+	background: #e9f5ec;
+	color: #1e5a2d;
+}
+
+.aips-table .aips-status-chip--draft {
+	background: #f1f2f3;
+	color: #50575e;
+}
+
+.aips-table .aips-status-chip--pending {
+	background: #edf4fb;
+	color: #135e96;
+}
+
 .aips-table .cell-meta {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);

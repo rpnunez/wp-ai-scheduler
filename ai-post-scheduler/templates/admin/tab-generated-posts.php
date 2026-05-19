@@ -93,6 +93,18 @@ if (!defined('ABSPATH')) {
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
+									<?php $post_status = isset($post_data['post_status']) ? sanitize_key($post_data['post_status']) : ''; ?>
+									<?php if ('publish' === $post_status): ?>
+										<span class="aips-status-chip aips-status-chip--published">
+											<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+											<?php esc_html_e('Published', 'ai-post-scheduler'); ?>
+										</span>
+									<?php elseif ('draft' === $post_status): ?>
+										<span class="aips-status-chip aips-status-chip--draft">
+											<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+											<?php esc_html_e('Draft', 'ai-post-scheduler'); ?>
+										</span>
+									<?php endif; ?>
 									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
 								</td>
 								<td>

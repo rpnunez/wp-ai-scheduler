@@ -123,6 +123,7 @@ class AIPS_Generated_Posts_Controller {
 				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
+				'post_status' => $post->post_status,
 			);
 		}
 		

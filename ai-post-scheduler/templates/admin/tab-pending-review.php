@@ -105,7 +105,11 @@ if (!defined('ABSPATH')) {
 										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
-										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
+										<span class="aips-status-chip aips-status-chip--pending">
+										<span class="dashicons dashicons-clock" aria-hidden="true"></span>
+										<?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?>
+									</span>
+									<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
 										<div class="cell-meta">
