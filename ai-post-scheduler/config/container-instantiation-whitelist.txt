@@ -1,0 +1,6 @@
+# Approved exceptions for direct core-service instantiation checks.
+#
+# Scope: includes/ only. Paths are relative to ai-post-scheduler/.
+#
+# Example:
+# includes/class-aips-legacy-compat-shim.php
