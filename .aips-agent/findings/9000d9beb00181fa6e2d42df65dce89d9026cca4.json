@@ -1,0 +1,14 @@
+{
+  "id": "9000d9beb00181fa6e2d42df65dce89d9026cca4",
+  "type": "direct_wpdb_outside_repo",
+  "severity": "medium",
+  "path": "ai-post-scheduler/includes/class-aips-post-manager.php",
+  "symbol": "AIPS_Post_Manager::post_title_exists",
+  "anchor": "post_title_exists-global-wpdb-select",
+  "status": "open",
+  "summary": "Direct global $wpdb usage for SELECT query.",
+  "recommendation": "Move database access to a repository class.",
+  "first_seen_run_id": "aips-20260518T220000Z",
+  "last_seen_run_id": "aips-20260518T220000Z",
+  "finding_file": ".aips-agent/findings/9000d9beb00181fa6e2d42df65dce89d9026cca4.json"
+}

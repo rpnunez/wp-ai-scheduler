@@ -161,6 +161,36 @@ class AIPS_Container {
 	}
 
 	/**
+	 * Resolve a binding when it exists, otherwise return a fallback value.
+	 *
+	 * This is useful for gradual container adoption in classes that still need
+	 * backward-compatible defaults.
+	 *
+	 * @param string $id       Class name or abstract identifier.
+	 * @param mixed  $fallback Optional fallback when binding is not registered.
+	 *                         Supported forms:
+	 *                         - Closure: called with container and return value used.
+	 *                         - class-string: instantiated when class exists.
+	 *                         - any other value: returned as-is.
+	 * @return mixed
+	 */
+	public function makeIfExists($id, $fallback = null) {
+		if ($this->has($id)) {
+			return $this->make($id);
+		}
+
+		if ($fallback instanceof Closure) {
+			return $fallback($this);
+		}
+
+		if (is_string($fallback) && class_exists($fallback)) {
+			return new $fallback();
+		}
+
+		return $fallback;
+	}
+
+	/**
 	 * Check if a binding exists for the given identifier.
 	 *
 	 * @param string $id Class name or abstract identifier.

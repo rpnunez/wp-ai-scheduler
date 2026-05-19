@@ -1,0 +1,14 @@
+{
+  "id": "7b73f7d8d5245f2f5e89092780756ff89a9a60a0",
+  "type": "controller_container_bypass",
+  "severity": "medium",
+  "path": "ai-post-scheduler/includes/class-aips-seeder-service.php",
+  "symbol": "AIPS_Seeder_Service::__construct",
+  "anchor": "constructor-direct-new",
+  "status": "open",
+  "summary": "Direct instantiation of dependencies in constructor.",
+  "recommendation": "Use container-based dependency injection.",
+  "first_seen_run_id": "aips-20260518T220000Z",
+  "last_seen_run_id": "aips-20260518T220000Z",
+  "finding_file": ".aips-agent/findings/7b73f7d8d5245f2f5e89092780756ff89a9a60a0.json"
+}
