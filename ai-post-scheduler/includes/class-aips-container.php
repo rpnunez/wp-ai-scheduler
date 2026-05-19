@@ -42,6 +42,24 @@ class AIPS_Container {
 	private $singletons = array();
 
 	/**
+	 * @var bool Whether duplicate registrations should throw exceptions.
+	 */
+	private $strict_duplicates = false;
+
+	/**
+	 * @var array<int, array<string, string>> Non-fatal container warnings.
+	 */
+	private $warnings = array();
+
+	/**
+	 * @var array<string, mixed> Resolution diagnostics.
+	 */
+	private $resolution_stats = array(
+		'attempts' => array(),
+		'sources' => array(),
+	);
+
+	/**
 	 * Get the global container instance.
 	 *
 	 * @return self
@@ -83,7 +101,7 @@ class AIPS_Container {
 				'class'  => $id,
 			) );
 		}
-		$this->bindings[$id] = $factory;
+		$this->register_binding($id, $factory, 'transient');
 	}
 
 	/**
@@ -103,7 +121,53 @@ class AIPS_Container {
 				'class'  => $id,
 			) );
 		}
-		$this->singleton_bindings[$id] = $factory;
+		$this->register_binding($id, $factory, 'singleton');
+	}
+
+	/**
+	 * Register a transient alias to another binding or factory.
+	 *
+	 * @param string          $abstract           Alias identifier.
+	 * @param string|Closure  $concrete_or_factory Concrete binding id or factory.
+	 * @return void
+	 */
+	public function bind_alias($abstract, $concrete_or_factory) {
+		if ($concrete_or_factory instanceof Closure) {
+			$this->bind($abstract, $concrete_or_factory);
+			return;
+		}
+
+		if (is_string($concrete_or_factory)) {
+			$this->bind($abstract, function($container) use ($concrete_or_factory) {
+				return $container->make($concrete_or_factory);
+			});
+			return;
+		}
+
+		throw new RuntimeException('Invalid alias target for bind_alias: ' . $abstract);
+	}
+
+	/**
+	 * Register a singleton alias to another binding or factory.
+	 *
+	 * @param string          $abstract            Alias identifier.
+	 * @param string|Closure  $concrete_or_factory Concrete binding id or factory.
+	 * @return void
+	 */
+	public function singleton_alias($abstract, $concrete_or_factory) {
+		if ($concrete_or_factory instanceof Closure) {
+			$this->singleton($abstract, $concrete_or_factory);
+			return;
+		}
+
+		if (is_string($concrete_or_factory)) {
+			$this->singleton($abstract, function($container) use ($concrete_or_factory) {
+				return $container->make($concrete_or_factory);
+			});
+			return;
+		}
+
+		throw new RuntimeException('Invalid alias target for singleton_alias: ' . $abstract);
 	}
 
 	/**
@@ -129,6 +193,7 @@ class AIPS_Container {
 		if (isset($this->singleton_bindings[$id])) {
 			// Return cached instance if already resolved
 			if (isset($this->singletons[$id])) {
+				$this->record_resolution($id, 'singleton_cache');
 				return $this->singletons[$id];
 			}
 
@@ -141,6 +206,7 @@ class AIPS_Container {
 			}
 			$instance = $this->singleton_bindings[$id]($this);
 			$this->singletons[$id] = $instance;
+			$this->record_resolution($id, 'singleton_factory');
 			return $instance;
 		}
 
@@ -153,11 +219,23 @@ class AIPS_Container {
 					'class' => $id,
 				) );
 			}
+			$this->record_resolution($id, 'transient_factory');
 			return $this->bindings[$id]($this);
 		}
 
 		// Binding not found
-		throw new RuntimeException("Binding not found for: {$id}");
+		$this->record_resolution($id, 'missing');
+
+		$counts = $this->get_binding_counts();
+		$similar = $this->find_similar_bindings($id);
+		$message = 'Binding not found for: ' . $id;
+		$message .= '. Registered bindings: ' . $counts['total'] . ' (singleton: ' . $counts['singleton'] . ', transient: ' . $counts['transient'] . ')';
+
+		if (!empty($similar)) {
+			$message .= '. Similar bindings: ' . implode(', ', $similar);
+		}
+
+		throw new RuntimeException($message);
 	}
 
 	/**
@@ -168,6 +246,7 @@ class AIPS_Container {
 	 *
 	 * @param string $id       Class name or abstract identifier.
 	 * @param mixed  $fallback Optional fallback when binding is not registered.
+	 *                         When omitted, defaults to $id.
 	 *                         Supported forms:
 	 *                         - Closure: called with container and return value used.
 	 *                         - class-string: instantiated when class exists.
@@ -175,19 +254,46 @@ class AIPS_Container {
 	 * @return mixed
 	 */
 	public function makeIfExists($id, $fallback = null) {
+		if (func_num_args() < 2) {
+			$fallback = $id;
+		}
+
 		if ($this->has($id)) {
 			return $this->make($id);
 		}
 
 		if ($fallback instanceof Closure) {
+			$this->record_resolution($id, 'fallback_closure');
 			return $fallback($this);
 		}
 
 		if (is_string($fallback) && class_exists($fallback)) {
+			$this->record_resolution($id, 'fallback_class');
 			return new $fallback();
 		}
 
+		$this->record_resolution($id, 'fallback_value');
+
 		return $fallback;
+	}
+
+	/**
+	 * Enable or disable strict duplicate-binding mode.
+	 *
+	 * @param bool $enabled Whether duplicate ids should throw.
+	 * @return void
+	 */
+	public function set_strict_duplicates($enabled) {
+		$this->strict_duplicates = (bool) $enabled;
+	}
+
+	/**
+	 * Check if strict duplicate-binding mode is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_strict_duplicates() {
+		return $this->strict_duplicates;
 	}
 
 	/**
@@ -211,6 +317,48 @@ class AIPS_Container {
 		$this->bindings = array();
 		$this->singleton_bindings = array();
 		$this->singletons = array();
+		$this->strict_duplicates = false;
+		$this->warnings = array();
+		$this->reset_resolution_stats();
+	}
+
+	/**
+	 * Get container warnings accumulated during registration.
+	 *
+	 * @return array<int, array<string, string>>
+	 */
+	public function get_warnings() {
+		return $this->warnings;
+	}
+
+	/**
+	 * Clear accumulated warnings.
+	 *
+	 * @return void
+	 */
+	public function clear_warnings() {
+		$this->warnings = array();
+	}
+
+	/**
+	 * Return resolution diagnostics.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function get_resolution_stats() {
+		return $this->resolution_stats;
+	}
+
+	/**
+	 * Reset resolution diagnostics.
+	 *
+	 * @return void
+	 */
+	public function reset_resolution_stats() {
+		$this->resolution_stats = array(
+			'attempts' => array(),
+			'sources' => array(),
+		);
 	}
 
 	/**
@@ -246,5 +394,122 @@ class AIPS_Container {
 		}
 
 		return $registered;
+	}
+
+	/**
+	 * Register a binding with duplicate handling and scope normalization.
+	 *
+	 * @param string  $id      Binding identifier.
+	 * @param Closure $factory Factory callback.
+	 * @param string  $scope   Binding scope: transient or singleton.
+	 * @return void
+	 */
+	private function register_binding($id, Closure $factory, $scope) {
+		$existing_scope = $this->get_binding_scope($id);
+
+		if ($existing_scope !== null) {
+			$this->handle_duplicate_binding($id, $existing_scope, $scope);
+		}
+
+		if ($scope === 'singleton') {
+			if ($existing_scope === 'transient') {
+				unset($this->bindings[$id]);
+			}
+
+			$this->singleton_bindings[$id] = $factory;
+			return;
+		}
+
+		if ($existing_scope === 'singleton') {
+			unset($this->singleton_bindings[$id]);
+			unset($this->singletons[$id]);
+		}
+
+		$this->bindings[$id] = $factory;
+	}
+
+	/**
+	 * Get current scope for a binding id.
+	 *
+	 * @param string $id Binding identifier.
+	 * @return string|null
+	 */
+	private function get_binding_scope($id) {
+		if (isset($this->singleton_bindings[$id])) {
+			return 'singleton';
+		}
+
+		if (isset($this->bindings[$id])) {
+			return 'transient';
+		}
+
+		return null;
+	}
+
+	/**
+	 * Handle duplicate bindings according to strict mode.
+	 *
+	 * @param string $id             Binding identifier.
+	 * @param string $existing_scope Existing scope.
+	 * @param string $new_scope      New scope.
+	 * @return void
+	 */
+	private function handle_duplicate_binding($id, $existing_scope, $new_scope) {
+		$message = 'Duplicate binding registration for: ' . $id . ' (existing: ' . $existing_scope . ', new: ' . $new_scope . ')';
+
+		if ($this->strict_duplicates) {
+			throw new RuntimeException($message);
+		}
+
+		$this->warnings[] = array(
+			'type' => 'duplicate_binding',
+			'id' => $id,
+			'existing_scope' => $existing_scope,
+			'new_scope' => $new_scope,
+			'message' => $message,
+		);
+	}
+
+	/**
+	 * Record resolution diagnostics for an id and source.
+	 *
+	 * @param string $id     Binding identifier.
+	 * @param string $source Resolution source label.
+	 * @return void
+	 */
+	private function record_resolution($id, $source) {
+		if (!isset($this->resolution_stats['attempts'][$id])) {
+			$this->resolution_stats['attempts'][$id] = 0;
+		}
+		$this->resolution_stats['attempts'][$id]++;
+
+		if (!isset($this->resolution_stats['sources'][$source])) {
+			$this->resolution_stats['sources'][$source] = 0;
+		}
+		$this->resolution_stats['sources'][$source]++;
+	}
+
+	/**
+	 * Find similar binding ids for a missing binding message.
+	 *
+	 * @param string $id Requested binding id.
+	 * @return array<int, string>
+	 */
+	private function find_similar_bindings($id) {
+		$matches = array();
+		$all_ids = array_keys($this->get_registered_bindings());
+
+		foreach ($all_ids as $registered_id) {
+			$distance = levenshtein((string) $id, (string) $registered_id);
+			$max_distance = max(3, (int) floor(strlen((string) $id) / 3));
+
+			if (stripos((string) $registered_id, (string) $id) !== false
+				|| stripos((string) $id, (string) $registered_id) !== false
+				|| $distance <= $max_distance) {
+				$matches[] = $registered_id;
+			}
+		}
+
+		return array_slice(array_values(array_unique($matches)), 0, 5);
 	}
 }

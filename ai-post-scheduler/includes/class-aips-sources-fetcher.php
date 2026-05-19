@@ -68,9 +68,10 @@ class AIPS_Sources_Fetcher {
 	 * @param AIPS_Logger|null                   $logger       Optional (injectable for tests).
 	 */
 	public function __construct( $data_repo = null, $sources_repo = null, $logger = null ) {
-		$this->data_repo    = $data_repo    ?: new AIPS_Sources_Data_Repository();
-		$this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
-		$this->logger       = $logger       ?: new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->data_repo = $data_repo ?: $container->makeIfExists(AIPS_Sources_Data_Repository::class);
+		$this->sources_repo = $sources_repo ?: $container->makeIfExists(AIPS_Sources_Repository::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
 	/**

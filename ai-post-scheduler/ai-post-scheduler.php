@@ -334,81 +334,91 @@ final class AI_Post_Scheduler {
     }
 
     /**
-     * Register initial container bindings for core singletons.
-     *
-     * Phase 1 registration as described in the container architecture plan:
-     * Registers the most-duplicated singletons to validate the container works
-     * correctly before more complex refactors.
+     * Register all container bindings used by plugin runtime.
      *
      * @return void
      */
     private function register_container_bindings() {
         $container = AIPS_Container::get_instance();
 
-        // Register AIPS_Config (uses get_instance() instead of instance())
+        $this->register_core_bindings($container);
+        $this->register_domain_bindings($container);
+        $this->register_runtime_bindings_if_needed($container);
+    }
+
+    /**
+     * Register foundational cross-cutting services and aliases.
+     *
+     * @param AIPS_Container $container Container instance.
+     * @return void
+     */
+    private function register_core_bindings($container) {
         $container->singleton(AIPS_Config::class, function( $container ) {
             return AIPS_Config::get_instance();
-        });
-
-        // Register AIPS_History_Repository
-        $container->singleton(AIPS_History_Repository::class, function( $container ) {
-            return AIPS_History_Repository::instance();
-        });
-
-		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
-			return $container->make(AIPS_History_Repository::class);
-		});
-
-        // Register AIPS_History_Service
-        $container->singleton(AIPS_History_Service::class, function( $container ) {
-            return AIPS_History_Service::instance();
-        });
-
-		$container->singleton(AIPS_History_Service_Interface::class, function( $container ) {
-			return $container->make(AIPS_History_Service::class);
-		});
-
-        // Register AIPS_Notifications_Repository
-        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
-            return AIPS_Notifications_Repository::instance();
-        });
-
-        $container->singleton(AIPS_Notifications_Repository_Interface::class, function( $container ) {
-            return $container->make(AIPS_Notifications_Repository::class);
         });
 
         $container->singleton(AIPS_Logger::class, function( $container ) {
             return AIPS_Logger::instance();
         });
+        $container->singleton_alias(AIPS_Logger_Interface::class, AIPS_Logger::class);
 
-        $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
-            return $container->make(AIPS_Logger::class);
+        $container->singleton(AIPS_History_Repository::class, function( $container ) {
+            return AIPS_History_Repository::instance();
         });
+        $container->singleton_alias(AIPS_History_Repository_Interface::class, AIPS_History_Repository::class);
+
+        $container->singleton(AIPS_History_Service::class, function( $container ) {
+            return AIPS_History_Service::instance();
+        });
+        $container->singleton_alias(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 
         $container->singleton(AIPS_AI_Service::class, function( $container ) {
             return AIPS_AI_Service::instance();
         });
+        $container->singleton_alias(AIPS_AI_Service_Interface::class, AIPS_AI_Service::class);
 
-        $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
-            return $container->make(AIPS_AI_Service::class);
+        $container->singleton(AIPS_Resilience_Service::class, function( $container ) {
+            return new AIPS_Resilience_Service(
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Config::class)
+            );
         });
+    }
+
+    /**
+     * Register domain-layer repositories and domain aliases.
+     *
+     * @param AIPS_Container $container Container instance.
+     * @return void
+     */
+    private function register_domain_bindings($container) {
+        $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
+            return AIPS_Notifications_Repository::instance();
+        });
+        $container->singleton_alias(AIPS_Notifications_Repository_Interface::class, AIPS_Notifications_Repository::class);
 
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
             return AIPS_Schedule_Repository::instance();
         });
-
-        $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
-            return $container->make(AIPS_Schedule_Repository::class);
-        });
+        $container->singleton_alias(AIPS_Schedule_Repository_Interface::class, AIPS_Schedule_Repository::class);
 
         $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
             return AIPS_Telemetry_Repository::instance();
         });
 
-        // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+    }
+
+    /**
+     * Register runtime-dependent bindings only when class availability allows it.
+     *
+     * @param AIPS_Container $container Container instance.
+     * @return void
+     */
+    private function register_runtime_bindings_if_needed($container) {
+        // Runtime-dependent bindings are intentionally centralized here.
     }
 
     /**

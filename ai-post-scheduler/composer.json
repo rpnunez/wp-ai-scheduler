@@ -31,7 +31,8 @@
     "test": "vendor/bin/phpunit",
     "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
     "test:verbose": "vendor/bin/phpunit --verbose",
-    "lint:repository-boundary": "php tools/check-repository-boundary.php"
+    "lint:repository-boundary": "php tools/check-repository-boundary.php",
+    "lint:container-policy": "php tools/check-container-instantiation-policy.php"
   },
   "config": {
     "allow-plugins": {

@@ -71,12 +71,12 @@ class AIPS_Bulk_Batch_Processor {
 	private $job_store;
 
 	/**
-	 * @var AIPS_History_Service
+	 * @var AIPS_History_Service_Interface
 	 */
 	private $history_service;
 
 	/**
-	 * @var AIPS_Logger
+	 * @var AIPS_Logger_Interface
 	 */
 	private $logger;
 
@@ -84,17 +84,28 @@ class AIPS_Bulk_Batch_Processor {
 	 * Constructor.
 	 *
 	 * @param AIPS_Bulk_Batch_Job_Store|null $job_store       Injectable for testing.
-	 * @param AIPS_History_Service|null      $history_service Injectable for testing.
-	 * @param AIPS_Logger|null               $logger          Injectable for testing.
+	 * @param AIPS_History_Service_Interface|null $history_service Injectable for testing.
+	 * @param AIPS_Logger_Interface|null         $logger          Injectable for testing.
 	 */
 	public function __construct(
 		?AIPS_Bulk_Batch_Job_Store $job_store       = null,
-		?AIPS_History_Service      $history_service = null,
-		?AIPS_Logger               $logger          = null
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Logger_Interface $logger          = null
 	) {
-		$this->job_store       = $job_store       ?: new AIPS_Bulk_Batch_Job_Store();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
-		$this->logger          = $logger          ?: new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->job_store = $job_store ?: $container->makeIfExists(
+			AIPS_Bulk_Batch_Job_Store::class,
+			AIPS_Bulk_Batch_Job_Store::class
+		);
+		$this->history_service = $history_service ?: $container->makeIfExists(
+			AIPS_History_Service_Interface::class,
+			AIPS_History_Service::class
+		);
+		$this->logger = $logger ?: $container->makeIfExists(
+			AIPS_Logger_Interface::class,
+			AIPS_Logger::class
+		);
 	}
 
 	/**

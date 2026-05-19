@@ -72,12 +72,29 @@ class AIPS_Internal_Links_Controller {
 		$inserter_service = null,
 		$job_scheduler = null
 	) {
-		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
-		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo  = $embeddings_repo  ?: new AIPS_Post_Embeddings_Repository();
-		$this->logger           = $logger           ?: new AIPS_Logger();
-		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
-		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
+		$container = AIPS_Container::get_instance();
+
+		$this->service = $service ?: $container->makeIfExists(
+			AIPS_Internal_Links_Service::class,
+			AIPS_Internal_Links_Service::class
+		);
+		$this->links_repo = $links_repo ?: $container->makeIfExists(
+			AIPS_Internal_Links_Repository::class,
+			AIPS_Internal_Links_Repository::class
+		);
+		$this->embeddings_repo = $embeddings_repo ?: $container->makeIfExists(
+			AIPS_Post_Embeddings_Repository::class,
+			AIPS_Post_Embeddings_Repository::class
+		);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
+		$this->inserter_service = $inserter_service ?: $container->makeIfExists(
+			AIPS_Internal_Link_Inserter_Service::class,
+			AIPS_Internal_Link_Inserter_Service::class
+		);
+		$this->job_scheduler = $job_scheduler ?: $container->makeIfExists(
+			AIPS_Job_Scheduler::class,
+			AIPS_Job_Scheduler::class
+		);
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));

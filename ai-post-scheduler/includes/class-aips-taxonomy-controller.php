@@ -49,10 +49,10 @@ class AIPS_Taxonomy_Controller {
 	 */
 	public function __construct($repository = null, ?AIPS_History_Service_Interface $history_service = null, $prompt_builder = null, ?AIPS_AI_Service_Interface $ai_service = null) {
 		$container = AIPS_Container::get_instance();
-		$this->repository      = $repository ?: new AIPS_Taxonomy_Repository();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Taxonomy();
-		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->repository      = $repository ?: $container->makeIfExists(AIPS_Taxonomy_Repository::class);
+		$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+		$this->prompt_builder  = $prompt_builder ?: $container->makeIfExists(AIPS_Prompt_Builder_Taxonomy::class);
+		$this->ai_service      = $ai_service ?: $container->makeIfExists(AIPS_AI_Service_Interface::class, AIPS_AI_Service::class);
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_taxonomy_items', array($this, 'ajax_get_taxonomy_items'));

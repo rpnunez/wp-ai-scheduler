@@ -107,16 +107,18 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * Initialize the generator.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->authors_repository = $container->makeIfExists(AIPS_Authors_Repository::class);
+		$this->topics_repository = $container->makeIfExists(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository = $container->makeIfExists(AIPS_Author_Topic_Logs_Repository::class);
+		$this->generator = $container->makeIfExists(AIPS_Generator::class);
+		$this->logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->expansion_service = $container->makeIfExists(AIPS_Topic_Expansion_Service::class);
+		$this->history_service = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
-		$this->job_scheduler = new AIPS_Job_Scheduler();
+		$this->job_scheduler = $container->makeIfExists(AIPS_Job_Scheduler::class);
 	}
 
 	/**

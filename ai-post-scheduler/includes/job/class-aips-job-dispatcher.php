@@ -36,26 +36,36 @@ class AIPS_Job_Dispatcher {
 	private $history_service;
 
 	/**
+	 * @var array|null Per-instance hook-indexed cron cache (null = not yet built).
+	 */
+	private $cron_hook_index = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
-	 * @param AIPS_Logger|null                    $logger             Optional logger.
+	 * @param AIPS_Logger_Interface|null          $logger             Optional logger.
 	 * @param AIPS_History_Service_Interface|null $history_service    Optional history service.
 	 */
 	public function __construct(
 		?AIPS_Resilience_Service $resilience_service = null,
-		?AIPS_Logger $logger = null,
+		?AIPS_Logger_Interface $logger = null,
 		?AIPS_History_Service_Interface $history_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
-			? $container->make(AIPS_History_Service_Interface::class)
-			: new AIPS_History_Service());
+		$this->resilience_service = $resilience_service ?: $container->makeIfExists(
+			AIPS_Resilience_Service::class,
+			AIPS_Resilience_Service::class
+		);
+		$this->logger = $logger ?: $container->makeIfExists(
+			AIPS_Logger_Interface::class,
+			AIPS_Logger::class
+		);
+		$this->history_service = $history_service ?: $container->makeIfExists(
+			AIPS_History_Service_Interface::class,
+			AIPS_History_Service::class
+		);
 	}
 
 	/**
@@ -220,11 +230,58 @@ class AIPS_Job_Dispatcher {
 	/**
 	 * Get the timestamp of an already scheduled matching job.
 	 *
+	 * wp_next_scheduled() is tried first. When it returns false a single
+	 * per-instance hook-indexed cache built from _get_cron_array() is used as
+	 * a fallback, so repeated calls during batch dispatch never traverse the
+	 * full cron structure more than once per dispatcher instance (one request).
+	 *
 	 * @param AIPS_Job_Definition $job Job to check.
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
 	private function get_scheduled_timestamp(AIPS_Job_Definition $job): int|false {
-		return wp_next_scheduled($job->get_hook(), $job->get_args());
+		$timestamp = wp_next_scheduled($job->get_hook(), $job->get_args());
+		if ($timestamp !== false) {
+			return (int) $timestamp;
+		}
+
+		// Fallback: build a hook-indexed cron structure once per instance so
+		// batch dispatch stays O(1) per hook lookup instead of O(cron_size)
+		// per job. wp_get_scheduled_event() is intentionally skipped because
+		// it duplicates the same _get_cron_array() scan that wp_next_scheduled()
+		// already performed above.
+		if ($this->cron_hook_index === null) {
+			$this->cron_hook_index = array();
+			if (function_exists('_get_cron_array')) {
+				$cron = _get_cron_array();
+				if (is_array($cron)) {
+					foreach ($cron as $ts => $hooks) {
+						foreach ($hooks as $hook_name => $events) {
+							if (!isset($this->cron_hook_index[$hook_name])) {
+								$this->cron_hook_index[$hook_name] = array();
+							}
+							foreach ($events as $event_data) {
+								$this->cron_hook_index[$hook_name][] = array(
+									'timestamp' => (int) $ts,
+									'args'      => isset($event_data['args']) ? $event_data['args'] : array(),
+								);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		$hook = $job->get_hook();
+		if (!empty($this->cron_hook_index[$hook])) {
+			$job_args = $job->get_args();
+			foreach ($this->cron_hook_index[$hook] as $entry) {
+				if ($entry['args'] === $job_args) {
+					return $entry['timestamp'];
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**

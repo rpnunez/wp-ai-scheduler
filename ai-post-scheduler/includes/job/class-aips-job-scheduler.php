@@ -41,20 +41,18 @@ class AIPS_Job_Scheduler {
 	 *
 	 * @param AIPS_Batch_Slicer|null   $slicer     Optional slicer service.
 	 * @param AIPS_Job_Dispatcher|null $dispatcher Optional dispatcher service.
-	 * @param AIPS_Logger|null         $logger     Optional logger.
+	 * @param AIPS_Logger_Interface|null $logger   Optional logger.
 	 */
 	public function __construct(
 		?AIPS_Batch_Slicer $slicer = null,
 		?AIPS_Job_Dispatcher $dispatcher = null,
-		?AIPS_Logger $logger = null
+		?AIPS_Logger_Interface $logger = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->slicer = $slicer ?: new AIPS_Batch_Slicer();
-		$this->dispatcher = $dispatcher ?: new AIPS_Job_Dispatcher();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
+		$this->slicer = $slicer ?: $container->makeIfExists(AIPS_Batch_Slicer::class);
+		$this->dispatcher = $dispatcher ?: $container->makeIfExists(AIPS_Job_Dispatcher::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
 	/**
@@ -231,6 +229,12 @@ class AIPS_Job_Scheduler {
 		$prefix_args = isset($options['prefix_args']) && is_array($options['prefix_args'])
 			? $options['prefix_args']
 			: array();
+
+		// Preserve historical behavior: associative prefix args are treated as one
+		// positional argument, while list-style prefix args are spread.
+		if (!empty($prefix_args) && array_keys($prefix_args) !== range(0, count($prefix_args) - 1)) {
+			$prefix_args = array($prefix_args);
+		}
 
 		$base_timestamp = isset($options['base_timestamp'])
 			? (int) $options['base_timestamp']

@@ -80,10 +80,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * Initialize the AI Service.
      */
     public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null) {
+        $container = AIPS_Container::get_instance();
         if ($logger) {
             $this->logger = $logger;
         } else {
-            $container = AIPS_Container::get_instance();
             if ($container->has(AIPS_Logger_Interface::class)) {
                 $this->logger = $container->make(AIPS_Logger_Interface::class);
             } else {
@@ -91,7 +91,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             }
         }
         $this->config = $config ?: AIPS_Config::get_instance();
-        $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
+        $this->resilience_service = $resilience_service ?: $container->makeIfExists(
+            AIPS_Resilience_Service::class,
+            AIPS_Resilience_Service::class
+        );
 
         $this->call_log = array();
     }

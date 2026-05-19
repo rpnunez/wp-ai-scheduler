@@ -38,6 +38,42 @@ All `$wpdb` queries belong in `class-aips-*-repository.php` files. Never write i
 
 ---
 
+## Container Constructor Policy
+
+Do not directly instantiate cross-cutting core services in `ai-post-scheduler/includes/`:
+- `AIPS_Logger`
+- `AIPS_History_Service`
+- `AIPS_AI_Service`
+- `AIPS_Resilience_Service`
+
+Resolve them from `AIPS_Container` instead, using constructor injection first and container fallback second.
+
+Preferred constructor pattern:
+
+```php
+public function __construct(
+	?AIPS_Logger_Interface $logger = null,
+	?AIPS_History_Service_Interface $history_service = null
+) {
+	$container = AIPS_Container::get_instance();
+	$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
+	$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+}
+```
+
+Migration guidance:
+1. Keep constructor parameters optional for backward compatibility.
+2. Prefer interface aliases as the primary container key.
+3. Use `makeIfExists()` with an explicit fallback concrete class.
+4. If a temporary exception is unavoidable, add the file to `ai-post-scheduler/config/container-instantiation-whitelist.txt` with a rationale and create a follow-up cleanup task.
+
+Enforcement:
+- Script: `ai-post-scheduler/tools/check-container-instantiation-policy.php`
+- Composer command: `composer lint:container-policy` (run from `ai-post-scheduler/`)
+- Architectural test: `tests/Test_Container_Instantiation_Policy.php`
+
+---
+
 ## JS Feedback: Use AIPS.Utilities.showToast, Never alert()
 
 Never call the native `alert()` function. Always use:

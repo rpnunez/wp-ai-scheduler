@@ -80,9 +80,14 @@ class AIPS_Internal_Link_Inserter_Service {
 		$ai_service = null,
 		$logger = null
 	) {
-		$this->links_repo = $links_repo ?: new AIPS_Internal_Links_Repository();
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger     = $logger     ?: new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+
+		$this->links_repo = $links_repo ?: $container->makeIfExists(
+			AIPS_Internal_Links_Repository::class,
+			AIPS_Internal_Links_Repository::class
+		);
+		$this->ai_service = $ai_service ?: $container->makeIfExists(AIPS_AI_Service_Interface::class, AIPS_AI_Service::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
 	// -------------------------------------------------------------------------

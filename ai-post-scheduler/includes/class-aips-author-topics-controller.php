@@ -96,16 +96,16 @@ class AIPS_Author_Topics_Controller {
 	 */
 	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
 		$container = AIPS_Container::get_instance();
-		$this->repository             = new AIPS_Author_Topics_Repository();
-		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository    = new AIPS_Feedback_Repository();
-		$this->post_generator         = new AIPS_Author_Post_Generator();
-		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
-		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->repository             = $container->makeIfExists(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository        = $container->makeIfExists(AIPS_Author_Topic_Logs_Repository::class);
+		$this->feedback_repository    = $container->makeIfExists(AIPS_Feedback_Repository::class);
+		$this->post_generator         = $container->makeIfExists(AIPS_Author_Post_Generator::class);
+		$this->penalty_service        = $container->makeIfExists(AIPS_Topic_Penalty_Service::class);
+		$this->history_service        = $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+		$this->expansion_service      = $expansion_service ?: $container->makeIfExists(AIPS_Topic_Expansion_Service::class);
+		$this->history_repository     = $history_repository ?: $container->makeIfExists(AIPS_History_Repository_Interface::class, AIPS_History_Repository::class);
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
-		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->job_scheduler          = $job_scheduler ?: $container->makeIfExists(AIPS_Job_Scheduler::class);
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));

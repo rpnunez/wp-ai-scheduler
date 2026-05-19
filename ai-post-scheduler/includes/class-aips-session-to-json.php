@@ -35,8 +35,9 @@ class AIPS_Session_To_JSON {
 	 * Initialize the converter
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $container->makeIfExists(AIPS_History_Repository_Interface::class, AIPS_History_Repository::class);
+		$this->logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 	
 	/**
@@ -441,7 +442,12 @@ class AIPS_Session_To_JSON {
 	 */
 	public static function cleanup_old_exports($max_age = 3600) {
 		$upload = wp_upload_dir();
-		$base_dir = trailingslashit($upload['basedir']) . 'aips-exports';
+		$base_path = isset($upload['basedir']) ? (string) $upload['basedir'] : '';
+		if (function_exists('trailingslashit')) {
+			$base_dir = trailingslashit($base_path) . 'aips-exports';
+		} else {
+			$base_dir = rtrim($base_path, "/\\") . '/aips-exports';
+		}
 		
 		$result = array(
 			'deleted' => 0,
@@ -460,7 +466,8 @@ class AIPS_Session_To_JSON {
 			return $result;
 		}
 
-		$logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		foreach ($files as $file) {
 			if (!is_file($file)) {
 				continue;

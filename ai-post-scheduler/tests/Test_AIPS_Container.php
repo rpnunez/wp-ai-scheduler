@@ -102,8 +102,25 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	public function test_make_throws_exception_for_unregistered_binding() {
 		$this->expectException(RuntimeException::class);
 		$this->expectExceptionMessage('Binding not found for: unregistered_class');
+		$this->expectExceptionMessage('Registered bindings:');
 
 		$this->container->make('unregistered_class');
+	}
+
+	/**
+	 * Test that missing binding message includes similar ids when available.
+	 */
+	public function test_make_error_message_includes_similar_bindings() {
+		$this->container->bind('logger_service', function() {
+			return new stdClass();
+		});
+
+		try {
+			$this->container->make('logger_servic');
+			$this->fail('Expected RuntimeException was not thrown');
+		} catch (RuntimeException $e) {
+			$this->assertStringContainsString('Similar bindings: logger_service', $e->getMessage());
+		}
 	}
 
 	/**
@@ -147,6 +164,63 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 		$result = $this->container->makeIfExists('missing_service', stdClass::class);
 
 		$this->assertInstanceOf(stdClass::class, $result);
+	}
+
+	/**
+	 * Test that makeIfExists with one argument instantiates that class when missing.
+	 */
+	public function test_make_if_exists_one_argument_instantiates_id_class() {
+		$result = $this->container->makeIfExists(stdClass::class);
+
+		$this->assertInstanceOf(stdClass::class, $result);
+	}
+
+	/**
+	 * Test that bind_alias maps abstract ids to existing bindings.
+	 */
+	public function test_bind_alias_maps_to_existing_binding() {
+		$this->container->bind('concrete_service', function() {
+			$obj = new stdClass();
+			$obj->kind = 'concrete';
+			$obj->id = uniqid('svc_', true);
+			return $obj;
+		});
+
+		$this->container->bind_alias('abstract_service', 'concrete_service');
+
+		$instance_a = $this->container->make('abstract_service');
+		$instance_b = $this->container->make('abstract_service');
+
+		$this->assertEquals('concrete', $instance_a->kind);
+		$this->assertNotSame($instance_a, $instance_b);
+	}
+
+	/**
+	 * Test that singleton_alias returns shared instance via alias id.
+	 */
+	public function test_singleton_alias_maps_to_existing_binding() {
+		$this->container->singleton('concrete_service', function() {
+			$obj = new stdClass();
+			$obj->id = uniqid('singleton_', true);
+			return $obj;
+		});
+
+		$this->container->singleton_alias('abstract_service', 'concrete_service');
+
+		$instance_a = $this->container->make('abstract_service');
+		$instance_b = $this->container->make('abstract_service');
+
+		$this->assertSame($instance_a, $instance_b);
+	}
+
+	/**
+	 * Test alias helpers reject invalid alias targets.
+	 */
+	public function test_alias_helpers_reject_invalid_targets() {
+		$this->expectException(RuntimeException::class);
+		$this->expectExceptionMessage('Invalid alias target for bind_alias: invalid_alias');
+
+		$this->container->bind_alias('invalid_alias', array('not-valid'));
 	}
 
 	/**
@@ -350,6 +424,10 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 
 		$instance_v2 = $this->container->make('test_class');
 		$this->assertEquals(2, $instance_v2->version);
+
+		$warnings = $this->container->get_warnings();
+		$this->assertCount(1, $warnings);
+		$this->assertEquals('duplicate_binding', $warnings[0]['type']);
 	}
 
 	/**
@@ -376,6 +454,9 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 		$instance_still_v1 = $this->container->make('test_class');
 		$this->assertEquals(1, $instance_still_v1->version);
 
+		$warnings = $this->container->get_warnings();
+		$this->assertGreaterThanOrEqual(1, count($warnings));
+
 		// Clear and re-register to get v2
 		$this->container->clear();
 		$this->container->singleton('test_class', function() {
@@ -386,6 +467,85 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 
 		$instance_v2 = $this->container->make('test_class');
 		$this->assertEquals(2, $instance_v2->version);
+	}
+
+	/**
+	 * Test strict duplicate mode throws on duplicate registrations.
+	 */
+	public function test_strict_duplicates_throw_exception() {
+		$this->container->set_strict_duplicates(true);
+		$this->container->bind('strict_class', function() {
+			return new stdClass();
+		});
+
+		$this->expectException(RuntimeException::class);
+		$this->expectExceptionMessage('Duplicate binding registration for: strict_class');
+
+		$this->container->bind('strict_class', function() {
+			return new stdClass();
+		});
+	}
+
+	/**
+	 * Test strict mode flag methods.
+	 */
+	public function test_strict_mode_flag_methods() {
+		$this->assertFalse($this->container->is_strict_duplicates());
+
+		$this->container->set_strict_duplicates(true);
+		$this->assertTrue($this->container->is_strict_duplicates());
+
+		$this->container->set_strict_duplicates(false);
+		$this->assertFalse($this->container->is_strict_duplicates());
+	}
+
+	/**
+	 * Test resolution diagnostics capture hit sources.
+	 */
+	public function test_resolution_stats_track_sources() {
+		$this->container->bind('transient_service', function() {
+			return new stdClass();
+		});
+		$this->container->singleton('singleton_service', function() {
+			return new stdClass();
+		});
+
+		$this->container->make('transient_service');
+		$this->container->make('transient_service');
+		$this->container->make('singleton_service');
+		$this->container->make('singleton_service');
+		$this->container->makeIfExists('missing_closure', function() {
+			return new stdClass();
+		});
+		$this->container->makeIfExists('missing_value', 'fallback');
+
+		$stats = $this->container->get_resolution_stats();
+
+		$this->assertEquals(2, $stats['sources']['transient_factory']);
+		$this->assertEquals(1, $stats['sources']['singleton_factory']);
+		$this->assertEquals(1, $stats['sources']['singleton_cache']);
+		$this->assertEquals(1, $stats['sources']['fallback_closure']);
+		$this->assertEquals(1, $stats['sources']['fallback_value']);
+		$this->assertEquals(2, $stats['attempts']['transient_service']);
+	}
+
+	/**
+	 * Test reset_resolution_stats clears tracked diagnostics.
+	 */
+	public function test_reset_resolution_stats_clears_diagnostics() {
+		$this->container->bind('tracked_service', function() {
+			return new stdClass();
+		});
+
+		$this->container->make('tracked_service');
+		$stats_before = $this->container->get_resolution_stats();
+		$this->assertNotEmpty($stats_before['attempts']);
+
+		$this->container->reset_resolution_stats();
+		$stats_after = $this->container->get_resolution_stats();
+
+		$this->assertEmpty($stats_after['attempts']);
+		$this->assertEmpty($stats_after['sources']);
 	}
 
 	/**
