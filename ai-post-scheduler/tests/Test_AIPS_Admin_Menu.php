@@ -12,12 +12,28 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	 */
 	private $admin_menu;
 
+	/**
+	 * @var int
+	 */
+	private $admin_user_id;
+
+	/**
+	 * @var int
+	 */
+	private $subscriber_user_id;
+
 	public function setUp(): void {
 		parent::setUp();
-		$this->admin_menu = new AIPS_Admin_Menu();
+		$this->admin_menu         = new AIPS_Admin_Menu();
+		$this->admin_user_id     = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->subscriber_user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 	}
 
 	public function tearDown(): void {
+		global $wpdb;
+		$wpdb->get_var_return_val = null;
+		wp_set_current_user( 0 );
+
 		parent::tearDown();
 	}
 
@@ -78,6 +94,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	 * Regression test: hidden Author Topics page must remain URL-accessible.
 	 */
 	public function test_author_topics_is_registered_as_hidden_page() {
+		if ( ! function_exists( 'add_menu_page' ) || ! function_exists( 'add_submenu_page' ) ) {
+			$this->markTestSkipped( 'WordPress admin menu functions are not available in limited mode.' );
+		}
+
 		global $submenu, $_registered_pages;
 
 		$submenu           = array();
@@ -98,5 +118,50 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			$submenu_pages,
 			'Author Topics page should remain hidden from the visible submenu.'
 		);
+	}
+
+	/**
+	 * Test that Content menu label shows the pending review bubble for admins.
+	 */
+	public function test_content_menu_label_shows_pending_review_count_for_admins() {
+		global $wpdb;
+
+		wp_set_current_user( $this->admin_user_id );
+		$wpdb->get_var_return_val = 2;
+
+		$label = $this->invoke_private_method( 'get_content_menu_label' );
+
+		$this->assertStringContainsString( 'Content', $label );
+		$this->assertStringContainsString( 'update-plugins', $label );
+		$this->assertStringContainsString( 'plugin-count">2</span>', $label );
+	}
+
+	/**
+	 * Test that non-admin users do not fetch or render pending review counts.
+	 */
+	public function test_pending_review_count_is_zero_without_manage_options() {
+		global $wpdb;
+
+		$wpdb->get_var_return_val = 5;
+		wp_set_current_user( $this->subscriber_user_id );
+
+		$count = $this->invoke_private_method( 'get_pending_review_count' );
+		$label = $this->invoke_private_method( 'get_content_menu_label' );
+
+		$this->assertSame( 0, $count );
+		$this->assertSame( 'Content', $label );
+	}
+
+	/**
+	 * Invoke a private method on the admin menu instance.
+	 *
+	 * @param string $method Method name.
+	 * @return mixed
+	 */
+	private function invoke_private_method( $method ) {
+		$reflection = new ReflectionMethod( $this->admin_menu, $method );
+		$reflection->setAccessible( true );
+
+		return $reflection->invoke( $this->admin_menu );
 	}
 }
