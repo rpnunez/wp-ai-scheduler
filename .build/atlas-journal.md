@@ -1438,3 +1438,15 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+## 2026-06-25 - Extract Statistics from History Repository
+
+**Context:** The `AIPS_History_Repository` had grown to over 1200 lines and was acting as a "God Object" for the history entity, handling both transactional persistence (`create`, `update`, `get_history`, `get_by_id`) and complex analytical/statistics operations (`get_estimated_generation_time`, `get_stats`, `get_daily_generation_counts`, `get_template_stats`, `get_all_template_stats`, `get_schedule_generated_post_counts`). This violated the Single Responsibility Principle, making the class hard to navigate and maintain.
+
+**Decision:** Applied "Separation of Concerns". Extracted all analytical queries into a new `AIPS_History_Stats_Repository` class. Updated `AIPS_History_Repository` to retain proxy methods for the extracted statistics functions that internally instantiate and delegate to the new repository. This avoids creating breaking changes while cleanly separating complex aggregation logic from standard CRUD operations.
+
+**Consequence:**
+* `AIPS_History_Repository` logic focuses on standard entity operations and acts as a facade for stats, maintaining 100% backward compatibility for all existing usages (e.g. `$repository->get_stats()`).
+* New `AIPS_History_Stats_Repository` contains dedicated logic for data aggregation.
+* Trade-offs: Minor instantiation overhead when accessing stats (lazy-loaded). Increased file count.
+
+**Tests:** Existing tests that call `get_stats()`, `get_estimated_generation_time()`, etc., will continue to run exactly the same way due to the backward compatibility proxies. Autoloader was updated via `composer dump-autoload` to locate the new class.
