@@ -19,8 +19,41 @@ if (!defined('ABSPATH')) {
  * Registers and handles AJAX actions for the System Status page.
  */
 class AIPS_System_Status_Controller {
+	/**
+	 * @var AIPS_Resilience_Service|null
+	 */
+	private $resilience_service;
+
+	/**
+	 * @var AIPS_History_Repository
+	 */
+	private $history_repository;
+
+	/**
+	 * @var AIPS_Bulk_Batch_Job_Store|null
+	 */
+	private $bulk_batch_job_store;
+
+	/**
+	 * @var AIPS_Container
+	 */
+	private $container;
 
 	public function __construct() {
+		$this->container = AIPS_Container::get_instance();
+
+		$this->resilience_service = $this->container->has(AIPS_Resilience_Service::class)
+			? $this->container->make(AIPS_Resilience_Service::class)
+			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null);
+
+		$this->history_repository = $this->container->has(AIPS_History_Repository::class)
+			? $this->container->make(AIPS_History_Repository::class)
+			: new AIPS_History_Repository();
+
+		$this->bulk_batch_job_store = $this->container->has(AIPS_Bulk_Batch_Job_Store::class)
+			? $this->container->make(AIPS_Bulk_Batch_Job_Store::class)
+			: (class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null);
+
 		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
 		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
 		add_action('wp_ajax_aips_status_retry_failed_slices', array($this, 'ajax_retry_failed_slices'));
@@ -43,11 +76,8 @@ class AIPS_System_Status_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		if (class_exists('AIPS_Resilience_Service')) {
-			$service = new AIPS_Resilience_Service();
-			if (method_exists($service, 'reset_circuit_breaker')) {
-				$service->reset_circuit_breaker();
-			}
+		if ($this->resilience_service && method_exists($this->resilience_service, 'reset_circuit_breaker')) {
+			$this->resilience_service->reset_circuit_breaker();
 		}
 
 		AIPS_Ajax_Response::success(array('reset' => true));
@@ -63,10 +93,11 @@ class AIPS_System_Status_Controller {
 
 		$cron_events = AI_Post_Scheduler::get_cron_events();
 		$rescheduled = 0;
+		$base_timestamp = AIPS_DateTime::now()->timestamp() + MINUTE_IN_SECONDS;
 		foreach ($cron_events as $hook => $config) {
 			$schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
 			wp_unschedule_hook($hook);
-			if (wp_schedule_event(time() + 60, $schedule, $hook) !== false) {
+			if (wp_schedule_event($base_timestamp, $schedule, $hook) !== false) {
 				$rescheduled++;
 			}
 		}
@@ -84,10 +115,11 @@ class AIPS_System_Status_Controller {
 		// Immediately schedule retry hooks for both topics and posts.
 		// This bypasses the 5-minute delay and processes failed slices now.
 		$scheduled = 0;
-		if (wp_schedule_single_event(time(), 'aips_retry_failed_author_slices_topics')) {
+		$now = AIPS_DateTime::now()->timestamp();
+		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_topics')) {
 			$scheduled++;
 		}
-		if (wp_schedule_single_event(time(), 'aips_retry_failed_author_slices_posts')) {
+		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_posts')) {
 			$scheduled++;
 		}
 		AIPS_Ajax_Response::success(array('message' => sprintf(__('Scheduled %d failed slice retry hooks.', 'ai-post-scheduler'), $scheduled)));
@@ -101,8 +133,7 @@ class AIPS_System_Status_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$repo = new AIPS_History_Repository();
-		$partials = $repo->get_partial_generations(array('per_page' => 10));
+		$partials = $this->history_repository->get_partial_generations(array('per_page' => 10));
 		$reconciled = 0;
 		if (!empty($partials['items'])) {
 			foreach ($partials['items'] as $item) {
@@ -124,8 +155,8 @@ class AIPS_System_Status_Controller {
 		}
 
 		$deleted = 0;
-		if (class_exists('AIPS_Bulk_Batch_Job_Store')) {
-			$deleted = (new AIPS_Bulk_Batch_Job_Store())->cleanup_old_jobs();
+		if ($this->bulk_batch_job_store) {
+			$deleted = $this->bulk_batch_job_store->cleanup_old_jobs();
 		}
 		$cache_flushed = false;
 		if (class_exists('AIPS_Cache_Factory')) {

@@ -1,0 +1,14 @@
+{
+  "id": "756f9a8af6d398cd59f65ab42ea80f7f9bb5abec",
+  "type": "controller_container_bypass",
+  "severity": "medium",
+  "path": "ai-post-scheduler/includes/class-aips-system-status-controller.php",
+  "symbol": "AIPS_System_Status_Controller",
+  "anchor": "constructor-and-actions-container-and-datetime",
+  "status": "resolved",
+  "summary": "Resolved: Controller was bypassing container and datetime service.",
+  "recommendation": "None.",
+  "first_seen_run_id": "aips-20260518T220000Z",
+  "last_seen_run_id": "aips-20260518T220000Z",
+  "finding_file": ".aips-agent/findings/756f9a8af6d398cd59f65ab42ea80f7f9bb5abec.json"
+}

@@ -42,3 +42,11 @@
 {"event": "finding_upsert", "finding_id": "scheduler_sources_cron_datetime", "type": "scheduler_datetime_gap", "severity": "medium", "path": "ai-post-scheduler/includes/class-aips-sources-cron.php", "symbol": "AIPS_Sources_Cron", "anchor": "schedule:time-base_timestamp"}
 {"event": "finding_resolved", "finding_id": "scheduler_sources_cron_datetime", "timestamp": "2026-05-10T12:05:00Z"}
 {"event": "run_end", "timestamp": "2026-05-10T12:05:00Z", "totals": {"scanned_files": 1, "open_findings": 0}}
+{"event":"run_start","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","ruleset_hash":"785615625ed43fd3e7129b93d844260fb5ddd36b"}
+{"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"7b73f7d8d5245f2f5e89092780756ff89a9a60a0","status":"open"}
+{"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"9000d9beb00181fa6e2d42df65dce89d9026cca4","status":"open"}
+{"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"6bfab4fdab8860b26681a20614fd68abf685f444","status":"open"}
+{"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"13ea2a82716344ce32f9172e17886c98b9ee2b3b","status":"open"}
+{"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"756f9a8af6d398cd59f65ab42ea80f7f9bb5abec","status":"resolved"}
+{"event":"run_end","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","scanned_files_count":5,"open_findings_count":18}
+{"event":"run_end","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:01:00Z","scanned_files_count":5,"open_findings_count":4,"note":"finalized_after_consistency_fix"}
