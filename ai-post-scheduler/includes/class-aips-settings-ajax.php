@@ -52,21 +52,22 @@ class AIPS_Settings_AJAX {
 		$options = array(
 			'maxTokens' => 20,
 		);
-		$history = $this->history_service->create(
-			'settings_connection_test',
+		$history = AIPS_History_Service::log_event(
 			array(
-				'user_id' => get_current_user_id(),
+				'history_type' => 'settings_connection_test',
+				'message' => __('Testing AI connection from the settings screen.', 'ai-post-scheduler'),
+				'event_type' => 'connection_test',
+				'event_status' => 'started',
+				'metadata' => array(
+					'user_id' => get_current_user_id(),
+				),
+				'context' => array(
+					'source' => 'settings_ui',
+				),
 			)
 		);
-
-		$history->record(
-			'activity',
-			__('Testing AI connection from the settings screen.', 'ai-post-scheduler'),
-			array(
-				'source' => 'settings_ui',
-			)
-		);
-		$history->record(
+		AIPS_History_Service::record_on_container(
+			$history,
 			'ai_request',
 			__('Settings connection test prompt sent to AI.', 'ai-post-scheduler'),
 			array(
@@ -95,7 +96,8 @@ class AIPS_Settings_AJAX {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 
-		$history->record(
+		AIPS_History_Service::record_on_container(
+			$history,
 			'ai_response',
 			__('Settings connection test response received.', 'ai-post-scheduler'),
 			null,
@@ -116,17 +118,18 @@ class AIPS_Settings_AJAX {
 	public function ajax_notifications_data_hygiene() {
 		$this->verify_request();
 
-		$history = $this->history_service->create(
-			'settings_notifications_hygiene',
+		$history = AIPS_History_Service::log_event(
 			array(
-				'user_id' => get_current_user_id(),
-			)
-		);
-		$history->record(
-			'activity',
-			__('Running notifications hygiene from the settings screen.', 'ai-post-scheduler'),
-			array(
-				'source' => 'settings_ui',
+				'history_type' => 'settings_notifications_hygiene',
+				'message' => __('Running notifications hygiene from the settings screen.', 'ai-post-scheduler'),
+				'event_type' => 'notifications_hygiene',
+				'event_status' => 'started',
+				'metadata' => array(
+					'user_id' => get_current_user_id(),
+				),
+				'context' => array(
+					'source' => 'settings_ui',
+				),
 			)
 		);
 
@@ -151,7 +154,8 @@ class AIPS_Settings_AJAX {
 			$rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
 
 			if (!$rollup_scheduled) {
-				$history->record(
+				AIPS_History_Service::record_on_container(
+					$history,
 					'warning',
 					__('Notification rollup remained unscheduled after hygiene attempted to recreate it.', 'ai-post-scheduler'),
 					array(
@@ -190,7 +194,8 @@ class AIPS_Settings_AJAX {
 			'preferences_changed' => $preferences_changed ? 1 : 0,
 		);
 
-		$history->record(
+		AIPS_History_Service::record_on_container(
+			$history,
 			'activity',
 			__('Notifications hygiene completed.', 'ai-post-scheduler'),
 			null,

@@ -257,28 +257,17 @@ class AIPS_Schedule_Controller {
      * @return void
      */
     private function log_bulk_slicing_notice($history_type, $message, $context = array()) {
-        $history_service = new AIPS_History_Service($this->history_repository);
-        $history = $history_service->create($history_type, array(
-            'creation_method' => $history_type,
-            'user_id'         => get_current_user_id(),
-            'source'          => 'manual_ui',
-        ));
-
-        if (!$history) {
-            return;
-        }
-
-        $history->record(
-            'activity',
-            $message,
-            array(
-                'event_type'   => 'bulk_slicing_notice',
-                'event_status' => 'success',
+        AIPS_History_Service::log_event(array(
+            'history_type' => $history_type,
+            'message' => $message,
+            'event_type' => 'bulk_slicing_notice',
+            'event_status' => 'success',
+            'metadata' => array(
+                'source' => 'manual_ui',
             ),
-            null,
-            $context
-        );
-        $history->complete_success();
+            'context' => $context,
+            'complete' => 'success',
+        ));
     }
 
     public function ajax_save_schedule() {
