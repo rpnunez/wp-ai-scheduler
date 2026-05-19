@@ -13,6 +13,10 @@ class AIPS_DB_Schema_Repository {
 	}
 
 	public function column_exists($table, $column) {
+		if (!$this->is_valid_plugin_table_name($table)) {
+			return false;
+		}
+
 		$exists = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SHOW COLUMNS FROM `{$table}` WHERE Field = %s",
@@ -25,13 +29,8 @@ class AIPS_DB_Schema_Repository {
 	public function run_alter_statement($table, $alter_clause) {
 		$table = (string) $table;
 		$alter_clause = trim((string) $alter_clause);
-		$expected_prefix = (string) $this->wpdb->prefix . 'aips_';
 
-		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
-			return false;
-		}
-
-		if (0 !== strpos($table, $expected_prefix)) {
+		if (!$this->is_valid_plugin_table_name($table)) {
 			return false;
 		}
 
@@ -43,10 +42,21 @@ class AIPS_DB_Schema_Repository {
 			return false;
 		}
 
-		if (preg_match('/;|--|#|\/\*/', $alter_clause)) {
+		if (preg_match('/;|--\s|#|\/\*!|\/\*/', $alter_clause)) {
 			return false;
 		}
 
 		return $this->wpdb->query("ALTER TABLE `{$table}` {$alter_clause}"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	private function is_valid_plugin_table_name($table) {
+		$table = (string) $table;
+		$expected_prefix = (string) $this->wpdb->prefix . 'aips_';
+
+		if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
+			return false;
+		}
+
+		return 0 === strpos($table, $expected_prefix);
 	}
 }
