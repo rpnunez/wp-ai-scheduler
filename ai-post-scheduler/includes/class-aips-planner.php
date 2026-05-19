@@ -131,19 +131,28 @@ class AIPS_Planner {
         $count = 0;
         $base_time = strtotime($start_date);
 
+        // Ensure intervals stagger correctly.
+        // If "once", stagger daily to avoid API rate limiting.
+        $stagger_frequency = ($frequency === 'once') ? 'daily' : $frequency;
+        $interval_calc = new AIPS_Interval_Calculator();
+
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+
+        $current_run_time = $base_time;
 
         foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
+                'frequency' => $frequency,
+                'next_run' => date('Y-m-d H:i:s', $current_run_time),
                 'is_active' => 1,
                 'topic' => $topic
             );
+
+            // Stagger the next schedule so they don't all run simultaneously
+            $current_run_time = $interval_calc->calculate_next_run($stagger_frequency, $current_run_time);
         }
 
         $count = $scheduler->save_schedule_bulk($schedules);
