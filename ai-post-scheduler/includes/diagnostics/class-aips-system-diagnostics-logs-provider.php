@@ -107,7 +107,8 @@ class AIPS_System_Diagnostics_Logs_Provider implements AIPS_System_Diagnostic_Pr
 	private function check_logs() {
 		$logs_data = array();
 
-		$logger    = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$logger    = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		$log_files = $logger->get_log_files();
 
 		if ( ! empty( $log_files ) ) {

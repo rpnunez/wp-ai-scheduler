@@ -44,7 +44,8 @@ class AIPS_DB_Migrations {
 	private $logger;
 
 	public function __construct() {
-		$this->logger = new AIPS_Logger();
+		$container = AIPS_Container::get_instance();
+		$this->logger = $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 
 	/**

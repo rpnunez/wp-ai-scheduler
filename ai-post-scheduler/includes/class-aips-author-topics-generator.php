@@ -68,8 +68,8 @@ class AIPS_Author_Topics_Generator {
 	 */
 	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null) {
 		$container = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->ai_service = $ai_service ?: $container->makeIfExists(AIPS_AI_Service_Interface::class, AIPS_AI_Service::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);

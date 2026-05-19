@@ -344,7 +344,17 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 			);
 		}
 
-		$resilience = new AIPS_Resilience_Service();
+		$container = AIPS_Container::get_instance();
+		$resilience = $container->makeIfExists(AIPS_Resilience_Service::class, null);
+		if ( ! $resilience ) {
+			return array(
+				'unavailable' => array(
+					'label'  => __( 'Resilience', 'ai-post-scheduler' ),
+					'value'  => __( 'Resilience service not available', 'ai-post-scheduler' ),
+					'status' => 'info',
+				),
+			);
+		}
 		$cb         = $resilience->get_circuit_breaker_status();
 		$rl         = $resilience->get_rate_limiter_status();
 

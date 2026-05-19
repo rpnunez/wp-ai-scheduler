@@ -67,9 +67,9 @@ class AIPS_Topic_Penalty_Service {
 	 */
 	public function __construct($topics_repository = null, $authors_repository = null, ?AIPS_Logger_Interface $logger = null) {
 		$container = AIPS_Container::get_instance();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->topics_repository = $topics_repository ?: $container->makeIfExists(AIPS_Author_Topics_Repository::class, AIPS_Author_Topics_Repository::class);
+		$this->authors_repository = $authors_repository ?: $container->makeIfExists(AIPS_Authors_Repository::class, AIPS_Authors_Repository::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
 	}
 	
 	/**

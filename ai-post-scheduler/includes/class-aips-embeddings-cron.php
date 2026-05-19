@@ -67,10 +67,10 @@ class AIPS_Embeddings_Cron {
 	 */
 	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
 		$container = AIPS_Container::get_instance();
-		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->expansion_service = $expansion_service ?: $container->makeIfExists(AIPS_Topic_Expansion_Service::class, AIPS_Topic_Expansion_Service::class);
+		$this->logger = $logger ?: $container->makeIfExists(AIPS_Logger_Interface::class, AIPS_Logger::class);
+		$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
+		$this->job_scheduler = $job_scheduler ?: $container->makeIfExists(AIPS_Job_Scheduler::class, AIPS_Job_Scheduler::class);
 	}
 
 	/**

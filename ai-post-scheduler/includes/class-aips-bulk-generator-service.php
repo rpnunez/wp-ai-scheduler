@@ -231,7 +231,7 @@ class AIPS_Bulk_Generator_Service {
 		?AIPS_Batch_Queue_Service       $batch_queue_service = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->history_service     = $history_service     ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service     = $history_service     ?: $container->makeIfExists(AIPS_History_Service_Interface::class, AIPS_History_Service::class);
 		$this->job_store           = $job_store;
 		$this->batch_queue_service = $batch_queue_service;
 	}
@@ -243,7 +243,8 @@ class AIPS_Bulk_Generator_Service {
 	 */
 	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
 		if ( $this->job_store === null ) {
-			$this->job_store = new AIPS_Bulk_Batch_Job_Store();
+			$container = AIPS_Container::get_instance();
+			$this->job_store = $container->makeIfExists(AIPS_Bulk_Batch_Job_Store::class, AIPS_Bulk_Batch_Job_Store::class);
 		}
 		return $this->job_store;
 	}
@@ -255,7 +256,8 @@ class AIPS_Bulk_Generator_Service {
 	 */
 	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
 		if ( $this->batch_queue_service === null ) {
-			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+			$container = AIPS_Container::get_instance();
+			$this->batch_queue_service = $container->makeIfExists(AIPS_Batch_Queue_Service::class, AIPS_Batch_Queue_Service::class);
 		}
 		return $this->batch_queue_service;
 	}

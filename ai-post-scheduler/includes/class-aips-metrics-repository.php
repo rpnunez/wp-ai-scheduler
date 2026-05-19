@@ -338,7 +338,11 @@ class AIPS_Metrics_Repository {
 		$circuit_breaker = array( 'state' => 'unknown' );
 		if ( class_exists( 'AIPS_Resilience_Service' ) ) {
 			try {
-				$resilience      = new AIPS_Resilience_Service();
+				$container = AIPS_Container::get_instance();
+				$resilience = $container->makeIfExists(AIPS_Resilience_Service::class, null);
+				if ( ! $resilience ) {
+					throw new RuntimeException('Resilience service not available');
+				}
 				$circuit_breaker = $resilience->get_circuit_breaker_status();
 			} catch ( \Throwable $e ) {
 				// Non-fatal — leave as unknown.
