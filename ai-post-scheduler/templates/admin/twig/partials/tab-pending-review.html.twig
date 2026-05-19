@@ -1,0 +1,99 @@
+<div class="aips-table-controls aips-table-controls--top">
+	<form method="get" class="aips-post-review-filters aips-filter-form">
+		<input type="hidden" name="page" value="aips-generated-posts">
+		<div class="aips-bulk-actions">
+			<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select" style="width: auto;">
+				<option value="">{{ t('Bulk Actions') }}</option>
+				<option value="publish">{{ t('Publish') }}</option>
+				<option value="delete">{{ t('Delete') }}</option>
+			</select>
+			<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary" disabled>{{ t('Apply') }}</button>
+			<span id="aips-post-review-selected-count" class="cell-meta">0 {{ t('selected') }}</span>
+			<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><span class="dashicons dashicons-update"></span>{{ t('Reload') }}</button>
+		</div>
+		<div class="aips-search-control">
+			<label class="screen-reader-text" for="aips-post-search-input">{{ t('Search Posts:') }}</label>
+			<input type="search" id="aips-post-search-input" name="s" value="{{ review_tab.search_query|e('html_attr') }}" class="aips-form-input" placeholder="{{ t('Search posts...')|esc_attr }}">
+			<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><span class="dashicons dashicons-search"></span>{{ t('Search') }}</button>
+			{% if review_tab.search_query %}
+				<a href="{{ esc_url(review_tab.clear_search_url) }}" class="aips-btn aips-btn-sm aips-btn-ghost">{{ t('Clear') }}</a>
+			{% endif %}
+		</div>
+		<div class="aips-filter-control">
+			{% if review_tab.templates %}
+				<label class="screen-reader-text" for="aips-filter-template">{{ t('Filter by Template:') }}</label>
+				<select name="template_id" id="aips-filter-template" class="aips-form-select">
+					<option value="">{{ t('All Templates') }}</option>
+					{% for template in review_tab.templates %}
+						<option value="{{ template.id|e('html_attr') }}" {{ selected(review_tab.template_id, template.id)|raw }}>{{ template.name|e }}</option>
+					{% endfor %}
+				</select>
+			{% endif %}
+			<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary"><span class="dashicons dashicons-filter"></span>{{ t('Filter') }}</button>
+			{% if review_tab.template_id %}
+				<a href="{{ esc_url(review_tab.clear_filters_url) }}" class="aips-btn aips-btn-sm aips-btn-ghost">{{ t('Clear Filters') }}</a>
+			{% endif %}
+		</div>
+	</form>
+</div>
+
+{% if review_tab.rows %}
+	<form id="aips-post-review-form" method="post">
+		<div class="aips-panel-body no-padding">
+			<table class="aips-table aips-post-review-table">
+				<thead>
+					<tr>
+						<th scope="col" style="width: 30px;"><label class="screen-reader-text" for="cb-select-all-1">{{ t('Select All') }}</label><input id="cb-select-all-1" type="checkbox"></th>
+						<th scope="col">{{ t('Post') }}</th>
+						<th scope="col">{{ t('Created') }}</th>
+						<th scope="col">{{ t('Actions') }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for item in review_tab.rows %}
+						<tr data-post-id="{{ item.post_id|e('html_attr') }}" data-history-id="{{ item.history_id|e('html_attr') }}">
+							<td>
+								<label class="screen-reader-text" for="cb-select-{{ item.post_id|e('html_attr') }}">{{ t('Select Post') }}</label>
+								<input id="cb-select-{{ item.post_id|e('html_attr') }}" type="checkbox" class="aips-post-checkbox" value="{{ item.post_id|e('html_attr') }}" data-post-id="{{ item.post_id|e('html_attr') }}" data-history-id="{{ item.history_id|e('html_attr') }}">
+							</td>
+							<td>
+								<a href="{{ esc_url(item.edit_url) }}" class="cell-primary" target="_blank">{{ (item.post_title ?: item.generated_title ?: t('Untitled'))|e }}</a>
+								<span class="aips-cell-source">{{ item.source|e }}</span>
+							</td>
+							<td><div class="cell-meta">{{ item.created_at_formatted|e }}</div></td>
+							<td>
+								<div class="cell-actions">
+									<div class="aips-row-action-group">
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post" data-post-id="{{ item.post_id|e('html_attr') }}" title="{{ t('Publish this post')|esc_attr }}"><span class="dashicons dashicons-upload"></span>{{ t('Publish') }}</button>
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-review-row-actions-{{ item.post_id|e('html_attr') }}" title="{{ t('More actions')|esc_attr }}"><span class="screen-reader-text">{{ t('More actions') }}</span></button>
+									</div>
+									<div id="aips-review-row-actions-{{ item.post_id|e('html_attr') }}" class="aips-row-action-menu" hidden>
+										<button type="button" class="aips-row-action-item aips-edit-post" data-edit-url="{{ esc_url(item.edit_url) }}" title="{{ t('Edit this post')|esc_attr }}"><span class="dashicons dashicons-edit"></span><span>{{ t('Edit') }}</span></button>
+										<button type="button" class="aips-row-action-item aips-preview-post" data-post-id="{{ item.post_id|e('html_attr') }}" title="{{ t('Preview this post')|esc_attr }}"><span class="dashicons dashicons-visibility"></span><span>{{ t('Preview') }}</span></button>
+										<button type="button" class="aips-row-action-item aips-ai-edit-btn" data-post-id="{{ item.post_id|e('html_attr') }}" data-history-id="{{ item.history_id|e('html_attr') }}" title="{{ t('AI Edit - Regenerate components')|esc_attr }}"><span class="dashicons dashicons-admin-customizer"></span><span>{{ t('AI Edit') }}</span></button>
+										<a class="aips-row-action-item aips-open-history-modal" href="{{ esc_url(item.history_url) }}" data-history-id="{{ item.history_id|e('html_attr') }}" data-post-id="{{ item.post_id|e('html_attr') }}" title="{{ t('View history for this post')|esc_attr }}"><span class="dashicons dashicons-backup"></span><span>{{ t('History') }}</span></a>
+										<button type="button" class="aips-row-action-item aips-view-session" data-history-id="{{ item.history_id|e('html_attr') }}" title="{{ t('View generation session')|esc_attr }}"><span class="dashicons dashicons-visibility"></span><span>{{ t('View Session') }}</span></button>
+										<button type="button" class="aips-row-action-item aips-regenerate-post" data-history-id="{{ item.history_id|e('html_attr') }}" data-post-id="{{ item.post_id|e('html_attr') }}" title="{{ t('Regenerate this post')|esc_attr }}"><span class="dashicons dashicons-update"></span><span>{{ t('Re-generate') }}</span></button>
+									</div>
+								</div>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</form>
+{% else %}
+	<div class="aips-panel-body">
+		{% if review_tab.search_query %}
+			<div class="aips-empty-state"><div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div><h3 class="aips-empty-state-title">{{ t('No Posts Found') }}</h3><p class="aips-empty-state-description">{{ t('No draft posts match your search criteria. Try a different search term.') }}</p><div class="aips-empty-state-actions"><a href="{{ esc_url(review_tab.clear_search_url) }}" class="aips-btn aips-btn-primary"><span class="dashicons dashicons-dismiss"></span>{{ t('Clear Search') }}</a></div></div>
+		{% else %}
+			<div class="aips-empty-state"><div class="dashicons dashicons-yes-alt aips-empty-state-icon" aria-hidden="true"></div><h3 class="aips-empty-state-title">{{ t('No Draft Posts') }}</h3><p class="aips-empty-state-description">{{ t('There are no draft posts waiting for review. All generated posts have been published or deleted.') }}</p><div class="aips-empty-state-actions"><a href="{{ esc_url(aips_page_url('schedule', {})) }}" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span>{{ t('Manage Schedules') }}</a></div></div>
+		{% endif %}
+	</div>
+{% endif %}
+
+<div class="aips-list-footer">
+	<span class="aips-table-footer-count">{{ tn('%d draft', '%d drafts', review_tab.total)|format(review_tab.total) }}</span>
+	{% include 'partials/content-pagination.html.twig' with { pagination: review_tab.pagination } %}
+</div>

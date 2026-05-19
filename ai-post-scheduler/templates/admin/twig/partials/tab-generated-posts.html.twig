@@ -1,0 +1,116 @@
+<div class="aips-table-controls aips-table-controls--top">
+	<form method="get" class="search-form aips-filter-form">
+		<input type="hidden" name="page" value="aips-generated-posts">
+		<div class="aips-bulk-actions"></div>
+		<div class="aips-search-control">
+			<label class="screen-reader-text" for="post-search-input">{{ t('Search Posts:') }}</label>
+			<input type="search" id="post-search-input" name="s" value="{{ generated_tab.search_query|e('html_attr') }}" class="aips-form-input" placeholder="{{ t('Search posts...')|esc_attr }}">
+			<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+				<span class="dashicons dashicons-search"></span>
+				{{ t('Search') }}
+			</button>
+			{% if generated_tab.search_query %}
+				<a href="{{ esc_url(generated_tab.clear_search_url) }}" class="aips-btn aips-btn-sm aips-btn-ghost">{{ t('Clear') }}</a>
+			{% endif %}
+		</div>
+		<div class="aips-filter-control">
+			{% if generated_tab.authors %}
+				<label class="screen-reader-text" for="aips-filter-author">{{ t('Filter by Author:') }}</label>
+				<select name="author_id" id="aips-filter-author" class="aips-form-select">
+					<option value="">{{ t('All Authors') }}</option>
+					{% for author in generated_tab.authors %}
+						<option value="{{ author.id|e('html_attr') }}" {{ selected(generated_tab.author_id, author.id)|raw }}>{{ author.name|e }}</option>
+					{% endfor %}
+				</select>
+			{% endif %}
+			{% if generated_tab.templates %}
+				<label class="screen-reader-text" for="aips-filter-template-generated">{{ t('Filter by Template:') }}</label>
+				<select name="template_id" id="aips-filter-template-generated" class="aips-form-select">
+					<option value="">{{ t('All Templates') }}</option>
+					{% for template in generated_tab.templates %}
+						<option value="{{ template.id|e('html_attr') }}" {{ selected(generated_tab.template_id, template.id)|raw }}>{{ template.name|e }}</option>
+					{% endfor %}
+				</select>
+			{% endif %}
+			<button type="submit" id="aips-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+				<span class="dashicons dashicons-filter"></span>
+				{{ t('Filter') }}
+			</button>
+			{% if generated_tab.author_id or generated_tab.template_id %}
+				<a href="{{ esc_url(generated_tab.clear_filters_url) }}" class="aips-btn aips-btn-sm aips-btn-ghost">{{ t('Clear Filters') }}</a>
+			{% endif %}
+		</div>
+	</form>
+</div>
+
+<div class="aips-panel-body no-padding">
+	{% if generated_tab.rows %}
+		<table class="aips-table">
+			<thead>
+				<tr>
+					<th scope="col">{{ t('Title') }}</th>
+					<th scope="col">{{ t('Scheduled') }}</th>
+					<th scope="col">{{ t('Published') }}</th>
+					<th scope="col">{{ t('Generated') }}</th>
+					<th scope="col">{{ t('Actions') }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for post_data in generated_tab.rows %}
+					<tr>
+						<td>
+							<a href="{{ esc_url(post_data.edit_link) }}" class="cell-primary">{{ post_data.title|e }}</a>
+							<span class="aips-cell-source">{{ post_data.source|e }}</span>
+						</td>
+						<td><div class="cell-meta">{{ post_data.date_scheduled|e }}</div></td>
+						<td><div class="cell-meta">{{ post_data.date_published|e }}</div></td>
+						<td><div class="cell-meta">{{ post_data.date_generated|e }}</div></td>
+						<td>
+							<div class="cell-actions">
+								<div class="aips-row-action-group">
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post" data-edit-url="{{ esc_url(post_data.edit_link) }}" title="{{ t('Edit this post')|esc_attr }}">
+										<span class="dashicons dashicons-edit"></span>
+										{{ t('Edit') }}
+									</button>
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-generated-row-actions-{{ post_data.post_id|e('html_attr') }}" title="{{ t('More actions')|esc_attr }}">
+										<span class="screen-reader-text">{{ t('More actions') }}</span>
+									</button>
+								</div>
+								<div id="aips-generated-row-actions-{{ post_data.post_id|e('html_attr') }}" class="aips-row-action-menu" hidden>
+									<button type="button" class="aips-row-action-item aips-preview-post" data-post-id="{{ post_data.post_id|e('html_attr') }}" title="{{ t('Preview this post')|esc_attr }}"><span class="dashicons dashicons-visibility"></span><span>{{ t('Preview') }}</span></button>
+									<button type="button" class="aips-row-action-item aips-ai-edit-btn" data-post-id="{{ post_data.post_id|e('html_attr') }}" data-history-id="{{ post_data.history_id|e('html_attr') }}" title="{{ t('AI Edit')|esc_attr }}"><span class="dashicons dashicons-admin-customizer"></span><span>{{ t('AI Edit') }}</span></button>
+									<a class="aips-row-action-item aips-open-history-modal" href="{{ esc_url(post_data.history_url) }}" data-history-id="{{ post_data.history_id|e('html_attr') }}" data-post-id="{{ post_data.post_id|e('html_attr') }}" title="{{ t('View history for this post')|esc_attr }}"><span class="dashicons dashicons-backup"></span><span>{{ t('History') }}</span></a>
+									<button type="button" class="aips-row-action-item aips-view-session" data-history-id="{{ post_data.history_id|e('html_attr') }}" title="{{ t('View Session')|esc_attr }}"><span class="dashicons dashicons-visibility"></span><span>{{ t('View Session') }}</span></button>
+								</div>
+							</div>
+						</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	{% else %}
+		{% if generated_tab.search_query %}
+			<div class="aips-empty-state">
+				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title">{{ t('No Posts Found') }}</h3>
+				<p class="aips-empty-state-description">{{ t('No generated posts match your search criteria. Try a different search term.') }}</p>
+				<div class="aips-empty-state-actions"><a href="{{ esc_url(generated_tab.clear_search_url) }}" class="aips-btn aips-btn-primary"><span class="dashicons dashicons-dismiss"></span>{{ t('Clear Search') }}</a></div>
+			</div>
+		{% else %}
+			<div class="aips-empty-state">
+				<div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title">{{ t('No Generated Posts') }}</h3>
+				<p class="aips-empty-state-description">{{ t('No generated posts found. Start creating content by setting up templates and schedules.') }}</p>
+				<div class="aips-empty-state-actions">
+					<a href="{{ esc_url(aips_page_url('templates', {})) }}" class="aips-btn aips-btn-primary"><span class="dashicons dashicons-plus-alt"></span>{{ t('Create Template') }}</a>
+					<a href="{{ esc_url(aips_page_url('schedule', {})) }}" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span>{{ t('Manage Schedules') }}</a>
+				</div>
+			</div>
+		{% endif %}
+	{% endif %}
+</div>
+
+<div class="aips-list-footer">
+	<span class="aips-table-footer-count">{{ tn('%s post', '%s posts', generated_tab.total)|format(number_fmt(generated_tab.total)) }}</span>
+	{% include 'partials/content-pagination.html.twig' with { pagination: generated_tab.pagination } %}
+</div>
