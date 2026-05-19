@@ -112,6 +112,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_refresh_existing_posts' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Existing Post Refresh Automation', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -725,6 +729,16 @@ final class AI_Post_Scheduler {
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
+                    'info'
+                );
+            }
+        });
+
+        add_action('aips_refresh_existing_posts', function() {
+            $created = (new AIPS_Post_Refresh_Automation())->process();
+            if ($created > 0) {
+                (new AIPS_Logger())->log(
+                    sprintf('Post refresh automation created %d review drafts.', $created),
                     'info'
                 );
             }
