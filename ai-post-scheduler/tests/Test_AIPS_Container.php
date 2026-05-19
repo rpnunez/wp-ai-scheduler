@@ -107,6 +107,49 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that makeIfExists returns bound service when present.
+	 */
+	public function test_make_if_exists_returns_bound_service() {
+		$this->container->singleton('test_service', function() {
+			$obj = new stdClass();
+			$obj->source = 'binding';
+			return $obj;
+		});
+
+		$result = $this->container->makeIfExists('test_service', function() {
+			$obj = new stdClass();
+			$obj->source = 'fallback';
+			return $obj;
+		});
+
+		$this->assertInstanceOf(stdClass::class, $result);
+		$this->assertEquals('binding', $result->source);
+	}
+
+	/**
+	 * Test that makeIfExists executes closure fallback when binding is missing.
+	 */
+	public function test_make_if_exists_uses_closure_fallback_when_missing() {
+		$result = $this->container->makeIfExists('missing_service', function() {
+			$obj = new stdClass();
+			$obj->source = 'fallback';
+			return $obj;
+		});
+
+		$this->assertInstanceOf(stdClass::class, $result);
+		$this->assertEquals('fallback', $result->source);
+	}
+
+	/**
+	 * Test that makeIfExists instantiates class-string fallback when missing.
+	 */
+	public function test_make_if_exists_instantiates_class_string_fallback() {
+		$result = $this->container->makeIfExists('missing_service', stdClass::class);
+
+		$this->assertInstanceOf(stdClass::class, $result);
+	}
+
+	/**
 	 * Test that has() returns false for unregistered binding.
 	 */
 	public function test_has_returns_false_for_unregistered_binding() {
