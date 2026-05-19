@@ -174,7 +174,7 @@ class AIPS_Bulk_Generation_Result {
  *                           large enough, the request is queued async regardless of
  *                           limit_mode, so no items are rejected or truncated.
  *   queue_job_type string   When set, large batches (≥ aips_large_batch_threshold)
- *                           are persisted to AIPS_Bulk_Batch_Job_Store and dispatched
+ *                           are persisted to AIPS_Bulk_Batch_Jobs_Repository and dispatched
  *                           as a series of cron events instead of running synchronously.
  *                           The strategy for this job_type must be registered in
  *                           AIPS_Bulk_Batch_Processor before the cron fires.
@@ -209,7 +209,7 @@ class AIPS_Bulk_Generator_Service {
 	private $history_service;
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store|null Lazy-loaded job store.
+	 * @var AIPS_Bulk_Batch_Jobs_Repository|null Lazy-loaded job store.
 	 */
 	private $job_store;
 
@@ -222,12 +222,12 @@ class AIPS_Bulk_Generator_Service {
 	 * Constructor.
 	 *
 	 * @param AIPS_History_Service_Interface|null $history_service Injectable for testing.
-	 * @param AIPS_Bulk_Batch_Job_Store|null      $job_store       Injectable for testing.
+	 * @param AIPS_Bulk_Batch_Jobs_Repository|null      $job_store       Injectable for testing.
 	 * @param AIPS_Batch_Queue_Service|null       $batch_queue_service Injectable for testing.
 	 */
 	public function __construct(
 		?AIPS_History_Service_Interface $history_service     = null,
-		?AIPS_Bulk_Batch_Job_Store      $job_store           = null,
+		?AIPS_Bulk_Batch_Jobs_Repository      $job_store           = null,
 		?AIPS_Batch_Queue_Service       $batch_queue_service = null
 	) {
 		$container = AIPS_Container::get_instance();
@@ -239,11 +239,11 @@ class AIPS_Bulk_Generator_Service {
 	/**
 	 * Lazy-load the job store.
 	 *
-	 * @return AIPS_Bulk_Batch_Job_Store
+	 * @return AIPS_Bulk_Batch_Jobs_Repository
 	 */
-	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
+	private function get_job_store(): AIPS_Bulk_Batch_Jobs_Repository {
 		if ( $this->job_store === null ) {
-			$this->job_store = new AIPS_Bulk_Batch_Job_Store();
+			$this->job_store = new AIPS_Bulk_Batch_Jobs_Repository();
 		}
 		return $this->job_store;
 	}

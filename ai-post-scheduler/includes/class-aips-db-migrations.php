@@ -43,8 +43,14 @@ class AIPS_DB_Migrations {
 	 */
 	private $logger;
 
+	/**
+	 * @var AIPS_DB_Schema_Repository
+	 */
+	private $schema_repository;
+
 	public function __construct() {
 		$this->logger = new AIPS_Logger();
+		$this->schema_repository = new AIPS_DB_Schema_Repository();
 	}
 
 	/**
@@ -171,7 +177,7 @@ class AIPS_DB_Migrations {
 			) );
 
 			if ( ! $exists ) {
-				$wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
 			}
 		}
 	}
@@ -205,13 +211,10 @@ class AIPS_DB_Migrations {
 		);
 
 		foreach ( $columns as $col_name => $add_clause ) {
-			$exists = $wpdb->get_row( $wpdb->prepare(
-				"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$col_name
-			) );
+			$exists = $this->schema_repository->column_exists( $table, $col_name );
 
 			if ( ! $exists ) {
-				$wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table}` {$add_clause}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
 			}
 		}
 
@@ -219,12 +222,9 @@ class AIPS_DB_Migrations {
 		$table_sources_data  = $wpdb->prefix . 'aips_sources_data';
 		$sources_data_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_sources_data ) );
 		if ( $sources_data_exists === $table_sources_data ) {
-			$old_col = $wpdb->get_row( $wpdb->prepare(
-				"SHOW COLUMNS FROM `{$table_sources_data}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				'word_count'
-			) );
+			$old_col = $this->schema_repository->column_exists( $table_sources_data, 'word_count' );
 			if ( $old_col ) {
-				$wpdb->query( "ALTER TABLE `{$table_sources_data}` CHANGE COLUMN `word_count` `char_count` int NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$this->schema_repository->run_alter_statement( "ALTER TABLE `{$table_sources_data}` CHANGE COLUMN `word_count` `char_count` int NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			}
 		}
 	}

@@ -145,7 +145,7 @@ class AIPS_Schedule_Controller {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
-        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
+        $bulk_job_store = new AIPS_Bulk_Batch_Jobs_Repository();
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
 
         $last_success = array();

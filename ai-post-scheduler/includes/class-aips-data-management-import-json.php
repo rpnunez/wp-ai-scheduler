@@ -125,13 +125,9 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 				$full_table_name = $tables[$table_name];
 				$this->repository->truncate_table($full_table_name);
 
-				foreach ($rows as $row) {
-					if (!$this->repository->insert_row($full_table_name, $row)) {
-						$error_count++;
-					} else {
-						$success_count++;
-					}
-				}
+				$insert_result = $this->repository->insert_rows($full_table_name, $rows);
+				$success_count += (int) $insert_result['success'];
+				$error_count += (int) $insert_result['errors'];
 			}
 		} finally {
 			$this->repository->enable_foreign_key_checks();

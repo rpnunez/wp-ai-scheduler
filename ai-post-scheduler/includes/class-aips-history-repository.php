@@ -131,6 +131,56 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
     }
 
+    /**
+     * Find potentially invalid timestamp values in history tables.
+     *
+     * @param int $min_valid_timestamp Minimum plausible unix timestamp.
+     * @return array<string,int>
+     */
+    public function find_invalid_datetimes($min_valid_timestamp = 946684800) {
+        return array(
+            'history' => (int) $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name} WHERE created_at IS NULL OR (created_at > 0 AND created_at < %d) OR completed_at IS NULL OR (completed_at > 0 AND completed_at < %d)",
+                $min_valid_timestamp,
+                $min_valid_timestamp
+            )),
+            'history_log' => (int) $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name_log} WHERE timestamp IS NULL OR (timestamp > 0 AND timestamp < %d)",
+                $min_valid_timestamp
+            )),
+        );
+    }
+
+    /**
+     * Normalize invalid timestamp values in history tables to zero.
+     *
+     * @param int $min_valid_timestamp Minimum plausible unix timestamp.
+     * @return int Updated rows count.
+     */
+    public function repair_invalid_datetimes($min_valid_timestamp = 946684800) {
+        $updated = 0;
+
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} SET created_at = 0 WHERE created_at IS NULL OR (created_at > 0 AND created_at < %d)",
+            $min_valid_timestamp
+        ));
+        if (is_numeric($result)) { $updated += (int) $result; }
+
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} SET completed_at = 0 WHERE completed_at IS NULL OR (completed_at > 0 AND completed_at < %d)",
+            $min_valid_timestamp
+        ));
+        if (is_numeric($result)) { $updated += (int) $result; }
+
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name_log} SET timestamp = 0 WHERE timestamp IS NULL OR (timestamp > 0 AND timestamp < %d)",
+            $min_valid_timestamp
+        ));
+        if (is_numeric($result)) { $updated += (int) $result; }
+
+        return $updated;
+    }
+
     public function get_daily_success_failure_trend($days = 14) {
         $days = max(1, absint($days));
 

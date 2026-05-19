@@ -117,4 +117,29 @@ class AIPS_Data_Management_Repository {
 	public function insert_row($full_table_name, $row) {
 		return false !== $this->wpdb->insert($full_table_name, $row);
 	}
+
+	/**
+	 * Insert many rows into a validated plugin table.
+	 *
+	 * @param string $full_table_name Table name including prefix.
+	 * @param array  $rows            Row payloads.
+	 * @return array{success:int,errors:int}
+	 */
+	public function insert_rows($full_table_name, $rows) {
+		$success = 0;
+		$errors  = 0;
+
+		foreach ((array) $rows as $row) {
+			if ($this->insert_row($full_table_name, $row)) {
+				$success++;
+			} else {
+				$errors++;
+			}
+		}
+
+		return array(
+			'success' => $success,
+			'errors'  => $errors,
+		);
+	}
 }

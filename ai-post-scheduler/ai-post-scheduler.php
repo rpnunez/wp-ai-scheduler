@@ -720,7 +720,7 @@ final class AI_Post_Scheduler {
 
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {
-            $store   = new AIPS_Bulk_Batch_Job_Store();
+            $store   = new AIPS_Bulk_Batch_Jobs_Repository();
             $deleted = $store->cleanup_old_jobs();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
