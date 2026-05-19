@@ -50,3 +50,7 @@
 {"event":"finding_upsert","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","finding_id":"756f9a8af6d398cd59f65ab42ea80f7f9bb5abec","status":"resolved"}
 {"event":"run_end","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:00:00Z","scanned_files_count":5,"open_findings_count":18}
 {"event":"run_end","run_id":"aips-20260518T220000Z","timestamp":"2026-05-18T22:01:00Z","scanned_files_count":5,"open_findings_count":4,"note":"finalized_after_consistency_fix"}
+{"event":"run_start","run_id":"aips-20260518T223500Z","timestamp":"2026-05-18T22:35:00Z"}
+{"event":"finding_upsert","run_id":"aips-20260518T223500Z","timestamp":"2026-05-18T22:35:00Z","finding_id":"a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc"}
+{"event":"run_end","run_id":"aips-20260518T223500Z","timestamp":"2026-05-18T22:35:00Z","open_findings_count":0}
+{"event":"run_end","run_id":"aips-20260518T223500Z","timestamp":"2026-05-18T22:36:00Z","scanned_files_count":3,"open_findings_count":4,"note":"corrected_open_findings_count_after_index_repair"}

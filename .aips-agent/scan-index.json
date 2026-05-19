@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "repo": "rpnunez/wp-ai-scheduler",
-  "last_run_at": "2026-05-18T22:00:00Z",
-  "last_run_id": "aips-20260518T220000Z",
+  "last_run_at": "2026-05-18T22:35:00Z",
+  "last_run_id": "aips-20260518T223500Z",
   "ruleset_hash": "785615625ed43fd3e7129b93d844260fb5ddd36b",
   "files": {
     "ai-post-scheduler/includes/class-aips-author-post-generator.php": {
@@ -164,7 +164,7 @@
       "last_scanned_at": "2026-05-18T22:00:00Z",
       "last_scan_run_id": "aips-20260518T220000Z",
       "findings_open_count": 0,
-      "status": "clean"
+      "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-seeder-service.php": {
       "fingerprint": "2a810727b664b50254e1d49e4a18fc79d5bbfad0",
@@ -181,9 +181,9 @@
       "status": "has_findings"
     },
     "ai-post-scheduler/includes/class-aips-schedule-controller.php": {
-      "fingerprint": "a0386df70630f32fe8d73ffced6b078d37f7a13b",
-      "last_scanned_at": "2026-05-18T22:00:00Z",
-      "last_scan_run_id": "aips-20260518T220000Z",
+      "fingerprint": "abdffc622dba3f042199f54143dc3e95bee87332",
+      "last_scanned_at": "2026-05-18T22:35:00Z",
+      "last_scan_run_id": "aips-20260518T223500Z",
       "findings_open_count": 1,
       "status": "has_findings"
     },
@@ -193,6 +193,20 @@
       "last_scan_run_id": "aips-20260518T220000Z",
       "findings_open_count": 1,
       "status": "has_findings"
+    },
+    "ai-post-scheduler/includes/class-aips-container.php": {
+      "findings_open_count": 0,
+      "status": "ok",
+      "fingerprint": "7484a45c7e4cf1fdd1edaa82dba22cc7e10088f1",
+      "last_scanned_at": "2026-05-18T22:35:00Z",
+      "last_scan_run_id": "aips-20260518T223500Z"
+    },
+    "ai-post-scheduler/tests/Test_AIPS_Container.php": {
+      "findings_open_count": 0,
+      "status": "ok",
+      "fingerprint": "4df5474472013a4fffb94482871dfac12bbdcf3e",
+      "last_scanned_at": "2026-05-18T22:35:00Z",
+      "last_scan_run_id": "aips-20260518T223500Z"
     }
   },
   "open_findings": {
@@ -245,17 +259,28 @@
       "last_seen_run_id": "aips-20260518T220000Z"
     },
     "756f9a8af6d398cd59f65ab42ea80f7f9bb5abec": {
+      "id": "756f9a8af6d398cd59f65ab42ea80f7f9bb5abec",
+      "type": "controller_container_bypass",
+      "severity": "medium",
+      "path": "ai-post-scheduler/includes/class-aips-system-status-controller.php",
+      "symbol": "AIPS_System_Status_Controller",
+      "anchor": "constructor-and-actions-container-and-datetime",
       "status": "resolved",
-      "metadata": {
-        "type": "controller_container_bypass",
-        "severity": "medium",
-        "path": "ai-post-scheduler/includes/class-aips-system-status-controller.php",
-        "symbol": "AIPS_System_Status_Controller",
-        "anchor": "constructor-and-actions-container-and-datetime",
-        "first_seen_run_id": "aips-20260518T220000Z",
-        "last_seen_run_id": "aips-20260518T220000Z",
-        "finding_file": ".aips-agent/findings/756f9a8af6d398cd59f65ab42ea80f7f9bb5abec.json"
-      }
+      "finding_file": ".aips-agent/findings/756f9a8af6d398cd59f65ab42ea80f7f9bb5abec.json",
+      "first_seen_run_id": "aips-20260518T220000Z",
+      "last_seen_run_id": "aips-20260518T220000Z"
+    },
+    "a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc": {
+      "id": "a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc",
+      "type": "controller_container_bypass",
+      "severity": "medium",
+      "path": "ai-post-scheduler/includes/class-aips-schedule-controller.php",
+      "symbol": "AIPS_Schedule_Controller::__construct",
+      "anchor": "constructor-repeated-ternary-resolution",
+      "status": "resolved",
+      "finding_file": ".aips-agent/findings/a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc.json",
+      "first_seen_run_id": "aips-20260518T223500Z",
+      "last_seen_run_id": "aips-20260518T223500Z"
     }
   }
 }
