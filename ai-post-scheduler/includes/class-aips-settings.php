@@ -254,7 +254,7 @@ class AIPS_Settings {
         ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
-            'default' => 1
+            'default' => 0
         ));
         register_setting('aips_settings', 'aips_retry_max_attempts', array(
             'sanitize_callback' => 'absint',
@@ -711,7 +711,7 @@ class AIPS_Settings {
      * Render the enable retry setting field.
      */
     public function enable_retry_field_callback() {
-        $value = get_option('aips_enable_retry', 1);
+        $value = get_option('aips_enable_retry', 0);
         ?>
         <input type="hidden" name="aips_enable_retry" value="0">
         <input type="checkbox" name="aips_enable_retry" value="1" <?php checked(1, $value); ?>>

@@ -1659,7 +1659,7 @@ class AIPS_MCP_Bridge {
 		// Resilience Settings
 		if ($category === 'all' || $category === 'resilience') {
 			$settings['resilience'] = array(
-				'enable_retry' => (bool) get_option('aips_enable_retry', true),
+				'enable_retry' => (bool) get_option('aips_enable_retry', false),
 				'retry_max_attempts' => (int) get_option('aips_retry_max_attempts', 3),
 				'retry_initial_delay' => (int) get_option('aips_retry_initial_delay', 1),
 				'enable_rate_limiting' => (bool) get_option('aips_enable_rate_limiting', false),
