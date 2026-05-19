@@ -32,23 +32,136 @@ class AIPS_Sources_Controller {
 	private $data_repo;
 
 	/**
+	 * @var AIPS_View|null
+	 */
+	private $view;
+
+	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
 	 * @param AIPS_Sources_Repository|null $repo Optional repository (injectable for tests).
+	 * @param bool                         $register_hooks Whether to register wp_ajax_* hooks.
 	 */
-	public function __construct($repo = null) {
+	public function __construct($repo = null, $register_hooks = true) {
 		$this->repo      = $repo ?: new AIPS_Sources_Repository();
 		$this->data_repo = new AIPS_Sources_Data_Repository();
 
-		add_action('wp_ajax_aips_get_sources', array($this, 'ajax_get_sources'));
-		add_action('wp_ajax_aips_save_source', array($this, 'ajax_save_source'));
-		add_action('wp_ajax_aips_delete_source', array($this, 'ajax_delete_source'));
-		add_action('wp_ajax_aips_toggle_source_active', array($this, 'ajax_toggle_source_active'));
-		add_action('wp_ajax_aips_fetch_source_now', array($this, 'ajax_fetch_source_now'));
-		// Source Group (taxonomy) endpoints.
-		add_action('wp_ajax_aips_get_source_groups', array($this, 'ajax_get_source_groups'));
-		add_action('wp_ajax_aips_save_source_group', array($this, 'ajax_save_source_group'));
-		add_action('wp_ajax_aips_delete_source_group', array($this, 'ajax_delete_source_group'));
+		$container = AIPS_Container::get_instance();
+		$resolved_view = $container->makeIfExists(AIPS_View::class);
+		$this->view = ($resolved_view instanceof AIPS_View) ? $resolved_view : null;
+
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_get_sources', array($this, 'ajax_get_sources'));
+			add_action('wp_ajax_aips_save_source', array($this, 'ajax_save_source'));
+			add_action('wp_ajax_aips_delete_source', array($this, 'ajax_delete_source'));
+			add_action('wp_ajax_aips_toggle_source_active', array($this, 'ajax_toggle_source_active'));
+			add_action('wp_ajax_aips_fetch_source_now', array($this, 'ajax_fetch_source_now'));
+			// Source Group (taxonomy) endpoints.
+			add_action('wp_ajax_aips_get_source_groups', array($this, 'ajax_get_source_groups'));
+			add_action('wp_ajax_aips_save_source_group', array($this, 'ajax_save_source_group'));
+			add_action('wp_ajax_aips_delete_source_group', array($this, 'ajax_delete_source_group'));
+		}
+	}
+
+	/**
+	 * Render the Sources admin page.
+	 *
+	 * @return void
+	 */
+	public function render_page() {
+		$sources = $this->repo->get_all(false);
+
+		$source_groups = get_terms(array(
+			'taxonomy'   => 'aips_source_group',
+			'hide_empty' => false,
+		));
+		if (is_wp_error($source_groups)) {
+			$source_groups = array();
+		}
+
+		$source_group_name_map = array();
+		foreach ($source_groups as $group) {
+			$source_group_name_map[(int) $group->term_id] = $group->name;
+		}
+
+		$all_source_ids = array_map(function($source) {
+			return (int) $source->id;
+		}, $sources);
+
+		$source_term_ids_map = $this->repo->get_term_ids_for_sources($all_source_ids);
+		$source_fetch_data_map = $this->data_repo->get_by_source_ids($all_source_ids);
+		$source_content_count_map = $this->data_repo->get_counts_by_source_ids($all_source_ids);
+
+		$source_rows = array();
+		foreach ($sources as $source) {
+			$source_id = (int) $source->id;
+			$term_ids = isset($source_term_ids_map[$source_id]) ? (array) $source_term_ids_map[$source_id] : array();
+			$group_names = array();
+
+			foreach ($term_ids as $term_id) {
+				$term_id = (int) $term_id;
+				if (isset($source_group_name_map[$term_id])) {
+					$group_names[] = $source_group_name_map[$term_id];
+				}
+			}
+
+			$fetch_data = isset($source_fetch_data_map[$source_id]) ? $source_fetch_data_map[$source_id] : null;
+			$source_rows[] = array(
+				'id' => $source_id,
+				'url' => isset($source->url) ? (string) $source->url : '',
+				'label' => isset($source->label) ? (string) $source->label : '',
+				'description' => isset($source->description) ? (string) $source->description : '',
+				'is_active' => !empty($source->is_active),
+				'fetch_interval' => isset($source->fetch_interval) ? (string) $source->fetch_interval : '',
+				'last_fetched_at' => isset($source->last_fetched_at) ? (string) $source->last_fetched_at : '',
+				'next_fetch_at' => isset($source->next_fetch_at) ? (string) $source->next_fetch_at : '',
+				'term_ids_json' => wp_json_encode(array_values($term_ids)),
+				'group_names' => $group_names,
+				'fetch_status' => ($fetch_data && isset($fetch_data->fetch_status)) ? (string) $fetch_data->fetch_status : '',
+				'content_count' => isset($source_content_count_map[$source_id]) ? (int) $source_content_count_map[$source_id] : 0,
+			);
+		}
+
+		$interval_displays = AIPS_Interval_Calculator::instance()->get_all_interval_displays();
+
+		if ($this->view instanceof AIPS_View) {
+			$this->view->render('pages/sources.html.twig', array(
+				'sources_screen' => array(
+					'rows' => $source_rows,
+					'total' => count($source_rows),
+				),
+				'sources_modals' => $this->render_php_template('templates/partials/sources-modals.php', array(
+					'source_groups' => $source_groups,
+					'interval_displays' => $interval_displays,
+				)),
+			));
+
+			return;
+		}
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+	}
+
+	/**
+	 * Render an existing PHP template to a string.
+	 *
+	 * @param string $relative_path Template path relative to plugin root.
+	 * @param array  $vars Variables extracted into the template scope.
+	 * @return string
+	 */
+	private function render_php_template($relative_path, $vars = array()) {
+		$template_file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
+		if (!file_exists($template_file)) {
+			return '';
+		}
+
+		if (!empty($vars) && is_array($vars)) {
+			extract($vars, EXTR_SKIP);
+		}
+
+		ob_start();
+		include $template_file;
+		return (string) ob_get_clean();
 	}
 
 	/**

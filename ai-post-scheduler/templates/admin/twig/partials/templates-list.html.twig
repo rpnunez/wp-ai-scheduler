@@ -1,0 +1,110 @@
+{% embed 'partials/list-layout.html.twig' %}
+	{% block list_toolbar %}
+		<div class="aips-table-controls aips-table-controls--top">
+			<div class="aips-bulk-actions"></div>
+			<div class="aips-search-control">
+				<label class="screen-reader-text" for="aips-template-search">{{ t('Search Templates:') }}</label>
+				<input type="search" id="aips-template-search" class="aips-form-input" placeholder="{{ t('Search templates...')|esc_attr }}">
+				<button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;">{{ t('Clear') }}</button>
+			</div>
+			<div class="aips-filter-control"></div>
+		</div>
+	{% endblock %}
+
+	{% block list_content %}
+		{% if templates_screen.rows %}
+			<div class="aips-panel-body no-padding aips-templates-list">
+				<table class="aips-table">
+					<thead>
+						<tr>
+							<th class="column-name">{{ t('Template Name') }}</th>
+							<th>{{ t('Post Status') }}</th>
+							<th class="column-category">{{ t('Category') }}</th>
+							<th>{{ t('Statistics') }}</th>
+							<th>{{ t('Status') }}</th>
+							<th>{{ t('Actions') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for row in templates_screen.rows %}
+							<tr data-template-id="{{ row.id|e('html_attr') }}">
+								<td class="column-name">
+									<div class="cell-primary">{{ row.name|e }}</div>
+								</td>
+								<td>
+									<span class="aips-badge aips-badge-neutral">{{ row.post_status_label|e }}</span>
+								</td>
+								<td class="column-category">
+									{% if row.category_name %}
+										{{ row.category_name|e }}
+									{% else %}
+										<span class="cell-meta">&mdash;</span>
+									{% endif %}
+								</td>
+								<td>
+									<div style="display:flex;flex-direction:column;gap:4px;">
+										<div>
+											<strong style="font-size:14px;">{{ row.generated_count }}</strong>
+											<span class="cell-meta">{{ t('generated') }}</span>
+											<a href="{{ esc_url(row.generated_posts_url) }}" style="font-size:12px;margin-left:4px;">{{ t('(view)') }}</a>
+										</div>
+										<div class="cell-meta" style="font-size:11px;">
+											{{ t('Pending:') }}
+											{{ t('Today:') }} {{ row.pending_today }} |
+											{{ t('Week:') }} {{ row.pending_week }} |
+											{{ t('Month:') }} {{ row.pending_month }}
+										</div>
+									</div>
+								</td>
+								<td>
+									{% if row.is_active %}
+										<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span>{{ t('Active') }}</span>
+									{% else %}
+										<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span>{{ t('Inactive') }}</span>
+									{% endif %}
+								</td>
+								<td>
+									<div class="cell-actions">
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Edit')|esc_attr }}"><span class="dashicons dashicons-edit"></span>{{ t('Edit') }}</button>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Run Now')|esc_attr }}"><span class="dashicons dashicons-controls-play"></span>{{ t('Run Now') }}</button>
+										<a class="aips-btn aips-btn-sm aips-btn-ghost" href="{{ esc_url(row.schedule_url) }}" title="{{ t('Schedule')|esc_attr }}"><span class="dashicons dashicons-calendar-alt"></span><span class="screen-reader-text">{{ t('Schedule') }}</span></a>
+										<button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Clone')|esc_attr }}"><span class="dashicons dashicons-admin-page"></span><span class="screen-reader-text">{{ t('Clone') }}</span></button>
+										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Delete')|esc_attr }}"><span class="dashicons dashicons-trash"></span><span class="screen-reader-text">{{ t('Delete') }}</span></button>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+
+				<div id="aips-template-search-no-results" class="aips-empty-state" style="display:none; padding:60px 20px;">
+					<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+					<h3 class="aips-empty-state-title">{{ t('No Templates Found') }}</h3>
+					<p class="aips-empty-state-description">{{ t('No templates match your search criteria. Try a different search term.') }}</p>
+					<div class="aips-empty-state-actions">
+						<button type="button" class="aips-btn aips-btn-primary aips-clear-search-btn"><span class="dashicons dashicons-dismiss"></span>{{ t('Clear Search') }}</button>
+					</div>
+				</div>
+			</div>
+		{% else %}
+			<div class="aips-panel-body">
+				<div class="aips-empty-state">
+					<div class="dashicons dashicons-media-document aips-empty-state-icon" aria-hidden="true"></div>
+					<h3 class="aips-empty-state-title">{{ t('No Templates Yet') }}</h3>
+					<p class="aips-empty-state-description">{{ t('Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically.') }}</p>
+					<div class="aips-empty-state-actions">
+						<button class="aips-btn aips-btn-primary aips-add-template-btn"><span class="dashicons dashicons-plus-alt"></span>{{ t('Create Template') }}</button>
+					</div>
+				</div>
+			</div>
+		{% endif %}
+	{% endblock %}
+
+	{% block list_footer_count %}
+		{% if templates_screen.rows %}
+			{{ tn('%s template', '%s templates', templates_screen.total)|format(number_fmt(templates_screen.total)) }}
+		{% endif %}
+	{% endblock %}
+
+	{% block list_footer_pagination %}{% endblock %}
+{% endembed %}

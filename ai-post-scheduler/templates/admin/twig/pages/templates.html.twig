@@ -1,0 +1,24 @@
+<div class="wrap aips-wrap">
+	<div class="aips-page-container">
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title">{{ t('Post Templates') }}</h1>
+					<p class="aips-page-description">{{ t('Create and manage AI post generation templates with custom prompts and settings.') }}</p>
+				</div>
+				<div class="aips-page-actions">
+					<button class="aips-btn aips-btn-primary aips-add-template-btn">
+						<span class="dashicons dashicons-plus-alt"></span>
+						{{ t('Add Template') }}
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="aips-content-panel">
+			{% include 'partials/templates-list.html.twig' %}
+		</div>
+	</div>
+</div>
+
+{{ templates_modals|raw }}
