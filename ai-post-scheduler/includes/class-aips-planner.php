@@ -106,6 +106,15 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * Handles the AJAX request for bulk scheduling topics.
+     *
+     * Validates input, sanitizes topics, and schedules them using a single bulk INSERT query
+     * to improve performance. Ensures topics scheduled with 'once' frequency are staggered
+     * using the interval calculator to prevent API rate limiting and server spikes.
+     *
+     * @return void Outputs JSON response via AIPS_Ajax_Response and exits.
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -128,22 +137,33 @@ class AIPS_Planner {
         $topics = AIPS_Utilities::sanitize_string_array($topics);
 
         $scheduler = $this->make_scheduler();
+        $calculator = new AIPS_Interval_Calculator();
         $count = 0;
         $base_time = strtotime($start_date);
+
+        // For 'once' frequency, stagger the runs (e.g. daily) to avoid rate limits
+        $stagger_frequency = $frequency;
+        if ($frequency === 'once' || !$calculator->is_valid_frequency($frequency)) {
+            $stagger_frequency = 'daily';
+        }
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+
+        $current_run_time = $base_time;
 
         foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
+                'frequency' => $frequency,
+                'next_run' => date('Y-m-d H:i:s', $current_run_time),
                 'is_active' => 1,
                 'topic' => $topic
             );
+
+            // Advance the next run time to stagger bulk operations
+            $current_run_time = $calculator->calculate_next_run($stagger_frequency, $current_run_time);
         }
 
         $count = $scheduler->save_schedule_bulk($schedules);

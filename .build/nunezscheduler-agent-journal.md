@@ -269,3 +269,8 @@ Target Feature: Template Wizard, Schedule UI, Voice UI
 Improvement: Replaced hard `location.reload()` calls with dynamic AJAX content panel refreshing to preserve UI context.
 Files Modified: ai-post-scheduler/assets/js/admin.js
 Outcome: Faster, smoother transitions between states without losing scroll position or tab context.
+## 2026-05-19 - Planner Optimization
+Target Feature: Planner / Bulk Scheduler
+Improvement: Staggered the next_run timestamps during bulk scheduling to avoid API rate limiting and server load spikes. Fallback to 'daily' intervals for 'once' frequency. Added DocBlock to `ajax_bulk_schedule` method.
+Files Modified: ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
+Outcome: Prevents massive concurrent runs of scheduled tasks by staggering the `next_run` when user uses the planner bulk scheduler. Improved flow efficiency and reduced chance of API throttling.
