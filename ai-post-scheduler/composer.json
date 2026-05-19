@@ -30,7 +30,8 @@
   "scripts": {
     "test": "vendor/bin/phpunit",
     "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
-    "test:verbose": "vendor/bin/phpunit --verbose"
+    "test:verbose": "vendor/bin/phpunit --verbose",
+    "lint:repository-boundary": "php tools/check-repository-boundary.php"
   },
   "config": {
     "allow-plugins": {
