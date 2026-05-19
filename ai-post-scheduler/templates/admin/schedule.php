@@ -169,7 +169,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-unified-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-unified-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-unified-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-unified-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -192,7 +192,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<button type="button" id="aips-unified-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
 						<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
 					</button>
-					<span id="aips-unified-selected-count" class="aips-selected-count" style="display:none;"></span>
+					<span id="aips-unified-selected-count" class="aips-selected-count is-hidden"></span>
 				</div>
 			</div>
 
@@ -446,7 +446,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->
 <!-- ============================================================ -->
-<div id="aips-schedule-modal" class="aips-modal" style="display:none;"
+<div id="aips-schedule-modal" class="aips-modal is-hidden"
 	data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>"
 	data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
 	<div class="aips-modal-content">
@@ -530,7 +530,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
-<div id="aips-schedule-history-modal" class="aips-modal" style="display:none;"
+<div id="aips-schedule-history-modal" class="aips-modal is-hidden"
 	role="dialog" aria-modal="true" aria-labelledby="aips-schedule-history-modal-title">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">

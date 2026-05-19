@@ -3980,3 +3980,25 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
+
+/* ==========================================================================
+   Utility classes (admin templates)
+   ========================================================================== */
+.is-hidden { display: none !important; }
+.is-flex { display: flex !important; }
+.aips-display-block { display: block !important; }
+.aips-flex { display: flex; }
+.aips-items-center { align-items: center; }
+.aips-gap-1 { gap: var(--aips-space-1); }
+.aips-gap-2 { gap: var(--aips-space-2); }
+.aips-gap-3 { gap: var(--aips-space-3); }
+.aips-gap-4 { gap: var(--aips-space-4); }
+.aips-mt-2 { margin-top: var(--aips-space-2); }
+.aips-mb-1 { margin-bottom: var(--aips-space-1); }
+.aips-mb-4 { margin-bottom: var(--aips-space-4); }
+.aips-w-auto { width: auto; }
+.aips-text-xs { font-size: var(--aips-text-xs); }
+.aips-text-sm { font-size: var(--aips-text-sm); }
+.aips-font-semibold { font-weight: var(--aips-font-semibold); }
+.aips-font-bold { font-weight: var(--aips-font-bold); }
+.aips-spinner-reset { float: none; margin: 0; }

@@ -114,12 +114,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                     </tr>
                 </table>
                 
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                <div class="aips-mt-2 aips-flex aips-items-center aips-gap-3">
                     <button type="submit" class="aips-btn aips-btn-primary" id="research-submit">
                         <span class="dashicons dashicons-search" aria-hidden="true"></span>
                         <?php esc_html_e('Research Trending Topics', 'ai-post-scheduler'); ?>
                     </button>
-                    <span class="spinner" style="float: none; margin: 0;"></span>
+                    <span class="spinner aips-spinner-reset"></span>
                 </div>
             </form>
 
@@ -160,7 +160,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         <td>
                             <div class="aips-checkbox-group">
                                 <?php foreach ($research_source_groups as $rsg): ?>
-                                    <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                    <label class="aips-checkbox-label aips-display-block aips-mb-1">
                                         <input type="checkbox" name="term_ids[]"
                                                value="<?php echo esc_attr($rsg->term_id); ?>">
                                         <?php echo esc_html($rsg->name); ?>
@@ -179,12 +179,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         </td>
                     </tr>
                 </table>
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                <div class="aips-mt-2 aips-flex aips-items-center aips-gap-3">
                     <button type="submit" class="aips-btn aips-btn-secondary" id="source-research-submit">
                         <span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
                         <?php esc_html_e('Research from Sources', 'ai-post-scheduler'); ?>
                     </button>
-                    <span class="spinner" id="source-research-spinner" style="float: none; margin: 0;"></span>
+                    <span class="spinner" id="source-research-spinner" class="aips-spinner-reset"></span>
                 </div>
             </form>
             <?php endif; ?>
@@ -240,7 +240,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="filter-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -276,13 +276,13 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             </div>
 
             <!-- Table Footer -->
-            <div class="tablenav" id="topics-tablenav" style="display: none;">
+            <div class="tablenav" id="topics-tablenav" class="is-hidden">
                 <span class="aips-table-footer-count" id="topics-count"></span>
             </div>
         </div><!-- .aips-content-panel (library) -->
 
         <!-- Schedule Selected Topics Panel -->
-        <div id="bulk-schedule-section" class="aips-content-panel" style="display: none;">
+        <div id="bulk-schedule-section" class="aips-content-panel is-hidden">
             <div class="aips-panel-header">
                 <h2 class="aips-panel-title"><?php esc_html_e('Schedule Selected Topics', 'ai-post-scheduler'); ?></h2>
             </div>
@@ -323,12 +323,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                             </td>
                         </tr>
                     </table>
-                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                    <div class="aips-mt-2 aips-flex aips-items-center aips-gap-3">
                         <button type="submit" class="aips-btn aips-btn-primary">
                             <span class="dashicons dashicons-calendar-alt"></span>
                             <?php esc_html_e('Schedule Topics', 'ai-post-scheduler'); ?>
                         </button>
-                        <span class="spinner" style="float: none; margin: 0;"></span>
+                        <span class="spinner aips-spinner-reset"></span>
                     </div>
                 </form>
             </div><!-- .aips-panel-body -->
@@ -367,7 +367,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </div>
 
     <!-- Generate Now — Template Selection Modal -->
-    <div id="aips-generate-now-modal" class="aips-modal" style="display: none;">
+    <div id="aips-generate-now-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Generate Posts Now', 'ai-post-scheduler'); ?></h2>
@@ -412,7 +412,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </div>
 
     <!-- Trending Topic Posts Modal -->
-    <div id="aips-trending-topic-posts-modal" class="aips-modal" style="display: none;">
+    <div id="aips-trending-topic-posts-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             <h2 id="aips-trending-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>

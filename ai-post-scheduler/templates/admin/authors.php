@@ -69,7 +69,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                     </div>
                 </div>
 
@@ -77,7 +77,7 @@ $site_ctx = AIPS_Site_Context::get();
                 <div class="aips-panel-body no-padding">
                     <div class="aips-panel-toolbar">
                         <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-                            <select id="aips-authors-bulk-action-select" class="aips-form-select" style="width: auto;">
+                            <select id="aips-authors-bulk-action-select" class="aips-form-select aips-w-auto">
                                 <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
                                 <option value="generate_topics"><?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?></option>
                                 <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
@@ -313,7 +313,7 @@ $site_ctx = AIPS_Site_Context::get();
         </div>
 
         <!-- Generation Queue Tab Content -->
-        <div id="generation-queue-tab" class="aips-tab-content" style="display: none;" role="tabpanel" aria-hidden="true">
+        <div id="generation-queue-tab" class="aips-tab-content is-hidden" role="tabpanel" aria-hidden="true">
             <div class="aips-content-panel">
                 <div class="aips-filter-bar">
                     <div class="aips-filter-left">
@@ -331,7 +331,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-queue-search"><?php esc_html_e('Search Queue Topics:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-queue-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search queue topics...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;">
+                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary is-hidden">
                             <?php esc_html_e('Clear', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -339,7 +339,7 @@ $site_ctx = AIPS_Site_Context::get();
 
                 <div class="aips-panel-toolbar">
                     <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select" style="width: auto;">
+                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select aips-w-auto">
                             <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
                             <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
                         </select>
@@ -365,7 +365,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </div>
                 </div>
 
-                <div class="tablenav" id="aips-queue-tablenav" style="display: none;">
+                <div class="tablenav" id="aips-queue-tablenav" class="is-hidden">
                     <span class="aips-table-footer-count" id="aips-queue-table-footer-count"></span>
                     <div class="aips-history-pagination-links" id="aips-queue-pagination-links"></div>
                 </div>
@@ -375,7 +375,7 @@ $site_ctx = AIPS_Site_Context::get();
 </div><!-- .wrap.aips-wrap -->
 
 <!-- Topic Logs Modal -->
-<div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
+<div id="aips-topic-logs-modal" class="aips-modal is-hidden">
     <div class="aips-modal-content aips-modal-large">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topic-logs-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
@@ -386,7 +386,7 @@ $site_ctx = AIPS_Site_Context::get();
 </div>
 
 <!-- Author Edit/Create Modal -->
-<div id="aips-author-modal" class="aips-modal" style="display: none;">
+<div id="aips-author-modal" class="aips-modal is-hidden">
     <div class="aips-modal-content">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
@@ -576,13 +576,13 @@ $site_ctx = AIPS_Site_Context::get();
                 <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author.', 'ai-post-scheduler'); ?></p>
             </div>
 
-            <div id="author-source-groups-selector" style="display:none;">
+            <div id="author-source-groups-selector" class="is-hidden">
                 <div class="form-group">
                     <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
                     <?php if (!empty($author_source_groups)): ?>
                         <div class="aips-checkbox-group">
                             <?php foreach ($author_source_groups as $asg): ?>
-                                <label style="display:block; margin-bottom:4px;">
+                                <label class="aips-display-block aips-mb-1">
                                     <input type="checkbox"
                                         name="source_group_ids[]"
                                         class="aips-author-source-group-cb"
@@ -610,7 +610,7 @@ $site_ctx = AIPS_Site_Context::get();
 </div>
 
 <!-- Author Suggestions Modal -->
-<div id="aips-suggest-authors-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-suggest-authors-modal-title">
+<div id="aips-suggest-authors-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-suggest-authors-modal-title">
     <div class="aips-modal-content aips-modal-large">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <div class="aips-modal-header">
@@ -706,7 +706,7 @@ $site_ctx = AIPS_Site_Context::get();
             {{postCountBadge}}
             {{duplicateBadge}}
             {{feedbackBadge}}
-            <input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+            <input type="text" class="topic-title-edit is-hidden" value="{{topicTitle}}">
         </div>
         {{detailContent}}
     </td>
@@ -718,7 +718,7 @@ $site_ctx = AIPS_Site_Context::get();
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-detail-section">
-<div class="aips-topic-detail-content" id="aips-topic-details-{{id}}" style="display:none;">
+<div class="aips-topic-detail-content" id="aips-topic-details-{{id}}" class="is-hidden">
     {{content}}
 </div>
 </script>
