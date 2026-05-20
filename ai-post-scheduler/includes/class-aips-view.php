@@ -52,6 +52,9 @@ class AIPS_View {
 		try {
 			echo $this->twig->render($template, $context);
 		} catch (\Twig\Error\Error $e) {
+			if (function_exists('error_log')) {
+				error_log('AIPS Twig render error: ' . $e->getMessage());
+			}
 			echo '<div class="notice notice-error"><p>' . esc_html__('Unable to render this admin view.', 'ai-post-scheduler') . '</p></div>';
 		}
 	}
@@ -67,6 +70,9 @@ class AIPS_View {
 		try {
 			return $this->twig->render($template, $context);
 		} catch (\Twig\Error\Error $e) {
+			if (function_exists('error_log')) {
+				error_log('AIPS Twig capture error: ' . $e->getMessage());
+			}
 			return '';
 		}
 	}
