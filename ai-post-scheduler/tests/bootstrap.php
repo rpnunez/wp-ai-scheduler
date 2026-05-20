@@ -1581,3 +1581,17 @@ if (!function_exists('_get_cron_array')) {
             : array();
     }
 }
+
+require_once dirname(__DIR__) . '/includes/class-aips-history-stats-repository.php';
+
+if (!function_exists('esc_sql')) {
+    function esc_sql($data) {
+        if (is_array($data)) {
+            foreach ($data as $k => $v) {
+                $data[$k] = esc_sql($v);
+            }
+            return $data;
+        }
+        return addslashes($data);
+    }
+}
