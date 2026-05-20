@@ -496,7 +496,7 @@
 		 * @return {void}
 		 */
 		refreshPage: function () {
-			window.location.reload();
+			AIPS.refreshContentPanel('.aips-content-panel', '.aips-content-panel');
 		},
 	};
 

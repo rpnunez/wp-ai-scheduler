@@ -269,3 +269,9 @@ Target Feature: Template Wizard, Schedule UI, Voice UI
 Improvement: Replaced hard `location.reload()` calls with dynamic AJAX content panel refreshing to preserve UI context.
 Files Modified: ai-post-scheduler/assets/js/admin.js
 Outcome: Faster, smoother transitions between states without losing scroll position or tab context.
+
+## 2026-05-15 - Trusted Sources UI Flow Optimization
+**Target Feature:** Trusted Sources Flow
+**Improvement:** Optimized the flow of saving, deleting, toggling, and fetching sources by replacing full-page reloads (`window.location.reload()`) with a dynamic AJAX UI content panel refresh (`AIPS.refreshContentPanel('.aips-content-panel', '.aips-content-panel')`).
+**Files Modified:** `ai-post-scheduler/assets/js/admin-sources.js`
+**Outcome:** Enhances stability and user experience by preventing disruptive flashes and context losses when administering sources.
