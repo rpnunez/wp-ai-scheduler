@@ -8,7 +8,7 @@
 				<option value="delete">{{ t('Delete') }}</option>
 			</select>
 			<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary" disabled>{{ t('Apply') }}</button>
-			<span id="aips-post-review-selected-count" class="cell-meta">0 {{ t('selected') }}</span>
+			<span id="aips-post-review-selected-count" class="cell-meta">{{ t('%d selected')|format(0) }}</span>
 			<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><span class="dashicons dashicons-update"></span>{{ t('Reload') }}</button>
 		</div>
 		<div class="aips-search-control">
