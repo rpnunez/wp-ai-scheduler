@@ -106,9 +106,9 @@
                                     <p>{{ t('AI Variables allow you to create dynamic, context-aware titles. The AI will automatically fill in values based on the content it generates.') }}</p>
                                     <h4>{{ t('Examples:') }}</h4>
                                     <ul>
-                                        <li><code>{{Framework1}} vs {{Framework2}}</code> → <em>"Laravel vs Symfony"</em></li>
-                                        <li><code>Top {{Number}} {{Topic}} Tips</code> → <em>"Top 10 SEO Tips"</em></li>
-                                        <li><code>{{ProductName}} Review: Is it worth it?</code> → <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
+                                        <li><code>{% raw %}{{Framework1}} vs {{Framework2}}{% endraw %}</code> → <em>"Laravel vs Symfony"</em></li>
+                                        <li><code>{% raw %}Top {{Number}} {{Topic}} Tips{% endraw %}</code> → <em>"Top 10 SEO Tips"</em></li>
+                                        <li><code>{% raw %}{{ProductName}} Review: Is it worth it?{% endraw %}</code> → <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
                                     </ul>
                                     <h4>{{ t('Tips:') }}</h4>
                                     <ul>
@@ -513,23 +513,23 @@
                     <th class="column-actions">{{ t('Actions') }}</th>
                 </tr>
             </thead>
-            <tbody>{{rows}}</tbody>
+            <tbody>{% raw %}{{rows}}{% endraw %}</tbody>
         </table>
     </script>
 
     <script type="text/html" id="aips-tmpl-generated-post-row">
         <tr class="aips-generated-post-result-row">
-            <td class="column-title"><div class="cell-primary"><strong>{{title}}</strong></div></td>
-            <td class="column-excerpt">{{excerpt}}</td>
+            <td class="column-title"><div class="cell-primary"><strong>{% raw %}{{title}}{% endraw %}</strong></div></td>
+            <td class="column-excerpt">{% raw %}{{excerpt}}{% endraw %}</td>
             <td class="column-actions">
                 <div class="cell-actions">
-                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{edit_url}}" target="_blank" rel="noopener noreferrer">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{% raw %}{{edit_url}}{% endraw %}" target="_blank" rel="noopener noreferrer">
                         {{ t('Edit Post') }}
                     </a>
-                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{view_url}}" target="_blank" rel="noopener noreferrer">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{% raw %}{{view_url}}{% endraw %}" target="_blank" rel="noopener noreferrer">
                         {{ t('View Post') }}
                     </a>
-                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-preview-post" data-post-id="{{post_id}}">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-preview-post" data-post-id="{% raw %}{{post_id}}{% endraw %}">
                         {{ t('Quick Preview') }}
                     </button>
                 </div>
@@ -538,7 +538,7 @@
         <tr class="aips-generated-post-result-snippet-row">
             <td colspan="3">
                 <div class="cell-meta"><strong>{{ t('Content Snippet') }}</strong></div>
-                <div>{{content_snippet}}</div>
+                <div>{% raw %}{{content_snippet}}{% endraw %}</div>
             </td>
         </tr>
     </script>

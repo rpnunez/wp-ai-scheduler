@@ -12,11 +12,18 @@ class AIPS_View {
 
 	public function __construct() {
 		$template_dir = AIPS_PLUGIN_DIR . 'templates/admin/twig';
-		$cache_dir = AIPS_PLUGIN_DIR . 'cache/twig';
+		$cache_dir = $this->get_cache_path('twig');
+		$cache = false;
 
 		if (!defined('WP_DEBUG') || !WP_DEBUG) {
-			if (function_exists('wp_mkdir_p')) {
-				wp_mkdir_p($cache_dir);
+			if (!empty($cache_dir)) {
+				if (function_exists('wp_mkdir_p')) {
+					wp_mkdir_p($cache_dir);
+				}
+
+				if (is_dir($cache_dir) && is_writable($cache_dir)) {
+					$cache = $cache_dir;
+				}
 			}
 		}
 
@@ -26,7 +33,7 @@ class AIPS_View {
 			$loader,
 			array(
 				'autoescape' => 'html',
-				'cache' => (defined('WP_DEBUG') && WP_DEBUG) ? false : $cache_dir,
+				'cache' => $cache,
 				'debug' => (defined('WP_DEBUG') && WP_DEBUG),
 			)
 		);
@@ -42,7 +49,11 @@ class AIPS_View {
 	 * @return void
 	 */
 	public function render($template, $context = array()) {
-		echo $this->twig->render($template, $context);
+		try {
+			echo $this->twig->render($template, $context);
+		} catch (\Twig\Error\Error $e) {
+			echo '<div class="notice notice-error"><p>' . esc_html__('Unable to render this admin view.', 'ai-post-scheduler') . '</p></div>';
+		}
 	}
 
 	/**
@@ -53,7 +64,11 @@ class AIPS_View {
 	 * @return string
 	 */
 	public function capture($template, $context = array()) {
-		return $this->twig->render($template, $context);
+		try {
+			return $this->twig->render($template, $context);
+		} catch (\Twig\Error\Error $e) {
+			return '';
+		}
 	}
 
 	/**
@@ -63,5 +78,34 @@ class AIPS_View {
 	 */
 	public function get_engine() {
 		return $this->twig;
+	}
+
+	/**
+	 * Resolve cache paths by cache subsystem key.
+	 *
+	 * @param string $cache_name
+	 * @return string
+	 */
+	private function get_cache_path($cache_name) {
+		$cache_paths = array(
+			'twig' => 'aips-cache/twig',
+		);
+
+		if (!isset($cache_paths[$cache_name])) {
+			return '';
+		}
+
+		if (function_exists('wp_upload_dir')) {
+			$upload_dir = wp_upload_dir();
+			if (empty($upload_dir['error']) && !empty($upload_dir['basedir'])) {
+				return trailingslashit($upload_dir['basedir']) . $cache_paths[$cache_name];
+			}
+		}
+
+		if (defined('WP_CONTENT_DIR')) {
+			return trailingslashit(WP_CONTENT_DIR) . 'uploads/' . $cache_paths[$cache_name];
+		}
+
+		return '';
 	}
 }

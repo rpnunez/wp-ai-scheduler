@@ -969,6 +969,7 @@ class AIPS_Admin_Assets {
                 'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
                 'regenerate' => __('Re-generate', 'ai-post-scheduler'),
                 'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
+                'selectedCountFormat' => __('%d selected', 'ai-post-scheduler'),
                 'noDraftPosts' => __('No Draft Posts', 'ai-post-scheduler'),
                 'noDraftPostsDesc' => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
