@@ -225,6 +225,8 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('You do not have permission to publish this post.', 'ai-post-scheduler'));
 		}
 		
+		$this->mark_post_approved_for_review($post_id);
+
 		$result = wp_update_post(array(
 			'ID' => $post_id,
 			'post_status' => 'publish',
@@ -355,6 +357,8 @@ class AIPS_Post_Review {
 				continue;
 			}
 			
+			$this->mark_post_approved_for_review($post_id);
+
 			$result = wp_update_post(array(
 				'ID' => $post_id,
 				'post_status' => 'publish',
@@ -397,6 +401,24 @@ class AIPS_Post_Review {
 			'count' => $success_count,
 			'failed' => $failed_count,
 		));
+	}
+
+	/**
+	 * Mark a generated post as manually approved for publication.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	public function mark_post_approved_for_review($post_id) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return;
+		}
+
+		update_post_meta($post_id, 'aips_review_required', 'true');
+		update_post_meta($post_id, 'aips_review_state', 'approved');
+		update_post_meta($post_id, 'aips_reviewed_by', get_current_user_id());
+		update_post_meta($post_id, 'aips_reviewed_at', AIPS_DateTime::now()->timestamp());
 	}
 	
 	/**

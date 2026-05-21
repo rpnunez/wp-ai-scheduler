@@ -494,6 +494,8 @@ final class AI_Post_Scheduler {
             AIPS_Telemetry::instance()->boot();
         }
 
+        new AIPS_Review_Publishing_Guard();
+
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
             'aips_source_group',

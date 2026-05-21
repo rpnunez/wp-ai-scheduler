@@ -135,6 +135,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            'aips_review_policy_mode' => 'disabled',
+            'aips_review_quality_threshold' => 80,
+            'aips_review_require_partial_generations' => 1,
             // General
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,

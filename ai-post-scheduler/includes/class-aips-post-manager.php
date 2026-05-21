@@ -45,6 +45,7 @@ class AIPS_Post_Manager {
         $title = isset($data['title']) ? $data['title'] : '';
         $content = isset($data['content']) ? $data['content'] : '';
         $excerpt = isset($data['excerpt']) ? $data['excerpt'] : '';
+        $config = AIPS_Config::get_instance();
 
         // Apply a final exact-title dedupe guard before insertion.
         $title = $this->ensure_unique_post_title($title, 'post');
@@ -60,7 +61,7 @@ class AIPS_Post_Manager {
             $post_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();
         } elseif ($template) {
-            $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
+            $post_status = !empty($template->post_status) ? $template->post_status : $config->get_option('aips_default_post_status');
             $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
@@ -69,6 +70,12 @@ class AIPS_Post_Manager {
                 'missing_context',
                 __('Either a template object or generation context is required for post creation.', 'ai-post-scheduler')
             );
+        }
+
+        $requested_post_status = (string) $post_status;
+        $review_policy = new AIPS_Review_Policy();
+        if ($review_policy->should_intercept_requested_publish($requested_post_status)) {
+            $post_status = 'draft';
         }
 
         $post_data = array(
@@ -82,7 +89,7 @@ class AIPS_Post_Manager {
 
         if (!empty($post_category)) {
             $post_data['post_category'] = array($post_category);
-        } elseif ($default_cat = AIPS_Config::get_instance()->get_option('aips_default_category')) {
+        } elseif ($default_cat = $config->get_option('aips_default_category')) {
             $post_data['post_category'] = array($default_cat);
         }
 
@@ -100,6 +107,14 @@ class AIPS_Post_Manager {
             );
         }
 
+        if ('publish' === $requested_post_status && $review_policy->should_intercept_requested_publish($requested_post_status)) {
+            update_post_meta($post_id, 'aips_requested_post_status', $requested_post_status);
+            update_post_meta($post_id, 'aips_review_required', 'true');
+            update_post_meta($post_id, 'aips_review_state', 'needs_review');
+        } elseif ('disabled' !== $review_policy->get_mode()) {
+            update_post_meta($post_id, 'aips_requested_post_status', $requested_post_status);
+        }
+
         // Handle Tags
         if (!empty($post_tags)) {
             $tags = array_map('trim', explode(',', $post_tags));
@@ -113,6 +128,8 @@ class AIPS_Post_Manager {
             $meta_description = $data['meta_description'];
         } elseif ($excerpt !== '') {
             $meta_description = $excerpt;
+        } elseif ($content !== '') {
+            $meta_description = $content;
         }
 
         $seo_data = array(

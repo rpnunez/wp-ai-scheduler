@@ -70,6 +70,10 @@ class AIPS_Post_Review_Repository {
 		);
 		
 		$args = wp_parse_args($args, $defaults);
+
+		if ($this->should_use_limited_test_store()) {
+			return $this->get_draft_posts_from_test_store($args);
+		}
 		
 		$offset = ($args['page'] - 1) * $args['per_page'];
 
@@ -111,6 +115,7 @@ class AIPS_Post_Review_Repository {
 		
 		$templates_table = $this->wpdb->prefix . 'aips_templates';
 		$posts_table = $this->wpdb->posts;
+		$postmeta_table = $this->wpdb->postmeta;
 		
 		// Query for items
 		$query_args = $where_args;
@@ -123,10 +128,20 @@ class AIPS_Post_Review_Repository {
 				t.name as template_name,
 				p.post_title,
 				p.post_modified,
-				p.post_author as wp_post_author
+				p.post_author as wp_post_author,
+				pm_quality_score.meta_value as quality_score,
+				pm_quality_flags.meta_value as quality_flags,
+				pm_review_required.meta_value as review_required,
+				pm_review_reason.meta_value as review_required_reason,
+				pm_review_state.meta_value as review_state
 			FROM {$this->table_name} h
 			LEFT JOIN {$templates_table} t ON h.template_id = t.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
+			LEFT JOIN {$postmeta_table} pm_quality_score ON pm_quality_score.post_id = p.ID AND pm_quality_score.meta_key = 'aips_quality_score'
+			LEFT JOIN {$postmeta_table} pm_quality_flags ON pm_quality_flags.post_id = p.ID AND pm_quality_flags.meta_key = 'aips_quality_flags'
+			LEFT JOIN {$postmeta_table} pm_review_required ON pm_review_required.post_id = p.ID AND pm_review_required.meta_key = 'aips_review_required'
+			LEFT JOIN {$postmeta_table} pm_review_reason ON pm_review_reason.post_id = p.ID AND pm_review_reason.meta_key = 'aips_review_required_reason'
+			LEFT JOIN {$postmeta_table} pm_review_state ON pm_review_state.post_id = p.ID AND pm_review_state.meta_key = 'aips_review_state'
 			WHERE $where_sql
 			ORDER BY $orderby_sql
 			LIMIT %d OFFSET %d
@@ -162,6 +177,19 @@ class AIPS_Post_Review_Repository {
 	 * @return int Number of draft posts.
 	 */
 	public function get_draft_count() {
+		if ($this->should_use_limited_test_store()) {
+			$result = $this->get_draft_posts_from_test_store(array(
+				'per_page' => -1,
+				'page' => 1,
+				'search' => '',
+				'template_id' => 0,
+				'orderby' => 'created_at',
+				'order' => 'DESC',
+			));
+
+			return (int) $result['total'];
+		}
+
 		$posts_table = $this->wpdb->posts;
 		
 		$count = $this->wpdb->get_var("
@@ -174,5 +202,91 @@ class AIPS_Post_Review_Repository {
 		");
 		
 		return (int) $count;
+	}
+
+	/**
+	 * Determine whether the limited PHPUnit bootstrap store is active.
+	 *
+	 * @return bool
+	 */
+	private function should_use_limited_test_store() {
+		return isset($GLOBALS['aips_test_db_rows']) && is_array($GLOBALS['aips_test_db_rows']);
+	}
+
+	/**
+	 * Build draft post results from the limited PHPUnit test store.
+	 *
+	 * @param array $args Query arguments.
+	 * @return array
+	 */
+	private function get_draft_posts_from_test_store($args) {
+		global $aips_test_db_rows, $test_posts, $aips_test_meta;
+
+		$rows = isset($aips_test_db_rows[$this->table_name]) ? array_values($aips_test_db_rows[$this->table_name]) : array();
+		$items = array();
+
+		foreach ($rows as $row) {
+			if (!isset($row['status']) || 'completed' !== $row['status'] || empty($row['post_id'])) {
+				continue;
+			}
+
+			$post_id = (int) $row['post_id'];
+			$post = isset($test_posts[$post_id]) ? $test_posts[$post_id] : get_post($post_id);
+
+			if (!$post || 'draft' !== $post->post_status) {
+				continue;
+			}
+
+			if (!empty($args['template_id']) && (int) $row['template_id'] !== (int) $args['template_id']) {
+				continue;
+			}
+
+			$search = isset($args['search']) ? (string) $args['search'] : '';
+			if ($search !== '') {
+				$haystack = strtolower((string) (isset($row['generated_title']) ? $row['generated_title'] : '') . ' ' . (string) $post->post_title);
+				if (strpos($haystack, strtolower($search)) === false) {
+					continue;
+				}
+			}
+
+			$item = (object) array_merge($row, array(
+				'post_title' => isset($post->post_title) ? $post->post_title : '',
+				'post_modified' => isset($post->post_modified) ? $post->post_modified : '',
+				'wp_post_author' => isset($post->post_author) ? $post->post_author : 0,
+				'quality_score' => isset($aips_test_meta[$post_id]['aips_quality_score']) ? (string) $aips_test_meta[$post_id]['aips_quality_score'] : '',
+				'quality_flags' => isset($aips_test_meta[$post_id]['aips_quality_flags']) ? (string) $aips_test_meta[$post_id]['aips_quality_flags'] : '',
+				'review_required' => isset($aips_test_meta[$post_id]['aips_review_required']) ? (string) $aips_test_meta[$post_id]['aips_review_required'] : '',
+				'review_required_reason' => isset($aips_test_meta[$post_id]['aips_review_required_reason']) ? (string) $aips_test_meta[$post_id]['aips_review_required_reason'] : '',
+				'review_state' => isset($aips_test_meta[$post_id]['aips_review_state']) ? (string) $aips_test_meta[$post_id]['aips_review_state'] : '',
+			));
+
+			$items[] = $item;
+		}
+
+		$orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'post_title'), true) ? $args['orderby'] : 'created_at';
+		$order = strtoupper($args['order']) === 'ASC' ? 1 : -1;
+
+		usort($items, function($a, $b) use ($orderby, $order) {
+			$a_value = isset($a->{$orderby}) ? $a->{$orderby} : '';
+			$b_value = isset($b->{$orderby}) ? $b->{$orderby} : '';
+
+			return $order * strcmp((string) $a_value, (string) $b_value);
+		});
+
+		$total = count($items);
+		$per_page = (int) $args['per_page'];
+		$page = max(1, (int) $args['page']);
+
+		if ($per_page > 0) {
+			$offset = ($page - 1) * $per_page;
+			$items = array_slice($items, $offset, $per_page);
+		}
+
+		return array(
+			'items' => $items,
+			'total' => $total,
+			'pages' => $per_page > 0 ? (int) ceil($total / $per_page) : 1,
+			'current_page' => $page,
+		);
 	}
 }

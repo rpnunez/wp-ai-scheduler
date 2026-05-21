@@ -167,6 +167,38 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test review quality metadata appears on draft rows.
+	 */
+	public function test_draft_posts_include_quality_review_metadata() {
+		$test_data = $this->create_test_post_with_history('draft', 1);
+
+		update_post_meta($test_data['post_id'], 'aips_quality_score', 72);
+		update_post_meta($test_data['post_id'], 'aips_quality_flags', wp_json_encode(array('thin_content')));
+		update_post_meta($test_data['post_id'], 'aips_review_required', 'true');
+		update_post_meta($test_data['post_id'], 'aips_review_required_reason', 'Quality score is below the configured threshold.');
+		update_post_meta($test_data['post_id'], 'aips_review_state', 'needs_review');
+
+		$result = $this->repository->get_draft_posts(array(
+			'search' => 'Test Generated Title',
+		));
+
+		$found = null;
+		foreach ($result['items'] as $item) {
+			if ((int) $item->post_id === (int) $test_data['post_id']) {
+				$found = $item;
+				break;
+			}
+		}
+
+		$this->assertNotNull($found);
+		$this->assertSame('72', (string) $found->quality_score);
+		$this->assertSame('["thin_content"]', $found->quality_flags);
+		$this->assertSame('true', $found->review_required);
+		$this->assertSame('needs_review', $found->review_state);
+		$this->assertSame('Quality score is below the configured threshold.', $found->review_required_reason);
+	}
+
+	/**
 	 * Test retrieval of active and historical partial generations.
 	 */
 	public function test_get_partial_generations() {

@@ -46,6 +46,7 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
+    private $post_quality_gate;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -93,6 +94,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_quality_gate = new AIPS_Post_Quality_Gate();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -867,6 +869,17 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
+        $quality_gate_result = $this->post_quality_gate->apply_to_post($post_id, array(
+            'title' => $title,
+            'content' => $content,
+            'excerpt' => $excerpt,
+            'component_statuses' => $component_statuses,
+            'generation_incomplete' => $generation_incomplete,
+            'image_attempted' => $context->should_generate_featured_image(),
+            'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
+            'meta_description' => $excerpt,
+        ));
+
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
         }
@@ -878,6 +891,7 @@ class AIPS_Generator {
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'quality_gate' => $quality_gate_result,
         ));
 
         // Write a structured metric snapshot to history_log.  The metrics
