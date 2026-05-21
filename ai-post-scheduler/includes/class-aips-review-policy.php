@@ -64,7 +64,9 @@ class AIPS_Review_Policy {
 	 * @return bool
 	 */
 	public function should_intercept_requested_publish($requested_status) {
-		return ('publish' === $requested_status && 'disabled' !== $this->get_mode());
+		$modes = AIPS_Config::get_instance()->get_review_policy_publish_intercept_modes();
+
+		return ('publish' === $requested_status && in_array($this->get_mode(), $modes, true));
 	}
 
 	/**

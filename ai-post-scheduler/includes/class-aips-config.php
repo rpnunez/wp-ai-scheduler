@@ -202,10 +202,23 @@ class AIPS_Config {
     /**
      * Return supported generated-post review policy modes.
      *
+     * - disabled: no policy-based manual review requirement.
+     * - always: every generated post requires manual review.
+     * - quality_gate: review is required only when audit rules fail.
+     *
      * @return string[]
      */
     public function get_review_policy_modes() {
         return array('disabled', 'always', 'quality_gate');
+    }
+
+    /**
+     * Return review policy modes that must intercept requested publish status.
+     *
+     * @return string[]
+     */
+    public function get_review_policy_publish_intercept_modes() {
+        return array('always', 'quality_gate');
     }
 
     /**
