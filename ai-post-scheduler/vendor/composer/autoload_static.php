@@ -76,8 +76,6 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Cache_Db_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-db-driver.php',
         'AIPS_Cache_Driver' => __DIR__ . '/../..' . '/includes/interface-aips-cache-driver.php',
         'AIPS_Cache_Factory' => __DIR__ . '/../..' . '/includes/class-aips-cache-factory.php',
-        'AIPS_Cache_Invalidation_Bus' => __DIR__ . '/../..' . '/includes/class-aips-cache-invalidation-bus.php',
-        'AIPS_Cache_Policy' => __DIR__ . '/../..' . '/includes/class-aips-cache-policy.php',
         'AIPS_Cache_Redis_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-redis-driver.php',
         'AIPS_Cache_Session_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-session-driver.php',
         'AIPS_Cache_Wp_Object_Cache_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-wp-object-cache-driver.php',

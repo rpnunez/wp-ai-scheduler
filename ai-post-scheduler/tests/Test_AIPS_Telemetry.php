@@ -130,6 +130,10 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 
 		$after = $this->repo->count();
 		$this->assertSame($before + 1, $after, 'flush() must insert exactly one row.');
+
+		$rows = $this->repo->get_page(1, 0);
+		$this->assertNotEmpty($rows);
+		$this->assertGreaterThan(1000000000, (int) $rows[0]['inserted_at'], 'inserted_at should be stored as a Unix timestamp.');
 	}
 
 	/**
@@ -226,7 +230,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 			'peak_memory_bytes' => 8388608,
 			'elapsed_ms'        => 42.0,
 			'payload'           => wp_json_encode(array('events' => array())),
-			'inserted_at'       => current_time('mysql'),
+			'inserted_at'       => AIPS_DateTime::now()->timestamp(),
 		));
 
 		$this->assertNotFalse($id, 'insert() must return an integer ID.');
@@ -258,7 +262,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 			'peak_memory_bytes' => 8388608,
 			'elapsed_ms'        => 42.0,
 			'payload'           => wp_json_encode(array()),
-			'inserted_at'       => current_time('mysql'),
+			'inserted_at'       => AIPS_DateTime::now()->timestamp(),
 		));
 
 		$rows = $this->repo->get_page(10, 0);
@@ -290,7 +294,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 			'peak_memory_bytes' => 1048576,
 			'elapsed_ms'        => 10.0,
 			'payload'           => wp_json_encode($expected),
-			'inserted_at'       => current_time('mysql'),
+			'inserted_at'       => AIPS_DateTime::now()->timestamp(),
 		));
 
 		$payload = $this->repo->get_payload($id);
@@ -329,7 +333,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 			'peak_memory_bytes' => 4194304,
 			'elapsed_ms'        => 21.5,
 			'payload'           => wp_json_encode(array('events' => array(array('type' => 'example')))),
-			'inserted_at'       => current_time('mysql'),
+			'inserted_at'       => AIPS_DateTime::now()->timestamp(),
 		));
 
 		$row = $this->repo->get_row($id);
@@ -352,7 +356,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_telemetry");
 
-		$inserted_at = current_time('mysql');
+		$inserted_at = AIPS_DateTime::now()->timestamp();
 
 		$this->repo->insert(array(
 			'type'              => 'admin',

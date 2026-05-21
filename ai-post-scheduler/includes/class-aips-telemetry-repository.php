@@ -81,7 +81,7 @@ class AIPS_Telemetry_Repository {
 			'peak_memory_bytes' => '%d',
 			'elapsed_ms'        => '%f',
 			'payload'           => '%s',
-			'inserted_at'       => '%s',
+			'inserted_at'       => '%d',
 		);
 
 		$normalized_data = array();
@@ -141,12 +141,9 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_filtered_page($start_date, $end_date, array $filters = array(), $per_page = 25, $offset = 0) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		list($start_timestamp, $end_timestamp) = $this->resolve_date_range_timestamps($start_date, $end_date);
+		$where = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start_timestamp, $end_timestamp);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
@@ -205,12 +202,9 @@ class AIPS_Telemetry_Repository {
 	 * @return int
 	 */
 	public function count_filtered($start_date, $end_date, array $filters = array()) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		list($start_timestamp, $end_timestamp) = $this->resolve_date_range_timestamps($start_date, $end_date);
+		$where = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start_timestamp, $end_timestamp);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
@@ -231,23 +225,37 @@ class AIPS_Telemetry_Repository {
 	 * @return array<int, array<string, string|int|float>>
 	 */
 	public function get_daily_rollup($start_date, $end_date, array $filters = array()) {
-		$tz             = wp_timezone();
-		$start_datetime = $start_date . ' 00:00:00';
-		$end_dt         = (new DateTimeImmutable($end_date, $tz))->modify('+1 day');
-		$end_datetime   = $end_dt->format('Y-m-d') . ' 00:00:00';
-		$where          = array('inserted_at >= %s', 'inserted_at < %s');
-		$params         = array($start_datetime, $end_datetime);
+		list($start_timestamp, $end_timestamp) = $this->resolve_date_range_timestamps($start_date, $end_date);
+		$where = array('inserted_at >= %d', 'inserted_at < %d');
+		$params = array($start_timestamp, $end_timestamp);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(inserted_at) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " GROUP BY DATE(inserted_at) ORDER BY metric_date ASC",
+				"SELECT DATE(FROM_UNIXTIME(inserted_at)) AS metric_date, COUNT(*) AS request_count, SUM(num_queries) AS total_queries, MAX(peak_memory_bytes) AS peak_memory_bytes_max, AVG(elapsed_ms) AS avg_elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " GROUP BY DATE(FROM_UNIXTIME(inserted_at)) ORDER BY metric_date ASC",
 				...$params
 			),
 			ARRAY_A
 		);
+	}
+
+	/**
+	 * Convert an inclusive site-local date range into UTC Unix timestamp bounds.
+	 *
+	 * @param string $start_date Inclusive start date in Y-m-d format.
+	 * @param string $end_date   Inclusive end date in Y-m-d format.
+	 * @return array<int, int> [start_timestamp, end_timestamp_exclusive]
+	 */
+	private function resolve_date_range_timestamps($start_date, $end_date) {
+		$tz          = wp_timezone();
+		$start_dt    = new DateTimeImmutable($start_date . ' 00:00:00', $tz);
+		$end_dt      = (new DateTimeImmutable($end_date . ' 00:00:00', $tz))->modify('+1 day');
+		$start_stamp = (int) $start_dt->getTimestamp();
+		$end_stamp   = (int) $end_dt->getTimestamp();
+
+		return array($start_stamp, $end_stamp);
 	}
 
 	/**
