@@ -421,10 +421,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         $args = wp_parse_args($args, $defaults);
 
-        if ($this->should_use_limited_test_store()) {
-            return $this->get_partial_generations_from_test_store($args);
-        }
-
         $args['page'] = max(1, (int) $args['page']);
         $args['per_page'] = (int) $args['per_page'];
         $use_limit = $args['per_page'] > 0;
@@ -556,10 +552,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return object|null History item or null if not found.
      */
     public function get_by_id($id) {
-        if ($this->should_use_limited_test_store()) {
-            return $this->get_by_id_from_test_store($id);
-        }
-
         $history = $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} WHERE id = %d",
             $id
@@ -582,122 +574,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return bool True if the post has a completed history entry, false otherwise.
      */
     public function post_has_history_and_completed($post_id) {
-        if ($this->should_use_limited_test_store()) {
-            global $aips_test_db_rows;
-
-            $rows = isset($aips_test_db_rows[$this->table_name]) ? $aips_test_db_rows[$this->table_name] : array();
-            foreach ($rows as $row) {
-                if (!empty($row['post_id']) && (int) $row['post_id'] === (int) $post_id && isset($row['status']) && 'completed' === $row['status']) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         $count = $this->wpdb->get_var($this->wpdb->prepare(
             "SELECT COUNT(*) FROM {$this->table_name} WHERE post_id = %d AND status = 'completed'",
             $post_id
         ));
         
         return (bool) $count;
-    }
-
-    /**
-     * Determine whether the limited PHPUnit bootstrap store is active.
-     *
-     * @return bool
-     */
-    private function should_use_limited_test_store() {
-        return isset($GLOBALS['aips_test_db_rows']) && is_array($GLOBALS['aips_test_db_rows']);
-    }
-
-    /**
-     * Fetch a history record from the limited PHPUnit test store.
-     *
-     * @param int $id History ID.
-     * @return object|null
-     */
-    private function get_by_id_from_test_store($id) {
-        global $aips_test_db_rows;
-
-        if (!isset($aips_test_db_rows[$this->table_name][$id])) {
-            return null;
-        }
-
-        $row = (object) $aips_test_db_rows[$this->table_name][$id];
-        $row->log = array();
-
-        return $row;
-    }
-
-    /**
-     * Build partial generation results from the limited PHPUnit test store.
-     *
-     * @param array $args Query arguments.
-     * @return array
-     */
-    private function get_partial_generations_from_test_store($args) {
-        global $aips_test_db_rows, $aips_test_meta, $test_posts;
-
-        $rows = isset($aips_test_db_rows[$this->table_name]) ? array_values($aips_test_db_rows[$this->table_name]) : array();
-        $items = array();
-
-        foreach ($rows as $row) {
-            if (!isset($row['status']) || 'completed' !== $row['status'] || empty($row['post_id'])) {
-                continue;
-            }
-
-            $post_id = (int) $row['post_id'];
-            $post = isset($test_posts[$post_id]) ? $test_posts[$post_id] : get_post($post_id);
-            $is_incomplete = isset($aips_test_meta[$post_id]['aips_post_generation_incomplete']) ? (string) $aips_test_meta[$post_id]['aips_post_generation_incomplete'] : '';
-            $had_partial = isset($aips_test_meta[$post_id]['aips_post_generation_had_partial']) ? (string) $aips_test_meta[$post_id]['aips_post_generation_had_partial'] : '';
-
-            if ('true' !== $is_incomplete && 'true' !== $had_partial) {
-                continue;
-            }
-
-            if (!empty($args['template_id']) && (int) $row['template_id'] !== (int) $args['template_id']) {
-                continue;
-            }
-
-            if (!empty($args['author_id']) && (int) $row['author_id'] !== (int) $args['author_id']) {
-                continue;
-            }
-
-            $search = isset($args['search']) ? (string) $args['search'] : '';
-            if ($search !== '') {
-                $haystack = strtolower((string) (isset($row['generated_title']) ? $row['generated_title'] : '') . ' ' . (string) $post->post_title);
-                if (strpos($haystack, strtolower($search)) === false) {
-                    continue;
-                }
-            }
-
-            $items[] = (object) array_merge($row, array(
-                'post_title' => isset($post->post_title) ? $post->post_title : '',
-                'post_status' => isset($post->post_status) ? $post->post_status : 'draft',
-                'post_modified' => isset($post->post_modified) ? $post->post_modified : '',
-                'post_date' => isset($post->post_date) ? $post->post_date : '',
-                'is_currently_incomplete' => $is_incomplete,
-                'component_statuses' => isset($aips_test_meta[$post_id]['aips_post_generation_component_statuses']) ? $aips_test_meta[$post_id]['aips_post_generation_component_statuses'] : '',
-            ));
-        }
-
-        $total = count($items);
-        $per_page = isset($args['per_page']) ? (int) $args['per_page'] : 20;
-        $page = max(1, isset($args['page']) ? (int) $args['page'] : 1);
-
-        if ($per_page > 0) {
-            $offset = ($page - 1) * $per_page;
-            $items = array_slice($items, $offset, $per_page);
-        }
-
-        return array(
-            'items' => $items,
-            'total' => $total,
-            'pages' => $per_page > 0 ? (int) ceil($total / $per_page) : 1,
-            'current_page' => $page,
-        );
     }
     
     /**

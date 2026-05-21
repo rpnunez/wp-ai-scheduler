@@ -5,6 +5,8 @@
  * @package AI_Post_Scheduler
  */
 
+require_once __DIR__ . '/mocks/class-aips-history-repository-mock.php';
+
 class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 	
 	private $repository;
@@ -15,7 +17,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->repository = new AIPS_Post_Review_Repository();
-		$this->history_repository = new AIPS_History_Repository();
+		$this->history_repository = new AIPS_History_Repository_Mock();
 	}
 	
 	public function tearDown(): void {

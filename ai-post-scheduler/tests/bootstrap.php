@@ -524,6 +524,20 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_trim_words')) {
+        function wp_trim_words($text, $num_words = 55, $more = null) {
+            $text = wp_strip_all_tags((string) $text);
+            $words = preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+            $num_words = (int) $num_words;
+
+            if ($num_words <= 0 || count($words) <= $num_words) {
+                return $text;
+            }
+
+            return implode(' ', array_slice($words, 0, $num_words));
+        }
+    }
+
     if (!function_exists('wp_unslash')) {
         function wp_unslash($value) {
             return is_array($value) ? array_map('wp_unslash', $value) : stripslashes($value);

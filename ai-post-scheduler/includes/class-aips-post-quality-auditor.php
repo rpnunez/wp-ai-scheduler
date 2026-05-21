@@ -39,7 +39,7 @@ class AIPS_Post_Quality_Auditor {
 			$score -= 40;
 			$flags[] = 'missing_title';
 			$critical_flags[] = 'missing_title';
-		} elseif (strlen($title) < 20) {
+		} elseif ($this->get_string_length($title) < 20) {
 			$score -= 10;
 			$flags[] = 'weak_title';
 		}
@@ -48,7 +48,7 @@ class AIPS_Post_Quality_Auditor {
 			$score -= 40;
 			$flags[] = 'missing_content';
 			$critical_flags[] = 'missing_content';
-		} elseif (str_word_count($content) < 250) {
+		} elseif ($this->get_content_length_units($content) < 250) {
 			$score -= 15;
 			$flags[] = 'thin_content';
 		}
@@ -93,5 +93,42 @@ class AIPS_Post_Quality_Auditor {
 			'critical_flags' => $critical_flags,
 			'has_critical_flags' => !empty($critical_flags),
 		);
+	}
+
+	/**
+	 * Get multi-byte safe string length.
+	 *
+	 * @param string $value Value to measure.
+	 * @return int
+	 */
+	private function get_string_length($value) {
+		if (function_exists('mb_strlen')) {
+			return (int) mb_strlen($value);
+		}
+
+		return (int) strlen($value);
+	}
+
+	/**
+	 * Determine content length units for thin-content checks.
+	 *
+	 * Falls back to character-count units for content that does not produce
+	 * space-separated word counts (for example CJK scripts).
+	 *
+	 * @param string $content Content text.
+	 * @return int
+	 */
+	private function get_content_length_units($content) {
+		$word_count = str_word_count($content);
+		if ($word_count > 0) {
+			return (int) $word_count;
+		}
+
+		$normalized = preg_replace('/[\p{Z}\p{P}\p{S}\p{C}]+/u', '', $content);
+		if (!is_string($normalized) || '' === $normalized) {
+			return 0;
+		}
+
+		return $this->get_string_length($normalized);
 	}
 }

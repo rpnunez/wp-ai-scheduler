@@ -32,8 +32,9 @@ class AIPS_Review_Publishing_Guard {
 	public function guard_post_data($data, $postarr) {
 		$post_id = isset($postarr['ID']) ? absint($postarr['ID']) : 0;
 		$post_status = isset($data['post_status']) ? (string) $data['post_status'] : '';
+		$post_type = isset($data['post_type']) ? (string) $data['post_type'] : '';
 
-		if ($post_id <= 0 || 'publish' !== $post_status) {
+		if ($post_id <= 0 || 'publish' !== $post_status || ('' !== $post_type && 'post' !== $post_type)) {
 			return $data;
 		}
 

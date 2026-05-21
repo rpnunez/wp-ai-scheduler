@@ -129,7 +129,7 @@ class AIPS_Post_Manager {
         } elseif ($excerpt !== '') {
             $meta_description = $excerpt;
         } elseif ($content !== '') {
-            $meta_description = $content;
+            $meta_description = wp_trim_words(wp_strip_all_tags($content), 55);
         }
 
         $seo_data = array(
