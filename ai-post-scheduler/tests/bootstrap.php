@@ -975,17 +975,66 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     }
     
     if (!function_exists('current_user_can')) {
-        function current_user_can($capability) {
+        function current_user_can($capability, ...$args) {
             global $current_user_id, $test_users;
+
             if (!isset($current_user_id) || !isset($test_users[$current_user_id])) {
                 return false;
             }
-            // Check if user has admin role
+
             $role = $test_users[$current_user_id];
-            if ($role === 'administrator') {
-                return true;
+            $role_capabilities = array(
+                'administrator' => array(
+                    'manage_options' => true,
+                    'edit_posts'     => true,
+                    'publish_posts'  => true,
+                    'delete_posts'   => true,
+                ),
+                'editor' => array(
+                    'edit_posts'    => true,
+                    'publish_posts' => true,
+                    'delete_posts'  => true,
+                ),
+                'author' => array(
+                    'edit_posts'    => true,
+                    'publish_posts' => true,
+                    'delete_posts'  => true,
+                ),
+                'contributor' => array(
+                    'edit_posts' => true,
+                ),
+                'subscriber' => array(),
+            );
+
+            $meta_cap_map = array(
+                'edit_post'    => 'edit_posts',
+                'publish_post' => 'publish_posts',
+                'delete_post'  => 'delete_posts',
+            );
+
+            if (isset($meta_cap_map[$capability])) {
+                $post_id = isset($args[0]) ? (int) $args[0] : 0;
+                if ($post_id > 0) {
+                    $post = get_post($post_id);
+                    if (!$post) {
+                        return false;
+                    }
+
+                    if (in_array($role, array('administrator', 'editor'), true)) {
+                        return true;
+                    }
+
+                    if ('author' === $role && isset($post->post_author)) {
+                        return ((int) $post->post_author === (int) $current_user_id);
+                    }
+
+                    return false;
+                }
+
+                $capability = $meta_cap_map[$capability];
             }
-            return false;
+
+            return !empty($role_capabilities[$role][$capability]);
         }
     }
     

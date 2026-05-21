@@ -85,25 +85,25 @@ class AIPS_Review_Policy {
 
 		if ('always' === $mode) {
 			$decision['requires_review'] = true;
-			$decision['reason'] = 'Manual review is required by policy.';
+			$decision['reason'] = __('Manual review is required by policy.', 'ai-post-scheduler');
 			return $decision;
 		}
 
 		if ($this->requires_review_for_partial_generations() && in_array('partial_generation', $critical_flags, true)) {
 			$decision['requires_review'] = true;
-			$decision['reason'] = 'Generation completed with missing or failed components.';
+			$decision['reason'] = __('Generation completed with missing or failed components.', 'ai-post-scheduler');
 			return $decision;
 		}
 
 		if ($has_critical_flags) {
 			$decision['requires_review'] = true;
-			$decision['reason'] = 'Critical quality issues were detected.';
+			$decision['reason'] = __('Critical quality issues were detected.', 'ai-post-scheduler');
 			return $decision;
 		}
 
 		if ($score < $this->get_quality_threshold()) {
 			$decision['requires_review'] = true;
-			$decision['reason'] = 'Quality score is below the configured threshold.';
+			$decision['reason'] = __('Quality score is below the configured threshold.', 'ai-post-scheduler');
 		}
 
 		return $decision;
