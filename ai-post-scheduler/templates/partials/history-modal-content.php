@@ -24,8 +24,6 @@ $type_labels = array(
 	2 => AIPS_History_Type::get_label(2),
 	3 => AIPS_History_Type::get_label(3),
 	4 => AIPS_History_Type::get_label(4),
-	5 => AIPS_History_Type::get_label(5),
-	6 => AIPS_History_Type::get_label(6),
 	8 => AIPS_History_Type::get_label(8),
 	1 => AIPS_History_Type::get_label(1),
 	7 => AIPS_History_Type::get_label(7),
@@ -86,6 +84,12 @@ $type_labels = array(
 			<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-log-type-filter-btn" data-type-id="all">
 				<?php echo esc_html(sprintf(__('All (%d)', 'ai-post-scheduler'), isset($filter_counts['all']) ? (int) $filter_counts['all'] : 0)); ?>
 			</button>
+
+			<?php if (!empty($filter_counts['ai_request_response'])): ?>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-type-filter-btn" data-type-id="ai_request_response">
+					<?php echo esc_html(sprintf(__('AI Request & Response (%d)', 'ai-post-scheduler'), (int) $filter_counts['ai_request_response'])); ?>
+				</button>
+			<?php endif; ?>
 
 			<?php foreach ($type_labels as $type_id => $type_label): ?>
 				<?php if (empty($filter_counts[(string) $type_id])) { continue; } ?>

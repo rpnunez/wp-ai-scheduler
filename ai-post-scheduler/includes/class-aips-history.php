@@ -774,16 +774,29 @@ class AIPS_History {
      * @return array<string,int>
      */
     private function build_history_filter_counts($display_logs) {
-        $counts = array('all' => count($display_logs));
+        $counts = array(
+            'all' => count($display_logs),
+            'ai_request_response' => 0,
+        );
 
         foreach ($display_logs as $display_log) {
             if (empty($display_log['type_ids']) || !is_array($display_log['type_ids'])) {
                 continue;
             }
 
+            $row_has_ai_pair_type = false;
+
             foreach ($display_log['type_ids'] as $type_id) {
                 $type_key = (string) $type_id;
                 $counts[$type_key] = isset($counts[$type_key]) ? $counts[$type_key] + 1 : 1;
+
+                if ($type_key === '5' || $type_key === '6') {
+                    $row_has_ai_pair_type = true;
+                }
+            }
+
+            if ($row_has_ai_pair_type) {
+                $counts['ai_request_response']++;
             }
         }
 

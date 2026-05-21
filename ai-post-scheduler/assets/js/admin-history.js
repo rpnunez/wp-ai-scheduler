@@ -402,6 +402,11 @@
 							return $.trim(String(value));
 						})
 						.filter(Boolean);
+					if (String(typeId) === 'ai_request_response') {
+						$(this).toggle(rowTypes.indexOf('5') !== -1 || rowTypes.indexOf('6') !== -1);
+						return;
+					}
+
 					$(this).toggle(rowTypes.indexOf(String(typeId)) !== -1);
 				});
 			}
