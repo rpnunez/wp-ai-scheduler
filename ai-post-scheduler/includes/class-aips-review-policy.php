@@ -21,11 +21,19 @@ class AIPS_Review_Policy {
 	 * @return string
 	 */
 	public function get_mode() {
-		$mode = (string) AIPS_Config::get_instance()->get_option('aips_review_policy_mode');
-		$allowed_modes = array('disabled', 'always', 'quality_gate');
+		$config = AIPS_Config::get_instance();
+		$defaults = $config->get_default_options();
+		$allowed_modes = $config->get_review_policy_modes();
+		$default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+
+		if (!in_array($default_mode, $allowed_modes, true)) {
+			$default_mode = 'disabled';
+		}
+
+		$mode = (string) $config->get_option('aips_review_policy_mode', $default_mode);
 
 		if (!in_array($mode, $allowed_modes, true)) {
-			return 'disabled';
+			return $default_mode;
 		}
 
 		return $mode;
@@ -37,9 +45,12 @@ class AIPS_Review_Policy {
 	 * @return int
 	 */
 	public function get_quality_threshold() {
-		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_review_quality_threshold'));
+		$config = AIPS_Config::get_instance();
+		$defaults = $config->get_default_options();
+		$default_threshold = isset($defaults['aips_review_quality_threshold']) ? absint($defaults['aips_review_quality_threshold']) : 80;
+		$threshold = absint($config->get_option('aips_review_quality_threshold', $default_threshold));
 
-		return $threshold > 0 ? $threshold : 80;
+		return $threshold > 0 ? $threshold : $default_threshold;
 	}
 
 	/**
@@ -58,7 +69,7 @@ class AIPS_Review_Policy {
 	 * @return bool
 	 */
 	public function should_intercept_requested_publish($requested_status) {
-		return ('publish' === $requested_status && in_array($this->get_mode(), array('always', 'quality_gate'), true));
+		return ('publish' === $requested_status && 'disabled' !== $this->get_mode());
 	}
 
 	/**

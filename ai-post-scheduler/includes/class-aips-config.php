@@ -198,6 +198,15 @@ class AIPS_Config {
             'aips_enable_telemetry' => false,
         );
     }
+
+    /**
+     * Return supported generated-post review policy modes.
+     *
+     * @return string[]
+     */
+    public function get_review_policy_modes() {
+        return array('disabled', 'always', 'quality_gate');
+    }
     
     /**
      * Get a specific option value with fallback to default.

@@ -102,12 +102,22 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function review_policy_mode_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_review_policy_mode');
+        $config = AIPS_Config::get_instance();
+        $defaults = $config->get_default_options();
+        $allowed_modes = $config->get_review_policy_modes();
+        $default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+        $value = (string) $config->get_option('aips_review_policy_mode', $default_mode);
+
+        if (!in_array($value, $allowed_modes, true)) {
+            $value = $default_mode;
+        }
         ?>
         <select name="aips_review_policy_mode">
-            <option value="disabled" <?php selected($value, 'disabled'); ?>><?php esc_html_e('Disabled', 'ai-post-scheduler'); ?></option>
-            <option value="always" <?php selected($value, 'always'); ?>><?php esc_html_e('Always Require Review', 'ai-post-scheduler'); ?></option>
-            <option value="quality_gate" <?php selected($value, 'quality_gate'); ?>><?php esc_html_e('Require Review Below Threshold', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($allowed_modes as $mode) : ?>
+                <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>>
+                    <?php echo esc_html($this->get_review_policy_mode_label($mode)); ?>
+                </option>
+            <?php endforeach; ?>
         </select>
         <p class="description"><?php esc_html_e('Control whether generated posts can publish immediately or must be manually approved first.', 'ai-post-scheduler'); ?></p>
         <?php
@@ -535,14 +545,35 @@ class AIPS_Settings_UI {
      * @return string
      */
     public function sanitize_review_policy_mode($value) {
+        $config = AIPS_Config::get_instance();
+        $defaults = $config->get_default_options();
+        $allowed = $config->get_review_policy_modes();
+        $default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
         $value = sanitize_text_field((string) $value);
-        $allowed = array('disabled', 'always', 'quality_gate');
 
         if (!in_array($value, $allowed, true)) {
-            return 'disabled';
+            return $default_mode;
         }
 
         return $value;
+    }
+
+    /**
+     * Get the translated label for a review policy mode.
+     *
+     * @param string $mode Mode key.
+     * @return string
+     */
+    private function get_review_policy_mode_label($mode) {
+        switch ($mode) {
+            case 'always':
+                return __('Always Require Review', 'ai-post-scheduler');
+            case 'quality_gate':
+                return __('Require Review Below Threshold', 'ai-post-scheduler');
+            case 'disabled':
+            default:
+                return __('Disabled', 'ai-post-scheduler');
+        }
     }
 
     /**
