@@ -328,7 +328,7 @@ if (is_object($history)) {
 
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
-	<tr data-type-id="{{typeId}}">
+	<tr data-type-ids="{{typeIds}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>

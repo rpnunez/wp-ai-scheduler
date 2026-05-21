@@ -74,6 +74,7 @@
 
 			// Log type filter tabs inside the modal.
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
+			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
 
 			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
@@ -362,10 +363,405 @@
 				$rows.show();
 			} else {
 				$rows.each(function () {
-					var rowType = $(this).data('type-id');
-					$(this).toggle(String(rowType) === String(typeId));
+					var rowTypes = String($(this).attr('data-type-ids') || $(this).data('type-id') || '')
+						.split(',')
+						.map(function (value) {
+							return $.trim(String(value));
+						})
+						.filter(Boolean);
+					$(this).toggle(rowTypes.indexOf(String(typeId)) !== -1);
 				});
 			}
+		},
+
+		/**
+		 * Toggle JSON tree view vs. raw JSON for the current modal content.
+		 *
+		 * @param {Event} e Change event.
+		 */
+		toggleJsonViewerMode: function (e) {
+			var $toggle = $(e.currentTarget);
+			var $renderer = $toggle.closest('.aips-history-log-renderer');
+			if (!$renderer.length) {
+				return;
+			}
+
+			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+		},
+
+		/**
+		 * Return whether a log entry is an AI request row.
+		 *
+		 * @param {Object} log Log entry.
+		 * @return {boolean}
+		 */
+		isAiRequestLog: function (log) {
+			return String(log && log.history_type_id) === '5' || String(log && log.log_type) === 'ai_request';
+		},
+
+		/**
+		 * Return whether a log entry is an AI response row.
+		 *
+		 * @param {Object} log Log entry.
+		 * @return {boolean}
+		 */
+		isAiResponseLog: function (log) {
+			return String(log && log.history_type_id) === '6' || String(log && log.log_type) === 'ai_response';
+		},
+
+		/**
+		 * Normalize a freeform phase string into a predictable lookup key.
+		 *
+		 * @param {*} value Raw candidate value.
+		 * @return {string}
+		 */
+		normalizeAiPhaseKey: function (value) {
+			return String(value || '')
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '_')
+				.replace(/^_+|_+$/g, '');
+		},
+
+		/**
+		 * Infer which content phase an AI log belongs to.
+		 *
+		 * @param {Object} log Log entry.
+		 * @return {string}
+		 */
+		deriveAiPhaseKey: function (log) {
+			var details = log && log.details ? log.details : {};
+			var candidates = [
+				details.phase,
+				details.component,
+				details.content_type,
+				details.request_type,
+				details.target,
+				details.section,
+				details.field,
+				details.item_type,
+				details.stage
+			];
+			var i;
+
+			for (i = 0; i < candidates.length; i++) {
+				if (candidates[i]) {
+					return this.normalizeAiPhaseKey(candidates[i]);
+				}
+			}
+
+			var message = String(details.message || '');
+			var messageMatch = message.match(/for\s+(.+?)(?:[\.:]|$)/i);
+			if (messageMatch && messageMatch[1]) {
+				return this.normalizeAiPhaseKey(messageMatch[1]);
+			}
+
+			if (message.toLowerCase().indexOf('title') !== -1) {
+				return 'post_title';
+			}
+			if (message.toLowerCase().indexOf('excerpt') !== -1) {
+				return 'post_excerpt';
+			}
+			if (message.toLowerCase().indexOf('featured image') !== -1 || message.toLowerCase().indexOf('image') !== -1) {
+				return 'featured_image';
+			}
+			if (message.toLowerCase().indexOf('content') !== -1 || message.toLowerCase().indexOf('article') !== -1) {
+				return 'post_content';
+			}
+
+			return 'general';
+		},
+
+		/**
+		 * Convert an AI phase key into a user-friendly label.
+		 *
+		 * @param {string} phaseKey Normalized phase key.
+		 * @return {string}
+		 */
+		humanizeAiPhaseLabel: function (phaseKey) {
+			var map = {
+				post_title: 'Post Title',
+				title: 'Post Title',
+				post_content: 'Post Content',
+				content: 'Post Content',
+				article: 'Post Content',
+				body: 'Post Content',
+				post_excerpt: 'Post Excerpt',
+				excerpt: 'Post Excerpt',
+				featured_image: 'Featured Image',
+				image: 'Featured Image',
+				topic: 'Topic',
+				research: 'Research',
+				general: 'General'
+			};
+			var normalized = this.normalizeAiPhaseKey(phaseKey || 'general');
+
+			if (map[normalized]) {
+				return map[normalized];
+			}
+
+			return normalized
+				.replace(/_/g, ' ')
+				.replace(/\b\w/g, function (letter) {
+					return letter.toUpperCase();
+				});
+		},
+
+		/**
+		 * Extract log details excluding the summary message/timestamp fields.
+		 *
+		 * @param {Object} log Log entry.
+		 * @return {Object}
+		 */
+		extractExtraDetails: function (log) {
+			var extra = {};
+			var details = log && log.details ? log.details : {};
+
+			$.each(details, function (key, value) {
+				if (key !== 'message' && key !== 'timestamp') {
+					extra[key] = value;
+				}
+			});
+
+			return extra;
+		},
+
+		/**
+		 * Escape plaintext while preserving visible line breaks.
+		 *
+		 * @param {*} value Raw text value.
+		 * @return {string}
+		 */
+		escapeWithLineBreaks: function (value) {
+			return AIPS.Templates.escape(String(value === undefined || value === null ? '' : value))
+				.replace(/\r\n|\r|\n/g, '<br>');
+		},
+
+		/**
+		 * Render a scalar JSON value for the tree viewer.
+		 *
+		 * @param {*} value Scalar value.
+		 * @return {string}
+		 */
+		renderJsonScalar: function (value) {
+			var type = typeof value;
+
+			if (value === null) {
+				return '<span class="aips-json-value aips-json-value-null">null</span>';
+			}
+
+			if (type === 'string') {
+				return '<span class="aips-json-value aips-json-value-string">"' + this.escapeWithLineBreaks(value) + '"</span>';
+			}
+
+			if (type === 'number') {
+				return '<span class="aips-json-value aips-json-value-number">' + AIPS.Templates.escape(String(value)) + '</span>';
+			}
+
+			if (type === 'boolean') {
+				return '<span class="aips-json-value aips-json-value-boolean">' + AIPS.Templates.escape(String(value)) + '</span>';
+			}
+
+			return '<span class="aips-json-value">' + AIPS.Templates.escape(String(value)) + '</span>';
+		},
+
+		/**
+		 * Render a recursive tree for a JSON-compatible value.
+		 *
+		 * @param {*} value JSON-compatible value.
+		 * @param {string|null} label Key/index label.
+		 * @param {number} depth Current depth.
+		 * @return {string}
+		 */
+		renderJsonTree: function (value, label, depth) {
+			var self = this;
+			var isArray = Array.isArray(value);
+			var isObject = value && typeof value === 'object';
+			var labelHtml = label !== null && label !== undefined
+				? '<span class="aips-json-key">' + AIPS.Templates.escape(String(label)) + '</span>: '
+				: '';
+
+			if (!isObject) {
+				return '<div class="aips-json-leaf">' + labelHtml + self.renderJsonScalar(value) + '</div>';
+			}
+
+			var entries = [];
+			if (isArray) {
+				$.each(value, function (index, item) {
+					entries.push({ label: index, value: item });
+				});
+			} else {
+				$.each(value, function (key, item) {
+					entries.push({ label: key, value: item });
+				});
+			}
+
+			if (!entries.length) {
+				return '<div class="aips-json-leaf">' + labelHtml + '<span class="aips-json-value aips-json-value-empty">' + (isArray ? '[]' : '{}') + '</span></div>';
+			}
+
+			var summary = '<span class="aips-json-summary-label">' + labelHtml + '</span>'
+				+ '<span class="aips-json-meta">' + (isArray ? 'Array[' + entries.length + ']' : 'Object{' + entries.length + '}') + '</span>';
+			var html = '<details class="aips-json-node"' + (depth <= 1 ? ' open' : '') + '>';
+			html += '<summary class="aips-json-summary">' + summary + '</summary>';
+			html += '<div class="aips-json-children">';
+
+			$.each(entries, function (index, entry) {
+				html += self.renderJsonTree(entry.value, entry.label, depth + 1);
+			});
+
+			html += '</div></details>';
+
+			return html;
+		},
+
+		/**
+		 * Render the details block containing tree and raw JSON views.
+		 *
+		 * @param {string} rowId DOM id for the expandable panel.
+		 * @param {Object} extra Structured details payload.
+		 * @return {string}
+		 */
+		renderJsonDetailBlock: function (rowId, extra) {
+			var rawJson = JSON.stringify(extra, null, 2);
+			var treeHtml = this.renderJsonTree(extra, null, 0);
+
+			return ''
+				+ '<div class="aips-history-log-detail-actions">'
+				+ '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#' + AIPS.Templates.escape(rowId) + '" style="font-size:11px;">' + AIPS.Templates.escape(aipsHistoryL10n.showDetails || 'Show details') + '</button>'
+				+ '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-copy" data-target="#' + AIPS.Templates.escape(rowId) + '" style="font-size:11px;margin-left:4px;">' + AIPS.Templates.escape(aipsHistoryL10n.copyDetails || 'Copy') + '</button>'
+				+ '</div>'
+				+ '<div id="' + AIPS.Templates.escape(rowId) + '" class="aips-history-log-detail-panel" style="display:none;margin-top:8px;">'
+				+ '<div class="aips-json-tree-mode">' + treeHtml + '</div>'
+				+ '<div class="aips-json-raw-mode"><pre style="max-height:240px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;"><code>' + AIPS.Templates.escape(rawJson) + '</code></pre></div>'
+				+ '</div>';
+		},
+
+		/**
+		 * Render a log message paragraph with preserved line breaks.
+		 *
+		 * @param {string} message Message text.
+		 * @return {string}
+		 */
+		renderLogMessage: function (message) {
+			return '<p style="margin:0 0 6px;">' + this.escapeWithLineBreaks(message) + '</p>';
+		},
+
+		/**
+		 * Render one AI sub-section within a paired AI request/response row.
+		 *
+		 * @param {Object} log Log entry.
+		 * @param {string} label Section label.
+		 * @param {string} rowId Base row id.
+		 * @return {string}
+		 */
+		renderAiSubSection: function (log, label, rowId) {
+			var extra = this.extractExtraDetails(log);
+			var html = '<div class="aips-ai-log-section">';
+			html += '<div class="aips-ai-log-section-header">';
+			html += '<strong>' + AIPS.Templates.escape(label) + '</strong>';
+
+			if (log && log.timestamp) {
+				html += '<span class="aips-ai-log-section-time">' + AIPS.Templates.escape(log.timestamp) + '</span>';
+			}
+
+			html += '</div>';
+
+			if (log && log.details && log.details.message) {
+				html += this.renderLogMessage(log.details.message);
+			}
+
+			if (Object.keys(extra).length > 0) {
+				html += this.renderJsonDetailBlock(rowId, extra);
+			}
+
+			html += '</div>';
+
+			return html;
+		},
+
+		/**
+		 * Combine AI request/response rows into linear paired display rows.
+		 *
+		 * @param {Object[]} logs Raw log entries.
+		 * @return {Object[]}
+		 */
+		buildDisplayLogs: function (logs) {
+			var self = this;
+			var displayLogs = [];
+			var usedResponses = {};
+
+			$.each(logs, function (index, log) {
+				if (self.isAiResponseLog(log) && usedResponses[index]) {
+					return;
+				}
+
+				if (!self.isAiRequestLog(log)) {
+					displayLogs.push({
+						timestamp: log.timestamp,
+						typeLabel: log.type_label,
+						typeClass: self.typeClass(log.history_type_id),
+						logType: log.log_type,
+						typeIds: [String(log.history_type_id)],
+						detailsHtml: (function () {
+							var extra = self.extractExtraDetails(log);
+							var detailsHtml = '';
+
+							if (log.details && log.details.message) {
+								detailsHtml += self.renderLogMessage(log.details.message);
+							}
+
+							if (Object.keys(extra).length > 0) {
+								detailsHtml += self.renderJsonDetailBlock('aips-log-detail-' + index, extra);
+							}
+
+							return detailsHtml;
+						})()
+					});
+					return;
+				}
+
+				var phaseKey = self.deriveAiPhaseKey(log);
+				var responseLog = null;
+				var responseIndex = -1;
+				var searchIndex;
+
+				for (searchIndex = index + 1; searchIndex < logs.length; searchIndex++) {
+					if (usedResponses[searchIndex]) {
+						continue;
+					}
+
+					if (self.isAiResponseLog(logs[searchIndex]) && self.deriveAiPhaseKey(logs[searchIndex]) === phaseKey) {
+						responseLog = logs[searchIndex];
+						responseIndex = searchIndex;
+						break;
+					}
+				}
+
+				if (responseIndex !== -1) {
+					usedResponses[responseIndex] = true;
+				}
+
+				var phaseLabel = self.humanizeAiPhaseLabel(phaseKey);
+				var detailsHtml = '<div class="aips-ai-log-pair">';
+				detailsHtml += self.renderAiSubSection(log, aipsHistoryL10n.aiRequestLabel || 'AI Request', 'aips-log-detail-' + index + '-request');
+
+				if (responseLog) {
+					detailsHtml += self.renderAiSubSection(responseLog, aipsHistoryL10n.aiResponseLabel || 'AI Response', 'aips-log-detail-' + index + '-response');
+				}
+
+				detailsHtml += '</div>';
+
+				displayLogs.push({
+					timestamp: log.timestamp,
+					typeLabel: aipsHistoryL10n.aiRequestResponseLabel || 'AI Request / Response',
+					typeClass: self.typeClass(5),
+					logType: phaseLabel,
+					typeIds: responseLog ? ['5', '6'] : ['5'],
+					detailsHtml: detailsHtml
+				});
+			});
+
+			return displayLogs;
 		},
 
 		/**
@@ -379,9 +775,18 @@
 			var self = this;
 			var T    = AIPS.Templates;
 			var html = '';
+			var displayLogs = self.buildDisplayLogs(logs);
 			var inferredAction = self.inferWhatHappened(container, logs);
 			var inferredOutcome = self.humanizeOutcome(container.status);
 			var changedHighlights = self.detectWhatChanged(logs, container);
+
+			html += '<div class="aips-history-log-renderer aips-json-viewer-enabled">';
+			html += '<div class="aips-history-modal-toolbar">';
+			html += '<label class="aips-history-json-toggle">';
+			html += '<input type="checkbox" class="aips-json-viewer-toggle" checked> ';
+			html += '<span>' + T.escape(aipsHistoryL10n.jsonViewerLabel || 'JSON Viewer') + '</span>';
+			html += '</label>';
+			html += '</div>';
 
 			// ---- Container summary ----
 			var rows = '';
@@ -492,13 +897,14 @@
 			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
 
 			// ---- Log type filter toolbar ----
-			var typeCounts = { all: logs.length };
-			$.each(logs, function (i, log) {
-				var tid = String(log.history_type_id);
-				typeCounts[tid] = (typeCounts[tid] || 0) + 1;
+			var typeCounts = { all: displayLogs.length };
+			$.each(displayLogs, function (i, displayLog) {
+				$.each(displayLog.typeIds, function (j, tid) {
+					typeCounts[tid] = (typeCounts[tid] || 0) + 1;
+				});
 			});
 
-			if (logs.length > 0) {
+			if (displayLogs.length > 0) {
 				var filterButtons = '';
 
 				// "All" button.
@@ -536,51 +942,27 @@
 			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
 			html += T.renderRaw('aips-tmpl-history-logs-heading', {
 				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
-				count:   logs.length
+				count:   displayLogs.length
 			});
 
-			if (logs.length === 0) {
+			if (displayLogs.length === 0) {
 				html += T.render('aips-tmpl-history-no-logs', {
 					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
 				});
 				html += '</details>';
+				html += '</div>';
 				return html;
 			}
 
 			var rowsHtml = '';
-			$.each(logs, function (i, log) {
-				var typeClass   = self.typeClass(log.history_type_id);
-				var message     = (log.details && log.details.message) ? log.details.message : '';
-				var detailsHtml = '';
-
-				if (message) {
-					detailsHtml += T.render('aips-tmpl-history-log-message', { message: message });
-				}
-
-				// Render extra details (input/output/context) as a collapsible block.
-				var extra = {};
-				$.each(log.details, function (key, val) {
-					if (key !== 'message' && key !== 'timestamp') {
-						extra[key] = val;
-					}
-				});
-
-				if (Object.keys(extra).length > 0) {
-					detailsHtml += T.render('aips-tmpl-history-log-detail-block', {
-						rowId:     'aips-log-detail-' + i,
-						showLabel: aipsHistoryL10n.showDetails || 'Show details',
-						copyLabel: aipsHistoryL10n.copyDetails  || 'Copy',
-						details:   JSON.stringify(extra, null, 2)
-					});
-				}
-
+			$.each(displayLogs, function (i, displayLog) {
 				rowsHtml += T.renderRaw('aips-tmpl-history-log-row', {
-					timestamp:   T.escape(log.timestamp),
-					typeClass:   T.escape(typeClass),
-					typeLabel:   T.escape(log.type_label),
-					logType:     T.escape(log.log_type),
-					detailsHtml: detailsHtml,
-					typeId:      T.escape(String(log.history_type_id))
+					timestamp:   T.escape(displayLog.timestamp),
+					typeClass:   T.escape(displayLog.typeClass),
+					typeLabel:   T.escape(displayLog.typeLabel),
+					logType:     T.escape(displayLog.logType),
+					detailsHtml: displayLog.detailsHtml,
+					typeIds:     T.escape(displayLog.typeIds.join(','))
 				});
 			});
 
@@ -593,6 +975,7 @@
 			});
 
 			html += '</details>';
+			html += '</div>';
 
 			return html;
 		},

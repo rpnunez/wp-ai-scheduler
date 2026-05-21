@@ -2824,6 +2824,151 @@
     color: #721c24;
 }
 
+.aips-history-modal-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+
+.aips-history-json-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #50575e;
+}
+
+.aips-history-json-toggle input {
+    margin: 0;
+}
+
+.aips-json-tree-mode,
+.aips-json-raw-mode {
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #fbfbfc;
+    padding: 10px 12px;
+}
+
+.aips-json-raw-mode {
+    display: none;
+}
+
+.aips-history-log-renderer:not(.aips-json-viewer-enabled) .aips-json-tree-mode {
+    display: none;
+}
+
+.aips-history-log-renderer:not(.aips-json-viewer-enabled) .aips-json-raw-mode {
+    display: block;
+}
+
+.aips-json-node {
+    margin: 4px 0 0 12px;
+}
+
+.aips-json-node:first-child {
+    margin-left: 0;
+}
+
+.aips-json-summary {
+    cursor: pointer;
+    color: #1d2327;
+    list-style: none;
+}
+
+.aips-json-summary::-webkit-details-marker {
+    display: none;
+}
+
+.aips-json-summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    color: #2271b1;
+    transition: transform 0.15s ease;
+}
+
+.aips-json-node[open] > .aips-json-summary::before {
+    transform: rotate(90deg);
+}
+
+.aips-json-key {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #003c71;
+}
+
+.aips-json-meta {
+    font-size: 11px;
+    color: #646970;
+    font-family: Consolas, Monaco, monospace;
+}
+
+.aips-json-children {
+    margin-top: 6px;
+    padding-left: 12px;
+    border-left: 1px solid #dcdcde;
+}
+
+.aips-json-leaf {
+    margin: 4px 0;
+    line-height: 1.55;
+}
+
+.aips-json-value {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    word-break: break-word;
+}
+
+.aips-json-value-string {
+    color: #0a6d0a;
+}
+
+.aips-json-value-number {
+    color: #7a3e00;
+}
+
+.aips-json-value-boolean,
+.aips-json-value-null,
+.aips-json-value-empty {
+    color: #7a007a;
+}
+
+.aips-ai-log-pair {
+    display: grid;
+    gap: 12px;
+}
+
+.aips-ai-log-section {
+    padding: 10px 12px;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.aips-ai-log-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.aips-ai-log-section-time {
+    font-size: 11px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.aips-history-log-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+}
+
 @keyframes aipsSlideIn {
     from {
         transform: translateY(-20px);

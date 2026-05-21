@@ -142,6 +142,12 @@
 				self.toggleLogDetail($modal, $(this));
 			});
 
+			$modal.find('.aips-json-viewer-toggle').off('change').on('change', function () {
+				var $toggle = $(this);
+				var $renderer = $toggle.closest('.aips-history-log-renderer');
+				$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+			});
+
 			$modal.find('[data-copy-target]').off('click').on('click', function (e) {
 				e.preventDefault();
 				self.copyLogDetail($modal, $(this));
@@ -169,8 +175,13 @@
 			}
 
 			$rows.each(function () {
-				var rowType = $(this).data('type-id');
-				$(this).toggle(String(rowType) === String(typeId));
+				var rowTypes = String($(this).attr('data-type-ids') || $(this).data('type-id') || '')
+					.split(',')
+					.map(function (value) {
+						return $.trim(String(value));
+					})
+					.filter(Boolean);
+				$(this).toggle(rowTypes.indexOf(String(typeId)) !== -1);
 			});
 		},
 
