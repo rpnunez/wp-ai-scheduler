@@ -366,29 +366,30 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_script() {
         wp_enqueue_script(
-            'aips-history-modal-opener',
-            AIPS_PLUGIN_URL . 'assets/js/admin-history-modal-opener.js',
+            'aips-admin-history',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
             array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
         );
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalAjax', array(
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('aips_ajax_nonce'),
         ));
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalOpenerL10n', array(
-            'historyDetails'  => __('History Details', 'ai-post-scheduler'),
-            'closeModal'      => __('Close modal', 'ai-post-scheduler'),
-            'loading'         => __('Loading…', 'ai-post-scheduler'),
-            'showDetails'     => __('Show details', 'ai-post-scheduler'),
-            'hideDetails'     => __('Hide details', 'ai-post-scheduler'),
-            'copy'            => __('Copy', 'ai-post-scheduler'),
-            'copied'          => __('Copied!', 'ai-post-scheduler'),
-            'invalidHistoryId' => __('Invalid history ID.', 'ai-post-scheduler'),
-            'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
-            'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
+        wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
+            'historyDetailsTitle' => __('History Details', 'ai-post-scheduler'),
+            'closeModal'          => __('Close modal', 'ai-post-scheduler'),
+            'loading'             => __('Loading…', 'ai-post-scheduler'),
+            'loadingLogs'         => __('Loading logs…', 'ai-post-scheduler'),
+            'showDetails'         => __('Show details', 'ai-post-scheduler'),
+            'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
+            'copyDetails'         => __('Copy', 'ai-post-scheduler'),
+            'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
+            'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
+            'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
+            'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
         ));
 
         static $scaffold_registered = false;
