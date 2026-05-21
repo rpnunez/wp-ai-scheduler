@@ -137,7 +137,11 @@ class AIPS_Sources_Controller {
 			return;
 		}
 
-		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+		wp_die(
+			esc_html__('Twig view service is not available for the Sources page.', 'ai-post-scheduler'),
+			esc_html__('Rendering Error', 'ai-post-scheduler'),
+			array('response' => 500)
+		);
 	}
 
 

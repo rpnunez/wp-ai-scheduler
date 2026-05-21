@@ -298,7 +298,11 @@ class AIPS_Templates {
             return;
         }
 
-        include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
+        wp_die(
+            esc_html__('Twig view service is not available for the Templates page.', 'ai-post-scheduler'),
+            esc_html__('Rendering Error', 'ai-post-scheduler'),
+            array('response' => 500)
+        );
     }
 
 }

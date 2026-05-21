@@ -262,27 +262,6 @@ class AIPS_Generated_Posts_Controller {
 			}
 		);
 		
-		// Make controller available to templates for formatting helpers.
-		$controller = $this;
-
-		$template_context = array(
-			'controller' => $controller,
-			'authors' => $authors,
-			'templates' => $templates,
-			'author_id' => $author_id,
-			'template_id' => $template_id,
-			'search_query' => $search_query,
-			'posts_data' => $posts_data,
-			'history' => $history,
-			'current_page' => $current_page,
-			'draft_posts' => $draft_posts,
-			'review_current_page' => $review_current_page,
-			'partial_posts_data' => $partial_posts_data,
-			'partial_generations' => $partial_generations,
-			'partial_current_page' => $partial_current_page,
-			'post_review_handler' => $post_review_handler,
-		);
-
 		if ($this->view instanceof AIPS_View) {
 			$this->view->render('pages/content.html.twig', array(
 				'generated_tab' => array(
@@ -342,37 +321,28 @@ class AIPS_Generated_Posts_Controller {
 						'aips-pending-review'
 					),
 				),
-				'post_preview_modal' => $this->render_php_template('templates/partials/post-preview-modal.php', $template_context),
-				'view_session_modal' => $this->render_php_template('templates/partials/view-session-modal.php', $template_context),
-				'ai_edit_modal' => $this->render_php_template('templates/partials/ai-edit-modal.php', $template_context),
+				'history_type_map' => array(
+					'LOG' => AIPS_History_Type::LOG,
+					'ERROR' => AIPS_History_Type::ERROR,
+					'WARNING' => AIPS_History_Type::WARNING,
+					'INFO' => AIPS_History_Type::INFO,
+					'AI_REQUEST' => AIPS_History_Type::AI_REQUEST,
+					'AI_RESPONSE' => AIPS_History_Type::AI_RESPONSE,
+					'DEBUG' => AIPS_History_Type::DEBUG,
+					'ACTIVITY' => AIPS_History_Type::ACTIVITY,
+					'SESSION_METADATA' => AIPS_History_Type::SESSION_METADATA,
+				),
+				'ajax_nonce' => wp_create_nonce('aips_ajax_nonce'),
 			));
 
 			return;
 		}
 
-		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
-	}
-
-	/**
-	 * Render an existing PHP template to a string.
-	 *
-	 * @param string $relative_path Template path relative to plugin root.
-	 * @param array  $vars Variables extracted into the template scope.
-	 * @return string
-	 */
-	private function render_php_template($relative_path, $vars = array()) {
-		$template_file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
-		if (!file_exists($template_file)) {
-			return '';
-		}
-
-		if (!empty($vars) && is_array($vars)) {
-			extract($vars, EXTR_SKIP);
-		}
-
-		ob_start();
-		include $template_file;
-		return (string) ob_get_clean();
+		wp_die(
+			esc_html__('Twig view service is not available for the Content page.', 'ai-post-scheduler'),
+			esc_html__('Rendering Error', 'ai-post-scheduler'),
+			array('response' => 500)
+		);
 	}
 
 	/**
