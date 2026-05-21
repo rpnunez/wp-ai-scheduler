@@ -742,7 +742,7 @@
 			AIPS.Utilities.updateSelectedRowCount({
 				checkboxSelector: '.aips-post-checkbox:checked',
 				outputSelector: '#aips-post-review-selected-count',
-				format: '%d selected',
+				format: (window.aipsPostReviewL10n && aipsPostReviewL10n.selectedCountFormat) ? aipsPostReviewL10n.selectedCountFormat : '%d selected',
 			});
 
 			AIPS.Utilities.updateBulkActionState({

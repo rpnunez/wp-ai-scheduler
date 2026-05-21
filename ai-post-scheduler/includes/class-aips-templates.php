@@ -237,8 +237,8 @@ class AIPS_Templates {
         }
 
         // Pre-fetch stats to avoid N+1 queries while rendering template rows.
-        $history_service = new AIPS_History();
-        $all_generated_counts = $history_service->get_all_template_stats();
+        $history_repository = AIPS_History_Repository::instance();
+        $all_generated_counts = $history_repository->get_all_template_stats();
         $all_pending_stats = $this->get_all_pending_stats();
 
         $category_name_map = array();
