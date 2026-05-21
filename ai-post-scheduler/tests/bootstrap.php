@@ -1592,6 +1592,6 @@ if (!function_exists('esc_sql')) {
 }
 if (!function_exists('wp_date')) {
     function wp_date($format, $timestamp = null, $timezone = null) {
-        return date($format, $timestamp ?: time());
+        return gmdate($format, $timestamp ?? time());
     }
 }

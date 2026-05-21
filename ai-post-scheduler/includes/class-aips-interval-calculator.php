@@ -131,8 +131,8 @@ class AIPS_Interval_Calculator {
     public function calculate_next_run($frequency, $start_time = null) {
         if (is_numeric($start_time) && (int) $start_time > 0) {
             $base_time = (int) $start_time;
-        } elseif (is_string($start_time) && strtotime($start_time) !== false) {
-            $base_time = strtotime($start_time);
+        } elseif (is_string($start_time) && ($parsed = strtotime($start_time)) !== false) {
+            $base_time = $parsed;
         } else {
             $base_time = AIPS_DateTime::now()->timestamp();
         }
