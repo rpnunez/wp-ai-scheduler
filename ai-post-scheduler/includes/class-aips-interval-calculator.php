@@ -129,9 +129,13 @@ class AIPS_Interval_Calculator {
      * @return int UTC Unix timestamp for the next run.
      */
     public function calculate_next_run($frequency, $start_time = null) {
-        $base_time = is_numeric($start_time) && (int) $start_time > 0
-            ? (int) $start_time
-            : AIPS_DateTime::now()->timestamp();
+        if (is_numeric($start_time) && (int) $start_time > 0) {
+            $base_time = (int) $start_time;
+        } elseif (is_string($start_time) && strtotime($start_time) !== false) {
+            $base_time = strtotime($start_time);
+        } else {
+            $base_time = AIPS_DateTime::now()->timestamp();
+        }
         $now = AIPS_DateTime::now()->timestamp();
         
         // If start time is in the past, add intervals until future (Catch-up logic)
