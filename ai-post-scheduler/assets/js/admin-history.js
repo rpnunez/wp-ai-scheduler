@@ -316,7 +316,7 @@
 
 			var self           = this;
 			var $button        = $(e.currentTarget);
-			var targetSelector = $button.data('target');
+			var targetSelector = $button.data('copy-target');
 			var $target        = $(targetSelector);
 			var text           = $target.find('pre').text();
 			var copyLabel      = aipsHistoryL10n.copyDetails || 'Copy';

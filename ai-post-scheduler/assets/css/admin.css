@@ -2855,6 +2855,22 @@
     display: none;
 }
 
+.aips-history-log-raw-json {
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-size: 11px;
+    background: #f6f7f7;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.aips-history-log-raw-json code {
+    font-size: inherit;
+    white-space: inherit;
+}
+
 .aips-history-log-renderer:not(.aips-json-viewer-enabled) .aips-json-tree-mode {
     display: none;
 }

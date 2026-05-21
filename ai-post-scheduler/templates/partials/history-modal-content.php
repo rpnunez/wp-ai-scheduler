@@ -146,13 +146,13 @@ $type_labels = array(
 	<?php if (!empty($display_logs)): ?>
 		<div class="aips-history-log-type-filter" style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:4px;">
 			<span style="font-weight:600;margin-right:8px;"><?php esc_html_e('Filter:', 'ai-post-scheduler'); ?></span>
-			<button class="aips-btn aips-btn-sm aips-btn-primary aips-log-type-filter-btn" data-type-id="all" style="margin-right:4px;">
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-log-type-filter-btn" data-type-id="all" style="margin-right:4px;">
 				<?php echo esc_html(sprintf(__('All (%d)', 'ai-post-scheduler'), isset($filter_counts['all']) ? (int) $filter_counts['all'] : 0)); ?>
 			</button>
 
 			<?php foreach ($type_labels as $type_id => $type_label): ?>
 				<?php if (empty($filter_counts[(string) $type_id])) { continue; } ?>
-				<button class="aips-btn aips-btn-sm aips-btn-ghost aips-log-type-filter-btn" data-type-id="<?php echo esc_attr($type_id); ?>" style="margin-right:4px;">
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-type-filter-btn" data-type-id="<?php echo esc_attr($type_id); ?>" style="margin-right:4px;">
 					<?php echo esc_html(sprintf(__('%s (%d)', 'ai-post-scheduler'), $type_label, (int) $filter_counts[(string) $type_id])); ?>
 				</button>
 			<?php endforeach; ?>
@@ -201,17 +201,17 @@ $type_labels = array(
 
 											<?php if (!empty($section['has_extra'])): ?>
 												<div class="aips-history-log-detail-actions">
-													<button class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#<?php echo esc_attr($section['detail_id']); ?>" style="font-size:11px;">
+													<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" data-target="#<?php echo esc_attr($section['detail_id']); ?>" style="font-size:11px;">
 														<?php esc_html_e('Show details', 'ai-post-scheduler'); ?>
 													</button>
-													<button class="aips-btn aips-btn-sm aips-btn-ghost aips-log-copy" data-target="#<?php echo esc_attr($section['detail_id']); ?>" data-copy-target="#<?php echo esc_attr($section['detail_id']); ?>" style="font-size:11px;margin-left:4px;">
+													<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-copy" data-copy-target="#<?php echo esc_attr($section['detail_id']); ?>" style="font-size:11px;margin-left:4px;">
 														<?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
 													</button>
 												</div>
 												<div id="<?php echo esc_attr($section['detail_id']); ?>" class="aips-history-log-detail-panel" style="display:none;margin-top:8px;">
 													<div class="aips-json-tree-mode"><?php echo $section['tree_html']; ?></div>
 													<div class="aips-json-raw-mode">
-														<pre style="max-height:240px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;"><code><?php echo esc_html($section['raw_json']); ?></code></pre>
+														<pre class="aips-history-log-raw-json"><code><?php echo esc_html($section['raw_json']); ?></code></pre>
 													</div>
 												</div>
 											<?php endif; ?>
