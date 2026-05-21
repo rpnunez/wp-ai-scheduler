@@ -228,7 +228,8 @@ class AIPS_History {
     private function prepare_history_modal_view_data($history_item, $format_dates = false) {
         $logs = $this->normalize_history_logs(isset($history_item->log) ? $history_item->log : array());
         $container = $this->build_history_modal_container($history_item, $format_dates);
-        $container = array_merge($container, $this->analyze_history_modal_summary($container, $logs));
+        $analysis = $this->analyze_history_modal_summary($container, $logs);
+        $container = $this->finalize_history_modal_container($container, $analysis);
         $display_logs = $this->build_history_display_logs($logs);
         $filter_counts = $this->build_history_filter_counts($display_logs);
 
@@ -237,6 +238,26 @@ class AIPS_History {
             'logs' => $logs,
             'display_logs' => $display_logs,
             'filter_counts' => $filter_counts,
+        );
+    }
+
+    /**
+     * Convert the base container + derived analysis into the final modal payload.
+     *
+     * @param array<string,mixed> $container Base container metadata.
+     * @param array<string,mixed> $analysis  Derived summary analysis.
+     * @return array<string,mixed>
+     */
+    private function finalize_history_modal_container($container, $analysis) {
+        return array(
+            'id' => isset($container['id']) ? (int) $container['id'] : 0,
+            'header_title' => $this->build_history_modal_header_title($container),
+            'status' => isset($container['status']) ? (string) $container['status'] : '',
+            'status_class' => isset($container['status_class']) ? (string) $container['status_class'] : '',
+            'header_actions' => $this->build_history_modal_header_actions($container),
+            'summary_lines' => $this->build_history_summary_lines($analysis),
+            'summary_meta' => $this->build_history_summary_meta($container),
+            'detail_cards' => $this->build_history_detail_cards($container),
         );
     }
 
@@ -269,31 +290,6 @@ class AIPS_History {
                 ? __('Failed', 'ai-post-scheduler')
                 : __('In progress', 'ai-post-scheduler'));
 
-        $entities = array();
-        $seen_entities = array();
-        $add_entity = static function (&$entities, &$seen_entities, $label, $value) {
-            if ($value === null || $value === '') {
-                return;
-            }
-            $text = (string) $value;
-            $key = $label . '|' . $text;
-            if (isset($seen_entities[$key])) {
-                return;
-            }
-            $seen_entities[$key] = true;
-            $entities[] = $label . ': ' . $text;
-        };
-
-        $add_entity($entities, $seen_entities, __('Post', 'ai-post-scheduler'), isset($container['generated_title']) ? $container['generated_title'] : '');
-        $add_entity($entities, $seen_entities, __('Template', 'ai-post-scheduler'), isset($container['template_name']) ? $container['template_name'] : '');
-        $add_entity($entities, $seen_entities, __('Post ID', 'ai-post-scheduler'), isset($container['post_id']) ? $container['post_id'] : '');
-        $add_entity(
-            $entities,
-            $seen_entities,
-            __('Method', 'ai-post-scheduler'),
-            !empty($container['creation_method']) ? str_replace('_', ' ', (string) $container['creation_method']) : ''
-        );
-
         $saw_title_change = false;
         $saw_content_change = false;
         $saw_image_change = false;
@@ -302,16 +298,6 @@ class AIPS_History {
 
         foreach ($logs as $log) {
             $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
-            if (empty($container['generated_title'])) {
-                $add_entity($entities, $seen_entities, __('Post', 'ai-post-scheduler'), isset($details['generated_title']) ? $details['generated_title'] : (isset($details['title']) ? $details['title'] : ''));
-            }
-            if (empty($container['template_name'])) {
-                $add_entity($entities, $seen_entities, __('Template', 'ai-post-scheduler'), isset($details['template_name']) ? $details['template_name'] : '');
-            }
-            if (empty($container['post_id'])) {
-                $add_entity($entities, $seen_entities, __('Post ID', 'ai-post-scheduler'), isset($details['post_id']) ? $details['post_id'] : '');
-            }
-
             $this->scan_history_values_for_changes($details, $saw_title_change, $saw_content_change, $saw_image_change, $saw_published_result, $saw_draft_result);
         }
 
@@ -337,9 +323,156 @@ class AIPS_History {
         return array(
             'what_happened' => $what_happened,
             'outcome_label' => $outcome,
-            'related_entities' => !empty($entities) ? implode(' | ', $entities) : __('No related entities detected', 'ai-post-scheduler'),
             'what_changed' => !empty($changes) ? implode('; ', $changes) : __('No major content changes detected', 'ai-post-scheduler'),
         );
+    }
+
+    /**
+     * Build the modal header title shown above the log content.
+     *
+     * @param array<string,mixed> $container Base container metadata.
+     * @return string
+     */
+    private function build_history_modal_header_title($container) {
+        $id = isset($container['id']) ? (int) $container['id'] : 0;
+        $title = isset($container['generated_title']) ? trim((string) $container['generated_title']) : '';
+
+        if ($title !== '') {
+            return $title . ' #' . $id;
+        }
+
+        return __('History Details', 'ai-post-scheduler') . ($id > 0 ? ' #' . $id : '');
+    }
+
+    /**
+     * Build top-of-modal action links.
+     *
+     * @param array<string,mixed> $container Base container metadata.
+     * @return array<int,array<string,string>>
+     */
+    private function build_history_modal_header_actions($container) {
+        $actions = array();
+
+        if (!empty($container['post_url'])) {
+            $actions[] = array(
+                'label' => !empty($container['post_id'])
+                    ? sprintf(__('View Post (ID: %d)', 'ai-post-scheduler'), (int) $container['post_id'])
+                    : __('View Post', 'ai-post-scheduler'),
+                'url' => (string) $container['post_url'],
+            );
+        }
+
+        if (!empty($container['post_edit_url'])) {
+            $actions[] = array(
+                'label' => __('Edit', 'ai-post-scheduler'),
+                'url' => (string) $container['post_edit_url'],
+            );
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Build the combined Summary section lines.
+     *
+     * @param array<string,mixed> $analysis Derived analysis payload.
+     * @return array<int,array<string,string>>
+     */
+    private function build_history_summary_lines($analysis) {
+        $lines = array();
+
+        if (!empty($analysis['outcome_label'])) {
+            $lines[] = array(
+                'label' => __('Outcome', 'ai-post-scheduler'),
+                'value' => (string) $analysis['outcome_label'],
+            );
+        }
+
+        if (!empty($analysis['what_happened'])) {
+            $lines[] = array(
+                'label' => __('What happened', 'ai-post-scheduler'),
+                'value' => (string) $analysis['what_happened'],
+            );
+        }
+
+        if (!empty($analysis['what_changed'])) {
+            $lines[] = array(
+                'label' => __('What changed', 'ai-post-scheduler'),
+                'value' => (string) $analysis['what_changed'],
+            );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Build stacked Summary metadata values.
+     *
+     * @param array<string,mixed> $container Final base container metadata.
+     * @return array<int,array<string,string>>
+     */
+    private function build_history_summary_meta($container) {
+        $items = array();
+
+        if (!empty($container['created_at'])) {
+            $items[] = array(
+                'label' => __('Created', 'ai-post-scheduler'),
+                'value' => (string) $container['created_at'],
+            );
+        }
+
+        if (!empty($container['duration_label'])) {
+            $items[] = array(
+                'label' => __('Duration', 'ai-post-scheduler'),
+                'value' => (string) $container['duration_label'],
+            );
+        }
+
+        return $items;
+    }
+
+    /**
+     * Build the remaining detail cards shown beneath Summary.
+     *
+     * @param array<string,mixed> $container Base container metadata.
+     * @return array<int,array<string,string>>
+     */
+    private function build_history_detail_cards($container) {
+        $cards = array();
+
+        if (!empty($container['template_name'])) {
+            $cards[] = array(
+                'label' => __('Template', 'ai-post-scheduler'),
+                'value' => (string) $container['template_name'],
+                'class' => '',
+            );
+        }
+
+        if (!empty($container['creation_method'])) {
+            $cards[] = array(
+                'label' => __('Method', 'ai-post-scheduler'),
+                'value' => ucfirst(str_replace('_', ' ', (string) $container['creation_method'])),
+                'class' => '',
+            );
+        }
+
+        if (!empty($container['post_id']) && empty($container['post_url']) && empty($container['post_edit_url'])) {
+            $cards[] = array(
+                'label' => __('Post ID', 'ai-post-scheduler'),
+                'value' => (string) $container['post_id'],
+                'class' => '',
+            );
+        }
+
+        if (!empty($container['error_message'])) {
+            $cards[] = array(
+                'label' => __('Error', 'ai-post-scheduler'),
+                'value' => (string) $container['error_message'],
+                'class' => 'aips-history-summary-item-error',
+            );
+        }
+
+        return $cards;
     }
 
     /**
@@ -443,11 +576,8 @@ class AIPS_History {
         $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : null;
         $post_urls = $this->build_history_post_urls($post_id);
         $created_at = isset($history_item->created_at) ? $history_item->created_at : '';
-        $completed_at = isset($history_item->completed_at) ? $history_item->completed_at : '';
-
         if ($format_dates) {
             $created_at = !empty($created_at) ? AIPS_DateTime::formatRelativeOrAbsolute($created_at) : '';
-            $completed_at = !empty($completed_at) ? AIPS_DateTime::formatRelativeOrAbsolute($completed_at) : '';
         }
 
         return array(
@@ -457,7 +587,6 @@ class AIPS_History {
             'generated_title' => isset($history_item->generated_title) ? $history_item->generated_title : '',
             'template_name' => isset($history_item->template_name) ? $history_item->template_name : '',
             'created_at' => $created_at,
-            'completed_at' => $completed_at,
             'error_message' => isset($history_item->error_message) ? $history_item->error_message : '',
             'post_id' => $post_id,
             'post_url' => $post_urls['post_url'],
@@ -1010,9 +1139,6 @@ class AIPS_History {
         AIPS_Ajax_Response::success(array(
             'modal_html' => $modal_html,
             'container'  => $container,
-            'logs'       => $modal_view['logs'],
-            'display_logs' => $display_logs,
-            'filter_counts' => $filter_counts,
         ));
     }
 

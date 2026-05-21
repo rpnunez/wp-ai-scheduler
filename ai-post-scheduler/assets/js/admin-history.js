@@ -23,6 +23,47 @@
 	 * polluting the global AIPS namespace with page-specific handlers.
 	 */
 	AIPS.History = {
+		escapeHtml: function (value) {
+			return $('<div>').text(value == null ? '' : String(value)).html();
+		},
+
+		updateModalHeader: function ($modal, container) {
+			var title = container && container.header_title
+				? container.header_title
+				: (aipsHistoryL10n.historyDetailsTitle || 'History Details');
+			var actions = container && Array.isArray(container.header_actions)
+				? container.header_actions
+				: [];
+			var $title = $modal.find('#aips-history-logs-modal-title');
+			var $actions = $modal.find('#aips-history-logs-modal-actions');
+			var $status = $modal.find('#aips-history-logs-modal-status');
+			var statusHtml = '';
+			var actionsHtml = '';
+			var self = this;
+
+			$title.text(title);
+
+			actions.forEach(function (action) {
+				if (!action || !action.url || !action.label) {
+					return;
+				}
+
+				actionsHtml += '<a href="' + self.escapeHtml(action.url) + '" target="_blank" rel="noopener noreferrer">'
+					+ self.escapeHtml(action.label)
+					+ '</a>';
+			});
+
+			if (container && container.status && container.status_class) {
+				statusHtml = '<span class="aips-badge '
+					+ self.escapeHtml(container.status_class)
+					+ '">'
+					+ self.escapeHtml(container.status)
+					+ '</span>';
+			}
+
+			$actions.html(actionsHtml);
+			$status.html(statusHtml);
+		},
 
 		/* ------------------------------------------------------------------ */
 		/* State                                                                */
@@ -180,6 +221,8 @@
 			var T        = AIPS.Templates;
 
 			$title.text(aipsHistoryL10n.historyDetailsTitle || 'History Details');
+			$modal.find('#aips-history-logs-modal-actions').empty();
+			$modal.find('#aips-history-logs-modal-status').empty();
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
 				text: aipsHistoryL10n.loadingLogs || 'Loading logs\u2026'
 			}));
@@ -206,16 +249,7 @@
 					var container = response.data.container;
 					var modalHtml = response.data.modal_html || '';
 
-					// Set modal title to the generated post title when available.
-					if (container.generated_title) {
-						$title.text(container.generated_title);
-					} else {
-						$title.text(
-							(aipsHistoryL10n.historyDetailsTitle || 'History Details')
-							+ ' #' + container.id
-						);
-					}
-
+					AIPS.History.updateModalHeader($modal, container);
 					$content.html(modalHtml);
 				},
 				error: function () {

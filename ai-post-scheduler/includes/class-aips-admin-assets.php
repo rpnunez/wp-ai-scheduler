@@ -413,8 +413,14 @@ class AIPS_Admin_Assets {
         <div id="aips-history-modal" class="aips-modal" style="display: none;" aria-hidden="true">
             <div class="aips-modal-content aips-modal-large">
                 <div class="aips-modal-header">
-                    <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-                    <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    <div class="aips-history-modal-header-main">
+                        <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                        <div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>
+                    </div>
+                    <div class="aips-history-modal-header-side">
+                        <div id="aips-history-modal-status"></div>
+                        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content"></div>
             </div>
@@ -1114,14 +1120,10 @@ class AIPS_Admin_Assets {
                 'colType'              => __('Type', 'ai-post-scheduler'),
                 'colLogType'           => __('Log Type', 'ai-post-scheduler'),
                 'colDetails'           => __('Details', 'ai-post-scheduler'),
-                'jsonViewerLabel'      => __('JSON Viewer', 'ai-post-scheduler'),
                 'showDetails'          => __('Show details', 'ai-post-scheduler'),
                 'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
                 'copyDetails'          => __('Copy', 'ai-post-scheduler'),
                 'copiedDetails'        => __('Copied!', 'ai-post-scheduler'),
-                'aiRequestLabel'       => __('AI Request', 'ai-post-scheduler'),
-                'aiResponseLabel'      => __('AI Response', 'ai-post-scheduler'),
-                'aiRequestResponseLabel' => __('AI Request / Response', 'ai-post-scheduler'),
                 'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmClearAll'      => __('Clear all history? This cannot be undone.', 'ai-post-scheduler'),

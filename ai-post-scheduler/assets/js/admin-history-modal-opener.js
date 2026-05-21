@@ -15,6 +15,48 @@
 	var AIPS = window.AIPS;
 
 	AIPS.HistoryModalOpener = {
+		escapeHtml: function (value) {
+			return $('<div>').text(value == null ? '' : String(value)).html();
+		},
+
+		updateModalHeader: function ($modal, container) {
+			var title = container && container.header_title
+				? container.header_title
+				: (aipsHistoryModalOpenerL10n.historyDetails || 'History Details');
+			var actions = container && Array.isArray(container.header_actions)
+				? container.header_actions
+				: [];
+			var $title = $modal.find('#aips-history-modal-title');
+			var $actions = $modal.find('#aips-history-modal-actions');
+			var $status = $modal.find('#aips-history-modal-status');
+			var statusHtml = '';
+			var actionsHtml = '';
+			var self = this;
+
+			$title.text(title);
+
+			actions.forEach(function (action) {
+				if (!action || !action.url || !action.label) {
+					return;
+				}
+
+				actionsHtml += '<a href="' + self.escapeHtml(action.url) + '" target="_blank" rel="noopener noreferrer">'
+					+ self.escapeHtml(action.label)
+					+ '</a>';
+			});
+
+			if (container && container.status && container.status_class) {
+				statusHtml = '<span class="aips-badge '
+					+ self.escapeHtml(container.status_class)
+					+ '">'
+					+ self.escapeHtml(container.status)
+					+ '</span>';
+			}
+
+			$actions.html(actionsHtml);
+			$status.html(statusHtml);
+		},
+
 		init: function () {
 			var self = this;
 			$(document).on('click', '.aips-open-history-modal', function (e) {
@@ -81,11 +123,7 @@
 					var container = response.data.container || {};
 					var modalHtml = response.data.modal_html || '';
 
-					var title = container.generated_title
-						? container.generated_title
-						: (aipsHistoryModalOpenerL10n.historyDetails || 'History Details') + (container.id ? ' #' + container.id : '');
-
-					$modal.find('#aips-history-modal-title').text(title);
+					self.updateModalHeader($modal, container);
 					$modal.find('#aips-history-modal-content').html(modalHtml);
 					self.bindModalEvents($modal);
 					$modal.fadeIn(200);
@@ -102,8 +140,14 @@
 			modalHtml += '<div id="aips-history-modal" class="aips-modal" style="display: none;">';
 			modalHtml += '<div class="aips-modal-content aips-modal-large">';
 			modalHtml += '<div class="aips-modal-header">';
+			modalHtml += '<div class="aips-history-modal-header-main">';
 			modalHtml += '<h3 id="aips-history-modal-title">' + (aipsHistoryModalOpenerL10n.historyDetails || 'History Details') + '</h3>';
+			modalHtml += '<div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>';
+			modalHtml += '</div>';
+			modalHtml += '<div class="aips-history-modal-header-side">';
+			modalHtml += '<div id="aips-history-modal-status"></div>';
 			modalHtml += '<button type="button" class="aips-modal-close" aria-label="' + (aipsHistoryModalOpenerL10n.closeModal || 'Close modal') + '">&times;</button>';
+			modalHtml += '</div>';
 			modalHtml += '</div>';
 			modalHtml += '<div class="aips-modal-body" id="aips-history-modal-content"></div>';
 			modalHtml += '</div>';
@@ -114,6 +158,9 @@
 
 		showLoading: function ($modal) {
 			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' + (aipsHistoryModalOpenerL10n.loading || 'Loading…') + '</div>';
+			$modal.find('#aips-history-modal-title').text(aipsHistoryModalOpenerL10n.historyDetails || 'History Details');
+			$modal.find('#aips-history-modal-actions').empty();
+			$modal.find('#aips-history-modal-status').empty();
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
 			$modal.fadeIn(200);
 		},

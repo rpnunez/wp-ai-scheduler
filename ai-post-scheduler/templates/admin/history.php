@@ -237,8 +237,14 @@ if (is_object($history)) {
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
-            <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <div class="aips-history-modal-header-main">
+                <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                <div id="aips-history-logs-modal-actions" class="aips-history-modal-header-links"></div>
+            </div>
+            <div class="aips-history-modal-header-side">
+                <div id="aips-history-logs-modal-status"></div>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
         </div>
         <div class="aips-modal-body" id="aips-history-logs-content">
             <p><?php esc_html_e('Preparing plain-language summary and technical logs...', 'ai-post-scheduler'); ?></p>
