@@ -103,9 +103,9 @@ class AIPS_Settings_UI {
      */
     public function review_policy_mode_field_callback() {
         $config = AIPS_Config::get_instance();
-        $defaults = $config->get_default_options();
-        $allowed_modes = $config->get_review_policy_modes();
-        $default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+        $allowed_mode_labels = $config->get_review_policy_mode_labels();
+        $allowed_modes = array_keys($allowed_mode_labels);
+        $default_mode = $config->get_default_review_policy_mode();
         $value = (string) $config->get_option('aips_review_policy_mode', $default_mode);
 
         if (!in_array($value, $allowed_modes, true)) {
@@ -113,9 +113,9 @@ class AIPS_Settings_UI {
         }
         ?>
         <select name="aips_review_policy_mode">
-            <?php foreach ($allowed_modes as $mode) : ?>
+            <?php foreach ($allowed_mode_labels as $mode => $label) : ?>
                 <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>>
-                    <?php echo esc_html($this->get_review_policy_mode_label($mode)); ?>
+                    <?php echo esc_html($label); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -546,9 +546,8 @@ class AIPS_Settings_UI {
      */
     public function sanitize_review_policy_mode($value) {
         $config = AIPS_Config::get_instance();
-        $defaults = $config->get_default_options();
         $allowed = $config->get_review_policy_modes();
-        $default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+        $default_mode = $config->get_default_review_policy_mode();
         $value = sanitize_text_field((string) $value);
 
         if (!in_array($value, $allowed, true)) {
@@ -556,24 +555,6 @@ class AIPS_Settings_UI {
         }
 
         return $value;
-    }
-
-    /**
-     * Get the translated label for a review policy mode.
-     *
-     * @param string $mode Mode key.
-     * @return string
-     */
-    private function get_review_policy_mode_label($mode) {
-        switch ($mode) {
-            case 'always':
-                return __('Always Require Review', 'ai-post-scheduler');
-            case 'quality_gate':
-                return __('Require Review Below Threshold', 'ai-post-scheduler');
-            case 'disabled':
-            default:
-                return __('Disabled', 'ai-post-scheduler');
-        }
     }
 
     /**

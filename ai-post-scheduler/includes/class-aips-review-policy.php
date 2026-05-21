@@ -22,13 +22,8 @@ class AIPS_Review_Policy {
 	 */
 	public function get_mode() {
 		$config = AIPS_Config::get_instance();
-		$defaults = $config->get_default_options();
 		$allowed_modes = $config->get_review_policy_modes();
-		$default_mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
-
-		if (!in_array($default_mode, $allowed_modes, true)) {
-			$default_mode = 'disabled';
-		}
+		$default_mode = $config->get_default_review_policy_mode();
 
 		$mode = (string) $config->get_option('aips_review_policy_mode', $default_mode);
 

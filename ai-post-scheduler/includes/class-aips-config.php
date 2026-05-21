@@ -207,6 +207,31 @@ class AIPS_Config {
     public function get_review_policy_modes() {
         return array('disabled', 'always', 'quality_gate');
     }
+
+    /**
+     * Return the configured default review policy mode.
+     *
+     * @return string
+     */
+    public function get_default_review_policy_mode() {
+        $defaults = $this->get_default_options();
+        $mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+
+        return in_array($mode, $this->get_review_policy_modes(), true) ? $mode : 'disabled';
+    }
+
+    /**
+     * Return translated labels for review policy mode options.
+     *
+     * @return array<string,string>
+     */
+    public function get_review_policy_mode_labels() {
+        return array(
+            'disabled' => __('Disabled', 'ai-post-scheduler'),
+            'always' => __('Always Require Review', 'ai-post-scheduler'),
+            'quality_gate' => __('Require Review Below Threshold', 'ai-post-scheduler'),
+        );
+    }
     
     /**
      * Get a specific option value with fallback to default.
