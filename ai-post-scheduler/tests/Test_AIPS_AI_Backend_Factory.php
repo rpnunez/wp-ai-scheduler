@@ -56,6 +56,18 @@ class Test_AIPS_AI_Backend_Factory extends WP_UnitTestCase {
 		$this->assertSame('wordpress_ai_client', AIPS_AI_Service_Factory::get_default_backend());
 	}
 
+	public function test_default_backend_prefers_wordpress_ai_client_when_api_is_available_even_before_wordpress_7() {
+		$GLOBALS['aips_test_wp_version'] = '6.9';
+		add_filter('aips_wordpress_ai_client_available', function() {
+			return true;
+		});
+		add_filter('aips_meow_ai_engine_available', function() {
+			return false;
+		});
+
+		$this->assertSame('wordpress_ai_client', AIPS_AI_Service_Factory::get_default_backend());
+	}
+
 	public function test_selected_backend_falls_back_to_wordpress_ai_client_when_meow_is_unavailable() {
 		$GLOBALS['aips_test_wp_version'] = '7.0';
 		update_option('aips_ai_backend', 'meow_ai_engine');
@@ -127,6 +139,21 @@ class Test_AIPS_AI_Backend_Factory extends WP_UnitTestCase {
 		$this->assertSame('data:image/png;base64,Zm9v', $result);
 	}
 
+	public function test_wordpress_ai_client_service_generate_image_returns_data_uri_from_image_result() {
+		$GLOBALS['aips_test_wp_version'] = '7.0';
+		add_filter('aips_wordpress_ai_client_available', function() {
+			return true;
+		});
+		$GLOBALS['aips_test_wp_ai_prompt_builder'] = new AIPS_Test_WP_AI_Client_Prompt_Builder(array(
+			'image_response' => new AIPS_Test_WP_AI_Client_Image_Result(new AIPS_Test_WP_AI_Client_File('')),
+		));
+
+		$service = new AIPS_WordPress_AI_Client_Service();
+		$result  = $service->generate_image('Draw something');
+
+		$this->assertSame('data:image/png;base64,Zm9v', $result);
+	}
+
 	public function test_ai_backend_field_disables_meow_option_when_meow_is_unavailable() {
 		$GLOBALS['aips_test_wp_version'] = '7.0';
 		add_filter('aips_wordpress_ai_client_available', function() {
@@ -154,6 +181,8 @@ class AIPS_Test_WP_AI_Client_Prompt_Builder {
 	private $text_response;
 	private $json_response;
 	private $image_response;
+	private $model_config;
+	private $system_instruction;
 
 	public function __construct($args = array()) {
 		$this->text_response  = isset($args['text_response']) ? $args['text_response'] : 'Generated text';
@@ -231,12 +260,38 @@ class AIPS_Test_WP_AI_Client_Prompt_Builder {
 		return $this->generateImage();
 	}
 
+	public function generateImageResult() {
+		return $this->image_response;
+	}
+
+	public function generate_image_result() {
+		return $this->generateImageResult();
+	}
+
 	public function usingMaxTokens($max_tokens) {
 		return $this;
 	}
 
 	public function using_max_tokens($max_tokens) {
 		return $this->usingMaxTokens($max_tokens);
+	}
+
+	public function usingSystemInstruction($instruction) {
+		$this->system_instruction = $instruction;
+		return $this;
+	}
+
+	public function using_system_instruction($instruction) {
+		return $this->usingSystemInstruction($instruction);
+	}
+
+	public function usingModelConfig($config) {
+		$this->model_config = $config;
+		return $this;
+	}
+
+	public function using_model_config($config) {
+		return $this->usingModelConfig($config);
 	}
 }
 
@@ -250,5 +305,26 @@ class AIPS_Test_WP_AI_Client_File {
 
 	public function getDataUri() {
 		return $this->data_uri;
+	}
+
+	public function getBase64Data() {
+		return 'Zm9v';
+	}
+
+	public function getMimeType() {
+		return 'image/png';
+	}
+}
+
+class AIPS_Test_WP_AI_Client_Image_Result {
+
+	private $file;
+
+	public function __construct($file) {
+		$this->file = $file;
+	}
+
+	public function toImageFile() {
+		return $this->file;
 	}
 }

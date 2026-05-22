@@ -51,8 +51,11 @@ class AIPS_AI_Service_Factory {
 	 * @return bool
 	 */
 	public static function is_wordpress_ai_client_available() {
-		$version = function_exists('wp_get_wp_version') ? wp_get_wp_version() : get_bloginfo('version');
-		$available = function_exists('wp_ai_client_prompt') && version_compare((string) $version, '7.0', '>=');
+		$available = function_exists('wp_ai_client_prompt');
+
+		if ($available && function_exists('wp_supports_ai')) {
+			$available = (bool) wp_supports_ai();
+		}
 
 		return (bool) apply_filters('aips_wordpress_ai_client_available', $available);
 	}

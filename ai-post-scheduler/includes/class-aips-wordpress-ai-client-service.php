@@ -59,6 +59,10 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 			return false;
 		}
 
+		if (function_exists('wp_supports_ai') && !wp_supports_ai()) {
+			return false;
+		}
+
 		$builder = wp_ai_client_prompt();
 
 		if (!is_object($builder)) {
@@ -181,6 +185,20 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 					return $generated;
 				}
 
+				if (is_array($generated)) {
+					$this->log_call('json', $prompt, $options, null, wp_json_encode($generated));
+					return $generated;
+				}
+
+				if (is_object($generated) && is_callable(array($generated, 'toArray'))) {
+					$data = $generated->toArray();
+
+					if (is_array($data)) {
+						$this->log_call('json', $prompt, $options, null, wp_json_encode($data));
+						return $data;
+					}
+				}
+
 				$extract_result = $this->extract_json_fragment((string) $generated);
 
 				if (is_wp_error($extract_result)) {
@@ -240,7 +258,7 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 		$result = $this->resilience_service->execute_safely(function() use ($prompt, $options) {
 			$builder = $this->prepare_builder($prompt, $options);
 
-			if (!is_object($builder) || !is_callable(array($builder, 'generate_image'))) {
+			if (!is_object($builder) || (!is_callable(array($builder, 'generate_image')) && !is_callable(array($builder, 'generate_image_result')))) {
 				$error = new WP_Error('ai_unavailable', __('WordPress AI Client prompt builder is not available.', 'ai-post-scheduler'));
 				$this->log_call('image', $prompt, $options, $error);
 				return $error;
@@ -253,20 +271,18 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 			}
 
 			try {
-				$generated = $builder->generate_image();
+				if (is_callable(array($builder, 'generate_image_result'))) {
+					$generated = $builder->generate_image_result();
+				} else {
+					$generated = $builder->generate_image();
+				}
 
 				if (is_wp_error($generated)) {
 					$this->log_call('image', $prompt, $options, $generated);
 					return $generated;
 				}
 
-				if (is_object($generated) && method_exists($generated, 'getDataUri')) {
-					$image = $generated->getDataUri();
-				} elseif (is_string($generated)) {
-					$image = $generated;
-				} else {
-					$image = '';
-				}
+				$image = $this->extract_image_payload($generated);
 
 				if ($image === '') {
 					$error = new WP_Error('no_image_url', __('WordPress AI Client did not return an image payload.', 'ai-post-scheduler'));
@@ -398,28 +414,177 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 			return $builder;
 		}
 
+		$system_instruction = $this->resolve_system_instruction($options);
+		if ($system_instruction !== '' && is_callable(array($builder, 'using_system_instruction'))) {
+			$builder = $builder->using_system_instruction($system_instruction);
+		}
+
 		if (isset($options['temperature']) && is_callable(array($builder, 'using_temperature'))) {
 			$builder = $builder->using_temperature((float) $options['temperature']);
 		}
 
-		$model_preferences = array();
-		if (!empty($options['model_preference']) && is_array($options['model_preference'])) {
-			$model_preferences = $options['model_preference'];
-		} elseif (!empty($options['model'])) {
-			$model_preferences = array((string) $options['model']);
-		}
+		$builder = $this->apply_model_config_options($builder, $options, (string) $prompt);
+
+		$model_preferences = $this->normalize_model_preferences($options);
 
 		if (!empty($model_preferences) && is_callable(array($builder, 'using_model_preference'))) {
 			$builder = $builder->using_model_preference(...$model_preferences);
 		}
 
-		if (is_callable(array($builder, 'using_max_tokens'))) {
-			$max_tokens = $this->resolve_max_tokens($options, (string) $prompt);
+		return $builder;
+	}
 
+	/**
+	 * Resolve system instructions from options.
+	 *
+	 * @param array $options Request options.
+	 * @return string
+	 */
+	private function resolve_system_instruction($options) {
+		if (!empty($options['system_instruction'])) {
+			return (string) $options['system_instruction'];
+		}
+
+		if (!empty($options['instructions'])) {
+			return (string) $options['instructions'];
+		}
+
+		return '';
+	}
+
+	/**
+	 * Apply model-config options when supported by WordPress AI Client.
+	 *
+	 * @param object $builder Prompt builder.
+	 * @param array  $options Request options.
+	 * @param string $prompt  Prompt text.
+	 * @return object
+	 */
+	private function apply_model_config_options($builder, $options, $prompt) {
+		$max_tokens = $this->resolve_max_tokens($options, $prompt);
+
+		if (
+			is_callable(array($builder, 'using_model_config'))
+			&& class_exists('\\WordPress\\AiClient\\Providers\\Models\\DTO\\ModelConfig')
+		) {
+			$config_array = array(
+				'maxTokens' => $max_tokens,
+			);
+
+			if (isset($options['temperature']) && is_numeric($options['temperature'])) {
+				$config_array['temperature'] = (float) $options['temperature'];
+			}
+
+			if (isset($options['top_p']) && is_numeric($options['top_p'])) {
+				$config_array['topP'] = (float) $options['top_p'];
+			}
+
+			if (isset($options['top_k']) && is_numeric($options['top_k'])) {
+				$config_array['topK'] = (int) $options['top_k'];
+			}
+
+			if (isset($options['presence_penalty']) && is_numeric($options['presence_penalty'])) {
+				$config_array['presencePenalty'] = (float) $options['presence_penalty'];
+			}
+
+			if (isset($options['frequency_penalty']) && is_numeric($options['frequency_penalty'])) {
+				$config_array['frequencyPenalty'] = (float) $options['frequency_penalty'];
+			}
+
+			if (!empty($options['stop_sequences']) && is_array($options['stop_sequences'])) {
+				$config_array['stopSequences'] = array_values($options['stop_sequences']);
+			}
+
+			try {
+				$config_class = '\\WordPress\\AiClient\\Providers\\Models\\DTO\\ModelConfig';
+				$config = $config_class::fromArray($config_array);
+				return $builder->using_model_config($config);
+			} catch (Exception $e) {
+				if (is_callable(array($builder, 'using_max_tokens'))) {
+					$builder = $builder->using_max_tokens($max_tokens);
+				}
+
+				return $builder;
+			}
+		}
+
+		if (is_callable(array($builder, 'using_max_tokens'))) {
 			$builder = $builder->using_max_tokens($max_tokens);
 		}
 
 		return $builder;
+	}
+
+	/**
+	 * Normalize model preference input to WordPress AI tuple shape.
+	 *
+	 * @param array $options Request options.
+	 * @return array
+	 */
+	private function normalize_model_preferences($options) {
+		$model_preferences = array();
+
+		if (!empty($options['model_preference']) && is_array($options['model_preference'])) {
+			foreach ($options['model_preference'] as $preference) {
+				if (
+					is_array($preference)
+					&& isset($preference[0], $preference[1])
+					&& $preference[0] !== ''
+					&& $preference[1] !== ''
+				) {
+					$model_preferences[] = array((string) $preference[0], (string) $preference[1]);
+				}
+			}
+		}
+
+		if (empty($model_preferences) && !empty($options['provider']) && !empty($options['model'])) {
+			$model_preferences[] = array((string) $options['provider'], (string) $options['model']);
+		}
+
+		return $model_preferences;
+	}
+
+	/**
+	 * Extract image payload from File/result/string responses.
+	 *
+	 * @param mixed $generated Generated result payload.
+	 * @return string
+	 */
+	private function extract_image_payload($generated) {
+		if (is_string($generated)) {
+			return $generated;
+		}
+
+		if (is_object($generated) && is_callable(array($generated, 'toImageFile'))) {
+			$file = $generated->toImageFile();
+			if (is_object($file)) {
+				$generated = $file;
+			}
+		}
+
+		if (is_object($generated) && is_callable(array($generated, 'getDataUri'))) {
+			$data_uri = (string) $generated->getDataUri();
+			if ($data_uri !== '') {
+				return $data_uri;
+			}
+		}
+
+		if (is_object($generated) && is_callable(array($generated, 'getBase64Data'))) {
+			$base64 = trim((string) $generated->getBase64Data());
+			if ($base64 !== '') {
+				$mime = 'image/png';
+				if (is_callable(array($generated, 'getMimeType'))) {
+					$resolved = (string) $generated->getMimeType();
+					if ($resolved !== '') {
+						$mime = $resolved;
+					}
+				}
+
+				return 'data:' . $mime . ';base64,' . $base64;
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -619,10 +784,6 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 	 */
 	private function build_prompt($prompt, $options) {
 		$parts = array($prompt);
-
-		if (!empty($options['instructions'])) {
-			$parts[] = "Instructions:\n" . (string) $options['instructions'];
-		}
 
 		if (!empty($options['context'])) {
 			$parts[] = "Context:\n" . (string) $options['context'];
