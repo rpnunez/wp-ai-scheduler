@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2026-06-15 - [Detangle History Stats from Repository]
+**Context:** `AIPS_History_Repository` is a large file (over 1300 lines) and acts as a God Object handling not only CRUD operations and database interactions but also performing heavy analytical queries and stats aggregation (`get_stats`, `get_daily_generation_counts`, etc.), violating the Single Responsibility Principle.
+**Decision:** Extracted the 10 analytical query methods into a new `AIPS_History_Stats_Repository` class implementing the Singleton pattern. The legacy methods in `AIPS_History_Repository` were preserved as proxies to `AIPS_History_Stats_Repository::instance()` to ensure full backward compatibility.
+**Consequence:**
+* Increased cohesion and loose coupling; `AIPS_History_Repository` focuses primarily on its core duties.
+* Maintained full backward compatibility as legacy controllers calling `AIPS_History_Repository` for stats will hit the proxy methods.
+* Added a new repository and file (`AIPS_History_Stats_Repository`) but simplified the main God Object.
+**Tests:** Added `AIPS_History_Stats_Repository` to the `tests/AIPS_Autoloader_Test.php` suite. Created `tests/Test_AIPS_History_Stats_Repository.php` to verify its logic, singleton behavior, and data outputs.
