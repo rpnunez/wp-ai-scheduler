@@ -32,10 +32,15 @@ jobs:
             const repo = context.repo.repo;
             const topN = 10;
 
+            const pageSize = 50;
             const query = `
-              query($owner: String!, $repo: String!, $first: Int!) {
+              query($owner: String!, $repo: String!, $first: Int!, $after: String) {
                 repository(owner: $owner, name: $repo) {
-                  pullRequests(states: OPEN, first: $first, orderBy: { field: UPDATED_AT, direction: DESC }) {
+                  pullRequests(states: OPEN, first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
                     nodes {
                       number
                       title
@@ -68,13 +73,23 @@ jobs:
               }
             `;
 
-            const response = await github.graphql(query, {
-              owner,
-              repo,
-              first: 50,
-            });
+            const openPrs = [];
+            let after = null;
+            let hasNextPage = true;
 
-            const openPrs = response.repository.pullRequests.nodes || [];
+            while (hasNextPage) {
+              const response = await github.graphql(query, {
+                owner,
+                repo,
+                first: pageSize,
+                after,
+              });
+
+              const pullRequests = response.repository.pullRequests;
+              openPrs.push(...(pullRequests.nodes || []));
+              hasNextPage = pullRequests.pageInfo?.hasNextPage || false;
+              after = pullRequests.pageInfo?.endCursor || null;
+            }
 
             const prsByCommitRecency = openPrs
               .map((pr) => {
