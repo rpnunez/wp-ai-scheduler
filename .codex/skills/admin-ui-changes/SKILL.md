@@ -11,7 +11,7 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
    - Verify route/menu source in `AIPS_Admin_Menu::add_menu_pages()`.
    - Identify the controller that provides data to the template.
 2. **Separate concerns**
-   - Put business logic in `includes/` service/controller classes.
+   - Put business logic in `ai-post-scheduler/includes/` service/controller classes.
    - Keep templates in `ai-post-scheduler/templates/admin/` primarily for rendering.
 3. **Security + hygiene**
    - Escape all output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`).
