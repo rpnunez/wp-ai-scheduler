@@ -795,7 +795,12 @@ class AIPS_Author_Topics_Controller {
 
 		if ($author_id === 0) {
 			$authors_repo = new AIPS_Authors_Repository();
-			$authors = $authors_repo->get_all(true);
+			$authors = array_values(array_filter(
+				$authors_repo->get_all(),
+				function ($author) {
+					return !isset($author->is_active) || (bool) $author->is_active;
+				}
+			));
 
 			if (empty($authors)) {
 				AIPS_Ajax_Response::error(__('No active authors available for embedding processing.', 'ai-post-scheduler'));

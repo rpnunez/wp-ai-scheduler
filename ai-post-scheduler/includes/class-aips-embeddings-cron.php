@@ -122,7 +122,13 @@ class AIPS_Embeddings_Cron {
 	 * @return int
 	 */
 	public static function sanitize_batch_size($batch_size) {
-		return min(self::MAX_BATCH_SIZE, max(1, absint($batch_size ?: self::DEFAULT_BATCH_SIZE)));
+		$requested_batch_size = absint($batch_size);
+
+		if (0 === $requested_batch_size) {
+			return self::DEFAULT_BATCH_SIZE;
+		}
+
+		return min(self::MAX_BATCH_SIZE, max(1, $requested_batch_size));
 	}
 
 	/**
