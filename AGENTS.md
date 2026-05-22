@@ -239,6 +239,11 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 - `tests/bootstrap.php` provides WordPress mocks. New `includes/*.php` classes must be `require_once`'d there for limited-mode runs.
 - Prefer one test file per feature/class. Test both success and failure paths.
 
+## Repository skills
+- Repository-specific task playbooks live under `.codex/skills/`.
+- Start with `.codex/skills/README.md` to discover available skills.
+- Each skill is defined in `.codex/skills/<skill>/SKILL.md`.
+
 ## Useful docs
 - `.github/copilot-instructions.md` for the fuller repository guide.
 - `README.md` and `docs/` for feature and setup documentation.
