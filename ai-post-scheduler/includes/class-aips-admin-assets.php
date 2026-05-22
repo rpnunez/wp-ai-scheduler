@@ -44,6 +44,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_ONBOARDING = 'aips-onboarding';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
 	private const PAGE_STATUS = 'aips-status';
+	private const PAGE_OBSERVABILITY = 'aips-observability';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
 	private const PAGE_SOURCES = 'aips-sources';
 	private const PAGE_SETTINGS = 'aips-settings';
@@ -129,9 +130,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
-			$this->enqueue_status_1_assets();
-			$this->enqueue_status_2_assets();
+        if (self::PAGE_STATUS === $page || self::PAGE_OBSERVABILITY === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+			$observability_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'health';
+			if ('health' === $observability_tab || self::PAGE_STATUS === $page) {
+				$this->enqueue_status_1_assets();
+				$this->enqueue_status_2_assets();
+			}
 		}
 
         if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
@@ -146,8 +150,11 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
-			$this->enqueue_telemetry_assets();
+        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || self::PAGE_OBSERVABILITY === $page) {
+			$observability_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : '';
+			if ('events' === $observability_tab || self::PAGE_TELEMETRY === $page) {
+				$this->enqueue_telemetry_assets();
+			}
 		}
 
         if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {

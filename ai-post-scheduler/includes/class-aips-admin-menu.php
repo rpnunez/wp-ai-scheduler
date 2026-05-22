@@ -157,11 +157,11 @@ class AIPS_Admin_Menu {
         );
         add_submenu_page(
             'ai-post-scheduler',
-            __('Operations Insights', 'ai-post-scheduler'),
-            __('Operations Insights', 'ai-post-scheduler'),
+            __('Observability', 'ai-post-scheduler'),
+            __('Observability', 'ai-post-scheduler'),
             'manage_options',
-            'aips-operations-insights',
-            array($this, 'render_operations_insights_page')
+            'aips-observability',
+            array($this, 'render_observability_page')
         );
 
         add_submenu_page(
@@ -199,26 +199,6 @@ class AIPS_Admin_Menu {
             'aips-settings',
             array($this, 'render_settings_page')
         );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('System Status', 'ai-post-scheduler'),
-            __('System Status', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-status',
-            array($this, 'render_status_page')
-        );
-
-        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            add_submenu_page(
-                'ai-post-scheduler',
-                __('Telemetry', 'ai-post-scheduler'),
-                __('Telemetry', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-telemetry',
-                array($this, 'render_telemetry_page')
-            );
-        }
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -435,8 +415,8 @@ class AIPS_Admin_Menu {
     }
 
     public function render_operations_insights_page() {
-        $controller = new AIPS_Operations_Insights_Controller();
-        $controller->render_page();
+        wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url('observability', array('tab' => 'performance')));
+        exit;
     }
 
     /**
@@ -445,8 +425,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_telemetry_page() {
-        $controller = new AIPS_Telemetry_Controller();
-        $controller->render_page();
+        wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url('observability', array('tab' => 'events')));
+        exit;
     }
 
     /**
@@ -517,8 +497,21 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
-        $status_handler->render_page();
+        wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url('observability', array('tab' => 'health')));
+        exit;
+    }
+
+    public function render_observability_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'health';
+        if (!in_array($tab, array('health', 'performance', 'events'), true)) {
+            $tab = 'health';
+        }
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/observability.php';
     }
 
     /**
