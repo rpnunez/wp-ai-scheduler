@@ -2,7 +2,7 @@ name: PR CI (lint + unit tests)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled, edited]
 
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
                 /^ai-post-scheduler\/includes\/class-aips-db-(manager|migrations)\.php$/.test(f)
               ),
               adminUi: changed.some((f) =>
-                /^ai-post-scheduler\/(templates\/admin\/|assets\/(js|css)\/)/.test(f)
+                /^ai-post-scheduler\/(?:templates\/admin|assets\/(?:js|css))(?:\/|$)/.test(f)
               ),
               ajax: changed.some((f) =>
                 /^ai-post-scheduler\/includes\/class-aips-ajax-registry\.php$/.test(f) ||
@@ -69,9 +69,11 @@ jobs:
 
             if (touched.schema) {
               const path = 'ai-post-scheduler/ai-post-scheduler.php';
+              const headOwner = pr.head.repo.owner.login;
+              const headRepo = pr.head.repo.name;
               const [baseFile, headFile] = await Promise.all([
                 github.rest.repos.getContent({ owner, repo, path, ref: pr.base.sha }),
-                github.rest.repos.getContent({ owner, repo, path, ref: pr.head.sha }),
+                github.rest.repos.getContent({ owner: headOwner, repo: headRepo, path, ref: pr.head.sha }),
               ]);
 
               const decode = (file) => Buffer.from(file.data.content, 'base64').toString('utf8');
