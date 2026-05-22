@@ -4,7 +4,7 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
 
 ## Scope
 - Admin menus/routes and admin-facing rendering.
-- `templates/admin/`, `assets/js/`, `assets/css/`, and admin controllers.
+- `ai-post-scheduler/templates/admin/`, `ai-post-scheduler/assets/js/`, `ai-post-scheduler/assets/css/`, and admin controllers.
 
 ## Required workflow
 1. **Map page ownership**
