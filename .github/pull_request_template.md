@@ -14,4 +14,4 @@
 - [ ] Label `cron` applied when cron/queue/retry paths are touched
 - [ ] Label `generation-pipeline` applied when prompt/generation flow is touched
 - [ ] Label `security-sensitive` applied when auth/nonce/capability/data-safety paths are touched
-- [ ] `duplicate-risk` checked and addressed before merge
+- [ ] Label duplicate-risk applied and addressed before merge
