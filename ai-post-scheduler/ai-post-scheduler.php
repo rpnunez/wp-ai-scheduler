@@ -145,10 +145,23 @@ final class AI_Post_Scheduler {
      */
     private function check_dependencies() {
         add_action('admin_init', function() {
-            if (!class_exists('Meow_MWAI_Core')) {
+            if (!class_exists('AIPS_AI_Service_Factory')) {
+                return;
+            }
+
+            $selected_backend = AIPS_AI_Service_Factory::get_selected_backend();
+            $missing_dependency = (
+                $selected_backend === AIPS_AI_Service_Factory::BACKEND_MEOW_AI_ENGINE
+                && !AIPS_AI_Service_Factory::is_meow_ai_engine_available()
+            ) || (
+                $selected_backend === AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT
+                && !AIPS_AI_Service_Factory::is_wordpress_ai_client_available()
+            );
+
+            if ($missing_dependency) {
                 add_action('admin_notices', function() {
                     echo '<div class="notice notice-error"><p>';
-                    echo esc_html__('AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated.', 'ai-post-scheduler');
+                    echo esc_html__('AI Post Scheduler cannot use the currently selected AI backend. Install/activate Meow Apps AI Engine or configure the WordPress AI Client backend on WordPress 7+.', 'ai-post-scheduler');
                     echo '</p></div>';
                 });
             }
@@ -322,6 +335,10 @@ final class AI_Post_Scheduler {
         if (empty($defaults['aips_review_notifications_email'])) {
             $defaults['aips_review_notifications_email'] = get_option('admin_email');
         }
+
+        $defaults['aips_ai_backend'] = class_exists('AIPS_AI_Service_Factory')
+            ? AIPS_AI_Service_Factory::get_default_backend()
+            : $defaults['aips_ai_backend'];
 
         // Keep DB version initialization during activation.
         $defaults['aips_db_version'] = AIPS_VERSION;

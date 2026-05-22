@@ -28,7 +28,33 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function ai_section_callback() {
-        echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Choose which AI integration layer the plugin should use. WordPress AI Client uses WordPress 7 Connectors; Meow Apps AI Engine uses the plugin-specific model and environment settings below.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the AI backend selection field.
+     *
+     * @return void
+     */
+    public function ai_backend_field_callback() {
+        $value = AIPS_AI_Service_Factory::get_selected_backend();
+        $meow_available = AIPS_AI_Service_Factory::is_meow_ai_engine_available();
+        ?>
+        <select name="aips_ai_backend" id="aips_ai_backend" class="regular-text">
+            <option value="<?php echo esc_attr(AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?>" <?php selected($value, AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?>>
+                <?php esc_html_e('WordPress AI Client', 'ai-post-scheduler'); ?>
+            </option>
+            <option value="<?php echo esc_attr(AIPS_AI_Service_Factory::BACKEND_MEOW_AI_ENGINE); ?>" <?php selected($value, AIPS_AI_Service_Factory::BACKEND_MEOW_AI_ENGINE); ?><?php echo $meow_available ? '' : ' disabled="disabled"'; ?>>
+                <?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?>
+            </option>
+        </select>
+        <p class="description">
+            <?php esc_html_e('Use WordPress AI Client on WordPress 7+ to rely on Settings -> Connectors for provider credentials. Meow-specific model and environment settings are only used when Meow Apps AI Engine is selected.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$meow_available) : ?>
+            <p class="description"><?php esc_html_e('The Meow Apps AI Engine option is disabled because the plugin is not currently installed and active.', 'ai-post-scheduler'); ?></p>
+        <?php endif; ?>
+        <?php
     }
 
     /**
@@ -106,8 +132,10 @@ class AIPS_Settings_UI {
     public function ai_model_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
-        <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <div class="aips-meow-ai-setting">
+            <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
+            <p class="description"><?php esc_html_e('Meow Apps AI Engine model to use (leave empty to use the AI Engine default).', 'ai-post-scheduler'); ?></p>
+        </div>
         <?php
     }
 
@@ -121,9 +149,21 @@ class AIPS_Settings_UI {
     public function ai_env_id_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
-        <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <div class="aips-meow-ai-setting">
+            <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
+            <p class="description"><?php esc_html_e('Meow Apps AI Engine environment ID to use (leave empty to use the AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        </div>
         <?php
+    }
+
+    /**
+     * Sanitize the AI backend option.
+     *
+     * @param mixed $value Raw setting value.
+     * @return string
+     */
+    public function sanitize_ai_backend($value) {
+        return AIPS_AI_Service_Factory::sanitize_backend($value);
     }
 
     /**

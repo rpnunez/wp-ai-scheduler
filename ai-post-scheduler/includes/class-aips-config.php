@@ -124,6 +124,7 @@ class AIPS_Config {
             'aips_onboarding_completed' => false,
             'aips_log_secret' => '',
             // AI model
+            'aips_ai_backend' => '',
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
