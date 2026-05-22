@@ -10,7 +10,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: pr-triage-daily-${{ github.ref }}
+  group: pr-triage-weekly-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
