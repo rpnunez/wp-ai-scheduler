@@ -293,6 +293,7 @@ class AIPS_Admin_Assets {
           );
 
           wp_localize_script('aips-admin-embeddings', 'aipsEmbeddingsL10n', array(
+            'nonce'    => wp_create_nonce('aips_compute_topic_embeddings'),
             'queueing' => __('Queueing embedding jobs...', 'ai-post-scheduler'),
             'queued'   => __('Embedding jobs queued. Processing will run in the background.', 'ai-post-scheduler'),
             'error'    => __('Failed to queue embedding jobs.', 'ai-post-scheduler'),

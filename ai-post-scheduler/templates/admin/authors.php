@@ -39,6 +39,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-secondary" data-aips-queue-embeddings="0" data-batch-size="<?php echo esc_attr( AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE ); ?>">
+                        <span class="dashicons dashicons-chart-area"></span>
+                        <?php esc_html_e('Queue Active Embeddings', 'ai-post-scheduler'); ?>
+                    </button>
                     <button class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
@@ -206,6 +210,9 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                             </a>
                                             <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
+                                            </button>
+                                            <button class="aips-btn aips-btn-sm aips-btn-ghost" data-aips-queue-embeddings="<?php echo esc_attr($author->id); ?>" data-batch-size="<?php echo esc_attr( AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE ); ?>" title="<?php esc_attr_e('Queue Embeddings', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Queue embeddings', 'ai-post-scheduler'); ?>">
+                                                <span class="dashicons dashicons-chart-area"></span>
                                             </button>
                                             <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate topics', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-update"></span>

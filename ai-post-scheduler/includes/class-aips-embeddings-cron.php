@@ -31,6 +31,34 @@ if (!defined('ABSPATH')) {
 class AIPS_Embeddings_Cron {
 
 	/**
+	 * Cron hook used for topic embedding background batches.
+	 *
+	 * @var string
+	 */
+	const HOOK = 'aips_process_author_embeddings';
+
+	/**
+	 * Completion hook fired after an author finishes embedding processing.
+	 *
+	 * @var string
+	 */
+	const COMPLETED_HOOK = 'aips_author_embeddings_completed';
+
+	/**
+	 * Default topics-per-batch for background processing.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_SIZE = 20;
+
+	/**
+	 * Maximum topics-per-batch accepted from the UI.
+	 *
+	 * @var int
+	 */
+	const MAX_BATCH_SIZE = 200;
+
+	/**
 	 * Transient key prefix for per-author progress tracking.
 	 *
 	 * @var string
@@ -58,10 +86,34 @@ class AIPS_Embeddings_Cron {
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Optional service override
 	 *                                                             (used in tests via DI).
+	 * @param bool|null                         $register_hook     Whether to register the cron hook.
 	 */
-	public function __construct($expansion_service = null) {
+	public function __construct($expansion_service = null, $register_hook = true) {
 		$this->expansion_service = $expansion_service;
-		add_action('aips_process_author_embeddings', array($this, 'process_author_embeddings'));
+
+		if ($register_hook) {
+			add_action(self::HOOK, array($this, 'process_author_embeddings'));
+		}
+	}
+
+	/**
+	 * Normalize a requested background batch size.
+	 *
+	 * @param int $batch_size Requested topics-per-batch value.
+	 * @return int
+	 */
+	public static function sanitize_batch_size($batch_size) {
+		return min(self::MAX_BATCH_SIZE, max(1, absint($batch_size ?: self::DEFAULT_BATCH_SIZE)));
+	}
+
+	/**
+	 * Return the per-author progress transient key.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return string
+	 */
+	public static function get_progress_transient_key($author_id) {
+		return self::TRANSIENT_PREFIX . absint($author_id);
 	}
 
 	/**
@@ -83,7 +135,7 @@ class AIPS_Embeddings_Cron {
 		}
 
 		$author_id         = isset($args['author_id']) ? absint($args['author_id']) : 0;
-		$batch_size        = isset($args['batch_size']) ? max(1, absint($args['batch_size'])) : 20;
+		$batch_size        = isset($args['batch_size']) ? self::sanitize_batch_size($args['batch_size']) : self::DEFAULT_BATCH_SIZE;
 		$last_processed_id = isset($args['last_processed_id']) ? absint($args['last_processed_id']) : 0;
 
 		if (!$author_id) {
@@ -97,7 +149,7 @@ class AIPS_Embeddings_Cron {
 			$last_processed_id
 		);
 
-		$transient_key = self::TRANSIENT_PREFIX . $author_id;
+		$transient_key = self::get_progress_transient_key($author_id);
 
 		if (!$stats['done']) {
 			// Save cursor so UI can display approximate progress.
@@ -114,7 +166,7 @@ class AIPS_Embeddings_Cron {
 			 *
 			 * @param int $author_id The author whose embeddings were just completed.
 			 */
-			do_action('aips_author_embeddings_completed', $author_id);
+			do_action(self::COMPLETED_HOOK, $author_id);
 		}
 	}
 
@@ -129,16 +181,23 @@ class AIPS_Embeddings_Cron {
 	 * @param int $last_processed_id ID-based cursor for id > pagination.
 	 * @param int $delay             Seconds from now to run the job. Default RESCHEDULE_DELAY.
 	 */
+	public function queue_author_embeddings($author_id, $batch_size = self::DEFAULT_BATCH_SIZE, $last_processed_id = 0, $delay = self::RESCHEDULE_DELAY) {
+		return $this->schedule_embeddings_job($author_id, $batch_size, $last_processed_id, $delay);
+	}
+
 	protected function schedule_embeddings_job($author_id, $batch_size, $last_processed_id, $delay = self::RESCHEDULE_DELAY) {
 		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => $last_processed_id,
+			'author_id'         => absint($author_id),
+			'batch_size'        => self::sanitize_batch_size($batch_size),
+			'last_processed_id' => absint($last_processed_id),
 		);
+
 		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
-		} else {
-			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
+			$result = as_schedule_single_action(time() + max(0, absint($delay)), self::HOOK, array($args));
+			return !empty($result);
 		}
+
+		$result = wp_schedule_single_event(time() + max(0, absint($delay)), self::HOOK, array($args));
+		return !is_wp_error($result) && false !== $result;
 	}
 }

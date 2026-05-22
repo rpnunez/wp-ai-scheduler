@@ -62,7 +62,11 @@
 				var $btn      = $(e.currentTarget);
 				var authorId  = $btn.data('aips-queue-embeddings');
 				var batchSize = $btn.data('batch-size') || 20;
-				AIPS.Embeddings.queueEmbeddings(authorId, batchSize);
+
+				$btn.prop('disabled', true).attr('aria-busy', 'true');
+				AIPS.Embeddings.queueEmbeddings(authorId, batchSize).always(function() {
+					$btn.prop('disabled', false).removeAttr('aria-busy');
+				});
 			},
 
 			/**
@@ -81,12 +85,12 @@
 
 				this.showToast(aipsEmbeddingsL10n.queueing, 'info');
 
-				$.ajax({
+				return $.ajax({
 					url:  aipsAjax.ajaxUrl,
 					type: 'POST',
 					data: {
 						action:     'aips_compute_topic_embeddings',
-						nonce:      aipsAjax.nonce,
+						nonce:      aipsEmbeddingsL10n.nonce,
 						author_id:  authorId,
 						batch_size: batchSize,
 					},

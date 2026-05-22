@@ -28,12 +28,12 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 		parent::setUp();
 		$this->original_request = $_REQUEST;
 		$this->original_post    = $_POST;
-		$_REQUEST['nonce'] = wp_create_nonce('aips_ajax_nonce');
-		delete_transient('aips_embeddings_progress_' . $this->author_id);
+		$_REQUEST['nonce'] = wp_create_nonce('aips_compute_topic_embeddings');
+		delete_transient(AIPS_Embeddings_Cron::get_progress_transient_key($this->author_id));
 	}
 
 	public function tearDown(): void {
-		delete_transient('aips_embeddings_progress_' . $this->author_id);
+		delete_transient(AIPS_Embeddings_Cron::get_progress_transient_key($this->author_id));
 		$_REQUEST = $this->original_request;
 		$_POST    = $this->original_post;
 		parent::tearDown();
@@ -189,7 +189,7 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	 * When the batch is done the completion action fires and the transient is deleted.
 	 */
 	public function test_cron_fires_completion_action_and_deletes_transient() {
-		$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $this->author_id;
+		$transient_key = AIPS_Embeddings_Cron::get_progress_transient_key($this->author_id);
 		set_transient($transient_key, 5, HOUR_IN_SECONDS);
 
 		$completed_author = null;
@@ -221,7 +221,7 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	 * When work remains the transient stores the cursor and is not deleted.
 	 */
 	public function test_cron_stores_progress_transient_when_not_done() {
-		$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $this->author_id;
+		$transient_key = AIPS_Embeddings_Cron::get_progress_transient_key($this->author_id);
 
 		$mock_service = $this->make_mock_expansion_service(array(
 			'success'           => 2,
@@ -305,7 +305,7 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 		$_POST    = array(
 			'author_id'  => $this->author_id,
 			'batch_size' => 10,
-			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'nonce'      => wp_create_nonce('aips_compute_topic_embeddings'),
 		);
 		$_REQUEST = $_POST;
 
@@ -316,6 +316,37 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 		$response = json_decode($output, true);
 		$this->assertTrue($response['success']);
 		$this->assertContains($this->author_id, $response['data']['queued_authors']);
+	}
+
+	/**
+	 * Duplicate single-author requests are rejected while a queue marker exists.
+	 */
+	public function test_controller_rejects_duplicate_single_author_request() {
+		wp_set_current_user($this->make_admin_user());
+
+		set_transient(AIPS_Embeddings_Cron::get_progress_transient_key($this->author_id), 'queued', HOUR_IN_SECONDS);
+		$_POST    = array(
+			'author_id'  => $this->author_id,
+			'batch_size' => 10,
+			'nonce'      => wp_create_nonce('aips_compute_topic_embeddings'),
+		);
+		$_REQUEST = $_POST;
+
+		$output = $this->capture_ajax(function() {
+			(new AIPS_Author_Topics_Controller())->ajax_compute_topic_embeddings();
+		});
+
+		$response = json_decode($output, true);
+		$this->assertFalse($response['success']);
+		$this->assertSame($this->author_id, $response['data']['author_id']);
+	}
+
+	/**
+	 * Batch sizes are clamped to the worker's supported bounds.
+	 */
+	public function test_cron_batch_size_sanitization_clamps_bounds() {
+		$this->assertSame(AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE, AIPS_Embeddings_Cron::sanitize_batch_size(0));
+		$this->assertSame(AIPS_Embeddings_Cron::MAX_BATCH_SIZE, AIPS_Embeddings_Cron::sanitize_batch_size(999));
 	}
 
 	// -------------------------------------------------------------------------
