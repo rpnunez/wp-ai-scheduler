@@ -35,7 +35,7 @@ jobs:
             ).trim().split('\n').filter(Boolean);
 
             const changedDocs = execSync(
-              `git log --since="${sinceIso}" --name-only --pretty=format: -- docs README.md ai-post-scheduler/README.md ai-post-scheduler/readme.txt | sed '/^$/d' | sort -u`,
+              `git log --since="${sinceIso}" --name-only --pretty=format: -- docs README.md ai-post-scheduler/README.md ai-post-scheduler/readme.txt ai-post-scheduler/docs | sed '/^$/d' | sort -u`,
               { encoding: 'utf8' }
             ).trim().split('\n').filter(Boolean);
 
