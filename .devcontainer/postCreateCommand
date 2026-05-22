@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[codespaces] Setting up wp-ai-scheduler..."
+
+echo "[codespaces] Plugin app root: ai-post-scheduler/"
+cd ai-post-scheduler
+
+if [ -f composer.json ]; then
+  echo "[codespaces] Installing Composer dependencies in ai-post-scheduler/"
+  composer install --no-interaction --prefer-dist
+fi
+
+echo "[codespaces] Notes:"
+echo "  - Start WordPress with ./start-dev.sh or make up"
+echo "  - Follow logs with make logs"
+echo "  - Open shell with make shell"
+echo "  - Run tests with: cd ai-post-scheduler && composer test"
