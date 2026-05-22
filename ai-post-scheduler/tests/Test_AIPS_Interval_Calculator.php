@@ -65,7 +65,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('hourly', $start);
         
-        $expected = '2030-06-15 11:00:00';
+        $expected = strtotime('2030-06-15 11:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -76,7 +76,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('daily', $start);
         
-        $expected = '2030-06-16 10:00:00';
+        $expected = strtotime('2030-06-16 10:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -87,7 +87,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('weekly', $start);
         
-        $expected = '2030-06-22 10:00:00';
+        $expected = strtotime('2030-06-22 10:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -98,7 +98,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('monthly', $start);
         
-        $expected = '2030-07-15 10:00:00';
+        $expected = strtotime('2030-07-15 10:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -109,7 +109,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('every_4_hours', $start);
         
-        $expected = '2030-06-15 14:00:00';
+        $expected = strtotime('2030-06-15 14:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -120,7 +120,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('every_6_hours', $start);
         
-        $expected = '2030-06-15 16:00:00';
+        $expected = strtotime('2030-06-15 16:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -131,7 +131,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('every_12_hours', $start);
         
-        $expected = '2030-06-15 22:00:00';
+        $expected = strtotime('2030-06-15 22:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -142,7 +142,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $start = '2030-06-15 10:00:00';
         $next = $this->calculator->calculate_next_run('bi_weekly', $start);
         
-        $expected = '2030-06-29 10:00:00';
+        $expected = strtotime('2030-06-29 10:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -156,7 +156,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $next = $this->calculator->calculate_next_run('every_monday', $start);
         
         // For every_monday from a Monday start, next should be 7 days later
-        $expected = '2030-06-17 10:00:00';
+        $expected = strtotime('2030-06-17 10:00:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -171,7 +171,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $next = $this->calculator->calculate_next_run('every_wednesday', $start);
         
         // Next Wednesday after Monday June 10 should be Wednesday June 12, preserving time
-        $expected = '2030-06-12 14:30:00';
+        $expected = strtotime('2030-06-12 14:30:00');
         $this->assertEquals($expected, $next);
     }
 
@@ -181,11 +181,11 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
     public function test_calculate_next_run_without_start_time() {
         $next = $this->calculator->calculate_next_run('daily');
         
-        // Should return a datetime string
-        $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $next);
+        // Should return a numeric timestamp
+        $this->assertIsInt($next);
         
         // Should be in the future
-        $this->assertGreaterThan(current_time('mysql'), $next);
+        $this->assertGreaterThan(time(), $next);
     }
 
     /**
@@ -196,10 +196,8 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $next = $this->calculator->calculate_next_run('daily', $start);
         
         // Should be in the future, not based on 2020
-        $next_timestamp = strtotime($next);
-        $current_timestamp = current_time('timestamp');
-        
-        $this->assertGreaterThan($current_timestamp, $next_timestamp);
+        $this->assertIsInt($next);
+        $this->assertGreaterThan(time(), $next);
     }
 
     /**
@@ -287,7 +285,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $next = $this->calculator->calculate_next_run('invalid_frequency', $start);
         
         // Should default to +1 day
-        $expected = date('Y-m-d 10:00:00', strtotime('+1 day', strtotime($start)));
+        $expected = strtotime('+1 day', strtotime($start));
         $this->assertEquals($expected, $next);
     }
 }
