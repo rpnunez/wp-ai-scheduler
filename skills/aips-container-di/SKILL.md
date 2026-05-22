@@ -24,22 +24,22 @@ $service = new AIPS_Some_Service();
 
 ## Implementation Workflow
 1. **Locate direct instantiations**
-	- Search in `ai-post-scheduler/includes/` and `ai-post-scheduler/ai-post-scheduler.php` for `new AIPS_` patterns.
+   - Search in `ai-post-scheduler/includes/` and `ai-post-scheduler/ai-post-scheduler.php` for `new AIPS_` patterns.
 2. **Classify the dependency**
-	- If it is a shared infrastructure/service class, bind it in `AIPS_Container` as a singleton.
-	- If it is request-specific and not shared, keep direct instantiation only when container resolution is unnecessary.
+   - If it is a shared infrastructure/service class, bind it in `AIPS_Container` as a singleton.
+   - If it is request-specific and not shared, keep direct instantiation only when container resolution is unnecessary.
 3. **Register/verify binding**
-	- Add a singleton binding in the container bootstrap if missing.
-	- Add interface alias bindings where testability benefits (`*_Interface` => concrete).
+   - Add a singleton binding in the container bootstrap if missing.
+   - Add interface alias bindings where testability benefits (`*_Interface` => concrete).
 4. **Replace construction sites**
-	- Use `AIPS_Container::get_instance()->make( ClassName::class )`.
-	- Preserve behavior and constructor arguments by moving argument wiring into the binding closure.
+   - Use `AIPS_Container::get_instance()->make( ClassName::class )`.
+   - Preserve behavior and constructor arguments by moving argument wiring into the binding closure.
 5. **Validate lifecycle context**
-	- Ensure only required subsystems are instantiated in each boot method.
-	- Avoid eager loading of unrelated controllers/services.
+   - Ensure only required subsystems are instantiated in each boot method.
+   - Avoid eager loading of unrelated controllers/services.
 6. **Add/adjust tests**
-	- Update PHPUnit coverage for both successful resolution and failure/fallback paths.
-	- Confirm mocks still work through interface aliases.
+   - Update PHPUnit coverage for both successful resolution and failure/fallback paths.
+   - Confirm mocks still work through interface aliases.
 
 ## WordPress + Project Conventions
 - Keep SQL out of controllers; use repositories.
