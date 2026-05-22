@@ -1,5 +1,5 @@
 ---
-applyTo: "ai-post-scheduler/includes/class-aips-ajax-registry.php,ai-post-scheduler/includes/class-aips-*-controller.php"
+applyTo: "ai-post-scheduler/includes/class-aips-ajax-registry.php,ai-post-scheduler/includes/class-aips-*-controller.php,ai-post-scheduler/includes/class-aips-db-manager.php,ai-post-scheduler/includes/class-aips-history.php,ai-post-scheduler/includes/class-aips-voices.php,ai-post-scheduler/includes/class-aips-planner.php,ai-post-scheduler/includes/class-aips-post-review.php,ai-post-scheduler/includes/class-aips-settings-ajax.php"
 ---
 
 Lane: **AJAX controllers** (`ajax-registry`, `security-sensitive`)
