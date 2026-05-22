@@ -32,13 +32,28 @@ class AIPS_Admin_Menu_Helper {
 		'schedule'             => 'aips-schedule',
 		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',
-		'system_status'        => 'aips-status',
-		'telemetry'            => 'aips-telemetry',
+		'observability'        => 'aips-observability',
+		'system_status'        => 'aips-observability',
+		'system-status'        => 'aips-observability',
+		'operations_insights'  => 'aips-observability',
+		'telemetry'            => 'aips-observability',
 		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
 		'history'              => 'aips-history',
 		'seeder'               => 'aips-seeder',
 		'research'             => 'aips-research',
+	);
+
+	/**
+	 * Default query arguments for logical page names.
+	 *
+	 * @var array<string, array<string, string>>
+	 */
+	private static $page_args = array(
+		'system_status'       => array('tab' => 'health'),
+		'system-status'       => array('tab' => 'health'),
+		'operations_insights' => array('tab' => 'operations'),
+		'telemetry'           => array('tab' => 'telemetry'),
 	);
 
 	/**
@@ -58,8 +73,14 @@ class AIPS_Admin_Menu_Helper {
 
 		$url = admin_url('admin.php?page=' . $slug);
 
+		$query_args = isset(self::$page_args[$page]) ? self::$page_args[$page] : array();
+
 		if (!empty($args)) {
-			$url = add_query_arg($args, $url);
+			$query_args = array_merge($query_args, $args);
+		}
+
+		if (!empty($query_args)) {
+			$url = add_query_arg($query_args, $url);
 		}
 
 		return $url;

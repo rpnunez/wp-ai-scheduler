@@ -9,7 +9,9 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+$aips_embedded = !empty($aips_embedded);
 ?>
+<?php if (!$aips_embedded) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<div class="aips-page-header">
@@ -20,6 +22,7 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<div class="aips-telemetry-dashboard-grid" id="aips-telemetry-panel">
 			<div class="aips-telemetry-dashboard-main">
@@ -193,8 +196,10 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
+<?php if (!$aips_embedded) : ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <script type="text/html" id="aips-tmpl-telemetry-message-row">
 	<tr>

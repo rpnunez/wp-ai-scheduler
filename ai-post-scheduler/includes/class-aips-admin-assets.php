@@ -43,12 +43,15 @@ class AIPS_Admin_Assets {
 	private const PAGE_HISTORY = 'aips-history';
 	private const PAGE_ONBOARDING = 'aips-onboarding';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
+	private const PAGE_OBSERVABILITY = 'aips-observability';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
 	private const PAGE_SOURCES = 'aips-sources';
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const OBSERVABILITY_TAB_HEALTH = 'health';
+	private const OBSERVABILITY_TAB_TELEMETRY = 'telemetry';
 
     /**
      * Initialize the class.
@@ -129,7 +132,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+        if ($this->is_status_page($hook, $page)) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
@@ -146,7 +149,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+        if ($this->is_telemetry_page($hook, $page)) {
 			$this->enqueue_telemetry_assets();
 		}
 
@@ -211,6 +214,51 @@ class AIPS_Admin_Assets {
 
         return sanitize_key(wp_unslash($page));
     }
+
+	/**
+	 * Return the current observability tab, if present.
+	 *
+	 * @return string
+	 */
+	private function get_current_observability_tab() {
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+		if (!is_string($tab) || '' === $tab) {
+			return '';
+		}
+
+		return sanitize_key(wp_unslash($tab));
+	}
+
+	/**
+	 * Determine whether the current request is the health tab.
+	 *
+	 * @param string $hook Current admin hook.
+	 * @param string $page Current page slug.
+	 * @return bool
+	 */
+	private function is_status_page($hook, $page) {
+		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+			return true;
+		}
+
+		return self::PAGE_OBSERVABILITY === $page && self::OBSERVABILITY_TAB_HEALTH === $this->get_current_observability_tab();
+	}
+
+	/**
+	 * Determine whether the current request is the telemetry tab.
+	 *
+	 * @param string $hook Current admin hook.
+	 * @param string $page Current page slug.
+	 * @return bool
+	 */
+	private function is_telemetry_page($hook, $page) {
+		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+			return true;
+		}
+
+		return self::PAGE_OBSERVABILITY === $page && self::OBSERVABILITY_TAB_TELEMETRY === $this->get_current_observability_tab();
+	}
 
 	/**
 	 * Check whether the current admin hook includes a page slug.

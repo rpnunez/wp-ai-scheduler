@@ -99,4 +99,63 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'Author Topics page should remain hidden from the visible submenu.'
 		);
 	}
+
+	/**
+	 * Observability should replace the legacy first-class health/ops/telemetry items.
+	 */
+	public function test_observability_is_registered_and_legacy_pages_are_hidden() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$this->assertArrayHasKey(
+			'ai-post-scheduler_page_aips-observability',
+			$_registered_pages,
+			'Observability page should be registered as a visible submenu page.'
+		);
+
+		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+
+		$this->assertContains(
+			'aips-observability',
+			$submenu_pages,
+			'Observability should appear in the visible submenu.'
+		);
+
+		$this->assertNotContains(
+			'aips-status',
+			$submenu_pages,
+			'System Status should no longer appear as a first-class submenu item.'
+		);
+
+		$this->assertNotContains(
+			'aips-operations-insights',
+			$submenu_pages,
+			'Operations Insights should no longer appear as a first-class submenu item.'
+		);
+
+		$this->assertNotContains(
+			'aips-telemetry',
+			$submenu_pages,
+			'Telemetry should no longer appear as a first-class submenu item.'
+		);
+	}
+
+	/**
+	 * Legacy helper URLs should route into the observability hub tabs.
+	 */
+	public function test_admin_menu_helper_routes_observability_tabs() {
+		$this->assertSame(
+			admin_url('admin.php?page=aips-observability&tab=health'),
+			AIPS_Admin_Menu_Helper::get_page_url('system_status')
+		);
+
+		$this->assertSame(
+			admin_url('admin.php?page=aips-observability&tab=telemetry'),
+			AIPS_Admin_Menu_Helper::get_page_url('telemetry')
+		);
+	}
 }
