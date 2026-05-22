@@ -163,6 +163,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('esc_sql')) {
+        function esc_sql($data) {
+            if (is_array($data)) {
+                return array_map('esc_sql', $data);
+            }
+            return addslashes($data);
+        }
+    }
+
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
