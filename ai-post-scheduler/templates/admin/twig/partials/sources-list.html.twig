@@ -1,0 +1,102 @@
+{% embed 'partials/list-layout.html.twig' %}
+	{% block list_toolbar %}
+		<div class="aips-table-controls aips-table-controls--top">
+			<div class="aips-bulk-actions"></div>
+			<div class="aips-search-control">
+				<label class="screen-reader-text" for="aips-source-search">{{ t('Search Sources:') }}</label>
+				<input type="search" id="aips-source-search" class="aips-form-input" placeholder="{{ t('Search sources...')|esc_attr }}">
+				<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;">{{ t('Clear') }}</button>
+			</div>
+			<div class="aips-filter-control"></div>
+		</div>
+	{% endblock %}
+
+	{% block list_content %}
+		{% if sources_screen.rows %}
+			<div class="aips-panel-body no-padding">
+				<table class="aips-table aips-sources-table" id="aips-sources-table">
+					<thead>
+						<tr>
+							<th class="column-label">{{ t('Label') }}</th>
+							<th class="column-url">{{ t('URL') }}</th>
+							<th class="column-groups">{{ t('Groups') }}</th>
+							<th class="column-fetch-status">{{ t('Content') }}</th>
+							<th class="column-status">{{ t('Status') }}</th>
+							<th class="column-actions">{{ t('Actions') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for row in sources_screen.rows %}
+							<tr data-source-id="{{ row.id|e('html_attr') }}" data-url="{{ row.url|e('html_attr') }}" data-label="{{ row.label|e('html_attr') }}" data-description="{{ row.description|e('html_attr') }}" data-active="{{ row.is_active ? 1 : 0 }}" data-fetch-interval="{{ row.fetch_interval|e('html_attr') }}" data-term-ids="{{ row.term_ids_json|e('html_attr') }}">
+								<td class="column-label cell-primary">{% if row.label %}{{ row.label|e }}{% else %}&mdash;{% endif %}</td>
+								<td class="column-url"><a href="{{ esc_url(row.url) }}" target="_blank" rel="noopener noreferrer">{{ row.url|e }}</a></td>
+								<td class="column-groups">
+									{% if row.group_names %}
+										{% for group_name in row.group_names %}
+											<span class="aips-badge aips-badge-neutral" style="margin:2px 2px 2px 0;">{{ group_name|e }}</span>
+										{% endfor %}
+									{% else %}
+										<span class="cell-meta">&mdash;</span>
+									{% endif %}
+								</td>
+								<td class="column-fetch-status">
+									{% if row.content_count > 0 %}
+										<span class="aips-badge aips-badge-success" title="{{ row.last_fetched_at|e('html_attr') }}"><span class="dashicons dashicons-archive"></span>{{ tn('%d content', '%d content', row.content_count)|format(row.content_count) }}</span>
+									{% elseif row.fetch_status == 'failed' %}
+										<span class="aips-badge aips-badge-warning"><span class="dashicons dashicons-warning"></span>{{ t('Failed') }}</span>
+									{% elseif row.fetch_status == 'pending' %}
+										<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-clock"></span>{{ t('Pending') }}</span>
+									{% else %}
+										<span class="cell-meta">{% if row.fetch_interval %}{{ t('Scheduled') }}{% else %}&mdash;{% endif %}</span>
+									{% endif %}
+									{% if row.fetch_interval %}<div class="cell-meta" style="font-size:11px; margin-top:2px;">{{ row.fetch_interval|e }}</div>{% endif %}
+								</td>
+								<td class="column-status">
+									{% if row.is_active %}
+										<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span>{{ t('Active') }}</span>
+									{% else %}
+										<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span>{{ t('Inactive') }}</span>
+									{% endif %}
+								</td>
+								<td class="column-actions">
+									<div class="aips-action-buttons">
+										<button class="aips-btn aips-btn-sm aips-edit-source" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Edit')|esc_attr }}"><span class="dashicons dashicons-edit"></span><span class="screen-reader-text">{{ t('Edit') }}</span></button>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Fetch content now')|esc_attr }}"><span class="dashicons dashicons-download"></span><span class="screen-reader-text">{{ t('Fetch Now') }}</span></button>
+										<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source" data-id="{{ row.id|e('html_attr') }}" data-active="{{ row.is_active ? 1 : 0 }}" title="{{ row.is_active ? t('Deactivate')|esc_attr : t('Activate')|esc_attr }}"><span class="dashicons {{ row.is_active ? 'dashicons-hidden' : 'dashicons-visibility' }}"></span><span class="screen-reader-text">{{ row.is_active ? t('Deactivate') : t('Activate') }}</span></button>
+										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source" data-id="{{ row.id|e('html_attr') }}" title="{{ t('Delete')|esc_attr }}"><span class="dashicons dashicons-trash"></span><span class="screen-reader-text">{{ t('Delete') }}</span></button>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+
+			<div id="aips-source-search-no-results" class="aips-empty-state" style="display:none;">
+				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title">{{ t('No Sources Found') }}</h3>
+				<p class="aips-empty-state-description">{{ t('No sources match your search criteria.') }}</p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-source-search-clear-2">{{ t('Clear Search') }}</button>
+				</div>
+			</div>
+		{% else %}
+			<div class="aips-empty-state" id="aips-sources-empty">
+				<div class="dashicons dashicons-admin-links aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title">{{ t('No Trusted Sources Yet') }}</h3>
+				<p class="aips-empty-state-description">{{ t('Add URLs that the AI should reference when generating post content. Assign them to Source Groups so Authors and Templates can selectively include them in their prompts.') }}</p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-empty-btn">{{ t('Add Your First Source') }}</button>
+				</div>
+			</div>
+		{% endif %}
+	{% endblock %}
+
+	{% block list_footer_count %}
+		{% if sources_screen.rows %}
+			{{ tn('%s source', '%s sources', sources_screen.total)|format(number_fmt(sources_screen.total)) }}
+		{% endif %}
+	{% endblock %}
+
+	{% block list_footer_pagination %}{% endblock %}
+{% endembed %}

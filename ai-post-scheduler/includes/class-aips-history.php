@@ -641,10 +641,54 @@ class AIPS_History {
 
         $this->prepare_items_for_display($history['items']);
 
-        // Pass handler to template for helper methods
-        $history_handler = $this;
+        // Try to render via Twig if view service is available
+        $container = AIPS_Container::get_instance();
+        $resolved_view = $container->makeIfExists(AIPS_View::class);
+        $view = ($resolved_view instanceof AIPS_View) ? $resolved_view : null;
 
-        include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
+        if ($view instanceof AIPS_View) {
+            // Prepare context with timeline buckets
+            $items = isset($history['items']) ? $history['items'] : array();
+            $context_items = $this->prepare_context_items_with_buckets($items);
+
+            $view->render('pages/history.html.twig', array(
+                'items' => $context_items,
+                'total_items' => isset($history['total']) ? (int) $history['total'] : 0,
+                'current_page' => $current_page,
+                'status_filter' => $status_filter,
+                'search_query' => $search_query,
+                'domain_filter' => $domain_filter,
+                'actor_filter' => $actor_filter,
+                'correlation_filter' => $correlation_id,
+                'date_from' => $date_from,
+                'date_to' => $date_to,
+                'timeline_buckets' => array(
+                    'today' => __('Today', 'ai-post-scheduler'),
+                    'yesterday' => __('Yesterday', 'ai-post-scheduler'),
+                    'earlier' => __('Earlier', 'ai-post-scheduler'),
+                ),
+                'history_type_map' => array(
+                    'LOG' => AIPS_History_Type::LOG,
+                    'ERROR' => AIPS_History_Type::ERROR,
+                    'WARNING' => AIPS_History_Type::WARNING,
+                    'INFO' => AIPS_History_Type::INFO,
+                    'AI_REQUEST' => AIPS_History_Type::AI_REQUEST,
+                    'AI_RESPONSE' => AIPS_History_Type::AI_RESPONSE,
+                    'DEBUG' => AIPS_History_Type::DEBUG,
+                    'ACTIVITY' => AIPS_History_Type::ACTIVITY,
+                    'SESSION_METADATA' => AIPS_History_Type::SESSION_METADATA,
+                ),
+                'ajax_nonce' => wp_create_nonce('aips_ajax_nonce'),
+            ));
+
+            return;
+        }
+
+        wp_die(
+            esc_html__('Twig view service is not available for the History page.', 'ai-post-scheduler'),
+            esc_html__('Rendering Error', 'ai-post-scheduler'),
+            array('response' => 500)
+        );
     }
 
     /**
@@ -664,5 +708,44 @@ class AIPS_History {
         foreach ($items as $item) {
             $item->formatted_date = date_i18n($format, strtotime($item->created_at));
         }
+    }
+
+    /**
+     * Prepare history items for Twig context with timeline bucket assignment.
+     *
+     * Adds 'bucket' field to each item for timeline grouping and ensures
+     * all required display fields are present.
+     *
+     * @param array $items History items from get_history().
+     * @return array Prepared items with bucket and display fields.
+     */
+    private function prepare_context_items_with_buckets( array $items ) {
+        $now = current_time('timestamp', true);
+        $utc_timezone = new DateTimeZone('UTC');
+        $today = wp_date('Y-m-d', $now, $utc_timezone);
+        $yesterday = wp_date('Y-m-d', $now - DAY_IN_SECONDS, $utc_timezone);
+
+        $date_format = get_option('date_format');
+        $time_format = get_option('time_format');
+        $format = $date_format . ' ' . $time_format;
+
+        $context_items = array();
+        foreach ($items as $item) {
+            // Determine bucket
+            $ts = (int) $item->created_at;
+            $item_date = wp_date('Y-m-d', $ts, $utc_timezone);
+            $bucket = ($item_date === $today) ? 'today' : (($item_date === $yesterday) ? 'yesterday' : 'earlier');
+
+            // Prepare for context
+            $item->bucket = $bucket;
+            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $item->event_label = !empty($item->event_label) ? $item->event_label : __('Generation Event', 'ai-post-scheduler');
+            $item->actor_type = isset($item->actor_type) ? $item->actor_type : 'system';
+            $item->template_name = !empty($item->template_name) ? $item->template_name : __('Unknown Template', 'ai-post-scheduler');
+
+            $context_items[] = $item;
+        }
+
+        return $context_items;
     }
 }

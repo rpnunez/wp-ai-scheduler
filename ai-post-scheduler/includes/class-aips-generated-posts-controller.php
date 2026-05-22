@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
  * Manages the Generated Posts admin interface and AJAX endpoints for viewing post generation sessions.
  */
 class AIPS_Generated_Posts_Controller {
+
+	/**
+	 * @var AIPS_View|null
+	 */
+	private $view;
 	
 	/**
 	 * @var AIPS_History_Repository Repository for database operations
@@ -54,6 +59,10 @@ class AIPS_Generated_Posts_Controller {
 	 * Initialize the controller
 	 */
 	public function __construct() {
+		$container = AIPS_Container::get_instance();
+		$resolved_view = $container->makeIfExists(AIPS_View::class);
+		$this->view = ($resolved_view instanceof AIPS_View) ? $resolved_view : null;
+
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
@@ -123,6 +132,10 @@ class AIPS_Generated_Posts_Controller {
 				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
+				'history_url' => AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+					'history_id' => !empty($item->id) ? absint($item->id) : 0,
+					'post_id' => !empty($item->post_id) ? absint($item->post_id) : 0,
+				))),
 			);
 		}
 		
@@ -133,10 +146,24 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 
-		// Pre-format dates for draft posts
+		// Pre-format dates for draft posts and prepare tab row data.
+		$review_posts_data = array();
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
 				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format'));
+				$review_posts_data[] = array(
+					'history_id' => $item->id,
+					'post_id' => $item->post_id,
+					'post_title' => $item->post_title,
+					'generated_title' => $item->generated_title,
+					'created_at_formatted' => $item->created_at_formatted,
+					'source' => $this->format_source($item),
+					'edit_url' => esc_url_raw(get_edit_post_link($item->post_id)),
+					'history_url' => AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+						'history_id' => !empty($item->id) ? absint($item->id) : 0,
+						'post_id' => !empty($item->post_id) ? absint($item->post_id) : 0,
+					))),
+				);
 			}
 		}
 
@@ -167,6 +194,7 @@ class AIPS_Generated_Posts_Controller {
 			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, get_option('date_format') . ' ' . get_option('time_format')),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
+				'post_status_label' => $this->format_post_status($item->post_status),
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
 				'source' => $this->format_source($item),
 				'missing_components' => $this->get_missing_components($item->component_statuses),
@@ -189,11 +217,221 @@ class AIPS_Generated_Posts_Controller {
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
 		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
+
+		$generated_pagination = $this->build_pagination_context(
+			isset($history['pages']) ? (int) $history['pages'] : 0,
+			(int) $current_page,
+			function($page_number) use ($author_id, $template_id, $search_query) {
+				return $this->build_content_page_url(array(
+					'generated_paged' => absint($page_number),
+					'author_id' => $author_id ? $author_id : false,
+					'template_id' => $template_id ? $template_id : false,
+					's' => $search_query ? $search_query : false,
+				));
+			}
+		);
+
+		$partial_pagination = $this->build_pagination_context(
+			isset($partial_generations['pages']) ? (int) $partial_generations['pages'] : 0,
+			(int) $partial_current_page,
+			function($page_number) use ($author_id, $template_id, $search_query) {
+				return $this->build_content_page_url(
+					array(
+						'partial_paged' => absint($page_number),
+						'author_id' => $author_id ? $author_id : false,
+						'template_id' => $template_id ? $template_id : false,
+						's' => $search_query ? $search_query : false,
+					),
+					'aips-partial-generations'
+				);
+			}
+		);
+
+		$review_pagination = $this->build_pagination_context(
+			isset($draft_posts['pages']) ? (int) $draft_posts['pages'] : 0,
+			(int) $review_current_page,
+			function($page_number) use ($template_id, $search_query) {
+				return $this->build_content_page_url(
+					array(
+						'review_paged' => absint($page_number),
+						'template_id' => $template_id ? $template_id : false,
+						's' => $search_query ? $search_query : false,
+					),
+					'aips-pending-review'
+				);
+			}
+		);
 		
-		// Make controller available to template for formatting
-		$controller = $this;
-		
-		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
+		if ($this->view instanceof AIPS_View) {
+			$this->view->render('pages/content.html.twig', array(
+				'generated_tab' => array(
+					'authors' => $authors,
+					'templates' => $templates,
+					'author_id' => $author_id,
+					'template_id' => $template_id,
+					'search_query' => $search_query,
+					'rows' => $posts_data,
+					'total' => isset($history['total']) ? (int) $history['total'] : 0,
+					'pagination' => $generated_pagination,
+					'clear_filters_url' => $this->build_content_page_url(array(
+						's' => $search_query ? $search_query : false,
+					)),
+					'clear_search_url' => $this->build_content_page_url(array(
+						'author_id' => $author_id ? $author_id : false,
+						'template_id' => $template_id ? $template_id : false,
+					)),
+				),
+				'partial_tab' => array(
+					'authors' => $authors,
+					'templates' => $templates,
+					'author_id' => $author_id,
+					'template_id' => $template_id,
+					'search_query' => $search_query,
+					'rows' => $partial_posts_data,
+					'total' => isset($partial_generations['total']) ? (int) $partial_generations['total'] : 0,
+					'pagination' => $partial_pagination,
+					'clear_filters_url' => $this->build_content_page_url(array(
+						's' => $search_query ? $search_query : false,
+					)),
+					'clear_search_url' => $this->build_content_page_url(
+						array(
+							'author_id' => $author_id ? $author_id : false,
+							'template_id' => $template_id ? $template_id : false,
+						),
+						'aips-partial-generations'
+					),
+				),
+				'review_tab' => array(
+					'templates' => $templates,
+					'template_id' => $template_id,
+					'search_query' => $search_query,
+					'rows' => $review_posts_data,
+					'total' => isset($draft_posts['total']) ? (int) $draft_posts['total'] : 0,
+					'pagination' => $review_pagination,
+					'clear_filters_url' => $this->build_content_page_url(
+						array(
+							's' => $search_query ? $search_query : false,
+						),
+						'aips-pending-review'
+					),
+					'clear_search_url' => $this->build_content_page_url(
+						array(
+							'template_id' => $template_id ? $template_id : false,
+						),
+						'aips-pending-review'
+					),
+				),
+				'history_type_map' => array(
+					'LOG' => AIPS_History_Type::LOG,
+					'ERROR' => AIPS_History_Type::ERROR,
+					'WARNING' => AIPS_History_Type::WARNING,
+					'INFO' => AIPS_History_Type::INFO,
+					'AI_REQUEST' => AIPS_History_Type::AI_REQUEST,
+					'AI_RESPONSE' => AIPS_History_Type::AI_RESPONSE,
+					'DEBUG' => AIPS_History_Type::DEBUG,
+					'ACTIVITY' => AIPS_History_Type::ACTIVITY,
+					'SESSION_METADATA' => AIPS_History_Type::SESSION_METADATA,
+				),
+				'ajax_nonce' => wp_create_nonce('aips_ajax_nonce'),
+			));
+
+			return;
+		}
+
+		wp_die(
+			esc_html__('Twig view service is not available for the Content page.', 'ai-post-scheduler'),
+			esc_html__('Rendering Error', 'ai-post-scheduler'),
+			array('response' => 500)
+		);
+	}
+
+	/**
+	 * Build an admin content-page URL with optional query args and fragment.
+	 *
+	 * @param array  $args
+	 * @param string $fragment
+	 * @return string
+	 */
+	private function build_content_page_url($args = array(), $fragment = '') {
+		$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$filtered_args = array_filter($args, function($value) {
+			return false !== $value && null !== $value && '' !== $value;
+		});
+		$url = add_query_arg($filtered_args, $base_url);
+
+		if (!empty($fragment)) {
+			$url .= '#' . ltrim((string) $fragment, '#');
+		}
+
+		return $url;
+	}
+
+	/**
+	 * Build a normalized pagination context array for Twig rendering.
+	 *
+	 * @param int      $total_pages
+	 * @param int      $current_page
+	 * @param callable $url_builder
+	 * @return array
+	 */
+	private function build_pagination_context($total_pages, $current_page, $url_builder) {
+		$pages = max(1, (int) $total_pages);
+		$current = max(1, min($pages, (int) $current_page));
+		$show = $pages > 1;
+
+		$context = array(
+			'show' => $show,
+			'current' => $current,
+			'pages' => $pages,
+			'prev_url' => '',
+			'next_url' => '',
+			'items' => array(),
+		);
+
+		if (!$show) {
+			return $context;
+		}
+
+		$start = max(1, $current - 3);
+		$end = min($pages, $current + 3);
+
+		$context['prev_url'] = $current > 1 ? call_user_func($url_builder, $current - 1) : '';
+		$context['next_url'] = $current < $pages ? call_user_func($url_builder, $current + 1) : '';
+
+		if ($start > 1) {
+			$context['items'][] = array(
+				'type' => 'page',
+				'number' => 1,
+				'url' => call_user_func($url_builder, 1),
+				'is_current' => false,
+			);
+			if ($start > 2) {
+				$context['items'][] = array('type' => 'ellipsis');
+			}
+		}
+
+		for ($p = $start; $p <= $end; $p++) {
+			$context['items'][] = array(
+				'type' => 'page',
+				'number' => $p,
+				'url' => call_user_func($url_builder, $p),
+				'is_current' => ($p === $current),
+			);
+		}
+
+		if ($end < $pages) {
+			if ($end < ($pages - 1)) {
+				$context['items'][] = array('type' => 'ellipsis');
+			}
+			$context['items'][] = array(
+				'type' => 'page',
+				'number' => $pages,
+				'url' => call_user_func($url_builder, $pages),
+				'is_current' => false,
+			);
+		}
+
+		return $context;
 	}
 
 	/**

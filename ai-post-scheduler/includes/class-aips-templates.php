@@ -21,6 +21,11 @@ class AIPS_Templates {
      * @var AIPS_Interval_Calculator Handles schedule interval calculations
      */
     private $interval_calculator;
+
+    /**
+     * @var AIPS_View|null
+     */
+    private $view;
     
     public function __construct() {
         global $wpdb;
@@ -28,6 +33,10 @@ class AIPS_Templates {
         $this->repository          = new AIPS_Template_Repository();
         $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->interval_calculator = new AIPS_Interval_Calculator();
+
+        $container = AIPS_Container::get_instance();
+        $resolved_view = $container->makeIfExists(AIPS_View::class);
+        $this->view = ($resolved_view instanceof AIPS_View) ? $resolved_view : null;
     }
     
     public function get_all($active_only = false) {
@@ -219,6 +228,81 @@ class AIPS_Templates {
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
 
-        include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
+        $template_source_groups = get_terms(array(
+            'taxonomy'   => 'aips_source_group',
+            'hide_empty' => false,
+        ));
+        if (is_wp_error($template_source_groups)) {
+            $template_source_groups = array();
+        }
+
+        // Pre-fetch stats to avoid N+1 queries while rendering template rows.
+        $history_repository = AIPS_History_Repository::instance();
+        $all_generated_counts = $history_repository->get_all_template_stats();
+        $all_pending_stats = $this->get_all_pending_stats();
+
+        $category_name_map = array();
+        foreach ($categories as $category) {
+            $category_name_map[(int) $category->term_id] = $category->name;
+        }
+
+        $template_rows = array();
+        foreach ($templates as $template) {
+            $template_id = (int) $template->id;
+            $pending_stats = isset($all_pending_stats[$template_id]) ? $all_pending_stats[$template_id] : array(
+                'today' => 0,
+                'week'  => 0,
+                'month' => 0,
+            );
+
+            $post_category_id = isset($template->post_category) ? (int) $template->post_category : 0;
+            $category_name = ($post_category_id > 0 && isset($category_name_map[$post_category_id]))
+                ? $category_name_map[$post_category_id]
+                : '';
+
+            $template_rows[] = array(
+                'id'                   => $template_id,
+                'name'                 => isset($template->name) ? (string) $template->name : '',
+                'post_status_label'    => isset($template->post_status) ? ucfirst((string) $template->post_status) : '',
+                'category_name'        => $category_name,
+                'generated_count'      => isset($all_generated_counts[$template_id]) ? (int) $all_generated_counts[$template_id] : 0,
+                'pending_today'        => isset($pending_stats['today']) ? (int) $pending_stats['today'] : 0,
+                'pending_week'         => isset($pending_stats['week']) ? (int) $pending_stats['week'] : 0,
+                'pending_month'        => isset($pending_stats['month']) ? (int) $pending_stats['month'] : 0,
+                'is_active'            => !empty($template->is_active),
+                'generated_posts_url'  => add_query_arg(
+                    array(
+                        'page'        => 'aips-generated-posts',
+                        'template_id' => $template_id,
+                    ),
+                    admin_url('admin.php')
+                ),
+                'schedule_url'         => AIPS_Admin_Menu_Helper::get_page_url('schedule', array(
+                    'schedule_template' => $template_id,
+                )),
+            );
+        }
+
+        if ($this->view instanceof AIPS_View) {
+            $this->view->render('pages/templates.html.twig', array(
+                'templates_screen' => array(
+                    'rows' => $template_rows,
+                    'total' => count($template_rows),
+                ),
+                'categories' => $categories,
+                'users' => $users,
+                'template_source_groups' => $template_source_groups,
+                'current_user_id' => get_current_user_id(),
+            ));
+
+            return;
+        }
+
+        wp_die(
+            esc_html__('Twig view service is not available for the Templates page.', 'ai-post-scheduler'),
+            esc_html__('Rendering Error', 'ai-post-scheduler'),
+            array('response' => 500)
+        );
     }
+
 }

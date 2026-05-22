@@ -25,6 +25,7 @@
 		 */
 		init: function () {
 			this.bindEvents();
+			this.syncBulkUiState();
 		},
 
 		/**
@@ -54,6 +55,7 @@
 
 			// Bulk actions.
 			$(document).on('click', '#aips-bulk-action-btn', this.onBulkAction.bind(this));
+			$(document).on('change', '#bulk-action-selector-top', this.syncBulkUiState.bind(this));
 
 			// Reload button.
 			$(document).on('click', '#aips-reload-posts-btn', this.onReloadClick.bind(this));
@@ -74,6 +76,7 @@
 		 */
 		onSelectAllChange: function (e) {
 			$('.aips-post-checkbox').prop('checked', $(e.currentTarget).prop('checked'));
+			this.syncBulkUiState();
 		},
 
 		/**
@@ -85,6 +88,7 @@
 		onCheckboxChange: function (e) {
 			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
 			$('#cb-select-all-1').prop('checked', allChecked);
+			this.syncBulkUiState();
 		},
 
 		// -----------------------------------------------------------------
@@ -713,7 +717,7 @@
 
 			if (visibleRows === 0) {
 				$('.aips-post-review-table').hide();
-				$('.tablenav').hide();
+				$('.aips-list-footer').hide();
 
 				if ($('.aips-empty-state').length === 0) {
 					var emptyStateHtml = '<div class="aips-empty-state">' +
@@ -726,6 +730,26 @@
 					$('.aips-empty-state').show();
 				}
 			}
+			this.syncBulkUiState();
+		},
+
+		/**
+		 * Sync shared bulk-control state and selected-row count.
+		 *
+		 * @return {void}
+		 */
+		syncBulkUiState: function () {
+			AIPS.Utilities.updateSelectedRowCount({
+				checkboxSelector: '.aips-post-checkbox:checked',
+				outputSelector: '#aips-post-review-selected-count',
+				format: (window.aipsPostReviewL10n && aipsPostReviewL10n.selectedCountFormat) ? aipsPostReviewL10n.selectedCountFormat : '%d selected',
+			});
+
+			AIPS.Utilities.updateBulkActionState({
+				buttonSelector: '#aips-bulk-action-btn',
+				checkboxSelector: '.aips-post-checkbox:checked',
+				actionSelector: '#bulk-action-selector-top',
+			});
 		},
 	};
 

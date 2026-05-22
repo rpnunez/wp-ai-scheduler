@@ -1,0 +1,34 @@
+<div class="wrap aips-wrap">
+	<div class="aips-page-container">
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title">{{ t('Content') }}</h1>
+					<p class="aips-page-description">{{ t('View and manage all AI-generated posts including published articles and drafts pending review.') }}</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="aips-tab-nav">
+			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts">{{ t('Generated Posts') }}</a>
+			<a href="#aips-partial-generations" class="aips-tab-link" data-tab="aips-partial-generations">{{ t('Partial Generations') }}</a>
+			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review">{{ t('Pending Review') }}</a>
+		</div>
+
+		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+			<div class="aips-content-panel">{% include 'partials/tab-generated-posts.html.twig' %}</div>
+		</div>
+
+		<div id="aips-partial-generations-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">{% include 'partials/tab-partial-generations.html.twig' %}</div>
+		</div>
+
+		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">{% include 'partials/tab-pending-review.html.twig' %}</div>
+		</div>
+	</div>
+</div>
+
+{% include 'partials/post-preview-modal.html.twig' %}
+{% include 'partials/view-session-modal.html.twig' %}
+{% include 'partials/ai-edit-modal.html.twig' %}

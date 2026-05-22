@@ -1,10 +1,10 @@
 # View Session Modal - Reusable Component
 
-This directory contains the reusable View Session modal component that can be included in any admin page.
+This directory contains legacy PHP partials. Active admin pages now consume Twig modal partials.
 
 ## Files
 
-- `view-session-modal.php` - The modal HTML and required JavaScript constants
+- `view-session-modal.php` - Legacy PHP modal partial retained for compatibility.
 
 ## Usage
 
@@ -39,15 +39,10 @@ if (strpos($hook, 'your-page-slug') !== false) {
 
 ### 2. Include the Modal Template
 
-At the end of your admin page template, include the partial:
+For Twig-native pages, include the Twig partial:
 
-```php
-</div> <!-- End of your page content -->
-
-<?php
-// Include the View Session modal partial
-include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
-?>
+```twig
+{% include 'partials/view-session-modal.html.twig' %}
 ```
 
 ### 3. Add View Session Buttons
@@ -86,8 +81,8 @@ The View Session modal will automatically work. When users click the button:
 
 - jQuery (included in WordPress)
 - WordPress admin styles
-- `AIPS_History_Type` constants (automatically included in partial)
-- AJAX nonce for security (automatically included in partial)
+- `AIPS_History_Type` constants (passed via `history_type_map`)
+- AJAX nonce for security (passed via `ajax_nonce`)
 
 ## AJAX Endpoint
 
@@ -114,5 +109,5 @@ No additional CSS needed.
 ## Examples
 
 See these pages for working examples:
-- `templates/admin/generated-posts.php`
-- `templates/admin/post-review.php`
+- `templates/admin/twig/pages/content.html.twig`
+- `templates/admin/twig/pages/history.html.twig`

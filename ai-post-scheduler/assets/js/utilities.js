@@ -821,6 +821,142 @@
             $btn.prop('disabled', false);
         },
 
+        // ── Shared table/list controls helpers ───────────────────────────────
+
+        /**
+         * Create a debounced version of a callback.
+         *
+         * @param {Function} callback - Function to debounce.
+         * @param {number} wait - Delay in milliseconds.
+         * @return {Function}
+         */
+        debounce: function(callback, wait) {
+            var timer = null;
+
+            return function() {
+                var context = this;
+                var args = arguments;
+
+                clearTimeout(timer);
+                timer = setTimeout(function() {
+                    callback.apply(context, args);
+                }, wait || 150);
+            };
+        },
+
+        /**
+         * Bind a standard search control with clear-button behavior.
+         *
+         * @param {Object} options
+         * @param {string} options.inputSelector
+         * @param {string} options.clearSelector
+         * @param {Function} [options.onChange]
+         * @param {number} [options.debounceMs]
+         * @return {Function} Bound handler.
+         */
+        bindSearchControl: function(options) {
+            var opts = options || {};
+            var inputSelector = opts.inputSelector;
+            var clearSelector = opts.clearSelector;
+            var onChange = typeof opts.onChange === 'function' ? opts.onChange : function() {};
+            var debounceMs = parseInt(opts.debounceMs || 0, 10);
+
+            if ($(inputSelector).length === 0 || $(clearSelector).length === 0) {
+                return function() {};
+            }
+
+            var run = function(e) {
+                var term = $(inputSelector).val().toLowerCase().trim();
+                $(clearSelector).toggle(term.length > 0);
+                onChange(term, e);
+            };
+
+            var handler = debounceMs > 0 ? this.debounce(run, debounceMs) : run;
+
+            $(document).on('input search', inputSelector, handler);
+            $(document).on('click', clearSelector, function(e) {
+                e.preventDefault();
+                $(inputSelector).val('');
+                $(clearSelector).hide();
+                onChange('', e);
+                $(inputSelector).trigger('focus');
+            });
+
+            run();
+
+            return handler;
+        },
+
+        /**
+         * Clear a search control and run the callback immediately.
+         *
+         * @param {string} inputSelector
+         * @param {string} clearSelector
+         * @param {Function} [onChange]
+         * @return {void}
+         */
+        clearSearchControl: function(inputSelector, clearSelector, onChange) {
+            $(inputSelector).val('');
+            $(clearSelector).hide();
+            if (typeof onChange === 'function') {
+                onChange('');
+            }
+            $(inputSelector).trigger('focus');
+        },
+
+        /**
+         * Update selected-row count text for a table/list view.
+         *
+         * @param {Object} options
+         * @param {string} options.checkboxSelector
+         * @param {string} options.outputSelector
+         * @param {string} [options.format]
+         * @return {number}
+         */
+        updateSelectedRowCount: function(options) {
+            var opts = options || {};
+            var selector = opts.checkboxSelector || '.aips-row-checkbox:checked';
+            var outputSelector = opts.outputSelector || '';
+            var format = opts.format || '%d selected';
+            var count = $(selector).length;
+
+            if (outputSelector) {
+                $(outputSelector).text(format.replace('%d', String(count)));
+            }
+
+            return count;
+        },
+
+        /**
+         * Enable or disable a bulk-action button based on selection/action state.
+         *
+         * @param {Object} options
+         * @param {string} options.buttonSelector
+         * @param {string} options.checkboxSelector
+         * @param {string} [options.actionSelector]
+         * @return {void}
+         */
+        updateBulkActionState: function(options) {
+            var opts = options || {};
+            var buttonSelector = opts.buttonSelector;
+            var checkboxSelector = opts.checkboxSelector || '.aips-row-checkbox:checked';
+            var actionSelector = opts.actionSelector || '';
+
+            if (!buttonSelector) {
+                return;
+            }
+
+            var hasRows = $(checkboxSelector).length > 0;
+            var hasAction = true;
+
+            if (actionSelector) {
+                var actionValue = $(actionSelector).val();
+                hasAction = !!actionValue;
+            }
+
+            $(buttonSelector).prop('disabled', !(hasRows && hasAction));
+        },
+
         // ── String / escaping helpers ───────────────────────────────────────────
 
         /**

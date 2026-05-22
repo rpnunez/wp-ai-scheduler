@@ -1,0 +1,243 @@
+<div class="wrap aips-wrap">
+	<div class="aips-page-container">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title">{{ t('History') }}</h1>
+					<p class="aips-page-description">{{ t('View generation history containers and inspect every logged step, AI call, and error for each run.') }}</p>
+				</div>
+				<div class="aips-page-actions">
+					<button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
+						<span class="dashicons dashicons-download"></span>
+						{{ t('Export CSV') }}
+					</button>
+				</div>
+			</div>
+		</div>
+
+		{% set has_active_filter = status_filter or search_query %}
+		{% set show_panel = total_items > 0 or has_active_filter %}
+
+		{% if show_panel %}
+			<div class="aips-content-panel">
+				<!-- Filter Bar -->
+				<div class="aips-filter-bar">
+					<div class="aips-filter-left">
+						<select id="aips-filter-domain" class="aips-form-select">
+							<option value="">{{ t('All Domains') }}</option>
+							<option value="post_generation" {{ selected(domain_filter, 'post_generation')|raw }}>{{ t('Post Generation') }}</option>
+							<option value="author_topics" {{ selected(domain_filter, 'author_topics')|raw }}>{{ t('Author Topics') }}</option>
+							<option value="research" {{ selected(domain_filter, 'research')|raw }}>{{ t('Research') }}</option>
+							<option value="sources" {{ selected(domain_filter, 'sources')|raw }}>{{ t('Sources') }}</option>
+							<option value="embeddings" {{ selected(domain_filter, 'embeddings')|raw }}>{{ t('Embeddings') }}</option>
+							<option value="internal_links" {{ selected(domain_filter, 'internal_links')|raw }}>{{ t('Internal Links') }}</option>
+							<option value="batch_jobs" {{ selected(domain_filter, 'batch_jobs')|raw }}>{{ t('Batch Jobs') }}</option>
+						</select>
+						<select id="aips-filter-actor" class="aips-form-select">
+							<option value="">{{ t('All Actors') }}</option>
+							<option value="system" {{ selected(actor_filter, 'system')|raw }}>{{ t('System') }}</option>
+							<option value="admin" {{ selected(actor_filter, 'admin')|raw }}>{{ t('Admin') }}</option>
+						</select>
+						<select id="aips-filter-status" class="aips-form-select">
+							<option value="">{{ t('All Statuses') }}</option>
+							<option value="completed" {{ selected(status_filter, 'completed')|raw }}>{{ t('Completed') }}</option>
+							<option value="failed" {{ selected(status_filter, 'failed')|raw }}>{{ t('Failed') }}</option>
+							<option value="processing" {{ selected(status_filter, 'processing')|raw }}>{{ t('Processing') }}</option>
+						</select>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
+							<span class="dashicons dashicons-filter"></span>
+							{{ t('Filter') }}
+						</button>
+					</div>
+					<div class="aips-filter-right">
+						<label class="screen-reader-text" for="aips-history-search-input">{{ t('Search History:') }}</label>
+						<input type="date" id="aips-filter-date-from" class="aips-form-input" value="{{ date_from|e('html_attr') }}">
+						<input type="date" id="aips-filter-date-to" class="aips-form-input" value="{{ date_to|e('html_attr') }}">
+						<input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="{{ t('Correlation ID') }}" value="{{ correlation_filter|e('html_attr') }}">
+						<input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="{{ t('Search history...')|esc_attr }}" value="{{ search_query|e('html_attr') }}">
+						<button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="{% if not has_active_filter %}display: none;{% endif %}">{{ t('Clear') }}</button>
+					</div>
+				</div>
+
+				<!-- Toolbar (bulk actions) -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left">
+						<button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
+							<span class="dashicons dashicons-trash"></span>
+							{{ t('Delete Selected') }}
+						</button>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
+							<span class="dashicons dashicons-update"></span>
+							{{ t('Reload') }}
+						</button>
+					</div>
+					<div class="aips-toolbar-right aips-history-pagination-cell">
+						<button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
+							<span class="dashicons dashicons-dismiss"></span>
+							{{ t('Clear Failed') }}
+						</button>
+						<button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
+							<span class="dashicons dashicons-trash"></span>
+							{{ t('Clear All') }}
+						</button>
+						<span class="aips-history-pagination-info">{{ tn('%d item', '%d items', total_items)|format(number_fmt(total_items)) }}</span>
+					</div>
+				</div>
+
+				<div class="aips-panel-body">
+					<h3>{{ t('Timeline') }}</h3>
+					{% for bucket_key, bucket_label in timeline_buckets %}
+						<div class="aips-timeline-group">
+							<h4>{{ bucket_label }}</h4>
+							{% set has_bucket = false %}
+							{% for item in items %}
+								{% if item.bucket == bucket_key %}
+									{% set has_bucket = true %}
+									<details class="aips-timeline-card">
+										<summary><strong>{{ item.event_label|e }}</strong> — {{ item.formatted_date|e }} <span class="aips-badge aips-badge-neutral">{{ item.event_domain|e }}</span></summary>
+										<div style="padding:8px 0;">
+											<p><strong>{{ t('Status:') }}</strong> {{ item.status|e }} | <strong>{{ t('Actor:') }}</strong> {{ item.actor_type|e }}</p>
+											{% if item.correlation_id %}<p><strong>{{ t('Correlation ID:') }}</strong> {{ item.correlation_id|e }}</p>{% endif %}
+											{% if item.error_message %}<p style="color:#b32d2e;">{{ item.error_message|e }}</p>{% endif %}
+										</div>
+									</details>
+								{% endif %}
+							{% endfor %}
+							{% if not has_bucket %}<p class="aips-meta-text">{{ t('No events.') }}</p>{% endif %}
+						</div>
+					{% endfor %}
+				</div>
+
+				<!-- History Containers Table -->
+				<div class="aips-panel-body no-padding">
+					<table class="aips-table aips-history-table">
+						<thead>
+							<tr>
+								<td id="cb" class="manage-column column-cb check-column">
+									<label class="screen-reader-text" for="aips-cb-select-all">{{ t('Select All') }}</label>
+									<input id="aips-cb-select-all" type="checkbox">
+								</td>
+								<th class="column-title">{{ t('Title / Topic') }}</th>
+								<th class="column-template">{{ t('Template') }}</th>
+								<th class="column-status">{{ t('Status') }}</th>
+								<th class="column-date">{{ t('Created') }}</th>
+								<th class="column-actions">{{ t('Actions') }}</th>
+							</tr>
+						</thead>
+						<tbody id="aips-history-tbody">
+							{% if items %}
+								{% for item in items %}
+									<tr>
+										<td><input type="checkbox" class="aips-history-checkbox" value="{{ item.id|e('html_attr') }}"></td>
+										<td class="column-title">{{ item.event_label|e }}</td>
+										<td class="column-template">{{ item.template_name|e }}</td>
+										<td class="column-status"><span class="aips-badge {% if item.status == 'completed' %}aips-badge-success{% elseif item.status == 'failed' %}aips-badge-error{% else %}aips-badge-warning{% endif %}">{{ item.status|e }}</span></td>
+										<td class="column-date">{{ item.formatted_date|e }}</td>
+										<td class="column-actions">
+											<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-history-btn" data-history-id="{{ item.id|e('html_attr') }}">{{ t('View Details') }}</button>
+										</td>
+									</tr>
+								{% endfor %}
+							{% else %}
+								<tr>
+									<td colspan="6" style="text-align:center;padding:40px;">
+										<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
+										{{ t('No history containers match your current filters.') }}
+										{% if has_active_filter %}
+											<br><br>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
+												<span class="dashicons dashicons-dismiss"></span>
+												{{ t('Clear Filters') }}
+											</button>
+										{% endif %}
+									</td>
+								</tr>
+							{% endif %}
+						</tbody>
+					</table>
+
+					<!-- No Search Results State (client-side live filter) -->
+					<div id="aips-history-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+						<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+						<h3 class="aips-empty-state-title">{{ t('No History Found') }}</h3>
+						<p class="aips-empty-state-description">{{ t('No history containers match your search criteria. Try a different search term or filter.') }}</p>
+						<div class="aips-empty-state-actions">
+							<button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
+								<span class="dashicons dashicons-dismiss"></span>
+								{{ t('Clear Search') }}
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		{% else %}
+			<div class="aips-content-panel">
+				<div class="aips-panel-body">
+					<div class="aips-empty-state">
+						<div class="dashicons dashicons-backup aips-empty-state-icon" aria-hidden="true"></div>
+						<h3 class="aips-empty-state-title">{{ t('No History Yet') }}</h3>
+						<p class="aips-empty-state-description">{{ t('Generation history containers will appear here once you start creating AI-powered content.') }}</p>
+					</div>
+				</div>
+			</div>
+		{% endif %}
+	</div>
+</div>
+
+<!-- History Logs Modal -->
+<div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
+	<div class="aips-modal-content aips-modal-large">
+		<div class="aips-modal-header">
+			<h3 id="aips-history-logs-modal-title">{{ t('History Details') }}</h3>
+			<button type="button" class="aips-modal-close" aria-label="{{ t('Close modal')|esc_attr }}">&times;</button>
+		</div>
+		<div class="aips-modal-body" id="aips-history-logs-content">
+			<p>{{ t('Preparing plain-language summary and technical logs...') }}</p>
+		</div>
+	</div>
+</div>
+
+{% include 'partials/view-session-modal.html.twig' %}
+
+<!-- Template: generic loading message inside the logs modal -->
+<script type="text/html" id="aips-tmpl-history-loading-msg">
+	<p>{{text}}</p>
+</script>
+
+<!-- Template: error notice shown when the AJAX request fails -->
+<script type="text/html" id="aips-tmpl-history-error-msg">
+	<p class="notice notice-error">{{message}}</p>
+</script>
+
+<!-- Template: tbody loading placeholder row (shown while reloading the table) -->
+<script type="text/html" id="aips-tmpl-history-tbody-loading">
+	<tr><td colspan="6" style="text-align:center;padding:20px;">{{text}}</td></tr>
+</script>
+
+<!-- Template: tbody empty-state row (no containers match current filters) -->
+<script type="text/html" id="aips-tmpl-history-tbody-empty">
+	<tr>
+		<td colspan="6" style="text-align:center;padding:40px;">
+			<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
+			{{message}}
+		</td>
+	</tr>
+</script>
+
+<!-- Template: container summary section wrapper; {{rows}} is injected raw -->
+<script type="text/html" id="aips-tmpl-history-modal-summary">
+	<div class="aips-history-modal-summary">
+		<table class="aips-table" style="width:100%;margin-bottom:20px;"><tbody>{{rows}}</tbody></table>
+	</div>
+</script>
+
+<!-- Template: a plain label/value summary row (values are auto-escaped by render()) -->
+<script type="text/html" id="aips-tmpl-history-summary-row">
+	<tr><th>{{label}}</th><td>{{value}}</td></tr>
+</script>
+
+<!-- Template: summary row that shows the status badge; use renderRaw() with pre-escaped values -->
+<script type="text/html" id="aips-tmpl-history-summary-status-row">
+	<tr><th>{{label}}</th><td><span class="aips-badge {{statusClass}}">{{status}}</span></td></tr>
+</script>

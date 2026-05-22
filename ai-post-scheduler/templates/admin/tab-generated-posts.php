@@ -24,10 +24,10 @@ if (!defined('ABSPATH')) {
 }
 ?>
 			<!-- Filter Bar -->
-				<div class="aips-filter-bar">
+				<div class="aips-filter-bar aips-table-controls aips-table-controls--top">
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
-						<div class="aips-filter-left">
+						<div class="aips-filter-left aips-filter-control">
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
 							<select name="author_id" id="aips-filter-author" class="aips-form-select">
@@ -58,7 +58,7 @@ if (!defined('ABSPATH')) {
 							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
 							<?php endif; ?>
 						</div>
-						<div class="aips-filter-right">
+						<div class="aips-filter-right aips-search-control">
 							<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
@@ -202,7 +202,7 @@ if (!defined('ABSPATH')) {
 				</div>
 
 				<!-- Table footer -->
-				<div class="tablenav">
+				<div class="tablenav aips-list-footer">
 					<span class="aips-table-footer-count">
 						<?php printf( esc_html( _n( '%s post', '%s posts', $history['total'], 'ai-post-scheduler' ) ), number_format_i18n( $history['total'] ) ); ?>
 					</span>
@@ -222,7 +222,7 @@ if (!defined('ABSPATH')) {
 						)), $base_url);
 					};
 					?>
-					<div class="aips-history-pagination-links">
+					<div class="aips-history-pagination-links aips-pagination">
 						<?php if ($current > 1): ?>
 							<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" href="<?php echo esc_url($build_generated_posts_page_url($current - 1)); ?>" aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
 								<span class="dashicons dashicons-arrow-left-alt2"></span>

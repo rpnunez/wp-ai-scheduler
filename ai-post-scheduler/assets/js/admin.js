@@ -298,8 +298,12 @@
 
 
             // Template Search
-            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
-            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
+            AIPS.Utilities.bindSearchControl({
+                inputSelector: '#aips-template-search',
+                clearSelector: '#aips-template-search-clear',
+                onChange: this.filterTemplates,
+                debounceMs: 120
+            });
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
 
             // Schedule Search
@@ -2964,19 +2968,14 @@
          *
          * Bound to the `keyup` and `search` events on `#aips-template-search`.
          */
-        filterTemplates: function() {
-            var term = $('#aips-template-search').val().toLowerCase().trim();
+        filterTemplates: function(value) {
+            var term = typeof value === 'string'
+                ? value.toLowerCase().trim()
+                : $('#aips-template-search').val().toLowerCase().trim();
             var $rows = $('.aips-templates-list tbody tr');
             var $noResults = $('#aips-template-search-no-results');
             var $table = $('.aips-templates-list table');
-            var $clearBtn = $('#aips-template-search-clear');
             var hasVisible = false;
-
-            if (term.length > 0) {
-                $clearBtn.show();
-            } else {
-                $clearBtn.hide();
-            }
 
             $rows.each(function() {
                 var $row = $(this);
@@ -3008,7 +3007,7 @@
          */
         clearTemplateSearch: function(e) {
             e.preventDefault();
-            $('#aips-template-search').val('').trigger('keyup');
+            AIPS.Utilities.clearSearchControl('#aips-template-search', '#aips-template-search-clear', AIPS.filterTemplates);
         },
 
         /**

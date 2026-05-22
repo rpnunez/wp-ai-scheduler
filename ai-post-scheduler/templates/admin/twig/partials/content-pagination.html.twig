@@ -1,0 +1,35 @@
+{% if pagination.show %}
+	<div class="aips-history-pagination-links aips-pagination">
+		{% if pagination.prev_url %}
+			<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" href="{{ esc_url(pagination.prev_url) }}" aria-label="{{ t('Previous page')|esc_attr }}">
+				<span class="dashicons dashicons-arrow-left-alt2"></span>
+			</a>
+		{% else %}
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" disabled aria-label="{{ t('Previous page')|esc_attr }}">
+				<span class="dashicons dashicons-arrow-left-alt2"></span>
+			</button>
+		{% endif %}
+
+		<span class="aips-history-page-numbers">
+			{% for item in pagination.items %}
+				{% if item.type == 'ellipsis' %}
+					<span class="aips-history-page-ellipsis">...</span>
+				{% elseif item.is_current %}
+					<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">{{ item.number }}</span>
+				{% else %}
+					<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" href="{{ esc_url(item.url) }}">{{ item.number }}</a>
+				{% endif %}
+			{% endfor %}
+		</span>
+
+		{% if pagination.next_url %}
+			<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" href="{{ esc_url(pagination.next_url) }}" aria-label="{{ t('Next page')|esc_attr }}">
+				<span class="dashicons dashicons-arrow-right-alt2"></span>
+			</a>
+		{% else %}
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" disabled aria-label="{{ t('Next page')|esc_attr }}">
+				<span class="dashicons dashicons-arrow-right-alt2"></span>
+			</button>
+		{% endif %}
+	</div>
+{% endif %}

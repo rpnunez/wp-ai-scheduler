@@ -1,0 +1,60 @@
+<!-- Session View Modal -->
+<div id="aips-session-modal" class="aips-modal" style="display: none;">
+	<div class="aips-modal-overlay"></div>
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2>{{ t('View Session') }}</h2>
+			<div class="aips-modal-header-actions">
+				<button class="button button-primary aips-copy-session-json">
+					{{ t('Copy Session JSON') }}
+				</button>
+				<button class="button aips-download-session-json">
+					{{ t('Download Session JSON') }}
+				</button>
+				<button class="aips-modal-close" aria-label="{{ t('Close')|esc_attr }}">
+					<span class="dashicons dashicons-no"></span>
+				</button>
+			</div>
+		</div>
+		<div class="aips-modal-body">
+			<div class="aips-session-info">
+				<p><strong>{{ t('Post:') }}</strong> <span id="aips-session-title"></span></p>
+				<p><strong>{{ t('Generated:') }}</strong> <span id="aips-session-created"></span></p>
+				<p><strong>{{ t('Completed:') }}</strong> <span id="aips-session-completed"></span></p>
+			</div>
+
+			<div class="aips-tabs">
+				<ul class="aips-tab-nav">
+					<li><a href="#aips-tab-logs" class="active">{{ t('Logs') }}</a></li>
+					<li><a href="#aips-tab-ai">{{ t('AI') }}</a></li>
+				</ul>
+
+				<div id="aips-tab-logs" class="aips-tab-content active">
+					<div id="aips-logs-list"></div>
+				</div>
+
+				<div id="aips-tab-ai" class="aips-tab-content" style="display: none;">
+					<div id="aips-ai-list"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+window.AIPS_History_Type = {
+	LOG: {{ history_type_map.LOG|default(0) }},
+	ERROR: {{ history_type_map.ERROR|default(0) }},
+	WARNING: {{ history_type_map.WARNING|default(0) }},
+	INFO: {{ history_type_map.INFO|default(0) }},
+	AI_REQUEST: {{ history_type_map.AI_REQUEST|default(0) }},
+	AI_RESPONSE: {{ history_type_map.AI_RESPONSE|default(0) }},
+	DEBUG: {{ history_type_map.DEBUG|default(0) }},
+	ACTIVITY: {{ history_type_map.ACTIVITY|default(0) }},
+	SESSION_METADATA: {{ history_type_map.SESSION_METADATA|default(0) }}
+};
+
+if (typeof window.aipsAjaxNonce === 'undefined') {
+	window.aipsAjaxNonce = '{{ ajax_nonce|e('js') }}';
+}
+</script>
