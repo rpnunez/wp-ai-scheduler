@@ -761,7 +761,7 @@ class AIPS_History {
                 ? $this->format_history_multiline_text($log['details']['message'])
                 : '',
             'has_extra' => !empty($extra),
-            'detail_id' => 'aips-log-detail-' . (int) $detail_sequence,
+            'detail_id' => 'aips-log-detail-' . str_replace('.', '-', uniqid('', true)) . '-' . (int) $detail_sequence,
             'tree_html' => !empty($extra) ? $this->render_history_json_tree_html($extra) : '',
             'raw_json' => $raw_json ? $raw_json : '',
         );

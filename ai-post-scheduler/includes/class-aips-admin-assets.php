@@ -378,7 +378,7 @@ class AIPS_Admin_Assets {
             'nonce'   => wp_create_nonce('aips_ajax_nonce'),
         ));
 
-        wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalL10n', array(
             'historyDetailsTitle' => __('History Details', 'ai-post-scheduler'),
             'closeModal'          => __('Close modal', 'ai-post-scheduler'),
             'loading'             => __('Loading…', 'ai-post-scheduler'),

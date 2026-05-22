@@ -242,6 +242,10 @@
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
 		},
 
+		getModalL10n: function () {
+			return window.aipsHistoryModalL10n || window.aipsHistoryL10n || {};
+		},
+
 		onStandaloneOpenClick: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -264,15 +268,16 @@
 			var historyId = parseInt($button.data('history-id') || 0, 10);
 			var ajaxConfig = this.getStandaloneAjaxConfig();
 			var $modal = $('#aips-history-modal');
+			var l10n = this.getModalL10n();
 			var self = this;
 
 			if (!historyId) {
-				AIPS.Utilities.showToast(aipsHistoryL10n.invalidHistoryId || 'Invalid history ID.', 'error');
+				AIPS.Utilities.showToast(l10n.invalidHistoryId || 'Invalid history ID.', 'error');
 				return;
 			}
 
 			if (!ajaxConfig) {
-				AIPS.Utilities.showToast(aipsHistoryL10n.loadingError || 'Error loading history modal.', 'error');
+				AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
 				return;
 			}
 
@@ -294,7 +299,7 @@
 					if (!response || !response.success || !response.data) {
 						var message = response && response.data && response.data.message
 							? response.data.message
-							: (aipsHistoryL10n.loadingFailed || 'Failed to load history modal.');
+							: (l10n.loadingFailed || 'Failed to load history modal.');
 						AIPS.Utilities.showToast(message, 'error');
 						$modal.fadeOut(200);
 						return;
@@ -304,29 +309,30 @@
 						titleSelector: '#aips-history-modal-title',
 						actionsSelector: '#aips-history-modal-actions',
 						statusSelector: '#aips-history-modal-status',
-						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+						defaultTitle: l10n.historyDetailsTitle || 'History Details'
 					});
 					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
 					self.bindStandaloneModalEvents($modal);
 					$modal.fadeIn(200);
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.loadingError || 'Error loading history modal.', 'error');
+					AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
 					$modal.fadeOut(200);
 				}
 			});
 		},
 
 		showStandaloneModalLoading: function ($modal) {
+			var l10n = this.getModalL10n();
 			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> '
-				+ (aipsHistoryL10n.loading || 'Loading…')
+				+ (l10n.loading || 'Loading…')
 				+ '</div>';
 
 			this.resetModalHeader($modal, {
 				titleSelector: '#aips-history-modal-title',
 				actionsSelector: '#aips-history-modal-actions',
 				statusSelector: '#aips-history-modal-status',
-				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+				defaultTitle: l10n.historyDetailsTitle || 'History Details'
 			});
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
 			$modal.fadeIn(200);
@@ -334,6 +340,7 @@
 
 		bindStandaloneModalEvents: function ($modal) {
 			var self = this;
+			var l10n = this.getModalL10n();
 
 			$modal.find('.aips-modal-close').off('click').on('click', function (e) {
 				e.preventDefault();
@@ -354,8 +361,8 @@
 			$modal.find('.aips-log-toggle').off('click').on('click', function (e) {
 				e.preventDefault();
 				self.toggleLogDetail($modal, $(this), {
-					show: aipsHistoryL10n.showDetails || 'Show details',
-					hide: aipsHistoryL10n.hideDetails || 'Hide details'
+					show: l10n.showDetails || 'Show details',
+					hide: l10n.hideDetails || 'Hide details'
 				});
 			});
 
@@ -366,8 +373,8 @@
 			$modal.find('[data-copy-target]').off('click').on('click', function (e) {
 				e.preventDefault();
 				self.copyLogDetail($modal, $(this), {
-					copy: aipsHistoryL10n.copyDetails || 'Copy',
-					copied: aipsHistoryL10n.copiedDetails || 'Copied!'
+					copy: l10n.copyDetails || 'Copy',
+					copied: l10n.copiedDetails || 'Copied!'
 				}, {
 					disable: true,
 					duration: 1500
@@ -606,7 +613,11 @@
 		 */
 		toggleLogDetail: function (e) {
 			e.preventDefault();
-			AIPS.HistoryModalShared.toggleLogDetail($(document), $(e.currentTarget), {
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
+			}
+			AIPS.HistoryModalShared.toggleLogDetail($scope, $(e.currentTarget), {
 				show: aipsHistoryL10n.showDetails || 'Show details',
 				hide: aipsHistoryL10n.hideDetails || 'Hide details'
 			});
@@ -625,7 +636,11 @@
 		 */
 		copyLogDetail: function (e) {
 			e.preventDefault();
-			AIPS.HistoryModalShared.copyLogDetail($(document), $(e.currentTarget), {
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
+			}
+			AIPS.HistoryModalShared.copyLogDetail($scope, $(e.currentTarget), {
 				copy: aipsHistoryL10n.copyDetails || 'Copy',
 				copied: aipsHistoryL10n.copiedDetails || 'Copied!'
 			}, {
