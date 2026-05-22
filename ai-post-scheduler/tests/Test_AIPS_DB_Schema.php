@@ -9,6 +9,10 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+
+		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+			$this->markTestSkipped('DB schema tests require the full WordPress test library.');
+		}
 		
 		// Install tables to ensure they exist
 		AIPS_DB_Manager::install_tables();

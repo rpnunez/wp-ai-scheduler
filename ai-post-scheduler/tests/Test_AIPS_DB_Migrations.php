@@ -9,6 +9,11 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+
+		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+			$this->markTestSkipped('Database migration tests require the full WordPress test library.');
+		}
+
 		delete_option('aips_db_version');
 	}
 

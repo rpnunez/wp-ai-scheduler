@@ -28,9 +28,9 @@
     ]
   },
   "scripts": {
-    "test": "vendor/bin/phpunit",
-    "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
-    "test:verbose": "vendor/bin/phpunit --verbose",
+    "test": "php tools/phpunit-runner.php",
+    "test:coverage": "php tools/phpunit-runner.php --coverage-html coverage",
+    "test:verbose": "php tools/phpunit-runner.php --verbose",
     "lint:repository-boundary": "php tools/check-repository-boundary.php"
   },
   "config": {

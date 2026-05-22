@@ -157,6 +157,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+
+    if (!function_exists('esc_sql')) {
+        function esc_sql($data) {
+            if (is_array($data)) {
+                return array_map('esc_sql', $data);
+            }
+
+            return is_string($data) ? addslashes($data) : $data;
+        }
+    }
+
     if (!function_exists("esc_js")) {
         function esc_js($text) {
             return addslashes($text);
@@ -179,6 +190,44 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('plugin_basename')) {
         function plugin_basename($file) {
             return basename(dirname($file)) . '/' . basename($file);
+        }
+    }
+
+    if (!isset($GLOBALS['menu'])) {
+        $GLOBALS['menu'] = array();
+    }
+
+    if (!isset($GLOBALS['submenu'])) {
+        $GLOBALS['submenu'] = array();
+    }
+
+    if (!isset($GLOBALS['_registered_pages'])) {
+        $GLOBALS['_registered_pages'] = array();
+    }
+
+    if (!function_exists('add_menu_page')) {
+        function add_menu_page($page_title, $menu_title, $capability, $menu_slug, $callback = '', $icon_url = '', $position = null) {
+            global $menu, $_registered_pages;
+
+            $menu[] = array($menu_title, $capability, $menu_slug, $page_title);
+            $_registered_pages['toplevel_page_' . $menu_slug] = true;
+
+            return $menu_slug;
+        }
+    }
+
+    if (!function_exists('add_submenu_page')) {
+        function add_submenu_page($parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback = '') {
+            global $submenu, $_registered_pages;
+
+            if (!isset($submenu[$parent_slug])) {
+                $submenu[$parent_slug] = array();
+            }
+
+            $submenu[$parent_slug][] = array($menu_title, $capability, $menu_slug, $page_title);
+            $_registered_pages['admin_page_' . $menu_slug] = true;
+
+            return $menu_slug;
         }
     }
     
@@ -565,6 +614,55 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('get_userdata')) {
+        function get_userdata($user_id) {
+            global $test_user_data, $test_users;
+
+            if (isset($test_user_data[$user_id])) {
+                return (object) $test_user_data[$user_id];
+            }
+
+            if (!isset($test_users[$user_id])) {
+                return false;
+            }
+
+            return (object) array(
+                'ID' => $user_id,
+                'display_name' => 'User ' . $user_id,
+                'user_login' => 'user' . $user_id,
+                'roles' => array($test_users[$user_id]),
+            );
+        }
+    }
+
+    if (!function_exists('get_category')) {
+        function get_category($category_id) {
+            global $test_categories;
+
+            if (isset($test_categories[$category_id])) {
+                return (object) $test_categories[$category_id];
+            }
+
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_list_pluck')) {
+        function wp_list_pluck($list, $field) {
+            $values = array();
+
+            foreach ((array) $list as $item) {
+                if (is_array($item) && array_key_exists($field, $item)) {
+                    $values[] = $item[$field];
+                } elseif (is_object($item) && isset($item->$field)) {
+                    $values[] = $item->$field;
+                }
+            }
+
+            return $values;
+        }
+    }
+
     if (!function_exists('wp_insert_post')) {
         function wp_insert_post($postarr, $wp_error = false) {
             static $post_id = 1;
@@ -759,11 +857,39 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                             static $user_id = 1;
                             $id = $user_id++;
                             // Store user role in global
-                            global $test_users;
+                            global $test_users, $test_user_data;
                             if (!isset($test_users)) {
                                 $test_users = array();
                             }
+                            if (!isset($test_user_data)) {
+                                $test_user_data = array();
+                            }
                             $test_users[$id] = isset($args['role']) ? $args['role'] : 'subscriber';
+                            $test_user_data[$id] = array(
+                                'ID' => $id,
+                                'display_name' => isset($args['display_name']) ? $args['display_name'] : 'User ' . $id,
+                                'user_login' => isset($args['user_login']) ? $args['user_login'] : 'user' . $id,
+                                'roles' => array($test_users[$id]),
+                            );
+                            return $id;
+                        }
+                    };
+                    $this->factory->category = new class {
+                        public function create($args = array()) {
+                            static $category_id = 1;
+                            $id = $category_id++;
+
+                            global $test_categories;
+                            if (!isset($test_categories)) {
+                                $test_categories = array();
+                            }
+
+                            $test_categories[$id] = array(
+                                'term_id' => $id,
+                                'name' => isset($args['name']) ? $args['name'] : 'Category ' . $id,
+                                'slug' => isset($args['slug']) ? $args['slug'] : 'category-' . $id,
+                            );
+
                             return $id;
                         }
                     };
@@ -797,6 +923,21 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 parent::tearDown();
             }
 
+            public function getActualOutput(): string {
+                $output = ob_get_contents();
+
+                if ($output !== false && $output !== '') {
+                    ob_clean();
+                    return $output;
+                }
+
+                if (isset($GLOBALS['aips_last_ajax_output'])) {
+                    return (string) $GLOBALS['aips_last_ajax_output'];
+                }
+
+                return '';
+            }
+
             public function assertWPError($actual, $message = '') {
                 $this->assertTrue(is_wp_error($actual), $message);
             }
@@ -818,6 +959,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
                 // Clear test post meta to avoid cross-test pollution.
                 $GLOBALS['aips_test_meta'] = array();
+                $GLOBALS['aips_last_ajax_output'] = '';
 
                 // Flush the AIPS_Config option cache so stale values don't leak
                 // across tests.  Re-register the cache-invalidation hooks on the
@@ -914,14 +1056,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('wp_send_json_success')) {
         function wp_send_json_success($data = null, $status_code = null) {
-            echo json_encode(array('success' => true, 'data' => $data));
+            $GLOBALS['aips_last_ajax_output'] = json_encode(array('success' => true, 'data' => $data));
+            echo $GLOBALS['aips_last_ajax_output'];
             throw new WPAjaxDieContinueException();
         }
     }
     
     if (!function_exists('wp_send_json_error')) {
         function wp_send_json_error($data = null, $status_code = null) {
-            echo json_encode(array('success' => false, 'data' => $data));
+            $GLOBALS['aips_last_ajax_output'] = json_encode(array('success' => false, 'data' => $data));
+            echo $GLOBALS['aips_last_ajax_output'];
             throw new WPAjaxDieContinueException();
         }
     }
