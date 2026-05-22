@@ -38,10 +38,11 @@ class AIPS_Settings_UI {
      */
     public function ai_backend_field_callback() {
         $value = AIPS_AI_Service_Factory::get_selected_backend();
+        $wp_ai_available = AIPS_AI_Service_Factory::is_wordpress_ai_client_available();
         $meow_available = AIPS_AI_Service_Factory::is_meow_ai_engine_available();
         ?>
         <select name="aips_ai_backend" id="aips_ai_backend" class="regular-text">
-            <option value="<?php echo esc_attr(AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?>" <?php selected($value, AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?>>
+            <option value="<?php echo esc_attr(AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?>" <?php selected($value, AIPS_AI_Service_Factory::BACKEND_WORDPRESS_AI_CLIENT); ?><?php echo $wp_ai_available ? '' : ' disabled="disabled"'; ?>>
                 <?php esc_html_e('WordPress AI Client', 'ai-post-scheduler'); ?>
             </option>
             <option value="<?php echo esc_attr(AIPS_AI_Service_Factory::BACKEND_MEOW_AI_ENGINE); ?>" <?php selected($value, AIPS_AI_Service_Factory::BACKEND_MEOW_AI_ENGINE); ?><?php echo $meow_available ? '' : ' disabled="disabled"'; ?>>
@@ -53,6 +54,9 @@ class AIPS_Settings_UI {
         </p>
         <?php if (!$meow_available) : ?>
             <p class="description"><?php esc_html_e('The Meow Apps AI Engine option is disabled because the plugin is not currently installed and active.', 'ai-post-scheduler'); ?></p>
+        <?php endif; ?>
+        <?php if (!$wp_ai_available) : ?>
+            <p class="description"><?php esc_html_e('The WordPress AI Client option is disabled because this site does not have WordPress 7+ AI Client support available.', 'ai-post-scheduler'); ?></p>
         <?php endif; ?>
         <?php
     }

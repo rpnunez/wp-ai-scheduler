@@ -28,6 +28,24 @@ class AIPS_AI_Service_Factory {
 	}
 
 	/**
+	 * Return backend metadata keyed by backend slug.
+	 *
+	 * @return array
+	 */
+	public static function get_backends() {
+		return array(
+			self::BACKEND_WORDPRESS_AI_CLIENT => array(
+				'label'     => __('WordPress AI Client', 'ai-post-scheduler'),
+				'available' => self::is_wordpress_ai_client_available(),
+			),
+			self::BACKEND_MEOW_AI_ENGINE => array(
+				'label'     => __('Meow Apps AI Engine', 'ai-post-scheduler'),
+				'available' => self::is_meow_ai_engine_available(),
+			),
+		);
+	}
+
+	/**
 	 * Check whether the WordPress 7 AI Client backend is available.
 	 *
 	 * @return bool
@@ -71,22 +89,10 @@ class AIPS_AI_Service_Factory {
 	 */
 	public static function sanitize_backend($backend) {
 		$backend = sanitize_key((string) $backend);
-		$allowed = self::get_backend_options();
+		$backends = self::get_backends();
 
-		if (!in_array($backend, $allowed, true)) {
+		if (!isset($backends[$backend]) || !$backends[$backend]['available']) {
 			return self::get_default_backend();
-		}
-
-		if ($backend === self::BACKEND_MEOW_AI_ENGINE && !self::is_meow_ai_engine_available()) {
-			return self::is_wordpress_ai_client_available()
-				? self::BACKEND_WORDPRESS_AI_CLIENT
-				: self::get_default_backend();
-		}
-
-		if ($backend === self::BACKEND_WORDPRESS_AI_CLIENT && !self::is_wordpress_ai_client_available()) {
-			return self::is_meow_ai_engine_available()
-				? self::BACKEND_MEOW_AI_ENGINE
-				: self::get_default_backend();
 		}
 
 		return $backend;
@@ -119,7 +125,7 @@ class AIPS_AI_Service_Factory {
 		$backend = self::get_selected_backend();
 
 		if ($backend === self::BACKEND_WORDPRESS_AI_CLIENT) {
-			return new AIPS_WordPress_AI_Client_Service($logger, $config);
+			return new AIPS_WordPress_AI_Client_Service($logger, $config, $resilience_service);
 		}
 
 		return new AIPS_Meow_Apps_AI_Service($logger, $config, $resilience_service);

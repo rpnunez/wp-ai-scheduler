@@ -1371,6 +1371,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
+        'interface-aips-ai-service-interface.php',
         'class-aips-ai-service-factory.php',
         'class-aips-wordpress-ai-client-service.php',
         'class-aips-meow-apps-ai-service.php',
