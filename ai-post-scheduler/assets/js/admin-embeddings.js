@@ -26,7 +26,30 @@
 		 * future setup that must run once the DOM is ready.
 		 */
 		init: function() {
-			// Nothing needed on init currently; reserved for future use.
+			$(document).on('click', '[data-aips-queue-embeddings]', this.handleQueueClick.bind(this));
+		},
+
+		/**
+		 * Handle queue button clicks.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleQueueClick: function(e) {
+			var $btn;
+			var authorId;
+			var batchSize;
+
+			e.preventDefault();
+
+			$btn = $(e.currentTarget);
+			authorId = parseInt($btn.data('aips-queue-embeddings'), 10) || 0;
+			batchSize = parseInt($btn.data('batch-size'), 10) || 0;
+
+			$btn.prop('disabled', true).attr('aria-busy', 'true');
+
+			this.queueEmbeddings(authorId, batchSize).always(function() {
+				$btn.prop('disabled', false).removeAttr('aria-busy');
+			});
 		},
 
 		/**
@@ -36,38 +59,47 @@
 		 * @param {number} batchSize  Optional. Batch size for processing (default 20).
 		 */
 		queueEmbeddings: function(authorId, batchSize) {
-			authorId = parseInt(authorId) || 0;
-			batchSize = parseInt(batchSize) || 20;
+			authorId = parseInt(authorId, 10) || 0;
+			batchSize = parseInt(batchSize, 10) || aipsEmbeddingsL10n.defaultBatchSize;
 
-			// Show a console message
-			console.log('Queueing embeddings computation for author ID:', authorId, 'with batch size:', batchSize);
+			AIPS.Utilities.showToast(aipsEmbeddingsL10n.queueing, 'info');
 
-			// Make AJAX request
-			$.ajax({
+			return $.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_compute_topic_embeddings',
-					nonce: aipsAjax.nonce,
+					nonce: aipsEmbeddingsL10n.nonce,
 					author_id: authorId,
 					batch_size: batchSize
 				},
 				success: function(response) {
 					if (response.success) {
-						console.log('Embeddings queued successfully:', response.data);
-						alert(response.data.message);
-					} else {
-						console.error('Failed to queue embeddings:', response.data);
-						alert('Error: ' + (response.data.message || 'Failed to queue embeddings.'));
+						AIPS.Utilities.showToast(
+							(response.data && response.data.message) || aipsEmbeddingsL10n.queued,
+							'success'
+						);
+						return;
 					}
+
+					AIPS.Utilities.showToast(
+						(response.data && response.data.message) || aipsEmbeddingsL10n.error,
+						'error'
+					);
 				},
-				error: function(xhr, status, error) {
-					console.error('AJAX error while queueing embeddings:', error);
-					alert('Network error: Failed to queue embeddings.');
+				error: function(xhr) {
+					AIPS.Utilities.showToast(
+						(xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) || aipsEmbeddingsL10n.networkError,
+						'error'
+					);
 				}
 			});
 		}
 
 	};
+
+	$(function() {
+		AIPS.Embeddings.init();
+	});
 
 })(jQuery);

@@ -87,14 +87,20 @@ class AIPS_Author_Topics_Controller {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Embeddings_Cron|null Embeddings worker used for queueing.
+	 */
+	private $embeddings_cron;
+
+	/**
 	 * Initialize the controller.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
+	 * @param AIPS_Embeddings_Cron|null          $embeddings_cron        Embeddings worker.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
+	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null, ?AIPS_Embeddings_Cron $embeddings_cron = null) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -106,6 +112,7 @@ class AIPS_Author_Topics_Controller {
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->embeddings_cron        = $embeddings_cron;
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -768,7 +775,7 @@ class AIPS_Author_Topics_Controller {
 	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
 	 */
 	public function ajax_compute_topic_embeddings() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_compute_topic_embeddings', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -777,78 +784,112 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
-
-		// Sanitize batch size
-		$batch_size = max(1, min(100, $batch_size));
-
-		$queued_count = 0;
+		$batch_size = AIPS_Embeddings_Cron::sanitize_batch_size(
+			isset($_POST['batch_size']) ? absint($_POST['batch_size']) : AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE
+		);
+		$cron = $this->embeddings_cron ?: AIPS_Embeddings_Cron::instance();
+		$queued_authors = array();
+		$skipped_authors = array();
+		$failed_authors = array();
+		$delay = 2;
 
 		if ($author_id === 0) {
-			// Schedule one job per author
 			$authors_repo = new AIPS_Authors_Repository();
-			$authors = $authors_repo->get_all();
+			$authors = array_values(array_filter(
+				$authors_repo->get_all(),
+				function ($author) {
+					return !isset($author->is_active) || (bool) $author->is_active;
+				}
+			));
 
-			foreach ($authors as $author) {
-				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0);
-				$queued_count++;
+			if (empty($authors)) {
+				AIPS_Ajax_Response::error(__('No active authors available for embedding processing.', 'ai-post-scheduler'));
 			}
 
-			$message = sprintf(
-				__('Queued embeddings processing for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
-				$queued_count
-			);
-		} else {
-			// Schedule one job for the given author
-			$this->schedule_embeddings_job($author_id, $batch_size, 0);
-			$queued_count = 1;
+			foreach ($authors as $author) {
+				$current_author_id = (int) $author->id;
+				$transient_key = AIPS_Embeddings_Cron::get_progress_transient_key($current_author_id);
 
-			$message = sprintf(
-				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
-				$author_id
+				if (false !== get_transient($transient_key)) {
+					$skipped_authors[] = $current_author_id;
+					continue;
+				}
+
+				set_transient($transient_key, 'queued', HOUR_IN_SECONDS);
+
+				if ($cron->queue_author_embeddings($current_author_id, $batch_size, 0, $delay)) {
+					$queued_authors[] = $current_author_id;
+					$delay += 2;
+					continue;
+				}
+
+				delete_transient($transient_key);
+				$failed_authors[] = $current_author_id;
+			}
+
+			if (empty($queued_authors)) {
+				AIPS_Ajax_Response::error(
+					__('Failed to queue embedding jobs.', 'ai-post-scheduler'),
+					'error',
+					200,
+					array(
+						'skipped_authors' => $skipped_authors,
+						'failed_authors'  => $failed_authors,
+					)
+				);
+			}
+
+			AIPS_Ajax_Response::success(
+				array(
+					'queued_authors'  => $queued_authors,
+					'skipped_authors' => $skipped_authors,
+					'failed_authors'  => $failed_authors,
+				),
+				sprintf(
+					__('Queued embeddings processing for %d active author(s). Processing will run in the background.', 'ai-post-scheduler'),
+					count($queued_authors)
+				)
 			);
+
+			return;
 		}
 
-		AIPS_Ajax_Response::success(array(
-			'message' => $message,
-			'queued_count' => $queued_count
-		));
-	}
+		$transient_key = AIPS_Embeddings_Cron::get_progress_transient_key($author_id);
 
-	/**
-	 * Schedule a background embeddings processing job.
-	 *
-	 * @param int $author_id         Author ID.
-	 * @param int $batch_size        Batch size for processing.
-	 * @param int $last_processed_id Last processed topic ID.
-	 * @return void
-	 */
-	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
-		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => $last_processed_id,
-		);
-
-		// Schedule to run in a few seconds
-		$timestamp = time() + 5;
-
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
+		if (false !== get_transient($transient_key)) {
+			AIPS_Ajax_Response::error(
+				__('Embedding computation is already in progress for this author.', 'ai-post-scheduler'),
+				'error',
+				200,
 				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
+					'author_id' => $author_id,
 				)
 			);
 		}
+
+		set_transient($transient_key, 'queued', HOUR_IN_SECONDS);
+
+		if (!$cron->queue_author_embeddings($author_id, $batch_size, 0, $delay)) {
+			delete_transient($transient_key);
+			AIPS_Ajax_Response::error(
+				__('Failed to queue embedding job for this author.', 'ai-post-scheduler'),
+				'error',
+				200,
+				array(
+					'author_id' => $author_id,
+				)
+			);
+		}
+
+		AIPS_Ajax_Response::success(
+			array(
+				'queued_authors' => array($author_id),
+			),
+			sprintf(
+				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
+				$author_id
+			)
+		);
 	}
 
 	/**

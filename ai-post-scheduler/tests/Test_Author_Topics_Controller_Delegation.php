@@ -6,7 +6,7 @@
  * Covers controller -> service -> repository delegation boundaries for:
  *   - ajax_get_similar_topics     -> expansion_service->find_similar_topics()
  *   - ajax_suggest_related_topics -> expansion_service->suggest_related_topics()
- *   - ajax_compute_topic_embeddings -> expansion_service->batch_compute_*_embeddings()
+ *   - ajax_compute_topic_embeddings -> embeddings worker queueing
  *   - ajax_get_bulk_generate_estimate -> history_repository->get_estimated_generation_time()
  *
  * @package AI_Post_Scheduler
@@ -147,73 +147,75 @@ public function test_suggest_related_topics_delegates_to_expansion_service() {
 }
 
 // -----------------------------------------------------------------------
-// ajax_compute_topic_embeddings -> expansion_service->batch_compute_*()
+// ajax_compute_topic_embeddings -> embeddings worker queueing
 // -----------------------------------------------------------------------
 
 /**
- * ajax_compute_topic_embeddings with author_id > 0 delegates to
- * expansion_service->batch_compute_approved_embeddings().
+ * ajax_compute_topic_embeddings with author_id > 0 delegates to the
+ * embeddings worker queue API.
  */
-public function test_compute_embeddings_for_author_delegates_to_expansion_service() {
+public function test_compute_embeddings_for_author_delegates_to_embeddings_worker() {
 		wp_set_current_user( $this->admin_user_id );
 
 		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'batch_compute_approved_embeddings', 'batch_compute_all_approved_embeddings' ) )
 			->getMock();
 
-		$mock_expansion->expects( $this->once() )
-			->method( 'batch_compute_approved_embeddings' )
-			->with( 3 )
-			->willReturn( array( 'success' => 5, 'failed' => 0, 'skipped' => 2 ) );
+		$mock_cron = $this->getMockBuilder( 'AIPS_Embeddings_Cron' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'queue_author_embeddings' ) )
+			->getMock();
 
-		$mock_expansion->expects( $this->never() )
-			->method( 'batch_compute_all_approved_embeddings' );
+		$mock_cron->expects( $this->once() )
+			->method( 'queue_author_embeddings' )
+			->with( 3, AIPS_Embeddings_Cron::MAX_BATCH_SIZE, 0, 2 )
+			->willReturn( true );
 
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion );
+		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, null, $mock_cron );
 
 		$_POST = array(
-			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'nonce'     => wp_create_nonce( 'aips_compute_topic_embeddings' ),
+			'author_id' => 3,
+			'batch_size' => 999,
+		);
+
+		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( array( 3 ), $response['data']['queued_authors'] );
+}
+
+/**
+ * ajax_compute_topic_embeddings rejects duplicate author queue requests while a
+ * per-author queue marker already exists.
+ */
+public function test_compute_embeddings_for_author_rejects_duplicate_queue_request() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$mock_cron = $this->getMockBuilder( 'AIPS_Embeddings_Cron' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'queue_author_embeddings' ) )
+			->getMock();
+
+		$mock_cron->expects( $this->never() )
+			->method( 'queue_author_embeddings' );
+
+		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, null, $mock_cron );
+		set_transient( AIPS_Embeddings_Cron::get_progress_transient_key( 3 ), 'queued', HOUR_IN_SECONDS );
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_compute_topic_embeddings' ),
 			'author_id' => 3,
 		);
 
 		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
 
-		$this->assertTrue( $response['success'] );
-		$this->assertArrayHasKey( 'stats', $response['data'] );
-		$this->assertEquals( 5, $response['data']['stats']['success'] );
-}
-
-/**
- * ajax_compute_topic_embeddings with no author_id delegates to
- * expansion_service->batch_compute_all_approved_embeddings().
- */
-public function test_compute_embeddings_for_all_delegates_to_expansion_service() {
-		wp_set_current_user( $this->admin_user_id );
-
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'batch_compute_approved_embeddings', 'batch_compute_all_approved_embeddings' ) )
-			->getMock();
-
-		$mock_expansion->expects( $this->never() )
-			->method( 'batch_compute_approved_embeddings' );
-
-		$mock_expansion->expects( $this->once() )
-			->method( 'batch_compute_all_approved_embeddings' )
-			->willReturn( array( 'success' => 10, 'failed' => 1, 'skipped' => 3 ) );
-
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion );
-
-		$_POST = array(
-			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
-			'author_id' => 0,
-		);
-
-		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
-
-		$this->assertTrue( $response['success'] );
-		$this->assertEquals( 10, $response['data']['stats']['success'] );
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 3, $response['data']['author_id'] );
 }
 
 // -----------------------------------------------------------------------

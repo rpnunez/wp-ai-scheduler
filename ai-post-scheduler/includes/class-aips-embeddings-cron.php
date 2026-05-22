@@ -21,6 +21,48 @@ if (!defined('ABSPATH')) {
 class AIPS_Embeddings_Cron {
 
 	/**
+	 * Cron hook used for background embeddings processing.
+	 *
+	 * @var string
+	 */
+	const HOOK = 'aips_process_author_embeddings';
+
+	/**
+	 * Completion hook fired when an author's embeddings finish processing.
+	 *
+	 * @var string
+	 */
+	const COMPLETED_HOOK = 'aips_author_embeddings_completed';
+
+	/**
+	 * Per-author progress transient prefix.
+	 *
+	 * @var string
+	 */
+	const TRANSIENT_PREFIX = 'aips_embeddings_progress_';
+
+	/**
+	 * Default topics-per-batch for embeddings processing.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_SIZE = 20;
+
+	/**
+	 * Maximum allowed topics-per-batch for embeddings processing.
+	 *
+	 * @var int
+	 */
+	const MAX_BATCH_SIZE = 100;
+
+	/**
+	 * Delay, in seconds, before scheduling the next background batch.
+	 *
+	 * @var int
+	 */
+	const RESCHEDULE_DELAY = 5;
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;
@@ -74,6 +116,67 @@ class AIPS_Embeddings_Cron {
 	}
 
 	/**
+	 * Normalize a requested embeddings batch size.
+	 *
+	 * @param int $batch_size Requested topics-per-batch value.
+	 * @return int
+	 */
+	public static function sanitize_batch_size($batch_size) {
+		$requested_batch_size = absint($batch_size);
+
+		if (0 === $requested_batch_size) {
+			return self::DEFAULT_BATCH_SIZE;
+		}
+
+		return min(self::MAX_BATCH_SIZE, max(1, $requested_batch_size));
+	}
+
+	/**
+	 * Return the per-author progress transient key.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return string
+	 */
+	public static function get_progress_transient_key($author_id) {
+		return self::TRANSIENT_PREFIX . absint($author_id);
+	}
+
+	/**
+	 * Queue embeddings processing for a single author.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Topics per batch.
+	 * @param int $last_processed_id Last processed topic ID.
+	 * @param int $delay             Delay before execution in seconds.
+	 * @return bool
+	 */
+	public function queue_author_embeddings($author_id, $batch_size = self::DEFAULT_BATCH_SIZE, $last_processed_id = 0, $delay = 2) {
+		$args = array(
+			'author_id'         => absint($author_id),
+			'batch_size'        => self::sanitize_batch_size($batch_size),
+			'last_processed_id' => absint($last_processed_id),
+		);
+
+		$timestamp = AIPS_DateTime::now()->addSeconds(max(0, absint($delay)))->timestamp();
+
+		if (function_exists('as_schedule_single_action')) {
+			return false !== call_user_func('as_schedule_single_action', $timestamp, self::HOOK, $args, 'aips-embeddings');
+		}
+
+		return $this->job_scheduler->schedule_simple(
+			self::HOOK,
+			$timestamp,
+			array($args),
+			array(
+				'job_type'      => 'author_embeddings',
+				'retry_options' => array(
+					'max_attempts' => 3,
+				),
+			)
+		);
+	}
+
+	/**
 	 * Process a batch of topic embeddings for an author.
 	 *
 	 * Called by the 'aips_process_author_embeddings' action hook.
@@ -84,7 +187,7 @@ class AIPS_Embeddings_Cron {
 	 */
 	public function process_author_embeddings($args) {
 		$author_id = isset($args['author_id']) ? absint($args['author_id']) : 0;
-		$batch_size = isset($args['batch_size']) ? absint($args['batch_size']) : 20;
+		$batch_size = isset($args['batch_size']) ? self::sanitize_batch_size($args['batch_size']) : self::DEFAULT_BATCH_SIZE;
 		$last_processed_id = isset($args['last_processed_id']) ? absint($args['last_processed_id']) : 0;
 
 		if (!$author_id) {
@@ -156,7 +259,7 @@ class AIPS_Embeddings_Cron {
 			);
 
 			// Delete progress transient on error
-			delete_transient("aips_embeddings_progress_{$author_id}");
+			delete_transient(self::get_progress_transient_key($author_id));
 			return;
 		}
 
@@ -196,7 +299,7 @@ class AIPS_Embeddings_Cron {
 			'timestamp'         => current_time('timestamp'),
 		);
 
-		set_transient("aips_embeddings_progress_{$author_id}", $progress_data, HOUR_IN_SECONDS);
+		set_transient(self::get_progress_transient_key($author_id), $progress_data, HOUR_IN_SECONDS);
 
 		// If not done, re-schedule the job
 		if (!$result['done']) {
@@ -209,7 +312,25 @@ class AIPS_Embeddings_Cron {
 				'info'
 			);
 
-			$this->schedule_next_batch($author_id, $batch_size, $result['last_processed_id']);
+			if (!$this->queue_author_embeddings($author_id, $batch_size, $result['last_processed_id'], self::RESCHEDULE_DELAY)) {
+				$this->logger->log(
+					sprintf(
+						'Failed to re-schedule embeddings batch for author %d.',
+						$author_id
+					),
+					'error'
+				);
+
+				$history->record_error(
+					__('Failed to queue the next embeddings batch.', 'ai-post-scheduler'),
+					array(
+						'author_id' => $author_id,
+						'error_code' => 'EMBEDDINGS_RESCHEDULE_FAILED',
+					)
+				);
+
+				delete_transient(self::get_progress_transient_key($author_id));
+			}
 		} else {
 			$this->logger->log(
 				sprintf(
@@ -231,10 +352,10 @@ class AIPS_Embeddings_Cron {
 			));
 
 			// Delete progress transient on completion
-			delete_transient("aips_embeddings_progress_{$author_id}");
+			delete_transient(self::get_progress_transient_key($author_id));
 
 			// Fire completion action hook
-			do_action('aips_author_embeddings_completed', $author_id, $result);
+			do_action(self::COMPLETED_HOOK, $author_id, $result);
 		}
 	}
 
@@ -262,39 +383,4 @@ class AIPS_Embeddings_Cron {
 		));
 	}
 
-	/**
-	 * Schedule the next batch for an author.
-	 *
-	 * @param int $author_id         Author ID.
-	 * @param int $batch_size        Batch size.
-	 * @param int $last_processed_id Last processed topic ID.
-	 * @return void
-	 */
-	private function schedule_next_batch($author_id, $batch_size, $last_processed_id) {
-		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => $last_processed_id,
-		);
-
-		// Schedule to run in a few seconds
-		$timestamp = AIPS_DateTime::now()->advance(5)->timestamp();
-
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
-	}
 }

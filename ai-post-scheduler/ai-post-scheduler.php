@@ -731,7 +731,7 @@ final class AI_Post_Scheduler {
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.
-        add_action('aips_process_author_embeddings', function($args) {
+        add_action(AIPS_Embeddings_Cron::HOOK, function($args) {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
         }, 10, 1);
 

@@ -82,7 +82,7 @@ class AIPS_Schedule_Controller {
             'aips_process_author_post_slice',
             'aips_retry_failed_author_slices_posts',
             'aips_process_bulk_batch',
-            'aips_process_author_embeddings',
+            AIPS_Embeddings_Cron::HOOK,
             'aips_index_posts_batch',
         );
         $queue_depth = array_fill_keys($queue_hooks, 0);

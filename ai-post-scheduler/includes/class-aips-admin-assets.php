@@ -640,6 +640,15 @@ class AIPS_Admin_Assets {
               AIPS_VERSION,
               true
           );
+
+          wp_localize_script('aips-admin-embeddings', 'aipsEmbeddingsL10n', array(
+              'defaultBatchSize' => AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE,
+              'nonce'        => wp_create_nonce('aips_compute_topic_embeddings'),
+              'queueing'     => __('Queueing embedding jobs...', 'ai-post-scheduler'),
+              'queued'       => __('Embedding jobs queued. Processing will run in the background.', 'ai-post-scheduler'),
+              'error'        => __('Failed to queue embedding jobs.', 'ai-post-scheduler'),
+              'networkError' => __('Network error: Failed to queue embedding jobs.', 'ai-post-scheduler'),
+          ));
     }
 
     /**
