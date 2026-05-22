@@ -106,6 +106,10 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * AJAX handler to bulk schedule multiple topics.
+     * Staggers the start times based on the selected frequency to avoid rate limits.
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -134,16 +138,24 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+        $current_time = $base_time;
+        $interval_calc = AIPS_Interval_Calculator::instance();
+
+        // If the user selects a frequency of 'once', explicitly apply a default
+        // staggering interval (like 'daily') since calculate_next_run() will
+        // fallback to returning the original timestamp for the 'once' frequency.
+        $stagger_freq = ($frequency === 'once') ? 'daily' : $frequency;
 
         foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
-                'next_run' => $next_run,
+                'next_run' => date('Y-m-d H:i:s', $current_time),
                 'is_active' => 1,
                 'topic' => $topic
             );
+
+            $current_time = $interval_calc->calculate_next_run($stagger_freq, $current_time);
         }
 
         $count = $scheduler->save_schedule_bulk($schedules);
@@ -160,6 +172,10 @@ class AIPS_Planner {
         ));
     }
 
+    /**
+     * AJAX handler to immediately generate posts for multiple topics.
+     * Enforces limits to prevent PHP timeouts and delegates to the bulk generator service.
+     */
     public function ajax_bulk_generate_now() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -175,6 +191,20 @@ class AIPS_Planner {
 
         if (empty($topics) || empty($template_id)) {
             AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
+        }
+
+        $limit = apply_filters('aips_bulk_run_now_limit', 5);
+        if ($limit <= 0) {
+            $limit = 5;
+        }
+
+        if (count($topics) > $limit) {
+            AIPS_Ajax_Response::error(sprintf(
+                /* translators: 1: selected count, 2: maximum allowed count */
+                __('You selected %1$d topics, but the maximum allowed for bulk generation is %2$d. Please select fewer topics or schedule them instead.', 'ai-post-scheduler'),
+                count($topics),
+                $limit
+            ));
         }
 
         $template = $this->get_template_by_id($template_id);
