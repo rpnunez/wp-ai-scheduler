@@ -111,6 +111,7 @@ class AIPS_Post_Review_Repository {
 		
 		$templates_table = $this->wpdb->prefix . 'aips_templates';
 		$posts_table = $this->wpdb->posts;
+		$postmeta_table = $this->wpdb->postmeta;
 		
 		// Query for items
 		$query_args = $where_args;
@@ -123,10 +124,20 @@ class AIPS_Post_Review_Repository {
 				t.name as template_name,
 				p.post_title,
 				p.post_modified,
-				p.post_author as wp_post_author
+				p.post_author as wp_post_author,
+				pm_quality_score.meta_value as quality_score,
+				pm_quality_flags.meta_value as quality_flags,
+				pm_review_required.meta_value as review_required,
+				pm_review_reason.meta_value as review_required_reason,
+				pm_review_state.meta_value as review_state
 			FROM {$this->table_name} h
 			LEFT JOIN {$templates_table} t ON h.template_id = t.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
+			LEFT JOIN {$postmeta_table} pm_quality_score ON pm_quality_score.post_id = p.ID AND pm_quality_score.meta_key = 'aips_quality_score'
+			LEFT JOIN {$postmeta_table} pm_quality_flags ON pm_quality_flags.post_id = p.ID AND pm_quality_flags.meta_key = 'aips_quality_flags'
+			LEFT JOIN {$postmeta_table} pm_review_required ON pm_review_required.post_id = p.ID AND pm_review_required.meta_key = 'aips_review_required'
+			LEFT JOIN {$postmeta_table} pm_review_reason ON pm_review_reason.post_id = p.ID AND pm_review_reason.meta_key = 'aips_review_required_reason'
+			LEFT JOIN {$postmeta_table} pm_review_state ON pm_review_state.post_id = p.ID AND pm_review_state.meta_key = 'aips_review_state'
 			WHERE $where_sql
 			ORDER BY $orderby_sql
 			LIMIT %d OFFSET %d

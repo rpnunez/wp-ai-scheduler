@@ -420,6 +420,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         $args = wp_parse_args($args, $defaults);
+
         $args['page'] = max(1, (int) $args['page']);
         $args['per_page'] = (int) $args['per_page'];
         $use_limit = $args['per_page'] > 0;

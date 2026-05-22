@@ -60,6 +60,18 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_default_category'],
         ));
+        register_setting('aips_settings', 'aips_review_policy_mode', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_review_policy_mode'),
+            'default'           => $defaults['aips_review_policy_mode'],
+        ));
+        register_setting('aips_settings', 'aips_review_quality_threshold', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_review_quality_threshold'],
+        ));
+        register_setting('aips_settings', 'aips_review_require_partial_generations', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_review_require_partial_generations'],
+        ));
         register_setting('aips_settings', 'aips_enable_logging', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_logging'],
@@ -171,6 +183,30 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_review_policy_mode',
+            __('Generated Post Review Policy', 'ai-post-scheduler'),
+            array($this->ui, 'review_policy_mode_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_review_quality_threshold',
+            __('Quality Review Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'review_quality_threshold_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_review_require_partial_generations',
+            __('Require Review For Partial Generations', 'ai-post-scheduler'),
+            array($this->ui, 'review_require_partial_generations_field_callback'),
             'aips-settings',
             'aips_general_section'
         );

@@ -97,6 +97,60 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the generated post review policy setting field.
+     *
+     * @return void
+     */
+    public function review_policy_mode_field_callback() {
+        $config = AIPS_Config::get_instance();
+        $allowed_mode_labels = $config->get_review_policy_mode_labels();
+        $allowed_modes = array_keys($allowed_mode_labels);
+        $default_mode = $config->get_default_review_policy_mode();
+        $value = (string) $config->get_option('aips_review_policy_mode', $default_mode);
+
+        if (!in_array($value, $allowed_modes, true)) {
+            $value = $default_mode;
+        }
+        ?>
+        <select name="aips_review_policy_mode">
+            <?php foreach ($allowed_mode_labels as $mode => $label) : ?>
+                <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>>
+                    <?php echo esc_html($label); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Control whether generated posts can publish immediately or must be manually approved first.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the review quality threshold field.
+     *
+     * @return void
+     */
+    public function review_quality_threshold_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_review_quality_threshold');
+        ?>
+        <input type="number" name="aips_review_quality_threshold" value="<?php echo esc_attr($value); ?>" min="0" max="100" class="small-text">
+        <p class="description"><?php esc_html_e('Minimum quality score required for an auto-publish decision when Quality Gate mode is enabled. Default: 80.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the partial generation review enforcement field.
+     *
+     * @return void
+     */
+    public function review_require_partial_generations_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_review_require_partial_generations');
+        ?>
+        <input type="hidden" name="aips_review_require_partial_generations" value="0">
+        <input type="checkbox" name="aips_review_require_partial_generations" value="1" <?php checked(1, $value); ?>>
+        <p class="description"><?php esc_html_e('Force manual review whenever generation completed with missing or failed components.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the AI model setting field.
      *
      * Displays a text input for specifying a custom AI Engine model.
@@ -482,6 +536,25 @@ class AIPS_Settings_UI {
         }
         $float = (float) $value;
         return min(1.0, max(0.1, $float));
+    }
+
+    /**
+     * Sanitize review policy mode input.
+     *
+     * @param mixed $value Raw input value.
+     * @return string
+     */
+    public function sanitize_review_policy_mode($value) {
+        $config = AIPS_Config::get_instance();
+        $allowed = $config->get_review_policy_modes();
+        $default_mode = $config->get_default_review_policy_mode();
+        $value = sanitize_text_field((string) $value);
+
+        if (!in_array($value, $allowed, true)) {
+            return $default_mode;
+        }
+
+        return $value;
     }
 
     /**

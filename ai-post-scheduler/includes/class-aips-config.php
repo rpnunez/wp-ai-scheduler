@@ -135,6 +135,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            'aips_review_policy_mode' => 'disabled',
+            'aips_review_quality_threshold' => 80,
+            'aips_review_require_partial_generations' => 1,
             // General
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
@@ -193,6 +196,53 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+        );
+    }
+
+    /**
+     * Return supported generated-post review policy modes.
+     *
+     * - disabled: no policy-based manual review requirement.
+     * - always: every generated post requires manual review.
+     * - quality_gate: review is required only when audit rules fail.
+     *
+     * @return string[]
+     */
+    public function get_review_policy_modes() {
+        return array('disabled', 'always', 'quality_gate');
+    }
+
+    /**
+     * Return review policy modes that must intercept requested publish status.
+     *
+     * @return string[]
+     */
+    public function get_review_policy_publish_intercept_modes() {
+        return array('always', 'quality_gate');
+    }
+
+    /**
+     * Return the configured default review policy mode.
+     *
+     * @return string
+     */
+    public function get_default_review_policy_mode() {
+        $defaults = $this->get_default_options();
+        $mode = isset($defaults['aips_review_policy_mode']) ? (string) $defaults['aips_review_policy_mode'] : 'disabled';
+
+        return in_array($mode, $this->get_review_policy_modes(), true) ? $mode : 'disabled';
+    }
+
+    /**
+     * Return translated labels for review policy mode options.
+     *
+     * @return array<string,string>
+     */
+    public function get_review_policy_mode_labels() {
+        return array(
+            'disabled' => __('Disabled', 'ai-post-scheduler'),
+            'always' => __('Always Require Review', 'ai-post-scheduler'),
+            'quality_gate' => __('Require Review Below Threshold', 'ai-post-scheduler'),
         );
     }
     

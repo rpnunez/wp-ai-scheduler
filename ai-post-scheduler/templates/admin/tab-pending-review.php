@@ -106,6 +106,21 @@ if (!defined('ABSPATH')) {
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
+										<?php if (isset($item->quality_score) && $item->quality_score !== null && $item->quality_score !== ''): ?>
+										<div class="cell-meta">
+											<?php
+											printf(
+												esc_html__('Quality Score: %d', 'ai-post-scheduler'),
+												absint($item->quality_score)
+											);
+											?>
+										</div>
+										<?php endif; ?>
+										<?php if (!empty($item->review_required_reason)): ?>
+										<div class="cell-meta">
+											<?php echo esc_html($item->review_required_reason); ?>
+										</div>
+										<?php endif; ?>
 									</td>
 									<td>
 										<div class="cell-meta">
@@ -114,13 +129,14 @@ if (!defined('ABSPATH')) {
 									</td>
 									<td>
 										<div class="cell-actions">
+											<?php $publish_label = ('true' === (string) $item->review_required) ? __('Approve & Publish', 'ai-post-scheduler') : __('Publish', 'ai-post-scheduler'); ?>
 											<div class="aips-row-action-group">
 												<button type="button"
 													class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post"
 													data-post-id="<?php echo esc_attr($item->post_id); ?>"
 													title="<?php esc_attr_e('Publish this post', 'ai-post-scheduler'); ?>">
 													<span class="dashicons dashicons-upload"></span>
-													<?php esc_html_e('Publish', 'ai-post-scheduler'); ?>
+													<?php echo esc_html($publish_label); ?>
 												</button>
 												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
 													aria-haspopup="true"

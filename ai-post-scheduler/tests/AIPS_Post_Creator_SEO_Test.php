@@ -21,6 +21,8 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
         parent::setUp();
         global $aips_test_meta;
         $aips_test_meta = array();
+        $GLOBALS['aips_test_options'] = array();
+        AIPS_Config::get_instance()->flush_option_cache();
     }
 
     /**
@@ -190,6 +192,61 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
         $this->assertSame('false', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
         $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_had_partial']);
     }
+
+	/**
+	 * Ensure review policy intercepts generated posts that requested publication.
+	 */
+	public function test_review_gate_stores_requested_publish_status() {
+		global $aips_test_meta;
+
+		update_option('aips_review_policy_mode', 'always');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$template = (object) array(
+			'post_status' => 'publish',
+			'post_author' => 1,
+			'post_tags' => '',
+		);
+
+		$creator = new AIPS_Post_Manager();
+
+		$post_id = $creator->create_post(array(
+			'title' => 'Review Gated Published Post',
+			'content' => 'Generated content body.',
+			'excerpt' => 'Generated excerpt.',
+			'template' => $template,
+		));
+
+		$this->assertSame('publish', $aips_test_meta[$post_id]['aips_requested_post_status']);
+	}
+
+	/**
+	 * Ensure review policy marks generated publish requests as review drafts.
+	 */
+	public function test_review_gate_marks_publish_request_as_needs_review() {
+		global $aips_test_meta;
+
+		update_option('aips_review_policy_mode', 'always');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$template = (object) array(
+			'post_status' => 'publish',
+			'post_author' => 1,
+			'post_tags' => '',
+		);
+
+		$creator = new AIPS_Post_Manager();
+
+		$post_id = $creator->create_post(array(
+			'title' => 'Review Gated Draft',
+			'content' => 'Generated content body.',
+			'excerpt' => 'Generated excerpt.',
+			'template' => $template,
+		));
+
+		$this->assertSame('true', $aips_test_meta[$post_id]['aips_review_required']);
+		$this->assertSame('needs_review', $aips_test_meta[$post_id]['aips_review_state']);
+	}
 
     /**
      * Activate SEO plugins for tests that rely on plugin-specific meta fields.

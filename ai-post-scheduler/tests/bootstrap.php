@@ -524,6 +524,20 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_trim_words')) {
+        function wp_trim_words($text, $num_words = 55, $more = null) {
+            $text = wp_strip_all_tags((string) $text);
+            $words = preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+            $num_words = (int) $num_words;
+
+            if ($num_words <= 0 || count($words) <= $num_words) {
+                return $text;
+            }
+
+            return implode(' ', array_slice($words, 0, $num_words));
+        }
+    }
+
     if (!function_exists('wp_unslash')) {
         function wp_unslash($value) {
             return is_array($value) ? array_map('wp_unslash', $value) : stripslashes($value);
@@ -568,7 +582,26 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('wp_insert_post')) {
         function wp_insert_post($postarr, $wp_error = false) {
             static $post_id = 1;
-            return $post_id++;
+            global $test_posts;
+
+            if (!isset($test_posts)) {
+                $test_posts = array();
+            }
+
+            $filtered_postarr = apply_filters('wp_insert_post_data', $postarr, $postarr);
+            $new_id = $post_id++;
+            $post = new stdClass();
+            $post->ID = $new_id;
+            $post->post_title = isset($filtered_postarr['post_title']) ? $filtered_postarr['post_title'] : '';
+            $post->post_excerpt = isset($filtered_postarr['post_excerpt']) ? $filtered_postarr['post_excerpt'] : '';
+            $post->post_content = isset($filtered_postarr['post_content']) ? $filtered_postarr['post_content'] : '';
+            $post->post_status = isset($filtered_postarr['post_status']) ? $filtered_postarr['post_status'] : 'draft';
+            $post->post_type = isset($filtered_postarr['post_type']) ? $filtered_postarr['post_type'] : 'post';
+            $post->post_author = isset($filtered_postarr['post_author']) ? $filtered_postarr['post_author'] : 0;
+
+            $test_posts[$new_id] = $post;
+
+            return $new_id;
         }
     }
 
@@ -876,7 +909,28 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     if (!function_exists('wp_update_post')) {
         function wp_update_post($postarr, $wp_error = false) {
-            return isset($postarr['ID']) ? $postarr['ID'] : 1;
+            global $test_posts;
+
+            $post_id = isset($postarr['ID']) ? $postarr['ID'] : 1;
+            $filtered_postarr = apply_filters('wp_insert_post_data', $postarr, $postarr);
+
+            if (!isset($test_posts)) {
+                $test_posts = array();
+            }
+
+            if (!isset($test_posts[$post_id])) {
+                $test_posts[$post_id] = get_post($post_id);
+            }
+
+            foreach ($filtered_postarr as $key => $value) {
+                if ('ID' === $key) {
+                    continue;
+                }
+
+                $test_posts[$post_id]->{$key} = $value;
+            }
+
+            return $post_id;
         }
     }
 
@@ -935,17 +989,66 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     }
     
     if (!function_exists('current_user_can')) {
-        function current_user_can($capability) {
+        function current_user_can($capability, ...$args) {
             global $current_user_id, $test_users;
+
             if (!isset($current_user_id) || !isset($test_users[$current_user_id])) {
                 return false;
             }
-            // Check if user has admin role
+
             $role = $test_users[$current_user_id];
-            if ($role === 'administrator' && $capability === 'manage_options') {
-                return true;
+            $role_capabilities = array(
+                'administrator' => array(
+                    'manage_options' => true,
+                    'edit_posts'     => true,
+                    'publish_posts'  => true,
+                    'delete_posts'   => true,
+                ),
+                'editor' => array(
+                    'edit_posts'    => true,
+                    'publish_posts' => true,
+                    'delete_posts'  => true,
+                ),
+                'author' => array(
+                    'edit_posts'    => true,
+                    'publish_posts' => true,
+                    'delete_posts'  => true,
+                ),
+                'contributor' => array(
+                    'edit_posts' => true,
+                ),
+                'subscriber' => array(),
+            );
+
+            $meta_cap_map = array(
+                'edit_post'    => 'edit_posts',
+                'publish_post' => 'publish_posts',
+                'delete_post'  => 'delete_posts',
+            );
+
+            if (isset($meta_cap_map[$capability])) {
+                $post_id = isset($args[0]) ? (int) $args[0] : 0;
+                if ($post_id > 0) {
+                    $post = get_post($post_id);
+                    if (!$post) {
+                        return false;
+                    }
+
+                    if (in_array($role, array('administrator', 'editor'), true)) {
+                        return true;
+                    }
+
+                    if ('author' === $role && isset($post->post_author)) {
+                        return ((int) $post->post_author === (int) $current_user_id);
+                    }
+
+                    return false;
+                }
+
+                $capability = $meta_cap_map[$capability];
             }
-            return false;
+
+            return !empty($role_capabilities[$role][$capability]);
         }
     }
     
@@ -1239,20 +1342,74 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public function insert($table, $data, $format = null) {
                 static $next_insert_id = 1;
                 $this->insert_id = $next_insert_id++;
+                if (!isset($GLOBALS['aips_test_db_rows'])) {
+                    $GLOBALS['aips_test_db_rows'] = array();
+                }
+                if (!isset($GLOBALS['aips_test_db_rows'][$table])) {
+                    $GLOBALS['aips_test_db_rows'][$table] = array();
+                }
+
+                $row = $data;
+                if (!isset($row['id'])) {
+                    $row['id'] = $this->insert_id;
+                }
+                $GLOBALS['aips_test_db_rows'][$table][$row['id']] = $row;
                 return true;
             }
-            
+
             public function update($table, $data, $where, $format = null, $where_format = null) {
+                if (isset($GLOBALS['aips_test_db_rows'][$table])) {
+                    foreach ($GLOBALS['aips_test_db_rows'][$table] as $row_id => $row) {
+                        $matches = true;
+                        foreach ($where as $key => $value) {
+                            if (!isset($row[$key]) || $row[$key] !== $value) {
+                                $matches = false;
+                                break;
+                            }
+                        }
+
+                        if ($matches) {
+                            $GLOBALS['aips_test_db_rows'][$table][$row_id] = array_merge($row, $data);
+                        }
+                    }
+                }
                 return true;
             }
-            
+
             public function delete($table, $where, $where_format = null) {
+                if (isset($GLOBALS['aips_test_db_rows'][$table])) {
+                    foreach ($GLOBALS['aips_test_db_rows'][$table] as $row_id => $row) {
+                        $matches = true;
+                        foreach ($where as $key => $value) {
+                            if (!isset($row[$key]) || $row[$key] !== $value) {
+                                $matches = false;
+                                break;
+                            }
+                        }
+
+                        if ($matches) {
+                            unset($GLOBALS['aips_test_db_rows'][$table][$row_id]);
+                        }
+                    }
+                }
                 return true;
             }
 
             public function replace($table, $data, $format = null) {
                 static $next_replace_id = 1;
                 $this->insert_id = $next_replace_id++;
+                if (!isset($GLOBALS['aips_test_db_rows'])) {
+                    $GLOBALS['aips_test_db_rows'] = array();
+                }
+                if (!isset($GLOBALS['aips_test_db_rows'][$table])) {
+                    $GLOBALS['aips_test_db_rows'][$table] = array();
+                }
+
+                $row = $data;
+                if (!isset($row['id'])) {
+                    $row['id'] = $this->insert_id;
+                }
+                $GLOBALS['aips_test_db_rows'][$table][$row['id']] = $row;
                 return true;
             }
 
@@ -1367,6 +1524,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-builder-topic.php',
         'class-aips-prompt-builder-authors.php',
         'class-aips-prompt-builder-taxonomy.php',
+        'class-aips-date-time.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
@@ -1384,6 +1542,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generation-session.php',
         'class-aips-generation-logger.php',
         'class-aips-generation-context-factory.php',
+        'class-aips-post-quality-auditor.php',
+        'class-aips-review-policy.php',
+        'class-aips-post-quality-gate.php',
+        'class-aips-review-publishing-guard.php',
         'class-aips-post-manager.php',
         'class-aips-post-creator.php',
         'class-aips-markdown-parser.php',
