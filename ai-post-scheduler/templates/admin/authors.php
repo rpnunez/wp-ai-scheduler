@@ -42,7 +42,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" data-aips-queue-embeddings="0" data-batch-size="<?php echo esc_attr( AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE ); ?>">
+                    <button class="aips-btn aips-btn-secondary" data-aips-queue-embeddings="0" data-batch-size="<?php echo esc_attr( AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE ); ?>" title="<?php esc_attr_e('Queue embeddings for all active authors', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Queue embeddings for all active authors', 'ai-post-scheduler'); ?>">
                         <span class="dashicons dashicons-chart-area"></span>
                         <?php esc_html_e('Queue Active Embeddings', 'ai-post-scheduler'); ?>
                     </button>
