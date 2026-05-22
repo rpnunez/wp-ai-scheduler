@@ -6,7 +6,8 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Status {
 
 
-    public function render_page() {
+    public function render_page($args = array()) {
+        $aips_embedded = !empty($args['embedded']);
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
 

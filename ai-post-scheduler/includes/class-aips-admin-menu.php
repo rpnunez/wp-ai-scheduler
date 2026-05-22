@@ -30,7 +30,7 @@ class AIPS_Admin_Menu {
      * Registers a traditional flat submenu structure:
      * Dashboard, Templates, Voices, Article Structures, Authors, Research,
      * Schedule, Schedule Calendar, Generated Posts, History,
-     * Settings, System Status, Seeder, Dev Tools (when enabled).
+     * Settings, Observability, Seeder, Dev Tools (when enabled).
      *
      * @return void
      */
@@ -157,15 +157,6 @@ class AIPS_Admin_Menu {
         );
         add_submenu_page(
             'ai-post-scheduler',
-            __('Operations Insights', 'ai-post-scheduler'),
-            __('Operations Insights', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-operations-insights',
-            array($this, 'render_operations_insights_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
             __('Sources', 'ai-post-scheduler'),
             __('Sources', 'ai-post-scheduler'),
             'manage_options',
@@ -202,23 +193,12 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('System Status', 'ai-post-scheduler'),
-            __('System Status', 'ai-post-scheduler'),
+            __('Observability', 'ai-post-scheduler'),
+            __('Observability', 'ai-post-scheduler'),
             'manage_options',
-            'aips-status',
-            array($this, 'render_status_page')
+            'aips-observability',
+            array($this, 'render_observability_page')
         );
-
-        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            add_submenu_page(
-                'ai-post-scheduler',
-                __('Telemetry', 'ai-post-scheduler'),
-                __('Telemetry', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-telemetry',
-                array($this, 'render_telemetry_page')
-            );
-        }
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -434,21 +414,6 @@ class AIPS_Admin_Menu {
         $history_handler->render_page();
     }
 
-    public function render_operations_insights_page() {
-        $controller = new AIPS_Operations_Insights_Controller();
-        $controller->render_page();
-    }
-
-    /**
-     * Render the Telemetry page.
-     *
-     * @return void
-     */
-    public function render_telemetry_page() {
-        $controller = new AIPS_Telemetry_Controller();
-        $controller->render_page();
-    }
-
     /**
      * Render the Sources page.
      *
@@ -510,15 +475,13 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the System Status page.
-     *
-     * Delegates rendering to the AIPS_System_Status class.
+     * Render the Observability page.
      *
      * @return void
      */
-    public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
-        $status_handler->render_page();
+    public function render_observability_page() {
+        $controller = new AIPS_Observability_Controller();
+        $controller->render_page();
     }
 
     /**

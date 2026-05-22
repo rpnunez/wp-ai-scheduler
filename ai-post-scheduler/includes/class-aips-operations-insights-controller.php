@@ -20,11 +20,12 @@ class AIPS_Operations_Insights_Controller {
 		add_action('admin_post_aips_operations_insights_export', array($this, 'handle_export'));
 	}
 
-	public function render_page() {
+	public function render_page($args = array()) {
 		if (!current_user_can('manage_options')) {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
+		$aips_embedded = !empty($args['embedded']);
 		$days = isset($_GET['days']) ? max(1, min(90, absint($_GET['days']))) : 14;
 
 		$history_trend = $this->history_repository->get_daily_success_failure_trend($days);

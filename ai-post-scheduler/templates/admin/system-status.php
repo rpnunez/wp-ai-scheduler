@@ -2,7 +2,9 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+$aips_embedded = !empty($aips_embedded);
 ?>
+<?php if (!$aips_embedded) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -20,6 +22,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+<?php endif; ?>
 
         <!-- Content -->
         <div class="aips-status-page">
@@ -434,5 +437,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+<?php if (!$aips_embedded) : ?>
     </div>
 </div>
+<?php endif; ?>
