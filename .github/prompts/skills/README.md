@@ -23,6 +23,7 @@ If a client does not support repository prompt-file flows, these can still be co
 | `db-changes-skill.prompt.md` | **Copilot Chat + PR prep + code review prep** | Planning/reviewing schema updates, version bump expectations (`Version:` + `AIPS_VERSION`), migration risk/rollback notes, and migration/repository tests. |
 | `feature-slicing-skill.prompt.md` | **PR prep** | Breaking large initiatives into safe mergeable slices, defining per-slice verification/risk labels, and identifying inter-slice dependencies/blockers. |
 | `generation-pipeline-skill.prompt.md` | **Copilot Chat + code review prep** | Checking generation flow scope, guard/safety regressions in prompt handling, and ensuring logging/history continuity in changed paths. |
+| `observability-skill.prompt.md` | **Copilot Chat + PR prep + code review prep** | Standardizing lifecycle logging, correlation-id propagation, generation-history events, and telemetry-aware performance checks. |
 | `pr-triage-skill.prompt.md` | **Triage workflows** | Ranking the most recent open PRs by merge complexity, highlighting quick wins/blockers, and producing structured triage output. |
 
 ## Notes
