@@ -86,6 +86,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<span class="dashicons dashicons-edit"></span>
 						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
+					<button class="aips-btn aips-btn-secondary" data-aips-queue-embeddings="<?php echo esc_attr($author->id); ?>" data-batch-size="<?php echo esc_attr( AIPS_Embeddings_Cron::DEFAULT_BATCH_SIZE ); ?>">
+						<span class="dashicons dashicons-chart-area"></span>
+						<?php esc_html_e('Queue Embeddings', 'ai-post-scheduler'); ?>
+					</button>
 					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
@@ -439,5 +443,4 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <script type="text/html" id="aips-tmpl-topic-post-action-publish">
 <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
 </script>
-
 

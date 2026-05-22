@@ -140,8 +140,8 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 		// These events are only scheduled while work is actively in progress;
 		// 0 instances is normal (idle), not an error.
 		$on_demand_hooks = array(
-			'aips_index_posts_batch'        => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
-			'aips_process_author_embeddings' => __( 'Author Embeddings', 'ai-post-scheduler' ),
+			'aips_index_posts_batch' => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
+			AIPS_Embeddings_Cron::HOOK => __( 'Author Embeddings', 'ai-post-scheduler' ),
 		);
 
 		foreach ( $on_demand_hooks as $hook => $label ) {
