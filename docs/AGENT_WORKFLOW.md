@@ -63,7 +63,7 @@ Codex skill prompts:
 
 ## 6) Weekly automations
 
-- Open PR triage: `.github/workflows/pr-triage-daily.yml` (weekly schedule)
+- Open PR triage: `.github/workflows/pr-triage-weekly.yml`
 - Docs drift report: `.github/workflows/docs-drift-weekly.yml`
 
 Prompt references:
