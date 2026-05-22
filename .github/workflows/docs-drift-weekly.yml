@@ -1,0 +1,74 @@
+name: Docs Drift Weekly
+
+on:
+  schedule:
+    - cron: '30 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-drift:
+    name: Generate docs drift report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build docs drift report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            const now = new Date();
+            const since = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+            const sinceIso = since.toISOString();
+
+            const changedCore = execSync(
+              `git log --since="${sinceIso}" --name-only --pretty=format: -- ai-post-scheduler/includes ai-post-scheduler/templates ai-post-scheduler/assets | sed '/^$/d' | sort -u`,
+              { encoding: 'utf8' }
+            ).trim().split('\n').filter(Boolean);
+
+            const changedDocs = execSync(
+              `git log --since="${sinceIso}" --name-only --pretty=format: -- docs README.md ai-post-scheduler/README.md ai-post-scheduler/readme.txt | sed '/^$/d' | sort -u`,
+              { encoding: 'utf8' }
+            ).trim().split('\n').filter(Boolean);
+
+            const report = {
+              schema_version: 'docs-drift.v1',
+              generated_at: now.toISOString(),
+              prompt_template: '.github/prompts/docs-drift-weekly.prompt.md',
+              window_days: 7,
+              changed_code_paths: changedCore,
+              changed_docs_paths: changedDocs,
+              docs_drift_risk: changedCore.length > 0 && changedDocs.length === 0 ? 'high' : 'normal',
+            };
+
+            fs.mkdirSync('artifacts', { recursive: true });
+            fs.writeFileSync('artifacts/docs-drift-report.json', JSON.stringify(report, null, 2));
+            fs.writeFileSync(
+              'artifacts/docs-drift-summary.md',
+              [
+                '# Docs Drift Weekly',
+                '',
+                `- Generated: ${report.generated_at}`,
+                `- Prompt template: ${report.prompt_template}`,
+                `- Changed code paths: ${report.changed_code_paths.length}`,
+                `- Changed docs paths: ${report.changed_docs_paths.length}`,
+                `- Drift risk: ${report.docs_drift_risk}`,
+              ].join('\n')
+            );
+
+      - name: Upload docs drift artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-drift-weekly
+          path: artifacts/
+
+      - name: Append summary to workflow run
+        run: cat artifacts/docs-drift-summary.md >> "$GITHUB_STEP_SUMMARY"
