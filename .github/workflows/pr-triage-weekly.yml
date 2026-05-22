@@ -297,7 +297,7 @@ jobs:
               summaryLines.push(`- ${pr.rank}. #${pr.number} [${pr.complexity.status}] score=${pr.complexity.score} ci=${pr.ci_status} mergeable=${pr.mergeable}`);
             }
             summaryLines.push('');
-            summaryLines.push('Prompt template: .github/prompts/pr-triage-daily.prompt.md');
+            summaryLines.push('Prompt template: configured for this workflow');
 
             fs.writeFileSync('artifacts/pr-triage-summary.md', summaryLines.join('\n'));
 
