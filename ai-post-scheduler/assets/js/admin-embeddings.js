@@ -88,9 +88,8 @@
 					);
 				},
 				error: function(xhr) {
-					var response = xhr && xhr.responseJSON && xhr.responseJSON.data ? xhr.responseJSON.data : null;
 					AIPS.Utilities.showToast(
-						(response && response.message) || aipsEmbeddingsL10n.networkError,
+						(xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) || aipsEmbeddingsL10n.networkError,
 						'error'
 					);
 				}

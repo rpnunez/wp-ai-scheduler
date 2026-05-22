@@ -807,10 +807,6 @@ class AIPS_Author_Topics_Controller {
 			}
 
 			foreach ($authors as $author) {
-				if (isset($author->is_active) && !$author->is_active) {
-					continue;
-				}
-
 				$current_author_id = (int) $author->id;
 				$transient_key = AIPS_Embeddings_Cron::get_progress_transient_key($current_author_id);
 

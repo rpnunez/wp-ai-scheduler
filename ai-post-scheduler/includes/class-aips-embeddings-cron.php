@@ -151,7 +151,29 @@ class AIPS_Embeddings_Cron {
 	 * @return bool
 	 */
 	public function queue_author_embeddings($author_id, $batch_size = self::DEFAULT_BATCH_SIZE, $last_processed_id = 0, $delay = 2) {
-		return $this->schedule_next_batch($author_id, $batch_size, $last_processed_id, $delay);
+		$args = array(
+			'author_id'         => absint($author_id),
+			'batch_size'        => self::sanitize_batch_size($batch_size),
+			'last_processed_id' => absint($last_processed_id),
+		);
+
+		$timestamp = AIPS_DateTime::now()->addSeconds(max(0, absint($delay)))->timestamp();
+
+		if (function_exists('as_schedule_single_action')) {
+			return false !== call_user_func('as_schedule_single_action', $timestamp, self::HOOK, $args, 'aips-embeddings');
+		}
+
+		return $this->job_scheduler->schedule_simple(
+			self::HOOK,
+			$timestamp,
+			array($args),
+			array(
+				'job_type'      => 'author_embeddings',
+				'retry_options' => array(
+					'max_attempts' => 3,
+				),
+			)
+		);
 	}
 
 	/**
@@ -361,40 +383,4 @@ class AIPS_Embeddings_Cron {
 		));
 	}
 
-	/**
-	 * Schedule the next batch for an author.
-	 *
-	 * @param int $author_id         Author ID.
-	 * @param int $batch_size        Batch size.
-	 * @param int $last_processed_id Last processed topic ID.
-	 * @param int $delay             Delay before execution in seconds.
-	 * @return bool
-	 */
-	private function schedule_next_batch($author_id, $batch_size, $last_processed_id, $delay = self::RESCHEDULE_DELAY) {
-		$args = array(
-			'author_id'         => absint($author_id),
-			'batch_size'        => self::sanitize_batch_size($batch_size),
-			'last_processed_id' => absint($last_processed_id),
-		);
-
-		// Schedule to run in a few seconds
-		$timestamp = AIPS_DateTime::now()->addSeconds(max(0, absint($delay)))->timestamp();
-
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			return false !== call_user_func('as_schedule_single_action', $timestamp, self::HOOK, $args, 'aips-embeddings');
-		}
-
-		return $this->job_scheduler->schedule_simple(
-			self::HOOK,
-			$timestamp,
-			array($args),
-			array(
-				'job_type'      => 'author_embeddings',
-				'retry_options' => array(
-					'max_attempts' => 3,
-				),
-			)
-		);
-	}
 }
