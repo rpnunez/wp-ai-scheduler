@@ -1,8 +1,8 @@
-name: PR Triage Daily
+name: PR Triage Weekly
 
 on:
   schedule:
-    - cron: '0 13 * * *'
+    - cron: '0 13 * * 1'
   workflow_dispatch:
 
 permissions:

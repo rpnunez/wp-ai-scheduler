@@ -9,9 +9,105 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  risk-guardrails:
+    name: Risk Guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce labels and schema/version guards
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const pull_number = pr.number;
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number, per_page: 100 }
+            );
+            const changed = files.map((f) => f.filename);
+            const labels = (pr.labels || []).map((l) => l.name);
+            const has = (name) => labels.includes(name);
+
+            const touched = {
+              schema: changed.some((f) =>
+                /^ai-post-scheduler\/includes\/class-aips-db-(manager|migrations)\.php$/.test(f)
+              ),
+              adminUi: changed.some((f) =>
+                /^ai-post-scheduler\/(templates\/admin\/|assets\/(js|css)\/)/.test(f)
+              ),
+              ajax: changed.some((f) =>
+                /^ai-post-scheduler\/includes\/class-aips-ajax-registry\.php$/.test(f) ||
+                /^ai-post-scheduler\/includes\/class-aips-.*-controller\.php$/.test(f)
+              ),
+              cron: changed.some((f) =>
+                /^ai-post-scheduler\/includes\/class-aips-.*(scheduler|cron|queue|reconciler).*\.php$/.test(f)
+              ),
+              generation: changed.some((f) =>
+                /^ai-post-scheduler\/includes\/class-aips-.*(generator|prompt|generation|template-context|topic-context).*\.php$/.test(f)
+              ),
+              securitySensitive: changed.some((f) =>
+                /^ai-post-scheduler\/includes\/class-aips-(ajax-registry|settings|auth|security|db-manager|db-migrations)(-.+)?\.php$/.test(f) ||
+                /^ai-post-scheduler\/includes\/class-aips-.*-controller\.php$/.test(f)
+              ),
+            };
+
+            const failures = [];
+
+            if (touched.schema && !has('schema-change')) failures.push('Missing `schema-change` label.');
+            if (touched.adminUi && !has('admin-ui')) failures.push('Missing `admin-ui` label.');
+            if (touched.adminUi && !has('needs-browser-test')) failures.push('Missing `needs-browser-test` label for UI-affecting changes.');
+            if (touched.ajax && !has('ajax-registry')) failures.push('Missing `ajax-registry` label.');
+            if (touched.cron && !has('cron')) failures.push('Missing `cron` label.');
+            if (touched.generation && !has('generation-pipeline')) failures.push('Missing `generation-pipeline` label.');
+            if (touched.securitySensitive && !has('security-sensitive')) failures.push('Missing `security-sensitive` label.');
+
+            if (touched.schema) {
+              const path = 'ai-post-scheduler/ai-post-scheduler.php';
+              const [baseFile, headFile] = await Promise.all([
+                github.rest.repos.getContent({ owner, repo, path, ref: pr.base.sha }),
+                github.rest.repos.getContent({ owner, repo, path, ref: pr.head.sha }),
+              ]);
+
+              const decode = (file) => Buffer.from(file.data.content, 'base64').toString('utf8');
+              const baseText = decode(baseFile);
+              const headText = decode(headFile);
+
+              const parse = (text) => {
+                const header = text.match(/Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/);
+                const constant = text.match(/define\(\s*'AIPS_VERSION',\s*'([0-9]+\.[0-9]+\.[0-9]+)'\s*\)/);
+                return {
+                  header: header ? header[1] : null,
+                  constant: constant ? constant[1] : null,
+                };
+              };
+
+              const baseVersion = parse(baseText);
+              const headVersion = parse(headText);
+
+              if (!headVersion.header || !headVersion.constant) {
+                failures.push('Could not parse plugin versions in ai-post-scheduler.php.');
+              } else {
+                if (headVersion.header !== headVersion.constant) {
+                  failures.push('Plugin header Version and AIPS_VERSION constant must match.');
+                }
+                if (baseVersion.header === headVersion.header && baseVersion.constant === headVersion.constant) {
+                  failures.push('Schema-impacting changes require a version bump in ai-post-scheduler.php.');
+                }
+              }
+            }
+
+            if (failures.length > 0) {
+              core.setFailed(failures.join('\n'));
+            } else {
+              core.info('Risk guardrails passed.');
+            }
+
   lint-and-unit:
     name: Lint & Unit Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    needs: risk-guardrails
     strategy:
       matrix:
         php: [8.2]
