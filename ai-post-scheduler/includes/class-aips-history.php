@@ -230,7 +230,9 @@ class AIPS_History {
         $container = $this->build_history_modal_container($history_item, $format_dates);
         $analysis = $this->analyze_history_modal_summary($container, $logs);
         $container = $this->finalize_history_modal_container($container, $analysis);
-        $display_logs = $this->build_history_display_logs($logs);
+        $container_id = isset($container['id']) ? (int) $container['id'] : 0;
+        $detail_id_prefix = 'aips-log-detail-' . $container_id . '-' . (int) (microtime(true) * 1000000) . '-' . mt_rand(1000, 9999);
+        $display_logs = $this->build_history_display_logs($logs, $detail_id_prefix);
         $filter_counts = $this->build_history_filter_counts($display_logs);
 
         return array(
@@ -669,10 +671,11 @@ class AIPS_History {
     /**
      * Pair AI request/response logs in a single pass and prepare display rows.
      *
-     * @param array<int,array<string,mixed>> $logs Normalized logs.
+     * @param array<int,array<string,mixed>> $logs             Normalized logs.
+     * @param string                         $detail_id_prefix Unique prefix for detail panel IDs in this render.
      * @return array<int,array<string,mixed>>
      */
-    private function build_history_display_logs($logs) {
+    private function build_history_display_logs($logs, $detail_id_prefix) {
         $display_logs = array();
         $pending_requests = array();
         $detail_sequence = 0;
@@ -687,7 +690,7 @@ class AIPS_History {
                     'log_type' => $this->humanize_ai_phase_label($phase_key),
                     'type_ids' => array('5'),
                     'sections' => array(
-                        $this->build_history_log_section($log, __('AI Request', 'ai-post-scheduler'), $detail_sequence),
+                        $this->build_history_log_section($log, __('AI Request', 'ai-post-scheduler'), $detail_sequence, $detail_id_prefix),
                     ),
                 );
                 $display_index = count($display_logs) - 1;
@@ -703,7 +706,7 @@ class AIPS_History {
                 $phase_key = $this->derive_ai_phase_key($log);
                 if (!empty($pending_requests[$phase_key])) {
                     $display_index = array_shift($pending_requests[$phase_key]);
-                    $display_logs[$display_index]['sections'][] = $this->build_history_log_section($log, __('AI Response', 'ai-post-scheduler'), $detail_sequence);
+                    $display_logs[$display_index]['sections'][] = $this->build_history_log_section($log, __('AI Response', 'ai-post-scheduler'), $detail_sequence, $detail_id_prefix);
                     if (!in_array('6', $display_logs[$display_index]['type_ids'], true)) {
                         $display_logs[$display_index]['type_ids'][] = '6';
                     }
@@ -715,7 +718,7 @@ class AIPS_History {
                         'log_type' => $this->humanize_ai_phase_label($phase_key),
                         'type_ids' => array('6'),
                         'sections' => array(
-                            $this->build_history_log_section($log, __('AI Response', 'ai-post-scheduler'), $detail_sequence),
+                            $this->build_history_log_section($log, __('AI Response', 'ai-post-scheduler'), $detail_sequence, $detail_id_prefix),
                         ),
                     );
                 }
@@ -730,7 +733,7 @@ class AIPS_History {
                 'log_type' => $log['log_type'],
                 'type_ids' => array((string) $log['history_type_id']),
                 'sections' => array(
-                    $this->build_history_log_section($log, '', $detail_sequence),
+                    $this->build_history_log_section($log, '', $detail_sequence, $detail_id_prefix),
                 ),
             );
             $detail_sequence++;
@@ -745,9 +748,10 @@ class AIPS_History {
      * @param array<string,mixed> $log             Normalized log entry.
      * @param string              $section_label   Label displayed above the section.
      * @param int                 $detail_sequence Unique detail panel sequence.
+     * @param string              $detail_id_prefix Unique detail panel prefix for this render.
      * @return array<string,mixed>
      */
-    private function build_history_log_section($log, $section_label, $detail_sequence) {
+    private function build_history_log_section($log, $section_label, $detail_sequence, $detail_id_prefix) {
         $extra = $this->extract_history_log_extra_details($log);
         $raw_json = !empty($extra)
             ? wp_json_encode($extra, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
@@ -761,7 +765,7 @@ class AIPS_History {
                 ? $this->format_history_multiline_text($log['details']['message'])
                 : '',
             'has_extra' => !empty($extra),
-            'detail_id' => 'aips-log-detail-' . str_replace('.', '-', uniqid('', true)) . '-' . (int) $detail_sequence,
+            'detail_id' => $detail_id_prefix . '-' . (int) $detail_sequence,
             'tree_html' => !empty($extra) ? $this->render_history_json_tree_html($extra) : '',
             'raw_json' => $raw_json ? $raw_json : '',
         );
