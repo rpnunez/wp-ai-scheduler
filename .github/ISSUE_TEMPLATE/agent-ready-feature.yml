@@ -1,0 +1,61 @@
+name: Agent-ready feature spec
+description: Structured feature request ready for Codex/Copilot/Gemini implementation.
+title: "[agent-ready] "
+labels:
+  - agent-ready
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when the issue is implementation-ready for AI agents.
+  - type: input
+    id: goal
+    attributes:
+      label: Goal
+      description: What outcome should be achieved?
+      placeholder: Add export progress indicators to history page.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: Explicitly list touched files/systems and non-goals.
+      placeholder: |
+        - Includes: ai-post-scheduler/includes/class-aips-...
+        - Templates: ai-post-scheduler/templates/admin/...
+        - Not in scope: unrelated refactors
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete pass/fail checks.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Tests + manual checks required before merge.
+      placeholder: |
+        - `composer test -- tests/Test_...php`
+        - Manual browser check on wp-admin page ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: risk_labels
+    attributes:
+      label: Risk labels
+      options:
+        - label: Add `schema-change` when DB schema/version is touched
+        - label: Add `admin-ui` and `needs-browser-test` when admin UI is touched
+        - label: Add `ajax-registry` for AJAX map/controller wiring changes
+        - label: Add `cron` for scheduling/queue/retry flow changes
+        - label: Add `generation-pipeline` for prompt/generation path changes
+        - label: Add `security-sensitive` for auth/nonce/capability/data-safety changes
+        - label: Mark `needs-spec` instead of `agent-ready` if details are incomplete
