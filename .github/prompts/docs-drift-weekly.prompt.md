@@ -12,4 +12,4 @@ Task:
 3. Suggest the highest-priority docs to refresh.
 
 Output:
-- JSON with risk level, changed code/docs paths, and top documentation actions.
+- JSON with the following structure: {"risk_level": "high|medium|low", "code_paths": [], "docs_paths": [], "actions": [{"doc": "string", "reason": "string"}]}
