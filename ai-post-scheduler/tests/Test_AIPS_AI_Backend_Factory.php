@@ -161,33 +161,57 @@ class AIPS_Test_WP_AI_Client_Prompt_Builder {
 		$this->image_response = isset($args['image_response']) ? $args['image_response'] : new AIPS_Test_WP_AI_Client_File('data:image/png;base64,');
 	}
 
-	public function with_text($text) {
+	public function withText($text) {
 		$this->text = $text;
 		return $this;
 	}
 
+	public function with_text($text) {
+		return $this->withText($text);
+	}
+
+	public function usingTemperature($temperature) {
+		return $this;
+	}
+
 	public function using_temperature($temperature) {
+		return $this->usingTemperature($temperature);
+	}
+
+	public function usingModelPreference(...$models) {
 		return $this;
 	}
 
 	public function using_model_preference(...$models) {
-		return $this;
+		return $this->usingModelPreference(...$models);
 	}
 
-	public function as_json_response($schema) {
+	public function asJsonResponse($schema) {
 		$this->json_schema = $schema;
 		return $this;
 	}
 
+	public function as_json_response($schema) {
+		return $this->asJsonResponse($schema);
+	}
+
+	public function isSupportedForTextGeneration() {
+		return true;
+	}
+
 	public function is_supported_for_text_generation() {
+		return $this->isSupportedForTextGeneration();
+	}
+
+	public function isSupportedForImageGeneration() {
 		return true;
 	}
 
 	public function is_supported_for_image_generation() {
-		return true;
+		return $this->isSupportedForImageGeneration();
 	}
 
-	public function generate_text() {
+	public function generateText() {
 		if ($this->json_schema !== null) {
 			return $this->json_response;
 		}
@@ -195,8 +219,24 @@ class AIPS_Test_WP_AI_Client_Prompt_Builder {
 		return $this->text_response;
 	}
 
-	public function generate_image() {
+	public function generate_text() {
+		return $this->generateText();
+	}
+
+	public function generateImage() {
 		return $this->image_response;
+	}
+
+	public function generate_image() {
+		return $this->generateImage();
+	}
+
+	public function usingMaxTokens($max_tokens) {
+		return $this;
+	}
+
+	public function using_max_tokens($max_tokens) {
+		return $this->usingMaxTokens($max_tokens);
 	}
 }
 

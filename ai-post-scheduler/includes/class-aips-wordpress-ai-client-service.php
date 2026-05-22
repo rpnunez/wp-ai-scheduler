@@ -61,9 +61,15 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 
 		$builder = wp_ai_client_prompt();
 
-		return is_object($builder)
-			&& method_exists($builder, 'is_supported_for_text_generation')
-			&& $builder->is_supported_for_text_generation();
+		if (!is_object($builder)) {
+			return false;
+		}
+
+		if (is_callable(array($builder, 'is_supported_for_text_generation'))) {
+			return (bool) $builder->is_supported_for_text_generation();
+		}
+
+		return is_callable(array($builder, 'generate_text'));
 	}
 
 	/**
@@ -82,13 +88,13 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 		$result = $this->resilience_service->execute_safely(function() use ($prompt, $options) {
 			$builder = $this->prepare_builder($prompt, $options);
 
-			if (!is_object($builder) || !method_exists($builder, 'generate_text')) {
+			if (!is_object($builder) || !is_callable(array($builder, 'generate_text'))) {
 				$error = new WP_Error('ai_unavailable', __('WordPress AI Client prompt builder is not available.', 'ai-post-scheduler'));
 				$this->log_call('text', $prompt, $options, $error);
 				return $error;
 			}
 
-			if (method_exists($builder, 'is_supported_for_text_generation') && !$builder->is_supported_for_text_generation()) {
+			if (is_callable(array($builder, 'is_supported_for_text_generation')) && !$builder->is_supported_for_text_generation()) {
 				$error = new WP_Error('ai_unavailable', __('No configured WordPress AI provider supports text generation.', 'ai-post-scheduler'));
 				$this->log_call('text', $prompt, $options, $error);
 				return $error;
@@ -157,13 +163,13 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 					),
 				);
 
-			if (!is_object($builder) || !method_exists($builder, 'generate_text')) {
+			if (!is_object($builder) || !is_callable(array($builder, 'generate_text'))) {
 				$error = new WP_Error('ai_unavailable', __('WordPress AI Client prompt builder is not available.', 'ai-post-scheduler'));
 				$this->log_call('json', $prompt, $options, $error);
 				return $error;
 			}
 
-			if (method_exists($builder, 'as_json_response')) {
+			if (is_callable(array($builder, 'as_json_response'))) {
 				$builder = $builder->as_json_response($schema);
 			}
 
@@ -234,13 +240,13 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 		$result = $this->resilience_service->execute_safely(function() use ($prompt, $options) {
 			$builder = $this->prepare_builder($prompt, $options);
 
-			if (!is_object($builder) || !method_exists($builder, 'generate_image')) {
+			if (!is_object($builder) || !is_callable(array($builder, 'generate_image'))) {
 				$error = new WP_Error('ai_unavailable', __('WordPress AI Client prompt builder is not available.', 'ai-post-scheduler'));
 				$this->log_call('image', $prompt, $options, $error);
 				return $error;
 			}
 
-			if (method_exists($builder, 'is_supported_for_image_generation') && !$builder->is_supported_for_image_generation()) {
+			if (is_callable(array($builder, 'is_supported_for_image_generation')) && !$builder->is_supported_for_image_generation()) {
 				$error = new WP_Error('image_not_supported', __('No configured WordPress AI provider supports image generation.', 'ai-post-scheduler'));
 				$this->log_call('image', $prompt, $options, $error);
 				return $error;
@@ -392,7 +398,7 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 			return $builder;
 		}
 
-		if (isset($options['temperature']) && method_exists($builder, 'using_temperature')) {
+		if (isset($options['temperature']) && is_callable(array($builder, 'using_temperature'))) {
 			$builder = $builder->using_temperature((float) $options['temperature']);
 		}
 
@@ -403,18 +409,14 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 			$model_preferences = array((string) $options['model']);
 		}
 
-		if (!empty($model_preferences) && method_exists($builder, 'using_model_preference')) {
+		if (!empty($model_preferences) && is_callable(array($builder, 'using_model_preference'))) {
 			$builder = $builder->using_model_preference(...$model_preferences);
 		}
 
-		if (method_exists($builder, 'using_max_output_tokens') || method_exists($builder, 'using_max_tokens')) {
+		if (is_callable(array($builder, 'using_max_tokens'))) {
 			$max_tokens = $this->resolve_max_tokens($options, (string) $prompt);
 
-			if (method_exists($builder, 'using_max_output_tokens')) {
-				$builder = $builder->using_max_output_tokens($max_tokens);
-			} elseif (method_exists($builder, 'using_max_tokens')) {
-				$builder = $builder->using_max_tokens($max_tokens);
-			}
+			$builder = $builder->using_max_tokens($max_tokens);
 		}
 
 		return $builder;
