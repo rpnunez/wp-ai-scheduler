@@ -17,8 +17,8 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
    - Escape all output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`).
    - Verify nonce/capability for state-changing actions.
 4. **Asset updates**
-   - Place admin interactions in `assets/js/`.
-   - Keep styles in `assets/css/` and reuse existing classes when possible.
+   - Place admin interactions in `ai-post-scheduler/assets/js/`.
+   - Keep styles in `ai-post-scheduler/assets/css/` and reuse existing classes when possible.
 5. **Validation**
    - Exercise affected admin pages.
    - Run relevant PHPUnit tests for touched controllers/services.
