@@ -150,7 +150,19 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	 * {@inheritdoc}
 	 */
 	public function has( $key, $group = 'default' ) {
-		return $this->get( $key, $group ) !== null;
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_cache';
+		$row   = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"SELECT 1 FROM `{$table}` WHERE cache_key = %s AND cache_group = %s AND " . $this->get_non_expired_predicate_sql() . " LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$this->namespace_key( $key ),
+				(string) $group,
+				AIPS_DateTime::now()->timestamp()
+			)
+		);
+
+		return null !== $row;
 	}
 
 	/**
@@ -176,6 +188,18 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
+
+	/**
+	 * SQL predicate for rows that should be treated as non-expired.
+	 *
+	 * Mirrors get() semantics: expires_at = 0 never expires, otherwise
+	 * expires_at must be greater than or equal to the current timestamp.
+	 *
+	 * @return string
+	 */
+	private function get_non_expired_predicate_sql() {
+		return '(expires_at = 0 OR expires_at >= %d)';
+	}
 
 	/**
 	 * Optionally prepend the configured prefix to a cache key.

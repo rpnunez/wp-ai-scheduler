@@ -114,7 +114,6 @@ class AIPS_Admin_Assets {
         if (self::PAGE_CAMPAIGN_WIZARD === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGN_WIZARD)) {
 			$this->enqueue_campaign_wizard_assets();
 		}
-
         if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
 			$this->enqueue_research_assets();
 		}
@@ -468,11 +467,11 @@ class AIPS_Admin_Assets {
             'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePosts' => __('Generate posts for this author now?', 'ai-post-scheduler'),
             'confirmGeneratePost' => __('Generate a post from this topic now?', 'ai-post-scheduler'),
-			'generatePostsModalTitle' => __('Generate Posts', 'ai-post-scheduler'),
-			'generatePostsModalMessage' => __('How many posts would you like to generate for this author?', 'ai-post-scheduler'),
-			'numberOfPostsLabel' => __('Number of Posts to Generate', 'ai-post-scheduler'),
-			'generateButtonLabel' => __('Generate', 'ai-post-scheduler'),
-			'invalidQuantityError' => __('Please enter a valid quantity between 1 and 10.', 'ai-post-scheduler'),
+            'generatePostsModalTitle' => __('Generate Posts', 'ai-post-scheduler'),
+            'generatePostsModalMessage' => __('How many posts would you like to generate for this author?', 'ai-post-scheduler'),
+            'numberOfPostsLabel' => __('Number of Posts to Generate', 'ai-post-scheduler'),
+            'generateButtonLabel' => __('Generate', 'ai-post-scheduler'),
+            'invalidQuantityError' => __('Please enter a valid quantity between 1 and 10.', 'ai-post-scheduler'),
             'authorSaved' => __('Author saved successfully.', 'ai-post-scheduler'),
             'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
             'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
@@ -805,6 +804,27 @@ class AIPS_Admin_Assets {
                 'deleteSchedulesFinalConfirm'    => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
                 /* translators: %d: number of selected schedules that are not deletable */
                 'deleteSchedulesSkipNotice'      => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
+                // Status strip
+                'scheduleStatusLoadFailed'       => __('Unable to load schedule status.', 'ai-post-scheduler'),
+                'queueDepthLabel'                => __('Queue depth:', 'ai-post-scheduler'),
+                'bulkPendingLabel'               => __('Bulk pending:', 'ai-post-scheduler'),
+                'bulkFailedLabel'                => __('Bulk failed:', 'ai-post-scheduler'),
+                'activeSchedulesLabel'           => __('Active schedules', 'ai-post-scheduler'),
+                'upcomingSchedulesLabel'         => __('Upcoming in next 24h', 'ai-post-scheduler'),
+                'overdueSchedulesLabel'          => __('Overdue schedules', 'ai-post-scheduler'),
+                'noQueueEventsNext24h'           => __('No queue events in next 24h.', 'ai-post-scheduler'),
+                'noScheduleRunsNext24h'          => __('No schedule runs in next 24h.', 'ai-post-scheduler'),
+                'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
+                'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
+                'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
+                'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
+                'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
+                /* translators: %d: number of overdue schedules */
+                'overdueSchedulesWarning'        => __('%d schedule(s) are overdue.', 'ai-post-scheduler'),
+                'viewHistory'                    => __('View history', 'ai-post-scheduler'),
+                'systemStatus'                   => __('System status', 'ai-post-scheduler'),
+                'notifications'                  => __('Notifications', 'ai-post-scheduler'),
+                'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
             ));
     }
 
@@ -1295,6 +1315,7 @@ class AIPS_Admin_Assets {
                 'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
                 'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
                 'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
+                'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),
                 'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
                 'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
                 'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),

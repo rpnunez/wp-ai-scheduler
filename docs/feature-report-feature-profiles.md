@@ -32,7 +32,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1308 lines (may violate SRP)
+    1. Consider refactoring — class has 1495 lines (may violate SRP)
     2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -679,8 +679,8 @@
 * **Class**: `AIPS_History`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. [WARNING] Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
-    2. Consider refactoring — class has 531 lines (may violate SRP)
+    1. [WARNING] Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
+    2. Consider refactoring — class has 669 lines (may violate SRP)
 
 ---
 
@@ -699,7 +699,7 @@
 * **Implements**: `AIPS_History_Repository_Interface`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1276 lines (may violate SRP)
+    1. Consider refactoring — class has 1368 lines (may violate SRP)
     2. High method count (31+ methods) — consider splitting responsibilities
 
 ---
@@ -987,6 +987,16 @@
 
 ---
 
+### Post History Ui
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-post-history-ui.php`
+* **Class**: `AIPS_Post_History_UI`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Add comprehensive class-level PHPDoc documentation
+
+---
+
 ### Post Manager
 * **Summary**: Post Manager Service
 * **File**: `ai-post-scheduler/includes/class-aips-post-manager.php`
@@ -1201,9 +1211,9 @@
 * **Class**: `AIPS_Schedule_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. [WARNING] Registers 15 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules
-    2. Consider refactoring — class has 957 lines (may violate SRP)
-    3. High coupling — depends on 16 classes
+    1. [WARNING] Registers 16 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules
+    2. Consider refactoring — class has 1099 lines (may violate SRP)
+    3. High coupling — depends on 19 classes
     4. Add comprehensive class-level PHPDoc documentation
 
 ---

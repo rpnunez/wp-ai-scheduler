@@ -66,7 +66,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository' );
+        $this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY ) );
     }
     
     /**
@@ -79,7 +79,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return array Array of schedule objects with template names.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'all', array('active_only' => $active_only) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -104,7 +104,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return object|null Schedule object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'id', array('id' => $id) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -135,7 +135,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             $current_time = AIPS_DateTime::now()->timestamp();
         }
         $current_time = (int) $current_time;
-        $key = 'due:' . $current_time . ':' . (int) $limit;
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'due', array('current_time' => $current_time, 'limit' => $limit) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -252,7 +252,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -360,7 +360,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
 		return $result !== false;
@@ -394,7 +394,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
 		if ($result !== false && $result > 0) {
 			delete_transient('aips_pending_schedule_stats');
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
 			return true;
 		}
 
@@ -412,7 +412,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result !== false;
@@ -429,7 +429,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -512,7 +512,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             array('%d')
         );
         if ( $result !== false ) {
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
         return $result !== false;
     }
@@ -584,7 +584,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -618,7 +618,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -655,7 +655,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
