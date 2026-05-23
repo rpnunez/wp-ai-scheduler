@@ -46,6 +46,8 @@ return array(
     'AIPS_Cache_Db_Driver' => $baseDir . '/includes/class-aips-cache-db-driver.php',
     'AIPS_Cache_Driver' => $baseDir . '/includes/interface-aips-cache-driver.php',
     'AIPS_Cache_Factory' => $baseDir . '/includes/class-aips-cache-factory.php',
+    'AIPS_Cache_Invalidation_Bus' => $baseDir . '/includes/class-aips-cache-invalidation-bus.php',
+    'AIPS_Cache_Policy' => $baseDir . '/includes/class-aips-cache-policy.php',
     'AIPS_Cache_Redis_Driver' => $baseDir . '/includes/class-aips-cache-redis-driver.php',
     'AIPS_Cache_Session_Driver' => $baseDir . '/includes/class-aips-cache-session-driver.php',
     'AIPS_Cache_Wp_Object_Cache_Driver' => $baseDir . '/includes/class-aips-cache-wp-object-cache-driver.php',

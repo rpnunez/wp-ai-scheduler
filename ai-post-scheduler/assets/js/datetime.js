@@ -86,7 +86,13 @@
 		 */
 		getLocale: function(l10n) {
 			var source = l10n || window.aipsDateTimeL10n || {};
-			return (typeof source.locale === 'string' && source.locale) || undefined;
+			if (typeof source.locale !== 'string' || !source.locale) {
+				return undefined;
+			}
+
+			// WordPress locales are often underscored (e.g. en_US). Intl expects
+			// BCP-47 language tags, so normalize underscores to hyphens.
+			return source.locale.replace(/_/g, '-');
 		},
 
 		/**
