@@ -1166,7 +1166,8 @@ class AIPS_Generator {
         $cleaned = preg_replace('/^<h1\b[^>]*>[\s\S]*?<\/h1>\s*/i', '', $cleaned, 1);
 
         // Remove a leading Markdown "# Title" block when Markdown slipped through.
-        $cleaned = preg_replace('/^#\s+[^\n]+\n+/u', '', $cleaned, 1);
+        $cleaned = preg_replace('/^#\\s+[^\\n]+\\s*/u', '', $cleaned, 1);
+        
 
         return ltrim((string) $cleaned);
     }
