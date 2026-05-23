@@ -1380,6 +1380,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'interface-aips-ai-service-interface.php',
         'class-aips-ai-service-factory.php',
         'class-aips-meow-apps-ai-service.php',
+        'class-aips-wordpress-ai-client-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
         'class-aips-token-budget.php',

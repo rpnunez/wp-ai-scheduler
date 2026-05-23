@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-page-header-top">
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Settings', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Configure plugin settings, check system status, and manage AI Engine connection.', 'ai-post-scheduler'); ?></p>
+					<p class="aips-page-description"><?php esc_html_e('Configure plugin settings, check system status, and manage the selected AI backend.', 'ai-post-scheduler'); ?></p>
 				</div>
 			</div>
 		</div>
@@ -51,7 +51,7 @@ if (!defined('ABSPATH')) {
 
 					<!-- AI Tab -->
 					<div id="settings-ai-tab" class="aips-tab-content" style="display:none;">
-						<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
+						<p class="description"><?php esc_html_e('Select the AI backend and configure generation preferences.', 'ai-post-scheduler'); ?></p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
 						</table>

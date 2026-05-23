@@ -59,7 +59,7 @@ class AIPS_Research_Service {
         }
 
         if (!$this->ai_service->is_available()) {
-            return new WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
+            return new WP_Error('ai_unavailable', __('The selected AI backend is not available for research.', 'ai-post-scheduler'));
         }
 
         // Validate count
@@ -492,7 +492,7 @@ class AIPS_Research_Service {
         }
 
         if ( ! $this->ai_service->is_available() ) {
-            return new WP_Error( 'ai_unavailable', __( 'AI Engine is not available for research.', 'ai-post-scheduler' ) );
+            return new WP_Error( 'ai_unavailable', __( 'The selected AI backend is not available for research.', 'ai-post-scheduler' ) );
         }
 
         $count = max( 1, min( 50, absint( $count ) ) );

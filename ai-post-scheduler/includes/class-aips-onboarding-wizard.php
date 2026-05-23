@@ -129,8 +129,11 @@ class AIPS_Onboarding_Wizard {
 
 		$state = $this->get_state();
 
-		$site_ctx = class_exists('AIPS_Site_Context') ? AIPS_Site_Context::get() : array();
-		$ai_engine_active = class_exists('Meow_MWAI_Core');
+		$site_ctx              = class_exists('AIPS_Site_Context') ? AIPS_Site_Context::get() : array();
+		$ai_backend_id         = AIPS_AI_Service_Factory::get_backend_id();
+		$ai_backend_label      = AIPS_AI_Service_Factory::get_backend_label($ai_backend_id);
+		$ai_backend_supported  = AIPS_AI_Service_Factory::is_backend_supported($ai_backend_id);
+		$ai_backend_available  = AIPS_AI_Service_Factory::is_backend_available($ai_backend_id);
 
 		$authors_repo = new AIPS_Authors_Repository();
 		$templates_repo = new AIPS_Template_Repository();
@@ -353,8 +356,15 @@ class AIPS_Onboarding_Wizard {
 	public function ajax_generate_topics() {
 		$this->ajax_guard();
 
-		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating topics.', 'ai-post-scheduler'));
+		$backend_label = AIPS_AI_Service_Factory::get_backend_label(AIPS_AI_Service_Factory::get_backend_id());
+		if (!(new AIPS_AI_Service())->is_available()) {
+			AIPS_Ajax_Response::invalid_request(
+				sprintf(
+					/* translators: %s: backend label */
+					__('%s is not ready. Configure it before generating topics.', 'ai-post-scheduler'),
+					$backend_label
+				)
+			);
 		}
 
 		$state = $this->get_state();
@@ -412,8 +422,15 @@ class AIPS_Onboarding_Wizard {
 	public function ajax_generate_post() {
 		$this->ajax_guard();
 
-		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating a post.', 'ai-post-scheduler'));
+		$backend_label = AIPS_AI_Service_Factory::get_backend_label(AIPS_AI_Service_Factory::get_backend_id());
+		if (!(new AIPS_AI_Service())->is_available()) {
+			AIPS_Ajax_Response::invalid_request(
+				sprintf(
+					/* translators: %s: backend label */
+					__('%s is not ready. Configure it before generating a post.', 'ai-post-scheduler'),
+					$backend_label
+				)
+			);
 		}
 
 		$state = $this->get_state();

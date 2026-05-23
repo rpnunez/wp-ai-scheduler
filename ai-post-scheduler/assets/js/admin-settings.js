@@ -160,6 +160,18 @@
 		});
 	}
 
+	/**
+	 * Toggle backend-specific AI setting rows.
+	 *
+	 * @return {void}
+	 */
+	function updateAIBackendFields() {
+		var backend = $('#aips_ai_backend').val();
+
+		$('.aips-ai-backend-row').hide();
+		$('.aips-ai-backend-' + backend).show();
+	}
+
 	$(document).ready(function() {
 		if ($('#aips-settings-tab-nav').length) {
 			AIPS.initSettingsPage();
@@ -174,6 +186,11 @@
 		// Cache driver field may be present on the settings page.
 		if ($('#aips_cache_driver').length) {
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
+		}
+
+		if ($('#aips_ai_backend').length) {
+			updateAIBackendFields();
+			$(document).on('change', '#aips_ai_backend', updateAIBackendFields);
 		}
 	});
 

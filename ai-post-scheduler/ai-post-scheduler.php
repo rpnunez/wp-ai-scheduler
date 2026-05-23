@@ -145,10 +145,19 @@ final class AI_Post_Scheduler {
      */
     private function check_dependencies() {
         add_action('admin_init', function() {
-            if (!class_exists('Meow_MWAI_Core')) {
+            $backend_id = AIPS_AI_Service_Factory::get_backend_id();
+
+            if (!AIPS_AI_Service_Factory::is_backend_supported($backend_id)) {
+                $backend_label = AIPS_AI_Service_Factory::get_backend_label($backend_id);
+
                 add_action('admin_notices', function() {
+                    $backend_id    = AIPS_AI_Service_Factory::get_backend_id();
+                    $backend_label = AIPS_AI_Service_Factory::get_backend_label($backend_id);
                     echo '<div class="notice notice-error"><p>';
-                    echo esc_html__('AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated.', 'ai-post-scheduler');
+                    printf(
+                        esc_html__('AI Post Scheduler cannot use the selected backend: %s. Install or enable that backend, or switch backends in the plugin settings.', 'ai-post-scheduler'),
+                        esc_html($backend_label)
+                    );
                     echo '</p></div>';
                 });
             }
