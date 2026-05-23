@@ -40,6 +40,13 @@ jobs:
             exit 1
           fi
 
+      - name: Guard report output exists
+        run: |
+          if [ ! -f docs/feature-report.md ]; then
+            echo "::error::Feature scanner did not produce docs/feature-report.md. Check script execution logs for report generation failures."
+            exit 1
+          fi
+
       - name: Publish Summary to GitHub UI
         run: |
           if [ -f docs/feature-report.md ]; then
