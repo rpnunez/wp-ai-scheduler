@@ -16,7 +16,7 @@ Use this skill when implementing or reviewing multi-step generation, scheduling,
    - `fail`
    - `success`
 
-2. **Use `AIPS_Logger` and `AIPS_Correlation_Id`** for multi-step flows:
+2. **Use `AIPS_Logger` and `AIPS_Correlation_ID`** for multi-step flows:
    - Create or retrieve a correlation id at flow entry.
    - Propagate the same id through all nested/subsequent steps.
    - Include correlation id in all log contexts.
