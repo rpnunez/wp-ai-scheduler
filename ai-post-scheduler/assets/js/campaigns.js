@@ -30,6 +30,8 @@
 			$(document).on('click', '.aips-toggle-campaign', this.handleToggleCampaign.bind(this));
 			$(document).on('click', '.aips-duplicate-campaign', this.handleDuplicateCampaign.bind(this));
 			$(document).on('click', '.aips-archive-campaign', this.handleArchiveCampaign.bind(this));
+			$(document).on('click', '.aips-restore-campaign', this.handleRestoreCampaign.bind(this));
+			$(document).on('click', '.aips-delete-campaign', this.handleDeleteCampaign.bind(this));
 		},
 
 		/**
@@ -51,7 +53,7 @@
 				data: {
 					action: 'aips_toggle_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId,
+					campaign_id: campaignId,
 					is_active: newStatus
 				},
 				success: function(response) {
@@ -91,7 +93,7 @@
 				data: {
 					action: 'aips_duplicate_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId
+					campaign_id: campaignId
 				},
 				success: function(response) {
 					if (response.success) {
@@ -130,14 +132,12 @@
 				data: {
 					action: 'aips_archive_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId
+					campaign_id: campaignId
 				},
 				success: function(response) {
 					if (response.success) {
 						AIPS.Utilities.showNotice(response.data.message, 'success');
-						$button.closest('tr').fadeOut(300, function() {
-							$(this).remove();
-						});
+						location.reload();
 					} else {
 						AIPS.Utilities.showNotice(response.data.message || 'Failed to archive campaign', 'error');
 						$button.prop('disabled', false);
@@ -147,6 +147,52 @@
 					AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
 					$button.prop('disabled', false);
 				}
+			});
+		},
+
+		handleRestoreCampaign: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+
+			$.post(ajaxurl, {
+				action: 'aips_restore_campaign',
+				nonce: aipsAjax.nonce,
+				campaign_id: campaignId
+			}).done(function(response) {
+				if (response.success) {
+					location.reload();
+				} else {
+					AIPS.Utilities.showNotice(response.data.message || 'Failed to restore campaign', 'error');
+				}
+			}).fail(function() {
+				AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
+			});
+		},
+
+		handleDeleteCampaign: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+
+			if (!confirm('Delete this campaign? This removes the campaign and its owned template/schedule rows.')) {
+				return;
+			}
+
+			$.post(ajaxurl, {
+				action: 'aips_delete_campaign',
+				nonce: aipsAjax.nonce,
+				campaign_id: campaignId
+			}).done(function(response) {
+				if (response.success) {
+					location.reload();
+				} else {
+					AIPS.Utilities.showNotice(response.data.message || 'Failed to delete campaign', 'error');
+				}
+			}).fail(function() {
+				AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
 			});
 		}
 	};

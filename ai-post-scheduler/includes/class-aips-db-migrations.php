@@ -132,6 +132,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '2.8.2', '<' ) ) {
+			$this->migrate_to_2_8_2();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -339,6 +343,134 @@ class AIPS_DB_Migrations {
 
 			foreach ( $columns as $col_def ) {
 				AIPS_DB_Manager::convert_datetime_column_to_bigint( $table, $col_def[0] );
+			}
+		}
+	}
+
+	/**
+	 * Migration for version 2.8.2.
+	 *
+	 * Adds the canonical campaigns parent table plus campaign ownership
+	 * columns on templates, schedules, and history. Existing campaign-style
+	 * template schedules are backfilled into parent campaign rows for the
+	 * current local installation.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_8_2() {
+		global $wpdb;
+
+		$table_campaigns = $wpdb->prefix . 'aips_campaigns';
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_schedule  = $wpdb->prefix . 'aips_schedule';
+		$table_history   = $wpdb->prefix . 'aips_history';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_schedule ) );
+		if ( $table_exists !== $table_schedule ) {
+			return;
+		}
+
+		$template_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+		$schedule_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_schedule}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+		$history_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_history}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+
+		if ( ! $template_campaign_column || ! $schedule_campaign_column || ! $history_campaign_column ) {
+			return;
+		}
+
+		$campaigns_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_campaigns ) );
+		if ( $campaigns_table_exists !== $table_campaigns ) {
+			return;
+		}
+
+		$existing_campaign_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_campaigns}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( $existing_campaign_count > 0 ) {
+			$wpdb->query(
+				"UPDATE {$table_history} h
+				INNER JOIN {$table_templates} t ON h.template_id = t.id
+				SET h.campaign_id = t.campaign_id
+				WHERE h.campaign_id IS NULL
+				AND t.campaign_id IS NOT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			);
+			return;
+		}
+
+		$schedules = $wpdb->get_results(
+			"SELECT s.*, t.name AS template_name
+			FROM {$table_schedule} s
+			LEFT JOIN {$table_templates} t ON s.template_id = t.id
+			WHERE s.schedule_type = 'post_generation'", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $schedules ) ) {
+			return;
+		}
+
+		foreach ( $schedules as $schedule ) {
+			$created_at = ! empty( $schedule['created_at'] ) ? absint( $schedule['created_at'] ) : AIPS_DateTime::now()->timestamp();
+			$updated_at = AIPS_DateTime::now()->timestamp();
+			$campaign_name = ! empty( $schedule['title'] ) ? $schedule['title'] : ( ! empty( $schedule['template_name'] ) ? $schedule['template_name'] : sprintf( 'Campaign %d', absint( $schedule['id'] ) ) );
+			$content_goal = isset( $schedule['topic'] ) ? (string) $schedule['topic'] : '';
+			$campaign_mode = ! empty( $schedule['campaign_mode'] ) ? sanitize_key( $schedule['campaign_mode'] ) : 'template';
+			$is_active = ! empty( $schedule['is_active'] ) ? 1 : 0;
+			$is_archived = ( isset( $schedule['status'] ) && 'archived' === $schedule['status'] ) ? 1 : 0;
+
+			$wpdb->insert(
+				$table_campaigns,
+				array(
+					'name'          => sanitize_text_field( $campaign_name ),
+					'content_goal'  => sanitize_textarea_field( $content_goal ),
+					'campaign_mode' => $campaign_mode,
+					'is_active'     => $is_active,
+					'is_archived'   => $is_archived,
+					'created_at'    => $created_at,
+					'updated_at'    => $updated_at,
+				),
+				array( '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
+			);
+
+			$campaign_id = (int) $wpdb->insert_id;
+			if ( ! $campaign_id ) {
+				continue;
+			}
+
+			$wpdb->update(
+				$table_schedule,
+				array( 'campaign_id' => $campaign_id ),
+				array( 'id' => absint( $schedule['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( ! empty( $schedule['template_id'] ) ) {
+				$wpdb->update(
+					$table_templates,
+					array( 'campaign_id' => $campaign_id ),
+					array( 'id' => absint( $schedule['template_id'] ) ),
+					array( '%d' ),
+					array( '%d' )
+				);
+
+				$wpdb->query(
+					$wpdb->prepare(
+						"UPDATE {$table_history}
+						SET campaign_id = %d
+						WHERE template_id = %d
+						AND campaign_id IS NULL",
+						$campaign_id,
+						absint( $schedule['template_id'] )
+					)
+				);
 			}
 		}
 	}

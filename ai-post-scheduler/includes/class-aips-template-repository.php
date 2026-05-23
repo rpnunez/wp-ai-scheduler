@@ -169,12 +169,13 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'campaign_id' => isset($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
-        
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
+
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -282,6 +283,11 @@ class AIPS_Template_Repository {
             $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
             $format[] = '%s';
         }
+
+        if (array_key_exists('campaign_id', $data)) {
+            $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
+            $format[] = '%d';
+        }
         
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
@@ -322,6 +328,19 @@ class AIPS_Template_Repository {
             $this->cache->flush();
         }
         return $result;
+    }
+
+    /**
+     * Count templates owned by a campaign.
+     *
+     * @param int $campaign_id Campaign ID.
+     * @return int
+     */
+    public function count_by_campaign($campaign_id) {
+        return (int) $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE campaign_id = %d",
+            absint($campaign_id)
+        ));
     }
     
     /**

@@ -213,6 +213,15 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
+            'campaign_id' => isset($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+            'post_type_rules' => isset($data['post_type_rules']) ? $data['post_type_rules'] : null,
+            'blackout_dates' => isset($data['blackout_dates']) ? $data['blackout_dates'] : null,
+            'time_window_start' => isset($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null,
+            'time_window_end' => isset($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null,
+            'day_preferences' => isset($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null,
+            'season_end_date' => isset($data['season_end_date']) ? absint($data['season_end_date']) : null,
         );
 
         if (!empty($data['id'])) {

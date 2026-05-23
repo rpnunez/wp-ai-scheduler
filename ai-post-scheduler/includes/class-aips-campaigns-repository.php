@@ -2,8 +2,7 @@
 /**
  * Campaigns Repository
  *
- * Repository for campaign-specific operations and metrics.
- * Campaigns are schedules created via the Campaign Wizard with enhanced metadata.
+ * Canonical parent-model repository for campaigns and their owned child rows.
  *
  * @package AI_Post_Scheduler
  */
@@ -15,12 +14,47 @@ if (!defined('ABSPATH')) {
 class AIPS_Campaigns_Repository {
 
 	/**
-	 * @var self|null Singleton instance.
+	 * @var self|null
 	 */
 	private static $instance = null;
 
 	/**
-	 * Get the shared singleton instance.
+	 * @var wpdb
+	 */
+	private $wpdb;
+
+	/**
+	 * @var string
+	 */
+	private $campaigns_table;
+
+	/**
+	 * @var string
+	 */
+	private $templates_table;
+
+	/**
+	 * @var string
+	 */
+	private $schedule_table;
+
+	/**
+	 * @var string
+	 */
+	private $history_table;
+
+	/**
+	 * @var AIPS_Template_Repository
+	 */
+	private $template_repository;
+
+	/**
+	 * @var AIPS_Schedule_Repository
+	 */
+	private $schedule_repository;
+
+	/**
+	 * Get singleton instance.
 	 *
 	 * @return self
 	 */
@@ -28,216 +62,109 @@ class AIPS_Campaigns_Repository {
 		if (self::$instance === null) {
 			self::$instance = new self();
 		}
+
 		return self::$instance;
 	}
 
 	/**
-	 * @var string The schedule table name (with prefix)
-	 */
-	private $schedule_table;
-
-	/**
-	 * @var string The templates table name (with prefix)
-	 */
-	private $templates_table;
-
-	/**
-	 * @var string The history table name (with prefix)
-	 */
-	private $history_table;
-
-	/**
-	 * @var string The authors table name (with prefix)
-	 */
-	private $authors_table;
-
-	/**
-	 * @var wpdb WordPress database abstraction object
-	 */
-	private $wpdb;
-
-	/**
-	 * Initialize the repository.
+	 * Constructor.
 	 */
 	public function __construct() {
 		global $wpdb;
+
 		$this->wpdb = $wpdb;
-		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
+		$this->campaigns_table = $wpdb->prefix . 'aips_campaigns';
 		$this->templates_table = $wpdb->prefix . 'aips_templates';
+		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
 		$this->history_table = $wpdb->prefix . 'aips_history';
-		$this->authors_table = $wpdb->prefix . 'aips_authors';
+		$this->template_repository = AIPS_Template_Repository::instance();
+		$this->schedule_repository = AIPS_Schedule_Repository::instance();
 	}
 
 	/**
-	 * Get all campaigns with metrics.
+	 * Fetch campaigns with ownership and generation metrics.
 	 *
-	 * @param bool $active_only Optional. Return only active campaigns. Default false.
-	 * @return array Array of campaign objects with metrics.
+	 * @param bool|null $archived Optional archive filter.
+	 * @return array
 	 */
-	public function get_all_campaigns($active_only = false) {
-		$where = $active_only ? "WHERE s.is_active = 1" : "";
+	public function get_all_campaigns($archived = null) {
+		$where_sql = '';
+		$where_args = array();
 
-		return $this->wpdb->get_results("
-			SELECT
-				s.*,
-				t.name as template_name,
-				a.name as author_name,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.template_id = s.template_id AND h.status = 'completed') as posts_generated,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.template_id = s.template_id AND h.status IN ('failed', 'error')) as posts_failed
-			FROM {$this->schedule_table} s
-			LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
-			LEFT JOIN {$this->authors_table} a ON s.author_id = a.id
-			{$where}
-			ORDER BY s.created_at DESC
-		");
-	}
-
-	/**
-	 * Get campaign by schedule ID.
-	 *
-	 * @param int $schedule_id Schedule ID.
-	 * @return object|null Campaign object with metrics or null.
-	 */
-	public function get_campaign_by_id($schedule_id) {
-		return $this->wpdb->get_row($this->wpdb->prepare("
-			SELECT
-				s.*,
-				t.name as template_name,
-				a.name as author_name,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.template_id = s.template_id AND h.status = 'completed') as posts_generated,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.template_id = s.template_id AND h.status IN ('failed', 'error')) as posts_failed
-			FROM {$this->schedule_table} s
-			LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
-			LEFT JOIN {$this->authors_table} a ON s.author_id = a.id
-			WHERE s.id = %d
-		", $schedule_id));
-	}
-
-	/**
-	 * Get campaign metrics.
-	 *
-	 * @param int $schedule_id Schedule ID.
-	 * @return array Campaign metrics array.
-	 */
-	public function get_campaign_metrics($schedule_id) {
-		$schedule = $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT template_id, last_run, created_at FROM {$this->schedule_table} WHERE id = %d",
-			$schedule_id
-		));
-
-		if (!$schedule) {
-			return array(
-				'posts_generated'  => 0,
-				'posts_failed'     => 0,
-				'success_rate'     => 0,
-				'last_run'         => null,
-				'total_runs'       => 0,
-			);
+		if ($archived !== null) {
+			$where_sql = 'WHERE c.is_archived = %d';
+			$where_args[] = $archived ? 1 : 0;
 		}
 
-		$posts_generated = (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE template_id = %d AND status = 'completed'",
-			$schedule->template_id
-		));
+		$sql = "
+			SELECT
+				c.*,
+				(SELECT COUNT(*) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS linked_template_count,
+				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS linked_schedule_count,
+				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.campaign_id = c.id AND h.status = 'completed') AS generated_posts_count,
+				(SELECT MAX(s.last_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS last_run,
+				(SELECT MIN(s.next_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1 AND s.next_run > 0) AS next_run,
+				(SELECT MIN(t.id) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS primary_template_id,
+				(SELECT MIN(s.id) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS primary_schedule_id,
+				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1) AS active_schedule_count
+			FROM {$this->campaigns_table} c
+			{$where_sql}
+			ORDER BY c.is_archived ASC, c.created_at DESC
+		";
 
-		$posts_failed = (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE template_id = %d AND status IN ('failed', 'error')",
-			$schedule->template_id
-		));
+		$rows = empty($where_args)
+			? $this->wpdb->get_results($sql)
+			: $this->wpdb->get_results($this->wpdb->prepare($sql, $where_args));
 
-		$total_posts = $posts_generated + $posts_failed;
-		$success_rate = $total_posts > 0 ? round(($posts_generated / $total_posts) * 100, 2) : 0;
-
-		return array(
-			'posts_generated'  => $posts_generated,
-			'posts_failed'     => $posts_failed,
-			'success_rate'     => $success_rate,
-			'last_run'         => $schedule->last_run ? $schedule->last_run : null,
-			'total_runs'       => $total_posts,
-		);
-	}
-
-	/**
-	 * Duplicate a campaign.
-	 *
-	 * @param int $schedule_id Schedule ID to duplicate.
-	 * @return int|false New schedule ID or false on failure.
-	 */
-	public function duplicate_campaign($schedule_id) {
-		$schedule = $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT * FROM {$this->schedule_table} WHERE id = %d",
-			$schedule_id
-		));
-
-		if (!$schedule) {
-			return false;
+		if (empty($rows)) {
+			return array();
 		}
 
-		$title = $schedule->title . ' (Copy)';
-		$next_run = AIPS_DateTime::now()->timestamp();
+		foreach ($rows as $row) {
+			$row->generated_posts_count = (int) $row->generated_posts_count;
+			$row->linked_template_count = (int) $row->linked_template_count;
+			$row->linked_schedule_count = (int) $row->linked_schedule_count;
+			$row->active_schedule_count = (int) $row->active_schedule_count;
+			$row->can_delete = $row->generated_posts_count === 0;
+		}
 
-		$result = $this->wpdb->insert(
-			$this->schedule_table,
-			array(
-				'template_id'              => $schedule->template_id,
-				'title'                    => $title,
-				'article_structure_id'     => $schedule->article_structure_id,
-				'rotation_pattern'         => $schedule->rotation_pattern,
-				'frequency'                => $schedule->frequency,
-				'topic'                    => $schedule->topic,
-				'next_run'                 => $next_run,
-				'is_active'                => 0,
-				'status'                   => $schedule->status,
-				'schedule_type'            => $schedule->schedule_type,
-				'author_id'                => $schedule->author_id,
-				'campaign_mode'            => $schedule->campaign_mode,
-				'post_type_rules'          => $schedule->post_type_rules,
-				'blackout_dates'           => $schedule->blackout_dates,
-				'time_window_start'        => $schedule->time_window_start,
-				'time_window_end'          => $schedule->time_window_end,
-				'day_preferences'          => $schedule->day_preferences,
-				'season_end_date'          => $schedule->season_end_date,
-				'dynamic_quantity_rules'   => $schedule->dynamic_quantity_rules,
-				'campaign_metadata'        => $schedule->campaign_metadata,
-				'created_at'               => AIPS_DateTime::now()->timestamp(),
-			),
-			array(
-				'%d', '%s', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s',
-				'%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d'
-			)
-		);
-
-		return $result ? $this->wpdb->insert_id : false;
+		return $rows;
 	}
 
 	/**
-	 * Archive a campaign (soft delete via status).
+	 * Fetch one campaign row.
 	 *
-	 * @param int $schedule_id Schedule ID.
-	 * @return bool True on success, false on failure.
+	 * @param int $campaign_id Campaign ID.
+	 * @return object|null
 	 */
-	public function archive_campaign($schedule_id) {
-		return $this->wpdb->update(
-			$this->schedule_table,
-			array('status' => 'archived', 'is_active' => 0),
-			array('id' => $schedule_id),
-			array('%s', '%d'),
-			array('%d')
-		) !== false;
+	public function get_campaign_by_id($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return null;
+		}
+
+		$campaigns = $this->get_all_campaigns(null);
+		foreach ($campaigns as $campaign) {
+			if ((int) $campaign->id === $campaign_id) {
+				return $campaign;
+			}
+		}
+
+		return null;
 	}
 
 	/**
-	 * Get campaign statistics summary.
+	 * Get summary stats for the campaigns page.
 	 *
-	 * @return array Summary statistics.
+	 * @return array
 	 */
 	public function get_summary_stats() {
 		$stats = $this->wpdb->get_row("
 			SELECT
-				COUNT(*) as total_campaigns,
-				SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_campaigns,
-				SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived_campaigns
-			FROM {$this->schedule_table}
+				COUNT(*) AS total_campaigns,
+				SUM(CASE WHEN is_archived = 0 THEN 1 ELSE 0 END) AS active_campaigns,
+				SUM(CASE WHEN is_archived = 1 THEN 1 ELSE 0 END) AS archived_campaigns
+			FROM {$this->campaigns_table}
 		");
 
 		return array(
@@ -245,5 +172,490 @@ class AIPS_Campaigns_Repository {
 			'active'   => isset($stats->active_campaigns) ? (int) $stats->active_campaigns : 0,
 			'archived' => isset($stats->archived_campaigns) ? (int) $stats->archived_campaigns : 0,
 		);
+	}
+
+	/**
+	 * Get campaign metrics payload.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array
+	 */
+	public function get_campaign_metrics($campaign_id) {
+		$campaign = $this->get_campaign_by_id($campaign_id);
+
+		if (!$campaign) {
+			return array(
+				'posts_generated' => 0,
+				'last_run' => null,
+				'next_run' => null,
+				'template_count' => 0,
+				'schedule_count' => 0,
+			);
+		}
+
+		return array(
+			'posts_generated' => (int) $campaign->generated_posts_count,
+			'last_run' => !empty($campaign->last_run) ? (int) $campaign->last_run : null,
+			'next_run' => !empty($campaign->next_run) ? (int) $campaign->next_run : null,
+			'template_count' => (int) $campaign->linked_template_count,
+			'schedule_count' => (int) $campaign->linked_schedule_count,
+		);
+	}
+
+	/**
+	 * Get campaigns for content filter dropdowns.
+	 *
+	 * @return array
+	 */
+	public function get_campaign_filter_options() {
+		return $this->wpdb->get_results("
+			SELECT id, name, is_archived
+			FROM {$this->campaigns_table}
+			ORDER BY is_archived ASC, name ASC
+		");
+	}
+
+	/**
+	 * Create and finalize a new campaign with owned child records.
+	 *
+	 * @param array $payload Wizard payload.
+	 * @return array{campaign_id:int,template_id:int,schedule_id:int}
+	 */
+	public function create_campaign_bundle($payload) {
+		$started_transaction = $this->start_transaction();
+
+		try {
+			$campaign_id = $this->create_campaign(array(
+				'name'          => $payload['campaign_name'],
+				'content_goal'  => $payload['content_goal'],
+				'campaign_mode' => $payload['campaign_mode'],
+				'is_active'     => $payload['is_active'],
+				'is_archived'   => 0,
+			));
+
+			if (!$campaign_id) {
+				throw new RuntimeException(__('Campaign could not be saved.', 'ai-post-scheduler'));
+			}
+
+			$template_id = $this->create_campaign_template($campaign_id, $payload);
+			if (!$template_id) {
+				throw new RuntimeException(__('Template could not be saved.', 'ai-post-scheduler'));
+			}
+
+			$scheduler = new AIPS_Scheduler();
+			$schedule_id = $scheduler->save_schedule(array(
+				'template_id'           => $template_id,
+				'campaign_id'           => $campaign_id,
+				'title'                 => $payload['campaign_name'],
+				'frequency'             => $payload['frequency'],
+				'start_time'            => $payload['start_time'],
+				'is_active'             => $payload['is_active'],
+				'topic'                 => $payload['content_goal'],
+				'article_structure_id'  => $payload['article_structure_id'],
+				'rotation_pattern'      => $payload['rotation_pattern'],
+				'author_id'             => $payload['author_id'],
+				'campaign_mode'         => $payload['campaign_mode'],
+				'post_type_rules'       => $payload['post_type_rules'],
+				'blackout_dates'        => $payload['blackout_dates'],
+				'time_window_start'     => $payload['time_window_start'],
+				'time_window_end'       => $payload['time_window_end'],
+				'day_preferences'       => $payload['day_preferences'],
+				'season_end_date'       => $payload['season_end_date'],
+			));
+
+			if (!$schedule_id) {
+				throw new RuntimeException(__('Schedule could not be created.', 'ai-post-scheduler'));
+			}
+
+			if ($started_transaction) {
+				$this->wpdb->query('COMMIT');
+			}
+
+			return array(
+				'campaign_id' => (int) $campaign_id,
+				'template_id' => (int) $template_id,
+				'schedule_id' => (int) $schedule_id,
+			);
+		} catch (Throwable $e) {
+			if ($started_transaction) {
+				$this->wpdb->query('ROLLBACK');
+			}
+
+			throw $e;
+		}
+	}
+
+	/**
+	 * Duplicate a campaign as a new parent with new child rows.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return int|false
+	 */
+	public function duplicate_campaign($campaign_id) {
+		$campaign = $this->get_campaign_by_id($campaign_id);
+		if (!$campaign) {
+			return false;
+		}
+
+		$templates = $this->get_templates_by_campaign($campaign_id);
+		$schedules = $this->get_schedules_by_campaign($campaign_id);
+		$started_transaction = $this->start_transaction();
+
+		try {
+			$new_campaign_id = $this->create_campaign(array(
+				'name'          => $campaign->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
+				'content_goal'  => $campaign->content_goal,
+				'campaign_mode' => $campaign->campaign_mode,
+				'is_active'     => 0,
+				'is_archived'   => 0,
+			));
+
+			if (!$new_campaign_id) {
+				throw new RuntimeException(__('Campaign could not be duplicated.', 'ai-post-scheduler'));
+			}
+
+			$template_map = array();
+			foreach ($templates as $template) {
+				$template_data = get_object_vars($template);
+				unset($template_data['id'], $template_data['created_at'], $template_data['updated_at']);
+				$template_data['name'] = $template->name . ' ' . __('(Copy)', 'ai-post-scheduler');
+				$template_data['campaign_id'] = $new_campaign_id;
+				$new_template_id = $this->template_repository->create($template_data);
+
+				if (!$new_template_id) {
+					throw new RuntimeException(__('Campaign template could not be duplicated.', 'ai-post-scheduler'));
+				}
+
+				$template_map[(int) $template->id] = (int) $new_template_id;
+			}
+
+			foreach ($schedules as $schedule) {
+				$schedule_data = get_object_vars($schedule);
+				unset($schedule_data['id'], $schedule_data['schedule_history_id'], $schedule_data['last_run'], $schedule_data['created_at']);
+				$schedule_data['template_id'] = isset($template_map[(int) $schedule->template_id]) ? $template_map[(int) $schedule->template_id] : (int) $schedule->template_id;
+				$schedule_data['campaign_id'] = $new_campaign_id;
+				$schedule_data['title'] = $schedule->title . ' ' . __('(Copy)', 'ai-post-scheduler');
+				$schedule_data['is_active'] = 0;
+				$schedule_data['next_run'] = AIPS_DateTime::now()->timestamp();
+
+				$new_schedule_id = (new AIPS_Scheduler())->save_schedule($schedule_data);
+				if (!$new_schedule_id) {
+					throw new RuntimeException(__('Campaign schedule could not be duplicated.', 'ai-post-scheduler'));
+				}
+			}
+
+			if ($started_transaction) {
+				$this->wpdb->query('COMMIT');
+			}
+
+			return $new_campaign_id;
+		} catch (Throwable $e) {
+			if ($started_transaction) {
+				$this->wpdb->query('ROLLBACK');
+			}
+
+			return false;
+		}
+	}
+
+	/**
+	 * Set campaign operational active state.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $is_active Active flag.
+	 * @return bool
+	 */
+	public function set_active($campaign_id, $is_active) {
+		$campaign_id = absint($campaign_id);
+		$is_active = $is_active ? 1 : 0;
+
+		$result = $this->update_campaign($campaign_id, array('is_active' => $is_active));
+		if (!$result) {
+			return false;
+		}
+
+		$schedules = $this->get_schedules_by_campaign($campaign_id);
+		foreach ($schedules as $schedule) {
+			$this->schedule_repository->set_active((int) $schedule->id, $is_active);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Archive a campaign and pause owned schedules.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return bool
+	 */
+	public function archive_campaign($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return false;
+		}
+
+		$result = $this->update_campaign($campaign_id, array(
+			'is_active' => 0,
+			'is_archived' => 1,
+		));
+
+		if (!$result) {
+			return false;
+		}
+
+		$schedules = $this->get_schedules_by_campaign($campaign_id);
+		foreach ($schedules as $schedule) {
+			$this->schedule_repository->set_active((int) $schedule->id, 0);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Restore archived campaign visibility without reactivating schedules.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return bool
+	 */
+	public function restore_campaign($campaign_id) {
+		return $this->update_campaign($campaign_id, array(
+			'is_archived' => 0,
+			'is_active' => 0,
+		));
+	}
+
+	/**
+	 * Delete a campaign when no generated posts are attached.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return bool
+	 */
+	public function delete_campaign($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id || !$this->can_delete_campaign($campaign_id)) {
+			return false;
+		}
+
+		$started_transaction = $this->start_transaction();
+
+		try {
+			foreach ($this->get_schedules_by_campaign($campaign_id) as $schedule) {
+				$this->schedule_repository->delete((int) $schedule->id);
+			}
+
+			foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
+				$this->template_repository->delete((int) $template->id);
+			}
+
+			$deleted = $this->wpdb->delete(
+				$this->campaigns_table,
+				array('id' => $campaign_id),
+				array('%d')
+			);
+
+			if ($deleted === false) {
+				throw new RuntimeException(__('Campaign could not be deleted.', 'ai-post-scheduler'));
+			}
+
+			if ($started_transaction) {
+				$this->wpdb->query('COMMIT');
+			}
+
+			return true;
+		} catch (Throwable $e) {
+			if ($started_transaction) {
+				$this->wpdb->query('ROLLBACK');
+			}
+
+			return false;
+		}
+	}
+
+	/**
+	 * Check whether a campaign can be deleted.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return bool
+	 */
+	public function can_delete_campaign($campaign_id) {
+		return $this->get_generated_post_count($campaign_id) === 0;
+	}
+
+	/**
+	 * Count generated posts attached to a campaign historically.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return int
+	 */
+	public function get_generated_post_count($campaign_id) {
+		return (int) $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND status = 'completed'",
+			absint($campaign_id)
+		));
+	}
+
+	/**
+	 * Create a campaign parent row.
+	 *
+	 * @param array $data Campaign data.
+	 * @return int|false
+	 */
+	public function create_campaign($data) {
+		$now = AIPS_DateTime::now()->timestamp();
+		$result = $this->wpdb->insert(
+			$this->campaigns_table,
+			array(
+				'name'          => sanitize_text_field($data['name']),
+				'content_goal'  => isset($data['content_goal']) ? sanitize_textarea_field($data['content_goal']) : '',
+				'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+				'is_active'     => isset($data['is_active']) ? absint($data['is_active']) : 1,
+				'is_archived'   => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
+				'created_at'    => $now,
+				'updated_at'    => $now,
+			),
+			array('%s', '%s', '%s', '%d', '%d', '%d', '%d')
+		);
+
+		return $result ? (int) $this->wpdb->insert_id : false;
+	}
+
+	/**
+	 * Update a campaign parent row.
+	 *
+	 * @param int   $campaign_id Campaign ID.
+	 * @param array $data Update data.
+	 * @return bool
+	 */
+	public function update_campaign($campaign_id, $data) {
+		$update_data = array();
+		$format = array();
+
+		if (isset($data['name'])) {
+			$update_data['name'] = sanitize_text_field($data['name']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['content_goal'])) {
+			$update_data['content_goal'] = sanitize_textarea_field($data['content_goal']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['campaign_mode'])) {
+			$update_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('is_active', $data)) {
+			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('is_archived', $data)) {
+			$update_data['is_archived'] = $data['is_archived'] ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (empty($update_data)) {
+			return false;
+		}
+
+		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
+		$format[] = '%d';
+
+		return $this->wpdb->update(
+			$this->campaigns_table,
+			$update_data,
+			array('id' => absint($campaign_id)),
+			$format,
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Get child templates by campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array
+	 */
+	public function get_templates_by_campaign($campaign_id) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->templates_table} WHERE campaign_id = %d ORDER BY id ASC",
+			absint($campaign_id)
+		));
+	}
+
+	/**
+	 * Get child schedules by campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array
+	 */
+	public function get_schedules_by_campaign($campaign_id) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->schedule_table} WHERE campaign_id = %d ORDER BY id ASC",
+			absint($campaign_id)
+		));
+	}
+
+	/**
+	 * Create a campaign-owned template.
+	 *
+	 * @param int   $campaign_id Campaign ID.
+	 * @param array $payload Wizard payload.
+	 * @return int|false
+	 */
+	private function create_campaign_template($campaign_id, $payload) {
+		$template_data = array(
+			'name'                 => $payload['campaign_name'],
+			'prompt_template'      => $this->resolve_prompt_template($payload),
+			'title_prompt'         => $payload['title_prompt'],
+			'voice_id'             => $payload['voice_id'],
+			'post_quantity'        => 1,
+			'post_status'          => $payload['post_status'],
+			'post_type'            => $payload['post_type'],
+			'post_category'        => $payload['post_category'],
+			'post_tags'            => $payload['post_tags'],
+			'post_author'          => $payload['post_author'],
+			'campaign_id'          => $campaign_id,
+			'is_active'            => 1,
+		);
+
+		if ('existing' === $payload['template_mode']) {
+			$existing_template = $this->template_repository->get_by_id($payload['template_id']);
+			if ($existing_template) {
+				$template_data = array_merge(get_object_vars($existing_template), $template_data);
+				unset($template_data['id'], $template_data['created_at'], $template_data['updated_at']);
+			}
+		}
+
+		return $this->template_repository->create($template_data);
+	}
+
+	/**
+	 * Resolve prompt template content from wizard state.
+	 *
+	 * @param array $payload Wizard payload.
+	 * @return string
+	 */
+	private function resolve_prompt_template($payload) {
+		if ('existing' === $payload['template_mode']) {
+			$template = $this->template_repository->get_by_id($payload['template_id']);
+			if ($template && !empty($payload['prompt_template'])) {
+				return $payload['prompt_template'];
+			}
+
+			return $template ? $template->prompt_template : '';
+		}
+
+		return $payload['prompt_template'];
+	}
+
+	/**
+	 * Start a DB transaction when supported.
+	 *
+	 * @return bool
+	 */
+	private function start_transaction() {
+		return $this->wpdb->query('START TRANSACTION') !== false;
 	}
 }
