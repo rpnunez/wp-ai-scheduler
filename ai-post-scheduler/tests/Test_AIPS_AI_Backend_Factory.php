@@ -127,7 +127,7 @@ class Test_AIPS_AI_Backend_Factory extends WP_UnitTestCase {
 		$backend = AIPS_AI_Service_Factory::create();
 
 		$this->assertInstanceOf(AIPS_AI_Service_Interface::class, $backend);
-		$this->assertInstanceOf(AIPS_Meow_AI_Service::class, $backend);
+		$this->assertInstanceOf(AIPS_Meow_Apps_AI_Service::class, $backend);
 	}
 
 	public function test_factory_resolves_meow_backend_id_by_default() {
@@ -145,7 +145,7 @@ class Test_AIPS_AI_Backend_Factory extends WP_UnitTestCase {
 	}
 
 	public function test_meow_backend_implements_ai_service_interface() {
-		$backend = new AIPS_Meow_AI_Service();
+		$backend = new AIPS_Meow_Apps_AI_Service();
 
 		$this->assertInstanceOf(AIPS_AI_Service_Interface::class, $backend);
 	}

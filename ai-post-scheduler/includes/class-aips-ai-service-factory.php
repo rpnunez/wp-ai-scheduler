@@ -56,7 +56,7 @@ class AIPS_AI_Service_Factory {
 		switch ($backend_id) {
 			case self::BACKEND_MEOW:
 			default:
-				return new AIPS_Meow_AI_Service(
+				return new AIPS_Meow_Apps_AI_Service(
 					isset($args['logger']) ? $args['logger'] : null,
 					isset($args['config']) ? $args['config'] : null,
 					isset($args['resilience_service']) ? $args['resilience_service'] : null

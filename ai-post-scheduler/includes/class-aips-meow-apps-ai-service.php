@@ -1,6 +1,6 @@
 <?php
 /**
- * Meow AI Service
+ * Meow Apps AI Service
  *
  * Concrete AI backend implementation for Meow AI Engine.
  *
@@ -13,12 +13,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class AIPS_Meow_AI_Service
+ * Class AIPS_Meow_Apps_AI_Service
  *
  * Provides AI content generation capabilities through AI Engine integration.
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
-class AIPS_Meow_AI_Service implements AIPS_AI_Service_Interface {
+class AIPS_Meow_Apps_AI_Service implements AIPS_AI_Service_Interface {
 
     /**
      * @var self|null Singleton instance.
