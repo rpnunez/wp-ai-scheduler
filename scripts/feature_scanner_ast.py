@@ -53,169 +53,171 @@ def init_parser():
 
 def check_for_abspath(source_lines):
     # Quick check for the ABSPATH constant definition
-    for i in range(min(15, len(source_lines))):
+    for i in range(min(50, len(source_lines))):
         if 'ABSPATH' in source_lines[i] and 'exit' in source_lines[i]:
             return True
     return False
 
-def analyze_ast(node, source_lines, filepath, is_repository, issues):
-    node_type = node.type
-    filepath_normalized = filepath.replace('\\', '/').lower()
-    # Decode text safely to avoid byte parsing errors
-    text = node.text.decode('utf-8', errors='ignore') if node.text else ""
-    line_num = node.start_point[0] + 1 # tree-sitter is 0-indexed
+def analyze_ast(root_node, source_lines, filepath, filepath_normalized, is_repository, issues):
+    stack = [root_node]
 
-    # Class Naming Check (AGENTS.md Requirement)
-    if node_type == 'class_declaration':
-        name_node = node.child_by_field_name('name')
-        if name_node:
-            class_name = name_node.text.decode('utf-8', errors='ignore')
-            if not class_name.startswith('AIPS_'):
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "non_compliant_class_name",
-                    "message": RULES["non_compliant_class_name"]
-                })
+    while stack:
+        node = stack.pop()
+        node_type = node.type
+        line_num = node.start_point[0] + 1 # tree-sitter is 0-indexed
 
-    # 1. Direct DB Access ($wpdb)
-    if node_type == 'variable_name' and text == '$wpdb' and not is_repository:
-        issues.append({
-            "file": filepath,
-            "line": line_num,
-            "type": "direct_db_access",
-            "message": RULES["direct_db_access"]
-        })
+        # Class Naming Check (AGENTS.md Requirement)
+        if node_type == 'class_declaration':
+            name_node = node.child_by_field_name('name')
+            if name_node:
+                class_name = name_node.text.decode('utf-8', errors='ignore')
+                if not class_name.startswith('AIPS_'):
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "non_compliant_class_name",
+                        "message": RULES["non_compliant_class_name"]
+                    })
 
-    # 2. Function Calls (Legacy Option Access, wp_die, strtotime, transients, cron)
-    elif node_type == 'function_call_expression':
-        func_node = node.child_by_field_name('function')
-        if func_node:
-            func_name = func_node.text.decode('utf-8', errors='ignore')
-            
-            if func_name in ['get_option', 'update_option', 'add_option', 'delete_option'] and 'config' not in filepath_normalized:
+        # 1. Direct DB Access ($wpdb)
+        if node_type == 'variable_name':
+            text = node.text.decode('utf-8', errors='ignore') if node.text else ""
+            if text == '$wpdb' and not is_repository:
                 issues.append({
                     "file": filepath,
                     "line": line_num,
-                    "type": "legacy_option_access",
-                    "message": RULES["legacy_option_access"]
-                })
-            elif func_name == 'wp_die':
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "wp_die_usage",
-                    "message": RULES["wp_die_usage"]
-                })
-            elif func_name in ['strtotime', 'date', 'time', 'gmdate', 'current_time'] and 'datetime' not in filepath_normalized:
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "legacy_date_time",
-                    "message": RULES["legacy_date_time"]
-                })
-            elif func_name in ['set_transient', 'get_transient', 'delete_transient'] and 'cache' not in filepath_normalized:
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "transient_usage",
-                    "message": RULES["transient_usage"]
-                })
-            elif func_name in ['wp_schedule_event', 'wp_schedule_single_event'] and 'cron' not in filepath_normalized:
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "direct_cron_registration",
-                    "message": RULES["direct_cron_registration"]
-                })
-            elif func_name == 'add_action':
-                args_node = node.child_by_field_name('arguments')
-                if args_node:
-                    args_text = args_node.text.decode('utf-8', errors='ignore')
-                    if 'wp_ajax_' in args_text and not 'controller' in filepath.lower():
-                        issues.append({
-                            "file": filepath,
-                            "line": line_num,
-                            "type": "direct_ajax_registration",
-                            "message": RULES["direct_ajax_registration"]
-                        })
-            elif func_name in ['wp_send_json', 'wp_send_json_success', 'wp_send_json_error']:
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "legacy_json_response",
-                    "message": RULES["legacy_json_response"]
+                    "type": "direct_db_access",
+                    "message": RULES["direct_db_access"]
                 })
 
-    # 3. Method Calls on $wpdb (query, get_results)
-    elif node_type == 'member_call_expression':
-        obj_node = node.child_by_field_name('object')
-        name_node = node.child_by_field_name('name')
-        
-        if obj_node and name_node:
-            obj_name = obj_node.text.decode('utf-8', errors='ignore')
-            method_name = name_node.text.decode('utf-8', errors='ignore')
-            
-            if obj_name == '$wpdb' and method_name in ['query', 'get_results'] and not is_repository:
+        # 2. Function Calls (Legacy Option Access, wp_die, strtotime, transients, cron)
+        elif node_type == 'function_call_expression':
+            func_node = node.child_by_field_name('function')
+            if func_node:
+                func_name = func_node.text.decode('utf-8', errors='ignore')
+
+                if func_name in ['get_option', 'update_option', 'add_option', 'delete_option'] and 'config' not in filepath_normalized:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "legacy_option_access",
+                        "message": RULES["legacy_option_access"]
+                    })
+                elif func_name == 'wp_die':
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "wp_die_usage",
+                        "message": RULES["wp_die_usage"]
+                    })
+                elif func_name in ['strtotime', 'date', 'time', 'gmdate', 'current_time'] and 'datetime' not in filepath_normalized:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "legacy_date_time",
+                        "message": RULES["legacy_date_time"]
+                    })
+                elif func_name in ['set_transient', 'get_transient', 'delete_transient'] and 'cache' not in filepath_normalized:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "transient_usage",
+                        "message": RULES["transient_usage"]
+                    })
+                elif func_name in ['wp_schedule_event', 'wp_schedule_single_event'] and 'cron' not in filepath_normalized:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "direct_cron_registration",
+                        "message": RULES["direct_cron_registration"]
+                    })
+                elif func_name == 'add_action':
+                    args_node = node.child_by_field_name('arguments')
+                    if args_node:
+                        args_text = args_node.text.decode('utf-8', errors='ignore')
+                        if 'wp_ajax_' in args_text and 'controller' not in filepath_normalized:
+                            issues.append({
+                                "file": filepath,
+                                "line": line_num,
+                                "type": "direct_ajax_registration",
+                                "message": RULES["direct_ajax_registration"]
+                            })
+                elif func_name in ['wp_send_json', 'wp_send_json_success', 'wp_send_json_error']:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "legacy_json_response",
+                        "message": RULES["legacy_json_response"]
+                    })
+
+        # 3. Method Calls on $wpdb (query, get_results)
+        elif node_type == 'member_call_expression':
+            obj_node = node.child_by_field_name('object')
+            name_node = node.child_by_field_name('name')
+
+            if obj_node and name_node:
+                obj_name = obj_node.text.decode('utf-8', errors='ignore')
+                method_name = name_node.text.decode('utf-8', errors='ignore')
+
+                if obj_name == '$wpdb' and method_name in ['query', 'get_results'] and not is_repository:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "raw_sql_execution",
+                        "message": RULES["raw_sql_execution"]
+                    })
+
+        # 4. Naked WP_Query (Object Instantiation)
+        elif node_type == 'object_creation_expression':
+            class_node = node.child_by_field_name('class')
+            if class_node:
+                class_name = class_node.text.decode('utf-8', errors='ignore')
+                if class_name == 'WP_Query' and not is_repository:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "naked_wp_query",
+                        "message": RULES["naked_wp_query"]
+                    })
+                elif any(suffix in class_name for suffix in ['_Service', '_Repository', '_Controller']) and 'container' not in filepath_normalized and 'factory' not in filepath_normalized:
+                    issues.append({
+                        "file": filepath,
+                        "line": line_num,
+                        "type": "direct_service_instantiation",
+                        "message": RULES["direct_service_instantiation"]
+                    })
+
+        # 5. Echo/Print in Business Logic (UI Layer Separation)
+        elif node_type in ['echo_statement', 'print_intrinsic']:
+            # Flag rendering in 'includes/' unless it's explicitly a UI/Admin/View class
+            if 'includes/' in filepath_normalized and not any(token in filepath_normalized for token in ['ui', 'admin', 'view', 'template']):
                 issues.append({
                     "file": filepath,
                     "line": line_num,
-                    "type": "raw_sql_execution",
-                    "message": RULES["raw_sql_execution"]
+                    "type": "business_logic_rendering",
+                    "message": RULES["business_logic_rendering"]
                 })
 
-    # 4. Naked WP_Query (Object Instantiation)
-    elif node_type == 'object_creation_expression':
-        class_node = node.child_by_field_name('class')
-        if class_node:
-            class_name = class_node.text.decode('utf-8', errors='ignore')
-            if class_name == 'WP_Query' and not is_repository:
+        # 6. Missing Docblocks (Method Declarations)
+        elif node_type == 'method_declaration':
+            start_line = node.start_point[0]
+            has_docblock = False
+            # Check the 5 lines preceding the method declaration for comments
+            for j in range(max(0, start_line - 5), start_line):
+                line_str = source_lines[j].strip()
+                if '*/' in line_str or '//' in line_str or '#' in line_str:
+                    has_docblock = True
+                    break
+            if not has_docblock:
                 issues.append({
                     "file": filepath,
                     "line": line_num,
-                    "type": "naked_wp_query",
-                    "message": RULES["naked_wp_query"]
-                })
-            elif any(suffix in class_name for suffix in ['_Service', '_Repository', '_Controller']) and 'container' not in filepath_normalized and 'factory' not in filepath_normalized:
-                issues.append({
-                    "file": filepath,
-                    "line": line_num,
-                    "type": "direct_service_instantiation",
-                    "message": RULES["direct_service_instantiation"]
+                    "type": "missing_docblocks",
+                    "message": RULES["missing_docblocks"]
                 })
 
-    # 5. Echo/Print in Business Logic (UI Layer Separation)
-    elif node_type in ['echo_statement', 'print_intrinsic']:
-        # Flag rendering in 'includes/' unless it's explicitly a UI/Admin/View class
-        if 'includes/' in filepath_normalized and not any(token in filepath_normalized for token in ['ui', 'admin', 'view', 'template']):
-            issues.append({
-                "file": filepath,
-                "line": line_num,
-                "type": "business_logic_rendering",
-                "message": RULES["business_logic_rendering"]
-            })
-
-    # 6. Missing Docblocks (Method Declarations)
-    elif node_type == 'method_declaration':
-        start_line = node.start_point[0]
-        has_docblock = False
-        # Check the 5 lines preceding the method declaration for comments
-        for j in range(max(0, start_line - 5), start_line):
-            line_str = source_lines[j].strip()
-            if '*/' in line_str or '//' in line_str or '#' in line_str:
-                has_docblock = True
-                break
-        if not has_docblock:
-            issues.append({
-                "file": filepath,
-                "line": line_num,
-                "type": "missing_docblocks",
-                "message": RULES["missing_docblocks"]
-            })
-
-    # Traverse children recursively to evaluate nested code
-    for child in node.children:
-        analyze_ast(child, source_lines, filepath, is_repository, issues)
+        if node.children:
+            stack.extend(reversed(node.children))
 
 def scan_files():
     issues = []
@@ -265,7 +267,7 @@ def scan_files():
                 })
 
             tree = parser.parse(source_bytes)
-            analyze_ast(tree.root_node, source_lines, filepath, is_repository, issues)
+            analyze_ast(tree.root_node, source_lines, filepath, filepath_normalized, is_repository, issues)
 
     return issues
 

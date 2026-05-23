@@ -33,6 +33,13 @@ jobs:
       - name: Run Feature Scanner
         run: python scripts/feature_scanner_ast.py
 
+      - name: Guard scan output exists
+        run: |
+          if [ ! -f scan_results.json ]; then
+            echo "::error::Feature scanner did not produce scan_results.json. Check script execution logs and tree-sitter dependency install step."
+            exit 1
+          fi
+
       - name: Publish Summary to GitHub UI
         run: |
           if [ -f docs/feature-report.md ]; then
