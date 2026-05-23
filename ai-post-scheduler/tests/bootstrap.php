@@ -8,10 +8,16 @@
  */
 
 // Start the PHP session before any output so that AIPS_Cache_Session_Driver
-// tests work correctly. session_start() must be called before any output
-// is sent, because even a single echo makes session_start() fail in PHP CLI.
+// tests work correctly. In local workspaces the configured save path may be
+// unavailable, so skip startup quietly when the session store is not usable.
 if (PHP_SESSION_NONE === session_status()) {
-    session_start();
+    $session_save_path = (string) ini_get('session.save_path');
+    $session_save_path = preg_replace('/^\d+;/', '', $session_save_path);
+    $can_start_session = '' === $session_save_path || (is_dir($session_save_path) && is_writable($session_save_path));
+
+    if ($can_start_session) {
+        @session_start();
+    }
 }
 
 // Composer autoloader
@@ -1371,6 +1377,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
+        'interface-aips-ai-service-interface.php',
+        'class-aips-ai-service-factory.php',
+        'class-aips-meow-ai-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
         'class-aips-token-budget.php',
