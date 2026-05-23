@@ -41,10 +41,18 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	/** @var Test_AIPS_Planner_Testable */
 	private $planner;
 
+	/** @var int */
+	private $admin_user_id;
+
+	/** @var int */
+	private $subscriber_user_id;
+
 	public function setUp(): void {
 		parent::setUp();
 
 		$this->planner = new Test_AIPS_Planner_Testable();
+		$this->admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
+		$this->subscriber_user_id = $this->factory->user->create(array('role' => 'subscriber'));
 
 		$_POST    = array();
 		$_REQUEST = array();
@@ -53,6 +61,7 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$_POST    = array();
 		$_REQUEST = array();
+		wp_set_current_user(0);
 
 		parent::tearDown();
 	}
@@ -77,24 +86,14 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	 * Grant admin privileges to the current virtual user.
 	 */
 	private function set_admin_user() {
-		global $current_user_id, $test_users;
-		if (!isset($test_users)) {
-			$test_users = array();
-		}
-		$current_user_id = 1;
-		$test_users[1]   = 'administrator';
+		wp_set_current_user($this->admin_user_id);
 	}
 
 	/**
 	 * Grant subscriber (non-admin) privileges to the current virtual user.
 	 */
 	private function set_subscriber_user() {
-		global $current_user_id, $test_users;
-		if (!isset($test_users)) {
-			$test_users = array();
-		}
-		$current_user_id = 2;
-		$test_users[2]   = 'subscriber';
+		wp_set_current_user($this->subscriber_user_id);
 	}
 
 	/**
@@ -144,9 +143,11 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 			$callable();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected path when wp_send_json_* is called.
+		} catch ( WPAjaxDieStopException $e ) {
+			// Expected for wp_die()-style early exits.
 		}
 		$output = ob_get_clean();
-		$decoded = json_decode($output, true);
+		$decoded = json_decode(strtok(trim($output), "\r\n"), true);
 		$this->assertIsArray($decoded, 'Response must be valid JSON. Got: ' . $output);
 		return $decoded;
 	}
@@ -250,6 +251,8 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	 */
 	public function test_bulk_limit_exceeded_returns_error() {
 		$this->set_admin_user();
+		$this->planner->mock_generator = $this->make_generator(true, 0);
+		$this->planner->mock_template = $this->make_template();
 		$this->set_valid_post(array(
 			'topics'      => array('T1', 'T2', 'T3', 'T4', 'T5', 'T6'),
 			'template_id' => 1,
@@ -267,6 +270,8 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	 */
 	public function test_zero_bulk_limit_falls_back_to_default() {
 		$this->set_admin_user();
+		$this->planner->mock_generator = $this->make_generator(true, 0);
+		$this->planner->mock_template = $this->make_template();
 
 		add_filter('aips_bulk_run_now_limit', function() { return 0; });
 

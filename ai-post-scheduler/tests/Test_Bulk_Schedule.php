@@ -61,12 +61,16 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	/** @var Test_AIPS_Mock_Scheduler */
 	private $mock_scheduler;
 
+	/** @var int */
+	private $admin_user_id;
+
 	public function setUp(): void {
 		parent::setUp();
 
 		$this->mock_scheduler           = new Test_AIPS_Mock_Scheduler();
 		$this->planner                  = new Test_AIPS_Planner_BulkSchedule();
 		$this->planner->mock_scheduler  = $this->mock_scheduler;
+		$this->admin_user_id            = $this->factory->user->create(array('role' => 'administrator'));
 
 		$_POST    = array();
 		$_REQUEST = array();
@@ -75,6 +79,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$_POST    = array();
 		$_REQUEST = array();
+		wp_set_current_user(0);
 
 		parent::tearDown();
 	}
@@ -91,12 +96,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	}
 
 	private function set_admin_user() {
-		global $current_user_id, $test_users;
-		if (!isset($test_users)) {
-			$test_users = array();
-		}
-		$current_user_id = 1;
-		$test_users[1]   = 'administrator';
+		wp_set_current_user($this->admin_user_id);
 	}
 
 	private function capture_json( $callable ) {
@@ -105,9 +105,11 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 			$callable();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected when wp_send_json_* is called.
+		} catch ( WPAjaxDieStopException $e ) {
+			// Expected for wp_die()-style early exits.
 		}
 		$output  = ob_get_clean();
-		$decoded = json_decode($output, true);
+		$decoded = json_decode(strtok(trim($output), "\r\n"), true);
 		$this->assertIsArray($decoded, 'Response must be valid JSON. Got: ' . $output);
 		return $decoded;
 	}

@@ -5,8 +5,8 @@
   "license": "GPL-2.0-or-later",
   "authors": [
     {
-      "name": "rpnunez",
-      "email": "rpnunez@example.com"
+      "name": "Raymond Nunez",
+      "email": "raypn93@gmail.com"
     }
   ],
   "require": {
@@ -14,8 +14,8 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^10.5",
-    "yoast/phpunit-polyfills": "^2.0",
-    "wp-phpunit/wp-phpunit": "^6.6"
+    "wp-phpunit/wp-phpunit": "^6.6",
+    "yoast/phpunit-polyfills": "^2.0"
   },
   "autoload": {
     "classmap": [
@@ -28,9 +28,12 @@
     ]
   },
   "scripts": {
-    "test": "php tools/phpunit-runner.php",
-    "test:coverage": "php tools/phpunit-runner.php --coverage-html coverage",
-    "test:verbose": "php tools/phpunit-runner.php --verbose",
+    "test": "php vendor/bin/phpunit --configuration phpunit.xml",
+    "test:coverage": "php vendor/bin/phpunit --configuration phpunit.xml --coverage-html coverage",
+    "test:verbose": "php vendor/bin/phpunit --configuration phpunit.xml --verbose",
+    "test:wp:setup": "php tools/setup-wp-phpunit9.php",
+    "test:wp": "php tools/phpunit-wp-runner.php --configuration phpunit-wp.xml",
+    "test:wp:coverage": "php tools/phpunit-wp-runner.php --configuration phpunit-wp.xml --coverage-html coverage-wp",
     "lint:repository-boundary": "php tools/check-repository-boundary.php"
   },
   "config": {
@@ -39,6 +42,7 @@
     },
     "optimize-autoloader": true,
     "preferred-install": "dist",
-    "sort-packages": true
+    "sort-packages": true,
+    "process-timeout": 900
   }
 }

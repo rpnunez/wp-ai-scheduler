@@ -47,7 +47,7 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
     public function test_get_history_selects_specific_columns() {
         // Create a mock for wpdb
         $wpdb_mock = $this->getMockBuilder('stdClass')
-            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
+            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like', '_escape'))
             ->getMock();
 
         $wpdb_mock->prefix = 'wp_';
@@ -65,6 +65,11 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
                 return $text;
             }));
 
+        $wpdb_mock->method('_escape')
+            ->will($this->returnCallback(function($text) {
+                return $text;
+            }));
+
         $wpdb_mock->method('get_var')
              ->willReturn(0);
 
@@ -76,7 +81,14 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
                 // We expect something like SELECT h.id, h.uuid, ...
                 // and NOT SELECT h.*
 
-                $has_specific_columns = strpos($query, 'SELECT h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at') !== false;
+                $has_specific_columns = strpos($query, 'SELECT h.id, h.uuid') !== false
+                    && strpos($query, 'h.post_id') !== false
+                    && strpos($query, 'h.template_id') !== false
+                    && strpos($query, 'h.status') !== false
+                    && strpos($query, 'h.generated_title') !== false
+                    && strpos($query, 'h.error_message') !== false
+                    && strpos($query, 'h.created_at') !== false
+                    && strpos($query, 'h.completed_at') !== false;
                 $has_wildcard = strpos($query, 'SELECT h.*') !== false;
 
                 // For the test to fail initially (TDD), we expect the current code to have wildcard
@@ -103,7 +115,7 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
      */
     public function test_get_partial_generations_omits_limit_for_unbounded_requests() {
         $wpdb_mock = $this->getMockBuilder('stdClass')
-            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like'))
+            ->addMethods(array('prepare', 'get_results', 'get_var', 'esc_like', '_escape'))
             ->getMock();
 
         $wpdb_mock->prefix = 'wp_';
@@ -114,6 +126,11 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
             ->method('prepare');
 
         $wpdb_mock->method('esc_like')
+            ->will($this->returnCallback(function($text) {
+                return $text;
+            }));
+
+        $wpdb_mock->method('_escape')
             ->will($this->returnCallback(function($text) {
                 return $text;
             }));

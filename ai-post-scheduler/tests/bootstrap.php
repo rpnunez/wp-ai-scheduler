@@ -7,6 +7,10 @@
  * @package AI_Post_Scheduler
  */
 
+if (defined('AIPS_FULL_WP_TEST_MODE') && AIPS_FULL_WP_TEST_MODE) {
+	return;
+}
+
 // Start the PHP session before any output so that AIPS_Cache_Session_Driver
 // tests work correctly. session_start() must be called before any output
 // is sent, because even a single echo makes session_start() fail in PHP CLI.

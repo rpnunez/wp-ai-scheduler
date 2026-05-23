@@ -163,7 +163,8 @@ final class AI_Post_Scheduler {
     private function includes() {
         // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
         $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
-        if ( file_exists( $vendor_autoload ) ) {
+        
+        if ( ! defined( 'AIPS_SKIP_VENDOR_AUTOLOAD_FOR_TESTS' ) && file_exists( $vendor_autoload ) ) {
             require_once $vendor_autoload;
         }
 

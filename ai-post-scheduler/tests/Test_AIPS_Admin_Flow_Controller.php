@@ -23,6 +23,8 @@ if (!function_exists('get_post_type_object')) {
 
 class Test_AIPS_Admin_Flow_Controller extends WP_UnitTestCase {
 
+	private $admin_user_id;
+
 	/**
 	 * Reset test options between runs.
 	 *
@@ -31,6 +33,8 @@ class Test_AIPS_Admin_Flow_Controller extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$GLOBALS['aips_test_options'] = array();
+		$this->admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $this->admin_user_id );
 	}
 
 	/**
@@ -39,7 +43,7 @@ class Test_AIPS_Admin_Flow_Controller extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_get_draft_reads_user_specific_option() {
-		update_option('aips_campaign_wizard_draft_1', array('campaign_name' => 'Per-user draft'));
+		update_option('aips_campaign_wizard_draft_' . $this->admin_user_id, array('campaign_name' => 'Per-user draft'));
 		update_option('aips_campaign_wizard_draft', array('campaign_name' => 'Legacy global draft'));
 
 		$controller = $this->make_controller();

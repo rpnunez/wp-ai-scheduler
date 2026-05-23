@@ -5,8 +5,9 @@
     bootstrap="tests/bootstrap.php"
     colors="true"
 >
+    <!-- Segregated Test Suites for faster TDD -->
     <testsuites>
-        <testsuite name="AI Post Scheduler Test Suite">
+        <testsuite name="All">
             <directory suffix=".php">./tests</directory>
             <exclude>./tests/bootstrap.php</exclude>
             <exclude>./tests/index.php</exclude>

@@ -165,6 +165,8 @@ composer install          # Install/update dependencies
 composer test             # Full test suite
 composer test:verbose     # Verbose output
 composer test:coverage    # Generate coverage report
+composer test:wp          # Full WordPress mode via dedicated PHPUnit 9 toolchain
+composer test:wp:coverage # Full WordPress mode coverage report in coverage-wp/
 
 # Run a single test file
 vendor/bin/phpunit tests/test-template-processor.php
@@ -201,10 +203,17 @@ test -f "$WP_TESTS_DIR/includes/bootstrap.php" && echo "WP bootstrap OK"
 
 ```bash
 cd ai-post-scheduler
-composer test
+composer test:wp:setup
+composer test:wp
 ```
 
 > **Re-export variables** if you open a new shell before running tests.
+
+### Why There Are Two Test Runners
+
+- `composer test`, `composer test:verbose`, and `composer test:coverage` use the repo's main PHPUnit 10 install and are the default limited-mode/unit-style path.
+- `composer test:wp` and `composer test:wp:coverage` use a dedicated PHPUnit 9 toolchain from `tools/phpunit9/` and the separate `phpunit-wp.xml` bootstrap because the upstream WordPress test framework is not compatible with PHPUnit 10 yet.
+- `composer test:wp:setup` installs that separate PHPUnit 9 toolchain.
 
 ### Why Limited Mode Happens
 
