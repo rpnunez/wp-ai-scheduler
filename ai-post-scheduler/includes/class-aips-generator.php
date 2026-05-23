@@ -607,6 +607,8 @@ class AIPS_Generator {
             $title = __('Error generating title', 'ai-post-scheduler');
         }
 
+        $content = $this->strip_leading_title_block_from_content($content);
+
         // Generate excerpt
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
@@ -807,6 +809,8 @@ class AIPS_Generator {
         } else {
             $component_statuses['post_title'] = true;
         }
+
+        $content = $this->strip_leading_title_block_from_content($content);
 
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
@@ -1138,6 +1142,33 @@ class AIPS_Generator {
         }
 
         return wp_kses_post($normalized_content);
+    }
+
+    /**
+     * Remove a prepended title block from generated content when present.
+     *
+     * Some models occasionally emit an article title at the start of content
+     * (for example as <h1>Title</h1> or Markdown "# Title"). WordPress already
+     * renders the post title separately, so keeping this heading creates a
+     * duplicated "second title" in the article body.
+     *
+     * @param string $content Generated content.
+     * @return string Content without a leading title block.
+     */
+    private function strip_leading_title_block_from_content($content) {
+        if (!is_string($content)) {
+            return '';
+        }
+
+        $cleaned = ltrim($content);
+
+        // Remove a leading HTML <h1>...</h1> title block.
+        $cleaned = preg_replace('/^<h1\b[^>]*>[\s\S]*?<\/h1>\s*/i', '', $cleaned, 1);
+
+        // Remove a leading Markdown "# Title" block when Markdown slipped through.
+        $cleaned = preg_replace('/^#\s+[^\n]+\n+/u', '', $cleaned, 1);
+
+        return ltrim((string) $cleaned);
     }
 
     /**
