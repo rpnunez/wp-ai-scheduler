@@ -85,16 +85,30 @@ class AIPS_Campaigns_Repository {
 	 * Fetch campaigns with ownership and generation metrics.
 	 *
 	 * @param bool|null $archived Optional archive filter.
+	 * @param int|null  $campaign_id Optional campaign ID filter.
 	 * @return array
 	 */
-	public function get_all_campaigns($archived = null) {
-		$where_sql = '';
+	public function get_campaigns($archived = null, $campaign_id = null) {
+		$where_clauses = array();
 		$where_args = array();
 
 		if ($archived !== null) {
-			$where_sql = 'WHERE c.is_archived = %d';
+			$where_clauses[] = 'c.is_archived = %d';
 			$where_args[] = $archived ? 1 : 0;
 		}
+
+		if ($campaign_id !== null) {
+			$campaign_id = absint($campaign_id);
+			if (!$campaign_id) {
+				return array();
+			}
+
+			$where_clauses[] = 'c.id = %d';
+			$where_args[] = $campaign_id;
+		}
+
+		$where_sql = empty($where_clauses) ? '' : 'WHERE ' . implode(' AND ', $where_clauses);
+		$order_sql = null === $campaign_id ? 'ORDER BY c.is_archived ASC, c.created_at DESC' : '';
 
 		$sql = "
 			SELECT
@@ -102,6 +116,7 @@ class AIPS_Campaigns_Repository {
 				(SELECT COUNT(*) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS linked_template_count,
 				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS linked_schedule_count,
 				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.campaign_id = c.id AND h.status = 'completed') AS generated_posts_count,
+				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.campaign_id = c.id) AS total_history_count,
 				(SELECT MAX(s.last_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS last_run,
 				(SELECT MIN(s.next_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1 AND s.next_run > 0) AS next_run,
 				(SELECT MIN(t.id) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS primary_template_id,
@@ -109,7 +124,7 @@ class AIPS_Campaigns_Repository {
 				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1) AS active_schedule_count
 			FROM {$this->campaigns_table} c
 			{$where_sql}
-			ORDER BY c.is_archived ASC, c.created_at DESC
+			{$order_sql}
 		";
 
 		$rows = empty($where_args)
@@ -121,11 +136,7 @@ class AIPS_Campaigns_Repository {
 		}
 
 		foreach ($rows as $row) {
-			$row->generated_posts_count = (int) $row->generated_posts_count;
-			$row->linked_template_count = (int) $row->linked_template_count;
-			$row->linked_schedule_count = (int) $row->linked_schedule_count;
-			$row->active_schedule_count = (int) $row->active_schedule_count;
-			$row->can_delete = $row->generated_posts_count === 0;
+			$this->normalize_campaign_row($row);
 		}
 
 		return $rows;
@@ -143,14 +154,9 @@ class AIPS_Campaigns_Repository {
 			return null;
 		}
 
-		$campaigns = $this->get_all_campaigns(null);
-		foreach ($campaigns as $campaign) {
-			if ((int) $campaign->id === $campaign_id) {
-				return $campaign;
-			}
-		}
+		$campaigns = $this->get_campaigns(null, $campaign_id);
 
-		return null;
+		return empty($campaigns) ? null : $campaigns[0];
 	}
 
 	/**
@@ -432,6 +438,7 @@ class AIPS_Campaigns_Repository {
 	 */
 	public function delete_campaign($campaign_id) {
 		$campaign_id = absint($campaign_id);
+
 		if (!$campaign_id || !$this->can_delete_campaign($campaign_id)) {
 			return false;
 		}
@@ -440,11 +447,15 @@ class AIPS_Campaigns_Repository {
 
 		try {
 			foreach ($this->get_schedules_by_campaign($campaign_id) as $schedule) {
-				$this->schedule_repository->delete((int) $schedule->id);
+				if (!$this->schedule_repository->delete((int) $schedule->id)) {
+					throw new RuntimeException(__('Failed to delete campaign schedule.', 'ai-post-scheduler'));
+				}
 			}
 
 			foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
-				$this->template_repository->delete((int) $template->id);
+				if (!$this->template_repository->delete((int) $template->id)) {
+					throw new RuntimeException(__('Failed to delete campaign template.', 'ai-post-scheduler'));
+				}
 			}
 
 			$deleted = $this->wpdb->delete(
@@ -482,14 +493,14 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
-	 * Count generated posts attached to a campaign historically.
+	 * Count historical attribution rows attached to a campaign.
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @return int
 	 */
 	public function get_generated_post_count($campaign_id) {
 		return (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND status = 'completed'",
+			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d",
 			absint($campaign_id)
 		));
 	}
@@ -657,5 +668,20 @@ class AIPS_Campaigns_Repository {
 	 */
 	private function start_transaction() {
 		return $this->wpdb->query('START TRANSACTION') !== false;
+	}
+
+	/**
+	 * Normalize aggregate fields on a fetched campaign row.
+	 *
+	 * @param object $row Campaign row.
+	 * @return void
+	 */
+	private function normalize_campaign_row($row) {
+		$row->generated_posts_count = (int) $row->generated_posts_count;
+		$row->total_history_count = (int) $row->total_history_count;
+		$row->linked_template_count = (int) $row->linked_template_count;
+		$row->linked_schedule_count = (int) $row->linked_schedule_count;
+		$row->active_schedule_count = (int) $row->active_schedule_count;
+		$row->can_delete = 0 === $row->total_history_count;
 	}
 }

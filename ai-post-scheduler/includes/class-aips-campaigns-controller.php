@@ -105,8 +105,8 @@ class AIPS_Campaigns_Controller {
 	public function ajax_get_campaigns() {
 		$this->ajax_guard();
 
-		$active = $this->campaigns_repository->get_all_campaigns(false);
-		$archived = $this->campaigns_repository->get_all_campaigns(true);
+		$active = $this->campaigns_repository->get_campaigns(false);
+		$archived = $this->campaigns_repository->get_campaigns(true);
 
 		AIPS_Ajax_Response::success(array(
 			'campaigns' => $active,

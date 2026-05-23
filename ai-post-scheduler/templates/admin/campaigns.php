@@ -11,8 +11,8 @@ if (!defined('ABSPATH')) {
 
 $campaign_wizard_url = admin_url('admin.php?page=' . AIPS_Campaigns_Controller::PAGE_SLUG);
 $campaigns_repo = AIPS_Campaigns_Repository::instance();
-$active_campaigns = $campaigns_repo->get_all_campaigns(false);
-$archived_campaigns = $campaigns_repo->get_all_campaigns(true);
+$active_campaigns = $campaigns_repo->get_campaigns(false);
+$archived_campaigns = $campaigns_repo->get_campaigns(true);
 $stats = $campaigns_repo->get_summary_stats();
 
 $render_campaign_rows = static function($campaigns, $archived = false) {
