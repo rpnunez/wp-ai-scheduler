@@ -565,6 +565,22 @@
         },
 
         /**
+		 * Show feedback in the wizard notice region and toast system.
+		 *
+		 * @param {string} type    Notice type: success, error, warning, or info.
+		 * @param {string} message Plain-text notice message.
+		 * @return {void}
+		 */
+		showNotice: function(type, message) {
+			var noticeClass = type === 'success' ? 'notice notice-success' : 'notice notice-error';
+			var $notice = $(document.createElement('div')).addClass(noticeClass);
+			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
+
+			$('#aips-campaign-wizard-notice').empty().append($notice.append($message));
+			this.showToast(message, type);
+		},
+
+        /**
          * Opens a non-dismissable progress-bar modal to give feedback during a
          * long-running async operation (e.g. bulk post generation).
          *

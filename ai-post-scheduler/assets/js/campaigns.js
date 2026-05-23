@@ -50,7 +50,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_toggle_campaign',
-					nonce: AIPS.nonce,
+					nonce: aipsAjax.nonce,
 					schedule_id: campaignId,
 					is_active: newStatus
 				},
@@ -90,7 +90,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_duplicate_campaign',
-					nonce: AIPS.nonce,
+					nonce: aipsAjax.nonce,
 					schedule_id: campaignId
 				},
 				success: function(response) {
@@ -129,7 +129,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_archive_campaign',
-					nonce: AIPS.nonce,
+					nonce: aipsAjax.nonce,
 					schedule_id: campaignId
 				},
 				success: function(response) {
