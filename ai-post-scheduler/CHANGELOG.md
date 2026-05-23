@@ -2,6 +2,97 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.1] - 2026-05-12
+### Added - Campaign Wizard & Advanced Features
+- **Campaign Wizard**: Multi-step guided campaign creation flow with transaction-safe persistence
+  - Per-user draft storage (`aips_campaign_wizard_draft_{user_id}`) with auto-save
+  - Five-step wizard: Goal → Template → Defaults → Schedule → Review
+  - Template mode selection (create new or use existing)
+  - Author persona assignment for topic-based workflows
+  - Multi-post-type rules: configure multiple post types per campaign with individual quantities and prompt overrides
+  - Advanced scheduling: time windows, day preferences, blackout dates, seasonal end dates
+  - Real-time validation and summary review before finalization
+- **Campaigns Dashboard**: Dedicated admin page for campaign management
+  - Campaigns list with metrics: posts generated, success rate, last/next run
+  - Summary statistics: total campaigns, active, archived
+  - Quick actions: pause/resume, duplicate, archive
+  - AJAX-powered updates with optimistic UI
+- **Multi-Post-Type Support**: Single campaigns can target multiple post types
+  - Per-type quantity configuration (e.g., "3 blog posts + 2 case studies per week")
+  - Optional prompt override per post type
+  - JSON-encoded rules stored in `post_type_rules` column
+- **Advanced Scheduling Controls**: Fine-grained timing and constraints
+  - Time windows: restrict generation to specific hours (HH:MM format)
+  - Day preferences: limit posting to selected weekdays (M-Su checkboxes)
+  - Blackout dates: skip posting on specified dates (YYYY-MM-DD format)
+  - Seasonal campaigns: auto-deactivate after end date (Unix timestamp storage)
+- **Database Schema**: Extended `aips_schedule` table with 10 new columns
+  - `author_id bigint(20)` - linked author persona
+  - `campaign_mode varchar(20)` - template/author/hybrid workflow
+  - `post_type_rules longtext` - JSON array of post-type configurations
+  - `blackout_dates text` - newline-separated skip dates
+  - `time_window_start varchar(5)` - HH:MM start time
+  - `time_window_end varchar(5)` - HH:MM end time
+  - `day_preferences varchar(255)` - comma-separated day numbers (1-7)
+  - `season_end_date bigint(20) unsigned` - Unix timestamp
+  - `dynamic_quantity_rules text` - future extensibility
+  - `campaign_metadata longtext` - flexible JSON storage
+  - Indexed: `author_id`, `campaign_mode`, `season_end_date`
+
+### Added - Operations & System Management
+- **Operations Insights Dashboard**: Unified view of system operations
+  - Telemetry data export (CSV/JSON) with date range filtering
+  - Bulk batch jobs monitoring and export
+  - Combined system status operations panel
+  - Secure AJAX actions with operation-specific nonces
+- **Batch Queue System**: Large-batch processing for scheduled generation
+  - Threshold-based queue activation (>10 items triggers batching)
+  - `AIPS_Batch_Queue_Service` for slice-based WP-Cron scheduling
+  - `AIPS_Bulk_Batch_Processor` for async multi-item jobs
+  - Job strategies: `author_topic_post`, `planner_post`, `trending_topic_post`
+  - Persistent state in `aips_bulk_batch_jobs` table
+  - Progress tracking and automatic cleanup (daily cron)
+- **Post Slices**: Sub-post content management with prompt injection
+  - `AIPS_Post_Slices_Repository` with bulk operations
+  - Integrated with Authors admin page for prompt customization
+  - Avoid-titles diversity injection to prevent repetition
+  - Per-run uniqueness seed for content variation
+
+### Added - History & Observability
+- **Enhanced History Page**: Improved generation tracking and filtering
+  - Duration display for completed generations
+  - Direct post links from history entries
+  - Type filters (manual, scheduled, bulk)
+  - Creation method badges
+  - Copy session JSON button
+  - View Logs modal with structured event timeline
+- **Source Content Fetching**: Content-type-aware parsing
+  - RSS/Atom feed support with `AIPS_Sources_Fetcher`
+  - JSON and HTML content extraction
+  - Fallback strategies for mixed/unknown content types
+  - Daily fetch cron with persistent storage
+
+### Added - UX & Author Workflows
+- **Generate Posts Button**: Authors page quick-action bulk generation
+  - Modal with template selection for trending topics
+  - Batch job creation for large operations
+  - Progress feedback with job status tracking
+- **Datetime Standardization**: Unified time handling in cron operations
+  - `AIPS_DateTime` consistency across scheduler, topics, and posts
+  - Eliminates 1970 UI date bugs from mixed timestamp formats
+
+### Changed
+- **Template Post Duplication Fix**: Resolved issue causing duplicate posts from single template runs
+- **System Status Operations**: Separated nonces per operation, direct logic execution, configurable batch sizes
+- **Performance Tab**: Renamed "Cache" to "Performance" with "Enable Cache System" toggle
+
+### Technical
+- Campaign wizard uses AJAX registry pattern for centralized routing
+- All advanced scheduling fields properly sanitized and validated
+- Supports PHP 7.4+ compatibility (no PHP 8.2-specific syntax)
+- Database migrations handle column additions via `dbDelta()`
+- Version bump triggers automatic schema updates on activation
+
 ## [2.4.1] - 2026-04-15
 ### Added
 - **Telemetry filters and richer request summaries**: the Telemetry admin page now supports AJAX filtering by request type, event category, request method, page slug search, and issue-only rows.

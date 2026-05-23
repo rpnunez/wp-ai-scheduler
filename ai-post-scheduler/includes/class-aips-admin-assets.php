@@ -37,6 +37,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_VOICES = 'aips-voices';
 	private const PAGE_STRUCTURES = 'aips-structures';
 	private const PAGE_SCHEDULE = 'aips-schedule';
+	private const PAGE_CAMPAIGNS = 'aips-campaigns';
+	private const PAGE_CAMPAIGN_WIZARD = 'aips-campaign-wizard';
 	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
 	private const PAGE_RESEARCH = 'aips-research';
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
@@ -105,6 +107,13 @@ class AIPS_Admin_Assets {
 			$this->enqueue_schedule_assets($hook);
 		}
 
+        if (self::PAGE_CAMPAIGNS === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)) {
+			$this->enqueue_campaigns_assets();
+		}
+
+        if (self::PAGE_CAMPAIGN_WIZARD === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGN_WIZARD)) {
+			$this->enqueue_campaign_wizard_assets();
+		}
         if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
 			$this->enqueue_research_assets();
 		}
@@ -1150,6 +1159,37 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-onboarding', 'aipsOnboardingL10n', array(
                 'confirmSkipOnboarding' => __('Skip the Onboarding Wizard? You can restart it later from System Status.', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the campaign wizard page.
+     */
+    private function enqueue_campaign_wizard_assets() {
+            wp_enqueue_script(
+                'aips-admin-campaign-wizard',
+                AIPS_PLUGIN_URL . 'assets/js/campaign-wizard.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-campaign-wizard', 'aipsCampaignWizardL10n', array(
+                'confirmFinalize' => __('Create this campaign and schedule it now?', 'ai-post-scheduler'),
+                'created'         => __('Campaign created.', 'ai-post-scheduler'),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the campaigns page.
+     */
+    private function enqueue_campaigns_assets() {
+            wp_enqueue_script(
+                'aips-admin-campaigns',
+                AIPS_PLUGIN_URL . 'assets/js/campaigns.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
     }
 
     /**

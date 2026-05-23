@@ -163,6 +163,7 @@ class AIPS_Template_Repository {
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
             'post_status' => sanitize_text_field($data['post_status']),
+            'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : 'post',
             'post_category' => absint($data['post_category']),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
@@ -173,7 +174,7 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -249,6 +250,11 @@ class AIPS_Template_Repository {
         
         if (isset($data['post_status'])) {
             $update_data['post_status'] = sanitize_text_field($data['post_status']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['post_type'])) {
+            $update_data['post_type'] = sanitize_key($data['post_type']);
             $format[] = '%s';
         }
         

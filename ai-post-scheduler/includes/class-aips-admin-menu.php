@@ -131,6 +131,24 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Campaigns', 'ai-post-scheduler'),
+            __('Campaigns', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-campaigns',
+            array($this, 'render_campaigns_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Campaign Wizard', 'ai-post-scheduler'),
+            __('Campaign Wizard', 'ai-post-scheduler'),
+            'manage_options',
+            AIPS_Admin_Flow_Controller::PAGE_SLUG,
+            array($this, 'render_campaign_wizard_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule Calendar', 'ai-post-scheduler'),
             __('Schedule Calendar', 'ai-post-scheduler'),
             'manage_options',
@@ -321,6 +339,26 @@ class AIPS_Admin_Menu {
      */
     public function render_schedule_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+    }
+
+    /**
+     * Render the Campaigns page.
+     *
+     * Delegates to the Campaigns controller.
+     *
+     * @return void
+     */
+    public function render_campaigns_page() {
+        $controller = new AIPS_Campaigns_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the campaign wizard page.
+     */
+    public function render_campaign_wizard_page() {
+        $controller = new AIPS_Admin_Flow_Controller();
+        $controller->render_page();
     }
 
     /**
