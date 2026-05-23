@@ -1714,6 +1714,20 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return false;
         }
     }
+    if (!function_exists('wp_date')) {
+        function wp_date($format, $timestamp = null, $timezone = null) {
+            if ($timestamp === null) {
+                $timestamp = time();
+            }
+            return date($format, $timestamp);
+        }
+    }
+
+    if (!function_exists('esc_sql')) {
+        function esc_sql($data) {
+            return $data;
+        }
+    }
 }
 
 if (!function_exists('wp_is_writable')) {
