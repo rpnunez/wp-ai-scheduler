@@ -407,12 +407,17 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
-		
-		return $this->repository->update($this->history_id, $update_data) !== false;
+
+		$updated = $this->repository->update($this->history_id, $update_data) !== false;
+		if ($updated) {
+			$this->maybe_store_explainability_snapshot();
+		}
+
+		return $updated;
 	}
 	
 	/**
@@ -439,11 +444,61 @@ class AIPS_History_Container {
 		$this->record('error', $error_message, null, null, $error_data);
 		
 		// Update history status
-		return $this->repository->update($this->history_id, array(
+		$updated = $this->repository->update($this->history_id, array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
 		)) !== false;
+
+		if ($updated) {
+			$this->maybe_store_explainability_snapshot();
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Store an immutable explainability snapshot once per history record.
+	 *
+	 * @return void
+	 */
+	private function maybe_store_explainability_snapshot() {
+		$recent_logs = $this->repository->get_logs_by_history_id($this->history_id, array(), 50);
+		if (is_array($recent_logs)) {
+			foreach ($recent_logs as $row) {
+				if (isset($row->log_type) && 'explainability_snapshot' === (string) $row->log_type) {
+					return;
+				}
+			}
+		}
+
+		if (!class_exists('AIPS_Explainability_Builder')) {
+			return;
+		}
+
+		$history_item = $this->repository->get_by_id($this->history_id);
+		if (!$history_item) {
+			return;
+		}
+
+		$builder = new AIPS_Explainability_Builder();
+		$payload = $builder->build_from_history_item($history_item, array());
+		$snapshot = $builder->compact_snapshot($payload);
+
+		if (empty($snapshot)) {
+			return;
+		}
+
+		$this->repository->add_log_entry(
+			$this->history_id,
+			'explainability_snapshot',
+			array(
+				'message' => __('Explainability snapshot stored.', 'ai-post-scheduler'),
+				'timestamp' => current_time('mysql'),
+				'snapshot' => $snapshot,
+			),
+			AIPS_History_Type::INFO
+		);
 	}
 	
 	/**
