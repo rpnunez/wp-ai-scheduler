@@ -1126,6 +1126,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
+            return false;
+        }
+
+        if ($status === 'all') {
             return $this->wpdb->query("DELETE FROM {$this->table_name}");
         }
         
@@ -1231,9 +1235,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($query_args)) {
             $count = $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} $where_clause", $query_args));
             $deleted = $this->wpdb->query($this->wpdb->prepare("DELETE FROM {$this->table_name} $where_clause", $query_args));
-        } else {
+        } elseif (($args['status'] ?? '') === 'all' && empty($where)) {
             $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
             $deleted = $this->wpdb->query("DELETE FROM {$this->table_name}");
+        } else {
+            return array(
+                'success' => false,
+                'deleted' => 0,
+                'message' => "Invalid filter arguments for history deletion"
+            );
         }
         
         // Clear cache

@@ -255,3 +255,5 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+
+- [2025-05-24] 🛡️ Sentinel: Fixed CRITICAL Complete Data Wipes in History Deletion. Addressed vulnerability in `AIPS_History_Repository::delete_by_status()` and `clear_history()` where passing empty arguments implicitly led to `DELETE FROM table`, erasing all history. Required explicit `all` argument to protect against accidental mass deletions.
