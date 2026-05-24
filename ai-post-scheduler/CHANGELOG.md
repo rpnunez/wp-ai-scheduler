@@ -236,24 +236,24 @@ All notable changes to this project will be documented in this file.
 
 ## [bug-hunter/fix-logger-performance-12349646298244550070] - 2025-12-20
 ### Fixed
-- 2024-05-23: Improved log reading performance by replacing O(N) `SplFileObject` seek with O(1) `fseek` tail reading, preventing potential crashes on large log files.
+- 2026-05-23: Improved log reading performance by replacing O(N) `SplFileObject` seek with O(1) `fseek` tail reading, preventing potential crashes on large log files.
 
 ## [palette-a11y-fix-9149112686241413741] - 2025-12-20
 ### Fixed
-- 2024-05-23: Improved accessibility by adding labels to voice search inputs and hiding decorative icons from screen readers.
+- 2026-05-23: Improved accessibility by adding labels to voice search inputs and hiding decorative icons from screen readers.
 
 ## [bolt-logger-optimization-13857484038144494642] - 2025-12-20
 ### Improved
-- 2024-05-23: Optimized `AIPS_Logger::get_logs` to use tail reading for large log files, improving performance from O(N) to O(1) for files larger than 100KB.
+- 2026-05-23: Optimized `AIPS_Logger::get_logs` to use tail reading for large log files, improving performance from O(N) to O(1) for files larger than 100KB.
 
 ## [1.4.0] - 2025-12-21
 - Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.
+
 ## [sentinel-secure-urls-template-controller] - 2024-05-23
 ### Security
-- [2024-05-23] Fixed a potential XSS vulnerability in `AIPS_Templates_Controller::ajax_get_template_posts` by escaping URLs using `esc_url()`.
+- [2026-05-23] Fixed a potential XSS vulnerability in `AIPS_Templates_Controller::ajax_get_template_posts` by escaping URLs using `esc_url()`.
 
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
-- [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
-
-- [2025-05-24] 🛡️ Sentinel: Fixed CRITICAL Complete Data Wipes in History Deletion. Addressed vulnerability in `AIPS_History_Repository::delete_by_status()` and `clear_history()` where passing empty arguments implicitly led to `DELETE FROM table`, erasing all history. Required explicit `all` argument to protect against accidental mass deletions.
+- [2026-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+- [2026-05-24] 🛡️ Sentinel: Fixed CRITICAL Complete Data Wipes in History Deletion. Addressed vulnerability in `AIPS_History_Repository::delete_by_status()` and `clear_history()` where passing empty arguments implicitly led to `DELETE FROM table`, erasing all history. Required explicit `all` argument to protect against accidental mass deletions.
