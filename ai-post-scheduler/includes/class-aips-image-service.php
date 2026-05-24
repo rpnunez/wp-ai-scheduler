@@ -189,6 +189,33 @@ class AIPS_Image_Service {
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        $image_data = '';
+        $content_type = '';
+
+        // Support data URI payloads returned by some AI providers.
+        if (is_string($image_url) && strpos($image_url, 'data:image/') === 0) {
+            if (!preg_match('/^data:([^;]+);base64,(.+)$/', $image_url, $matches)) {
+                $error = new WP_Error(
+                    'invalid_image_data_uri',
+                    __('Invalid image data URI format.', 'ai-post-scheduler')
+                );
+                $this->logger->log($error->get_error_message(), 'error');
+                return $error;
+            }
+
+            $content_type = sanitize_text_field($matches[1]);
+            $image_data = base64_decode($matches[2], true);
+
+            if ($image_data === false || $image_data === '') {
+                $error = new WP_Error(
+                    'invalid_image_base64',
+                    __('Image data URI base64 payload is invalid.', 'ai-post-scheduler')
+                );
+                $this->logger->log($error->get_error_message(), 'error');
+                return $error;
+            }
+        } else {
         
         // SECURITY: Use wp_safe_remote_get to prevent SSRF attacks
         $response_object = wp_safe_remote_get($image_url);
@@ -225,6 +252,7 @@ class AIPS_Image_Service {
         }
 
         $image_data = wp_remote_retrieve_body($response_object);
+        }
         
         if (empty($image_data)) {
             $error = new WP_Error(

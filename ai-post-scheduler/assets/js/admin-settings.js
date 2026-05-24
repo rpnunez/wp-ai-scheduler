@@ -160,6 +160,17 @@
 		});
 	}
 
+	/**
+	 * Toggle visibility of Meow-specific AI settings rows.
+	 *
+	 * @return {void}
+	 */
+	function updateAIBackendFields() {
+		var backend = $('#aips_ai_backend').val();
+
+		$('.aips-meow-ai-setting-row').toggle(backend === 'meow_ai_engine');
+	}
+
 	$(document).ready(function() {
 		if ($('#aips-settings-tab-nav').length) {
 			AIPS.initSettingsPage();
@@ -174,6 +185,11 @@
 		// Cache driver field may be present on the settings page.
 		if ($('#aips_cache_driver').length) {
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
+		}
+
+		if ($('#aips_ai_backend').length) {
+			updateAIBackendFields();
+			$(document).on('change', '#aips_ai_backend', updateAIBackendFields);
 		}
 	});
 
