@@ -11,7 +11,7 @@ The plugin lives inside the `ai-post-scheduler/` subdirectory. Treat that folder
 - **Language**: PHP 8.2+
 - **Platform**: WordPress 5.8+
 - **Framework**: WordPress Plugin API
-- **Testing**: PHPUnit 10.5 with WordPress PHPUnit helpers/mocks
+- **Testing**: PHPUnit 9.6 with the real WordPress PHPUnit test library
 - **Package Manager**: Composer (run from `ai-post-scheduler/`)
 - **AI Integration**: Meow Apps AI Engine (`Meow_MWAI_Core` runtime dependency)
 
@@ -153,8 +153,9 @@ composer test:verbose
 composer test:coverage
 ```
 
-- Tests live in `ai-post-scheduler/tests/` and extend `WP_UnitTestCase`.
-- `tests/bootstrap.php` provides WordPress mocks and manually loads include classes for limited-mode runs.
+- Tests live in `ai-post-scheduler/tests/` and run only in full WordPress test-library mode.
+- `tests/bootstrap.php` is the canonical bootstrap and requires a valid `WP_TESTS_DIR` and `WP_CORE_DIR`.
+- Prefer `bash scripts/run-wp-tests-docker.sh` for local execution because Docker-backed WordPress/MySQL is the supported workflow.
 - Runtime requires Meow Apps AI Engine (`Meow_MWAI_Core`) but tests mock this dependency.
 
 ## Useful Docs

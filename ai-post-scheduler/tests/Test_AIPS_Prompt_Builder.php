@@ -588,6 +588,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 		// Template whose title prompt contains an AI variable placeholder.
 		$template = (object) array(
+			'id'                   => 1,
+			'name'                 => 'Prompt Builder Template',
 			'title_prompt'         => 'Write a compelling title about {{PHPTopic}} for senior developers.',
 			'prompt_template'      => 'Write about {{topic}}',
 			'article_structure_id' => null,

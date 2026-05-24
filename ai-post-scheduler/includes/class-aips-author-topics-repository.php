@@ -473,12 +473,12 @@ class AIPS_Author_Topics_Repository {
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(created_at) AS day, COUNT(*) AS total
+				"SELECT DATE(FROM_UNIXTIME(generated_at)) AS day, COUNT(*) AS total
 				 FROM {$this->table_name}
-				 WHERE created_at >= %s
-				 GROUP BY DATE(created_at)
+				 WHERE generated_at >= %d
+				 GROUP BY DATE(FROM_UNIXTIME(generated_at))
 				 ORDER BY day ASC",
-				$start
+				strtotime( $start . ' 00:00:00' )
 			)
 		);
 

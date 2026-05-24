@@ -81,7 +81,7 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			'meta'       => null,
 			'dedupe_key' => '',
 			'is_read'    => 0,
-			'read_at'    => null,
+			'read_at'    => 0,
 			'created_at' => AIPS_DateTime::now()->timestamp(),
 		);
 
@@ -103,7 +103,7 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 				'meta'       => $meta_json,
 				'dedupe_key' => sanitize_text_field($data['dedupe_key']),
 				'is_read'    => absint($data['is_read']) ? 1 : 0,
-				'read_at'    => !empty($data['read_at']) ? absint($data['read_at']) : null,
+				'read_at'    => !empty($data['read_at']) ? absint($data['read_at']) : 0,
 				'created_at' => !empty($data['created_at']) ? absint($data['created_at']) : AIPS_DateTime::now()->timestamp(),
 			),
 			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d')
