@@ -72,6 +72,34 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_telemetry'],
         ));
+        register_setting('aips_settings', 'aips_enable_post_refresh_automation', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_enable_post_refresh_automation'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_age_days', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_age_days'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_max_posts_per_run', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_max_posts_per_run'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_update_stats', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_update_stats'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_refresh_links', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_refresh_links'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_reframe_intro_outro', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_reframe_intro_outro'],
+        ));
+        register_setting('aips_settings', 'aips_post_refresh_insert_faq', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_post_refresh_insert_faq'],
+        ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_retry'],
@@ -171,6 +199,27 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        add_settings_field(
+            'aips_enable_post_refresh_automation',
+            __('Post Refresh Automation', 'ai-post-scheduler'),
+            array($this->ui, 'enable_post_refresh_automation_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        add_settings_field(
+            'aips_post_refresh_age_days',
+            __('Post Refresh Age (days)', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresh_age_days_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        add_settings_field(
+            'aips_post_refresh_max_posts_per_run',
+            __('Post Refresh Max Posts/Run', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresh_max_posts_per_run_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
