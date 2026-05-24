@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test reload-php xdebug-log-follow sync-wp-core
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test test-coverage reload-php xdebug-log-follow sync-wp-core
 
 # Default target
 .DEFAULT_GOAL := help
@@ -131,11 +131,15 @@ plugin-list: ## List all installed plugins
 
 test: ## Run plugin tests
 	@echo "$(BLUE)Running tests...$(NC)"
-	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test"
+	bash ./scripts/run-wp-tests-docker.sh
 
 test-verbose: ## Run plugin tests with verbose output
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"
-	docker compose exec web bash -c "cd /var/www/html/wp-content/plugins/ai-post-scheduler && composer test:verbose"
+	cd ai-post-scheduler && composer test:verbose
+
+test-coverage: ## Run plugin coverage with Docker-backed WordPress test env
+	@echo "$(BLUE)Running coverage...$(NC)"
+	bash ./scripts/run-wp-tests-docker.sh coverage
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"

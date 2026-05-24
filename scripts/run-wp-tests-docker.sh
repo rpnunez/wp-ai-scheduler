@@ -9,10 +9,10 @@ INSTALL_SCRIPT="$REPO_ROOT/scripts/install-wp-tests.sh"
 MODE="${1:-test}"
 case "$MODE" in
   test)
-    COMPOSER_COMMAND="composer test:wp"
+    COMPOSER_COMMAND="composer test"
     ;;
   coverage|--coverage)
-    COMPOSER_COMMAND="XDEBUG_MODE=coverage composer test:wp:coverage"
+    COMPOSER_COMMAND="XDEBUG_MODE=coverage composer test:coverage"
     ;;
   *)
     echo "Usage: bash scripts/run-wp-tests-docker.sh [test|coverage]" >&2
