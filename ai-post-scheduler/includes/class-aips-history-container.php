@@ -134,8 +134,12 @@ class AIPS_History_Container {
 			$metadata['creation_method'] = $history->creation_method;
 		}
 		
+		$history_type = isset($history->type) && $history->type
+			? $history->type
+			: (isset($history->creation_method) && $history->creation_method ? $history->creation_method : 'post_generation');
+
 		// Create container with existing ID and preserved metadata
-		return new self($repository, $history->type, $metadata, $history_id);
+		return new self($repository, $history_type, $metadata, $history_id);
 	}
 
 	/**

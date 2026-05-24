@@ -117,6 +117,8 @@ class AIPS_Post_Manager {
             $meta_description = $data['meta_description'];
         } elseif ($excerpt !== '') {
             $meta_description = $excerpt;
+        } elseif ($content !== '') {
+            $meta_description = $content;
         }
 
         $seo_data = array(

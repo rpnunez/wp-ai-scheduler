@@ -44,6 +44,7 @@ class AIPS_Autoloader {
         $paths = array(
             AIPS_PLUGIN_DIR . 'includes/',
             AIPS_PLUGIN_DIR . 'includes/diagnostics/',
+            AIPS_PLUGIN_DIR . 'includes/job/',
         );
 
         foreach ($paths as $path) {

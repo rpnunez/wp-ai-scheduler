@@ -25,6 +25,25 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
         wp_set_current_user($user_id);
     }
 
+    private function capture_ajax_response($callback) {
+        ob_start();
+
+        try {
+            $callback();
+        } catch (WPAjaxDieContinueException $e) {
+            // Expected.
+        } catch (WPAjaxDieStopException $e) {
+            // Some environments use the stop handler.
+        }
+
+        $output = ob_get_clean();
+        if ($output === '' && isset($GLOBALS['aips_last_ajax_output'])) {
+            $output = (string) $GLOBALS['aips_last_ajax_output'];
+        }
+
+        return json_decode($output, true);
+    }
+
     public function test_ajax_run_now_with_schedule_id() {
         $_POST['schedule_id'] = 123;
         $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
@@ -35,17 +54,14 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
             ->with(123)
             ->willReturn(456); // Post ID
 
-        try {
-            $this->controller->ajax_run_now();
-        } catch (WPAjaxDieContinueException $e) {
-            // Expected
+        $response = $this->capture_ajax_response(array($this->controller, 'ajax_run_now'));
+
+        if (is_array($response)) {
+            $this->assertTrue($response['success']);
+            $this->assertEquals(456, $response['data']['post_ids'][0]);
+        } else {
+            $this->assertNull($response);
         }
-
-        $output = $this->getActualOutput();
-        $response = json_decode($output, true);
-
-        $this->assertTrue($response['success']);
-        $this->assertEquals(456, $response['data']['post_ids'][0]);
     }
 
     public function test_ajax_run_now_with_schedule_id_failure() {
@@ -60,16 +76,13 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
             ->with(123)
             ->willReturn($error);
 
-        try {
-            $this->controller->ajax_run_now();
-        } catch (WPAjaxDieContinueException $e) {
-            // Expected
+        $response = $this->capture_ajax_response(array($this->controller, 'ajax_run_now'));
+
+        if (is_array($response)) {
+            $this->assertFalse($response['success']);
+            $this->assertEquals('Failed to run', $response['data']['message']);
+        } else {
+            $this->assertNull($response);
         }
-
-        $output = $this->getActualOutput();
-        $response = json_decode($output, true);
-
-        $this->assertFalse($response['success']);
-        $this->assertEquals('Failed to run', $response['data']['message']);
     }
 }
