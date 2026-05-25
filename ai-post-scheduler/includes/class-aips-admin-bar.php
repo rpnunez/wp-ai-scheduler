@@ -39,6 +39,7 @@ class AIPS_Admin_Bar {
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_assets')); // toolbar visible on front-end too
+		add_filter('heartbeat_received', array($this, 'heartbeat_received'), 10, 2);
 	}
 
 	/**
@@ -298,6 +299,57 @@ class AIPS_Admin_Bar {
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
 		));
+	}
+
+	/**
+	 * Process Heartbeat received data to append unread notifications.
+	 *
+	 * @param array $response Heartbeat response data.
+	 * @param array $data     Heartbeat received data from the client.
+	 * @return array Modified response data.
+	 */
+	public function heartbeat_received(array $response, array $data): array {
+		if (!current_user_can('manage_options')) {
+			return $response;
+		}
+
+		if (isset($data['aips_check_notifications'])) {
+			$unread_count  = $this->get_repository()->count_unread();
+			$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
+
+			// Sync/update the admin bar cache for the current user.
+			$cache_key = AIPS_Cache_Policy::key(
+				AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR,
+				'unread_count',
+				array('user_id' => get_current_user_id())
+			);
+			AIPS_Cache_Factory::instance()->set(
+				$cache_key,
+				$unread_count,
+				AIPS_Cache_Policy::default_ttl(AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR),
+				'aips_admin_bar'
+			);
+
+			$items = array();
+			foreach ($notifications as $notif) {
+				$items[] = array(
+					'id'         => (int) $notif->id,
+					'type'       => sanitize_key($notif->type),
+					'title'      => esc_html($notif->title),
+					'message'    => esc_html($notif->message),
+					'url'        => esc_url($notif->url),
+					'level'      => sanitize_key($notif->level),
+					'created_at' => (int) $notif->created_at,
+				);
+			}
+
+			$response['aips_notifications'] = array(
+				'unread_count' => $unread_count,
+				'items'        => $items,
+			);
+		}
+
+		return $response;
 	}
 
 }

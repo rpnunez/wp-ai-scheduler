@@ -18,6 +18,7 @@
 		 */
 		adminBarInit: function () {
 			this.adminBarBindEvents();
+			this.adminBarSpeedUpHeartbeat();
 		},
 
 		/**
@@ -27,6 +28,10 @@
 			$(document).on('click', '#wpadminbar .aips-mark-read', this.adminBarMarkRead);
 			$(document).on('click', '#wpadminbar .aips-mark-all-read', this.adminBarMarkAllRead);
 			$(document).on('click', '#wpadminbar .aips-toolbar-notification, #wpadminbar .aips-toolbar-notif-header', this.adminBarStopPropagation);
+
+			// Hook into WordPress Heartbeat events
+			$(document).on('heartbeat-send', this.adminBarHeartbeatSend);
+			$(document).on('heartbeat-tick', this.adminBarHeartbeatTick);
 		},
 
 		/**
@@ -165,6 +170,284 @@
 		 */
 		adminBarStopPropagation: function (e) {
 			e.stopPropagation();
+		},
+
+		/**
+		 * Append our notification check request parameter to Heartbeat data before sending.
+		 *
+		 * @param {Event}  e    Event object.
+		 * @param {Object} data Heartbeat payload data.
+		 */
+		adminBarHeartbeatSend: function (e, data) {
+			data.aips_check_notifications = true;
+		},
+
+		/**
+		 * Process incoming Heartbeat tick data to check and show new notifications.
+		 *
+		 * @param {Event}  e    Event object.
+		 * @param {Object} data Heartbeat response data.
+		 */
+		adminBarHeartbeatTick: function (e, data) {
+			if (data && data.aips_notifications) {
+				AIPS.adminBarHandleRealtime(data.aips_notifications);
+			}
+		},
+
+		/**
+		 * Handle realtime notification updates from Heartbeat payload.
+		 *
+		 * @param {Object} payload Heartbeat response payload.
+		 */
+		adminBarHandleRealtime: function (payload) {
+			var unreadCount = parseInt(payload.unread_count, 10) || 0;
+			var items = payload.items || [];
+
+			// 1. Update the toolbar root badge count
+			AIPS.adminBarUpdateBadge(unreadCount);
+
+			// 2. Remove any notifications from the DOM that are no longer unread
+			var serverIds = items.map(function (item) {
+				return parseInt(item.id, 10);
+			});
+
+			$('#wpadminbar li.aips-toolbar-notification').each(function () {
+				var $this = $(this);
+				var id = parseInt($this.data('notif-id'), 10);
+				if (serverIds.indexOf(id) === -1) {
+					$this.fadeOut(200, function () {
+						$(this).remove();
+						AIPS.adminBarCheckEmptyState();
+					});
+				}
+			});
+
+			// 3. Prepend new notifications
+			// Reverse iterate so prepended items maintain descending order (newest first)
+			for (var i = items.length - 1; i >= 0; i--) {
+				var item = items[i];
+				var existingEl = $('#wp-admin-bar-aips-notif-' + item.id);
+				if (existingEl.length === 0) {
+					var notifHtml = AIPS.adminBarRenderNotificationHtml(item);
+					var $header = $('#wp-admin-bar-aips-toolbar-notifications-header');
+					if ($header.length > 0) {
+						$header.after(notifHtml);
+					} else {
+						$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').prepend(notifHtml);
+					}
+
+					// Trigger toast notification if not already seen
+					AIPS.maybeToastNotification(item);
+				}
+			}
+
+			AIPS.adminBarCheckEmptyState();
+		},
+
+		/**
+		 * Check empty state and toggle header / placeholder rows in the toolbar.
+		 */
+		adminBarCheckEmptyState: function () {
+			var notifCount = $('#wpadminbar li.aips-toolbar-notification').length;
+			if (notifCount === 0) {
+				$('#wp-admin-bar-aips-toolbar-notifications-header').remove();
+				if ($('#wp-admin-bar-aips-toolbar-no-notifications').length === 0) {
+					$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(
+						AIPS.adminBarNoNotificationsHtml()
+					);
+				}
+			} else {
+				$('#wp-admin-bar-aips-toolbar-no-notifications').remove();
+				if ($('#wp-admin-bar-aips-toolbar-notifications-header').length === 0) {
+					$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').prepend(
+						AIPS.adminBarHeaderHtml()
+					);
+				}
+			}
+		},
+
+		/**
+		 * Build the admin toolbar notifications header list item HTML.
+		 *
+		 * @return {string} HTML string.
+		 */
+		adminBarHeaderHtml: function () {
+			var headingText = wp && wp.i18n ? wp.i18n.__('Notifications', 'ai-post-scheduler') : 'Notifications';
+			var markAllText = wp && wp.i18n ? wp.i18n.__('Mark all as read', 'ai-post-scheduler') : 'Mark all as read';
+			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
+
+			return '<li id="wp-admin-bar-aips-toolbar-notifications-header" class="aips-toolbar-notif-header ab-empty-item">'
+				+ '<div class="ab-item ab-empty-item">'
+				+ '<span class="aips-toolbar-notif-heading">' + $('<div>').text(headingText).html() + '</span>'
+				+ '<button class="aips-mark-all-read" data-nonce="' + nonce + '">'
+				+ $('<div>').text(markAllText).html()
+				+ '</button>'
+				+ '</div></li>';
+		},
+
+		/**
+		 * Render the list item HTML for a single notification in the toolbar.
+		 *
+		 * @param {Object} item Notification object.
+		 * @return {string} HTML string.
+		 */
+		adminBarRenderNotificationHtml: function (item) {
+			var titleMarkup = '';
+			if (item.title) {
+				titleMarkup = '<span class="aips-notif-title">' + $('<div>').text(item.title).html() + '</span>';
+			}
+
+			var messageContent = '';
+			if (item.url) {
+				messageContent = '<a href="' + item.url + '">' + $('<div>').text(item.message).html() + '</a>';
+			} else {
+				messageContent = $('<div>').text(item.message).html();
+			}
+
+			var levelClass = '';
+			if (item.level && (item.level === 'warning' || item.level === 'error')) {
+				levelClass = ' aips-notif-level-' + item.level;
+			}
+
+			var markReadText = wp && wp.i18n ? wp.i18n.__('Mark as read', 'ai-post-scheduler') : 'Mark as read';
+			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
+
+			return '<li id="wp-admin-bar-aips-notif-' + item.id + '" class="aips-toolbar-notification ab-empty-item' + levelClass + '" data-notif-id="' + item.id + '">'
+				+ '<div class="ab-item ab-empty-item">'
+				+ titleMarkup
+				+ '<span class="aips-notif-message">' + messageContent + '</span>'
+				+ '<button class="aips-mark-read" data-id="' + item.id + '" data-nonce="' + nonce + '" title="' + $('<div>').attr('title', markReadText).attr('title') + '">'
+				+ '<span class="dashicons dashicons-yes-alt"></span>'
+				+ '</button>'
+				+ '</div></li>';
+		},
+
+		/**
+		 * Check localStorage seen toasts registry and trigger toast if not seen yet.
+		 *
+		 * @param {Object} item Notification object.
+		 */
+		maybeToastNotification: function (item) {
+			var seenToasts = [];
+			try {
+				seenToasts = JSON.parse(localStorage.getItem('aips_seen_toasts') || '[]');
+			} catch (e) {
+				seenToasts = [];
+			}
+
+			if (seenToasts.indexOf(item.id) !== -1) {
+				return;
+			}
+
+			seenToasts.push(item.id);
+			if (seenToasts.length > 200) {
+				seenToasts.shift();
+			}
+			localStorage.setItem('aips_seen_toasts', JSON.stringify(seenToasts));
+
+			AIPS.showToastNotification(item);
+		},
+
+		/**
+		 * Render and slide-in a floating toast alert.
+		 *
+		 * @param {Object} item Notification object.
+		 */
+		showToastNotification: function (item) {
+			var $container = $('.aips-toast-container');
+			if ($container.length === 0) {
+				$container = $('<div class="aips-toast-container"></div>');
+				$('body').append($container);
+			}
+
+			var iconClass = 'dashicons-info';
+			var defaultTitle = 'Info';
+
+			if (item.level === 'warning') {
+				iconClass = 'dashicons-warning';
+				defaultTitle = 'Warning';
+			} else if (item.level === 'error') {
+				iconClass = 'dashicons-no';
+				defaultTitle = 'Error';
+			} else if (item.level === 'success') {
+				iconClass = 'dashicons-yes';
+				defaultTitle = 'Success';
+			}
+
+			var messageHtml = item.url
+				? '<a href="' + item.url + '">' + $('<div>').text(item.message).html() + '</a>'
+				: $('<div>').text(item.message).html();
+
+			var isPersistent = (item.level === 'warning' || item.level === 'error');
+			var progressHtml = isPersistent ? '' : '<div class="aips-toast-progress"></div>';
+
+			var toastHtml = '<div class="aips-toast aips-toast-' + item.level + '" data-id="' + item.id + '">'
+				+ '<div class="aips-toast-header">'
+				+ '<span class="aips-toast-icon dashicons ' + iconClass + '"></span>'
+				+ '<span class="aips-toast-title">' + $('<div>').text(item.title || defaultTitle).html() + '</span>'
+				+ '<button class="aips-toast-close">&times;</button>'
+				+ '</div>'
+				+ '<div class="aips-toast-body">' + messageHtml + '</div>'
+				+ progressHtml
+				+ '</div>';
+
+			var $toast = $(toastHtml);
+			$container.append($toast);
+
+			// Click to close handler
+			$toast.find('.aips-toast-close').on('click', function (e) {
+				e.preventDefault();
+				$toast.fadeOut(300, function () {
+					$(this).remove();
+				});
+			});
+
+			// Auto-dismiss progress bar and hover-to-pause logic
+			if (!isPersistent) {
+				var timeLeft = 6000;
+				var duration = 6000;
+				var interval = 50;
+				var isHovered = false;
+				var $progress = $toast.find('.aips-toast-progress');
+
+				$toast.on('mouseenter', function () {
+					isHovered = true;
+				});
+				$toast.on('mouseleave', function () {
+					isHovered = false;
+				});
+
+				var timer = setInterval(function () {
+					if (!isHovered) {
+						timeLeft -= interval;
+						var pct = (timeLeft / duration) * 100;
+						$progress.css('width', pct + '%');
+						if (timeLeft <= 0) {
+							clearInterval(timer);
+							$toast.fadeOut(300, function () {
+								$(this).remove();
+							});
+						}
+					}
+				}, interval);
+			}
+		},
+
+		/**
+		 * Speed up Heartbeat frequency to 5 seconds dynamically on AI Post Scheduler pages.
+		 */
+		adminBarSpeedUpHeartbeat: function () {
+			var page = null;
+			var match = window.location.search.match(/[?&]page=([^&]+)/);
+			if (match) {
+				page = decodeURIComponent(match[1]);
+			}
+
+			if (page && (page.indexOf('aips-') === 0 || page === 'ai-post-scheduler')) {
+				if (window.wp && wp.heartbeat) {
+					wp.heartbeat.interval('fast');
+				}
+			}
 		}
 	});
 
