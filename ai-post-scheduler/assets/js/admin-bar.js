@@ -326,6 +326,7 @@
 				.attr('data-id', item.id)
 				.attr('data-nonce', nonce)
 				.attr('title', markReadText)
+				.attr('aria-label', markReadText)
 				.append('<span class="dashicons dashicons-yes-alt"></span>');
 
 			$content.append($message).append($markReadButton);
@@ -398,7 +399,7 @@
 
 			var isPersistent = (item.level === 'warning' || item.level === 'error');
 			var progressHtml = isPersistent ? '' : '<div class="aips-toast-progress"></div>';
-			var closeButtonHtml = $('<button class="aips-toast-close" type="button">&times;</button>')
+			var closeButtonHtml = $('<button class="aips-toast-close" type="button"><span aria-hidden="true">&times;</span></button>')
 				.attr('aria-label', closeToastText)
 				.prop('outerHTML');
 
