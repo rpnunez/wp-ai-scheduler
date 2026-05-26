@@ -292,34 +292,46 @@
 		 * @return {string} HTML string.
 		 */
 		adminBarRenderNotificationHtml: function (item) {
-			var titleMarkup = '';
-			if (item.title) {
-				titleMarkup = '<span class="aips-notif-title">' + $('<div>').text(item.title).html() + '</span>';
-			}
-
-			var messageContent = '';
-			if (item.url) {
-				messageContent = '<a href="' + item.url + '">' + $('<div>').text(item.message).html() + '</a>';
-			} else {
-				messageContent = $('<div>').text(item.message).html();
-			}
-
+			var $row = $('<li>', {
+				id: 'wp-admin-bar-aips-notif-' + item.id,
+				'class': 'aips-toolbar-notification ab-empty-item',
+				'data-notif-id': item.id
+			});
 			var levelClass = '';
 			if (item.level && (item.level === 'warning' || item.level === 'error')) {
-				levelClass = ' aips-notif-level-' + item.level;
+				levelClass = 'aips-notif-level-' + item.level;
 			}
+			$row.addClass(levelClass);
 
 			var markReadText = wp && wp.i18n ? wp.i18n.__('Mark as read', 'ai-post-scheduler') : 'Mark as read';
 			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
+			var $content = $('<div class="ab-item ab-empty-item"></div>');
 
-			return '<li id="wp-admin-bar-aips-notif-' + item.id + '" class="aips-toolbar-notification ab-empty-item' + levelClass + '" data-notif-id="' + item.id + '">'
-				+ '<div class="ab-item ab-empty-item">'
-				+ titleMarkup
-				+ '<span class="aips-notif-message">' + messageContent + '</span>'
-				+ '<button class="aips-mark-read" data-id="' + item.id + '" data-nonce="' + nonce + '" title="' + $('<div>').attr('title', markReadText).attr('title') + '">'
-				+ '<span class="dashicons dashicons-yes-alt"></span>'
-				+ '</button>'
-				+ '</div></li>';
+			if (item.title) {
+				$content.append(
+					$('<span class="aips-notif-title"></span>').text(item.title)
+				);
+			}
+
+			var $message = $('<span class="aips-notif-message"></span>');
+			if (item.url) {
+				$message.append(
+					$('<a></a>').attr('href', item.url).text(item.message)
+				);
+			} else {
+				$message.text(item.message);
+			}
+
+			var $markReadButton = $('<button class="aips-mark-read" type="button"></button>')
+				.attr('data-id', item.id)
+				.attr('data-nonce', nonce)
+				.attr('title', markReadText)
+				.append('<span class="dashicons dashicons-yes-alt"></span>');
+
+			$content.append($message).append($markReadButton);
+			$row.append($content);
+
+			return $('<div>').append($row).html();
 		},
 
 		/**
@@ -360,18 +372,24 @@
 				$('body').append($container);
 			}
 
+			var infoTitle = wp && wp.i18n ? wp.i18n.__('Info', 'ai-post-scheduler') : 'Info';
+			var warningTitle = wp && wp.i18n ? wp.i18n.__('Warning', 'ai-post-scheduler') : 'Warning';
+			var errorTitle = wp && wp.i18n ? wp.i18n.__('Error', 'ai-post-scheduler') : 'Error';
+			var successTitle = wp && wp.i18n ? wp.i18n.__('Success', 'ai-post-scheduler') : 'Success';
+			var closeToastText = wp && wp.i18n ? wp.i18n.__('Close notification', 'ai-post-scheduler') : 'Close notification';
+
 			var iconClass = 'dashicons-info';
-			var defaultTitle = 'Info';
+			var defaultTitle = infoTitle;
 
 			if (item.level === 'warning') {
 				iconClass = 'dashicons-warning';
-				defaultTitle = 'Warning';
+				defaultTitle = warningTitle;
 			} else if (item.level === 'error') {
 				iconClass = 'dashicons-no';
-				defaultTitle = 'Error';
+				defaultTitle = errorTitle;
 			} else if (item.level === 'success') {
 				iconClass = 'dashicons-yes';
-				defaultTitle = 'Success';
+				defaultTitle = successTitle;
 			}
 
 			var messageHtml = item.url
@@ -380,12 +398,15 @@
 
 			var isPersistent = (item.level === 'warning' || item.level === 'error');
 			var progressHtml = isPersistent ? '' : '<div class="aips-toast-progress"></div>';
+			var closeButtonHtml = $('<button class="aips-toast-close" type="button">&times;</button>')
+				.attr('aria-label', closeToastText)
+				.prop('outerHTML');
 
 			var toastHtml = '<div class="aips-toast aips-toast-' + item.level + '" data-id="' + item.id + '">'
 				+ '<div class="aips-toast-header">'
 				+ '<span class="aips-toast-icon dashicons ' + iconClass + '"></span>'
 				+ '<span class="aips-toast-title">' + $('<div>').text(item.title || defaultTitle).html() + '</span>'
-				+ '<button class="aips-toast-close">&times;</button>'
+				+ closeButtonHtml
 				+ '</div>'
 				+ '<div class="aips-toast-body">' + messageHtml + '</div>'
 				+ progressHtml
@@ -434,7 +455,7 @@
 		},
 
 		/**
-		 * Speed up Heartbeat frequency to 5 seconds dynamically on AI Post Scheduler pages.
+		 * Speed up Heartbeat frequency dynamically on AI Post Scheduler pages.
 		 */
 		adminBarSpeedUpHeartbeat: function () {
 			var page = null;

@@ -97,7 +97,7 @@ class Test_AIPS_Admin_Bar_Heartbeat extends WP_UnitTestCase {
 		$this->assertSame($notif_id, $item['id']);
 		$this->assertSame('test_notification', $item['type']);
 		$this->assertSame('Test notification message', $item['message']);
-		$this->assertSame('https://example.com/', $item['url']); // WP trailing slashes URL
+		$this->assertSame(esc_url('https://example.com'), $item['url']);
 
 		// Verify cache was updated
 		$cache_key = 'aips_unread_count_' . get_current_user_id();

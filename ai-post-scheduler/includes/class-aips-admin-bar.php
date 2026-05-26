@@ -60,7 +60,7 @@ class AIPS_Admin_Bar {
 		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
-			array('jquery'),
+			array('jquery', 'heartbeat'),
 			AIPS_VERSION,
 			true
 		);
@@ -335,9 +335,9 @@ class AIPS_Admin_Bar {
 				$items[] = array(
 					'id'         => (int) $notif->id,
 					'type'       => sanitize_key($notif->type),
-					'title'      => esc_html($notif->title),
-					'message'    => esc_html($notif->message),
-					'url'        => esc_url($notif->url),
+					'title'      => sanitize_text_field($notif->title),
+					'message'    => sanitize_text_field($notif->message),
+					'url'        => esc_url_raw($notif->url),
 					'level'      => sanitize_key($notif->level),
 					'created_at' => (int) $notif->created_at,
 				);

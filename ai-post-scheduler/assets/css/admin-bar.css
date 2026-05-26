@@ -281,6 +281,12 @@
 	color: #fff;
 }
 
+.aips-toast-close:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, 0.8);
+	outline-offset: 2px;
+	color: #fff;
+}
+
 .aips-toast-body {
 	font-size: 12px;
 	line-height: 1.4;
