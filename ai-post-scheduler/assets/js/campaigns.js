@@ -30,10 +30,14 @@
 			$(document).on('click', '.aips-toggle-campaign', this.handleToggleCampaign.bind(this));
 			$(document).on('click', '.aips-duplicate-campaign', this.handleDuplicateCampaign.bind(this));
 			$(document).on('click', '.aips-archive-campaign', this.handleArchiveCampaign.bind(this));
+			$(document).on('click', '.aips-restore-campaign', this.handleRestoreCampaign.bind(this));
+			$(document).on('click', '.aips-delete-campaign', this.handleDeleteCampaign.bind(this));
 		},
 
 		/**
 		 * Handle toggle campaign (pause/resume).
+		 *
+		 * @param {Event} e Click event.
 		 */
 		handleToggleCampaign: function(e) {
 			e.preventDefault();
@@ -51,7 +55,7 @@
 				data: {
 					action: 'aips_toggle_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId,
+					campaign_id: campaignId,
 					is_active: newStatus
 				},
 				success: function(response) {
@@ -59,12 +63,12 @@
 						AIPS.Utilities.showNotice(response.data.message, 'success');
 						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || 'Failed to update campaign', 'error');
+						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorToggle, 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 					$button.prop('disabled', false);
 				}
 			});
@@ -72,6 +76,8 @@
 
 		/**
 		 * Handle duplicate campaign.
+		 *
+		 * @param {Event} e Click event.
 		 */
 		handleDuplicateCampaign: function(e) {
 			e.preventDefault();
@@ -79,7 +85,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm('Duplicate this campaign? The copy will be created in a paused state.')) {
+			if (!confirm(aipsCampaignsL10n.confirmDuplicate)) {
 				return;
 			}
 
@@ -91,19 +97,19 @@
 				data: {
 					action: 'aips_duplicate_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId
+					campaign_id: campaignId
 				},
 				success: function(response) {
 					if (response.success) {
 						AIPS.Utilities.showNotice(response.data.message, 'success');
 						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || 'Failed to duplicate campaign', 'error');
+						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDuplicate, 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 					$button.prop('disabled', false);
 				}
 			});
@@ -111,6 +117,8 @@
 
 		/**
 		 * Handle archive campaign.
+		 *
+		 * @param {Event} e Click event.
 		 */
 		handleArchiveCampaign: function(e) {
 			e.preventDefault();
@@ -118,7 +126,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm('Archive this campaign? It will be hidden from the active campaigns list.')) {
+			if (!confirm(aipsCampaignsL10n.confirmArchive)) {
 				return;
 			}
 
@@ -130,23 +138,77 @@
 				data: {
 					action: 'aips_archive_campaign',
 					nonce: aipsAjax.nonce,
-					schedule_id: campaignId
+					campaign_id: campaignId
 				},
 				success: function(response) {
 					if (response.success) {
 						AIPS.Utilities.showNotice(response.data.message, 'success');
-						$button.closest('tr').fadeOut(300, function() {
-							$(this).remove();
-						});
+						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || 'Failed to archive campaign', 'error');
+						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice('Network error. Please try again.', 'error');
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 					$button.prop('disabled', false);
 				}
+			});
+		},
+
+		/**
+		 * Handle restore campaign (unarchive).
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleRestoreCampaign: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+
+			$.post(ajaxurl, {
+				action: 'aips_restore_campaign',
+				nonce: aipsAjax.nonce,
+				campaign_id: campaignId
+			}).done(function(response) {
+				if (response.success) {
+					location.reload();
+				} else {
+					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorRestore, 'error');
+				}
+			}).fail(function() {
+				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+			});
+		},
+
+		/**
+		 * Handle delete campaign (permanent removal).
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleDeleteCampaign: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+
+			if (!confirm(aipsCampaignsL10n.confirmDelete)) {
+				return;
+			}
+
+			$.post(ajaxurl, {
+				action: 'aips_delete_campaign',
+				nonce: aipsAjax.nonce,
+				campaign_id: campaignId
+			}).done(function(response) {
+				if (response.success) {
+					location.reload();
+				} else {
+					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDelete, 'error');
+				}
+			}).fail(function() {
+				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 			});
 		}
 	};

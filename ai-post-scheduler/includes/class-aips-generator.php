@@ -703,6 +703,10 @@ class AIPS_Generator {
 
         if ($context instanceof AIPS_Template_Context) {
             $history_metadata['template_id'] = $context->get_id();
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id)) {
+                $history_metadata['campaign_id'] = absint($template->campaign_id);
+            }
         } elseif ($context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
             $history_metadata['topic_id'] = $context->get_id();
@@ -883,6 +887,13 @@ class AIPS_Generator {
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         ));
+
+        if ($context instanceof AIPS_Template_Context) {
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id)) {
+                AIPS_Campaigns_Repository::instance()->flush_campaign_cache((int) $template->campaign_id);
+            }
+        }
 
         // Write a structured metric snapshot to history_log.  The metrics
         // repository reads these entries to compute image failure rates and
