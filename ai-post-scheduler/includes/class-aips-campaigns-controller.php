@@ -55,13 +55,11 @@ class AIPS_Campaigns_Controller {
 		?AIPS_Config $config = null,
 		?AIPS_AI_Service_Interface $ai_service = null
 	) {
-		$container = AIPS_Container::get_instance();
-
 		$this->campaigns_repository = $campaigns_repository ?: AIPS_Campaigns_Repository::instance();
 		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
 		$this->unified_schedule_service = $unified_schedule_service ?: new AIPS_Unified_Schedule_Service();
 		$this->config = $config ?: AIPS_Config::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->ai_service = $this->resolve_ai_service($ai_service);
 
 		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
 		add_action('wp_ajax_aips_get_campaign_metrics', array($this, 'ajax_get_campaign_metrics'));
@@ -417,7 +415,14 @@ class AIPS_Campaigns_Controller {
 	/**
 	 * Parse AI intake payload from request.
 	 *
-	 * @return array
+	 * @return array{
+	 *     topic_niche: string,
+	 *     target_audience: string,
+	 *     content_tone: string,
+	 *     publishing_goal: string,
+	 *     frequency: string,
+	 *     post_type: string
+	 * }
 	 */
 	private function get_ai_intake_payload() {
 		$intake = isset($_POST['intake']) ? wp_unslash($_POST['intake']) : array();
@@ -487,16 +492,20 @@ class AIPS_Campaigns_Controller {
 	 * @return array
 	 */
 	private function prepare_ai_payload($response, $intake) {
+		$fallback_campaign_name = !empty($intake['topic_niche'])
+			? ucfirst($intake['topic_niche']) . ' Campaign'
+			: __('AI-Assisted Campaign', 'ai-post-scheduler');
+
 		$fallback_prompt_template = sprintf(
 			/* translators: %s topic or niche */
 			__('Write a high-quality article about %s with clear headings and practical examples.', 'ai-post-scheduler'),
-			$intake['topic_niche'] ?: __('the selected topic', 'ai-post-scheduler')
+			!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('the selected topic', 'ai-post-scheduler')
 		);
 
 		$response = is_array($response) ? $response : array();
 
 		return array(
-			'campaign_name' => isset($response['campaign_name']) ? sanitize_text_field($response['campaign_name']) : ucfirst($intake['topic_niche']) . ' Campaign',
+			'campaign_name' => isset($response['campaign_name']) ? sanitize_text_field($response['campaign_name']) : $fallback_campaign_name,
 			'content_goal' => isset($response['content_goal']) ? sanitize_textarea_field($response['content_goal']) : $intake['publishing_goal'],
 			'post_type' => isset($response['post_type']) ? sanitize_key($response['post_type']) : $intake['post_type'],
 			'template_mode' => 'custom',
@@ -513,6 +522,30 @@ class AIPS_Campaigns_Controller {
 			'is_active' => 1,
 			'start_time' => AIPS_DateTime::now()->toDisplay('Y-m-d\TH:i'),
 		);
+	}
+
+	/**
+	 * Resolve AI service dependency with fallback chain.
+	 *
+	 * Resolution order:
+	 * 1) Explicitly injected $ai_service dependency
+	 * 2) Container binding for AIPS_AI_Service_Interface
+	 * 3) New AIPS_AI_Service instance
+	 *
+	 * @param AIPS_AI_Service_Interface|null $ai_service Optional injected AI service.
+	 * @return AIPS_AI_Service_Interface
+	 */
+	private function resolve_ai_service($ai_service) {
+		if ($ai_service instanceof AIPS_AI_Service_Interface) {
+			return $ai_service;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if ($container->has(AIPS_AI_Service_Interface::class)) {
+			return $container->make(AIPS_AI_Service_Interface::class);
+		}
+
+		return new AIPS_AI_Service();
 	}
 
 	/**

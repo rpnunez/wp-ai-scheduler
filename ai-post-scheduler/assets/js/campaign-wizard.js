@@ -77,17 +77,25 @@
 		},
 
 		/**
+		 * Return option objects for a select element.
+		 *
+		 * @param {string} selectSelector Select element selector.
+		 * @return {Array<{value: string, label: string}>}
+		 */
+		getSelectOptions: function(selectSelector) {
+			return $(selectSelector).find('option').map(function() {
+				return { value: $(this).val(), label: $(this).text() };
+			}).get();
+		},
+
+		/**
 		 * Open AI-assisted intake form modal.
 		 *
 		 * @return {void}
 		 */
 		showAiIntakeModal: function() {
-			var frequencyOptions = $('#aips_frequency option').map(function() {
-				return { value: $(this).val(), label: $(this).text() };
-			}).get();
-			var postTypeOptions = $('#aips_post_type option').map(function() {
-				return { value: $(this).val(), label: $(this).text() };
-			}).get();
+			var frequencyOptions = this.getSelectOptions('#aips_frequency');
+			var postTypeOptions = this.getSelectOptions('#aips_post_type');
 
 			AIPS.Utilities.showModal({
 				heading: aipsCampaignWizardL10n.aiFormTitle,
@@ -110,10 +118,10 @@
 						type: 'select',
 						required: true,
 						options: [
-							{ value: 'conversational', label: 'Conversational' },
-							{ value: 'professional', label: 'Professional' },
-							{ value: 'technical', label: 'Technical' },
-							{ value: 'friendly', label: 'Friendly' },
+							{ value: 'conversational', label: aipsCampaignWizardL10n.toneConversational },
+							{ value: 'professional', label: aipsCampaignWizardL10n.toneProfessional },
+							{ value: 'technical', label: aipsCampaignWizardL10n.toneTechnical },
+							{ value: 'friendly', label: aipsCampaignWizardL10n.toneFriendly },
 						],
 					},
 					{
@@ -382,31 +390,31 @@
 		/**
 		 * Populate wizard fields from AI-generated payload.
 		 *
-		 * @param {Object} draft AI-generated draft payload.
+		 * @param {Object} draft AI-generated draft payload keyed by wizard field
+		 *                       names (e.g. campaign_name, content_goal,
+		 *                       prompt_template, review_policy, is_active).
 		 * @return {void}
 		 */
 		populateFieldsFromAi: function(draft) {
 			var self = this;
 
 			$.each(draft, function(fieldName, value) {
-				var sanitizedValue = typeof value === 'string'
-					? (fieldName === 'prompt_template' || fieldName === 'content_goal'
-						? self.sanitizeTextareaText(value)
-						: self.sanitizePlainText(value))
-					: value;
+				var sanitizedValue = value;
+				if (typeof value === 'string') {
+					if (fieldName === 'prompt_template' || fieldName === 'content_goal') {
+						sanitizedValue = self.sanitizeTextareaText(value);
+					} else {
+						sanitizedValue = self.sanitizePlainText(value);
+					}
+				}
 
 				if (fieldName === 'is_active') {
-					$('[name="is_active"]').prop('checked', Number(value) === 1).trigger('change');
+					self.populateCheckboxField('is_active', Number(value) === 1);
 					return;
 				}
 
 				if (fieldName === 'day_preferences') {
-					$('[name="day_preferences[]"]').prop('checked', false);
-					if (typeof value === 'string' && value.length > 0) {
-						value.split(',').forEach(function(day) {
-							$('[name="day_preferences[]"][value="' + self.sanitizePlainText(day) + '"]').prop('checked', true);
-						});
-					}
+					self.populateDayPreferences(value);
 					return;
 				}
 
@@ -416,11 +424,52 @@
 				}
 
 				if ($field.is(':radio')) {
-					$field.filter('[value="' + sanitizedValue + '"]').prop('checked', true).trigger('change');
+					self.populateRadioField(fieldName, sanitizedValue);
 					return;
 				}
 
 				$field.val(sanitizedValue).trigger('change');
+			});
+		},
+
+		/**
+		 * Populate a checkbox field and trigger change.
+		 *
+		 * @param {string} fieldName Field name.
+		 * @param {boolean} checked Whether checkbox is checked.
+		 * @return {void}
+		 */
+		populateCheckboxField: function(fieldName, checked) {
+			$('[name="' + fieldName + '"]').prop('checked', checked).trigger('change');
+		},
+
+		/**
+		 * Populate a radio field and trigger change.
+		 *
+		 * @param {string} fieldName Field name.
+		 * @param {string} value Field value.
+		 * @return {void}
+		 */
+		populateRadioField: function(fieldName, value) {
+			$('[name="' + fieldName + '"]').filter('[value="' + value + '"]').prop('checked', true).trigger('change');
+		},
+
+		/**
+		 * Populate day preference checkboxes from comma-separated values.
+		 *
+		 * @param {string} values Comma-separated day numbers.
+		 * @return {void}
+		 */
+		populateDayPreferences: function(values) {
+			var self = this;
+			$('[name="day_preferences[]"]').prop('checked', false);
+			if (typeof values !== 'string' || values.length === 0) {
+				return;
+			}
+
+			values.split(',').forEach(function(day) {
+				var dayValue = self.sanitizePlainText(day);
+				$('[name="day_preferences[]"][value="' + dayValue + '"]').prop('checked', true);
 			});
 		},
 

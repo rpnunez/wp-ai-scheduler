@@ -1192,6 +1192,10 @@ class AIPS_Admin_Assets {
                 'publishingGoalLabel'    => __('Publishing Goal', 'ai-post-scheduler'),
                 'preferredFrequencyLabel' => __('Preferred Post Frequency', 'ai-post-scheduler'),
                 'postTypeLabel'          => __('Post Type', 'ai-post-scheduler'),
+                'toneConversational'     => __('Conversational', 'ai-post-scheduler'),
+                'toneProfessional'       => __('Professional', 'ai-post-scheduler'),
+                'toneTechnical'          => __('Technical', 'ai-post-scheduler'),
+                'toneFriendly'           => __('Friendly', 'ai-post-scheduler'),
             ));
     }
 
