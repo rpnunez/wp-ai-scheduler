@@ -38,8 +38,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		// Create a template
 		$template_id = $this->template_repository->create(array(
 			'name' => 'Test Template',
-			'system_prompt' => 'Test system prompt',
-			'user_prompt' => 'Test user prompt',
+			'prompt_template' => 'Test prompt template',
+			'post_status' => 'draft',
+			'post_category' => 0,
 			'is_active' => 1,
 		));
 		
@@ -87,8 +88,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		// Create a template
 		$template_id = $this->template_repository->create(array(
 			'name' => 'Test Template',
-			'system_prompt' => 'Test system prompt',
-			'user_prompt' => 'Test user prompt',
+			'prompt_template' => 'Test prompt template',
+			'post_status' => 'draft',
+			'post_category' => 0,
 			'is_active' => 1,
 		));
 		
@@ -322,6 +324,12 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		));
 
 		update_post_meta($post_id, '_thumbnail_id', $attachment_id);
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
 
 		$this->assertTrue($this->service->should_regenerate_featured_image($post_id));
 	}

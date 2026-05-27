@@ -312,6 +312,7 @@ class AIPS_Unified_Schedule_Service {
 				'type'                 => self::TYPE_TEMPLATE,
 				'title'                => $title,
 				'subtitle'             => $schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler'),
+				'campaign_id'          => !empty($schedule->campaign_id) ? (int) $schedule->campaign_id : 0,
 				'cron_hook'            => 'aips_generate_scheduled_posts',
 				'frequency'            => $schedule->frequency,
 				'topic'                => isset($schedule->topic) ? $schedule->topic : '',
@@ -323,7 +324,7 @@ class AIPS_Unified_Schedule_Service {
 				'status'               => $status,
 				'stats_count'          => $stats,
 				'stats_label'          => _n('post generated', 'posts generated', $stats, 'ai-post-scheduler'),
-				'can_delete'           => true,
+				'can_delete'           => empty($schedule->campaign_id),
 				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
 				'template_id'          => (int) $schedule->template_id,
 			);

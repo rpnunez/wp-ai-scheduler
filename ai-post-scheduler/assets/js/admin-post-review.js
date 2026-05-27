@@ -41,11 +41,16 @@
 
 			// Open post-preview modal.
 			$(document).on('click', '.aips-preview-post, .aips-preview-trigger', this.onPreviewClick.bind(this));
+			$(document).on('click', '.aips-edit-post', this.onEditClick.bind(this));
 
 			// Single-row actions.
 			$(document).on('click', '.aips-publish-post',    this.onPublishClick.bind(this));
 			$(document).on('click', '.aips-delete-post',     this.onDeleteClick.bind(this));
 			$(document).on('click', '.aips-regenerate-post', this.onRegenerateClick.bind(this));
+			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
+			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
+			$(document).on('click', this.onDocumentClick.bind(this));
+			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Bulk actions.
 			$(document).on('click', '#aips-bulk-action-btn', this.onBulkAction.bind(this));
@@ -95,6 +100,92 @@
 		onPreviewClick: function (e) {
 			e.preventDefault();
 			this.previewPost($(e.currentTarget).data('post-id'));
+		},
+
+		/**
+		 * Open the post editor in a new tab.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onEditClick: function (e) {
+			e.preventDefault();
+			var editUrl = $(e.currentTarget).data('edit-url');
+			if (editUrl) {
+				window.open(editUrl, '_blank', 'noopener');
+			}
+		},
+
+		/**
+		 * Toggle a compact row overflow menu.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRowActionOverflowToggle: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $toggle = $(e.currentTarget);
+			var menuId = $toggle.attr('aria-controls');
+			var $menu = menuId ? $('#' + menuId) : $();
+
+			if (!$menu.length) {
+				return;
+			}
+
+			var isExpanded = $toggle.attr('aria-expanded') === 'true';
+			this.closeAllRowActionMenus();
+
+			if (!isExpanded) {
+				$toggle.attr('aria-expanded', 'true');
+				$menu.prop('hidden', false);
+			}
+		},
+
+		/**
+		 * Close overflow menus after a menu action is selected.
+		 *
+		 * @return {void}
+		 */
+		onRowActionItemClick: function () {
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close menus when clicking outside of row action controls.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onDocumentClick: function (e) {
+			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+				return;
+			}
+
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close overflow menus when pressing Escape.
+		 *
+		 * @param {KeyboardEvent} e Keyboard event.
+		 * @return {void}
+		 */
+		onDocumentKeyDown: function (e) {
+			if (e.key === 'Escape') {
+				this.closeAllRowActionMenus();
+			}
+		},
+
+		/**
+		 * Hide all compact row action overflow menus.
+		 *
+		 * @return {void}
+		 */
+		closeAllRowActionMenus: function () {
+			$('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+			$('.aips-row-action-menu').prop('hidden', true);
 		},
 
 		/**

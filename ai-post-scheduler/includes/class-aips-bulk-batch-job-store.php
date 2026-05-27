@@ -166,6 +166,43 @@ class AIPS_Bulk_Batch_Job_Store {
 	}
 
 	/**
+	 * Get counts for selected statuses.
+	 *
+	 * @param array $statuses Statuses to include.
+	 * @return array<string,int>
+	 */
+	public function get_status_counts( array $statuses ): array {
+		global $wpdb;
+
+		$statuses = array_values(
+			array_filter(
+				array_map( 'sanitize_key', $statuses )
+			)
+		);
+
+		if ( empty( $statuses ) ) {
+			return array();
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$sql          = "SELECT status, COUNT(*) AS count FROM {$this->table()} WHERE status IN ({$placeholders}) GROUP BY status"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$prepared_sql = $wpdb->prepare( $sql, $statuses );
+		$rows         = $wpdb->get_results( $prepared_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		$counts = array_fill_keys( $statuses, 0 );
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$status = isset( $row['status'] ) ? sanitize_key( (string) $row['status'] ) : '';
+				if ( isset( $counts[ $status ] ) ) {
+					$counts[ $status ] = isset( $row['count'] ) ? (int) $row['count'] : 0;
+				}
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
 	 * Mark a job as failed immediately, overriding whatever status it currently holds.
 	 *
 	 * Call this as soon as any slice reports failures so that the final

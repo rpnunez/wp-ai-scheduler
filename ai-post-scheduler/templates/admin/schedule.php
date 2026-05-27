@@ -15,6 +15,11 @@ $structure_manager  = new AIPS_Article_Structure_Manager();
 $article_structures = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns  = $template_type_selector->get_rotation_patterns();
+$campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
+$campaign_map = array();
+foreach ($campaign_options as $campaign_option) {
+	$campaign_map[(int) $campaign_option->id] = $campaign_option;
+}
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
@@ -128,6 +133,22 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					</a>
 					<?php endif; ?>
 				</div>
+			</div>
+		</div>
+		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
+			<div class="aips-panel-body">
+				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
+				<div class="aips-schedule-status-columns">
+					<div class="aips-schedule-status-column">
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
+					</div>
+					<div class="aips-schedule-status-column">
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
+					</div>
+				</div>
+				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
 			</div>
 		</div>
 
@@ -256,6 +277,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php if (!empty($sched['subtitle'])): ?>
 							<div class="cell-meta"><?php echo esc_html($sched['subtitle']); ?></div>
 							<?php endif; ?>
+							<?php if (!empty($sched['campaign_id']) && isset($campaign_map[(int) $sched['campaign_id']])): ?>
+							<div class="cell-meta" style="margin-top:4px;">
+								<a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($sched['campaign_id'])), admin_url('admin.php'))); ?>">
+									<?php echo esc_html($campaign_map[(int) $sched['campaign_id']]->name); ?>
+								</a>
+							</div>
+							<?php endif; ?>
 							<div class="aips-row-actions">
 								<a href="#"
 									class="aips-view-unified-history"
@@ -361,6 +389,12 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+								</button>
+								<?php elseif (!empty($sched['campaign_id'])): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-danger" disabled
+									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
 								<?php endif; ?>
@@ -511,7 +545,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
-
 <!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
@@ -536,4 +569,3 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
-

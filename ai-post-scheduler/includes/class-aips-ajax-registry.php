@@ -53,6 +53,21 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
+
+		// Admin Campaign Wizard
+		'aips_campaign_wizard_save_draft'    => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_validate_step' => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_finalize'      => 'AIPS_Campaigns_Controller',
+
+		// Campaigns Controller
+		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
@@ -143,6 +158,7 @@ class AIPS_Ajax_Registry {
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',
+		'aips_get_history_modal_html'     => 'AIPS_History',
 		'aips_reload_history'             => 'AIPS_History',
 		'aips_retry_generation'           => 'AIPS_History',
 

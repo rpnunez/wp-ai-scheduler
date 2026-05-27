@@ -214,6 +214,136 @@
 	padding: 0;
 }
 
+.aips-schedule-status-strip {
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-schedule-status-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: var(--aips-space-3);
+}
+
+.aips-schedule-status-card {
+    border: 1px solid var(--aips-gray-200);
+    border-radius: var(--aips-radius-md);
+    background: var(--aips-white);
+    padding: var(--aips-space-3) var(--aips-space-4);
+    box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-schedule-status-card-label {
+    font-size: var(--aips-text-xs);
+    font-weight: var(--aips-font-semibold);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--aips-gray-500);
+}
+
+.aips-schedule-status-card-value {
+    margin-top: 4px;
+    font-size: var(--aips-text-2xl);
+    font-weight: var(--aips-font-bold);
+    line-height: 1.1;
+    color: var(--aips-gray-900);
+}
+
+.aips-schedule-status-card-success .aips-schedule-status-card-value {
+    color: var(--aips-success-700);
+}
+
+.aips-schedule-status-card-info .aips-schedule-status-card-value {
+    color: var(--aips-info-700);
+}
+
+.aips-schedule-status-card-error .aips-schedule-status-card-value {
+    color: var(--aips-error-700);
+}
+
+.aips-schedule-status-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: var(--aips-space-3);
+    margin-top: var(--aips-space-3);
+}
+
+.aips-schedule-status-column {
+    border: 1px solid var(--aips-gray-100);
+    border-radius: var(--aips-radius-md);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    padding: var(--aips-space-3);
+}
+
+.aips-schedule-status-heading {
+    margin: 0 0 var(--aips-space-2) 0;
+    font-size: var(--aips-text-sm);
+    font-weight: var(--aips-font-semibold);
+    color: var(--aips-gray-800);
+}
+
+.aips-schedule-status-timeline,
+.aips-schedule-status-warnings {
+	margin-top: var(--aips-space-2);
+}
+
+.aips-schedule-status-event {
+    border: 1px solid var(--aips-gray-100);
+    border-radius: var(--aips-radius-sm);
+    background: var(--aips-white);
+    padding: var(--aips-space-2);
+    margin-bottom: var(--aips-space-2);
+}
+
+.aips-schedule-status-event:last-child {
+    margin-bottom: 0;
+}
+
+.aips-schedule-status-event-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--aips-space-2);
+    margin-bottom: 4px;
+}
+
+.aips-schedule-status-event-time {
+    font-size: var(--aips-text-xs);
+    color: var(--aips-gray-500);
+}
+
+.aips-schedule-status-event-title {
+    font-size: var(--aips-text-sm);
+    font-weight: var(--aips-font-medium);
+    color: var(--aips-gray-800);
+    word-break: break-word;
+}
+
+.aips-schedule-status-empty {
+    padding: var(--aips-space-2) 0;
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-500);
+}
+
+.aips-schedule-status-item {
+	margin-right: var(--aips-space-2);
+}
+
+@media (max-width: 1024px) {
+    .aips-schedule-status-summary-cards {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+
+    .aips-schedule-status-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .aips-schedule-status-summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Filter Bar */
 .aips-filter-bar {
 	background: var(--aips-gray-50);
@@ -732,6 +862,12 @@
 	outline-offset: 2px;
 }
 
+.aips-btn:focus-visible {
+	outline: 2px solid var(--aips-primary);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 2px var(--aips-white), 0 0 0 4px rgba(34, 113, 177, 0.35);
+}
+
 .aips-btn-primary {
 	background: var(--aips-primary);
 	color: var(--aips-white);
@@ -806,6 +942,15 @@
 	font-size: 16px;
 	width: 16px;
 	height: 16px;
+	line-height: 16px;
+	flex: 0 0 16px;
+	margin: 0;
+}
+
+.aips-btn .dashicons + span,
+.aips-btn .dashicons + strong,
+.aips-btn .dashicons + em {
+	margin-left: 0;
 }
 
 /* ==========================================================================
@@ -3579,6 +3724,10 @@ margin-right: 5px;
 /* Log-details toggle link */
 .aips-toggle-log-details {
 font-size: 13px;
+}
+
+.aips-cache-rebuild-controls {
+	margin-top: 12px;
 }
 
 /* Dashboard stats bar: stack vertically on mobile — see consolidated @media below */
