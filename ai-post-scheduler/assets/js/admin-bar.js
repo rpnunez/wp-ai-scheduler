@@ -225,7 +225,12 @@
 			// Reverse iterate so prepended items maintain descending order (newest first)
 			for (var i = items.length - 1; i >= 0; i--) {
 				var item = items[i];
-				var existingEl = $('#wp-admin-bar-aips-notif-' + item.id);
+				var itemId = parseInt(item.id, 10);
+				if (!Number.isInteger(itemId) || itemId <= 0) {
+					continue;
+				}
+
+				var existingEl = $('#wp-admin-bar-aips-notif-' + itemId);
 				if (existingEl.length === 0) {
 					var notifHtml = AIPS.adminBarRenderNotificationHtml(item);
 					var $header = $('#wp-admin-bar-aips-toolbar-notifications-header');
@@ -289,7 +294,14 @@
 		 * @return {string} HTML string.
 		 */
 		adminBarRenderNotificationHtml: function (item) {
-			var id = parseInt(item.id, 10) || 0;
+			var id = parseInt(item.id, 10);
+			if (!Number.isInteger(id) || id <= 0) {
+				return '';
+			}
+
+			var title = item.title ? String(item.title) : '';
+			var message = item.message ? String(item.message) : '';
+			var url = item.url ? String(item.url) : '';
 			var levelClass = '';
 			if (item.level && (item.level === 'warning' || item.level === 'error')) {
 				levelClass = ' aips-notif-level-' + item.level;
@@ -298,17 +310,17 @@
 			var markReadText = wp && wp.i18n ? wp.i18n.__('Mark as read', 'ai-post-scheduler') : 'Mark as read';
 			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
 			var titleHtml = '';
-			if (item.title) {
+			if (title) {
 				titleHtml = AIPS.Templates.render('aips-tmpl-admin-bar-notification-title', {
-					title: item.title
+					title: title
 				});
 			}
 
-			var messageHtml = AIPS.Templates.escape(item.message || '');
-			if (item.url) {
+			var messageHtml = AIPS.Templates.escape(message);
+			if (url) {
 				messageHtml = AIPS.Templates.render('aips-tmpl-admin-bar-notification-message-link', {
-					url: item.url,
-					message: item.message || ''
+					url: url,
+					message: message
 				});
 			}
 

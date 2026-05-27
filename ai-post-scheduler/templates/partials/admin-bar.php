@@ -3,7 +3,7 @@
  * Admin Bar client-side templates.
  *
  * @package AI_Post_Scheduler
- * @since 2.1.0
+ * @since 2.8.1
  */
 
 if (!defined('ABSPATH')) {
