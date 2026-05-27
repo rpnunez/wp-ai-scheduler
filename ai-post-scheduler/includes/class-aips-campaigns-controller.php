@@ -343,10 +343,6 @@ class AIPS_Campaigns_Controller {
 			return absint($_POST['campaign_id']);
 		}
 
-		if (isset($_POST['schedule_id'])) {
-			return absint($_POST['schedule_id']);
-		}
-
 		return 0;
 	}
 

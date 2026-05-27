@@ -71,13 +71,19 @@ class AIPS_DB_Migrations {
 	 * subsequent calls are skipped.
 	 *
 	 * Call order (must not be changed):
-	 *   1. Versioned migrations run first — they handle the structural changes
-	 *      that dbDelta cannot (column renames, type changes, index drops/adds,
-	 *      data backfills). The schema must be consistent before dbDelta runs.
-	 *   2. AIPS_DB_Manager::install_tables() runs second — dbDelta then applies
+	 *   1. Structural migrations run first — they handle changes that dbDelta
+	 *      cannot (column renames, type changes, index drops/adds). The schema
+	 *      must be in a consistent state before dbDelta runs.
+	 *   2. AIPS_DB_Manager::install_tables() runs second — dbDelta applies
 	 *      CREATE TABLE and ADD COLUMN for any new schema objects introduced in
 	 *      the current plugin version.
-	 *   3. aips_db_version is stamped to AIPS_VERSION via AIPS_Config::set_option()
+	 *   3. Data-backfill migrations that depend on newly-created tables or
+	 *      columns run after install_tables(). These are an intentional
+	 *      exception to the "migrations before dbDelta" rule: they require the
+	 *      schema to be fully up-to-date before they can operate safely. All
+	 *      such migrations must guard themselves with SHOW COLUMNS / SHOW TABLES
+	 *      checks so they are no-ops when the target schema is absent.
+	 *   4. aips_db_version is stamped to AIPS_VERSION via AIPS_Config::set_option()
 	 *      so the Config in-memory cache is kept in sync and subsequent reads
 	 *      within the same request see the updated value.
 	 *
@@ -132,6 +138,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_2_8_2() is a data-backfill migration that requires the
+		// aips_campaigns table and the campaign_id columns introduced in this
+		// release to already exist (created above by install_tables()). It must
+		// therefore run after install_tables() rather than before it.
 		if ( version_compare( $from_version, '2.8.2', '<' ) ) {
 			$this->migrate_to_2_8_2();
 		}

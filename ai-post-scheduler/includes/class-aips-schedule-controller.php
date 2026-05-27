@@ -512,11 +512,9 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
-        foreach ($ids as $schedule_id) {
-            $schedule = $this->schedule_repository->get_by_id($schedule_id);
-            if ($schedule && !empty($schedule->campaign_id)) {
-                AIPS_Ajax_Response::error(__('One or more selected schedules belong to a campaign and cannot be deleted here.', 'ai-post-scheduler'));
-            }
+        $campaign_owned = $this->schedule_repository->get_campaign_owned_ids($ids);
+        if (!empty($campaign_owned)) {
+            AIPS_Ajax_Response::error(__('One or more selected schedules belong to a campaign and cannot be deleted here.', 'ai-post-scheduler'));
         }
 
         $deleted = $this->schedule_repository->delete_bulk($ids);

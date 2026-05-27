@@ -1190,6 +1190,18 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+            wp_localize_script('aips-admin-campaigns', 'aipsCampaignsL10n', array(
+                'confirmDuplicate' => __('Duplicate this campaign? The copy will be created in a paused state.', 'ai-post-scheduler'),
+                'confirmArchive'   => __('Archive this campaign? It will be hidden from the active campaigns list.', 'ai-post-scheduler'),
+                'confirmDelete'    => __('Delete this campaign? This removes the campaign and its owned template/schedule rows.', 'ai-post-scheduler'),
+                'errorToggle'      => __('Failed to update campaign.', 'ai-post-scheduler'),
+                'errorDuplicate'   => __('Failed to duplicate campaign.', 'ai-post-scheduler'),
+                'errorArchive'     => __('Failed to archive campaign.', 'ai-post-scheduler'),
+                'errorRestore'     => __('Failed to restore campaign.', 'ai-post-scheduler'),
+                'errorDelete'      => __('Failed to delete campaign.', 'ai-post-scheduler'),
+                'errorNetwork'     => __('Network error. Please try again.', 'ai-post-scheduler'),
+            ));
     }
 
     /**

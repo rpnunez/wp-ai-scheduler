@@ -216,7 +216,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
-            'campaign_id' => isset($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
 
@@ -516,7 +516,34 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             absint($campaign_id)
         ));
     }
-    
+
+    /**
+     * Return the subset of the given IDs that belong to a campaign.
+     *
+     * Uses a single IN() query instead of one get_by_id() call per ID,
+     * avoiding the N+1 pattern in bulk-delete guards.
+     *
+     * @param int[] $ids Array of schedule IDs to check.
+     * @return int[] Schedule IDs that have a non-NULL campaign_id.
+     */
+    public function get_campaign_owned_ids(array $ids) {
+        $ids = array_filter(array_map('absint', $ids));
+
+        if (empty($ids)) {
+            return array();
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $rows = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->schedule_table} WHERE id IN ($placeholders) AND campaign_id IS NOT NULL",
+                $ids
+            )
+        );
+
+        return array_map('intval', $rows);
+    }
+
     /**
      * Delete all schedules for a template.
      *
