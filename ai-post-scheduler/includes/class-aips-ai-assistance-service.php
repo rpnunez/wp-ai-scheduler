@@ -5,7 +5,7 @@
  * Business logic for generating AI field suggestions.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.2
+ * @since 2.5.1
  */
 
 if (!defined('ABSPATH')) {

@@ -5,7 +5,7 @@
  * button groups, and suggestion history modal.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.2
+ * @since 2.5.1
  */
 
 /* --------------------------------------------------------
@@ -100,14 +100,14 @@
 /* --------------------------------------------------------
    History Tab Nav
    -------------------------------------------------------- */
-.aips-tab-nav {
+#aips-ai-assist-history-modal .aips-tab-nav {
 	display: flex;
 	gap: 0;
 	border-bottom: 2px solid #ddd;
 	margin-bottom: 16px;
 }
 
-.aips-tab-nav .aips-tab-link {
+#aips-ai-assist-history-modal .aips-tab-nav .aips-tab-link {
 	padding: 8px 16px;
 	text-decoration: none;
 	color: #555;
@@ -117,8 +117,8 @@
 	transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.aips-tab-nav .aips-tab-link.active,
-.aips-tab-nav .aips-tab-link:hover {
+#aips-ai-assist-history-modal .aips-tab-nav .aips-tab-link.active,
+#aips-ai-assist-history-modal .aips-tab-nav .aips-tab-link:hover {
 	color: #2271b1;
 	border-bottom-color: #2271b1;
 }

@@ -5,7 +5,7 @@
  * Handles AJAX requests for AI field suggestion features.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.2
+ * @since 2.5.1
  */
 
 if (!defined('ABSPATH')) {
@@ -32,13 +32,22 @@ class AIPS_AI_Assistance_Controller {
 
 	/**
 	 * Constructor — wires up service/repository and registers AJAX hooks.
+	 *
+	 * @param AIPS_AI_Assistance_Service|null    $service    Optional service override (for testing).
+	 * @param AIPS_AI_Assistance_Repository|null $repository Optional repository override (for testing).
 	 */
-	public function __construct() {
-		$this->repository = new AIPS_AI_Assistance_Repository();
-		$this->service    = new AIPS_AI_Assistance_Service(
-			new AIPS_AI_Service(),
-			$this->repository
-		);
+	public function __construct( ?AIPS_AI_Assistance_Service $service = null, ?AIPS_AI_Assistance_Repository $repository = null ) {
+		$this->repository = $repository ?: new AIPS_AI_Assistance_Repository();
+
+		if ( $service ) {
+			$this->service = $service;
+		} else {
+			$container  = AIPS_Container::get_instance();
+			$ai_service = $container->has( AIPS_AI_Service_Interface::class )
+				? $container->make( AIPS_AI_Service_Interface::class )
+				: new AIPS_AI_Service();
+			$this->service = new AIPS_AI_Assistance_Service( $ai_service, $this->repository );
+		}
 
 		add_action( 'wp_ajax_aips_ai_field_assist',          array( $this, 'ajax_field_assist' ) );
 		add_action( 'wp_ajax_aips_get_field_assist_history', array( $this, 'ajax_get_field_assist_history' ) );
@@ -77,7 +86,7 @@ class AIPS_AI_Assistance_Controller {
 		$session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
 		$user_id    = get_current_user_id();
 
-		if ( empty( $field_config['form_field_id'] ) || empty( $field_config['form_context'] ) || empty( $field_config['field_name'] ) ) {
+		if ( empty( $field_config['form_field_id'] ) || empty( $field_config['form_context'] ) || empty( $field_config['field_name'] ) || empty( $session_id ) ) {
 			AIPS_Ajax_Response::invalid_request( __( 'Required field parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}

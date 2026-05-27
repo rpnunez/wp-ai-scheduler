@@ -6,7 +6,7 @@
  * suggestion history accessible via a clock/backup icon.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.2
+ * @since 2.5.1
  */
 
 (function ($) {
@@ -134,7 +134,7 @@
 				}).join('');
 			} else {
 				// Last-resort fallback (non-security context: session grouping only).
-				this.sessionId = Date.now().toString(36) + Date.now().toString(36);
+				this.sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
 			}
 			this.injectButtons();
 			this.bindEvents();
@@ -244,7 +244,7 @@
 					$btn.prop('disabled', false).removeClass('loading');
 					$label.text(originalLabel);
 
-					if (response.success && response.data && response.data.response) {
+					if (response.success && response.data && response.data.hasOwnProperty('response')) {
 						$field.val(response.data.response).trigger('change');
 
 						// Show the history button for this field
