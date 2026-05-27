@@ -54,6 +54,26 @@ class AIPS_Campaigns_Repository {
 	private $schedule_repository;
 
 	/**
+	 * @var AIPS_Cache|null
+	 */
+	private $cache;
+
+	/**
+	 * @var bool
+	 */
+	private $cache_initialized;
+
+	/**
+	 * @var int
+	 */
+	private const CAMPAIGN_CACHE_TTL = 43200;
+
+	/**
+	 * @var string
+	 */
+	private const CAMPAIGN_CACHE_GROUP = 'campaigns_repository';
+
+	/**
 	 * Get singleton instance.
 	 *
 	 * @return self
@@ -79,6 +99,8 @@ class AIPS_Campaigns_Repository {
 		$this->history_table = $wpdb->prefix . 'aips_history';
 		$this->template_repository = AIPS_Template_Repository::instance();
 		$this->schedule_repository = AIPS_Schedule_Repository::instance();
+		$this->cache = null;
+		$this->cache_initialized = false;
 	}
 
 	/**
@@ -110,22 +132,7 @@ class AIPS_Campaigns_Repository {
 		$where_sql = empty($where_clauses) ? '' : 'WHERE ' . implode(' AND ', $where_clauses);
 		$order_sql = null === $campaign_id ? 'ORDER BY c.is_archived ASC, c.created_at DESC' : '';
 
-		$sql = "
-			SELECT
-				c.*,
-				(SELECT COUNT(*) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS linked_template_count,
-				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS linked_schedule_count,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.campaign_id = c.id AND h.status = 'completed') AS generated_posts_count,
-				(SELECT COUNT(*) FROM {$this->history_table} h WHERE h.campaign_id = c.id) AS total_history_count,
-				(SELECT MAX(s.last_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS last_run,
-				(SELECT MIN(s.next_run) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1 AND s.next_run > 0) AS next_run,
-				(SELECT MIN(t.id) FROM {$this->templates_table} t WHERE t.campaign_id = c.id) AS primary_template_id,
-				(SELECT MIN(s.id) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id) AS primary_schedule_id,
-				(SELECT COUNT(*) FROM {$this->schedule_table} s WHERE s.campaign_id = c.id AND s.is_active = 1) AS active_schedule_count
-			FROM {$this->campaigns_table} c
-			{$where_sql}
-			{$order_sql}
-		";
+		$sql = $this->build_campaign_metrics_query($where_sql, $order_sql);
 
 		$rows = empty($where_args)
 			? $this->wpdb->get_results($sql)
@@ -137,6 +144,7 @@ class AIPS_Campaigns_Repository {
 
 		foreach ($rows as $row) {
 			$this->normalize_campaign_row($row);
+			$this->set_cached_campaign_row($row);
 		}
 
 		return $rows;
@@ -154,9 +162,22 @@ class AIPS_Campaigns_Repository {
 			return null;
 		}
 
-		$campaigns = $this->get_campaigns(null, $campaign_id);
+		$cached_campaign = $this->get_cached_campaign_row($campaign_id);
+		if ($cached_campaign !== null) {
+			return $cached_campaign;
+		}
 
-		return empty($campaigns) ? null : $campaigns[0];
+		$sql = $this->build_campaign_metrics_query('WHERE c.id = %d');
+		$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
+		if (empty($rows)) {
+			return null;
+		}
+
+		$row = $rows[0];
+		$this->normalize_campaign_row($row);
+		$this->set_cached_campaign_row($row);
+
+		return $row;
 	}
 
 	/**
@@ -277,6 +298,8 @@ class AIPS_Campaigns_Repository {
 				$this->wpdb->query('COMMIT');
 			}
 
+			$this->flush_campaign_cache($campaign_id);
+
 			return array(
 				'campaign_id' => (int) $campaign_id,
 				'template_id' => (int) $template_id,
@@ -353,6 +376,8 @@ class AIPS_Campaigns_Repository {
 			if ($started_transaction) {
 				$this->wpdb->query('COMMIT');
 			}
+
+			$this->flush_campaign_cache($new_campaign_id);
 
 			return $new_campaign_id;
 		} catch (Throwable $e) {
@@ -472,6 +497,8 @@ class AIPS_Campaigns_Repository {
 				$this->wpdb->query('COMMIT');
 			}
 
+			$this->flush_campaign_cache($campaign_id);
+
 			return true;
 		} catch (Throwable $e) {
 			if ($started_transaction) {
@@ -506,6 +533,33 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
+	 * Invalidate one campaign cache entry.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return void
+	 */
+	public function flush_campaign_cache($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return;
+		}
+
+		$cache = $this->get_cache();
+		if (!$cache) {
+			return;
+		}
+
+		try {
+			$cache->delete(
+				$this->get_campaign_cache_key($campaign_id),
+				self::CAMPAIGN_CACHE_GROUP
+			);
+		} catch (Throwable $e) {
+			return;
+		}
+	}
+
+	/**
 	 * Create a campaign parent row.
 	 *
 	 * @param array $data Campaign data.
@@ -527,7 +581,14 @@ class AIPS_Campaigns_Repository {
 			array('%s', '%s', '%s', '%d', '%d', '%d', '%d')
 		);
 
-		return $result ? (int) $this->wpdb->insert_id : false;
+		if (!$result) {
+			return false;
+		}
+
+		$campaign_id = (int) $this->wpdb->insert_id;
+		$this->flush_campaign_cache($campaign_id);
+
+		return $campaign_id;
 	}
 
 	/**
@@ -573,13 +634,19 @@ class AIPS_Campaigns_Repository {
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		$format[] = '%d';
 
-		return $this->wpdb->update(
+		$updated = $this->wpdb->update(
 			$this->campaigns_table,
 			$update_data,
 			array('id' => absint($campaign_id)),
 			$format,
 			array('%d')
 		) !== false;
+
+		if ($updated) {
+			$this->flush_campaign_cache($campaign_id);
+		}
+
+		return $updated;
 	}
 
 	/**
@@ -682,6 +749,176 @@ class AIPS_Campaigns_Repository {
 		$row->linked_template_count = (int) $row->linked_template_count;
 		$row->linked_schedule_count = (int) $row->linked_schedule_count;
 		$row->active_schedule_count = (int) $row->active_schedule_count;
+		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
+		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
 		$row->can_delete = 0 === $row->total_history_count;
+	}
+
+	/**
+	 * Build the aggregate campaign query.
+	 *
+	 * @param string $where_sql WHERE clause.
+	 * @param string $order_sql ORDER clause.
+	 * @return string
+	 */
+	private function build_campaign_metrics_query($where_sql = '', $order_sql = '') {
+		return "
+			SELECT
+				c.*,
+				COALESCE(t.linked_template_count, 0) AS linked_template_count,
+				COALESCE(s.linked_schedule_count, 0) AS linked_schedule_count,
+				COALESCE(h.generated_posts_count, 0) AS generated_posts_count,
+				COALESCE(h.total_history_count, 0) AS total_history_count,
+				s.last_run AS last_run,
+				s.next_run AS next_run,
+				COALESCE(s.active_schedule_count, 0) AS active_schedule_count,
+				t.primary_template_id AS primary_template_id,
+				s.primary_schedule_id AS primary_schedule_id
+			FROM {$this->campaigns_table} c
+			LEFT JOIN (
+				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(id) AS primary_template_id
+				FROM {$this->templates_table}
+				WHERE campaign_id IS NOT NULL
+				GROUP BY campaign_id
+			) t ON t.campaign_id = c.id
+			LEFT JOIN (
+				SELECT
+					campaign_id,
+					COUNT(*) AS linked_schedule_count,
+					SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_schedule_count,
+					MAX(last_run) AS last_run,
+					MIN(CASE WHEN is_active = 1 AND next_run > 0 THEN next_run END) AS next_run,
+					MIN(id) AS primary_schedule_id
+				FROM {$this->schedule_table}
+				WHERE campaign_id IS NOT NULL
+				GROUP BY campaign_id
+			) s ON s.campaign_id = c.id
+			LEFT JOIN (
+				SELECT
+					campaign_id,
+					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS generated_posts_count,
+					COUNT(*) AS total_history_count
+				FROM {$this->history_table}
+				WHERE campaign_id IS NOT NULL
+				GROUP BY campaign_id
+			) h ON h.campaign_id = c.id
+			{$where_sql}
+			{$order_sql}
+		";
+	}
+
+	/**
+	 * Build campaign cache key.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return string
+	 */
+	private function get_campaign_cache_key($campaign_id) {
+		return 'aips_campaign_' . absint($campaign_id) . '_data';
+	}
+
+	/**
+	 * Get cache instance for campaign metrics.
+	 *
+	 * @return AIPS_Cache|null
+	 */
+	private function get_cache() {
+		if ($this->cache_initialized) {
+			return $this->cache;
+		}
+
+		try {
+			$this->cache = AIPS_Cache_Factory::make('db');
+		} catch (Throwable $e) {
+			$this->cache = null;
+			if (class_exists('AIPS_Logger')) {
+				AIPS_Logger::instance()->warning('Failed to initialize DB cache for campaign metrics; continuing without cache.', array(
+					'error' => $e->getMessage(),
+					'exception_class' => get_class($e),
+				));
+			}
+		}
+
+		$this->cache_initialized = true;
+
+		return $this->cache;
+	}
+
+	/**
+	 * Read one cached campaign row.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return object|null
+	 */
+	private function get_cached_campaign_row($campaign_id) {
+		$cache = $this->get_cache();
+		if (!$cache) {
+			return null;
+		}
+
+		try {
+			$cached_row = $cache->get(
+				$this->get_campaign_cache_key($campaign_id),
+				self::CAMPAIGN_CACHE_GROUP
+			);
+		} catch (Throwable $e) {
+			return null;
+		}
+
+		if (is_array($cached_row)) {
+			$cached_row = (object) $cached_row;
+		}
+
+		if (!is_object($cached_row)) {
+			return null;
+		}
+
+		$required_keys = array(
+			'id',
+			'generated_posts_count',
+			'total_history_count',
+			'linked_template_count',
+			'linked_schedule_count',
+			'active_schedule_count',
+			'primary_template_id',
+			'primary_schedule_id',
+		);
+		foreach ($required_keys as $required_key) {
+			if (!property_exists($cached_row, $required_key)) {
+				return null;
+			}
+		}
+
+		$this->normalize_campaign_row($cached_row);
+
+		return $cached_row;
+	}
+
+	/**
+	 * Store one campaign row in cache.
+	 *
+	 * @param object $row Campaign row.
+	 * @return void
+	 */
+	private function set_cached_campaign_row($row) {
+		if (!isset($row->id)) {
+			return;
+		}
+
+		$cache = $this->get_cache();
+		if (!$cache) {
+			return;
+		}
+
+		try {
+			$cache->set(
+				$this->get_campaign_cache_key((int) $row->id),
+				$row,
+				self::CAMPAIGN_CACHE_TTL,
+				self::CAMPAIGN_CACHE_GROUP
+			);
+		} catch (Throwable $e) {
+			return;
+		}
 	}
 }

@@ -460,18 +460,15 @@ class AIPS_DB_Migrations {
 					array( '%d' ),
 					array( '%d' )
 				);
-
-				$wpdb->query(
-					$wpdb->prepare(
-						"UPDATE {$table_history}
-						SET campaign_id = %d
-						WHERE template_id = %d
-						AND campaign_id IS NULL",
-						$campaign_id,
-						absint( $schedule['template_id'] )
-					)
-				);
 			}
 		}
+
+		$wpdb->query(
+			"UPDATE {$table_history} h
+			INNER JOIN {$table_templates} t ON h.template_id = t.id
+			SET h.campaign_id = t.campaign_id
+			WHERE h.campaign_id IS NULL
+			AND t.campaign_id IS NOT NULL"
+		);
 	}
 }

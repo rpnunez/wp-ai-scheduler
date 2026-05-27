@@ -888,6 +888,13 @@ class AIPS_Generator {
             'component_statuses' => $component_statuses,
         ));
 
+        if ($context instanceof AIPS_Template_Context) {
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id)) {
+                AIPS_Campaigns_Repository::instance()->flush_campaign_cache((int) $template->campaign_id);
+            }
+        }
+
         // Write a structured metric snapshot to history_log.  The metrics
         // repository reads these entries to compute image failure rates and
         // other per-generation signals without touching post_meta.
