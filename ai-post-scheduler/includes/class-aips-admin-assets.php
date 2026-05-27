@@ -1174,8 +1174,24 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-campaign-wizard', 'aipsCampaignWizardL10n', array(
-                'confirmFinalize' => __('Create this campaign and schedule it now?', 'ai-post-scheduler'),
-                'created'         => __('Campaign created.', 'ai-post-scheduler'),
+                'confirmFinalize'        => __('Create this campaign and schedule it now?', 'ai-post-scheduler'),
+                'created'                => __('Campaign created.', 'ai-post-scheduler'),
+                'nonceAiGenerate'        => wp_create_nonce('aips_campaign_wizard_ai_generate'),
+                'aiModeTitle'            => __('Choose Campaign Setup Mode', 'ai-post-scheduler'),
+                'aiModeMessage'          => __('Would you like AI assistance to prefill your campaign fields, or configure everything manually?', 'ai-post-scheduler'),
+                'advancedModeTitle'      => __('Advanced Mode', 'ai-post-scheduler'),
+                'aiModeButton'           => __('AI-Assisted Mode', 'ai-post-scheduler'),
+                'aiFormTitle'            => __('Campaign AI Assistant', 'ai-post-scheduler'),
+                'aiGenerateButton'       => __('Generate Campaign', 'ai-post-scheduler'),
+                'aiGeneratingMessage'    => __('Generating campaign fields with AI…', 'ai-post-scheduler'),
+                'aiSuccessMessage'       => __('Campaign fields filled in by AI — review and adjust as needed.', 'ai-post-scheduler'),
+                'cancelButton'           => __('Cancel', 'ai-post-scheduler'),
+                'topicNicheLabel'        => __('Topic / Niche', 'ai-post-scheduler'),
+                'targetAudienceLabel'    => __('Target Audience', 'ai-post-scheduler'),
+                'contentToneLabel'       => __('Content Tone', 'ai-post-scheduler'),
+                'publishingGoalLabel'    => __('Publishing Goal', 'ai-post-scheduler'),
+                'preferredFrequencyLabel' => __('Preferred Post Frequency', 'ai-post-scheduler'),
+                'postTypeLabel'          => __('Post Type', 'ai-post-scheduler'),
             ));
     }
 

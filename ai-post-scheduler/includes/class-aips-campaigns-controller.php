@@ -41,18 +41,27 @@ class AIPS_Campaigns_Controller {
 	private $config;
 
 	/**
+	 * @var AIPS_AI_Service_Interface
+	 */
+	private $ai_service;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct(
 		?AIPS_Campaigns_Repository $campaigns_repository = null,
 		?AIPS_Template_Repository $template_repository = null,
 		?AIPS_Unified_Schedule_Service $unified_schedule_service = null,
-		?AIPS_Config $config = null
+		?AIPS_Config $config = null,
+		?AIPS_AI_Service_Interface $ai_service = null
 	) {
+		$container = AIPS_Container::get_instance();
+
 		$this->campaigns_repository = $campaigns_repository ?: AIPS_Campaigns_Repository::instance();
 		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
 		$this->unified_schedule_service = $unified_schedule_service ?: new AIPS_Unified_Schedule_Service();
 		$this->config = $config ?: AIPS_Config::get_instance();
+		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 
 		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
 		add_action('wp_ajax_aips_get_campaign_metrics', array($this, 'ajax_get_campaign_metrics'));
@@ -64,6 +73,7 @@ class AIPS_Campaigns_Controller {
 		add_action('wp_ajax_aips_campaign_wizard_save_draft', array($this, 'ajax_save_draft'));
 		add_action('wp_ajax_aips_campaign_wizard_validate_step', array($this, 'ajax_validate_step'));
 		add_action('wp_ajax_aips_campaign_wizard_finalize', array($this, 'ajax_finalize_campaign'));
+		add_action('wp_ajax_aips_campaign_wizard_ai_generate', array($this, 'ajax_ai_generate_campaign'));
 	}
 
 	/**
@@ -321,6 +331,49 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
+	 * AJAX: generate campaign wizard values using AI-assisted intake.
+	 *
+	 * @return void
+	 */
+	public function ajax_ai_generate_campaign() {
+		if (!check_ajax_referer('aips_campaign_wizard_ai_generate', 'nonce', false)) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		if (!$this->ai_service || !$this->ai_service->is_available()) {
+			AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'), 'ai_unavailable', 503);
+		}
+
+		$intake = $this->get_ai_intake_payload();
+		$prompt = $this->build_ai_campaign_prompt($intake);
+		$response = $this->ai_service->generate_json($prompt);
+
+		if (is_wp_error($response)) {
+			AIPS_Ajax_Response::error($response->get_error_message(), 'ai_generation_failed', 500);
+		}
+
+		if (!is_array($response)) {
+			AIPS_Ajax_Response::error(__('AI response was not valid JSON.', 'ai-post-scheduler'), 'invalid_ai_response', 500);
+		}
+
+		if (isset($response[0]) && is_array($response[0])) {
+			$response = $response[0];
+		}
+
+		$draft = $this->normalise_payload(array_merge($this->get_draft(), $this->prepare_ai_payload($response, $intake)));
+		update_option($this->get_draft_option_name(), $draft, false);
+
+		AIPS_Ajax_Response::success(array(
+			'draft' => $draft,
+			'summary' => $this->build_summary($draft),
+		), __('Campaign fields generated successfully.', 'ai-post-scheduler'));
+	}
+
+	/**
 	 * Common AJAX guard.
 	 */
 	private function ajax_guard() {
@@ -359,6 +412,107 @@ class AIPS_Campaigns_Controller {
 		}
 
 		return is_array($payload) ? $payload : array();
+	}
+
+	/**
+	 * Parse AI intake payload from request.
+	 *
+	 * @return array
+	 */
+	private function get_ai_intake_payload() {
+		$intake = isset($_POST['intake']) ? wp_unslash($_POST['intake']) : array();
+		if (is_string($intake)) {
+			$decoded = json_decode($intake, true);
+			$intake = is_array($decoded) ? $decoded : array();
+		}
+
+		$interval_calculator = new AIPS_Interval_Calculator();
+		$frequency = isset($intake['frequency']) ? sanitize_key($intake['frequency']) : 'daily';
+		if (!$interval_calculator->is_valid_frequency($frequency)) {
+			$frequency = 'daily';
+		}
+
+		return array(
+			'topic_niche'      => isset($intake['topic_niche']) ? sanitize_text_field($intake['topic_niche']) : '',
+			'target_audience'  => isset($intake['target_audience']) ? sanitize_text_field($intake['target_audience']) : '',
+			'content_tone'     => isset($intake['content_tone']) ? sanitize_text_field($intake['content_tone']) : '',
+			'publishing_goal'  => isset($intake['publishing_goal']) ? sanitize_text_field($intake['publishing_goal']) : '',
+			'frequency'        => $frequency,
+			'post_type'        => $this->normalise_post_type($intake['post_type'] ?? 'post'),
+		);
+	}
+
+	/**
+	 * Build AI prompt for campaign wizard generation.
+	 *
+	 * @param array $intake Sanitized intake values.
+	 * @return string
+	 */
+	private function build_ai_campaign_prompt($intake) {
+		$context = array(
+			'intake' => $intake,
+			'available_frequencies' => array_keys((new AIPS_Interval_Calculator())->get_intervals()),
+			'available_post_types' => array_keys($this->get_supported_post_types()),
+			'review_policy_allowed' => array('draft', 'approval', 'auto_publish'),
+			'campaign_mode_allowed' => array('template', 'author'),
+		);
+
+		return
+			"You are helping a WordPress user configure an AI content campaign.\n" .
+			"Return only a single JSON object with the exact keys below.\n" .
+			"Do not wrap the JSON in markdown and do not include any extra keys.\n\n" .
+			"Required keys:\n" .
+			"- campaign_name (string)\n" .
+			"- content_goal (string)\n" .
+			"- post_type (string)\n" .
+			"- prompt_template (string)\n" .
+			"- title_prompt (string)\n" .
+			"- author_persona (string)\n" .
+			"- campaign_mode (string: template|author)\n" .
+			"- review_policy (string: draft|approval|auto_publish)\n" .
+			"- frequency (string)\n" .
+			"- time_window_start (string HH:MM or empty)\n" .
+			"- time_window_end (string HH:MM or empty)\n" .
+			"- post_tags (string)\n" .
+			"- post_category (number, use 0 when unknown)\n\n" .
+			"Use realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
+			"Context:\n" . wp_json_encode($context);
+	}
+
+	/**
+	 * Prepare AI payload for wizard field normalization.
+	 *
+	 * @param array $response AI response payload.
+	 * @param array $intake Intake payload.
+	 * @return array
+	 */
+	private function prepare_ai_payload($response, $intake) {
+		$fallback_prompt_template = sprintf(
+			/* translators: %s topic or niche */
+			__('Write a high-quality article about %s with clear headings and practical examples.', 'ai-post-scheduler'),
+			$intake['topic_niche'] ?: __('the selected topic', 'ai-post-scheduler')
+		);
+
+		$response = is_array($response) ? $response : array();
+
+		return array(
+			'campaign_name' => isset($response['campaign_name']) ? sanitize_text_field($response['campaign_name']) : ucfirst($intake['topic_niche']) . ' Campaign',
+			'content_goal' => isset($response['content_goal']) ? sanitize_textarea_field($response['content_goal']) : $intake['publishing_goal'],
+			'post_type' => isset($response['post_type']) ? sanitize_key($response['post_type']) : $intake['post_type'],
+			'template_mode' => 'custom',
+			'template_id' => 0,
+			'prompt_template' => isset($response['prompt_template']) ? wp_kses_post($response['prompt_template']) : $fallback_prompt_template,
+			'title_prompt' => isset($response['title_prompt']) ? sanitize_text_field($response['title_prompt']) : __('Create a concise SEO-friendly title.', 'ai-post-scheduler'),
+			'campaign_mode' => isset($response['campaign_mode']) ? sanitize_key($response['campaign_mode']) : 'template',
+			'review_policy' => isset($response['review_policy']) ? sanitize_key($response['review_policy']) : 'draft',
+			'frequency' => isset($response['frequency']) ? sanitize_key($response['frequency']) : $intake['frequency'],
+			'time_window_start' => isset($response['time_window_start']) ? sanitize_text_field($response['time_window_start']) : '',
+			'time_window_end' => isset($response['time_window_end']) ? sanitize_text_field($response['time_window_end']) : '',
+			'post_tags' => isset($response['post_tags']) ? sanitize_text_field($response['post_tags']) : sanitize_text_field($intake['topic_niche']),
+			'post_category' => isset($response['post_category']) ? absint($response['post_category']) : 0,
+			'is_active' => 1,
+			'start_time' => AIPS_DateTime::now()->toDisplay('Y-m-d\TH:i'),
+		);
 	}
 
 	/**

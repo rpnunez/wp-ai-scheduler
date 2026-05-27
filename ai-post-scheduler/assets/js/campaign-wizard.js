@@ -38,6 +38,142 @@
 			this.bindEvents();
 			this.bootstrapSummary();
 			this.showStep(0);
+
+			if (!this.hasExistingDraft()) {
+				this.showModeSelectionModal();
+			}
+		},
+
+		/**
+		 * Check whether an existing draft is already present.
+		 *
+		 * @return {boolean}
+		 */
+		hasExistingDraft: function() {
+			return this.sanitizePlainText($('#aips_campaign_name').val()) !== '';
+		},
+
+		/**
+		 * Open the initial mode-selection modal.
+		 *
+		 * @return {void}
+		 */
+		showModeSelectionModal: function() {
+			AIPS.Utilities.showModal({
+				heading: aipsCampaignWizardL10n.aiModeTitle,
+				message: aipsCampaignWizardL10n.aiModeMessage,
+				buttons: [
+					{
+						label: aipsCampaignWizardL10n.advancedModeTitle,
+						className: 'aips-btn aips-btn-secondary',
+					},
+					{
+						label: aipsCampaignWizardL10n.aiModeButton,
+						className: 'aips-btn aips-btn-primary',
+						action: AIPS.CampaignWizard.showAiIntakeModal,
+					},
+				],
+			});
+		},
+
+		/**
+		 * Open AI-assisted intake form modal.
+		 *
+		 * @return {void}
+		 */
+		showAiIntakeModal: function() {
+			var frequencyOptions = $('#aips_frequency option').map(function() {
+				return { value: $(this).val(), label: $(this).text() };
+			}).get();
+			var postTypeOptions = $('#aips_post_type option').map(function() {
+				return { value: $(this).val(), label: $(this).text() };
+			}).get();
+
+			AIPS.Utilities.showModal({
+				heading: aipsCampaignWizardL10n.aiFormTitle,
+				fields: [
+					{
+						name: 'topic_niche',
+						label: aipsCampaignWizardL10n.topicNicheLabel,
+						type: 'text',
+						required: true,
+					},
+					{
+						name: 'target_audience',
+						label: aipsCampaignWizardL10n.targetAudienceLabel,
+						type: 'text',
+						required: true,
+					},
+					{
+						name: 'content_tone',
+						label: aipsCampaignWizardL10n.contentToneLabel,
+						type: 'select',
+						required: true,
+						options: [
+							{ value: 'conversational', label: 'Conversational' },
+							{ value: 'professional', label: 'Professional' },
+							{ value: 'technical', label: 'Technical' },
+							{ value: 'friendly', label: 'Friendly' },
+						],
+					},
+					{
+						name: 'publishing_goal',
+						label: aipsCampaignWizardL10n.publishingGoalLabel,
+						type: 'text',
+						required: true,
+					},
+					{
+						name: 'frequency',
+						label: aipsCampaignWizardL10n.preferredFrequencyLabel,
+						type: 'select',
+						required: true,
+						options: frequencyOptions,
+						value: $('#aips_frequency').val() || 'daily',
+					},
+					{
+						name: 'post_type',
+						label: aipsCampaignWizardL10n.postTypeLabel,
+						type: 'select',
+						required: true,
+						options: postTypeOptions,
+						value: $('#aips_post_type').val() || 'post',
+					},
+				],
+				buttons: [
+					{
+						label: aipsCampaignWizardL10n.cancelButton,
+						className: 'aips-btn aips-btn-secondary',
+					},
+					{
+						label: aipsCampaignWizardL10n.aiGenerateButton,
+						className: 'aips-btn aips-btn-primary',
+						submit: true,
+						action: AIPS.CampaignWizard.onAiIntakeSubmit,
+					},
+				],
+			});
+		},
+
+		/**
+		 * Handle AI intake submit action.
+		 *
+		 * @param {Object} formData AI intake form data.
+		 * @return {void}
+		 */
+		onAiIntakeSubmit: function(formData) {
+			AIPS.CampaignWizard.showNotice('success', aipsCampaignWizardL10n.aiGeneratingMessage);
+
+			AIPS.CampaignWizard.sendAiAssistAjax(formData, function(err, out) {
+				if (err) {
+					AIPS.CampaignWizard.showNotice('error', err.message);
+					return;
+				}
+
+				AIPS.CampaignWizard.populateFieldsFromAi(out.draft || {});
+				AIPS.CampaignWizard.renderSummary(out.summary || AIPS.CampaignWizard.getPayload());
+				AIPS.CampaignWizard.showNotice('success', out.message || aipsCampaignWizardL10n.aiSuccessMessage);
+				AIPS.CampaignWizard.showStep(0);
+			});
 		},
 
 		/**
@@ -193,6 +329,99 @@
 				.always(function() {
 					$('#aips-campaign-spinner').removeClass('is-active');
 				});
+		},
+
+		/**
+		 * Send AI-assisted generation request.
+		 *
+		 * @param {Object}   intake AI intake form data.
+		 * @param {Function} done   Completion callback.
+		 * @return {void}
+		 */
+		sendAiAssistAjax: function(intake, done) {
+			$('#aips-campaign-spinner').addClass('is-active');
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				method: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_campaign_wizard_ai_generate',
+					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.nonceAiGenerate),
+					intake: JSON.stringify(this.sanitizeAiIntake(intake)),
+				},
+			})
+				.done(function(response) {
+					AIPS.CampaignWizard.handleAjaxDone(response, done);
+				})
+				.fail(function() {
+					AIPS.CampaignWizard.handleAjaxFailure(done);
+				})
+				.always(function() {
+					$('#aips-campaign-spinner').removeClass('is-active');
+				});
+		},
+
+		/**
+		 * Sanitize AI intake payload.
+		 *
+		 * @param {Object} intake Raw intake values.
+		 * @return {Object}
+		 */
+		sanitizeAiIntake: function(intake) {
+			return {
+				topic_niche: this.sanitizePlainText(intake.topic_niche),
+				target_audience: this.sanitizePlainText(intake.target_audience),
+				content_tone: this.sanitizePlainText(intake.content_tone),
+				publishing_goal: this.sanitizePlainText(intake.publishing_goal),
+				frequency: this.sanitizePlainText(intake.frequency),
+				post_type: this.sanitizePlainText(intake.post_type),
+			};
+		},
+
+		/**
+		 * Populate wizard fields from AI-generated payload.
+		 *
+		 * @param {Object} draft AI-generated draft payload.
+		 * @return {void}
+		 */
+		populateFieldsFromAi: function(draft) {
+			var self = this;
+
+			$.each(draft, function(fieldName, value) {
+				var sanitizedValue = typeof value === 'string'
+					? (fieldName === 'prompt_template' || fieldName === 'content_goal'
+						? self.sanitizeTextareaText(value)
+						: self.sanitizePlainText(value))
+					: value;
+
+				if (fieldName === 'is_active') {
+					$('[name="is_active"]').prop('checked', Number(value) === 1).trigger('change');
+					return;
+				}
+
+				if (fieldName === 'day_preferences') {
+					$('[name="day_preferences[]"]').prop('checked', false);
+					if (typeof value === 'string' && value.length > 0) {
+						value.split(',').forEach(function(day) {
+							$('[name="day_preferences[]"][value="' + self.sanitizePlainText(day) + '"]').prop('checked', true);
+						});
+					}
+					return;
+				}
+
+				var $field = $('[name="' + fieldName + '"]');
+				if (!$field.length) {
+					return;
+				}
+
+				if ($field.is(':radio')) {
+					$field.filter('[value="' + sanitizedValue + '"]').prop('checked', true).trigger('change');
+					return;
+				}
+
+				$field.val(sanitizedValue).trigger('change');
+			});
 		},
 
 		/**

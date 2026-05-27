@@ -59,6 +59,7 @@ class AIPS_Ajax_Registry {
 		'aips_campaign_wizard_save_draft'    => 'AIPS_Campaigns_Controller',
 		'aips_campaign_wizard_validate_step' => 'AIPS_Campaigns_Controller',
 		'aips_campaign_wizard_finalize'      => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_ai_generate'   => 'AIPS_Campaigns_Controller',
 
 		// Campaigns Controller
 		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
