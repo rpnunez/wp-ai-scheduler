@@ -48,7 +48,7 @@ class AIPS_History {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', wp_unslash($_POST['ids'])) : array();
 
         if (empty($ids)) {
             AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));

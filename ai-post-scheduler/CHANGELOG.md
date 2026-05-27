@@ -257,3 +257,4 @@ All notable changes to this project will be documented in this file.
 ### Security
 - [2026-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
 - [2026-05-24] 🛡️ Sentinel: Fixed CRITICAL Complete Data Wipes in History Deletion. Addressed vulnerability in `AIPS_History_Repository::delete_by_status()` and `clear_history()` where passing empty arguments implicitly led to `DELETE FROM table`, erasing all history. Required explicit `all` argument to protect against accidental mass deletions.
+- [2026-05-24] 🐞 Hunter: Fixed missing `wp_unslash()` on `$_POST` array accesses across multiple controllers. Arrays like `topic_ids`, `items`, and `source_group_ids` are now safely unslashed before being processed or mapped via `array_map()`, preventing magic quotes and sanitization bypass vulnerabilities.
