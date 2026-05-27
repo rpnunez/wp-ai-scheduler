@@ -793,6 +793,10 @@ final class AI_Post_Scheduler {
         if (strncmp($action, 'aips_', 5) === 0) {
             $this->register_lazy_ajax_hooks();
         }
+
+        if ('heartbeat' === $action) {
+            new AIPS_Admin_Bar();
+        }
     }
 
     /**

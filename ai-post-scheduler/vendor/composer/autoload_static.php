@@ -1183,6 +1183,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Edit_Controller.php',
         'Test_AIPS_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service.php',
         'Test_AIPS_Admin_Bar_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Cache.php',
+        'Test_AIPS_Admin_Bar_Heartbeat' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Heartbeat.php',
         'Test_AIPS_Admin_Flow_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Flow_Controller.php',
         'Test_AIPS_Admin_Menu' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Menu.php',
         'Test_AIPS_Ajax_Registry_Response' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Registry_Response.php',

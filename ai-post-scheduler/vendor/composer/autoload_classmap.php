@@ -1148,6 +1148,7 @@ return array(
     'Test_AIPS_AI_Edit_Controller' => $baseDir . '/tests/Test_AIPS_AI_Edit_Controller.php',
     'Test_AIPS_AI_Service' => $baseDir . '/tests/Test_AIPS_AI_Service.php',
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',
+    'Test_AIPS_Admin_Bar_Heartbeat' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Heartbeat.php',
     'Test_AIPS_Admin_Flow_Controller' => $baseDir . '/tests/Test_AIPS_Admin_Flow_Controller.php',
     'Test_AIPS_Admin_Menu' => $baseDir . '/tests/Test_AIPS_Admin_Menu.php',
     'Test_AIPS_Ajax_Registry_Response' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Response.php',

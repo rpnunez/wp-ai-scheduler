@@ -39,6 +39,9 @@ class AIPS_Admin_Bar {
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_assets')); // toolbar visible on front-end too
+		add_action('admin_footer', array($this, 'render_client_templates'));
+		add_action('wp_footer', array($this, 'render_client_templates'));
+		add_filter('heartbeat_received', array($this, 'heartbeat_received'), 10, 2);
 	}
 
 	/**
@@ -57,9 +60,45 @@ class AIPS_Admin_Bar {
 		);
 
 		wp_enqueue_script(
+			'aips-datetime-script',
+			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-utilities-script',
+			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+			array('jquery', 'aips-datetime-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+			'closeLabel'             => __('Close notification', 'ai-post-scheduler'),
+			'fieldRequired'          => __('%s is required.', 'ai-post-scheduler'),
+			'estimatedTimeRemaining' => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+			'generationComplete'     => __('Generation complete!', 'ai-post-scheduler'),
+			'takingLonger'           => __('Taking a little bit longer than expected…', 'ai-post-scheduler'),
+			'seconds'                => __('seconds', 'ai-post-scheduler'),
+			'minute'                 => __('1 minute', 'ai-post-scheduler'),
+			'minutes'                => __('%d minutes', 'ai-post-scheduler'),
+			'minutesSeconds'         => __('%dm %ds', 'ai-post-scheduler'),
+		));
+
+		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
-			array('jquery'),
+			array('jquery', 'heartbeat', 'aips-utilities-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -70,6 +109,19 @@ class AIPS_Admin_Bar {
 			'markReadError'   => __('Could not mark notification as read.', 'ai-post-scheduler'),
 			'markAllReadError' => __('Could not mark all notifications as read.', 'ai-post-scheduler'),
 		));
+	}
+
+	/**
+	 * Render shared client-side templates used by admin-bar.js.
+	 *
+	 * @return void
+	 */
+	public function render_client_templates(): void {
+		if (!is_admin_bar_showing() || !current_user_can('manage_options')) {
+			return;
+		}
+
+		include AIPS_PLUGIN_DIR . 'templates/partials/admin-bar.php';
 	}
 
 	/**
@@ -298,6 +350,57 @@ class AIPS_Admin_Bar {
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
 		));
+	}
+
+	/**
+	 * Process Heartbeat received data to append unread notifications.
+	 *
+	 * @param array $response Heartbeat response data.
+	 * @param array $data     Heartbeat received data from the client.
+	 * @return array Modified response data.
+	 */
+	public function heartbeat_received(array $response, array $data): array {
+		if (!current_user_can('manage_options')) {
+			return $response;
+		}
+
+		if (isset($data['aips_check_notifications'])) {
+			$unread_count  = $this->get_repository()->count_unread();
+			$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
+
+			// Sync/update the admin bar cache for the current user.
+			$cache_key = AIPS_Cache_Policy::key(
+				AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR,
+				'unread_count',
+				array('user_id' => get_current_user_id())
+			);
+			AIPS_Cache_Factory::instance()->set(
+				$cache_key,
+				$unread_count,
+				AIPS_Cache_Policy::default_ttl(AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR),
+				'aips_admin_bar'
+			);
+
+			$items = array();
+			foreach ($notifications as $notif) {
+				$items[] = array(
+					'id'         => (int) $notif->id,
+					'type'       => sanitize_key($notif->type),
+					'title'      => sanitize_text_field($notif->title),
+					'message'    => sanitize_text_field($notif->message),
+					'url'        => esc_url_raw($notif->url),
+					'level'      => sanitize_key($notif->level),
+					'created_at' => (int) $notif->created_at,
+				);
+			}
+
+			$response['aips_notifications'] = array(
+				'unread_count' => $unread_count,
+				'items'        => $items,
+			);
+		}
+
+		return $response;
 	}
 
 }
