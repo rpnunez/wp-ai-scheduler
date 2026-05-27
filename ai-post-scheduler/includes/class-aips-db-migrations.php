@@ -146,6 +146,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_8_2();
 		}
 
+		if ( version_compare( $from_version, '2.8.3', '<' ) ) {
+			$this->migrate_to_2_8_3();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -480,5 +484,99 @@ class AIPS_DB_Migrations {
 			WHERE h.campaign_id IS NULL
 			AND t.campaign_id IS NOT NULL"
 		);
+	}
+
+	/**
+	 * Migration for version 2.8.3.
+	 *
+	 * Repairs corrupted scheduling timestamps left behind by legacy writes that
+	 * stored MySQL datetime strings in BIGINT-backed schedule columns. This
+	 * reuses the central date/time repair utility for poisoned next-run values,
+	 * then backfills template schedule last_run from run_state.timestamp when
+	 * the stored last_run value is clearly invalid.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_8_3() {
+		global $wpdb;
+
+		$summary = ( new AIPS_Date_Time_DB_Repair() )->run();
+		$fixed_last_runs = $this->repair_schedule_last_run_from_run_state();
+
+		$this->logger->log(
+			sprintf(
+				'2.8.3 schedule repair: normalized=%d, fixed_schedule_next_runs=%d, fixed_author_next_runs=%d, fixed_source_next_runs=%d, fixed_schedule_last_runs=%d',
+				isset( $summary['normalized_null_values'] ) ? (int) $summary['normalized_null_values'] : 0,
+				isset( $summary['fixed_schedule_next_runs'] ) ? (int) $summary['fixed_schedule_next_runs'] : 0,
+				isset( $summary['fixed_author_next_runs'] ) ? (int) $summary['fixed_author_next_runs'] : 0,
+				isset( $summary['fixed_source_next_runs'] ) ? (int) $summary['fixed_source_next_runs'] : 0,
+				$fixed_last_runs
+			),
+			'info'
+		);
+	}
+
+	/**
+	 * Backfill invalid schedule.last_run values from run_state.timestamp.
+	 *
+	 * @return int Number of schedule rows updated.
+	 */
+	private function repair_schedule_last_run_from_run_state() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, last_run, run_state FROM `{$table}` WHERE run_state IS NOT NULL AND run_state != ''", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$updated = 0;
+
+		foreach ( $rows as $row ) {
+			$current_last_run = isset( $row['last_run'] ) ? (int) $row['last_run'] : 0;
+			if ( $current_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$state = json_decode( (string) $row['run_state'], true );
+			if ( ! is_array( $state ) || empty( $state['timestamp'] ) || ! is_string( $state['timestamp'] ) ) {
+				continue;
+			}
+
+			try {
+				$run_at = new DateTimeImmutable( $state['timestamp'], new DateTimeZone( 'UTC' ) );
+			} catch ( Exception $e ) {
+				continue;
+			}
+
+			$run_at_ts = (int) $run_at->getTimestamp();
+			if ( $run_at_ts < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				array( 'last_run' => $run_at_ts ),
+				array( 'id' => absint( $row['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated++;
+			}
+		}
+
+		return $updated;
 	}
 }
