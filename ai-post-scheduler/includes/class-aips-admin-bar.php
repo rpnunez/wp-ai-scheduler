@@ -39,6 +39,8 @@ class AIPS_Admin_Bar {
 		add_action('wp_ajax_aips_mark_all_notifications_read', array($this, 'ajax_mark_all_read'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_assets')); // toolbar visible on front-end too
+		add_action('admin_footer', array($this, 'render_client_templates'));
+		add_action('wp_footer', array($this, 'render_client_templates'));
 		add_filter('heartbeat_received', array($this, 'heartbeat_received'), 10, 2);
 	}
 
@@ -58,9 +60,45 @@ class AIPS_Admin_Bar {
 		);
 
 		wp_enqueue_script(
+			'aips-datetime-script',
+			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-utilities-script',
+			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+			array('jquery', 'aips-datetime-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+			'closeLabel'             => __('Close notification', 'ai-post-scheduler'),
+			'fieldRequired'          => __('%s is required.', 'ai-post-scheduler'),
+			'estimatedTimeRemaining' => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+			'generationComplete'     => __('Generation complete!', 'ai-post-scheduler'),
+			'takingLonger'           => __('Taking a little bit longer than expected…', 'ai-post-scheduler'),
+			'seconds'                => __('seconds', 'ai-post-scheduler'),
+			'minute'                 => __('1 minute', 'ai-post-scheduler'),
+			'minutes'                => __('%d minutes', 'ai-post-scheduler'),
+			'minutesSeconds'         => __('%dm %ds', 'ai-post-scheduler'),
+		));
+
+		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
-			array('jquery', 'heartbeat'),
+			array('jquery', 'heartbeat', 'aips-utilities-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -71,6 +109,19 @@ class AIPS_Admin_Bar {
 			'markReadError'   => __('Could not mark notification as read.', 'ai-post-scheduler'),
 			'markAllReadError' => __('Could not mark all notifications as read.', 'ai-post-scheduler'),
 		));
+	}
+
+	/**
+	 * Render shared client-side templates used by admin-bar.js.
+	 *
+	 * @return void
+	 */
+	public function render_client_templates(): void {
+		if (!is_admin_bar_showing() || !current_user_can('manage_options')) {
+			return;
+		}
+
+		include AIPS_PLUGIN_DIR . 'templates/partials/admin-bar.php';
 	}
 
 	/**

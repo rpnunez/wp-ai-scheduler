@@ -68,10 +68,9 @@
 			var noNotifText = wp && wp.i18n
 				? wp.i18n.__('No new notifications', 'ai-post-scheduler')
 				: 'No new notifications';
-			return '<li id="wp-admin-bar-aips-toolbar-no-notifications" class="aips-toolbar-no-notifications ab-empty-item">'
-				+ '<span class="ab-item aips-toolbar-empty">'
-				+ $('<div>').text(noNotifText).html()
-				+ '</span></li>';
+			return AIPS.Templates.render('aips-tmpl-admin-bar-no-notifications', {
+				text: noNotifText
+			});
 		},
 
 		/**
@@ -276,13 +275,11 @@
 			var markAllText = wp && wp.i18n ? wp.i18n.__('Mark all as read', 'ai-post-scheduler') : 'Mark all as read';
 			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
 
-			return '<li id="wp-admin-bar-aips-toolbar-notifications-header" class="aips-toolbar-notif-header ab-empty-item">'
-				+ '<div class="ab-item ab-empty-item">'
-				+ '<span class="aips-toolbar-notif-heading">' + $('<div>').text(headingText).html() + '</span>'
-				+ '<button class="aips-mark-all-read" data-nonce="' + nonce + '">'
-				+ $('<div>').text(markAllText).html()
-				+ '</button>'
-				+ '</div></li>';
+			return AIPS.Templates.render('aips-tmpl-admin-bar-header', {
+				headingText: headingText,
+				markAllText: markAllText,
+				nonce: nonce
+			});
 		},
 
 		/**
@@ -292,47 +289,37 @@
 		 * @return {string} HTML string.
 		 */
 		adminBarRenderNotificationHtml: function (item) {
-			var $row = $('<li>', {
-				id: 'wp-admin-bar-aips-notif-' + item.id,
-				'class': 'aips-toolbar-notification ab-empty-item',
-				'data-notif-id': item.id
-			});
+			var id = parseInt(item.id, 10) || 0;
 			var levelClass = '';
 			if (item.level && (item.level === 'warning' || item.level === 'error')) {
-				levelClass = 'aips-notif-level-' + item.level;
+				levelClass = ' aips-notif-level-' + item.level;
 			}
-			$row.addClass(levelClass);
 
 			var markReadText = wp && wp.i18n ? wp.i18n.__('Mark as read', 'ai-post-scheduler') : 'Mark as read';
 			var nonce = window.aipsAdminBarL10n ? window.aipsAdminBarL10n.nonce : '';
-			var $content = $('<div class="ab-item ab-empty-item"></div>');
-
+			var titleHtml = '';
 			if (item.title) {
-				$content.append(
-					$('<span class="aips-notif-title"></span>').text(item.title)
-				);
+				titleHtml = AIPS.Templates.render('aips-tmpl-admin-bar-notification-title', {
+					title: item.title
+				});
 			}
 
-			var $message = $('<span class="aips-notif-message"></span>');
+			var messageHtml = AIPS.Templates.escape(item.message || '');
 			if (item.url) {
-				$message.append(
-					$('<a></a>').attr('href', item.url).text(item.message)
-				);
-			} else {
-				$message.text(item.message);
+				messageHtml = AIPS.Templates.render('aips-tmpl-admin-bar-notification-message-link', {
+					url: item.url,
+					message: item.message || ''
+				});
 			}
 
-			var $markReadButton = $('<button class="aips-mark-read" type="button"></button>')
-				.attr('data-id', item.id)
-				.attr('data-nonce', nonce)
-				.attr('title', markReadText)
-				.attr('aria-label', markReadText)
-				.append('<span class="dashicons dashicons-yes-alt"></span>');
-
-			$content.append($message).append($markReadButton);
-			$row.append($content);
-
-			return $('<div>').append($row).html();
+			return AIPS.Templates.renderRaw('aips-tmpl-admin-bar-notification-row', {
+				id: id,
+				levelClass: levelClass,
+				titleHtml: titleHtml,
+				messageHtml: messageHtml,
+				nonce: AIPS.Templates.escape(nonce),
+				markReadText: AIPS.Templates.escape(markReadText)
+			});
 		},
 
 		/**
@@ -358,101 +345,48 @@
 			}
 			localStorage.setItem('aips_seen_toasts', JSON.stringify(seenToasts));
 
-			AIPS.showToastNotification(item);
+			AIPS.adminBarShowToast(item);
 		},
 
 		/**
-		 * Render and slide-in a floating toast alert.
+		 * Render a toast alert using the shared utilities API.
 		 *
 		 * @param {Object} item Notification object.
 		 */
-		showToastNotification: function (item) {
-			var $container = $('.aips-toast-container');
-			if ($container.length === 0) {
-				$container = $('<div class="aips-toast-container"></div>');
-				$('body').append($container);
-			}
-
+		adminBarShowToast: function (item) {
 			var infoTitle = wp && wp.i18n ? wp.i18n.__('Info', 'ai-post-scheduler') : 'Info';
 			var warningTitle = wp && wp.i18n ? wp.i18n.__('Warning', 'ai-post-scheduler') : 'Warning';
 			var errorTitle = wp && wp.i18n ? wp.i18n.__('Error', 'ai-post-scheduler') : 'Error';
 			var successTitle = wp && wp.i18n ? wp.i18n.__('Success', 'ai-post-scheduler') : 'Success';
-			var closeToastText = wp && wp.i18n ? wp.i18n.__('Close notification', 'ai-post-scheduler') : 'Close notification';
-
-			var iconClass = 'dashicons-info';
+			var level = (item.level === 'warning' || item.level === 'error' || item.level === 'success') ? item.level : 'info';
 			var defaultTitle = infoTitle;
 
-			if (item.level === 'warning') {
-				iconClass = 'dashicons-warning';
+			if (level === 'warning') {
 				defaultTitle = warningTitle;
-			} else if (item.level === 'error') {
-				iconClass = 'dashicons-no';
+			} else if (level === 'error') {
 				defaultTitle = errorTitle;
-			} else if (item.level === 'success') {
-				iconClass = 'dashicons-yes';
+			} else if (level === 'success') {
 				defaultTitle = successTitle;
 			}
 
-			var messageHtml = item.url
-				? '<a href="' + item.url + '">' + $('<div>').text(item.message).html() + '</a>'
-				: $('<div>').text(item.message).html();
-
-			var isPersistent = (item.level === 'warning' || item.level === 'error');
-			var progressHtml = isPersistent ? '' : '<div class="aips-toast-progress"></div>';
-			var closeButtonHtml = $('<button class="aips-toast-close" type="button"><span aria-hidden="true">&times;</span></button>')
-				.attr('aria-label', closeToastText)
-				.prop('outerHTML');
-
-			var toastHtml = '<div class="aips-toast aips-toast-' + item.level + '" data-id="' + item.id + '">'
-				+ '<div class="aips-toast-header">'
-				+ '<span class="aips-toast-icon dashicons ' + iconClass + '"></span>'
-				+ '<span class="aips-toast-title">' + $('<div>').text(item.title || defaultTitle).html() + '</span>'
-				+ closeButtonHtml
-				+ '</div>'
-				+ '<div class="aips-toast-body">' + messageHtml + '</div>'
-				+ progressHtml
-				+ '</div>';
-
-			var $toast = $(toastHtml);
-			$container.append($toast);
-
-			// Click to close handler
-			$toast.find('.aips-toast-close').on('click', function (e) {
-				e.preventDefault();
-				$toast.fadeOut(300, function () {
-					$(this).remove();
-				});
+			var title = item.title || defaultTitle;
+			var toastHtml = AIPS.Templates.render('aips-tmpl-admin-bar-toast-message', {
+				title: title,
+				message: item.message || ''
 			});
 
-			// Auto-dismiss progress bar and hover-to-pause logic
-			if (!isPersistent) {
-				var timeLeft = 6000;
-				var duration = 6000;
-				var interval = 50;
-				var isHovered = false;
-				var $progress = $toast.find('.aips-toast-progress');
-
-				$toast.on('mouseenter', function () {
-					isHovered = true;
+			if (item.url) {
+				toastHtml = AIPS.Templates.render('aips-tmpl-admin-bar-toast-link-message', {
+					title: title,
+					url: item.url,
+					message: item.message || ''
 				});
-				$toast.on('mouseleave', function () {
-					isHovered = false;
-				});
-
-				var timer = setInterval(function () {
-					if (!isHovered) {
-						timeLeft -= interval;
-						var pct = (timeLeft / duration) * 100;
-						$progress.css('width', pct + '%');
-						if (timeLeft <= 0) {
-							clearInterval(timer);
-							$toast.fadeOut(300, function () {
-								$(this).remove();
-							});
-						}
-					}
-				}, interval);
 			}
+
+			AIPS.Utilities.showToast(toastHtml, level, {
+				isHtml: true,
+				duration: (level === 'warning' || level === 'error') ? 0 : 6000
+			});
 		},
 
 		/**
