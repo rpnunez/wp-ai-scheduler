@@ -139,13 +139,23 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Campaign Wizard', 'ai-post-scheduler'),
             __('Campaign Wizard', 'ai-post-scheduler'),
             'manage_options',
             AIPS_Campaigns_Controller::PAGE_SLUG,
             array($this, 'render_campaign_wizard_page')
         );
+
+        add_submenu_page(
+            null,
+            __('Campaign Detail', 'ai-post-scheduler'),
+            __('Campaign Detail', 'ai-post-scheduler'),
+            'manage_options',
+            AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
+            array($this, 'render_campaign_detail_page')
+        );
+
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -359,6 +369,15 @@ class AIPS_Admin_Menu {
     public function render_campaign_wizard_page() {
         $controller = new AIPS_Campaigns_Controller();
         $controller->render_wizard_page();
+    }
+
+
+    /**
+     * Render the campaign detail page.
+     */
+    public function render_campaign_detail_page() {
+        $controller = new AIPS_Campaigns_Controller();
+        $controller->render_detail_page();
     }
 
     /**

@@ -1183,6 +1183,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the campaigns page.
      */
     private function enqueue_campaigns_assets() {
+            wp_enqueue_style(
+                'aips-campaigns-style',
+                AIPS_PLUGIN_URL . 'assets/css/campaigns.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',

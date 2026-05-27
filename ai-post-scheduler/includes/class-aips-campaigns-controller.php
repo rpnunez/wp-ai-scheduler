@@ -16,6 +16,11 @@ class AIPS_Campaigns_Controller {
 	const PAGE_SLUG = 'aips-campaign-wizard';
 
 	/**
+	 * Campaign detail page slug.
+	 */
+	const DETAIL_PAGE_SLUG = 'aips-campaign-detail';
+
+	/**
 	 * @var string
 	 */
 	private $draft_option = 'aips_campaign_wizard_draft';
@@ -89,14 +94,72 @@ class AIPS_Campaigns_Controller {
 		$templates       = $this->template_repository->get_all(true);
 		$categories      = get_categories(array('hide_empty' => false));
 		$post_types      = $this->get_supported_post_types();
-		$voices          = class_exists('AIPS_Voices_Repository') ? (new AIPS_Voices_Repository())->get_all() : array();
-		$structures      = class_exists('AIPS_Article_Structure_Repository') ? (new AIPS_Article_Structure_Repository())->get_all(true) : array();
-		$authors         = class_exists('AIPS_Authors_Repository') ? AIPS_Authors_Repository::instance()->get_all(true) : array();
+		$voices          = (new AIPS_Voices_Repository())->get_all();
+		$structures      = (new AIPS_Article_Structure_Repository())->get_all(true);
+		$authors         = AIPS_Authors_Repository::instance()->get_all(true);
 		$frequencies     = (new AIPS_Interval_Calculator())->get_intervals();
 		$aips_config     = $this->config;
 		$default_summary = $this->build_summary($this->normalise_payload($draft));
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-wizard.php';
+	}
+
+
+	/**
+	 * Render campaign detail page.
+	 */
+	public function render_detail_page() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
+		}
+
+		$campaign_id = isset($_GET['campaign_id']) ? absint(wp_unslash($_GET['campaign_id'])) : 0;
+		$campaign = $campaign_id ? $this->campaigns_repository->get_campaign_by_id($campaign_id) : null;
+
+		if (!$campaign) {
+			wp_die(esc_html__('Campaign not found.', 'ai-post-scheduler'));
+		}
+
+		if (
+			isset($_POST['aips_campaign_detail_nonce'])
+			&& wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aips_campaign_detail_nonce'])), 'aips_campaign_detail_save_' . $campaign_id)
+		) {
+			$detail_action = isset($_POST['detail_action']) ? sanitize_key(wp_unslash($_POST['detail_action'])) : 'save';
+
+			if ('save' === $detail_action) {
+				$name = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
+				$content_goal = isset($_POST['content_goal']) ? sanitize_text_field(wp_unslash($_POST['content_goal'])) : '';
+
+				if ('' !== $name) {
+					$this->campaigns_repository->update_campaign($campaign_id, array(
+						'name' => $name,
+						'content_goal' => $content_goal,
+					));
+				}
+			}
+
+			if ('pause' === $detail_action) {
+				$this->campaigns_repository->set_active($campaign_id, 0);
+			} elseif ('resume' === $detail_action) {
+				$this->campaigns_repository->set_active($campaign_id, 1);
+			} elseif ('archive' === $detail_action) {
+				$this->campaigns_repository->archive_campaign($campaign_id);
+			} elseif ('restore' === $detail_action) {
+				$this->campaigns_repository->restore_campaign($campaign_id);
+			}
+
+			wp_safe_redirect(add_query_arg(array(
+				'page' => self::DETAIL_PAGE_SLUG,
+				'campaign_id' => $campaign_id,
+				'updated' => 1,
+			), admin_url('admin.php')));
+			exit;
+		}
+
+		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
+		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-detail.php';
 	}
 
 	/**
