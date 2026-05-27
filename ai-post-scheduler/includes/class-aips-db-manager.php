@@ -8,6 +8,7 @@ class AIPS_DB_Manager {
     private static $tables = array(
         'aips_history',
         'aips_history_log',
+        'aips_campaigns',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
@@ -65,6 +66,7 @@ class AIPS_DB_Manager {
 
         $table_history = $tables['aips_history'];
         $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
@@ -95,6 +97,7 @@ class AIPS_DB_Manager {
             correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
@@ -110,6 +113,7 @@ class AIPS_DB_Manager {
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
+            KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
             KEY status (status),
@@ -129,6 +133,22 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY history_id (history_id),
             KEY history_type_id (history_type_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_campaigns (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            content_goal text,
+            campaign_mode varchar(20) DEFAULT 'template',
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            is_archived tinyint(1) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY is_archived (is_archived),
+            KEY campaign_mode (campaign_mode),
+            KEY active_archived (is_active, is_archived)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -151,10 +171,12 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY campaign_id (campaign_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -175,6 +197,7 @@ class AIPS_DB_Manager {
             run_state text DEFAULT NULL,
             batch_progress longtext DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
             campaign_mode varchar(20) DEFAULT 'template',
             post_type_rules longtext DEFAULT NULL,
             blackout_dates text DEFAULT NULL,
@@ -189,6 +212,7 @@ class AIPS_DB_Manager {
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
             KEY author_id (author_id),
+            KEY campaign_id (campaign_id),
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
             KEY status (status),

@@ -50,6 +50,12 @@ if (!defined('ABSPATH')) {
                         <?php
                         $history_service = new AIPS_History();
                         $templates_class = new AIPS_Templates();
+                        $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                        $campaign_options = $campaigns_repo->get_campaign_filter_options();
+                        $campaign_map = array();
+                        foreach ($campaign_options as $campaign_option) {
+                            $campaign_map[(int) $campaign_option->id] = $campaign_option;
+                        }
 
                         // Pre-fetch stats to avoid N+1 queries
                         $all_generated_counts = $history_service->get_all_template_stats();
@@ -62,6 +68,14 @@ if (!defined('ABSPATH')) {
                         <tr data-template-id="<?php echo esc_attr($template->id); ?>">
                             <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
+                                <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
+                                    <?php $campaign = $campaign_map[(int) $template->campaign_id]; ?>
+                                    <div class="cell-meta" style="margin-top: 4px;">
+                                        <a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>">
+                                            <?php echo esc_html($campaign->name); ?>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="aips-badge aips-badge-neutral">
@@ -126,7 +140,7 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-admin-page"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>" <?php disabled(!empty($template->campaign_id)); ?>>
                                         <span class="dashicons dashicons-trash"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                     </button>
