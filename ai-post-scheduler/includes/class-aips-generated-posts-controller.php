@@ -87,6 +87,19 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
+
+		// Bulk load post caches to prevent N+1 queries in the loop
+		$post_ids_to_prime = array();
+		if (!empty($history['items'])) {
+			foreach ($history['items'] as $item) {
+				if ($item->post_id) {
+					$post_ids_to_prime[] = $item->post_id;
+				}
+			}
+		}
+		if (!empty($post_ids_to_prime) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids_to_prime), false, true);
+		}
 		
 		// Get schedule data for each post
 		$posts_data = array();
@@ -133,6 +146,19 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 
+		// Bulk load post caches for draft posts to prevent N+1 queries in templates
+		$draft_post_ids_to_prime = array();
+		if (!empty($draft_posts['items'])) {
+			foreach ($draft_posts['items'] as $item) {
+				if ($item->post_id) {
+					$draft_post_ids_to_prime[] = $item->post_id;
+				}
+			}
+		}
+		if (!empty($draft_post_ids_to_prime) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($draft_post_ids_to_prime), false, true);
+		}
+
 		// Pre-format dates for draft posts
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
@@ -147,6 +173,19 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		// Bulk load post caches to prevent N+1 queries in the loop
+		$partial_post_ids_to_prime = array();
+		if (!empty($partial_generations['items'])) {
+			foreach ($partial_generations['items'] as $item) {
+				if ($item->post_id) {
+					$partial_post_ids_to_prime[] = $item->post_id;
+				}
+			}
+		}
+		if (!empty($partial_post_ids_to_prime) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($partial_post_ids_to_prime), false, true);
+		}
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
