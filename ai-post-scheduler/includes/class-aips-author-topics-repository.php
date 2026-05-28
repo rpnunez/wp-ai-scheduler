@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+
 /**
  * Class AIPS_Author_Topics_Repository
  *
@@ -469,7 +470,7 @@ class AIPS_Author_Topics_Repository {
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
 		$days  = max( 1, absint( $days ) );
-		$start = AIPS_DateTime::now()->addSeconds( -1 * ( ( $days - 1 ) * DAY_IN_SECONDS ) )->timestamp();
+		$start = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->timestamp();
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
@@ -490,4 +491,3 @@ class AIPS_Author_Topics_Repository {
 		return $data;
 	}
 }
-

@@ -129,17 +129,16 @@ class AIPS_Dashboard_Controller {
     }
 
     /**
-     * Format a next_run MySQL datetime as a human-readable relative string.
+     * Format a next_run timestamp as a human-readable relative string.
      *
      * Returns a relative label ("in 2 hours", "in 1 day and 3 hours", etc.) for
      * events within the next 30 days, and an absolute date/time string otherwise.
      *
-     * next_run is stored as a site-local MySQL datetime.  We convert it to a UTC
-     * timestamp via get_gmt_from_date() so that subsequent comparisons with
-     * AIPS_DateTime::now()->timestamp() are consistent, and wp_date() output
-     * correctly applies the site timezone offset once (not twice).
+     * next_run is stored as a Unix timestamp. For backward compatibility, this
+     * method still accepts legacy MySQL datetime strings and normalizes both
+     * formats through AIPS_DateTime before doing relative-time calculations.
      *
-     * @param string $next_run    MySQL datetime string (site-local).
+     * @param int|string $next_run Timestamp or legacy MySQL datetime string.
      * @param string $date_format WordPress date_format option value.
      * @param string $time_format WordPress time_format option value.
      * @return string
@@ -149,9 +148,9 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        // Convert site-local datetime to UTC via AIPS_DateTime for consistent parsing.
-        $next_run_gmt = get_gmt_from_date( $next_run );
-        $run_at       = AIPS_DateTime::fromMysqlOrNull( $next_run_gmt );
+        $run_at = is_numeric( $next_run )
+            ? AIPS_DateTime::fromTimestampOrNull( (int) $next_run )
+            : AIPS_DateTime::fromMysqlOrNull( get_gmt_from_date( (string) $next_run ) );
         if ( null === $run_at ) {
             return '—';
         }

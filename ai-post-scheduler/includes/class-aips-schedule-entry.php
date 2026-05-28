@@ -280,6 +280,10 @@ class AIPS_Schedule_Entry {
 	 * @return bool
 	 */
 	public function is_due( ?int $current_time = null ): bool {
+		if ( $this->next_run <= 0 ) {
+			return false;
+		}
+
 		if ( $current_time === null ) {
 			$current_time = AIPS_DateTime::now()->timestamp();
 		}

@@ -106,6 +106,7 @@ class AIPS_Templates {
 
         foreach ($schedules as $schedule) {
             $cursor = $this->normalize_schedule_timestamp($schedule->next_run);
+            // Zero means "unset"/legacy default in DB schema; skip those rows.
             if ($cursor <= 0) {
                 continue;
             }
@@ -166,7 +167,7 @@ class AIPS_Templates {
         }
 
         $now = AIPS_DateTime::now()->timestamp();
-        $today_end = AIPS_DateTime::fromTimestamp($now)->advance('today 23:59:59')->timestamp();
+        $today_end = AIPS_DateTime::fromTimestamp($now)->advance('tomorrow')->advance('-1 second')->timestamp();
         $week_end = AIPS_DateTime::fromTimestamp($now)->advance('+7 days')->timestamp();
         $month_end = AIPS_DateTime::fromTimestamp($now)->advance('+30 days')->timestamp();
 
@@ -177,6 +178,7 @@ class AIPS_Templates {
             }
 
             $cursor = $this->normalize_schedule_timestamp($schedule->next_run);
+            // Zero means "unset"/legacy default in DB schema; skip those rows.
             if ($cursor <= 0) {
                 continue;
             }
@@ -222,12 +224,7 @@ class AIPS_Templates {
             AIPS_DateTime::fromTimestamp((int) $base_time)->toMysql()
         );
 
-        if (is_numeric($next_run)) {
-            return (int) $next_run;
-        }
-
-        $next_run_dt = AIPS_DateTime::fromMysqlOrNull((string) $next_run);
-        return $next_run_dt ? $next_run_dt->timestamp() : 0;
+        return $this->normalize_schedule_timestamp($next_run);
     }
 
     private function normalize_schedule_timestamp($value) {

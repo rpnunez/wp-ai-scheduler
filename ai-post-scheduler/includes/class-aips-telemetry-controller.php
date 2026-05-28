@@ -44,7 +44,7 @@ class AIPS_Telemetry_Controller {
 		}
 
 		$end_date   = AIPS_DateTime::now()->toDisplay('Y-m-d');
-		$start_date = AIPS_DateTime::now()->addSeconds(-29 * DAY_IN_SECONDS)->toDisplay('Y-m-d');
+		$start_date = AIPS_DateTime::now()->advance('-29 days')->toDisplay('Y-m-d');
 		$per_page   = 25;
 		$filter_options = $this->get_filter_options();
 
@@ -72,7 +72,7 @@ class AIPS_Telemetry_Controller {
 		$today      = AIPS_DateTime::now()->toDisplay('Y-m-d');
 		$start_date = $this->sanitize_date(
 			isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '',
-			AIPS_DateTime::now()->addSeconds(-29 * DAY_IN_SECONDS)->toDisplay('Y-m-d')
+			AIPS_DateTime::now()->advance('-29 days')->toDisplay('Y-m-d')
 		);
 		$end_date   = $this->sanitize_date(
 			isset($_POST['end_date']) ? sanitize_text_field(wp_unslash($_POST['end_date'])) : '',

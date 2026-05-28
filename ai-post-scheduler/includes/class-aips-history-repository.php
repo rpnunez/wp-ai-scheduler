@@ -758,7 +758,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_daily_generation_counts( $days = 14 ) {
         $days  = max( 1, absint( $days ) );
-        $start = AIPS_DateTime::now()->addSeconds( -1 * ( ( $days - 1 ) * DAY_IN_SECONDS ) )->timestamp();
+        $start = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->timestamp();
 
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
