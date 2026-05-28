@@ -134,11 +134,9 @@ class AIPS_Dashboard_Controller {
      * Returns a relative label ("in 2 hours", "in 1 day and 3 hours", etc.) for
      * events within the next 30 days, and an absolute date/time string otherwise.
      *
-     * next_run is stored as a Unix timestamp. For backward compatibility, this
-     * method still accepts legacy MySQL datetime strings and normalizes both
-     * formats through AIPS_DateTime before doing relative-time calculations.
+     * next_run is stored as a Unix timestamp.
      *
-     * @param int|string $next_run Timestamp or legacy MySQL datetime string.
+     * @param int|string $next_run Timestamp.
      * @param string $date_format WordPress date_format option value.
      * @param string $time_format WordPress time_format option value.
      * @return string
@@ -148,9 +146,11 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        $run_at = is_numeric( $next_run )
-            ? AIPS_DateTime::fromTimestampOrNull( (int) $next_run )
-            : AIPS_DateTime::fromMysqlOrNull( get_gmt_from_date( (string) $next_run ) );
+        if ( ! is_numeric( $next_run ) ) {
+            return '—';
+        }
+
+        $run_at = AIPS_DateTime::fromTimestampOrNull( (int) $next_run );
         if ( null === $run_at ) {
             return '—';
         }
