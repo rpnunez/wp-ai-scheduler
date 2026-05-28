@@ -120,15 +120,16 @@ class AIPS_Campaigns_Controller {
 			wp_die(esc_html__('Campaign not found.', 'ai-post-scheduler'));
 		}
 
-		if (
-			isset($_POST['aips_campaign_detail_nonce'])
-			&& wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aips_campaign_detail_nonce'])), 'aips_campaign_detail_save_' . $campaign_id)
-		) {
+		if (isset($_POST['aips_campaign_detail_nonce'])) {
+			if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aips_campaign_detail_nonce'])), 'aips_campaign_detail_save_' . $campaign_id)) {
+				wp_die(esc_html__('Security check failed.', 'ai-post-scheduler'));
+			}
+
 			$detail_action = isset($_POST['detail_action']) ? sanitize_key(wp_unslash($_POST['detail_action'])) : 'save';
 
 			if ('save' === $detail_action) {
 				$name = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
-				$content_goal = isset($_POST['content_goal']) ? sanitize_text_field(wp_unslash($_POST['content_goal'])) : '';
+				$content_goal = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
 
 				if ('' !== $name) {
 					$this->campaigns_repository->update_campaign($campaign_id, array(

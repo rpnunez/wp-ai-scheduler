@@ -41,6 +41,9 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $classMap = array (
+        'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
+        'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
+        'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
         'AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-edit-controller.php',
         'AIPS_AI_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-service.php',
         'AIPS_AI_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-ai-service-interface.php',
@@ -232,6 +235,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Template_Type_Selector_Test' => __DIR__ . '/../..' . '/tests/AIPS_Template_Type_Selector_Test.php',
         'AIPS_Templates' => __DIR__ . '/../..' . '/includes/class-aips-templates.php',
         'AIPS_Templates_Controller' => __DIR__ . '/../..' . '/includes/class-aips-templates-controller.php',
+        'AIPS_Test_Campaigns_Repository_WPDB_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Repository.php',
         'AIPS_Test_History_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_History_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_Notifications_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
@@ -1180,6 +1184,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'SebastianBergmann\\Type\\UnknownType' => __DIR__ . '/..' . '/sebastian/type/src/type/UnknownType.php',
         'SebastianBergmann\\Type\\VoidType' => __DIR__ . '/..' . '/sebastian/type/src/type/VoidType.php',
         'SebastianBergmann\\Version' => __DIR__ . '/..' . '/sebastian/version/src/Version.php',
+        'Test_AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Assistance_Controller.php',
         'Test_AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Edit_Controller.php',
         'Test_AIPS_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service.php',
         'Test_AIPS_Admin_Bar_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Cache.php',
@@ -1203,6 +1208,8 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Cache_Session_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Wp_Object_Cache_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Calendar_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Calendar_Controller.php',
+        'Test_AIPS_Campaign_Ajax_Routing' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaign_Ajax_Routing.php',
+        'Test_AIPS_Campaigns_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Repository.php',
         'Test_AIPS_Config' => __DIR__ . '/../..' . '/tests/Test_AIPS_Config.php',
         'Test_AIPS_Config_Option_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Config_Option_Cache.php',
         'Test_AIPS_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Container.php',
