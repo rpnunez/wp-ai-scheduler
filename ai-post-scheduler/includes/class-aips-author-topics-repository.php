@@ -469,8 +469,9 @@ class AIPS_Author_Topics_Repository {
 	 * @return array<string, int>
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
-		$days  = max( 1, absint( $days ) );
-		$start = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->timestamp();
+		$days      = max( 1, absint( $days ) );
+		$start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
+		$start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(

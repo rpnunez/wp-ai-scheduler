@@ -256,7 +256,7 @@ class AIPS_Schedule_Entry {
 			(string) ( $row->frequency ?? 'daily' ),
 			isset( $row->topic ) && $row->topic !== '' ? (string) $row->topic : null,
 			isset( $row->next_run ) ? (int) $row->next_run : 0,
-			isset( $row->last_run ) && $row->last_run !== '' ? (int) $row->last_run : null,
+			isset( $row->last_run ) && $row->last_run !== '' && (int) $row->last_run > 0 ? (int) $row->last_run : null,
 			isset( $row->is_active ) && $row->is_active !== null ? 1 === (int) $row->is_active : true,
 			(string) ( $row->status ?? 'active' ),
 			isset( $row->schedule_history_id ) && $row->schedule_history_id !== null ? (int) $row->schedule_history_id : null,

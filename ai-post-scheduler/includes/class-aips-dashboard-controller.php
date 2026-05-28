@@ -76,8 +76,8 @@ class AIPS_Dashboard_Controller {
         $daily_topics      = $author_topics_repo->get_daily_topic_counts( $days );
 
         // Build a complete ordered label set for the date range.
-        // Use UTC-based timestamps with wp_date()/wp_timezone() so day boundaries
-        // are calculated in the site timezone, matching DATE(FROM_UNIXTIME(created_at)) SQL buckets.
+        // Labels are rendered in the site timezone for display. Daily SQL buckets
+        // are grouped by DATE(FROM_UNIXTIME(...)), which follows DB/session timezone.
         $now_ts           = AIPS_DateTime::now()->timestamp();
         $timezone         = wp_timezone();
         $chart_labels     = array();

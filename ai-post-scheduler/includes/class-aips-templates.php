@@ -166,10 +166,10 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = AIPS_DateTime::now()->timestamp();
-        $today_end = AIPS_DateTime::fromTimestamp($now)->advance('tomorrow')->advance('-1 second')->timestamp();
-        $week_end = AIPS_DateTime::fromTimestamp($now)->advance('+7 days')->timestamp();
-        $month_end = AIPS_DateTime::fromTimestamp($now)->advance('+30 days')->timestamp();
+        $now = AIPS_DateTime::now();
+        $today_end = $now->toSiteTimezone()->advance('tomorrow')->advance('-1 second')->toUtc()->timestamp();
+        $week_end = $now->advance('+7 days')->timestamp();
+        $month_end = $now->advance('+30 days')->timestamp();
 
         foreach ($schedules as $schedule) {
             $tid = $schedule->template_id;
