@@ -133,8 +133,9 @@ class AIPS_Research_Service {
      * @return string The formatted prompt.
      */
     private function build_research_prompt($niche, $count, $keywords) {
-        $current_date = current_time('F j, Y');
-        $current_year = current_time('Y');
+        $now = AIPS_DateTime::now();
+        $current_date = $now->toDisplay('F j, Y');
+        $current_year = $now->toDisplay('Y');
 
         $prompt = "You are a content research expert analyzing trending topics for '{$niche}' as of {$current_date}.\n\n";
 
@@ -147,7 +148,7 @@ class AIPS_Research_Service {
 
         $prompt .= "Consider:\n";
         $prompt .= "1. Current events and news in {$current_year}\n";
-        $prompt .= "2. Seasonal relevance for " . current_time('F') . "\n";
+        $prompt .= "2. Seasonal relevance for " . $now->toDisplay('F') . "\n";
         $prompt .= "3. Search trends and user interest\n";
         $prompt .= "4. Evergreen value combined with timeliness\n";
         $prompt .= "5. Content gap opportunities\n\n";
@@ -297,7 +298,7 @@ class AIPS_Research_Service {
             'keywords' => isset($topic['keywords']) && is_array($topic['keywords'])
                 ? AIPS_Utilities::sanitize_string_array($topic['keywords'])
                 : array(),
-            'researched_at' => current_time('mysql'),
+            'researched_at' => AIPS_DateTime::now()->timestamp(),
         );
     }
 
@@ -337,7 +338,7 @@ class AIPS_Research_Service {
                     'score' => $score,
                     'reason' => 'Extracted from AI response',
                     'keywords' => array(),
-                    'researched_at' => current_time('mysql'),
+                    'researched_at' => AIPS_DateTime::now()->timestamp(),
                 );
 
                 $score = max(50, $score - 5); // Decrease score for each topic
@@ -389,7 +390,7 @@ class AIPS_Research_Service {
         $all_text = $topic_text . ' ' . implode(' ', $keywords);
 
         // Check for current year
-        $current_year = current_time('Y');
+        $current_year = AIPS_DateTime::now()->toDisplay('Y');
         if (strpos($all_text, $current_year) !== false) {
             $freshness_score += 20;
             $indicators[] = "Mentions current year ({$current_year})";
@@ -406,7 +407,7 @@ class AIPS_Research_Service {
         }
 
         // Check for seasonal relevance
-        $current_month = current_time('n'); // 1-12
+        $current_month = (int) AIPS_DateTime::now()->toDisplay('n'); // 1-12
         $seasonal_months = array(
             array(
                 'months' => array(12, 1, 2),
@@ -570,7 +571,7 @@ class AIPS_Research_Service {
      * @return string Formatted prompt.
      */
     private function build_source_research_prompt( $niche, $count, $keywords, $source_context ) {
-        $current_date = current_time( 'F j, Y' );
+        $current_date = AIPS_DateTime::now()->toDisplay( 'F j, Y' );
 
         $prompt  = "You are a content research expert. Using the source material below as your primary reference, ";
         $prompt .= "identify {$count} specific, high-value blog post topics for the '{$niche}' niche as of {$current_date}.\n\n";

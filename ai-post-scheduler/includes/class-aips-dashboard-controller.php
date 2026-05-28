@@ -77,8 +77,8 @@ class AIPS_Dashboard_Controller {
 
         // Build a complete ordered label set for the date range.
         // Use UTC-based timestamps with wp_date()/wp_timezone() so day boundaries
-        // are calculated in the site timezone, matching DATE(created_at) SQL buckets.
-        $now_ts           = current_time( 'timestamp', true );
+        // are calculated in the site timezone, matching DATE(FROM_UNIXTIME(created_at)) SQL buckets.
+        $now_ts           = AIPS_DateTime::now()->timestamp();
         $timezone         = wp_timezone();
         $chart_labels     = array();
         $chart_completed  = array();
@@ -136,7 +136,7 @@ class AIPS_Dashboard_Controller {
      *
      * next_run is stored as a site-local MySQL datetime.  We convert it to a UTC
      * timestamp via get_gmt_from_date() so that subsequent comparisons with
-     * current_time('timestamp', true) are consistent, and wp_date() output
+     * AIPS_DateTime::now()->timestamp() are consistent, and wp_date() output
      * correctly applies the site timezone offset once (not twice).
      *
      * @param string $next_run    MySQL datetime string (site-local).
