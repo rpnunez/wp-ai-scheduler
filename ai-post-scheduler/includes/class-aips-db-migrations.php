@@ -498,19 +498,21 @@ class AIPS_DB_Migrations {
 	 * @return void
 	 */
 	private function migrate_to_2_8_3() {
-		global $wpdb;
-
 		$summary = ( new AIPS_Date_Time_DB_Repair() )->run();
 		$fixed_last_runs = $this->repair_schedule_last_run_from_run_state();
+		$fixed_template_alignments = $this->repair_template_schedule_next_runs_from_last_run();
+		$fixed_author_alignments   = $this->repair_author_schedule_next_runs_from_last_run();
 
 		$this->logger->log(
 			sprintf(
-				'2.8.3 schedule repair: normalized=%d, fixed_schedule_next_runs=%d, fixed_author_next_runs=%d, fixed_source_next_runs=%d, fixed_schedule_last_runs=%d',
+				'2.8.3 schedule repair: normalized=%d, fixed_schedule_next_runs=%d, fixed_author_next_runs=%d, fixed_source_next_runs=%d, fixed_schedule_last_runs=%d, fixed_template_alignments=%d, fixed_author_alignments=%d',
 				isset( $summary['normalized_null_values'] ) ? (int) $summary['normalized_null_values'] : 0,
 				isset( $summary['fixed_schedule_next_runs'] ) ? (int) $summary['fixed_schedule_next_runs'] : 0,
 				isset( $summary['fixed_author_next_runs'] ) ? (int) $summary['fixed_author_next_runs'] : 0,
 				isset( $summary['fixed_source_next_runs'] ) ? (int) $summary['fixed_source_next_runs'] : 0,
-				$fixed_last_runs
+				$fixed_last_runs,
+				$fixed_template_alignments,
+				$fixed_author_alignments
 			),
 			'info'
 		);
@@ -549,17 +551,11 @@ class AIPS_DB_Migrations {
 			}
 
 			$state = json_decode( (string) $row['run_state'], true );
-			if ( ! is_array( $state ) || empty( $state['timestamp'] ) || ! is_string( $state['timestamp'] ) ) {
+			if ( ! is_array( $state ) || empty( $state['timestamp'] ) ) {
 				continue;
 			}
 
-			try {
-				$run_at = new DateTimeImmutable( $state['timestamp'], new DateTimeZone( 'UTC' ) );
-			} catch ( Exception $e ) {
-				continue;
-			}
-
-			$run_at_ts = (int) $run_at->getTimestamp();
+			$run_at_ts = $this->normalize_run_state_timestamp( $state['timestamp'] );
 			if ( $run_at_ts < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
 				continue;
 			}
@@ -578,5 +574,179 @@ class AIPS_DB_Migrations {
 		}
 
 		return $updated;
+	}
+
+	/**
+	 * Realign template schedule next_run values from last_run using 2.8.3 rules.
+	 *
+	 * @return int
+	 */
+	private function repair_template_schedule_next_runs_from_last_run() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, frequency, next_run, last_run FROM `{$table}`", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$calculator = new AIPS_Interval_Calculator();
+		$updated    = 0;
+
+		foreach ( $rows as $row ) {
+			$last_run = $this->normalize_timestamp_value( $row['last_run'] ?? 0 );
+			if ( $last_run < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$frequency = isset( $row['frequency'] ) ? (string) $row['frequency'] : '';
+			if ( ! $calculator->is_valid_frequency( $frequency ) ) {
+				continue;
+			}
+
+			$expected_next_run = (int) $calculator->calculate_next_run( $frequency, $last_run );
+			$current_next_run  = $this->normalize_timestamp_value( $row['next_run'] ?? 0 );
+
+			if ( $current_next_run === $expected_next_run ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				array( 'next_run' => $expected_next_run ),
+				array( 'id' => absint( $row['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated++;
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Realign author topic/post next_run values from last_run using 2.8.3 rules.
+	 *
+	 * @return int
+	 */
+	private function repair_author_schedule_next_runs_from_last_run() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, topic_generation_frequency, topic_generation_next_run, topic_generation_last_run, post_generation_frequency, post_generation_next_run, post_generation_last_run FROM `{$table}`", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$calculator = new AIPS_Interval_Calculator();
+		$updated    = 0;
+
+		foreach ( $rows as $row ) {
+			$update_data   = array();
+			$update_format = array();
+
+			$topic_last_run = $this->normalize_timestamp_value( $row['topic_generation_last_run'] ?? 0 );
+			if ( $topic_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				$frequency = isset( $row['topic_generation_frequency'] ) ? (string) $row['topic_generation_frequency'] : '';
+				if ( $calculator->is_valid_frequency( $frequency ) ) {
+					$expected_topic_next = (int) $calculator->calculate_next_run( $frequency, $topic_last_run );
+					$current_topic_next  = $this->normalize_timestamp_value( $row['topic_generation_next_run'] ?? 0 );
+
+					if ( $current_topic_next !== $expected_topic_next ) {
+						$update_data['topic_generation_next_run'] = $expected_topic_next;
+						$update_format[]                          = '%d';
+					}
+				}
+			}
+
+			$post_last_run = $this->normalize_timestamp_value( $row['post_generation_last_run'] ?? 0 );
+			if ( $post_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				$frequency = isset( $row['post_generation_frequency'] ) ? (string) $row['post_generation_frequency'] : '';
+				if ( $calculator->is_valid_frequency( $frequency ) ) {
+					$expected_post_next = (int) $calculator->calculate_next_run( $frequency, $post_last_run );
+					$current_post_next  = $this->normalize_timestamp_value( $row['post_generation_next_run'] ?? 0 );
+
+					if ( $current_post_next !== $expected_post_next ) {
+						$update_data['post_generation_next_run'] = $expected_post_next;
+						$update_format[]                         = '%d';
+					}
+				}
+			}
+
+			if ( empty( $update_data ) ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				$update_data,
+				array( 'id' => absint( $row['id'] ) ),
+				$update_format,
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated += count( $update_data );
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Normalize mixed timestamp-like values to integers.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return int
+	 */
+	private function normalize_timestamp_value( $value ) {
+		return is_numeric( $value ) ? max( 0, (int) $value ) : 0;
+	}
+
+	/**
+	 * Normalize the run_state timestamp payload into a Unix timestamp.
+	 *
+	 * @param mixed $value Raw run_state timestamp value.
+	 * @return int
+	 */
+	private function normalize_run_state_timestamp( $value ) {
+		if ( is_numeric( $value ) ) {
+			return max( 0, (int) $value );
+		}
+
+		if ( ! is_string( $value ) || '' === $value ) {
+			return 0;
+		}
+
+		try {
+			$run_at = new DateTimeImmutable( $value, new DateTimeZone( 'UTC' ) );
+		} catch ( Exception $e ) {
+			return 0;
+		}
+
+		return (int) $run_at->getTimestamp();
 	}
 }
