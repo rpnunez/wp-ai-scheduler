@@ -176,6 +176,10 @@ class AIPS_Templates_Controller {
 
         $template = $this->templates->get($id);
 
+        if ($template && !empty($template->campaign_id)) {
+            AIPS_Ajax_Response::error(__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'));
+        }
+
         if ($this->templates->delete($id)) {
             do_action('aips_template_changed', array(
                 'action'        => 'deleted',

@@ -150,7 +150,7 @@ class AIPS_Authors_Controller {
 		
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$now = current_time('mysql');
+			$now = AIPS_DateTime::now()->timestamp();
 			$data['topic_generation_next_run'] = $now;
 			$data['post_generation_next_run'] = $now;
 		}

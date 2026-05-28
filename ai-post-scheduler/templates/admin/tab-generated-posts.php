@@ -10,6 +10,7 @@
  * @var array $templates
  * @var int $author_id
  * @var int $template_id
+ * @var int $campaign_id
  * @var string $search_query
  * @var array $posts_data
  * @var array $history
@@ -50,12 +51,23 @@ if (!defined('ABSPATH')) {
 								<?php endforeach; ?>
 							</select>
 							<?php endif; ?>
+							<?php if (!empty($campaigns)): ?>
+							<label class="screen-reader-text" for="aips-filter-campaign-generated"><?php esc_html_e('Filter by Campaign:', 'ai-post-scheduler'); ?></label>
+							<select name="campaign_id" id="aips-filter-campaign-generated" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Campaigns', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($campaigns as $campaign): ?>
+								<option value="<?php echo esc_attr($campaign->id); ?>" <?php selected($campaign_id, $campaign->id); ?>>
+									<?php echo esc_html($campaign->name); ?><?php echo !empty($campaign->is_archived) ? esc_html__(' (Archived)', 'ai-post-scheduler') : ''; ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
 							<button type="submit" id="aips-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
 								<span class="dashicons dashicons-filter"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($author_id) || !empty($template_id)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
@@ -213,11 +225,12 @@ if (!defined('ABSPATH')) {
 					$start = max(1, $current - 3);
 					$end = min($pages, $current + 3);
 					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $search_query) {
+					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $search_query) {
 						return add_query_arg(array_filter(array(
 							'generated_paged' => absint($page_number),
 							'author_id' => $author_id ? $author_id : false,
 							'template_id' => $template_id ? $template_id : false,
+							'campaign_id' => $campaign_id ? $campaign_id : false,
 							's' => $search_query ? $search_query : false,
 						)), $base_url);
 					};
