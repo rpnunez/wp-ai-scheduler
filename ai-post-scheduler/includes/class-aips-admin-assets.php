@@ -1204,7 +1204,8 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-campaign-wizard', 'aipsCampaignWizardL10n', array(
                 'confirmFinalize'        => __('Create this campaign and schedule it now?', 'ai-post-scheduler'),
                 'created'                => __('Campaign created.', 'ai-post-scheduler'),
-                'nonceAiGenerate'        => wp_create_nonce('aips_campaign_wizard_ai_generate'),
+                'campaignWizardAIGenerate'      => 'aips_campaign_wizard_ai_generate',
+                'campaignWizardAIGenerateNonce' => wp_create_nonce('aips_campaign_wizard_ai_generate'),
                 'aiModeTitle'            => __('Choose Campaign Setup Mode', 'ai-post-scheduler'),
                 'aiModeMessage'          => __('Would you like Guided AI Setup to prefill your campaign fields, or configure everything manually?', 'ai-post-scheduler'),
                 'advancedModeTitle'      => __('Advanced Mode', 'ai-post-scheduler'),

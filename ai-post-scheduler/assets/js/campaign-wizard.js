@@ -403,8 +403,8 @@
 				method: 'POST',
 				dataType: 'json',
 				data: {
-					action: 'aips_campaign_wizard_ai_generate',
-					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.nonceAiGenerate),
+					action: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerate),
+					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerateNonce),
 					intake: JSON.stringify(this.sanitizeAiIntake(intake)),
 				},
 			})
