@@ -86,6 +86,30 @@ If you run PHPUnit directly without those paths being valid, the bootstrap fails
 
 ## Common Failures
 
+### Agent session: `composer test` fails before tests start
+
+`composer test` now runs a pre-flight bootstrap (`ai-post-scheduler/bin/prepare-wp-tests.sh`) that:
+
+1. Installs Composer dependencies if `vendor/bin/phpunit` is missing
+2. Exports `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`)
+3. Installs WordPress core + test library/config via `scripts/install-wp-tests.sh` if required files are missing
+
+If an agent session still fails early, run from repo root:
+
+```bash
+cd ai-post-scheduler
+composer test:setup
+composer test
+```
+
+For CI/agent environments without DB create permissions, set:
+
+```bash
+export AIPS_WP_TEST_SKIP_DB_CREATE=true
+```
+
+before running `composer test`.
+
 ### `Required command not found: svn`
 
 Install Subversion and make sure `svn` is on your `PATH`.
