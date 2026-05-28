@@ -6,6 +6,9 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
+    'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
+    'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
     'AIPS_AI_Edit_Controller' => $baseDir . '/includes/class-aips-ai-edit-controller.php',
     'AIPS_AI_Service' => $baseDir . '/includes/class-aips-ai-service.php',
     'AIPS_AI_Service_Interface' => $baseDir . '/includes/interface-aips-ai-service-interface.php',
@@ -197,6 +200,7 @@ return array(
     'AIPS_Template_Type_Selector_Test' => $baseDir . '/tests/AIPS_Template_Type_Selector_Test.php',
     'AIPS_Templates' => $baseDir . '/includes/class-aips-templates.php',
     'AIPS_Templates_Controller' => $baseDir . '/includes/class-aips-templates-controller.php',
+    'AIPS_Test_Campaigns_Repository_WPDB_Stub' => $baseDir . '/tests/Test_AIPS_Campaigns_Repository.php',
     'AIPS_Test_History_Container' => $baseDir . '/tests/Test_AIPS_Notification_Template.php',
     'AIPS_Test_History_Service' => $baseDir . '/tests/Test_AIPS_Notification_Template.php',
     'AIPS_Test_Notifications_Repository' => $baseDir . '/tests/Test_AIPS_Notification_Template.php',
@@ -1145,6 +1149,7 @@ return array(
     'SebastianBergmann\\Type\\UnknownType' => $vendorDir . '/sebastian/type/src/type/UnknownType.php',
     'SebastianBergmann\\Type\\VoidType' => $vendorDir . '/sebastian/type/src/type/VoidType.php',
     'SebastianBergmann\\Version' => $vendorDir . '/sebastian/version/src/Version.php',
+    'Test_AIPS_AI_Assistance_Controller' => $baseDir . '/tests/Test_AIPS_AI_Assistance_Controller.php',
     'Test_AIPS_AI_Edit_Controller' => $baseDir . '/tests/Test_AIPS_AI_Edit_Controller.php',
     'Test_AIPS_AI_Service' => $baseDir . '/tests/Test_AIPS_AI_Service.php',
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',
@@ -1168,6 +1173,8 @@ return array(
     'Test_AIPS_Cache_Session_Driver' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Cache_Wp_Object_Cache_Driver' => $baseDir . '/tests/Test_AIPS_Cache_Array_Driver.php',
     'Test_AIPS_Calendar_Controller' => $baseDir . '/tests/Test_AIPS_Calendar_Controller.php',
+    'Test_AIPS_Campaign_Ajax_Routing' => $baseDir . '/tests/Test_AIPS_Campaign_Ajax_Routing.php',
+    'Test_AIPS_Campaigns_Repository' => $baseDir . '/tests/Test_AIPS_Campaigns_Repository.php',
     'Test_AIPS_Config' => $baseDir . '/tests/Test_AIPS_Config.php',
     'Test_AIPS_Config_Option_Cache' => $baseDir . '/tests/Test_AIPS_Config_Option_Cache.php',
     'Test_AIPS_Container' => $baseDir . '/tests/Test_AIPS_Container.php',
