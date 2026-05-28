@@ -30,7 +30,7 @@ $authors = get_users(array(
 			<div class="aips-panel-body">
 				<h2 id="aips-ai-strategy-preview-title"><?php esc_html_e('Campaign Strategy Preview', 'ai-post-scheduler'); ?></h2>
 				<p id="aips-ai-strategy-preview-message" class="description"><?php esc_html_e('Review the proposed plan before applying it to your wizard fields.', 'ai-post-scheduler'); ?></p>
-				<dl class="aips-ai-preview-grid">
+				<dl class="aips-ai-preview-grid" aria-label="<?php esc_attr_e('AI-generated campaign strategy preview details', 'ai-post-scheduler'); ?>">
 					<dt><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong></dt>
 					<dd id="aips-ai-preview-campaign-name"></dd>
 					<dt><strong><?php esc_html_e('Who this campaign is for', 'ai-post-scheduler'); ?></strong></dt>

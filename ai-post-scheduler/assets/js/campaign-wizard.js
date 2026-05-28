@@ -116,7 +116,6 @@
 						type: 'text',
 						required: true,
 						value: defaults.topic_niche || '',
-						placeholder: 'WordPress SEO for local businesses',
 						description: aipsCampaignWizardL10n.topicNicheExample,
 					},
 					{
@@ -125,7 +124,6 @@
 						type: 'text',
 						required: true,
 						value: defaults.target_audience || '',
-						placeholder: 'Small business owners with limited technical knowledge',
 						description: aipsCampaignWizardL10n.targetAudienceExample,
 					},
 					{
@@ -147,7 +145,6 @@
 						type: 'text',
 						required: true,
 						value: defaults.publishing_goal || '',
-						placeholder: 'Drive organic traffic and convert readers to consultation bookings',
 						description: aipsCampaignWizardL10n.publishingGoalExample,
 					},
 					{
@@ -206,7 +203,7 @@
 		 * @return {void}
 		 */
 		onAiIntakeSubmit: function(formData) {
-			AIPS.CampaignWizard.showNotice('success', aipsCampaignWizardL10n.aiGeneratingMessage);
+			AIPS.CampaignWizard.showNotice('info', aipsCampaignWizardL10n.aiGeneratingMessage);
 
 			AIPS.CampaignWizard.sendAiAssistAjax(formData, function(err, out) {
 				if (err) {
@@ -251,7 +248,14 @@
 		 * @return {void}
 		 */
 		showNotice: function(type, message) {
-			var noticeClass = type === 'success' ? 'notice notice-success' : 'notice notice-error';
+			var noticeClass = 'notice notice-error';
+			if (type === 'success') {
+				noticeClass = 'notice notice-success';
+			} else if (type === 'warning') {
+				noticeClass = 'notice notice-warning';
+			} else if (type === 'info') {
+				noticeClass = 'notice notice-info';
+			}
 			var $notice = $(document.createElement('div')).addClass(noticeClass);
 			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
 
@@ -571,7 +575,7 @@
 				return;
 			}
 
-			AIPS.CampaignWizard.showNotice('success', aipsCampaignWizardL10n.regeneratingMessage || aipsCampaignWizardL10n.aiGeneratingMessage);
+			AIPS.CampaignWizard.showNotice('info', aipsCampaignWizardL10n.regeneratingMessage || aipsCampaignWizardL10n.aiGeneratingMessage);
 			AIPS.CampaignWizard.sendAiAssistAjax(AIPS.CampaignWizard.pendingAiResult.intake, function(err, out) {
 				if (err) {
 					AIPS.CampaignWizard.showNotice('error', err.message);
