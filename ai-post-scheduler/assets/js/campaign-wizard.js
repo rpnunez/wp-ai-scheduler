@@ -26,6 +26,13 @@
 		currentStepIndex: 0,
 
 		/**
+		 * Most recent AI generation payload awaiting user confirmation.
+		 *
+		 * @type {?Object}
+		 */
+		pendingAiResult: null,
+
+		/**
 		 * Initialize the campaign wizard.
 		 *
 		 * @return {void}
@@ -94,8 +101,11 @@
 		 * @return {void}
 		 */
 		showAiIntakeModal: function() {
-			var frequencyOptions = this.getSelectOptions('#aips_frequency');
-			var postTypeOptions = this.getSelectOptions('#aips_post_type');
+			var frequencyOptions = AIPS.CampaignWizard.getSelectOptions('#aips_frequency');
+			var postTypeOptions = AIPS.CampaignWizard.getSelectOptions('#aips_post_type');
+			var defaults = AIPS.CampaignWizard.pendingAiResult && AIPS.CampaignWizard.pendingAiResult.intake
+				? AIPS.CampaignWizard.pendingAiResult.intake
+				: {};
 
 			AIPS.Utilities.showModal({
 				heading: aipsCampaignWizardL10n.aiFormTitle,
@@ -105,12 +115,18 @@
 						label: aipsCampaignWizardL10n.topicNicheLabel,
 						type: 'text',
 						required: true,
+						value: defaults.topic_niche || '',
+						placeholder: 'WordPress SEO for local businesses',
+						description: aipsCampaignWizardL10n.topicNicheExample,
 					},
 					{
 						name: 'target_audience',
 						label: aipsCampaignWizardL10n.targetAudienceLabel,
 						type: 'text',
 						required: true,
+						value: defaults.target_audience || '',
+						placeholder: 'Small business owners with limited technical knowledge',
+						description: aipsCampaignWizardL10n.targetAudienceExample,
 					},
 					{
 						name: 'content_tone',
@@ -123,12 +139,33 @@
 							{ value: 'technical', label: aipsCampaignWizardL10n.toneTechnical },
 							{ value: 'friendly', label: aipsCampaignWizardL10n.toneFriendly },
 						],
+						value: defaults.content_tone || 'conversational',
 					},
 					{
 						name: 'publishing_goal',
 						label: aipsCampaignWizardL10n.publishingGoalLabel,
 						type: 'text',
 						required: true,
+						value: defaults.publishing_goal || '',
+						placeholder: 'Drive organic traffic and convert readers to consultation bookings',
+						description: aipsCampaignWizardL10n.publishingGoalExample,
+					},
+					{
+						name: 'output_style',
+						label: aipsCampaignWizardL10n.outputStyleLabel,
+						type: 'select',
+						required: true,
+						options: [
+							{ value: 'educational_tutorial', label: aipsCampaignWizardL10n.outputStyleEducational },
+							{ value: 'listicle', label: aipsCampaignWizardL10n.outputStyleListicle },
+							{ value: 'comparison', label: aipsCampaignWizardL10n.outputStyleComparison },
+							{ value: 'how_to_guide', label: aipsCampaignWizardL10n.outputStyleHowTo },
+							{ value: 'opinion_editorial', label: aipsCampaignWizardL10n.outputStyleOpinion },
+							{ value: 'faq_based', label: aipsCampaignWizardL10n.outputStyleFaq },
+							{ value: 'case_study_style', label: aipsCampaignWizardL10n.outputStyleCaseStudy },
+							{ value: 'news_analysis', label: aipsCampaignWizardL10n.outputStyleNews },
+						],
+						value: defaults.output_style || 'how_to_guide',
 					},
 					{
 						name: 'frequency',
@@ -136,7 +173,7 @@
 						type: 'select',
 						required: true,
 						options: frequencyOptions,
-						value: $('#aips_frequency').val() || 'daily',
+						value: defaults.frequency || $('#aips_frequency').val() || 'daily',
 					},
 					{
 						name: 'post_type',
@@ -144,7 +181,7 @@
 						type: 'select',
 						required: true,
 						options: postTypeOptions,
-						value: $('#aips_post_type').val() || 'post',
+						value: defaults.post_type || $('#aips_post_type').val() || 'post',
 					},
 				],
 				buttons: [
@@ -177,10 +214,14 @@
 					return;
 				}
 
-				AIPS.CampaignWizard.populateFieldsFromAi(out.draft || {});
-				AIPS.CampaignWizard.renderSummary(out.summary || AIPS.CampaignWizard.getPayload());
-				AIPS.CampaignWizard.showNotice('success', out.message || aipsCampaignWizardL10n.aiSuccessMessage);
-				AIPS.CampaignWizard.showStep(0);
+				AIPS.CampaignWizard.pendingAiResult = {
+					intake: AIPS.CampaignWizard.sanitizeAiIntake(formData),
+					draft: out.draft || {},
+					summary: out.summary || {},
+					preview: out.preview || {},
+					message: out.message || aipsCampaignWizardL10n.aiSuccessMessage,
+				};
+				AIPS.CampaignWizard.renderStrategyPreview(AIPS.CampaignWizard.pendingAiResult);
 			});
 		},
 
@@ -196,6 +237,10 @@
 			$(document).on('click', '#aips-wizard-finalize', AIPS.CampaignWizard.onFinalizeClick);
 			$(document).on('click', '#aips-add-post-type-rule', AIPS.CampaignWizard.onAddPostTypeRule);
 			$(document).on('click', '.aips-remove-post-type-rule', AIPS.CampaignWizard.onRemovePostTypeRule);
+			$(document).on('click', '#aips-ai-preview-accept', AIPS.CampaignWizard.onAcceptAiPreview);
+			$(document).on('click', '#aips-ai-preview-regenerate', AIPS.CampaignWizard.onRegenerateAiPreview);
+			$(document).on('click', '#aips-ai-preview-edit', AIPS.CampaignWizard.onEditAiIntake);
+			$(document).on('click', '#aips-ai-preview-selective', AIPS.CampaignWizard.onApplyAiSelective);
 		},
 
 		/**
@@ -382,9 +427,222 @@
 				target_audience: this.sanitizePlainText(intake.target_audience),
 				content_tone: this.sanitizePlainText(intake.content_tone),
 				publishing_goal: this.sanitizePlainText(intake.publishing_goal),
+				output_style: this.sanitizePlainText(intake.output_style || 'how_to_guide'),
 				frequency: this.sanitizePlainText(intake.frequency),
 				post_type: this.sanitizePlainText(intake.post_type),
 			};
+		},
+
+		/**
+		 * Render AI strategy preview card prior to field hydration.
+		 *
+		 * @param {Object} aiResult AI result state.
+		 * @return {void}
+		 */
+		renderStrategyPreview: function(aiResult) {
+			var preview = aiResult && aiResult.preview ? aiResult.preview : {};
+			$('#aips-ai-strategy-preview-title').text(aipsCampaignWizardL10n.strategyPreviewTitle);
+			$('#aips-ai-strategy-preview-message').text(aipsCampaignWizardL10n.strategyPreviewMessage);
+
+			$('#aips-ai-preview-campaign-name').text(this.sanitizePlainText(preview.campaign_name || ''));
+			$('#aips-ai-preview-audience').text(this.sanitizePlainText(preview.audience || ''));
+			$('#aips-ai-preview-angle').text(this.sanitizePlainText(preview.content_angle || ''));
+			$('#aips-ai-preview-cadence').text(this.sanitizePlainText(preview.posting_cadence || ''));
+			$('#aips-ai-preview-tone').text(this.sanitizePlainText(preview.recommended_tone || ''));
+			$('#aips-ai-preview-style').text(this.sanitizePlainText(preview.template_style || ''));
+
+			this.renderPreviewList('#aips-ai-preview-ideas', preview.sample_article_ideas || []);
+			this.renderPreviewList('#aips-ai-preview-risks', preview.risks_assumptions || []);
+
+			$('#aips-ai-strategy-preview').show();
+			$('html, body').animate({
+				scrollTop: $('#aips-ai-strategy-preview').offset().top - 20,
+			}, 200);
+		},
+
+		/**
+		 * Render sanitized preview list content.
+		 *
+		 * @param {string} listSelector UL selector.
+		 * @param {Array<string>} items Preview list items.
+		 * @return {void}
+		 */
+		renderPreviewList: function(listSelector, items) {
+			var $list = $(listSelector).empty();
+			var safeItems = $.isArray(items) ? items : [];
+
+			if (!safeItems.length) {
+				$(document.createElement('li'))
+					.text(aipsCampaignWizardL10n.previewNoData)
+					.appendTo($list);
+				return;
+			}
+
+			$.each(safeItems, function(index, item) {
+				var safeText = AIPS.CampaignWizard.sanitizePlainText(item);
+				if (!safeText) {
+					return;
+				}
+				$(document.createElement('li')).text(safeText).appendTo($list);
+			});
+		},
+
+		/**
+		 * Hide strategy preview panel.
+		 *
+		 * @return {void}
+		 */
+		hideStrategyPreview: function() {
+			$('#aips-ai-strategy-preview').hide();
+		},
+
+		/**
+		 * Return selectable AI-applied field definitions.
+		 *
+		 * @return {Array<Object>}
+		 */
+		getSelectiveApplyFields: function() {
+			return [
+				{ name: 'campaign_name', label: aipsCampaignWizardL10n.previewCampaignName },
+				{ name: 'content_goal', label: aipsCampaignWizardL10n.previewContentAngle },
+				{ name: 'post_type', label: aipsCampaignWizardL10n.postTypeLabel },
+				{ name: 'prompt_template', label: 'Prompt Template' },
+				{ name: 'title_prompt', label: 'Title Prompt' },
+				{ name: 'frequency', label: aipsCampaignWizardL10n.previewCadence },
+				{ name: 'review_policy', label: 'Review Policy' },
+				{ name: 'campaign_mode', label: 'Campaign Mode' },
+			];
+		},
+
+		/**
+		 * Apply pending AI draft fields.
+		 *
+		 * @param {Array<string>|null} keys Keys to apply; when null applies all.
+		 * @return {void}
+		 */
+		applyPendingAiDraft: function(keys) {
+			if (!this.pendingAiResult || !this.pendingAiResult.draft) {
+				return;
+			}
+
+			var draft = this.pendingAiResult.draft;
+			var payload = draft;
+			if ($.isArray(keys) && !keys.length) {
+				this.showNotice('error', aipsCampaignWizardL10n.previewSelectRequired || 'Select at least one field.');
+				return;
+			}
+			if ($.isArray(keys) && keys.length) {
+				payload = {};
+				for (var i = 0; i < keys.length; i++) {
+					if (Object.prototype.hasOwnProperty.call(draft, keys[i])) {
+						payload[keys[i]] = draft[keys[i]];
+					}
+				}
+			}
+
+			this.populateFieldsFromAi(payload);
+			this.renderSummary(this.pendingAiResult.summary || this.getPayload());
+			this.showNotice('success', this.pendingAiResult.message || aipsCampaignWizardL10n.aiSuccessMessage);
+			this.hideStrategyPreview();
+			this.showStep(0);
+		},
+
+		/**
+		 * Handle preview "Accept all" action.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onAcceptAiPreview: function(e) {
+			e.preventDefault();
+			AIPS.CampaignWizard.applyPendingAiDraft(null);
+		},
+
+		/**
+		 * Handle preview "Regenerate" action.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRegenerateAiPreview: function(e) {
+			e.preventDefault();
+			if (!AIPS.CampaignWizard.pendingAiResult || !AIPS.CampaignWizard.pendingAiResult.intake) {
+				AIPS.CampaignWizard.showAiIntakeModal();
+				return;
+			}
+
+			AIPS.CampaignWizard.showNotice('success', aipsCampaignWizardL10n.regeneratingMessage || aipsCampaignWizardL10n.aiGeneratingMessage);
+			AIPS.CampaignWizard.sendAiAssistAjax(AIPS.CampaignWizard.pendingAiResult.intake, function(err, out) {
+				if (err) {
+					AIPS.CampaignWizard.showNotice('error', err.message);
+					return;
+				}
+
+				AIPS.CampaignWizard.pendingAiResult = {
+					intake: AIPS.CampaignWizard.pendingAiResult.intake,
+					draft: out.draft || {},
+					summary: out.summary || {},
+					preview: out.preview || {},
+					message: out.message || aipsCampaignWizardL10n.aiSuccessMessage,
+				};
+				AIPS.CampaignWizard.renderStrategyPreview(AIPS.CampaignWizard.pendingAiResult);
+			});
+		},
+
+		/**
+		 * Handle preview "Edit answers" action.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onEditAiIntake: function(e) {
+			e.preventDefault();
+			AIPS.CampaignWizard.showAiIntakeModal();
+		},
+
+		/**
+		 * Handle preview "Apply selectively" action.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onApplyAiSelective: function(e) {
+			e.preventDefault();
+
+			var fields = AIPS.CampaignWizard.getSelectiveApplyFields().map(function(field) {
+				return {
+					name: field.name,
+					label: field.label,
+					type: 'checkbox',
+					value: true,
+				};
+			});
+
+			AIPS.Utilities.showModal({
+				heading: aipsCampaignWizardL10n.previewSelectHeading,
+				fields: fields,
+				buttons: [
+					{
+						label: aipsCampaignWizardL10n.cancelButton,
+						className: 'aips-btn aips-btn-secondary',
+					},
+					{
+						label: aipsCampaignWizardL10n.previewApplyButton,
+						className: 'aips-btn aips-btn-primary',
+						submit: true,
+						action: function(formData) {
+							var selectedKeys = [];
+							$.each(formData || {}, function(key, selected) {
+								if (selected) {
+									selectedKeys.push(key);
+								}
+							});
+
+							AIPS.CampaignWizard.applyPendingAiDraft(selectedKeys);
+						},
+					},
+				],
+			});
 		},
 
 		/**

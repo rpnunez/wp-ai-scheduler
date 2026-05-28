@@ -26,6 +26,42 @@ $authors = get_users(array(
 		</div>
 
 		<div id="aips-campaign-wizard-notice" style="margin:16px 0;"></div>
+		<div id="aips-ai-strategy-preview" class="aips-content-panel" style="display:none; margin:16px 0;">
+			<div class="aips-panel-body">
+				<h2 id="aips-ai-strategy-preview-title"><?php esc_html_e('Campaign Strategy Preview', 'ai-post-scheduler'); ?></h2>
+				<p id="aips-ai-strategy-preview-message" class="description"><?php esc_html_e('Review the proposed plan before applying it to your wizard fields.', 'ai-post-scheduler'); ?></p>
+				<dl style="display:grid; grid-template-columns:220px 1fr; gap:10px 16px; margin:0 0 16px;">
+					<dt><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-campaign-name"></dd>
+					<dt><strong><?php esc_html_e('Who this campaign is for', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-audience"></dd>
+					<dt><strong><?php esc_html_e('Content angle', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-angle"></dd>
+					<dt><strong><?php esc_html_e('Posting cadence', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-cadence"></dd>
+					<dt><strong><?php esc_html_e('Recommended tone', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-tone"></dd>
+					<dt><strong><?php esc_html_e('Template style', 'ai-post-scheduler'); ?></strong></dt>
+					<dd id="aips-ai-preview-style"></dd>
+				</dl>
+				<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+					<div>
+						<strong><?php esc_html_e('Sample article ideas', 'ai-post-scheduler'); ?></strong>
+						<ul id="aips-ai-preview-ideas" style="margin-top:8px;"></ul>
+					</div>
+					<div>
+						<strong><?php esc_html_e('Risks / assumptions', 'ai-post-scheduler'); ?></strong>
+						<ul id="aips-ai-preview-risks" style="margin-top:8px;"></ul>
+					</div>
+				</div>
+				<p style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-ai-preview-accept"><?php esc_html_e('Accept all', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-ai-preview-regenerate"><?php esc_html_e('Regenerate', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-ai-preview-edit"><?php esc_html_e('Edit answers', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-ai-preview-selective"><?php esc_html_e('Apply selectively', 'ai-post-scheduler'); ?></button>
+				</p>
+			</div>
+		</div>
 
 		<form id="aips-campaign-wizard-form" class="aips-content-panel">
 			<div class="aips-panel-body">

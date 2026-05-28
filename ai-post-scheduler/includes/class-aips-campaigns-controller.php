@@ -55,10 +55,20 @@ class AIPS_Campaigns_Controller {
 		?AIPS_Config $config = null,
 		?AIPS_AI_Service_Interface $ai_service = null
 	) {
-		$this->campaigns_repository = $campaigns_repository ?: AIPS_Campaigns_Repository::instance();
-		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
-		$this->unified_schedule_service = $unified_schedule_service ?: new AIPS_Unified_Schedule_Service();
-		$this->config = $config ?: AIPS_Config::get_instance();
+		$container = AIPS_Container::get_instance();
+
+		$this->campaigns_repository = $campaigns_repository ?: $container->makeIfExists(AIPS_Campaigns_Repository::class, function() {
+			return AIPS_Campaigns_Repository::instance();
+		});
+		$this->template_repository = $template_repository ?: $container->makeIfExists(AIPS_Template_Repository::class, function() {
+			return AIPS_Template_Repository::instance();
+		});
+		$this->unified_schedule_service = $unified_schedule_service ?: $container->makeIfExists(AIPS_Unified_Schedule_Service::class, function() {
+			return new AIPS_Unified_Schedule_Service();
+		});
+		$this->config = $config ?: $container->makeIfExists(AIPS_Config::class, function() {
+			return AIPS_Config::get_instance();
+		});
 		$this->ai_service = $this->resolve_ai_service($ai_service);
 
 		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
@@ -368,6 +378,7 @@ class AIPS_Campaigns_Controller {
 		AIPS_Ajax_Response::success(array(
 			'draft' => $draft,
 			'summary' => $this->build_summary($draft),
+			'preview' => $this->build_ai_strategy_preview($draft, $intake, $response),
 		), __('Campaign fields generated successfully.', 'ai-post-scheduler'));
 	}
 
@@ -421,7 +432,8 @@ class AIPS_Campaigns_Controller {
 	 *     content_tone: string,
 	 *     publishing_goal: string,
 	 *     frequency: string,
-	 *     post_type: string
+	 *     post_type: string,
+	 *     output_style: string
 	 * }
 	 */
 	private function get_ai_intake_payload() {
@@ -437,6 +449,12 @@ class AIPS_Campaigns_Controller {
 			$frequency = 'daily';
 		}
 
+		$output_style = isset($intake['output_style']) ? sanitize_key($intake['output_style']) : 'how_to_guide';
+		$allowed_styles = $this->get_allowed_output_styles();
+		if (!isset($allowed_styles[$output_style])) {
+			$output_style = 'how_to_guide';
+		}
+
 		return array(
 			'topic_niche'      => isset($intake['topic_niche']) ? sanitize_text_field($intake['topic_niche']) : '',
 			'target_audience'  => isset($intake['target_audience']) ? sanitize_text_field($intake['target_audience']) : '',
@@ -444,6 +462,7 @@ class AIPS_Campaigns_Controller {
 			'publishing_goal'  => isset($intake['publishing_goal']) ? sanitize_text_field($intake['publishing_goal']) : '',
 			'frequency'        => $frequency,
 			'post_type'        => $this->normalise_post_type($intake['post_type'] ?? 'post'),
+			'output_style'     => $output_style,
 		);
 	}
 
@@ -458,6 +477,7 @@ class AIPS_Campaigns_Controller {
 			'intake' => $intake,
 			'available_frequencies' => array_keys((new AIPS_Interval_Calculator())->get_intervals()),
 			'available_post_types' => array_keys($this->get_supported_post_types()),
+			'available_output_styles' => $this->get_allowed_output_styles(),
 			'review_policy_allowed' => array('draft', 'approval', 'auto_publish'),
 			'campaign_mode_allowed' => array('template', 'author'),
 		);
@@ -479,7 +499,10 @@ class AIPS_Campaigns_Controller {
 			"- time_window_start (string HH:MM or empty)\n" .
 			"- time_window_end (string HH:MM or empty)\n" .
 			"- post_tags (string)\n" .
-			"- post_category (number, use 0 when unknown)\n\n" .
+			"- post_category (number, use 0 when unknown)\n" .
+			"- template_style (string from available_output_styles)\n" .
+			"- sample_article_ideas (array of 3 to 5 strings)\n" .
+			"- risks_assumptions (array of 2 to 4 strings)\n\n" .
 			"Use realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
 			"Context:\n" . wp_json_encode($context);
 	}
@@ -500,6 +523,11 @@ class AIPS_Campaigns_Controller {
 			/* translators: %s topic or niche */
 			__('Write a high-quality article about %s with clear headings and practical examples.', 'ai-post-scheduler'),
 			!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('the selected topic', 'ai-post-scheduler')
+		);
+		$fallback_prompt_template .= ' ' . sprintf(
+			/* translators: %s campaign output style label */
+			__('Use a %s format.', 'ai-post-scheduler'),
+			$this->get_output_style_label($intake['output_style'] ?? 'how_to_guide')
 		);
 
 		$response = is_array($response) ? $response : array();
@@ -525,6 +553,113 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
+	 * Build strategy preview data for Guided AI Setup review.
+	 *
+	 * @param array $draft AI generated draft.
+	 * @param array $intake Intake payload.
+	 * @param array $response Raw AI response.
+	 * @return array
+	 */
+	private function build_ai_strategy_preview($draft, $intake, $response) {
+		$response = is_array($response) ? $response : array();
+		$ideas = $this->normalise_preview_list($response['sample_article_ideas'] ?? array());
+		$risks = $this->normalise_preview_list($response['risks_assumptions'] ?? array());
+
+		if (empty($ideas)) {
+			$ideas = array(
+				sprintf(
+					/* translators: %s campaign topic */
+					__('Top beginner mistakes in %s', 'ai-post-scheduler'),
+					!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('this niche', 'ai-post-scheduler')
+				),
+				sprintf(
+					/* translators: %s campaign topic */
+					__('Step-by-step playbook for %s', 'ai-post-scheduler'),
+					!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('your audience', 'ai-post-scheduler')
+				),
+				sprintf(
+					/* translators: %s campaign topic */
+					__('How to measure ROI from %s content', 'ai-post-scheduler'),
+					!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('this strategy', 'ai-post-scheduler')
+				),
+			);
+		}
+
+		if (empty($risks)) {
+			$risks = array(
+				__('Assumes readers are early in their learning journey.', 'ai-post-scheduler'),
+				__('May need niche examples tailored to your products/services.', 'ai-post-scheduler'),
+			);
+		}
+
+		$frequency = sanitize_key($draft['frequency'] ?? $intake['frequency'] ?? 'daily');
+		$intervals = (new AIPS_Interval_Calculator())->get_intervals();
+
+		return array(
+			'campaign_name' => sanitize_text_field($draft['campaign_name'] ?? ''),
+			'audience' => sanitize_text_field($intake['target_audience'] ?? ''),
+			'content_angle' => sanitize_textarea_field($draft['content_goal'] ?? $intake['publishing_goal'] ?? ''),
+			'posting_cadence' => isset($intervals[$frequency]['display']) ? sanitize_text_field($intervals[$frequency]['display']) : sanitize_text_field($frequency),
+			'recommended_tone' => sanitize_text_field($intake['content_tone'] ?? ''),
+			'template_style' => $this->get_output_style_label($response['template_style'] ?? ($intake['output_style'] ?? 'how_to_guide')),
+			'sample_article_ideas' => $ideas,
+			'risks_assumptions' => $risks,
+		);
+	}
+
+	/**
+	 * Normalize preview list values to sanitized non-empty strings.
+	 *
+	 * @param mixed $value Raw preview list value.
+	 * @return array
+	 */
+	private function normalise_preview_list($value) {
+		if (is_string($value) && !empty($value)) {
+			$value = preg_split('/\r\n|\r|\n/', $value);
+		}
+
+		if (!is_array($value)) {
+			return array();
+		}
+
+		$value = array_map('sanitize_text_field', $value);
+		$value = array_values(array_filter($value));
+
+		return array_slice($value, 0, 5);
+	}
+
+	/**
+	 * Return allowed Guided AI Setup output styles.
+	 *
+	 * @return array
+	 */
+	private function get_allowed_output_styles() {
+		return array(
+			'educational_tutorial' => __('Educational/tutorial', 'ai-post-scheduler'),
+			'listicle' => __('Listicle', 'ai-post-scheduler'),
+			'comparison' => __('Comparison', 'ai-post-scheduler'),
+			'how_to_guide' => __('How-to guide', 'ai-post-scheduler'),
+			'opinion_editorial' => __('Opinion/editorial', 'ai-post-scheduler'),
+			'faq_based' => __('FAQ-based', 'ai-post-scheduler'),
+			'case_study_style' => __('Case-study style', 'ai-post-scheduler'),
+			'news_analysis' => __('News analysis', 'ai-post-scheduler'),
+		);
+	}
+
+	/**
+	 * Resolve display label for an output style key.
+	 *
+	 * @param string $style Output style key.
+	 * @return string
+	 */
+	private function get_output_style_label($style) {
+		$style = sanitize_key($style);
+		$styles = $this->get_allowed_output_styles();
+
+		return isset($styles[$style]) ? $styles[$style] : $styles['how_to_guide'];
+	}
+
+	/**
 	 * Resolve AI service dependency with fallback chain.
 	 *
 	 * Resolution order:
@@ -541,8 +676,11 @@ class AIPS_Campaigns_Controller {
 		}
 
 		$container = AIPS_Container::get_instance();
-		if ($container->has(AIPS_AI_Service_Interface::class)) {
-			return $container->make(AIPS_AI_Service_Interface::class);
+		$resolved = $container->makeIfExists(AIPS_AI_Service_Interface::class, function() {
+			return new AIPS_AI_Service();
+		});
+		if ($resolved instanceof AIPS_AI_Service_Interface) {
+			return $resolved;
 		}
 
 		return new AIPS_AI_Service();
