@@ -143,7 +143,7 @@ class Test_History_Template extends WP_UnitTestCase {
         $method->invokeArgs($this->history_instance, $args);
 
         $format = get_option('date_format') . ' ' . get_option('time_format');
-        $expected = wp_date($format, $timestamp, wp_timezone());
+        $expected = AIPS_DateTime::fromTimestamp($timestamp)->toDisplay($format);
 
         $this->assertSame($expected, $items[0]->formatted_date);
     }

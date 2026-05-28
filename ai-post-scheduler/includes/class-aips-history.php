@@ -663,14 +663,16 @@ class AIPS_History {
 
         foreach ($items as $item) {
             $created_at = isset( $item->created_at ) ? $item->created_at : 0;
-            $timestamp  = is_numeric( $created_at ) ? absint( $created_at ) : strtotime( (string) $created_at );
+            $date_time  = is_numeric( $created_at )
+                ? AIPS_DateTime::fromTimestampOrNull( absint( $created_at ) )
+                : AIPS_DateTime::fromMysqlOrNull( (string) $created_at );
 
-            if ( empty( $timestamp ) ) {
+            if ( ! ( $date_time instanceof AIPS_DateTime ) ) {
                 $item->formatted_date = '';
                 continue;
             }
 
-            $item->formatted_date = wp_date( $format, $timestamp, wp_timezone() );
+            $item->formatted_date = $date_time->toDisplay( $format );
         }
     }
 }
