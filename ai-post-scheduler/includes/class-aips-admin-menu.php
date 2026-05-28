@@ -143,7 +143,7 @@ class AIPS_Admin_Menu {
             __('Campaign Wizard', 'ai-post-scheduler'),
             __('Campaign Wizard', 'ai-post-scheduler'),
             'manage_options',
-            AIPS_Admin_Flow_Controller::PAGE_SLUG,
+            AIPS_Campaigns_Controller::PAGE_SLUG,
             array($this, 'render_campaign_wizard_page')
         );
 
@@ -357,8 +357,8 @@ class AIPS_Admin_Menu {
      * Render the campaign wizard page.
      */
     public function render_campaign_wizard_page() {
-        $controller = new AIPS_Admin_Flow_Controller();
-        $controller->render_page();
+        $controller = new AIPS_Campaigns_Controller();
+        $controller->render_wizard_page();
     }
 
     /**
