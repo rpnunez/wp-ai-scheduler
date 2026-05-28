@@ -404,7 +404,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_campaign_wizard_ai_generate',
-					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.nonceAiGenerate),
+					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerateNonce),
 					intake: JSON.stringify(this.sanitizeAiIntake(intake)),
 				},
 			})
