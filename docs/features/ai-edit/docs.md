@@ -159,82 +159,21 @@ wp_localize_script( 'aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
 
 ---
 
-### Step 4 — Add the HTML template snippets to the page template
+### Step 4 — Include the shared AI Assistance partial in the page template
 
-Open your page's PHP template (e.g. `templates/admin/templates.php` or `templates/admin/structures.php`) and append the three HTML blocks **at the bottom**, before the closing tag. Copy them verbatim from `templates/admin/authors.php` (lines 917–970) or paste the canonical versions below:
-
-#### 4a — Button template
+Do not duplicate the AI Assistance HTML snippets across admin templates. Instead, include the shared partial once in the page template that uses AI Assistance (e.g. `templates/admin/templates.php` or `templates/admin/structures.php`), near the bottom of the file:
 
 ```php
-<!-- AI Assistance: Combined Assist + History Button Template -->
-<script type="text/html" id="aips-tmpl-ai-assist-btn">
-<div class="aips-ai-assist-btn-group">
-    <button type="button"
-        class="aips-btn aips-btn-sm aips-btn-ghost aips-ai-assist-btn"
-        data-field-id="{{fieldId}}"
-        title="<?php esc_attr_e( 'Get AI suggestion', 'ai-post-scheduler' ); ?>"
-        aria-label="<?php esc_attr_e( 'Get AI suggestion for this field', 'ai-post-scheduler' ); ?>">
-        <span class="aips-ai-sparkle" aria-hidden="true">&#10024;</span>
-        <span class="aips-ai-assist-btn-label"><?php esc_html_e( 'AI Suggest', 'ai-post-scheduler' ); ?></span>
-    </button>
-    <button type="button"
-        class="aips-btn aips-btn-sm aips-btn-ghost aips-ai-assist-history-btn"
-        data-field-id="{{fieldId}}"
-        style="display:none"
-        title="<?php esc_attr_e( 'View AI suggestion history', 'ai-post-scheduler' ); ?>"
-        aria-label="<?php esc_attr_e( 'View AI suggestion history for this field', 'ai-post-scheduler' ); ?>">
-        <span class="dashicons dashicons-backup" aria-hidden="true"></span>
-        <span class="screen-reader-text"><?php esc_html_e( 'View history', 'ai-post-scheduler' ); ?></span>
-    </button>
-</div>
-</script>
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
 ```
 
-#### 4b — History modal
+The partial contains all three required template blocks:
 
-```php
-<!-- AI Assistance: History Modal -->
-<div id="aips-ai-assist-history-modal" class="aips-modal" style="display:none;"
-     role="dialog" aria-modal="true" aria-labelledby="aips-ai-assist-history-modal-title">
-    <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close"
-            aria-label="<?php esc_attr_e( 'Close', 'ai-post-scheduler' ); ?>">&times;</button>
-        <h2 id="aips-ai-assist-history-modal-title"><?php esc_html_e( 'AI Suggestion History', 'ai-post-scheduler' ); ?></h2>
-        <p id="aips-ai-assist-history-field-label" class="description"></p>
-        <div class="aips-tab-nav" id="aips-ai-assist-history-tabs">
-            <a href="#" class="aips-tab-link active"
-               data-tab="aips-ai-assist-history-session"><?php esc_html_e( 'This Session', 'ai-post-scheduler' ); ?></a>
-            <a href="#" class="aips-tab-link"
-               data-tab="aips-ai-assist-history-alltime"><?php esc_html_e( 'All Time', 'ai-post-scheduler' ); ?></a>
-        </div>
-        <div id="aips-ai-assist-history-session-tab" class="aips-tab-content">
-            <p class="description"><?php esc_html_e( 'Loading...', 'ai-post-scheduler' ); ?></p>
-        </div>
-        <div id="aips-ai-assist-history-alltime-tab" class="aips-tab-content" style="display:none;">
-            <p class="description"><?php esc_html_e( 'Loading...', 'ai-post-scheduler' ); ?></p>
-        </div>
-    </div>
-</div>
-```
+- `aips-tmpl-ai-assist-btn`
+- `aips-ai-assist-history-modal`
+- `aips-tmpl-ai-assist-history-item`
 
-#### 4c — History item template
-
-```php
-<!-- AI Assistance: History Item Template -->
-<script type="text/html" id="aips-tmpl-ai-assist-history-item">
-<div class="aips-ai-assist-history-item">
-    <div class="aips-ai-assist-history-response">{{response}}</div>
-    <div class="aips-ai-assist-history-meta">{{created_at}}</div>
-    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-assist-history-use"
-        data-field-id="{{fieldId}}"
-        data-record-id="{{id}}">
-        <?php esc_html_e( 'Use This Value', 'ai-post-scheduler' ); ?>
-    </button>
-</div>
-</script>
-```
-
-> **Important:** These three template IDs (`aips-tmpl-ai-assist-btn`, `aips-ai-assist-history-modal`, `aips-tmpl-ai-assist-history-item`) are global and must appear **only once per page**. Do not duplicate them if two features share a page.
+> **Important:** These IDs are global and must appear **only once per page**. If multiple features on the same page use AI Assistance, include the partial only once.
 
 ---
 
@@ -316,7 +255,7 @@ Use this checklist when adding AI Assistance to a new form:
 - [ ] Set `AIPS.AIAssistance.formContext = '<context>'` and call `init()` from the page JS
 - [ ] Enqueue `aips-ai-assistance-style` and `aips-ai-assistance-script` in the correct `enqueue_*_assets()` method
 - [ ] Add `wp_localize_script` for `aipsAIAssistanceL10n` (if not already present on the page)
-- [ ] Add the three template/modal HTML blocks to the page PHP template
+- [ ] Include `templates/partials/ai-assistance.php` in the page PHP template (once per page)
 - [ ] Verify field `id` attributes match the field map keys
 - [ ] Smoke-test: click ✨ on a field → suggestion applied → 🕐 appears → history modal shows the record
 - [ ] Add PHPUnit coverage for the new `form_context` value (or extend existing tests)
