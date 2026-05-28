@@ -235,8 +235,8 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 
 ## Testing
 - Tests live in `ai-post-scheduler/tests/`; run with `composer test` from `ai-post-scheduler/`.
-- Test classes extend `WP_UnitTestCase`.
-- `tests/bootstrap.php` provides WordPress mocks. New `includes/*.php` classes must be `require_once`'d there for limited-mode runs.
+- The suite always runs in full WordPress test-library mode; `tests/bootstrap.php` requires a valid `WP_TESTS_DIR` and `WP_CORE_DIR`.
+- Docker-backed execution via `bash scripts/run-wp-tests-docker.sh` is the supported local workflow.
 - Prefer one test file per feature/class. Test both success and failure paths.
 
 ## Repository skills

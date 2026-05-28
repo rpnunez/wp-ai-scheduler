@@ -596,15 +596,19 @@ class AIPS_Schedule_Processor {
             function() use ($schedule) {
                 $original_next_run = $schedule->next_run;
 
-                if ($schedule->frequency === 'once') {
-                    // For one-time schedules, "claim" it by pushing next_run forward.
-                    // If the process crashes it will be retried in 1 hour.
-                    // On success it will be deleted by handle_post_execution_cleanup().
-                    $new_next_run = AIPS_DateTime::now()->addSeconds(HOUR_IN_SECONDS)->timestamp();
-                } else {
-                    // Calculate next run using original next_run to preserve phase.
-                    $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, (int) $original_next_run);
-                }
+				if ($schedule->frequency === 'once') {
+					// For one-time schedules, "claim" it by pushing next_run forward.
+					// If the process crashes it will be retried in 1 hour.
+					// On success it will be deleted by handle_post_execution_cleanup().
+					$new_next_run = AIPS_DateTime::now()->addSeconds(HOUR_IN_SECONDS)->timestamp();
+				} else {
+					// Advance from the current execution window instead of preserving
+					// the stale prior phase so late runs do not appear to recur too soon.
+					$new_next_run = $this->interval_calculator->calculate_next_run(
+						$schedule->frequency,
+						AIPS_DateTime::now()->timestamp()
+					);
+				}
 
                 // Update next_run immediately to lock this schedule from concurrent runs.
                 $lock_result = $this->repository->claim_due_schedule(

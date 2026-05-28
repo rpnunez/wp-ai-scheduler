@@ -263,7 +263,7 @@ class AIPS_Onboarding_Wizard {
 			AIPS_Ajax_Response::invalid_request(__('Name and Field/Niche are required.', 'ai-post-scheduler'));
 		}
 
-		$now = current_time('mysql');
+		$now = AIPS_DateTime::now()->timestamp();
 
 		$data = array(
 			'name' => $name,
