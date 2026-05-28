@@ -30,7 +30,7 @@ $authors = get_users(array(
 			<div class="aips-panel-body">
 				<h2 id="aips-ai-strategy-preview-title"><?php esc_html_e('Campaign Strategy Preview', 'ai-post-scheduler'); ?></h2>
 				<p id="aips-ai-strategy-preview-message" class="description"><?php esc_html_e('Review the proposed plan before applying it to your wizard fields.', 'ai-post-scheduler'); ?></p>
-				<dl style="display:grid; grid-template-columns:220px 1fr; gap:10px 16px; margin:0 0 16px;">
+				<dl class="aips-ai-preview-grid">
 					<dt><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong></dt>
 					<dd id="aips-ai-preview-campaign-name"></dd>
 					<dt><strong><?php esc_html_e('Who this campaign is for', 'ai-post-scheduler'); ?></strong></dt>
@@ -44,17 +44,17 @@ $authors = get_users(array(
 					<dt><strong><?php esc_html_e('Template style', 'ai-post-scheduler'); ?></strong></dt>
 					<dd id="aips-ai-preview-style"></dd>
 				</dl>
-				<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+				<div class="aips-ai-preview-columns">
 					<div>
 						<strong><?php esc_html_e('Sample article ideas', 'ai-post-scheduler'); ?></strong>
-						<ul id="aips-ai-preview-ideas" style="margin-top:8px;"></ul>
+						<ul id="aips-ai-preview-ideas" class="aips-ai-preview-list"></ul>
 					</div>
 					<div>
 						<strong><?php esc_html_e('Risks / assumptions', 'ai-post-scheduler'); ?></strong>
-						<ul id="aips-ai-preview-risks" style="margin-top:8px;"></ul>
+						<ul id="aips-ai-preview-risks" class="aips-ai-preview-list"></ul>
 					</div>
 				</div>
-				<p style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+				<p class="aips-ai-preview-actions">
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-ai-preview-accept"><?php esc_html_e('Accept all', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-ai-preview-regenerate"><?php esc_html_e('Regenerate', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-ai-preview-edit"><?php esc_html_e('Edit answers', 'ai-post-scheduler'); ?></button>

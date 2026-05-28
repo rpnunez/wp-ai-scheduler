@@ -3980,3 +3980,27 @@ float: none;
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
 }
+
+.aips-ai-preview-grid {
+display: grid;
+grid-template-columns: 220px 1fr;
+gap: 10px 16px;
+margin: 0 0 16px;
+}
+
+.aips-ai-preview-columns {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 16px;
+}
+
+.aips-ai-preview-list {
+margin-top: 8px;
+}
+
+.aips-ai-preview-actions {
+display: flex;
+gap: 8px;
+margin-top: 16px;
+flex-wrap: wrap;
+}

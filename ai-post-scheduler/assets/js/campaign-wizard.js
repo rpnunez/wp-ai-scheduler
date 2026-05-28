@@ -506,11 +506,11 @@
 				{ name: 'campaign_name', label: aipsCampaignWizardL10n.previewCampaignName },
 				{ name: 'content_goal', label: aipsCampaignWizardL10n.previewContentAngle },
 				{ name: 'post_type', label: aipsCampaignWizardL10n.postTypeLabel },
-				{ name: 'prompt_template', label: 'Prompt Template' },
-				{ name: 'title_prompt', label: 'Title Prompt' },
+				{ name: 'prompt_template', label: aipsCampaignWizardL10n.promptTemplateLabel },
+				{ name: 'title_prompt', label: aipsCampaignWizardL10n.titlePromptLabel },
 				{ name: 'frequency', label: aipsCampaignWizardL10n.previewCadence },
-				{ name: 'review_policy', label: 'Review Policy' },
-				{ name: 'campaign_mode', label: 'Campaign Mode' },
+				{ name: 'review_policy', label: aipsCampaignWizardL10n.reviewPolicyLabel },
+				{ name: 'campaign_mode', label: aipsCampaignWizardL10n.campaignModeLabel },
 			];
 		},
 
@@ -528,7 +528,7 @@
 			var draft = this.pendingAiResult.draft;
 			var payload = draft;
 			if ($.isArray(keys) && !keys.length) {
-				this.showNotice('error', aipsCampaignWizardL10n.previewSelectRequired || 'Select at least one field.');
+				this.showNotice('error', aipsCampaignWizardL10n.previewSelectRequired);
 				return;
 			}
 			if ($.isArray(keys) && keys.length) {
