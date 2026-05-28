@@ -134,9 +134,12 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+
+        $calc = new AIPS_Interval_Calculator();
+        $stagger_frequency = ($frequency === 'once') ? 'daily' : $frequency;
 
         foreach ($topics as $topic) {
+            $next_run = date('Y-m-d H:i:s', $base_time);
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
@@ -144,6 +147,7 @@ class AIPS_Planner {
                 'is_active' => 1,
                 'topic' => $topic
             );
+            $base_time = $calc->calculate_next_run($stagger_frequency, $base_time);
         }
 
         $count = $scheduler->save_schedule_bulk($schedules);
