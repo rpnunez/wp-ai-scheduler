@@ -41,6 +41,9 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $classMap = array (
+        'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
+        'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
+        'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
         'AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-edit-controller.php',
         'AIPS_AI_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-service.php',
         'AIPS_AI_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-ai-service-interface.php',
@@ -1181,6 +1184,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'SebastianBergmann\\Type\\UnknownType' => __DIR__ . '/..' . '/sebastian/type/src/type/UnknownType.php',
         'SebastianBergmann\\Type\\VoidType' => __DIR__ . '/..' . '/sebastian/type/src/type/VoidType.php',
         'SebastianBergmann\\Version' => __DIR__ . '/..' . '/sebastian/version/src/Version.php',
+        'Test_AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Assistance_Controller.php',
         'Test_AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Edit_Controller.php',
         'Test_AIPS_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service.php',
         'Test_AIPS_Admin_Bar_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Cache.php',

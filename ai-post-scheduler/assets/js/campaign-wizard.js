@@ -89,7 +89,7 @@
 		},
 
 		/**
-		 * Open AI-assisted intake form modal.
+		 * Open Guided AI Setup intake form modal.
 		 *
 		 * @return {void}
 		 */
@@ -340,7 +340,7 @@
 		},
 
 		/**
-		 * Send AI-assisted generation request.
+		 * Send Guided AI Setup generation request.
 		 *
 		 * @param {Object}   intake AI intake form data.
 		 * @param {Function} done   Completion callback.

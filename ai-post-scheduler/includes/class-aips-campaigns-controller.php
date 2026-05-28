@@ -329,7 +329,7 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
-	 * AJAX: generate campaign wizard values using AI-assisted intake.
+	 * AJAX: generate campaign wizard values using Guided AI Setup intake.
 	 *
 	 * @return void
 	 */
@@ -494,7 +494,7 @@ class AIPS_Campaigns_Controller {
 	private function prepare_ai_payload($response, $intake) {
 		$fallback_campaign_name = !empty($intake['topic_niche'])
 			? ucfirst($intake['topic_niche']) . ' Campaign'
-			: __('AI-Assisted Campaign', 'ai-post-scheduler');
+			: __('Guided AI Setup Campaign', 'ai-post-scheduler');
 
 		$fallback_prompt_template = sprintf(
 			/* translators: %s topic or niche */

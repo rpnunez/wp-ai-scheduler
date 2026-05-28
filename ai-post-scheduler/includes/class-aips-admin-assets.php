@@ -649,6 +649,34 @@ class AIPS_Admin_Assets {
               AIPS_VERSION,
               true
           );
+
+          wp_enqueue_style(
+              'aips-ai-assistance-style',
+              AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
+              array('aips-admin-style'),
+              AIPS_VERSION
+          );
+
+          wp_enqueue_script(
+              'aips-ai-assistance-script',
+              AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
+              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
+              AIPS_VERSION,
+              true
+          );
+
+          wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
+              'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+              'loading'         => __('Loading...', 'ai-post-scheduler'),
+              'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
+              'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
+              'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
+              'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
+              'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
+              'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
+              'thisSession'     => __('This Session', 'ai-post-scheduler'),
+              'allTime'         => __('All Time', 'ai-post-scheduler'),
+          ));
     }
 
     /**
@@ -1178,10 +1206,10 @@ class AIPS_Admin_Assets {
                 'created'                => __('Campaign created.', 'ai-post-scheduler'),
                 'nonceAiGenerate'        => wp_create_nonce('aips_campaign_wizard_ai_generate'),
                 'aiModeTitle'            => __('Choose Campaign Setup Mode', 'ai-post-scheduler'),
-                'aiModeMessage'          => __('Would you like AI assistance to prefill your campaign fields, or configure everything manually?', 'ai-post-scheduler'),
+                'aiModeMessage'          => __('Would you like Guided AI Setup to prefill your campaign fields, or configure everything manually?', 'ai-post-scheduler'),
                 'advancedModeTitle'      => __('Advanced Mode', 'ai-post-scheduler'),
-                'aiModeButton'           => __('AI-Assisted Mode', 'ai-post-scheduler'),
-                'aiFormTitle'            => __('Campaign AI Assistant', 'ai-post-scheduler'),
+                'aiModeButton'           => __('Guided AI Setup', 'ai-post-scheduler'),
+                'aiFormTitle'            => __('Guided AI Setup', 'ai-post-scheduler'),
                 'aiGenerateButton'       => __('Generate Campaign', 'ai-post-scheduler'),
                 'aiGeneratingMessage'    => __('Generating campaign fields with AI…', 'ai-post-scheduler'),
                 'aiSuccessMessage'       => __('Campaign fields filled in by AI — review and adjust as needed.', 'ai-post-scheduler'),

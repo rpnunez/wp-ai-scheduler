@@ -6,6 +6,9 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
+    'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
+    'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
     'AIPS_AI_Edit_Controller' => $baseDir . '/includes/class-aips-ai-edit-controller.php',
     'AIPS_AI_Service' => $baseDir . '/includes/class-aips-ai-service.php',
     'AIPS_AI_Service_Interface' => $baseDir . '/includes/interface-aips-ai-service-interface.php',
@@ -1146,6 +1149,7 @@ return array(
     'SebastianBergmann\\Type\\UnknownType' => $vendorDir . '/sebastian/type/src/type/UnknownType.php',
     'SebastianBergmann\\Type\\VoidType' => $vendorDir . '/sebastian/type/src/type/VoidType.php',
     'SebastianBergmann\\Version' => $vendorDir . '/sebastian/version/src/Version.php',
+    'Test_AIPS_AI_Assistance_Controller' => $baseDir . '/tests/Test_AIPS_AI_Assistance_Controller.php',
     'Test_AIPS_AI_Edit_Controller' => $baseDir . '/tests/Test_AIPS_AI_Edit_Controller.php',
     'Test_AIPS_AI_Service' => $baseDir . '/tests/Test_AIPS_AI_Service.php',
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',

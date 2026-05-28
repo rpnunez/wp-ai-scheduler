@@ -3,7 +3,7 @@
         'name' => 'rpnunez/wp-ai-scheduler',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '4ba43f61df9fd6d282ba8fd73f37713b67cd6d8d',
+        'reference' => 'a36dd9643263c4b69a7038bc0489c845752f46de',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -112,7 +112,7 @@
         'rpnunez/wp-ai-scheduler' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '4ba43f61df9fd6d282ba8fd73f37713b67cd6d8d',
+            'reference' => 'a36dd9643263c4b69a7038bc0489c845752f46de',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
