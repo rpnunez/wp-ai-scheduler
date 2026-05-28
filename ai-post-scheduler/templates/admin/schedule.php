@@ -76,7 +76,7 @@ if (!function_exists('aips_run_output_label')) {
 
 /**
  * Helper: format a future/past timestamp as a relative countdown string.
- * Returns e.g. "In 2 hours", "In 5 minutes", or "Past due".
+ * Returns e.g. "In 2 hours 15 minutes", "In 6 days 4 hours", or "Past due".
  */
 if (!function_exists('aips_next_run_relative')) {
 	function aips_next_run_relative($timestamp) {
@@ -84,8 +84,53 @@ if (!function_exists('aips_next_run_relative')) {
 		if ($diff <= 0) {
 			return __('Past due', 'ai-post-scheduler');
 		}
-		/* translators: %s = human-readable time difference, e.g. "2 hours" */
-		return sprintf(__('In %s', 'ai-post-scheduler'), human_time_diff(time(), $timestamp));
+
+		$units = array(
+			array(
+				'seconds'  => DAY_IN_SECONDS,
+				'singular' => '%s day',
+				'plural'   => '%s days',
+			),
+			array(
+				'seconds'  => HOUR_IN_SECONDS,
+				'singular' => '%s hour',
+				'plural'   => '%s hours',
+			),
+			array(
+				'seconds'  => MINUTE_IN_SECONDS,
+				'singular' => '%s minute',
+				'plural'   => '%s minutes',
+			),
+		);
+		$parts = array();
+
+		foreach ($units as $unit) {
+			if ($diff < $unit['seconds']) {
+				continue;
+			}
+
+			$value = (int) floor($diff / $unit['seconds']);
+			if ($value <= 0) {
+				continue;
+			}
+
+			$parts[] = sprintf(
+				_n($unit['singular'], $unit['plural'], $value, 'ai-post-scheduler'),
+				number_format_i18n($value)
+			);
+			$diff -= $value * $unit['seconds'];
+
+			if (count($parts) === 2) {
+				break;
+			}
+		}
+
+		if (empty($parts)) {
+			$parts[] = sprintf(_n('%s minute', '%s minutes', 1, 'ai-post-scheduler'), '1');
+		}
+
+		/* translators: %s = human-readable time difference, e.g. "6 days 4 hours" */
+		return sprintf(__('In %s', 'ai-post-scheduler'), implode(' ', $parts));
 	}
 }
 
