@@ -126,4 +126,25 @@ class Test_History_Template extends WP_UnitTestCase {
             $this->fail('Template threw an error when both variables are AIPS_History objects: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Test that Unix timestamps are formatted directly (not via strtotime string parsing).
+     */
+    public function test_prepare_items_for_display_formats_unix_timestamp_created_at() {
+        $timestamp = current_time('timestamp', true) - HOUR_IN_SECONDS;
+        $item = (object) array(
+            'created_at' => (string) $timestamp,
+        );
+        $items = array($item);
+
+        $method = new ReflectionMethod(AIPS_History::class, 'prepare_items_for_display');
+        $method->setAccessible(true);
+        $args = array(&$items);
+        $method->invokeArgs($this->history_instance, $args);
+
+        $format = get_option('date_format') . ' ' . get_option('time_format');
+        $expected = wp_date($format, $timestamp, wp_timezone());
+
+        $this->assertSame($expected, $items[0]->formatted_date);
+    }
 }

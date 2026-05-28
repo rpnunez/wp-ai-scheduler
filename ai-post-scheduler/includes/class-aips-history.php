@@ -662,7 +662,15 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
-            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $created_at = isset( $item->created_at ) ? $item->created_at : 0;
+            $timestamp  = is_numeric( $created_at ) ? absint( $created_at ) : strtotime( (string) $created_at );
+
+            if ( empty( $timestamp ) ) {
+                $item->formatted_date = '';
+                continue;
+            }
+
+            $item->formatted_date = wp_date( $format, $timestamp, wp_timezone() );
         }
     }
 }
