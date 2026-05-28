@@ -249,6 +249,7 @@ class AIPS_Ajax_Registry {
 		'aips_status_retry_failed_slices' => 'AIPS_System_Status_Controller',
 		'aips_status_clear_partial_generations' => 'AIPS_System_Status_Controller',
 		'aips_status_cleanup_stale_jobs_cache' => 'AIPS_System_Status_Controller',
+		'aips_rebuild_caches'            => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
