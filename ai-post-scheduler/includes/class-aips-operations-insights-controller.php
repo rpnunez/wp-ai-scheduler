@@ -47,7 +47,7 @@ class AIPS_Operations_Insights_Controller {
 		$days   = isset($_GET['days']) ? max(1, min(90, absint($_GET['days']))) : 14;
 
 		$data = array(
-			'generated_at'      => current_time('mysql'),
+			'generated_at'      => AIPS_DateTime::now()->toIso8601(),
 			'days'              => $days,
 			'telemetry_enabled' => AIPS_Telemetry::is_enabled(),
 			'history_trend'     => $this->history_repository->get_daily_success_failure_trend($days),

@@ -183,12 +183,12 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 			'id'          => '5',
 			'template_id' => '3',
 			'frequency'   => 'daily',
-			'next_run'    => '2025-01-15 08:00:00',
+			'next_run'    => '1736928000',
 			'is_active'   => '1',
 			'status'      => 'active',
 			'schedule_type'  => 'post_generation',
 			'circuit_state'  => 'closed',
-			'created_at'     => '2025-01-01 00:00:00',
+			'created_at'     => '1735689600',
 		);
 		return (object) array_merge( $defaults, $overrides );
 	}
@@ -252,7 +252,7 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 			'article_structure_id' => '7',
 			'rotation_pattern'     => 'sequential',
 			'topic'                => 'WordPress plugins',
-			'last_run'             => '2025-01-14 08:00:00',
+			'last_run'             => '1736841600',
 			'schedule_history_id'  => '12',
 			'run_state'            => '{"step":2}',
 			'batch_progress'       => '{"done":1}',
@@ -264,7 +264,7 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 		$this->assertSame( 7, $entry->article_structure_id );
 		$this->assertSame( 'sequential', $entry->rotation_pattern );
 		$this->assertSame( 'WordPress plugins', $entry->topic );
-		$this->assertSame( '2025-01-14 08:00:00', $entry->last_run );
+		$this->assertSame( 1736841600, $entry->last_run );
 		$this->assertSame( 12, $entry->schedule_history_id );
 		$this->assertSame( '{"step":2}', $entry->run_state );
 		$this->assertSame( '{"done":1}', $entry->batch_progress );
@@ -280,10 +280,10 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 	 */
 	public function test_is_due_past_next_run() {
 		$entry = AIPS_Schedule_Entry::from_row( $this->make_row( array(
-			'next_run' => '2020-01-01 00:00:00',
+			'next_run' => '1577836800',
 		) ) );
 
-		$this->assertTrue( $entry->is_due( '2025-01-01 00:00:00' ) );
+		$this->assertTrue( $entry->is_due( 1735689600 ) );
 	}
 
 	/**
@@ -291,10 +291,10 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 	 */
 	public function test_is_due_future_next_run() {
 		$entry = AIPS_Schedule_Entry::from_row( $this->make_row( array(
-			'next_run' => '2099-01-01 00:00:00',
+			'next_run' => '4070908800',
 		) ) );
 
-		$this->assertFalse( $entry->is_due( '2025-01-01 00:00:00' ) );
+		$this->assertFalse( $entry->is_due( 1735689600 ) );
 	}
 
 	/**
