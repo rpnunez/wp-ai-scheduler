@@ -470,7 +470,7 @@ class AIPS_Generated_Posts_Controller {
 		}
 		
 		// Build a safe filename including history id and timestamp
-		$timestamp = current_time('Ymd-His');
+		$timestamp = AIPS_DateTime::now()->toDisplay('Ymd-His');
 		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
 		
 		// Send download headers and the JSON payload
