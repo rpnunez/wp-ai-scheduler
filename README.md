@@ -126,6 +126,8 @@ bash scripts/run-wp-tests-docker.sh
 bash scripts/run-wp-tests-docker.sh coverage
 ```
 
+For agent-session PHPUnit bootstrap behavior and troubleshooting, see [TESTING.md](TESTING.md).
+
 ### Performance Benchmarks
 
 The project includes performance benchmarking to detect regressions:

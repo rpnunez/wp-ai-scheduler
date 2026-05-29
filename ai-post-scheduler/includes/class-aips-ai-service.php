@@ -919,7 +919,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         $call_data = array(
             'type' => $type,
-            'timestamp' => current_time('mysql'),
+            'timestamp' => AIPS_DateTime::now()->toIso8601(),
             'request' => array(
                 'prompt' => $prompt,
                 'options' => $options,
