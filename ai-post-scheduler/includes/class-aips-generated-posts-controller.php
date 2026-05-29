@@ -76,6 +76,7 @@ class AIPS_Generated_Posts_Controller {
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
 
 		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
@@ -85,6 +86,7 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
+			'campaign_id' => $campaign_id,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
@@ -181,6 +183,7 @@ class AIPS_Generated_Posts_Controller {
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
+		$campaigns = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
 
 		// Get authors for filter dropdown
 		$authors_repository = new AIPS_Authors_Repository();
@@ -428,7 +431,7 @@ class AIPS_Generated_Posts_Controller {
 		}
 		
 		// Build a safe filename including history id and timestamp
-		$timestamp = current_time('Ymd-His');
+		$timestamp = AIPS_DateTime::now()->toDisplay('Ymd-His');
 		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
 		
 		// Send download headers and the JSON payload

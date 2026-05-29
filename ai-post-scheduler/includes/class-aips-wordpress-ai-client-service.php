@@ -176,8 +176,30 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 	 * @return array
 	 */
 	public function get_call_statistics() {
+		$total     = count($this->call_log);
+		$successes = 0;
+		$failures  = 0;
+		$by_type   = array();
+
+		foreach ($this->call_log as $call) {
+			$type = isset($call['type']) ? (string) $call['type'] : 'unknown';
+			if (!isset($by_type[ $type ])) {
+				$by_type[ $type ] = 0;
+			}
+			$by_type[ $type ]++;
+
+			if (isset($call['error_code'])) {
+				$failures++;
+			} else {
+				$successes++;
+			}
+		}
+
 		return array(
-			'total_calls' => count($this->call_log),
+			'total'     => $total,
+			'successes' => $successes,
+			'failures'  => $failures,
+			'by_type'   => $by_type,
 		);
 	}
 
@@ -249,14 +271,108 @@ class AIPS_WordPress_AI_Client_Service implements AIPS_AI_Service_Interface {
 	 */
 	private function decode_json_response($response) {
 		$json = is_string($response) ? trim($response) : '';
-		$json = preg_replace('/^```json\s*/', '', $json);
-		$json = preg_replace('/^```\s*/', '', $json);
+		$json = preg_replace('/^```(?:json)?\s*/i', '', $json);
 		$json = preg_replace('/\s*```$/', '', $json);
-		$json = trim($json);
+		$json = trim((string) $json);
 
 		$data = json_decode($json, true);
+		if (json_last_error() === JSON_ERROR_NONE && is_array($data)) {
+			return $data;
+		}
+
+		$fragment = $this->extract_json_fragment($json);
+		if ($fragment === null) {
+			return null;
+		}
+
+		$data = json_decode($fragment, true);
 
 		return (json_last_error() === JSON_ERROR_NONE && is_array($data)) ? $data : null;
+	}
+
+	/**
+	 * @param string $text Raw model response text.
+	 * @return string|null Balanced JSON object/array fragment or null.
+	 */
+	private function extract_json_fragment($text) {
+		$start_pos_obj = strpos($text, '{');
+		$start_pos_arr = strpos($text, '[');
+
+		if ($start_pos_obj === false && $start_pos_arr === false) {
+			return null;
+		}
+
+		if ($start_pos_obj === false) {
+			$start_pos = $start_pos_arr;
+		} elseif ($start_pos_arr === false) {
+			$start_pos = $start_pos_obj;
+		} else {
+			$start_pos = min($start_pos_obj, $start_pos_arr);
+		}
+
+		$slice = substr($text, $start_pos);
+		if ($slice === false) {
+			return null;
+		}
+
+		$in_string = false;
+		$escape    = false;
+		$stack     = array();
+		$length    = strlen($slice);
+
+		for ($i = 0; $i < $length; $i++) {
+			$ch = $slice[$i];
+
+			if ($in_string) {
+				if ($escape) {
+					$escape = false;
+				} elseif ($ch === '\\') {
+					$escape = true;
+				} elseif ($ch === '"') {
+					$in_string = false;
+				}
+
+				continue;
+			}
+
+			if ($ch === '"') {
+				$in_string = true;
+				continue;
+			}
+
+			if ($ch === '{' || $ch === '[') {
+				$stack[] = $ch;
+				continue;
+			}
+
+			if ($ch === '}' || $ch === ']') {
+				if (empty($stack)) {
+					return null;
+				}
+
+				$open = array_pop($stack);
+				if (($open === '{' && $ch !== '}') || ($open === '[' && $ch !== ']')) {
+					return null;
+				}
+
+				if (empty($stack)) {
+					return $this->sanitize_json_candidate(substr($slice, 0, $i + 1));
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param string $candidate Candidate JSON fragment.
+	 * @return string
+	 */
+	private function sanitize_json_candidate($candidate) {
+		$sanitized = trim((string) $candidate);
+		$sanitized = preg_replace('/\x{FEFF}/u', '', $sanitized);
+
+		return trim((string) $sanitized);
 	}
 
 	/**

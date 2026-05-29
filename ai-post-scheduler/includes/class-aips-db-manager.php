@@ -8,6 +8,7 @@ class AIPS_DB_Manager {
     private static $tables = array(
         'aips_history',
         'aips_history_log',
+        'aips_campaigns',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
@@ -28,6 +29,7 @@ class AIPS_DB_Manager {
         'aips_internal_links',
         'aips_cache',
         'aips_telemetry',
+        'aips_ai_assistance',
         'aips_bulk_batch_jobs',
     );
 
@@ -65,6 +67,7 @@ class AIPS_DB_Manager {
 
         $table_history = $tables['aips_history'];
         $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
@@ -85,6 +88,7 @@ class AIPS_DB_Manager {
         $table_internal_links       = $tables['aips_internal_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
 
         $sql = array();
@@ -95,6 +99,7 @@ class AIPS_DB_Manager {
             correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
@@ -110,6 +115,7 @@ class AIPS_DB_Manager {
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
+            KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
             KEY status (status),
@@ -131,6 +137,22 @@ class AIPS_DB_Manager {
             KEY history_type_id (history_type_id)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_campaigns (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            content_goal text,
+            campaign_mode varchar(20) DEFAULT 'template',
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            is_archived tinyint(1) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY is_archived (is_archived),
+            KEY campaign_mode (campaign_mode),
+            KEY active_archived (is_active, is_archived)
+        ) $charset_collate;";
+
         $sql[] = "CREATE TABLE $table_templates (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -145,15 +167,18 @@ class AIPS_DB_Manager {
             featured_image_unsplash_keywords text,
             featured_image_media_ids text,
             post_status varchar(50) DEFAULT 'draft',
+            post_type varchar(50) DEFAULT 'post',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY campaign_id (campaign_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -173,16 +198,31 @@ class AIPS_DB_Manager {
             circuit_state varchar(20) NOT NULL DEFAULT 'closed',
             run_state text DEFAULT NULL,
             batch_progress longtext DEFAULT NULL,
+            author_id bigint(20) DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
+            campaign_mode varchar(20) DEFAULT 'template',
+            post_type_rules longtext DEFAULT NULL,
+            blackout_dates text DEFAULT NULL,
+            time_window_start varchar(5) DEFAULT NULL,
+            time_window_end varchar(5) DEFAULT NULL,
+            day_preferences varchar(255) DEFAULT NULL,
+            season_end_date bigint(20) unsigned DEFAULT NULL,
+            dynamic_quantity_rules text DEFAULT NULL,
+            campaign_metadata longtext DEFAULT NULL,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
+            KEY author_id (author_id),
+            KEY campaign_id (campaign_id),
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
             KEY status (status),
             KEY schedule_history_id (schedule_history_id),
             KEY schedule_type (schedule_type),
-            KEY circuit_state (circuit_state)
+            KEY circuit_state (circuit_state),
+            KEY campaign_mode (campaign_mode),
+            KEY season_end_date (season_end_date)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
@@ -262,8 +302,8 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             generate_featured_image tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
-            voice_tone varchar(100) DEFAULT NULL,
-            writing_style varchar(100) DEFAULT NULL,
+            voice_tone varchar(500) DEFAULT NULL,
+            writing_style varchar(500) DEFAULT NULL,
             target_audience varchar(500) DEFAULT NULL,
             expertise_level varchar(50) DEFAULT NULL,
             content_goals text DEFAULT NULL,
@@ -515,6 +555,23 @@ class AIPS_DB_Manager {
             KEY inserted_at (inserted_at)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_ai_assistance (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            session_id varchar(64) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            form_context varchar(100) NOT NULL,
+            field_key varchar(100) NOT NULL,
+            request_object longtext NOT NULL,
+            prompt text NOT NULL,
+            response longtext NOT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY session_id (session_id),
+            KEY form_context_field (form_context, field_key),
+            KEY user_id (user_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+      
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,
@@ -664,6 +721,9 @@ class AIPS_DB_Manager {
             ),
             'aips_post_embeddings' => array(
                 array( 'indexed_at', false ),
+            ),
+            'aips_ai_assistance' => array(
+                array( 'created_at', false ),
             ),
             'aips_internal_links' => array(
                 array( 'created_at', false ),

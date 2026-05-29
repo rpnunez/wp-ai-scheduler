@@ -118,7 +118,7 @@ if (is_object($history)) {
                         <span class="dashicons dashicons-dismiss"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
+                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="all">
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>

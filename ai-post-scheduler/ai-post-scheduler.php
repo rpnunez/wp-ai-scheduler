@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.6.0
+ * Version: 2.8.3
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '2.6.0');
+    define('AIPS_VERSION', '2.8.3');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -172,6 +172,7 @@ final class AI_Post_Scheduler {
     private function includes() {
         // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
         $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        
         if ( file_exists( $vendor_autoload ) ) {
             require_once $vendor_autoload;
         }

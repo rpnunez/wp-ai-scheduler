@@ -18,6 +18,13 @@ class AIPS_AI_Service_Factory {
 	public const BACKEND_WORDPRESS_AI_CLIENT = 'wordpress_ai_client';
 
 	/**
+	 * Cached backend instances used for availability checks.
+	 *
+	 * @var array<string,AIPS_AI_Service_Interface>
+	 */
+	private static $availability_backend_cache = array();
+
+	/**
 	 * Return registered backend metadata.
 	 *
 	 * @return array<string,array<string,string>>
@@ -128,7 +135,11 @@ class AIPS_AI_Service_Factory {
 			return false;
 		}
 
-		$backend = self::build_backend($backend_id, array());
+		if (!isset(self::$availability_backend_cache[ $backend_id ])) {
+			self::$availability_backend_cache[ $backend_id ] = self::build_backend($backend_id, array());
+		}
+
+		$backend = self::$availability_backend_cache[ $backend_id ];
 
 		return $backend->is_available();
 	}

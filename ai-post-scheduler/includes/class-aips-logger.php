@@ -34,7 +34,7 @@ class AIPS_Logger implements AIPS_Logger_Interface {
         // unauthorized access on servers where .htaccess is ignored (e.g. Nginx).
         $secret = $this->get_log_secret();
 
-        $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
+        $this->log_file = $log_dir . '/aips-' . AIPS_DateTime::now()->toDisplay('Y-m-d') . '-' . $secret . '.log';
         $this->enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_logging');
     }
 
@@ -95,7 +95,7 @@ class AIPS_Logger implements AIPS_Logger_Interface {
 
         $this->ensure_directory_exists();
         
-        $timestamp = current_time('mysql');
+        $timestamp = AIPS_DateTime::now()->toMysql();
         $level = strtoupper($level);
         
         $log_entry = sprintf(

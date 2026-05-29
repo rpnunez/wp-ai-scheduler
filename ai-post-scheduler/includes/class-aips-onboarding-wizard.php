@@ -157,7 +157,7 @@ class AIPS_Onboarding_Wizard {
 			'topics_generated' => 0,
 			'first_topic'      => '',
 			'post_id'          => 0,
-			'updated_at'       => '',
+			'updated_at'       => 0,
 		);
 	}
 
@@ -174,7 +174,7 @@ class AIPS_Onboarding_Wizard {
 		foreach ((array) $patch as $key => $value) {
 			$state[$key] = $value;
 		}
-		$state['updated_at'] = current_time('mysql');
+		$state['updated_at'] = AIPS_DateTime::now()->timestamp();
 		update_option($this->state_option, $state, false);
 		return $state;
 	}
@@ -266,7 +266,7 @@ class AIPS_Onboarding_Wizard {
 			AIPS_Ajax_Response::invalid_request(__('Name and Field/Niche are required.', 'ai-post-scheduler'));
 		}
 
-		$now = current_time('mysql');
+		$now = AIPS_DateTime::now()->timestamp();
 
 		$data = array(
 			'name' => $name,
