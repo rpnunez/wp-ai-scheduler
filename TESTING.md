@@ -91,8 +91,10 @@ If you run PHPUnit directly without those paths being valid, the bootstrap fails
 `composer test` now runs a pre-flight bootstrap (`ai-post-scheduler/bin/prepare-wp-tests.sh`) that:
 
 1. Installs Composer dependencies if `vendor/bin/phpunit` is missing
-2. Exports `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`)
+2. Uses `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`) for the setup step
 3. Installs WordPress core + test library/config via `scripts/install-wp-tests.sh` if required files are missing
+
+The pre-flight export applies within `composer test:setup`; `phpunit` then runs in a separate Composer command and uses bootstrap defaults unless those variables are already exported in your shell.
 
 If an agent session still fails early, run from repo root:
 
