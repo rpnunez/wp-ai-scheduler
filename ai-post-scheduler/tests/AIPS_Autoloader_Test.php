@@ -171,6 +171,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	public function test_autoloader_loads_repository_classes() {
 		$repositories = array(
 			'AIPS_History_Repository',
+			'AIPS_History_Stats_Repository',
 			'AIPS_Schedule_Repository',
 			'AIPS_Template_Repository',
 		);

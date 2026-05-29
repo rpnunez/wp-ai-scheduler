@@ -359,7 +359,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content'=> '',
 					'prompt'           => '',
 					'error_message'    => null,
-					'created_at'       => $today . ' 10:00:00',
+					'created_at'       => strtotime($today . ' 10:00:00'),
 				),
 				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
 			);
@@ -377,7 +377,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'generated_content'=> '',
 				'prompt'           => '',
 				'error_message'    => null,
-				'created_at'       => $yesterday . ' 08:00:00',
+				'created_at'       => strtotime($yesterday . ' 08:00:00'),
 			),
 			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
 		);
