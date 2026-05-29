@@ -11,8 +11,8 @@ The supported local workflow is Docker-backed MySQL plus the WordPress PHPUnit t
   - Git Bash on Windows
   - WSL2
   - macOS/Linux shell
-- `svn`
 - `curl` or `wget`
+- `svn` (optional; used when available, otherwise the installer falls back to the packaged `wp-phpunit` test library)
 
 ## One-Command Test Runs
 
@@ -35,7 +35,7 @@ docker compose up -d db
 So the minimum requirement is just:
 - Docker Desktop is running
 - `docker compose` works
-- `svn` is installed
+- Composer dependencies are installed, or `composer test` can install them
 
 That command:
 
@@ -91,8 +91,10 @@ If you run PHPUnit directly without those paths being valid, the bootstrap fails
 `composer test` now runs a pre-flight bootstrap (`ai-post-scheduler/bin/prepare-wp-tests.sh`) that:
 
 1. Installs Composer dependencies if `vendor/bin/phpunit` is missing
-2. Exports `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`)
+2. Uses `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`) for the setup step
 3. Installs WordPress core + test library/config via `scripts/install-wp-tests.sh` if required files are missing
+
+The pre-flight export applies within `composer test:setup`; `phpunit` then runs in a separate Composer command and uses bootstrap defaults unless those variables are already exported in your shell.
 
 If an agent session still fails early, run from repo root:
 
@@ -110,9 +112,27 @@ export AIPS_WP_TEST_SKIP_DB_CREATE=true
 
 before running `composer test`.
 
+If you want setup to skip best-effort `svn` installation attempts and go straight to the packaged fallback, set:
+
+```bash
+export AIPS_WP_TEST_AUTO_INSTALL_SVN=false
+```
+
 ### `Required command not found: svn`
 
-Install Subversion and make sure `svn` is on your `PATH`.
+This is no longer a hard requirement for agent sessions.
+
+When `AIPS_WP_TEST_AUTO_INSTALL_SVN` is unset or `true`, `composer test:setup` first makes a best-effort attempt to install `svn` via a supported system package manager. If that fails, setup continues with the packaged fallback.
+
+If `svn` is unavailable, the test installer falls back to `ai-post-scheduler/vendor/wp-phpunit/wp-phpunit` for the WordPress PHPUnit `includes/` and `data/` directories.
+
+If setup still fails, make sure Composer dependencies are installed:
+
+```bash
+cd ai-post-scheduler
+composer install
+composer test:setup
+```
 
 ### `WordPress test library not found`
 

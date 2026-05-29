@@ -236,6 +236,7 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 ## Testing
 - Tests live in `ai-post-scheduler/tests/`; run with `composer test` from `ai-post-scheduler/`.
 - `composer test`, `composer test:verbose`, and `composer test:coverage` run an automatic setup step first (`composer test:setup`) to prepare WordPress test paths and dependencies when missing.
+- `composer test:setup` prefers `svn` when available, but agent sessions do not require it; when `svn` is missing, the installer falls back to the packaged `ai-post-scheduler/vendor/wp-phpunit/wp-phpunit` test library.
 - In agent sessions, prefer this sequence when setup is uncertain:
   1. `cd ai-post-scheduler`
   2. `composer test:setup`
