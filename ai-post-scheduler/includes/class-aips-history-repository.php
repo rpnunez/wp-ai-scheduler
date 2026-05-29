@@ -51,7 +51,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     private $wpdb;
 
     /**
-     * @var AIPS_History_Stats_Repository Stats repository
+     * @var AIPS_History_Stats_Repository|null Stats repository.
      */
     private $stats_repository;
     
@@ -64,7 +64,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->stats_repository = new AIPS_History_Stats_Repository();
+    }
+
+    /**
+     * Get the stats repository instance, lazy-loading it when needed.
+     *
+     * @return AIPS_History_Stats_Repository
+     */
+    private function get_stats_repository(): AIPS_History_Stats_Repository {
+        if ( $this->stats_repository === null ) {
+            $this->stats_repository = new AIPS_History_Stats_Repository();
+        }
+
+        return $this->stats_repository;
     }
 
     /**
@@ -141,28 +153,28 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_daily_success_failure_trend($days = 14) {
-        return $this->stats_repository->get_daily_success_failure_trend($days);
+        return $this->get_stats_repository()->get_daily_success_failure_trend($days);
     }
 
     /**
      * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_average_duration_by_flow($days = 14) {
-        return $this->stats_repository->get_average_duration_by_flow($days);
+        return $this->get_stats_repository()->get_average_duration_by_flow($days);
     }
 
     /**
      * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_retry_counts_by_service($days = 14) {
-        return $this->stats_repository->get_retry_counts_by_service($days);
+        return $this->get_stats_repository()->get_retry_counts_by_service($days);
     }
 
     /**
      * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_top_failure_reasons($days = 14, $limit = 8) {
-        return $this->stats_repository->get_top_failure_reasons($days, $limit);
+        return $this->get_stats_repository()->get_top_failure_reasons($days, $limit);
     }
     
     /**
@@ -665,14 +677,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * }
      */
     public function get_estimated_generation_time($limit = 20) {
-        return $this->stats_repository->get_estimated_generation_time($limit);
+        return $this->get_stats_repository()->get_estimated_generation_time($limit);
     }
 
     /**
      * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_stats() {
-        return $this->stats_repository->get_stats();
+        return $this->get_stats_repository()->get_stats();
     }
 
     /**
@@ -691,7 +703,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array<string, array{completed: int, failed: int, total: int}>
      */
     public function get_daily_generation_counts( $days = 14 ) {
-        return $this->stats_repository->get_daily_generation_counts($days);
+        return $this->get_stats_repository()->get_daily_generation_counts($days);
     }
 
     /**
@@ -703,7 +715,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int Number of completed posts for this template.
      */
     public function get_template_stats($template_id) {
-        return $this->stats_repository->get_template_stats($template_id);
+        return $this->get_stats_repository()->get_template_stats($template_id);
     }
 
     /**
@@ -714,7 +726,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Associative array of template ID => count.
      */
     public function get_all_template_stats() {
-        return $this->stats_repository->get_all_template_stats();
+        return $this->get_stats_repository()->get_all_template_stats();
     }
 
     /**
@@ -729,7 +741,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Associative array of history_id => generated count.
      */
     public function get_schedule_generated_post_counts($history_ids) {
-        return $this->stats_repository->get_schedule_generated_post_counts($history_ids);
+        return $this->get_stats_repository()->get_schedule_generated_post_counts($history_ids);
     }
 
     /**
@@ -743,7 +755,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Raw log rows from aips_history_log.
      */
     public function get_author_schedule_logs_by_event_types($author_id, $event_types = array(), $limit = 100) {
-        return $this->stats_repository->get_author_schedule_logs_by_event_types($author_id, $event_types, $limit);
+        return $this->get_stats_repository()->get_author_schedule_logs_by_event_types($author_id, $event_types, $limit);
     }
     
     /**

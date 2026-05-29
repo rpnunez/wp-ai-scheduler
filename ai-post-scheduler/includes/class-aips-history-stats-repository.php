@@ -232,12 +232,14 @@ class AIPS_History_Stats_Repository {
         );
 
         $data = array();
-        foreach ( $results as $row ) {
-            $data[ $row->day ] = array(
-                'completed' => (int) $row->completed,
-                'failed'    => (int) $row->failed,
-                'total'     => (int) $row->total,
-            );
+        if ( is_array( $results ) ) {
+            foreach ( $results as $row ) {
+                $data[ $row->day ] = array(
+                    'completed' => (int) $row->completed,
+                    'failed'    => (int) $row->failed,
+                    'total'     => (int) $row->total,
+                );
+            }
         }
 
         return $data;
@@ -270,8 +272,10 @@ class AIPS_History_Stats_Repository {
         ");
 
         $stats = array();
-        foreach ($results as $row) {
-            $stats[$row->template_id] = (int) $row->count;
+        if ( is_array( $results ) ) {
+            foreach ( $results as $row ) {
+                $stats[ $row->template_id ] = (int) $row->count;
+            }
         }
 
         return $stats;
@@ -319,8 +323,10 @@ class AIPS_History_Stats_Repository {
         $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
 
         $counts = array();
-        foreach ($results as $row) {
-            $counts[(int) $row->history_id] = (int) $row->count;
+        if ( is_array( $results ) ) {
+            foreach ( $results as $row ) {
+                $counts[ (int) $row->history_id ] = (int) $row->count;
+            }
         }
 
         return $counts;
