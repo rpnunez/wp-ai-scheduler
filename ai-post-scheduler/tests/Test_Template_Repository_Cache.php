@@ -23,6 +23,8 @@ class Mock_WPDB_Query_Counter {
 
 	public $prefix    = 'wp_';
 	public $insert_id = 0;
+	public $last_error = '';
+	public $options = 'wp_options';
 
 	/** @var int How many get_row() calls were made. */
 	public $get_row_calls = 0;
@@ -79,6 +81,18 @@ class Mock_WPDB_Query_Counter {
 	public function esc_like( $text ) {
 		return addcslashes( $text, '_%\\' );
 	}
+
+	public function _escape( $text ) {
+		return $text;
+	}
+
+	public function suppress_errors( $suppress = true ) {
+		return false;
+	}
+
+	public function show_errors( $show = true ) {
+		return true;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +114,10 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		global $wpdb;
 		$this->original_wpdb = $wpdb;
 		$this->mock_wpdb     = new Mock_WPDB_Query_Counter();
-		$wpdb                = $this->mock_wpdb;
+		AIPS_Cache_Factory::register(
+			'aips_template_repository',
+			new AIPS_Cache( new AIPS_Cache_Array_Driver() )
+		);
 	}
 
 	public function tearDown(): void {
@@ -110,13 +127,28 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_repository() {
+		$repo = new AIPS_Template_Repository();
+		$reflection = new ReflectionClass( $repo );
+
+		$wpdb_property = $reflection->getProperty( 'wpdb' );
+		$wpdb_property->setAccessible( true );
+		$wpdb_property->setValue( $repo, $this->mock_wpdb );
+
+		$table_property = $reflection->getProperty( 'table_name' );
+		$table_property->setAccessible( true );
+		$table_property->setValue( $repo, $this->mock_wpdb->prefix . 'aips_templates' );
+
+		return $repo;
+	}
+
 	// -----------------------------------------------------------------------
 	// get_by_id() caching
 	// -----------------------------------------------------------------------
 
 	public function test_get_by_id_hits_db_on_first_call() {
 		$this->mock_wpdb->get_row_return = (object) array( 'id' => 7, 'name' => 'My Template' );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$result = $repo->get_by_id( 7 );
 
@@ -126,7 +158,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_by_id_returns_cached_result_on_second_call() {
 		$this->mock_wpdb->get_row_return = (object) array( 'id' => 7, 'name' => 'My Template' );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 7 );
 		$repo->get_by_id( 7 );
@@ -136,7 +168,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_by_id_null_result_is_not_cached() {
 		$this->mock_wpdb->get_row_return = null;
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 99 );
 		$repo->get_by_id( 99 );
@@ -153,7 +185,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 			(object) array( 'id' => 1, 'name' => 'A' ),
 			(object) array( 'id' => 2, 'name' => 'B' ),
 		);
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$result = $repo->get_all();
 
@@ -163,7 +195,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_all_returns_cached_result_on_second_call() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all();
 		$repo->get_all();
@@ -173,7 +205,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_all_active_only_uses_separate_cache_key() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all( false );
 		$repo->get_all( true );
@@ -187,7 +219,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_cache_is_flushed_after_create() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all(); // Populate cache.
 		$repo->create( array(
@@ -204,7 +236,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 	public function test_cache_is_flushed_after_update() {
 		$row = (object) array( 'id' => 5, 'name' => 'Old' );
 		$this->mock_wpdb->get_row_return = $row;
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 5 ); // Populate cache.
 		$repo->update( 5, array( 'name' => 'Updated' ) );
@@ -215,7 +247,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_cache_is_flushed_after_delete() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all(); // Populate cache.
 		$repo->delete( 1 );
@@ -232,8 +264,8 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		$row = (object) array( 'id' => 3, 'name' => 'Shared' );
 		$this->mock_wpdb->get_row_return = $row;
 
-		$repo_a = new AIPS_Template_Repository();
-		$repo_b = new AIPS_Template_Repository();
+		$repo_a = $this->make_repository();
+		$repo_b = $this->make_repository();
 
 		$repo_a->get_by_id( 3 ); // Warms the named cache.
 		$repo_b->get_by_id( 3 ); // Should be served from the same named cache.

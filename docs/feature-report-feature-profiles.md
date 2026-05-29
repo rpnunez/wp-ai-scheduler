@@ -32,7 +32,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1495 lines (may violate SRP)
+    1. Consider refactoring — class has 1535 lines (may violate SRP)
     2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -47,15 +47,29 @@
 
 ---
 
+### Admin Flow Controller
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-admin-flow-controller.php`
+* **Class**: `AIPS_Admin_Flow_Controller`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. [WARNING] Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_campaign_wizard_save_draft, aips_campaign_wizard_validate_step, aips_campaign_wizard_finalize
+    2. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
+    3. High coupling — depends on 11 classes
+    4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+    5. Add comprehensive class-level PHPDoc documentation
+
+---
+
 ### Admin Menu
 * **Summary**: Class AIPS_Admin_Menu
 * **File**: `ai-post-scheduler/includes/class-aips-admin-menu.php`
 * **Class**: `AIPS_Admin_Menu`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 578 lines (may violate SRP)
-    2. High method count (26+ methods) — consider splitting responsibilities
-    3. High coupling — depends on 15 classes
+    1. Consider refactoring — class has 616 lines (may violate SRP)
+    2. High method count (28+ methods) — consider splitting responsibilities
+    3. High coupling — depends on 17 classes
 
 ---
 
@@ -320,6 +334,27 @@
 
 ---
 
+### Cache Invalidation Bus
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-cache-invalidation-bus.php`
+* **Class**: `AIPS_Cache_Invalidation_Bus`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Document custom hooks in HOOKS.md for third-party developers
+    2. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Cache Policy
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-cache-policy.php`
+* **Class**: `AIPS_Cache_Policy`
+* **Missing Functionality**: None identified
+* **Recommended Improvements**: 
+    1. Add comprehensive class-level PHPDoc documentation
+
+---
+
 ### Cache Redis Driver
 * **Summary**: Class AIPS_Cache_Redis_Driver
 * **File**: `ai-post-scheduler/includes/class-aips-cache-redis-driver.php`
@@ -355,6 +390,29 @@
 * **Recommended Improvements**: 
     1. [WARNING] Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_calendar_events
     2. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+
+---
+
+### Campaigns Controller
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-campaigns-controller.php`
+* **Class**: `AIPS_Campaigns_Controller`
+* **Missing Functionality**: No input validation methods visible
+* **Recommended Improvements**: 
+    1. [WARNING] Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_campaigns, aips_get_campaign_metrics, aips_toggle_campaign, aips_duplicate_campaign, aips_archive_campaign
+    2. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Campaigns Repository
+* **Summary**: No description available
+* **File**: `ai-post-scheduler/includes/class-aips-campaigns-repository.php`
+* **Class**: `AIPS_Campaigns_Repository`
+* **Missing Functionality**: 
+    * Missing save/update methods for data persistence
+    * Does not implement an interface — consider adding a contract
+* **Recommended Improvements**: 
+    1. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -416,7 +474,7 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [WARNING] Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_fix_datetime_values, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events
-    2. Consider refactoring — class has 1188 lines (may violate SRP)
+    2. Consider refactoring — class has 1202 lines (may violate SRP)
     3. Add comprehensive class-level PHPDoc documentation
 
 ---
@@ -667,7 +725,7 @@
     * No filter hooks for customizing generation output
     * No dedicated error handling methods visible
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1155 lines (may violate SRP)
+    1. Consider refactoring — class has 1187 lines (may violate SRP)
     2. High coupling — depends on 20 classes
     3. Document custom hooks in HOOKS.md for third-party developers
 
@@ -699,7 +757,7 @@
 * **Implements**: `AIPS_History_Repository_Interface`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1368 lines (may violate SRP)
+    1. Consider refactoring — class has 1378 lines (may violate SRP)
     2. High method count (31+ methods) — consider splitting responsibilities
 
 ---
@@ -1057,7 +1115,7 @@
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
     1. [INFO] Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option()
-    2. Consider refactoring — class has 591 lines (may violate SRP)
+    2. Consider refactoring — class has 592 lines (may violate SRP)
     3. High coupling — depends on 13 classes
     4. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
     5. Document custom hooks in HOOKS.md for third-party developers
@@ -1212,7 +1270,7 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [WARNING] Registers 16 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules
-    2. Consider refactoring — class has 1099 lines (may violate SRP)
+    2. Consider refactoring — class has 1105 lines (may violate SRP)
     3. High coupling — depends on 19 classes
     4. Add comprehensive class-level PHPDoc documentation
 
@@ -1500,10 +1558,9 @@
 * **Class**: `AIPS_System_Status_Controller`
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. [WARNING] Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_clear_partial_generations, aips_status_cleanup_stale_jobs_cache
-    2. [INFO] Directly instantiates AIPS_Resilience_Service without using AIPS_Container — consider resolving from the container
-    3. Consider resolving dependencies from AIPS_Container instead of direct instantiation
-    4. Document custom hooks in HOOKS.md for third-party developers
+    1. [WARNING] Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_clear_partial_generations, aips_status_cleanup_stale_jobs_cache
+    2. High coupling — depends on 10 classes
+    3. Document custom hooks in HOOKS.md for third-party developers
 
 ---
 
@@ -1564,7 +1621,7 @@
 * **Implements**: `AIPS_Generation_Context`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. High method count (24+ methods) — consider splitting responsibilities
+    1. High method count (25+ methods) — consider splitting responsibilities
 
 ---
 
@@ -1663,7 +1720,7 @@
 * **Implements**: `AIPS_Generation_Context`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. High method count (25+ methods) — consider splitting responsibilities
+    1. High method count (26+ methods) — consider splitting responsibilities
 
 ---
 

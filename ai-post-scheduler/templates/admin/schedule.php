@@ -15,6 +15,11 @@ $structure_manager  = new AIPS_Article_Structure_Manager();
 $article_structures = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns  = $template_type_selector->get_rotation_patterns();
+$campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
+$campaign_map = array();
+foreach ($campaign_options as $campaign_option) {
+	$campaign_map[(int) $campaign_option->id] = $campaign_option;
+}
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
@@ -71,7 +76,7 @@ if (!function_exists('aips_run_output_label')) {
 
 /**
  * Helper: format a future/past timestamp as a relative countdown string.
- * Returns e.g. "In 2 hours", "In 5 minutes", or "Past due".
+ * Returns e.g. "In 2 hours 15 minutes", "In 6 days 4 hours", or "Past due".
  */
 if (!function_exists('aips_next_run_relative')) {
 	function aips_next_run_relative($timestamp) {
@@ -79,8 +84,53 @@ if (!function_exists('aips_next_run_relative')) {
 		if ($diff <= 0) {
 			return __('Past due', 'ai-post-scheduler');
 		}
-		/* translators: %s = human-readable time difference, e.g. "2 hours" */
-		return sprintf(__('In %s', 'ai-post-scheduler'), human_time_diff(time(), $timestamp));
+
+		$units = array(
+			array(
+				'seconds'  => DAY_IN_SECONDS,
+				'singular' => '%s day',
+				'plural'   => '%s days',
+			),
+			array(
+				'seconds'  => HOUR_IN_SECONDS,
+				'singular' => '%s hour',
+				'plural'   => '%s hours',
+			),
+			array(
+				'seconds'  => MINUTE_IN_SECONDS,
+				'singular' => '%s minute',
+				'plural'   => '%s minutes',
+			),
+		);
+		$parts = array();
+
+		foreach ($units as $unit) {
+			if ($diff < $unit['seconds']) {
+				continue;
+			}
+
+			$value = (int) floor($diff / $unit['seconds']);
+			if ($value <= 0) {
+				continue;
+			}
+
+			$parts[] = sprintf(
+				_n($unit['singular'], $unit['plural'], $value, 'ai-post-scheduler'),
+				number_format_i18n($value)
+			);
+			$diff -= $value * $unit['seconds'];
+
+			if (count($parts) === 2) {
+				break;
+			}
+		}
+
+		if (empty($parts)) {
+			$parts[] = sprintf(_n('%s minute', '%s minutes', 1, 'ai-post-scheduler'), '1');
+		}
+
+		/* translators: %s = human-readable time difference, e.g. "6 days 4 hours" */
+		return sprintf(__('In %s', 'ai-post-scheduler'), implode(' ', $parts));
 	}
 }
 
@@ -272,6 +322,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php if (!empty($sched['subtitle'])): ?>
 							<div class="cell-meta"><?php echo esc_html($sched['subtitle']); ?></div>
 							<?php endif; ?>
+							<?php if (!empty($sched['campaign_id']) && isset($campaign_map[(int) $sched['campaign_id']])): ?>
+							<div class="cell-meta" style="margin-top:4px;">
+								<a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($sched['campaign_id'])), admin_url('admin.php'))); ?>">
+									<?php echo esc_html($campaign_map[(int) $sched['campaign_id']]->name); ?>
+								</a>
+							</div>
+							<?php endif; ?>
 							<div class="aips-row-actions">
 								<a href="#"
 									class="aips-view-unified-history"
@@ -377,6 +434,12 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+								</button>
+								<?php elseif (!empty($sched['campaign_id'])): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-danger" disabled
+									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
 								<?php endif; ?>

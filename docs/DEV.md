@@ -170,50 +170,34 @@ composer test:coverage    # Generate coverage report
 vendor/bin/phpunit tests/test-template-processor.php
 ```
 
-### Running in Full WordPress Mode (Optional)
+### Canonical Test Workflow (Docker, Recommended)
 
-The test bootstrap switches to full WordPress mode when `$WP_TESTS_DIR/includes/functions.php` exists. Without it, tests run in limited mode (WordPress stubs only).
-
-**Set up the WordPress test library (Git Bash / WSL2):**
+The suite always runs against the real WordPress PHPUnit test library. The supported local workflow is the Docker-backed wrapper from the repo root:
 
 ```bash
-cd /c/Projects/NunezScheduler/wp-ai-scheduler
-
-# Export paths
-export WP_TESTS_DIR='C:/Projects/NunezScheduler/wordpress-tests-lib'
-export WP_CORE_DIR='C:/Projects/NunezScheduler/wordpress-6.9/wordpress'
-
-# Run the installer
-cd scripts
-./install-wp-tests.sh wp_ns_tests root '' localhost latest
+bash scripts/run-wp-tests-docker.sh
+bash scripts/run-wp-tests-docker.sh coverage
 ```
 
-**Verify the install before running tests:**
+That wrapper:
+1. starts the Docker database if needed
+2. recreates a disposable test database
+3. installs WordPress core and `wordpress-tests-lib`
+4. exports `WP_TESTS_DIR` and `WP_CORE_DIR`
+5. runs `composer test` or `composer test:coverage`
 
-```bash
-ls "$WP_TESTS_DIR"
-ls "$WP_TESTS_DIR/includes"
-test -f "$WP_TESTS_DIR/includes/functions.php" && echo "WP tests lib OK"
-test -f "$WP_TESTS_DIR/includes/bootstrap.php" && echo "WP bootstrap OK"
-```
+### Direct Suite Execution
 
-**Run in full mode:**
+If the WordPress test library is already installed, run the suite directly:
 
 ```bash
 cd ai-post-scheduler
+export WP_TESTS_DIR='C:/tmp/wordpress-tests-lib-docker'
+export WP_CORE_DIR='C:/tmp/wordpress-docker'
 composer test
 ```
 
-> **Re-export variables** if you open a new shell before running tests.
-
-### Why Limited Mode Happens
-
-The installer only creates the test library directory if it doesn't exist. If the SVN checkout was interrupted during a previous run, the directory exists but the `includes/` and `data/` folders are missing. Delete the directory and re-run the installer to fix it:
-
-```bash
-rm -rf "$WP_TESTS_DIR"
-cd scripts && ./install-wp-tests.sh wp_ns_tests root '' localhost latest
-```
+If `WP_TESTS_DIR/includes/functions.php` is missing, `tests/bootstrap.php` fails fast. There is no limited-mode fallback.
 
 ### Performance Benchmarks
 

@@ -170,6 +170,15 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get post type.
+	 *
+	 * @return string Post type from author settings or 'post'.
+	 */
+	public function get_post_type() {
+		return isset($this->author->post_type) ? sanitize_key($this->author->post_type) : 'post';
+	}
+
+	/**
 	 * Get post category.
 	 *
 	 * @return int|string Post category from author settings.
@@ -302,6 +311,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'content_prompt' => $this->get_content_prompt(),
 			'title_prompt' => $this->get_title_prompt(),
 			'post_status' => $this->get_post_status(),
+			'post_type' => $this->get_post_type(),
 			'post_category' => $this->get_post_category(),
 			'post_tags' => $this->get_post_tags(),
 			'post_author' => $this->get_post_author(),

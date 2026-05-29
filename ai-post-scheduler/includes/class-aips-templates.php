@@ -69,6 +69,7 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
@@ -104,7 +105,11 @@ class AIPS_Templates {
         $month_end = AIPS_DateTime::now()->advance('+30 days')->timestamp();
 
         foreach ($schedules as $schedule) {
-            $cursor = AIPS_DateTime::fromMysql($schedule->next_run)->timestamp();
+            $cursor = $this->normalize_schedule_timestamp($schedule->next_run);
+            // Zero means "unset"/legacy default in DB schema; skip those rows.
+            if ($cursor <= 0) {
+                continue;
+            }
             $frequency = $schedule->frequency;
 
             // Limit iterations to prevent infinite loops or excessive processing
@@ -161,10 +166,10 @@ class AIPS_Templates {
             return $stats;
         }
 
-        $now = current_time('timestamp');
-        $today_end = strtotime('today 23:59:59', $now);
-        $week_end = strtotime('+7 days', $now);
-        $month_end = strtotime('+30 days', $now);
+        $now = AIPS_DateTime::now();
+        $today_end = $now->toSiteTimezone()->advance('tomorrow')->advance('-1 second')->toUtc()->timestamp();
+        $week_end = $now->advance('+7 days')->timestamp();
+        $month_end = $now->advance('+30 days')->timestamp();
 
         foreach ($schedules as $schedule) {
             $tid = $schedule->template_id;
@@ -172,7 +177,11 @@ class AIPS_Templates {
                 $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
             }
 
-            $cursor = strtotime($schedule->next_run);
+            $cursor = $this->normalize_schedule_timestamp($schedule->next_run);
+            // Zero means "unset"/legacy default in DB schema; skip those rows.
+            if ($cursor <= 0) {
+                continue;
+            }
             $frequency = $schedule->frequency;
 
             // Limit iterations to prevent infinite loops or excessive processing
@@ -210,8 +219,21 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
-        return strtotime($next_run);
+        $next_run = $this->interval_calculator->calculate_next_run(
+            $frequency,
+            AIPS_DateTime::fromTimestamp((int) $base_time)->toMysql()
+        );
+
+        return $this->normalize_schedule_timestamp($next_run);
+    }
+
+    private function normalize_schedule_timestamp($value) {
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        $date_time = AIPS_DateTime::fromMysqlOrNull((string) $value);
+        return $date_time ? $date_time->timestamp() : 0;
     }
     
     public function render_page() {

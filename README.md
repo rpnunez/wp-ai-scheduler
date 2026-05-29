@@ -90,8 +90,8 @@ make down
 
 ### Manual/Non-Docker Setup
 
-- See [docs/DEV.md](docs/DEV.md) for full PHPUnit / WordPress test library setup without Docker.
 - See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
+- PHPUnit is maintained around the Docker-backed WordPress test environment. See [docs/DEV.md](docs/DEV.md) for the supported workflow.
 
 ### Debugging (VS Code)
 
@@ -118,6 +118,15 @@ composer test:coverage
 # Single test file
 vendor/bin/phpunit tests/test-template-processor.php
 ```
+
+Canonical Docker-backed workflow:
+
+```bash
+bash scripts/run-wp-tests-docker.sh
+bash scripts/run-wp-tests-docker.sh coverage
+```
+
+For agent-session PHPUnit bootstrap behavior and troubleshooting, see [TESTING.md](TESTING.md).
 
 ### Performance Benchmarks
 

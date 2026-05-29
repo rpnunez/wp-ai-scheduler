@@ -441,15 +441,14 @@ class AIPS_Notifications_Event_Handler {
 	 */
 	public function handle_summary_rollups_cron() {
 		$config        = AIPS_Config::get_instance();
-		$today_key     = gmdate('Y-m-d', current_time('timestamp', true));
+		$current_timestamp = AIPS_DateTime::now()->timestamp();
+		$today_key     = gmdate('Y-m-d', $current_timestamp);
 		$daily_sent_key = $config->get_option('aips_notif_daily_digest_last_sent');
 
 		if ($daily_sent_key !== $today_key) {
 			$this->notifications->daily_digest($this->build_rollup_payload(86400, 'daily_digest_' . $today_key));
 			$config->set_option('aips_notif_daily_digest_last_sent', $today_key, false);
 		}
-
-		$current_timestamp = current_time('timestamp', true);
 
 		// Weekly summary: send once per ISO week when the week key changes.
 		$weekly_key       = gmdate('o-W', $current_timestamp);
