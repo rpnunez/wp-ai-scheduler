@@ -107,7 +107,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-        if (self::PAGE_CAMPAIGNS === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)) {
+        if (
+            self::PAGE_CAMPAIGNS === $page
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_campaigns_assets();
 		}
 

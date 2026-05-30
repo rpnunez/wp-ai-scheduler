@@ -158,13 +158,21 @@ class AIPS_Campaigns_Controller {
 			}
 
 			if ('pause' === $detail_action) {
-				$this->campaigns_repository->set_active($campaign_id, 0);
+				if ($this->campaigns_repository->set_active($campaign_id, 0)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_paused', __('paused', 'ai-post-scheduler'));
+				}
 			} elseif ('resume' === $detail_action) {
-				$this->campaigns_repository->set_active($campaign_id, 1);
+				if ($this->campaigns_repository->set_active($campaign_id, 1)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_resumed', __('resumed', 'ai-post-scheduler'));
+				}
 			} elseif ('archive' === $detail_action) {
-				$this->campaigns_repository->archive_campaign($campaign_id);
+				if ($this->campaigns_repository->archive_campaign($campaign_id)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_archived', __('archived', 'ai-post-scheduler'));
+				}
 			} elseif ('restore' === $detail_action) {
-				$this->campaigns_repository->restore_campaign($campaign_id);
+				if ($this->campaigns_repository->restore_campaign($campaign_id)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_restored', __('restored', 'ai-post-scheduler'));
+				}
 			}
 
 			wp_safe_redirect(add_query_arg(array(
@@ -179,6 +187,53 @@ class AIPS_Campaigns_Controller {
 		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-detail.php';
+	}
+
+	/**
+	 * Record campaign lifecycle activity in history.
+	 *
+	 * @param int    $campaign_id Campaign ID.
+	 * @param string $event_type  Event type key.
+	 * @param string $action_label Localized action label.
+	 * @return void
+	 */
+	private function record_campaign_lifecycle_activity($campaign_id, $event_type, $action_label) {
+		$history_service = new AIPS_History_Service();
+		$history = $history_service->create('campaign_lifecycle', array(
+			'campaign_id'     => absint($campaign_id),
+			'creation_method' => 'campaign_lifecycle',
+			'user_id'         => get_current_user_id(),
+			'source'          => 'manual_ui',
+		));
+
+		if (!$history) {
+			return;
+		}
+
+		$user = wp_get_current_user();
+		$user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
+
+		$history->record(
+			'activity',
+			sprintf(
+				/* translators: 1: action label, 2: user login */
+				__('Campaign %1$s by %2$s', 'ai-post-scheduler'),
+				$action_label,
+				$user_label
+			),
+			array(
+				'event_type' => $event_type,
+				'event_status' => 'success',
+			),
+			null,
+			array(
+				'campaign_id' => absint($campaign_id),
+				'user_id'     => ($user ? (int) $user->ID : 0),
+				'action'      => sanitize_key($event_type),
+			)
+		);
+
+		$history->complete_success();
 	}
 
 	/**
