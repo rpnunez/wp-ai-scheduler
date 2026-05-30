@@ -16,6 +16,11 @@ class AIPS_Campaigns_Controller {
 	const PAGE_SLUG = 'aips-campaign-wizard';
 
 	/**
+	 * Campaign detail page slug.
+	 */
+	const DETAIL_PAGE_SLUG = 'aips-campaign-detail';
+
+	/**
 	 * @var string
 	 */
 	private $draft_option = 'aips_campaign_wizard_draft';
@@ -107,14 +112,128 @@ class AIPS_Campaigns_Controller {
 		$templates       = $this->template_repository->get_all(true);
 		$categories      = get_categories(array('hide_empty' => false));
 		$post_types      = $this->get_supported_post_types();
-		$voices          = class_exists('AIPS_Voices_Repository') ? (new AIPS_Voices_Repository())->get_all() : array();
-		$structures      = class_exists('AIPS_Article_Structure_Repository') ? (new AIPS_Article_Structure_Repository())->get_all(true) : array();
-		$authors         = class_exists('AIPS_Authors_Repository') ? AIPS_Authors_Repository::instance()->get_all(true) : array();
+		$voices          = (new AIPS_Voices_Repository())->get_all();
+		$structures      = (new AIPS_Article_Structure_Repository())->get_all(true);
+		$authors         = AIPS_Authors_Repository::instance()->get_all(true);
 		$frequencies     = (new AIPS_Interval_Calculator())->get_intervals();
 		$aips_config     = $this->config;
 		$default_summary = $this->build_summary($this->normalise_payload($draft));
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-wizard.php';
+	}
+
+
+	/**
+	 * Render campaign detail page.
+	 */
+	public function render_detail_page() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
+		}
+
+		$campaign_id = isset($_GET['campaign_id']) ? absint(wp_unslash($_GET['campaign_id'])) : 0;
+		$campaign = $campaign_id ? $this->campaigns_repository->get_campaign_by_id($campaign_id) : null;
+
+		if (!$campaign) {
+			wp_die(esc_html__('Campaign not found.', 'ai-post-scheduler'));
+		}
+
+		if (isset($_POST['aips_campaign_detail_nonce'])) {
+			if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aips_campaign_detail_nonce'])), 'aips_campaign_detail_save_' . $campaign_id)) {
+				wp_die(esc_html__('Security check failed.', 'ai-post-scheduler'));
+			}
+
+			$detail_action = isset($_POST['detail_action']) ? sanitize_key(wp_unslash($_POST['detail_action'])) : 'save';
+
+			if ('save' === $detail_action) {
+				$name = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
+				$content_goal = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
+
+				if ('' !== $name) {
+					$this->campaigns_repository->update_campaign($campaign_id, array(
+						'name' => $name,
+						'content_goal' => $content_goal,
+					));
+				}
+			}
+
+			if ('pause' === $detail_action) {
+				if ($this->campaigns_repository->set_active($campaign_id, 0)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_paused', __('paused', 'ai-post-scheduler'));
+				}
+			} elseif ('resume' === $detail_action) {
+				if ($this->campaigns_repository->set_active($campaign_id, 1)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_resumed', __('resumed', 'ai-post-scheduler'));
+				}
+			} elseif ('archive' === $detail_action) {
+				if ($this->campaigns_repository->archive_campaign($campaign_id)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_archived', __('archived', 'ai-post-scheduler'));
+				}
+			} elseif ('restore' === $detail_action) {
+				if ($this->campaigns_repository->restore_campaign($campaign_id)) {
+					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_restored', __('restored', 'ai-post-scheduler'));
+				}
+			}
+
+			wp_safe_redirect(add_query_arg(array(
+				'page' => self::DETAIL_PAGE_SLUG,
+				'campaign_id' => $campaign_id,
+				'updated' => 1,
+			), admin_url('admin.php')));
+			exit;
+		}
+
+		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
+		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-detail.php';
+	}
+
+	/**
+	 * Record campaign lifecycle activity in history.
+	 *
+	 * @param int    $campaign_id Campaign ID.
+	 * @param string $event_type  Event type key.
+	 * @param string $action_label Localized action label.
+	 * @return void
+	 */
+	private function record_campaign_lifecycle_activity($campaign_id, $event_type, $action_label) {
+		$history_service = new AIPS_History_Service();
+		$history = $history_service->create('campaign_lifecycle', array(
+			'campaign_id'     => absint($campaign_id),
+			'creation_method' => 'campaign_lifecycle',
+			'user_id'         => get_current_user_id(),
+			'source'          => 'manual_ui',
+		));
+
+		if (!$history) {
+			return;
+		}
+
+		$user = wp_get_current_user();
+		$user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
+
+		$history->record(
+			'activity',
+			sprintf(
+				/* translators: 1: action label, 2: user login */
+				__('Campaign %1$s by %2$s', 'ai-post-scheduler'),
+				$action_label,
+				$user_label
+			),
+			array(
+				'event_type' => $event_type,
+				'event_status' => 'success',
+			),
+			null,
+			array(
+				'campaign_id' => absint($campaign_id),
+				'user_id'     => ($user ? (int) $user->ID : 0),
+				'action'      => sanitize_key($event_type),
+			)
+		);
+
+		$history->complete_success();
 	}
 
 	/**
@@ -490,8 +609,8 @@ class AIPS_Campaigns_Controller {
 			"- campaign_name (string)\n" .
 			"- content_goal (string)\n" .
 			"- post_type (string)\n" .
-			"- prompt_template (string)\n" .
-			"- title_prompt (string)\n" .
+			"- prompt_template (string; use {{topic}} — lowercase, double curly braces — as the sole placeholder for the article subject; never use [TOPIC] or any other format)\n" .
+			"- title_prompt (string; must instruct the AI to generate exactly 1 title (never more); do NOT use {{topic}} here because {{topic}} maps to the final title in this system; this prompt must be self-contained and not rely on template variables; example: 'Generate exactly one concise, SEO-friendly article title aligned with the campaign goal and audience.')\n" .
 			"- author_persona (string)\n" .
 			"- campaign_mode (string: template|author)\n" .
 			"- review_policy (string: draft|approval|auto_publish)\n" .
@@ -520,13 +639,8 @@ class AIPS_Campaigns_Controller {
 			: __('Guided AI Setup Campaign', 'ai-post-scheduler');
 
 		$fallback_prompt_template = sprintf(
-			/* translators: %s topic or niche */
-			__('Write a high-quality article about %s with clear headings and practical examples.', 'ai-post-scheduler'),
-			!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('the selected topic', 'ai-post-scheduler')
-		);
-		$fallback_prompt_template .= ' ' . sprintf(
 			/* translators: %s campaign output style label */
-			__('Use a %s format.', 'ai-post-scheduler'),
+			__('Write a high-quality article about {{topic}} with clear headings and practical examples. Use a %s format.', 'ai-post-scheduler'),
 			$this->get_output_style_label($intake['output_style'] ?? 'how_to_guide')
 		);
 
@@ -538,8 +652,8 @@ class AIPS_Campaigns_Controller {
 			'post_type' => isset($response['post_type']) ? sanitize_key($response['post_type']) : $intake['post_type'],
 			'template_mode' => 'custom',
 			'template_id' => 0,
-			'prompt_template' => isset($response['prompt_template']) ? wp_kses_post($response['prompt_template']) : $fallback_prompt_template,
-			'title_prompt' => isset($response['title_prompt']) ? sanitize_text_field($response['title_prompt']) : __('Create a concise SEO-friendly title.', 'ai-post-scheduler'),
+			'prompt_template' => $this->normalise_topic_placeholder(isset($response['prompt_template']) ? wp_kses_post($response['prompt_template']) : $fallback_prompt_template),
+			'title_prompt' => $this->normalise_topic_placeholder(isset($response['title_prompt']) ? sanitize_text_field($response['title_prompt']) : __('Create a concise, SEO-friendly title for an article about {{topic}}.', 'ai-post-scheduler')),
 			'campaign_mode' => isset($response['campaign_mode']) ? sanitize_key($response['campaign_mode']) : 'template',
 			'review_policy' => isset($response['review_policy']) ? sanitize_key($response['review_policy']) : 'draft',
 			'frequency' => isset($response['frequency']) ? sanitize_key($response['frequency']) : $intake['frequency'],
@@ -626,6 +740,19 @@ class AIPS_Campaigns_Controller {
 		$value = array_values(array_filter($value));
 
 		return array_slice($value, 0, 5);
+	}
+
+	/**
+	 * Normalize topic placeholder to {{topic}} regardless of what the AI returned.
+	 *
+	 * Converts common variants ([TOPIC], [topic], {{topic}}, {{TOPIC}}, {TOPIC})
+	 * to the canonical lowercase double-curly-brace form used by the template processor.
+	 *
+	 * @param string $text Raw text from AI response or fallback.
+	 * @return string
+	 */
+	private function normalise_topic_placeholder($text) {
+		return preg_replace('/\[TOPIC\]|\[topic\]|\{\{TOPIC\}\}|\{\{topic\}\}|\{TOPIC\}/i', '{{topic}}', (string) $text);
 	}
 
 	/**
