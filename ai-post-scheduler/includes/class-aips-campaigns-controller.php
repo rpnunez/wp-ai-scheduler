@@ -554,8 +554,8 @@ class AIPS_Campaigns_Controller {
 			"- campaign_name (string)\n" .
 			"- content_goal (string)\n" .
 			"- post_type (string)\n" .
-			"- prompt_template (string)\n" .
-			"- title_prompt (string)\n" .
+			"- prompt_template (string; use {topic} — lowercase, curly braces — as the sole placeholder for the article subject; never use [TOPIC] or any other format)\n" .
+			"- title_prompt (string; must instruct the AI to generate exactly 1 title (never more); use {topic} as the placeholder for the subject; example: 'Create a concise, SEO-friendly title for an article about {topic}.')\n" .
 			"- author_persona (string)\n" .
 			"- campaign_mode (string: template|author)\n" .
 			"- review_policy (string: draft|approval|auto_publish)\n" .
@@ -584,13 +584,8 @@ class AIPS_Campaigns_Controller {
 			: __('Guided AI Setup Campaign', 'ai-post-scheduler');
 
 		$fallback_prompt_template = sprintf(
-			/* translators: %s topic or niche */
-			__('Write a high-quality article about %s with clear headings and practical examples.', 'ai-post-scheduler'),
-			!empty($intake['topic_niche']) ? $intake['topic_niche'] : __('the selected topic', 'ai-post-scheduler')
-		);
-		$fallback_prompt_template .= ' ' . sprintf(
 			/* translators: %s campaign output style label */
-			__('Use a %s format.', 'ai-post-scheduler'),
+			__('Write a high-quality article about {topic} with clear headings and practical examples. Use a %s format.', 'ai-post-scheduler'),
 			$this->get_output_style_label($intake['output_style'] ?? 'how_to_guide')
 		);
 
@@ -602,8 +597,8 @@ class AIPS_Campaigns_Controller {
 			'post_type' => isset($response['post_type']) ? sanitize_key($response['post_type']) : $intake['post_type'],
 			'template_mode' => 'custom',
 			'template_id' => 0,
-			'prompt_template' => isset($response['prompt_template']) ? wp_kses_post($response['prompt_template']) : $fallback_prompt_template,
-			'title_prompt' => isset($response['title_prompt']) ? sanitize_text_field($response['title_prompt']) : __('Create a concise SEO-friendly title.', 'ai-post-scheduler'),
+			'prompt_template' => $this->normalise_topic_placeholder(isset($response['prompt_template']) ? wp_kses_post($response['prompt_template']) : $fallback_prompt_template),
+			'title_prompt' => $this->normalise_topic_placeholder(isset($response['title_prompt']) ? sanitize_text_field($response['title_prompt']) : __('Create a concise, SEO-friendly title for an article about {topic}.', 'ai-post-scheduler')),
 			'campaign_mode' => isset($response['campaign_mode']) ? sanitize_key($response['campaign_mode']) : 'template',
 			'review_policy' => isset($response['review_policy']) ? sanitize_key($response['review_policy']) : 'draft',
 			'frequency' => isset($response['frequency']) ? sanitize_key($response['frequency']) : $intake['frequency'],
@@ -690,6 +685,19 @@ class AIPS_Campaigns_Controller {
 		$value = array_values(array_filter($value));
 
 		return array_slice($value, 0, 5);
+	}
+
+	/**
+	 * Normalize topic placeholder to {topic} regardless of what the AI returned.
+	 *
+	 * Converts common variants ([TOPIC], [topic], {{topic}}, {{TOPIC}}, {TOPIC})
+	 * to the canonical lowercase curly-brace form used by the template processor.
+	 *
+	 * @param string $text Raw text from AI response or fallback.
+	 * @return string
+	 */
+	private function normalise_topic_placeholder($text) {
+		return preg_replace('/\[TOPIC\]|\[topic\]|\{\{TOPIC\}\}|\{\{topic\}\}|\{TOPIC\}/i', '{topic}', (string) $text);
 	}
 
 	/**
