@@ -236,6 +236,11 @@
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
+
+			// Show form and hide loader
+			$('#aips-author-modal-loader').hide();
+			$('#aips-author-form').show();
+
 			// Reset source group fields.
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
@@ -267,8 +272,10 @@
 			const authorId = $(e.currentTarget).data('id');
 			this.currentAuthorId = authorId;
 
-			// Show loading
+			// Show loading state
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.loading);
+			$('#aips-author-form').hide();
+			$('#aips-author-modal-loader').show();
 			$('#aips-author-modal').fadeIn();
 
 			// Load author data
@@ -284,6 +291,8 @@
 					if (response.success && response.data.author) {
 						const author = response.data.author;
 
+						$('#aips-author-modal-loader').hide();
+						$('#aips-author-form').show();
 						$('#aips-author-modal-title').text(aipsAuthorsL10n.editAuthor);
 						$('#author_id').val(author.id);
 						$('#author_name').val(author.name);
