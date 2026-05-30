@@ -280,7 +280,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics') {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -299,6 +299,9 @@ class AIPS_Admin_Menu {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'aips-authors';
+        }
+        if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
+            return 'aips-campaigns';
         }
         return $submenu_file;
     }
