@@ -269,3 +269,9 @@ Target Feature: Template Wizard, Schedule UI, Voice UI
 Improvement: Replaced hard `location.reload()` calls with dynamic AJAX content panel refreshing to preserve UI context.
 Files Modified: ai-post-scheduler/assets/js/admin.js
 Outcome: Faster, smoother transitions between states without losing scroll position or tab context.
+
+## 2026-05-11 - Onboarding Wizard Optimization
+**Target Feature:** Onboarding Wizard
+**Improvement:** Optimized the Onboarding Wizard flow by replacing hard `window.location.reload()` calls with dynamic AJAX content panel refreshing (`AIPS.refreshContentPanel`) after form submissions (saving strategy, creating author, creating template, generating topics, generating post, and resetting).
+**Files Modified:** `ai-post-scheduler/assets/js/onboarding.js`
+**Outcome:** Enhances the user experience by providing faster, smoother transitions between wizard steps without jarring full-page reloads or losing scroll context.
