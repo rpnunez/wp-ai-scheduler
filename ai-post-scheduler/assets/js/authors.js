@@ -292,6 +292,9 @@
 					if (response.success && response.data.author) {
 						const author = response.data.author;
 
+						if (this.currentAuthorId !== author.id || !$('#aips-author-modal').is(':visible')) {
+							return;
+						}
 						$('#aips-author-modal-loader').hide();
 						$('#aips-author-form').show();
 						$('#aips-author-modal-title').text(aipsAuthorsL10n.editAuthor);
