@@ -6,7 +6,7 @@
  * extracted from AIPS_History_Repository to mitigate God Object anti-pattern.
  *
  * @package AI_Post_Scheduler
- * @since 2.4.0
+ * @since 2.8.3
  */
 
 if (!defined('ABSPATH')) {

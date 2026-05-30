@@ -150,28 +150,28 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_daily_success_failure_trend($days = 14) {
         return $this->get_stats_repository()->get_daily_success_failure_trend($days);
     }
 
     /**
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_average_duration_by_flow($days = 14) {
         return $this->get_stats_repository()->get_average_duration_by_flow($days);
     }
 
     /**
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_retry_counts_by_service($days = 14) {
         return $this->get_stats_repository()->get_retry_counts_by_service($days);
     }
 
     /**
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_top_failure_reasons($days = 14, $limit = 8) {
         return $this->get_stats_repository()->get_top_failure_reasons($days, $limit);
@@ -665,7 +665,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get the estimated generation time based on recent successful generations.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * Retrieves the average of the most recent recorded generation times
      * from post metadata to provide an estimate for bulk generation tasks.
@@ -681,7 +681,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      */
     public function get_stats() {
         return $this->get_stats_repository()->get_stats();
@@ -690,7 +690,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get per-day generation counts for the last N days.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * Returns an array keyed by ISO date string (Y-m-d) where each value is an
      * associative array with 'completed', 'failed', and 'total' counts.
@@ -709,7 +709,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get statistics for a specific template.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * @param int $template_id Template ID.
      * @return int Number of completed posts for this template.
@@ -721,7 +721,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get statistics for all templates.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * @return array Associative array of template ID => count.
      */
@@ -732,7 +732,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get generated-post counts for schedule history containers.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * Counts activity/error logs that represent a generated post event.
      * The key is history_id (schedule_history_id on schedules table).
@@ -747,7 +747,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Get author schedule logs filtered by event types.
      *
-     * @deprecated 2.4.0 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
+     * @deprecated 2.8.3 This is a legacy proxy for backward compatibility. Use AIPS_History_Stats_Repository instead.
      *
      * @param int   $author_id Author ID.
      * @param array $event_types Event types to include.
