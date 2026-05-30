@@ -66,8 +66,10 @@ $generated_posts_url = add_query_arg(array('page' => 'aips-generated-posts', 'ca
 					<?php wp_nonce_field('aips_campaign_detail_save_' . absint($campaign->id), 'aips_campaign_detail_nonce'); ?>
 					<?php if ((int) $campaign->is_archived === 1) : ?>
 						<button type="submit" class="aips-btn aips-btn-secondary" name="detail_action" value="restore"><?php esc_html_e('Restore Campaign', 'ai-post-scheduler'); ?></button>
-					<?php else : ?>
+				<?php elseif ((int) $campaign->is_active === 1) : ?>
 						<button type="submit" class="aips-btn aips-btn-secondary" name="detail_action" value="pause"><?php esc_html_e('Pause Campaign', 'ai-post-scheduler'); ?></button>
+						<button type="submit" class="aips-btn aips-btn-danger" name="detail_action" value="archive"><?php esc_html_e('Archive Campaign', 'ai-post-scheduler'); ?></button>
+					<?php else : ?>
 						<button type="submit" class="aips-btn aips-btn-secondary" name="detail_action" value="resume"><?php esc_html_e('Resume Campaign', 'ai-post-scheduler'); ?></button>
 						<button type="submit" class="aips-btn aips-btn-danger" name="detail_action" value="archive"><?php esc_html_e('Archive Campaign', 'ai-post-scheduler'); ?></button>
 					<?php endif; ?>
