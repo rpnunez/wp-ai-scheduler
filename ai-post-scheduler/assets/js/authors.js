@@ -238,6 +238,7 @@
 			$('#author_id').val('');
 
 			// Show form and hide loader
+			this.currentAuthorId = null;
 			$('#aips-author-modal-loader').hide();
 			$('#aips-author-form').show();
 
