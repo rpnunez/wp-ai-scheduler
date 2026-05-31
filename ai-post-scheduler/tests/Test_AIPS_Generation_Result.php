@@ -626,6 +626,7 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 
 		$this->assertNull( $entry->post_category );
 		$this->assertNull( $entry->post_author );
+		$this->assertNull( $entry->campaign_id );
 	}
 
 	/**
@@ -643,6 +644,7 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 			'post_category'                    => '5',
 			'post_tags'                        => 'ai,tech',
 			'post_author'                      => '3',
+			'campaign_id'                      => '12',
 			'include_sources'                  => '1',
 			'source_group_ids'                 => '[1,2]',
 		) );
@@ -660,6 +662,7 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 		$this->assertSame( 5, $entry->post_category );
 		$this->assertSame( 'ai,tech', $entry->post_tags );
 		$this->assertSame( 3, $entry->post_author );
+		$this->assertSame( 12, $entry->campaign_id );
 		$this->assertSame( 10, $entry->post_quantity );
 		$this->assertSame( 4, $entry->article_structure_id );
 		$this->assertTrue( $entry->include_sources );

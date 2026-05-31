@@ -57,6 +57,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
 		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
 		add_action('wp_ajax_aips_status_retry_failed_slices', array($this, 'ajax_retry_failed_slices'));
+		add_action('wp_ajax_aips_status_repair_campaign_data', array($this, 'ajax_repair_campaign_data'));
 		add_action('wp_ajax_aips_status_clear_partial_generations', array($this, 'ajax_clear_partial_generations'));
 		add_action('wp_ajax_aips_status_cleanup_stale_jobs_cache', array($this, 'ajax_cleanup_stale_jobs_cache'));
 		add_action('wp_ajax_aips_rebuild_caches', array($this, 'ajax_rebuild_caches'));
@@ -125,6 +126,21 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success(array('message' => sprintf(__('Scheduled %d failed slice retry hooks.', 'ai-post-scheduler'), $scheduled)));
 	}
 
+	public function ajax_repair_campaign_data() {
+		if ( ! check_ajax_referer('aips_status_repair_campaign_data', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$this->history_repository->repair_missing_campaign_ids();
+
+		AIPS_Ajax_Response::success(array(
+			'message' => __('Campaign data repair completed. Refresh Campaigns or Content if you want to verify repaired counts and filters immediately.', 'ai-post-scheduler'),
+		));
+	}
+
 	public function ajax_clear_partial_generations() {
 		if ( ! check_ajax_referer('aips_status_clear_partial_generations', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -185,7 +201,8 @@ class AIPS_System_Status_Controller {
 		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
 		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
 
-		AIPS_Logger::instance()->info('Cache rebuild requested from admin tool.', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+		
 		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
 			'subsystem' => $subsystem,

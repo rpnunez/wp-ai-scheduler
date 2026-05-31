@@ -38,6 +38,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->reset_singleton(AIPS_Campaigns_Repository::class);
 		$this->reset_singleton(AIPS_Template_Repository::class);
 		$this->reset_singleton(AIPS_Schedule_Repository::class);
+		$this->reset_singleton(AIPS_History_Repository::class);
 
 		global $wpdb;
 		$this->original_wpdb = $wpdb;
@@ -69,6 +70,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->reset_singleton(AIPS_Campaigns_Repository::class);
 		$this->reset_singleton(AIPS_Template_Repository::class);
 		$this->reset_singleton(AIPS_Schedule_Repository::class);
+		$this->reset_singleton(AIPS_History_Repository::class);
 
 		parent::tearDown();
 	}

@@ -98,21 +98,6 @@ $activity_summary = static function($details) {
 		</div>
 
 		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Warnings', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<?php if (empty($campaign_warnings)) : ?>
-					<p class="aips-muted"><?php esc_html_e('No campaign warnings detected.', 'ai-post-scheduler'); ?></p>
-				<?php else : ?>
-					<ul class="aips-warning-list">
-						<?php foreach ($campaign_warnings as $warning) : ?>
-							<li class="notice notice-warning inline"><p><?php echo esc_html($warning['message']); ?></p></li>
-						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-			</div>
-		</div>
-
-		<div class="aips-content-panel">
 			<div class="aips-filter-bar"><strong><?php esc_html_e('Quick Actions', 'ai-post-scheduler'); ?></strong></div>
 			<div class="aips-panel-body">
 				<div class="aips-page-actions">
@@ -127,36 +112,6 @@ $activity_summary = static function($details) {
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url($schedule_url); ?>"><?php esc_html_e('View Schedule', 'ai-post-scheduler'); ?></a>
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url($generated_posts_url); ?>"><?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?></a>
 				</div>
-			</div>
-		</div>
-
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<?php if (empty($recent_activity)) : ?>
-					<p class="aips-muted"><?php esc_html_e('No campaign activity has been recorded yet.', 'ai-post-scheduler'); ?></p>
-				<?php else : ?>
-					<table class="widefat striped">
-						<thead>
-							<tr>
-								<th><?php esc_html_e('When', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Details', 'ai-post-scheduler'); ?></th>
-							</tr>
-						</thead>
-						<tbody>
-							<?php foreach ($recent_activity as $activity) : ?>
-								<tr>
-									<td><?php echo esc_html($format_campaign_datetime($activity->activity_timestamp, __('Unknown', 'ai-post-scheduler'))); ?></td>
-									<td><?php echo 'history_log' === $activity->activity_source ? esc_html__('History Log', 'ai-post-scheduler') : esc_html__('History', 'ai-post-scheduler'); ?></td>
-									<td><code><?php echo esc_html($activity->activity_type); ?></code></td>
-									<td><?php echo esc_html($activity_summary($activity->activity_details)); ?></td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
-				<?php endif; ?>
 			</div>
 		</div>
 
@@ -201,6 +156,19 @@ $activity_summary = static function($details) {
 			</div>
 		</div>
 
+		<?php if (!empty($campaign_warnings)) : ?>
+			<div class="aips-content-panel">
+				<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Warnings', 'ai-post-scheduler'); ?></strong></div>
+				<div class="aips-panel-body">
+					<ul class="aips-warning-list">
+						<?php foreach ($campaign_warnings as $warning) : ?>
+							<li class="notice notice-warning inline"><p><?php echo esc_html($warning['message']); ?></p></li>
+						<?php endforeach; ?>
+					</ul>
+				</div>
+			</div>
+		<?php endif; ?>
+
 		<div class="aips-content-panel">
 			<div class="aips-filter-bar"><strong><?php esc_html_e('Settings', 'ai-post-scheduler'); ?></strong></div>
 			<div class="aips-panel-body">
@@ -230,6 +198,36 @@ $activity_summary = static function($details) {
 							<li><a href="<?php echo esc_url(add_query_arg(array('page' => 'aips-templates', 'edit' => absint($template->id)), admin_url('admin.php'))); ?>"><?php echo esc_html($template->name); ?></a></li>
 						<?php endforeach; ?>
 					</ul>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<div class="aips-content-panel">
+			<div class="aips-filter-bar"><strong><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></strong></div>
+			<div class="aips-panel-body">
+				<?php if (empty($recent_activity)) : ?>
+					<p class="aips-muted"><?php esc_html_e('No campaign activity has been recorded yet.', 'ai-post-scheduler'); ?></p>
+				<?php else : ?>
+					<table class="widefat striped">
+						<thead>
+							<tr>
+								<th><?php esc_html_e('When', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Details', 'ai-post-scheduler'); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ($recent_activity as $activity) : ?>
+								<tr>
+									<td><?php echo esc_html($format_campaign_datetime($activity->activity_timestamp, __('Unknown', 'ai-post-scheduler'))); ?></td>
+									<td><?php echo 'history_log' === $activity->activity_source ? esc_html__('History Log', 'ai-post-scheduler') : esc_html__('History', 'ai-post-scheduler'); ?></td>
+									<td><code><?php echo esc_html($activity->activity_type); ?></code></td>
+									<td><?php echo esc_html($activity_summary($activity->activity_details)); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
 				<?php endif; ?>
 			</div>
 		</div>
