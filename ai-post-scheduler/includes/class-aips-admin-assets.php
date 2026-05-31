@@ -107,7 +107,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-        if (self::PAGE_CAMPAIGNS === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)) {
+        if (
+            self::PAGE_CAMPAIGNS === $page
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_campaigns_assets();
 		}
 
@@ -1278,6 +1283,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the campaigns page.
      */
     private function enqueue_campaigns_assets() {
+            wp_enqueue_style(
+                'aips-campaigns-style',
+                AIPS_PLUGIN_URL . 'assets/css/campaigns.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',

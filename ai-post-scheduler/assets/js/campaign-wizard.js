@@ -238,6 +238,23 @@
 			$(document).on('click', '#aips-ai-preview-regenerate', AIPS.CampaignWizard.onRegenerateAiPreview);
 			$(document).on('click', '#aips-ai-preview-edit', AIPS.CampaignWizard.onEditAiIntake);
 			$(document).on('click', '#aips-ai-preview-selective', AIPS.CampaignWizard.onApplyAiSelective);
+			$(document).on('change', 'input[name="review_policy"]', AIPS.CampaignWizard.onReviewPolicyChange);
+		},
+
+		/**
+		 * Keep Review Policy radios in sync when selection changes.
+		 *
+		 * @param {Event} e Change event.
+		 * @return {void}
+		 */
+		onReviewPolicyChange: function(e) {
+			var $radio = $(e.target);
+			if (!$radio.length || !$radio.val()) {
+				return;
+			}
+
+			$('[name="review_policy"]').prop('checked', false);
+			$radio.prop('checked', true);
 		},
 
 		/**
