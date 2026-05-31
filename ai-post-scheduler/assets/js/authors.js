@@ -292,7 +292,7 @@
 					if (response.success && response.data.author) {
 						const author = response.data.author;
 
-						if (this.currentAuthorId !== author.id || !$('#aips-author-modal').is(':visible')) {
+						if (String(this.currentAuthorId) !== String(author.id) || !$('#aips-author-modal').is(':visible')) {
 							return;
 						}
 						$('#aips-author-modal-loader').hide();
