@@ -706,8 +706,8 @@
 			};
 
 			topics.forEach(topic => {
-				var rawReviewedAt = topic.reviewed_at || '';
-				var formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
+				const rawReviewedAt = topic.reviewed_at || '';
+				const formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
 
 				let detailContentHtml = '';
 				if (topic.topic_description) {
@@ -796,22 +796,18 @@
 				}
 
 				let secondaryDateCellHtml = '';
-				let secondaryDateLabel = '';
 				let secondaryDateValue = '';
 
 				if (status === 'approved') {
-					secondaryDateLabel = aipsAuthorsL10n.dateApproved || 'Date Approved';
 					secondaryDateValue = topic.reviewed_at || '';
 				} else if (status === 'rejected') {
-					secondaryDateLabel = aipsAuthorsL10n.dateRejected || 'Date Rejected';
 					secondaryDateValue = topic.reviewed_at || '';
 				} else if (status === 'posts_generated') {
-					secondaryDateLabel = aipsAuthorsL10n.datePostGenerated || 'Date Post Generated';
 					secondaryDateValue = topic.post_generated_at || '';
 				}
 
-				if (secondaryDateLabel) {
-					var formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
+				if (secondaryDateHeaderHtml) {
+					const formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
 					secondaryDateCellHtml = '<td class="column-date"><div class="cell-meta">' + AIPS.Utilities.escapeHtml(formattedSecondaryDate) + '</div></td>';
 				}
 
@@ -841,8 +837,8 @@
 					});
 				}
 
-				var rawGeneratedAt = topic.generated_at || '';
-				var formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
+				const rawGeneratedAt = topic.generated_at || '';
+				const formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
 
 				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
 					id: topic.id,
