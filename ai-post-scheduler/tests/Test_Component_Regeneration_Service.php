@@ -148,9 +148,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id' => 1,
 			'name' => 'Test Template',
 			'system_prompt' => 'You are a helpful assistant.',
-			'user_prompt' => 'Write a title about: {topic}',
+			'user_prompt' => 'Write a title about: {{topic}}',
 			'title_prompt' => 'Generate a title',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
@@ -186,9 +186,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id' => 1,
 			'name' => 'Test Template',
 			'system_prompt' => 'You are a helpful assistant.',
-			'user_prompt' => 'Write about: {topic}',
+			'user_prompt' => 'Write about: {{topic}}',
 			'excerpt_prompt' => 'Generate an excerpt',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
@@ -223,9 +223,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id' => 1,
 			'name' => 'Test Template',
 			'system_prompt' => 'You are a helpful assistant.',
-			'user_prompt' => 'Write about: {topic}',
+			'user_prompt' => 'Write about: {{topic}}',
 			'content_prompt' => 'Generate content',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
@@ -259,7 +259,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$template = (object) array(
 			'id' => 1,
 			'name' => 'Test Template',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		
 		$generation_context = new AIPS_Template_Context($template);
@@ -286,9 +286,9 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id' => 1,
 			'name' => 'Test Template',
 			'system_prompt' => 'You are a helpful assistant.',
-			'user_prompt' => 'Write about: {topic}',
+			'user_prompt' => 'Write about: {{topic}}',
 			'image_prompt' => 'Generate an image',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
@@ -378,8 +378,8 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id' => 1,
 			'name' => 'Test Template',
 			'system_prompt' => 'You are a helpful assistant.',
-			'user_prompt' => 'Write about: {topic}',
-			'prompt_template' => 'Write about {topic}',
+			'user_prompt' => 'Write about: {{topic}}',
+			'prompt_template' => 'Write about {{topic}}',
 			'article_structure_id' => 1,
 		);
 		
@@ -454,7 +454,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$template = (object) array(
 			'id'              => 1,
 			'name'            => 'T',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
 
@@ -483,7 +483,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$template = (object) array(
 			'id'              => 1,
 			'name'            => 'T',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
 
@@ -507,7 +507,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$template = (object) array(
 			'id'              => 1,
 			'name'            => 'T',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 		);
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
 
@@ -540,7 +540,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'generate_featured_image' => 1,
 			'featured_image_source'   => 'ai_prompt',
 			'image_prompt'            => 'An illustration of the post topic.',
-			'prompt_template'         => 'Write about {topic}',
+			'prompt_template'         => 'Write about {{topic}}',
 		);
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
 
