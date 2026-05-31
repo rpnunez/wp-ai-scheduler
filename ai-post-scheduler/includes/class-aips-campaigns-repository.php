@@ -94,7 +94,7 @@ class AIPS_Campaigns_Repository {
 	/**
 	 * Constructor.
 	 */
-	public function __construct() {
+	public function __construct($template_repository = null, $schedule_repository = null) {
 		global $wpdb;
 
 		$this->wpdb = $wpdb;
@@ -103,8 +103,8 @@ class AIPS_Campaigns_Repository {
 		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
 		$this->history_table = $wpdb->prefix . 'aips_history';
 		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
-		$this->template_repository = AIPS_Template_Repository::instance();
-		$this->schedule_repository = AIPS_Schedule_Repository::instance();
+		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
+		$this->schedule_repository = $schedule_repository ?: AIPS_Schedule_Repository::instance();
 		$this->cache = null;
 		$this->cache_initialized = false;
 	}
@@ -406,147 +406,165 @@ class AIPS_Campaigns_Repository {
 	 * Create and finalize a new campaign with owned child records.
 	 *
 	 * @param array $payload Wizard payload.
-	 * @return array{campaign_id:int,template_id:int,schedule_id:int}
+	 * @return array{campaign_id:int,template_id:int,schedule_id:int}|WP_Error
 	 */
 	public function create_campaign_bundle($payload) {
 		$started_transaction = $this->start_transaction();
+		$campaign_id = $this->create_campaign(array(
+			'name'          => $payload['campaign_name'],
+			'content_goal'  => $payload['content_goal'],
+			'campaign_mode' => $payload['campaign_mode'],
+			'is_active'     => $payload['is_active'],
+			'is_archived'   => 0,
+		));
 
-		try {
-			$campaign_id = $this->create_campaign(array(
-				'name'          => $payload['campaign_name'],
-				'content_goal'  => $payload['content_goal'],
-				'campaign_mode' => $payload['campaign_mode'],
-				'is_active'     => $payload['is_active'],
-				'is_archived'   => 0,
-			));
-
-			if (!$campaign_id) {
-				throw new RuntimeException(__('Campaign could not be saved.', 'ai-post-scheduler'));
-			}
-
-			$template_id = $this->create_campaign_template($campaign_id, $payload);
-			if (!$template_id) {
-				throw new RuntimeException(__('Template could not be saved.', 'ai-post-scheduler'));
-			}
-
-			$scheduler = new AIPS_Scheduler();
-			$schedule_id = $scheduler->save_schedule(array(
-				'template_id'           => $template_id,
-				'campaign_id'           => $campaign_id,
-				'title'                 => $payload['campaign_name'],
-				'frequency'             => $payload['frequency'],
-				'start_time'            => $payload['start_time'],
-				'is_active'             => $payload['is_active'],
-				'topic'                 => $payload['content_goal'],
-				'article_structure_id'  => $payload['article_structure_id'],
-				'rotation_pattern'      => $payload['rotation_pattern'],
-				'author_id'             => $payload['author_id'],
-				'campaign_mode'         => $payload['campaign_mode'],
-				'post_type_rules'       => $payload['post_type_rules'],
-				'blackout_dates'        => $payload['blackout_dates'],
-				'time_window_start'     => $payload['time_window_start'],
-				'time_window_end'       => $payload['time_window_end'],
-				'day_preferences'       => $payload['day_preferences'],
-				'season_end_date'       => $payload['season_end_date'],
-			));
-
-			if (!$schedule_id) {
-				throw new RuntimeException(__('Schedule could not be created.', 'ai-post-scheduler'));
-			}
-
-			if ($started_transaction) {
-				$this->wpdb->query('COMMIT');
-			}
-
-			$this->flush_campaign_cache($campaign_id);
-
-			return array(
-				'campaign_id' => (int) $campaign_id,
-				'template_id' => (int) $template_id,
-				'schedule_id' => (int) $schedule_id,
+		if (!$campaign_id) {
+			return $this->rollback_with_error(
+				$started_transaction,
+				$this->build_campaign_error('campaign_create_failed', __('Campaign could not be saved.', 'ai-post-scheduler'))
 			);
-		} catch (Throwable $e) {
-			if ($started_transaction) {
-				$this->wpdb->query('ROLLBACK');
-			}
-
-			throw $e;
 		}
+
+		$template_id = $this->create_campaign_template($campaign_id, $payload);
+		if (is_wp_error($template_id)) {
+			return $this->rollback_with_error($started_transaction, $template_id);
+		}
+
+		if (!$template_id) {
+			return $this->rollback_with_error(
+				$started_transaction,
+				$this->build_campaign_error('campaign_template_create_failed', __('Template could not be saved.', 'ai-post-scheduler'))
+			);
+		}
+
+		$scheduler = new AIPS_Scheduler();
+		$schedule_id = $scheduler->save_schedule(array(
+			'template_id'           => $template_id,
+			'campaign_id'           => $campaign_id,
+			'title'                 => $payload['campaign_name'],
+			'frequency'             => $payload['frequency'],
+			'start_time'            => $payload['start_time'],
+			'is_active'             => $payload['is_active'],
+			'topic'                 => $payload['content_goal'],
+			'article_structure_id'  => $payload['article_structure_id'],
+			'rotation_pattern'      => $payload['rotation_pattern'],
+			'author_id'             => $payload['author_id'],
+			'campaign_mode'         => $payload['campaign_mode'],
+			'post_type_rules'       => $payload['post_type_rules'],
+			'blackout_dates'        => $payload['blackout_dates'],
+			'time_window_start'     => $payload['time_window_start'],
+			'time_window_end'       => $payload['time_window_end'],
+			'day_preferences'       => $payload['day_preferences'],
+			'season_end_date'       => $payload['season_end_date'],
+		));
+
+		if (is_wp_error($schedule_id)) {
+			return $this->rollback_with_error($started_transaction, $schedule_id);
+		}
+
+		if (!$schedule_id) {
+			return $this->rollback_with_error(
+				$started_transaction,
+				$this->build_campaign_error('campaign_schedule_create_failed', __('Schedule could not be created.', 'ai-post-scheduler'))
+			);
+		}
+
+		if ($started_transaction) {
+			$this->wpdb->query('COMMIT');
+		}
+
+		$this->flush_campaign_cache($campaign_id);
+
+		return array(
+			'campaign_id' => (int) $campaign_id,
+			'template_id' => (int) $template_id,
+			'schedule_id' => (int) $schedule_id,
+		);
 	}
 
 	/**
 	 * Duplicate a campaign as a new parent with new child rows.
 	 *
 	 * @param int $campaign_id Campaign ID.
-	 * @return int|false
+	 * @return int|WP_Error
 	 */
 	public function duplicate_campaign($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
 		$campaign = $this->get_campaign_by_id($campaign_id);
 		if (!$campaign) {
-			return false;
+			return $this->build_campaign_error('campaign_not_found', __('Campaign not found.', 'ai-post-scheduler'));
 		}
 
 		$templates = $this->get_templates_by_campaign($campaign_id);
 		$schedules = $this->get_schedules_by_campaign($campaign_id);
 		$started_transaction = $this->start_transaction();
 
-		try {
-			$new_campaign_id = $this->create_campaign(array(
-				'name'          => $campaign->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
-				'content_goal'  => $campaign->content_goal,
-				'campaign_mode' => $campaign->campaign_mode,
-				'is_active'     => 0,
-				'is_archived'   => 0,
-			));
+		$new_campaign_id = $this->create_campaign(array(
+			'name'          => $campaign->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
+			'content_goal'  => $campaign->content_goal,
+			'campaign_mode' => $campaign->campaign_mode,
+			'is_active'     => 0,
+			'is_archived'   => 0,
+		));
 
-			if (!$new_campaign_id) {
-				throw new RuntimeException(__('Campaign could not be duplicated.', 'ai-post-scheduler'));
-			}
-
-			$template_map = array();
-			foreach ($templates as $template) {
-				$template_data = get_object_vars($template);
-				unset($template_data['id'], $template_data['created_at'], $template_data['updated_at']);
-				$template_data['name'] = $template->name . ' ' . __('(Copy)', 'ai-post-scheduler');
-				$template_data['campaign_id'] = $new_campaign_id;
-				$new_template_id = $this->template_repository->create($template_data);
-
-				if (!$new_template_id) {
-					throw new RuntimeException(__('Campaign template could not be duplicated.', 'ai-post-scheduler'));
-				}
-
-				$template_map[(int) $template->id] = (int) $new_template_id;
-			}
-
-			foreach ($schedules as $schedule) {
-				$schedule_data = get_object_vars($schedule);
-				unset($schedule_data['id'], $schedule_data['schedule_history_id'], $schedule_data['last_run'], $schedule_data['created_at']);
-				$schedule_data['template_id'] = isset($template_map[(int) $schedule->template_id]) ? $template_map[(int) $schedule->template_id] : (int) $schedule->template_id;
-				$schedule_data['campaign_id'] = $new_campaign_id;
-				$schedule_data['title'] = $schedule->title . ' ' . __('(Copy)', 'ai-post-scheduler');
-				$schedule_data['is_active'] = 0;
-				$schedule_data['next_run'] = AIPS_DateTime::now()->timestamp();
-
-				$new_schedule_id = (new AIPS_Scheduler())->save_schedule($schedule_data);
-				if (!$new_schedule_id) {
-					throw new RuntimeException(__('Campaign schedule could not be duplicated.', 'ai-post-scheduler'));
-				}
-			}
-
-			if ($started_transaction) {
-				$this->wpdb->query('COMMIT');
-			}
-
-			$this->flush_campaign_cache($new_campaign_id);
-
-			return $new_campaign_id;
-		} catch (Throwable $e) {
-			if ($started_transaction) {
-				$this->wpdb->query('ROLLBACK');
-			}
-
-			return false;
+		if (!$new_campaign_id) {
+			return $this->rollback_with_error(
+				$started_transaction,
+				$this->build_campaign_error('campaign_duplicate_failed', __('Campaign could not be duplicated.', 'ai-post-scheduler'))
+			);
 		}
+
+		$template_map = array();
+		foreach ($templates as $template) {
+			$template_data = get_object_vars($template);
+			unset($template_data['id'], $template_data['created_at'], $template_data['updated_at']);
+			$template_data['name'] = $template->name . ' ' . __('(Copy)', 'ai-post-scheduler');
+			$template_data['campaign_id'] = $new_campaign_id;
+			$new_template_id = $this->template_repository->create($template_data);
+
+			if (!$new_template_id) {
+				return $this->rollback_with_error(
+					$started_transaction,
+					$this->build_campaign_error('campaign_template_duplicate_failed', __('Campaign template could not be duplicated.', 'ai-post-scheduler'))
+				);
+			}
+
+			$template_map[(int) $template->id] = (int) $new_template_id;
+		}
+
+		foreach ($schedules as $schedule) {
+			$schedule_data = get_object_vars($schedule);
+			unset($schedule_data['id'], $schedule_data['schedule_history_id'], $schedule_data['last_run'], $schedule_data['created_at']);
+			$schedule_data['template_id'] = isset($template_map[(int) $schedule->template_id]) ? $template_map[(int) $schedule->template_id] : (int) $schedule->template_id;
+			$schedule_data['campaign_id'] = $new_campaign_id;
+			$schedule_data['title'] = $schedule->title . ' ' . __('(Copy)', 'ai-post-scheduler');
+			$schedule_data['is_active'] = 0;
+			$schedule_data['next_run'] = AIPS_DateTime::now()->timestamp();
+
+			$new_schedule_id = (new AIPS_Scheduler())->save_schedule($schedule_data);
+			if (is_wp_error($new_schedule_id)) {
+				return $this->rollback_with_error($started_transaction, $new_schedule_id);
+			}
+
+			if (!$new_schedule_id) {
+				return $this->rollback_with_error(
+					$started_transaction,
+					$this->build_campaign_error('campaign_schedule_duplicate_failed', __('Campaign schedule could not be duplicated.', 'ai-post-scheduler'))
+				);
+			}
+		}
+
+		if ($started_transaction) {
+			$this->wpdb->query('COMMIT');
+		}
+
+		$this->flush_campaign_cache($new_campaign_id);
+
+		return (int) $new_campaign_id;
 	}
 
 	/**
@@ -554,15 +572,27 @@ class AIPS_Campaigns_Repository {
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @param int $is_active Active flag.
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function set_active($campaign_id, $is_active) {
 		$campaign_id = absint($campaign_id);
 		$is_active = $is_active ? 1 : 0;
+		if (!$campaign_id) {
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
+		$campaign = $this->get_campaign_by_id($campaign_id);
+		if (!$campaign) {
+			return $this->build_campaign_error('campaign_not_found', __('Campaign not found.', 'ai-post-scheduler'));
+		}
+
+		if ((int) $campaign->is_active === $is_active && (int) $campaign->is_archived === 0) {
+			return true;
+		}
 
 		$result = $this->update_campaign($campaign_id, array('is_active' => $is_active));
-		if (!$result) {
-			return false;
+		if (is_wp_error($result)) {
+			return $result;
 		}
 
 		$schedules = $this->get_schedules_by_campaign($campaign_id);
@@ -577,12 +607,21 @@ class AIPS_Campaigns_Repository {
 	 * Archive a campaign and pause owned schedules.
 	 *
 	 * @param int $campaign_id Campaign ID.
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function archive_campaign($campaign_id) {
 		$campaign_id = absint($campaign_id);
 		if (!$campaign_id) {
-			return false;
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
+		$campaign = $this->get_campaign_by_id($campaign_id);
+		if (!$campaign) {
+			return $this->build_campaign_error('campaign_not_found', __('Campaign not found.', 'ai-post-scheduler'));
+		}
+
+		if ((int) $campaign->is_archived === 1 && (int) $campaign->is_active === 0) {
+			return true;
 		}
 
 		$result = $this->update_campaign($campaign_id, array(
@@ -590,8 +629,8 @@ class AIPS_Campaigns_Repository {
 			'is_archived' => 1,
 		));
 
-		if (!$result) {
-			return false;
+		if (is_wp_error($result)) {
+			return $result;
 		}
 
 		$schedules = $this->get_schedules_by_campaign($campaign_id);
@@ -606,9 +645,23 @@ class AIPS_Campaigns_Repository {
 	 * Restore archived campaign visibility without reactivating schedules.
 	 *
 	 * @param int $campaign_id Campaign ID.
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function restore_campaign($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
+		$campaign = $this->get_campaign_by_id($campaign_id);
+		if (!$campaign) {
+			return $this->build_campaign_error('campaign_not_found', __('Campaign not found.', 'ai-post-scheduler'));
+		}
+
+		if ((int) $campaign->is_archived === 0 && (int) $campaign->is_active === 0) {
+			return true;
+		}
+
 		return $this->update_campaign($campaign_id, array(
 			'is_archived' => 0,
 			'is_active' => 0,
@@ -619,54 +672,59 @@ class AIPS_Campaigns_Repository {
 	 * Delete a campaign when no generated posts are attached.
 	 *
 	 * @param int $campaign_id Campaign ID.
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function delete_campaign($campaign_id) {
 		$campaign_id = absint($campaign_id);
 
-		if (!$campaign_id || !$this->can_delete_campaign($campaign_id)) {
-			return false;
+		if (!$campaign_id) {
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
+		if (!$this->can_delete_campaign($campaign_id)) {
+			return $this->build_campaign_error('delete_blocked', __('This campaign has generated posts and can only be archived.', 'ai-post-scheduler'));
 		}
 
 		$started_transaction = $this->start_transaction();
 
-		try {
-			foreach ($this->get_schedules_by_campaign($campaign_id) as $schedule) {
-				if (!$this->schedule_repository->delete((int) $schedule->id)) {
-					throw new RuntimeException(__('Failed to delete campaign schedule.', 'ai-post-scheduler'));
-				}
+		foreach ($this->get_schedules_by_campaign($campaign_id) as $schedule) {
+			if (!$this->schedule_repository->delete((int) $schedule->id)) {
+				return $this->rollback_with_error(
+					$started_transaction,
+					$this->build_campaign_error('campaign_schedule_delete_failed', __('Failed to delete campaign schedule.', 'ai-post-scheduler'))
+				);
 			}
-
-			foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
-				if (!$this->template_repository->delete((int) $template->id)) {
-					throw new RuntimeException(__('Failed to delete campaign template.', 'ai-post-scheduler'));
-				}
-			}
-
-			$deleted = $this->wpdb->delete(
-				$this->campaigns_table,
-				array('id' => $campaign_id),
-				array('%d')
-			);
-
-			if ($deleted === false) {
-				throw new RuntimeException(__('Campaign could not be deleted.', 'ai-post-scheduler'));
-			}
-
-			if ($started_transaction) {
-				$this->wpdb->query('COMMIT');
-			}
-
-			$this->flush_campaign_cache($campaign_id);
-
-			return true;
-		} catch (Throwable $e) {
-			if ($started_transaction) {
-				$this->wpdb->query('ROLLBACK');
-			}
-
-			return false;
 		}
+
+		foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
+			if (!$this->template_repository->delete((int) $template->id)) {
+				return $this->rollback_with_error(
+					$started_transaction,
+					$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
+				);
+			}
+		}
+
+		$deleted = $this->wpdb->delete(
+			$this->campaigns_table,
+			array('id' => $campaign_id),
+			array('%d')
+		);
+
+		if ($deleted === false) {
+			return $this->rollback_with_error(
+				$started_transaction,
+				$this->build_campaign_error('campaign_delete_failed', __('Campaign could not be deleted.', 'ai-post-scheduler'))
+			);
+		}
+
+		if ($started_transaction) {
+			$this->wpdb->query('COMMIT');
+		}
+
+		$this->flush_campaign_cache($campaign_id);
+
+		return true;
 	}
 
 	/**
@@ -756,9 +814,14 @@ class AIPS_Campaigns_Repository {
 	 *
 	 * @param int   $campaign_id Campaign ID.
 	 * @param array $data Update data.
-	 * @return bool
+	 * @return bool|WP_Error
 	 */
 	public function update_campaign($campaign_id, $data) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return $this->build_campaign_error('invalid_campaign_id', __('Invalid campaign ID.', 'ai-post-scheduler'));
+		}
+
 		$update_data = array();
 		$format = array();
 
@@ -788,7 +851,7 @@ class AIPS_Campaigns_Repository {
 		}
 
 		if (empty($update_data)) {
-			return false;
+			return true;
 		}
 
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
@@ -797,16 +860,20 @@ class AIPS_Campaigns_Repository {
 		$updated = $this->wpdb->update(
 			$this->campaigns_table,
 			$update_data,
-			array('id' => absint($campaign_id)),
+			array('id' => $campaign_id),
 			$format,
 			array('%d')
-		) !== false;
+		);
 
-		if ($updated) {
+		if ($updated === false) {
+			return $this->build_campaign_error('campaign_update_failed', __('Campaign could not be updated.', 'ai-post-scheduler'));
+		}
+
+		if ($updated !== false) {
 			$this->flush_campaign_cache($campaign_id);
 		}
 
-		return $updated;
+		return true;
 	}
 
 	/**
@@ -840,7 +907,7 @@ class AIPS_Campaigns_Repository {
 	 *
 	 * @param int   $campaign_id Campaign ID.
 	 * @param array $payload Wizard payload.
-	 * @return int|false
+	 * @return int|WP_Error|false
 	 */
 	private function create_campaign_template($campaign_id, $payload) {
 		$template_data = array(
@@ -867,6 +934,38 @@ class AIPS_Campaigns_Repository {
 		}
 
 		return $this->template_repository->create($template_data);
+	}
+
+	/**
+	 * Build a user-safe campaign mutation error.
+	 *
+	 * @param string $code Error code.
+	 * @param string $message Display message.
+	 * @return WP_Error
+	 */
+	private function build_campaign_error($code, $message) {
+		$error = new WP_Error($code, $message);
+
+		if (!empty($this->wpdb->last_error)) {
+			$error->add_data(array('db_error' => $this->wpdb->last_error));
+		}
+
+		return $error;
+	}
+
+	/**
+	 * Roll back transaction when active and return error.
+	 *
+	 * @param bool     $started_transaction Whether transaction started here.
+	 * @param WP_Error $error Error to return.
+	 * @return WP_Error
+	 */
+	private function rollback_with_error($started_transaction, WP_Error $error) {
+		if ($started_transaction) {
+			$this->wpdb->query('ROLLBACK');
+		}
+
+		return $error;
 	}
 
 	/**

@@ -133,6 +133,7 @@ class AIPS_Campaigns_Controller {
 
 		$campaign_id = isset($_GET['campaign_id']) ? absint(wp_unslash($_GET['campaign_id'])) : 0;
 		$campaign = $campaign_id ? $this->campaigns_repository->get_campaign_by_id($campaign_id) : null;
+		$detail_notice = null;
 
 		if (!$campaign) {
 			wp_die(esc_html__('Campaign not found.', 'ai-post-scheduler'));
@@ -144,13 +145,15 @@ class AIPS_Campaigns_Controller {
 			}
 
 			$detail_action = isset($_POST['detail_action']) ? sanitize_key(wp_unslash($_POST['detail_action'])) : 'save';
+			$result = true;
+			$notice_message = __('Campaign updated.', 'ai-post-scheduler');
 
 			if ('save' === $detail_action) {
 				$name = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
 				$content_goal = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
 
 				if ('' !== $name) {
-					$this->campaigns_repository->update_campaign($campaign_id, array(
+					$result = $this->campaigns_repository->update_campaign($campaign_id, array(
 						'name' => $name,
 						'content_goal' => $content_goal,
 					));
@@ -158,29 +161,46 @@ class AIPS_Campaigns_Controller {
 			}
 
 			if ('pause' === $detail_action) {
-				if ($this->campaigns_repository->set_active($campaign_id, 0)) {
+				$notice_message = __('Campaign paused.', 'ai-post-scheduler');
+				$result = $this->campaigns_repository->set_active($campaign_id, 0);
+				if (!is_wp_error($result) && $result) {
 					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_paused', __('paused', 'ai-post-scheduler'));
 				}
 			} elseif ('resume' === $detail_action) {
-				if ($this->campaigns_repository->set_active($campaign_id, 1)) {
+				$notice_message = __('Campaign resumed.', 'ai-post-scheduler');
+				$result = $this->campaigns_repository->set_active($campaign_id, 1);
+				if (!is_wp_error($result) && $result) {
 					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_resumed', __('resumed', 'ai-post-scheduler'));
 				}
 			} elseif ('archive' === $detail_action) {
-				if ($this->campaigns_repository->archive_campaign($campaign_id)) {
+				$notice_message = __('Campaign archived.', 'ai-post-scheduler');
+				$result = $this->campaigns_repository->archive_campaign($campaign_id);
+				if (!is_wp_error($result) && $result) {
 					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_archived', __('archived', 'ai-post-scheduler'));
 				}
 			} elseif ('restore' === $detail_action) {
-				if ($this->campaigns_repository->restore_campaign($campaign_id)) {
+				$notice_message = __('Campaign restored.', 'ai-post-scheduler');
+				$result = $this->campaigns_repository->restore_campaign($campaign_id);
+				if (!is_wp_error($result) && $result) {
 					$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_restored', __('restored', 'ai-post-scheduler'));
 				}
 			}
 
-			wp_safe_redirect(add_query_arg(array(
-				'page' => self::DETAIL_PAGE_SLUG,
-				'campaign_id' => $campaign_id,
-				'updated' => 1,
-			), admin_url('admin.php')));
-			exit;
+			if (is_wp_error($result)) {
+				$detail_notice = array(
+					'type' => 'error',
+					'message' => $result->get_error_message(),
+				);
+			} else {
+				$detail_notice = array(
+					'type' => 'success',
+					'message' => $notice_message,
+				);
+				$campaign = $this->campaigns_repository->get_campaign_by_id($campaign_id);
+				if (!$campaign) {
+					wp_die(esc_html__('Campaign not found.', 'ai-post-scheduler'));
+				}
+			}
 		}
 
 		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
@@ -341,7 +361,12 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('Invalid campaign ID.', 'ai-post-scheduler'), 'invalid_id', 400);
 		}
 
-		if ($this->campaigns_repository->set_active($campaign_id, $is_active)) {
+		$result = $this->campaigns_repository->set_active($campaign_id, $is_active);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), $this->map_campaign_error_status($result));
+		}
+
+		if ($result) {
 			$message = $is_active ? __('Campaign resumed.', 'ai-post-scheduler') : __('Campaign paused.', 'ai-post-scheduler');
 			AIPS_Ajax_Response::success(array('is_active' => $is_active), $message);
 		}
@@ -361,8 +386,8 @@ class AIPS_Campaigns_Controller {
 		}
 
 		$new_campaign_id = $this->campaigns_repository->duplicate_campaign($campaign_id);
-		if (!$new_campaign_id) {
-			AIPS_Ajax_Response::error(__('Failed to duplicate campaign.', 'ai-post-scheduler'), 'duplicate_failed', 500);
+		if (is_wp_error($new_campaign_id)) {
+			AIPS_Ajax_Response::error($new_campaign_id->get_error_message(), $new_campaign_id->get_error_code(), $this->map_campaign_error_status($new_campaign_id));
 		}
 
 		AIPS_Ajax_Response::success(array(
@@ -381,7 +406,12 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('Invalid campaign ID.', 'ai-post-scheduler'), 'invalid_id', 400);
 		}
 
-		if ($this->campaigns_repository->archive_campaign($campaign_id)) {
+		$result = $this->campaigns_repository->archive_campaign($campaign_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), $this->map_campaign_error_status($result));
+		}
+
+		if ($result) {
 			AIPS_Ajax_Response::success(array(), __('Campaign archived successfully.', 'ai-post-scheduler'));
 		}
 
@@ -399,7 +429,12 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('Invalid campaign ID.', 'ai-post-scheduler'), 'invalid_id', 400);
 		}
 
-		if ($this->campaigns_repository->restore_campaign($campaign_id)) {
+		$result = $this->campaigns_repository->restore_campaign($campaign_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), $this->map_campaign_error_status($result));
+		}
+
+		if ($result) {
 			AIPS_Ajax_Response::success(array(), __('Campaign restored successfully.', 'ai-post-scheduler'));
 		}
 
@@ -421,7 +456,12 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('This campaign has generated posts and can only be archived.', 'ai-post-scheduler'), 'delete_blocked', 400);
 		}
 
-		if ($this->campaigns_repository->delete_campaign($campaign_id)) {
+		$result = $this->campaigns_repository->delete_campaign($campaign_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), $this->map_campaign_error_status($result));
+		}
+
+		if ($result) {
 			AIPS_Ajax_Response::success(array(), __('Campaign deleted successfully.', 'ai-post-scheduler'));
 		}
 
@@ -499,10 +539,9 @@ class AIPS_Campaigns_Controller {
 			);
 		}
 
-		try {
-			$result = $this->campaigns_repository->create_campaign_bundle($payload);
-		} catch (Throwable $e) {
-			AIPS_Ajax_Response::error($e->getMessage(), 'finalize_failed', 500);
+		$result = $this->campaigns_repository->create_campaign_bundle($payload);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), $this->map_campaign_error_status($result));
 		}
 
 		delete_option($this->get_draft_option_name());
@@ -572,6 +611,26 @@ class AIPS_Campaigns_Controller {
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
 		}
+	}
+
+	/**
+	 * Map campaign WP_Error codes to HTTP status for AJAX responses.
+	 *
+	 * @param WP_Error $error Error object.
+	 * @return int
+	 */
+	private function map_campaign_error_status($error) {
+		$code = $error->get_error_code();
+
+		if (in_array($code, array('invalid_campaign_id', 'delete_blocked'), true)) {
+			return 400;
+		}
+
+		if ('campaign_not_found' === $code) {
+			return 404;
+		}
+
+		return 500;
 	}
 
 	/**

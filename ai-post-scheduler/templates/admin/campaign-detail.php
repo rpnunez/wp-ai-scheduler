@@ -61,8 +61,8 @@ $activity_summary = static function($details) {
 			</div>
 		</div>
 
-		<?php if (isset($_GET['updated'])) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php esc_html_e('Campaign updated.', 'ai-post-scheduler'); ?></p></div>
+		<?php if (!empty($detail_notice) && !empty($detail_notice['message'])) : ?>
+			<div class="notice notice-<?php echo 'error' === $detail_notice['type'] ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html($detail_notice['message']); ?></p></div>
 		<?php endif; ?>
 
 		<div class="aips-content-panel">
