@@ -330,14 +330,14 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</button>
 	</div>
 	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
-		<a href="#" class="aips-row-action-item aips-approve-topic" data-id="{{id}}">
+		<button type="button" class="aips-row-action-item aips-approve-topic" data-id="{{id}}">
 			<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 			<span>{{approveLabel}}</span>
-		</a>
-		<a href="#" class="aips-row-action-item aips-reject-topic" data-id="{{id}}">
+		</button>
+		<button type="button" class="aips-row-action-item aips-reject-topic" data-id="{{id}}">
 			<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			<span>{{rejectLabel}}</span>
-		</a>
+		</button>
 	</div>
 </div>
 </script>
@@ -351,10 +351,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</button>
 	</div>
 	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
-		<a href="#" class="aips-row-action-item aips-edit-topic" data-id="{{id}}">
+		<button type="button" class="aips-row-action-item aips-edit-topic" data-id="{{id}}">
 			<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 			<span>{{editLabel}}</span>
-		</a>
+		</button>
 	</div>
 </div>
 </script>
@@ -464,5 +464,4 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <script type="text/html" id="aips-tmpl-topic-post-action-publish">
 <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
 </script>
-
 

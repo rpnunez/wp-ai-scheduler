@@ -700,12 +700,12 @@
 				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.datePostGenerated || 'Date Post Generated') + '</th>';
 			}
 
-			topics.forEach(topic => {
-				var dtL10n = {
-					today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
-					yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
-				};
+			const dtL10n = {
+				today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
+				yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
+			};
 
+			topics.forEach(topic => {
 				var rawReviewedAt = topic.reviewed_at || '';
 				var formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
 
@@ -812,7 +812,6 @@
 
 				if (secondaryDateLabel) {
 					var formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
-					secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(secondaryDateLabel) + '</th>';
 					secondaryDateCellHtml = '<td class="column-date"><div class="cell-meta">' + AIPS.Utilities.escapeHtml(formattedSecondaryDate) + '</div></td>';
 				}
 
@@ -1501,14 +1500,17 @@
 			const $row = $btn.closest('tr');
 			const $titleSpan = $row.find('.topic-title');
 			const $titleInput = $row.find('.topic-title-edit');
+			const $rowActions = $row.find('.cell-actions');
 
 			$titleSpan.hide();
 			$titleInput.show().focus();
 
+			this.closeAllRowActionMenus();
 			$btn.hide();
+			$rowActions.hide();
 			$row.find('.topic-actions').append(
-				'<button class="button aips-save-topic">' + aipsAuthorsL10n.save + '</button> ' +
-				'<button class="button aips-cancel-edit-topic">' + aipsAuthorsL10n.cancel + '</button>'
+				'<button type="button" class="button aips-save-topic">' + aipsAuthorsL10n.save + '</button> ' +
+				'<button type="button" class="button aips-cancel-edit-topic">' + aipsAuthorsL10n.cancel + '</button>'
 			);
 		},
 
@@ -1545,6 +1547,7 @@
 					if (response.success) {
 						$row.find('.topic-title').text(newTitle).show();
 						$row.find('.topic-title-edit').hide();
+						$row.find('.cell-actions').show();
 						$row.find('.aips-edit-topic').show();
 						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 					} else {
@@ -1570,6 +1573,7 @@
 			const $row = $(e.currentTarget).closest('tr');
 			$row.find('.topic-title').show();
 			$row.find('.topic-title-edit').hide();
+			$row.find('.cell-actions').show();
 			$row.find('.aips-edit-topic').show();
 			$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 		},
