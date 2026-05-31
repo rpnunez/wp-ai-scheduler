@@ -149,14 +149,11 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 
 	/**
 	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
-	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * produce N schedule entries that are staggered by 10 minutes (600 seconds),
+	 * ensuring they don't all run simultaneously to prevent API spikes,
+	 * while remaining close to the target start_date.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_topics_staggered_by_minutes() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -176,22 +173,24 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$expected_time = strtotime($start_date);
+
+		// All next_run values must be staggered by 10 minutes (600 seconds).
 		foreach ($schedules as $i => $schedule) {
 			$this->assertEquals(
-				$start_date,
+				date('Y-m-d H:i:s', $expected_time),
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, date('Y-m-d H:i:s', $expected_time), $schedule['next_run'])
 			);
+			$expected_time += 600;
 		}
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * Scheduling multiple topics with a recurring frequency (e.g. 'daily') from the
+	 * same start_date must stagger them according to that recurring interval.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_daily_topics_staggered_daily() {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
@@ -210,12 +209,16 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		$calc = new AIPS_Interval_Calculator();
+		$expected_time = strtotime($start_date);
+
 		foreach ($schedules as $i => $schedule) {
 			$this->assertEquals(
-				$start_date,
+				date('Y-m-d H:i:s', $expected_time),
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, date('Y-m-d H:i:s', $expected_time), $schedule['next_run'])
 			);
+			$expected_time = $calc->calculate_next_run('daily', $expected_time);
 		}
 	}
 
