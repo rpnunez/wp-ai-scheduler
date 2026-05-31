@@ -185,8 +185,68 @@ class AIPS_Campaigns_Controller {
 
 		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
 		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
+		$campaign_health = $this->campaigns_repository->get_campaign_health($campaign_id);
+		$recent_activity = $this->campaigns_repository->get_recent_activity($campaign_id, 10);
+		$recent_generated_posts = $this->campaigns_repository->get_recent_generated_posts($campaign_id, 10);
+		$campaign_warnings = $this->build_campaign_warnings($campaign, $campaign_health);
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-detail.php';
+	}
+
+	/**
+	 * Build campaign detail warning messages.
+	 *
+	 * @param object $campaign Campaign row.
+	 * @param array  $campaign_health Health counters.
+	 * @return array
+	 */
+	private function build_campaign_warnings($campaign, $campaign_health) {
+		$warnings = array();
+
+		if (!class_exists('Meow_MWAI_Core')) {
+			$warnings[] = array(
+				'type' => 'missing_ai_engine',
+				'message' => __('AI Engine is not active. Campaign generation will fail until Meow Apps AI Engine is installed and activated.', 'ai-post-scheduler'),
+			);
+		}
+
+		if (!empty($campaign_health['inactive_schedule_count'])) {
+			$warnings[] = array(
+				'type' => 'inactive_schedules',
+				'message' => sprintf(
+					/* translators: %d: inactive schedule count. */
+					_n('%d campaign schedule is inactive.', '%d campaign schedules are inactive.', (int) $campaign_health['inactive_schedule_count'], 'ai-post-scheduler'),
+					(int) $campaign_health['inactive_schedule_count']
+				),
+			);
+		}
+
+		if (!empty($campaign_health['empty_template_prompt_count'])) {
+			$warnings[] = array(
+				'type' => 'empty_template_prompt',
+				'message' => sprintf(
+					/* translators: %d: empty prompt template count. */
+					_n('%d campaign template has an empty prompt.', '%d campaign templates have empty prompts.', (int) $campaign_health['empty_template_prompt_count'], 'ai-post-scheduler'),
+					(int) $campaign_health['empty_template_prompt_count']
+				),
+			);
+		}
+
+		if (empty($campaign_health['has_future_run']) && empty($campaign->is_archived)) {
+			$warnings[] = array(
+				'type' => 'no_future_run',
+				'message' => __('No active campaign schedule has a future run time.', 'ai-post-scheduler'),
+			);
+		}
+
+		if (!empty($campaign_health['failed_last_run'])) {
+			$warnings[] = array(
+				'type' => 'failed_last_run',
+				'message' => __('The most recent campaign generation failed. Review recent activity for details before running again.', 'ai-post-scheduler'),
+			);
+		}
+
+		return $warnings;
 	}
 
 	/**

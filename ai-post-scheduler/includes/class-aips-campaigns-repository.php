@@ -44,6 +44,11 @@ class AIPS_Campaigns_Repository {
 	private $history_table;
 
 	/**
+	 * @var string
+	 */
+	private $history_log_table;
+
+	/**
 	 * @var AIPS_Template_Repository
 	 */
 	private $template_repository;
@@ -97,6 +102,7 @@ class AIPS_Campaigns_Repository {
 		$this->templates_table = $wpdb->prefix . 'aips_templates';
 		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
 		$this->history_table = $wpdb->prefix . 'aips_history';
+		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
 		$this->template_repository = AIPS_Template_Repository::instance();
 		$this->schedule_repository = AIPS_Schedule_Repository::instance();
 		$this->cache = null;
@@ -227,6 +233,160 @@ class AIPS_Campaigns_Repository {
 			'template_count' => (int) $campaign->linked_template_count,
 			'schedule_count' => (int) $campaign->linked_schedule_count,
 		);
+	}
+
+	/**
+	 * Get health counters and warning inputs for one campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array
+	 */
+	public function get_campaign_health($campaign_id) {
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return array(
+				'failed_generation_count' => 0,
+				'pending_review_count' => 0,
+				'inactive_schedule_count' => 0,
+				'empty_template_prompt_count' => 0,
+				'has_future_run' => false,
+				'failed_last_run' => false,
+			);
+		}
+
+		$posts_table = $this->wpdb->posts;
+		$now = AIPS_DateTime::now()->timestamp();
+
+		$history_stats = $this->wpdb->get_row($this->wpdb->prepare(
+			"SELECT
+				SUM(CASE WHEN h.status = 'failed' THEN 1 ELSE 0 END) AS failed_generation_count,
+				COUNT(DISTINCT CASE WHEN h.status = 'completed' AND h.post_id IS NOT NULL AND p.post_status IN ('draft', 'pending') THEN h.post_id END) AS pending_review_count
+			FROM {$this->history_table} h
+			LEFT JOIN {$posts_table} p ON h.post_id = p.ID
+			WHERE h.campaign_id = %d",
+			$campaign_id
+		));
+
+		$schedule_stats = $this->wpdb->get_row($this->wpdb->prepare(
+			"SELECT
+				SUM(CASE WHEN is_active = 0 OR status != 'active' THEN 1 ELSE 0 END) AS inactive_schedule_count,
+				SUM(CASE WHEN is_active = 1 AND next_run > %d THEN 1 ELSE 0 END) AS future_run_count
+			FROM {$this->schedule_table}
+			WHERE campaign_id = %d",
+			$now,
+			$campaign_id
+		));
+
+		$empty_prompt_count = (int) $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT COUNT(*) FROM {$this->templates_table} WHERE campaign_id = %d AND TRIM(COALESCE(prompt_template, '')) = ''",
+			$campaign_id
+		));
+
+		$last_history_status = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT status FROM {$this->history_table} WHERE campaign_id = %d ORDER BY created_at DESC, id DESC LIMIT 1",
+			$campaign_id
+		));
+
+		return array(
+			'failed_generation_count' => isset($history_stats->failed_generation_count) ? (int) $history_stats->failed_generation_count : 0,
+			'pending_review_count' => isset($history_stats->pending_review_count) ? (int) $history_stats->pending_review_count : 0,
+			'inactive_schedule_count' => isset($schedule_stats->inactive_schedule_count) ? (int) $schedule_stats->inactive_schedule_count : 0,
+			'empty_template_prompt_count' => $empty_prompt_count,
+			'has_future_run' => isset($schedule_stats->future_run_count) && (int) $schedule_stats->future_run_count > 0,
+			'failed_last_run' => 'failed' === $last_history_status,
+		);
+	}
+
+	/**
+	 * Get recent campaign activity across history and history log rows.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $limit Number of activity rows.
+	 * @return array
+	 */
+	public function get_recent_activity($campaign_id, $limit = 10) {
+		$campaign_id = absint($campaign_id);
+		$limit = max(1, min(50, absint($limit)));
+		if (!$campaign_id) {
+			return array();
+		}
+
+		$sql = "
+			(SELECT
+				'history' AS activity_source,
+				h.id AS activity_id,
+				h.id AS history_id,
+				h.status AS activity_type,
+				COALESCE(NULLIF(h.generated_title, ''), NULLIF(h.error_message, ''), h.creation_method, 'History entry') AS activity_details,
+				h.created_at AS activity_timestamp,
+				h.post_id AS post_id,
+				h.template_id AS template_id
+			FROM {$this->history_table} h
+			WHERE h.campaign_id = %d)
+			UNION ALL
+			(SELECT
+				'history_log' AS activity_source,
+				l.id AS activity_id,
+				h.id AS history_id,
+				l.log_type AS activity_type,
+				COALESCE(NULLIF(l.details, ''), 'Log entry') AS activity_details,
+				l.timestamp AS activity_timestamp,
+				h.post_id AS post_id,
+				h.template_id AS template_id
+			FROM {$this->history_log_table} l
+			INNER JOIN {$this->history_table} h ON l.history_id = h.id
+			WHERE h.campaign_id = %d)
+			ORDER BY activity_timestamp DESC, activity_id DESC
+			LIMIT %d
+		";
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id, $campaign_id, $limit));
+	}
+
+	/**
+	 * Get recent generated posts attributed to a campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $limit Number of posts.
+	 * @return array
+	 */
+	public function get_recent_generated_posts($campaign_id, $limit = 10) {
+		$campaign_id = absint($campaign_id);
+		$limit = max(1, min(50, absint($limit)));
+		if (!$campaign_id) {
+			return array();
+		}
+
+		$posts_table = $this->wpdb->posts;
+
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT
+				h.id AS history_id,
+				h.post_id,
+				h.generated_title,
+				h.created_at,
+				h.completed_at,
+				p.post_title,
+				p.post_status,
+				p.post_date,
+				p.post_modified,
+				t.name AS template_name
+			FROM {$this->history_table} h
+			INNER JOIN (
+				SELECT post_id, MAX(id) AS latest_history_id
+				FROM {$this->history_table}
+				WHERE campaign_id = %d
+				AND status = 'completed'
+				AND post_id IS NOT NULL
+				GROUP BY post_id
+			) latest ON latest.latest_history_id = h.id
+			INNER JOIN {$posts_table} p ON h.post_id = p.ID
+			LEFT JOIN {$this->templates_table} t ON h.template_id = t.id
+			ORDER BY COALESCE(NULLIF(h.completed_at, 0), h.created_at) DESC, h.id DESC
+			LIMIT %d",
+			$campaign_id,
+			$limit
+		));
 	}
 
 	/**
