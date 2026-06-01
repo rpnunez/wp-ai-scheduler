@@ -170,22 +170,13 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
             // Use start_time as the initial run time if provided, otherwise start now.
-				$start_time_raw = isset($data['start_time']) && !empty($data['start_time'])
-					? sanitize_text_field($data['start_time'])
-					: '';
+            $start_time_raw = isset($data['start_time']) && !empty($data['start_time'])
+                ? sanitize_text_field($data['start_time'])
+                : '';
+            $start_timestamp = $this->parse_start_time_timestamp($start_time_raw);
 
-				// Parse start_time from datetime-local input (YYYY-MM-DDTHH:MM) or fallback to now.
-				if (!empty($start_time_raw)) {
-					$start_timestamp = (int) strtotime($start_time_raw);
-					if ($start_timestamp <= 0) {
-						$start_timestamp = AIPS_DateTime::now()->timestamp();
-					}
-				} else {
-					$start_timestamp = AIPS_DateTime::now()->timestamp();
-				}
-
-				// Default behaviour: reset next_run to start_time.
-				$next_run = $start_timestamp;
+            // Default behaviour: reset next_run to start_time.
+            $next_run = $start_timestamp;
             // Hunter: Fix for schedule reset bug.
             // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
             // and the schedule is already running in the future, we should NOT reset the timeline to the past.
@@ -436,6 +427,35 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      */
     public function calculate_next_run($frequency, $start_time = null) {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
+    }
+
+    /**
+     * Parse a datetime-local value into a Unix timestamp in site timezone.
+     *
+     * @param string $start_time_raw Raw datetime string.
+     * @return int
+     */
+    private function parse_start_time_timestamp($start_time_raw) {
+        if (empty($start_time_raw)) {
+            return AIPS_DateTime::now()->timestamp();
+        }
+
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+        $formats = array('Y-m-d\TH:i', 'Y-m-d\TH:i:s', 'Y-m-d H:i:s', 'Y-m-d H:i');
+
+        foreach ($formats as $format) {
+            $start_datetime = DateTimeImmutable::createFromFormat($format, $start_time_raw, $timezone);
+            if ($start_datetime instanceof DateTimeImmutable) {
+                return $start_datetime->getTimestamp();
+            }
+        }
+
+        $fallback_timestamp = (int) strtotime($start_time_raw);
+        if ($fallback_timestamp > 0) {
+            return $fallback_timestamp;
+        }
+
+        return AIPS_DateTime::now()->timestamp();
     }
     
     /**

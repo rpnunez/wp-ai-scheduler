@@ -96,4 +96,33 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 
 		$this->assertSame( 77, $updated_id );
 	}
+
+	public function test_save_schedule_uses_site_timezone_for_datetime_local_start_time() {
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$expected_next_run = ( new DateTimeImmutable( '2026-03-20 16:30:00', wp_timezone() ) )->getTimestamp();
+
+		$this->repository->expects( $this->once() )
+			->method( 'create' )
+			->with(
+				$this->callback(
+					function ( $data ) use ( $expected_next_run ) {
+						return isset( $data['next_run'] ) && (int) $data['next_run'] === $expected_next_run;
+					}
+				)
+			)
+			->willReturn( false );
+
+		$schedule_id = $this->scheduler->save_schedule(
+			array(
+				'template_id' => 33,
+				'frequency'   => 'daily',
+				'start_time'  => '2026-03-20T16:30',
+				'is_active'   => 1,
+				'topic'       => 'Timezone-aware schedule',
+			)
+		);
+
+		$this->assertFalse( $schedule_id );
+	}
 }
