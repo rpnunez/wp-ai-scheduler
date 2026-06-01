@@ -113,7 +113,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-generated">
-				<span class="aips-stat-value"><?php echo esc_html($posts_count); ?></span>
+				<span class="aips-stat-value" id="stat-generated-count"><?php echo esc_html($posts_count); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card">
@@ -264,7 +264,8 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		<tr>
 			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
 			<th class="column-topic">{{topicDetails}}</th>
-			<th class="column-generated">{{generatedAtLabel}}</th>
+			<th class="column-date">{{generatedAtLabel}}</th>
+			{{secondaryDateHeader}}
 			<th class="column-actions">{{actionsLabel}}</th>
 		</tr>
 	</thead>
@@ -289,7 +290,8 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</div>
 		{{detailContent}}
 	</td>
-	<td class="column-generated">{{generatedAt}}</td>
+	<td class="column-date"><div class="cell-meta">{{generatedAt}}</div></td>
+	{{secondaryDateCell}}
 	<td class="topic-actions column-actions">
 		{{actions}}
 	</td>
@@ -321,24 +323,47 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-topic-actions-pending">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
-</div>
-<div class="cell-actions" style="margin-top: 6px;">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}" title="{{editTitle}}">{{editLabel}}</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-author-topic-row-actions-{{id}}" title="{{moreActionsTitle}}">
+			<span class="screen-reader-text">{{moreActionsLabel}}</span>
+		</button>
+	</div>
+	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
+		<button type="button" class="aips-row-action-item aips-approve-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+			<span>{{approveLabel}}</span>
+		</button>
+		<button type="button" class="aips-row-action-item aips-reject-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+			<span>{{rejectLabel}}</span>
+		</button>
+	</div>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-approved">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-author-topic-row-actions-{{id}}" title="{{moreActionsTitle}}">
+			<span class="screen-reader-text">{{moreActionsLabel}}</span>
+		</button>
+	</div>
+	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
+		<button type="button" class="aips-row-action-item aips-edit-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+			<span>{{editLabel}}</span>
+		</button>
+	</div>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-rejected">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	</div>
 </div>
 </script>
 
@@ -439,5 +464,4 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <script type="text/html" id="aips-tmpl-topic-post-action-publish">
 <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
 </script>
-
 
