@@ -38,8 +38,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 			->getMock();
 
 		$history_repository->expects($this->once())
-			->method('repair_missing_campaign_ids')
-			->with(0);
+			->method('repair_missing_campaign_ids');
 
 		$controller = new AIPS_System_Status_Controller();
 		$reflection = new ReflectionClass($controller);

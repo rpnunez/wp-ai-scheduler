@@ -27,11 +27,6 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 	 */
 	private $schedule_repository;
 
-	/**
-	 * @var array<int,string>
-	 */
-	private $original_classes = array();
-
 	public function setUp(): void {
 		parent::setUp();
 
@@ -180,6 +175,64 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertNull($this->wpdb_stub->last_update_call);
 	}
 
+	public function test_get_campaign_health_returns_expected_metrics_and_query_shapes() {
+		$this->wpdb_stub->rows_to_return = array(
+			(object) array(
+				'failed_generation_count' => '2',
+				'pending_review_count' => '4',
+			),
+			(object) array(
+				'inactive_schedule_count' => '1',
+				'future_run_count' => '3',
+			),
+		);
+		$this->wpdb_stub->vars_to_return = array('5', 'failed');
+
+		$repository = $this->new_repository();
+		$health = $repository->get_campaign_health(42);
+
+		$this->assertSame(2, $health['failed_generation_count']);
+		$this->assertSame(4, $health['pending_review_count']);
+		$this->assertSame(1, $health['inactive_schedule_count']);
+		$this->assertSame(5, $health['empty_template_prompt_count']);
+		$this->assertTrue($health['has_future_run']);
+		$this->assertTrue($health['failed_last_run']);
+		$this->assertStringContainsString('FROM wp_aips_history h LEFT JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->get_row_queries[0]);
+		$this->assertStringContainsString('FROM wp_aips_schedule', $this->wpdb_stub->get_row_queries[1]);
+		$this->assertStringContainsString("TRIM(COALESCE(prompt_template, '')) = ''", $this->wpdb_stub->get_var_queries[0]);
+		$this->assertStringContainsString('ORDER BY created_at DESC, id DESC LIMIT 1', $this->wpdb_stub->get_var_queries[1]);
+	}
+
+	public function test_get_recent_activity_uses_expected_union_order_and_limit() {
+		$expected_results = array((object) array('activity_id' => 999));
+		$this->wpdb_stub->results_to_return = $expected_results;
+
+		$repository = $this->new_repository();
+		$results = $repository->get_recent_activity(42, 100);
+
+		$this->assertSame($expected_results, $results);
+		$this->assertStringContainsString('UNION ALL', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('WHERE h.campaign_id = 42', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('INNER JOIN wp_aips_history h ON l.history_id = h.id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('ORDER BY activity_timestamp DESC, activity_id DESC', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('LIMIT 50', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_get_recent_generated_posts_uses_latest_completed_entry_per_post() {
+		$expected_results = array((object) array('history_id' => 21));
+		$this->wpdb_stub->results_to_return = $expected_results;
+
+		$repository = $this->new_repository();
+		$results = $repository->get_recent_generated_posts(42, 0);
+
+		$this->assertSame($expected_results, $results);
+		$this->assertStringContainsString('MAX(id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("status = 'completed'", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('GROUP BY post_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('INNER JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('LIMIT 1', $this->wpdb_stub->last_get_results_query);
+	}
+
 	private function get_campaign_payload() {
 		return array(
 			'campaign_name'         => 'Campaign Alpha',
@@ -213,7 +266,6 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 	private function define_test_dependency_classes() {
 		if (!class_exists('AIPS_Scheduler', false)) {
 			eval('class AIPS_Scheduler { public function save_schedule($data) { return 101; } }');
-			$this->original_classes[] = 'AIPS_Scheduler';
 		}
 	}
 
@@ -253,13 +305,23 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $prefix = 'wp_';
 
+	public $posts = 'wp_posts';
+
 	public $results_to_return = array();
 
+	public $rows_to_return = array();
+
 	public $var_to_return = null;
+
+	public $vars_to_return = array();
 
 	public $last_get_results_query = '';
 
 	public $last_get_var_query = '';
+
+	public $get_row_queries = array();
+
+	public $get_var_queries = array();
 
 	public $last_update_call = null;
 
@@ -293,13 +355,25 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function get_row($query, $output = OBJECT, $y = 0) {
-		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
+		$normalized_query = preg_replace('/\s+/', ' ', trim($query));
+		$this->last_get_results_query = $normalized_query;
+		$this->get_row_queries[] = $normalized_query;
+
+		if (!empty($this->rows_to_return)) {
+			return array_shift($this->rows_to_return);
+		}
 
 		return null;
 	}
 
 	public function get_var($query, $x = 0, $y = 0) {
-		$this->last_get_var_query = preg_replace('/\s+/', ' ', trim($query));
+		$normalized_query = preg_replace('/\s+/', ' ', trim($query));
+		$this->last_get_var_query = $normalized_query;
+		$this->get_var_queries[] = $normalized_query;
+
+		if (!empty($this->vars_to_return)) {
+			return array_shift($this->vars_to_return);
+		}
 
 		return $this->var_to_return;
 	}

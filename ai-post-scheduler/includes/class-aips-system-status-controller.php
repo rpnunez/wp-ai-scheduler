@@ -202,7 +202,7 @@ class AIPS_System_Status_Controller {
 		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
 
 		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
-		
+
 		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
 			'subsystem' => $subsystem,

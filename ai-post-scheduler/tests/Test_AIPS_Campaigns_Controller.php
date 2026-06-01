@@ -223,6 +223,43 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('Campaign updated.', $output);
 	}
 
+	public function test_render_detail_page_redirects_after_successful_save_to_prevent_post_resubmission() {
+		$campaign = $this->get_campaign_object();
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_campaign_by_id', 'update_campaign'))
+			->getMock();
+		$repository->method('get_campaign_by_id')->willReturn($campaign);
+		$repository->method('update_campaign')->willReturn(true);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_GET = array('campaign_id' => 14);
+		$_POST = array(
+			'aips_campaign_detail_nonce' => wp_create_nonce('aips_campaign_detail_save_14'),
+			'detail_action' => 'save',
+			'campaign_name' => 'Renamed Campaign',
+			'content_goal' => 'Updated goal',
+		);
+
+		$redirect_location = '';
+		$redirect_filter = static function($location) use (&$redirect_location) {
+			$redirect_location = $location;
+			return false;
+		};
+		add_filter('wp_redirect', $redirect_filter);
+
+		ob_start();
+		$controller->render_detail_page();
+		ob_end_clean();
+
+		remove_filter('wp_redirect', $redirect_filter);
+
+		$this->assertStringContainsString('page=aips-campaign-detail', $redirect_location);
+		$this->assertStringContainsString('campaign_id=14', $redirect_location);
+		$this->assertStringContainsString('detail_notice=save', $redirect_location);
+	}
+
 	private function capture_ajax(callable $callable) {
 		ob_start();
 
