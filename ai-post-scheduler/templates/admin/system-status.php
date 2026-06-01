@@ -105,6 +105,7 @@ if (!defined('ABSPATH')) {
                     <div class="aips-btn-group aips-action-group">
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_reschedule_missed_cron"><?php esc_html_e('Reschedule Missed Cron Hooks', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_retry_failed_slices"><?php esc_html_e('Retry Failed Slices', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_repair_campaign_data"><?php esc_html_e('Repair Campaign Data', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_clear_partial_generations"><?php esc_html_e('Clear Stuck Partial Generations', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_cleanup_stale_jobs_cache"><?php esc_html_e('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'); ?></button>
                     </div>

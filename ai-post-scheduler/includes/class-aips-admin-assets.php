@@ -448,6 +448,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
           );
 
+                    wp_enqueue_style(
+                        'aips-admin-post-review-style',
+                        AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                        array('aips-authors-style'),
+                        AIPS_VERSION
+                    );
+
           wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
@@ -499,6 +506,10 @@ class AIPS_Admin_Assets {
             'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
             'topicDetails' => __('Topic Details', 'ai-post-scheduler'),
             'generatedAt' => __('Date Topic Generated', 'ai-post-scheduler'),
+            'dateApproved' => __('Date Approved', 'ai-post-scheduler'),
+            'dateRejected' => __('Date Rejected', 'ai-post-scheduler'),
+            'datePostGenerated' => __('Date Post Generated', 'ai-post-scheduler'),
+            'moreActions' => __('More actions', 'ai-post-scheduler'),
             'actions' => __('Actions', 'ai-post-scheduler'),
             'approve' => __('Approve', 'ai-post-scheduler'),
             'reject' => __('Reject', 'ai-post-scheduler'),
@@ -1421,6 +1432,7 @@ class AIPS_Admin_Assets {
                 'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
                 'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
                 'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceRepairCampaignData'               => wp_create_nonce('aips_status_repair_campaign_data'),
                 'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
                 'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
                 'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),

@@ -128,6 +128,13 @@ class AIPS_Template_Entry {
 	public readonly ?int $post_author;
 
 	/**
+	 * Optional owning campaign ID for attribution.
+	 *
+	 * @var int|null
+	 */
+	public readonly ?int $campaign_id;
+
+	/**
 	 * Number of posts to generate in this execution (runtime override).
 	 *
 	 * @var int
@@ -176,6 +183,7 @@ class AIPS_Template_Entry {
 	 * @param int|null    $post_category                    Default category ID.
 	 * @param string|null $post_tags                        Default tags.
 	 * @param int|null    $post_author                      Default author ID.
+	 * @param int|null    $campaign_id                      Owning campaign ID.
 	 * @param int         $post_quantity                    Number of posts to generate.
 	 * @param int|null    $article_structure_id             Runtime article structure FK.
 	 * @param bool        $include_sources                  Append citations flag.
@@ -195,6 +203,7 @@ class AIPS_Template_Entry {
 		?int $post_category,
 		?string $post_tags,
 		?int $post_author,
+		?int $campaign_id,
 		int $post_quantity,
 		?int $article_structure_id,
 		bool $include_sources,
@@ -213,6 +222,7 @@ class AIPS_Template_Entry {
 		$this->post_category                    = $post_category;
 		$this->post_tags                        = $post_tags;
 		$this->post_author                      = $post_author;
+		$this->campaign_id                      = $campaign_id;
 		$this->post_quantity                    = $post_quantity;
 		$this->article_structure_id             = $article_structure_id;
 		$this->include_sources                  = $include_sources;
@@ -260,6 +270,7 @@ class AIPS_Template_Entry {
 			isset($source->post_category) && null !== $source->post_category && '' !== $source->post_category ? (int) $source->post_category : null,
 			isset($source->post_tags) && $source->post_tags !== '' ? (string) $source->post_tags : null,
 			isset($source->post_author) && null !== $source->post_author && '' !== $source->post_author ? (int) $source->post_author : null,
+			isset($source->campaign_id) && null !== $source->campaign_id && '' !== $source->campaign_id ? (int) $source->campaign_id : null,
 			$post_quantity,
 			$article_structure_id,
 			1 === (int) ($source->include_sources ?? 0),
