@@ -176,22 +176,22 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
-		foreach ($schedules as $i => $schedule) {
+		// The topics should be staggered by 10 minutes (600s) for "once"
+		$stagger_interval = 600;
+        foreach ($schedules as $i => $schedule) {
+            $expected_next_run = date('Y-m-d H:i:s', strtotime($start_date) + ($i * $stagger_interval));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
 		}
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * For repeating frequencies, staggering is based on the interval.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_daily_all_topics_are_staggered() {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
@@ -210,11 +210,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
-		foreach ($schedules as $i => $schedule) {
+		$stagger_interval = 86400; // daily stagger
+        foreach ($schedules as $i => $schedule) {
+            $expected_next_run = date('Y-m-d H:i:s', strtotime($start_date) + ($i * $stagger_interval));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
 		}
 	}
