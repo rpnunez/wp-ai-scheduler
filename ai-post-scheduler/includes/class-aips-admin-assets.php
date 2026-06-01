@@ -1432,6 +1432,7 @@ class AIPS_Admin_Assets {
                 'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
                 'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
                 'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceRepairCampaignData'               => wp_create_nonce('aips_status_repair_campaign_data'),
                 'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
                 'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
                 'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),

@@ -131,6 +131,40 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
     }
 
+    /**
+     * Backfill missing campaign attribution from linked templates.
+     *
+     * Repairs history rows created before generator-facing template entries
+     * started carrying campaign_id forward.
+     *
+     * @param int $campaign_id Optional campaign ID scope.
+     * @return void
+     */
+    public function repair_missing_campaign_ids($campaign_id = 0) {
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $campaign_id = absint($campaign_id);
+
+        if ($campaign_id > 0) {
+            $this->wpdb->query($this->wpdb->prepare(
+                "UPDATE {$this->table_name} h
+                INNER JOIN {$templates_table} t ON h.template_id = t.id
+                SET h.campaign_id = t.campaign_id
+                WHERE h.campaign_id IS NULL
+                AND t.campaign_id = %d",
+                $campaign_id
+            ));
+            return;
+        }
+
+        $this->wpdb->query(
+            "UPDATE {$this->table_name} h
+            INNER JOIN {$templates_table} t ON h.template_id = t.id
+            SET h.campaign_id = t.campaign_id
+            WHERE h.campaign_id IS NULL
+            AND t.campaign_id IS NOT NULL"
+        );
+    }
+
     public function get_daily_success_failure_trend($days = 14) {
         $days = max(1, absint($days));
 
@@ -211,7 +245,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
         
         $args = wp_parse_args($args, $defaults);
-        
+
         $offset = ($args['page'] - 1) * $args['per_page'];
 
         $domain_patterns = array(
@@ -429,6 +463,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $args = wp_parse_args($args, $defaults);
         $args['page'] = max(1, (int) $args['page']);
         $args['per_page'] = (int) $args['per_page'];
+
         $use_limit = $args['per_page'] > 0;
         $offset = $use_limit ? (($args['page'] - 1) * $args['per_page']) : 0;
 
