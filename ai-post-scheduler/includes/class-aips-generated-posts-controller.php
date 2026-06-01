@@ -90,6 +90,17 @@ class AIPS_Generated_Posts_Controller {
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
+		// Pre-fetch posts to prevent N+1 queries
+		$post_ids = array();
+		foreach ($history['items'] as $item) {
+			if ($item->post_id) {
+				$post_ids[] = $item->post_id;
+			}
+		}
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -149,6 +160,17 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		// Pre-fetch partial generation posts to prevent N+1 queries
+		$partial_post_ids = array();
+		foreach ($partial_generations['items'] as $item) {
+			if ($item->post_id) {
+				$partial_post_ids[] = $item->post_id;
+			}
+		}
+		if (!empty($partial_post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($partial_post_ids), false, true);
+		}
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
