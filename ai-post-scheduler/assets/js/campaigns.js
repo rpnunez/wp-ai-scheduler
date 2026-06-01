@@ -32,6 +32,7 @@
 			$(document).on('click', '.aips-archive-campaign', this.handleArchiveCampaign.bind(this));
 			$(document).on('click', '.aips-restore-campaign', this.handleRestoreCampaign.bind(this));
 			$(document).on('click', '.aips-delete-campaign', this.handleDeleteCampaign.bind(this));
+			$(document).on('click', '.aips-campaign-run-now', this.handleRunNow.bind(this));
 		},
 
 		/**
@@ -183,6 +184,56 @@
 		},
 
 		/**
+		 * Handle immediate generation for the primary campaign schedule.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleRunNow: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var scheduleId = $button.data('schedule-id');
+
+			var errorMessage = aipsCampaignsL10n.errorRunNow || 'Failed to run campaign schedule.';
+			var confirmMessage = aipsCampaignsL10n.confirmRunNow || 'Run this campaign schedule now? This will immediately generate content.';
+			var successMessage = aipsCampaignsL10n.runNowSuccess || 'Campaign schedule completed.';
+
+			if (!scheduleId) {
+				AIPS.Utilities.showNotice(errorMessage, 'error');
+				return;
+			}
+
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			$button.prop('disabled', true).addClass('is-busy');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_run_now',
+					nonce: aipsAjax.nonce,
+					schedule_id: scheduleId
+				},
+				success: function(response) {
+					if (response.success) {
+						AIPS.Utilities.showNotice(response.data.message || successMessage, 'success');
+						location.reload();
+					} else {
+						AIPS.Utilities.showNotice(response.data.message || errorMessage, 'error');
+						$button.prop('disabled', false).removeClass('is-busy');
+					}
+				},
+				error: function() {
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					$button.prop('disabled', false).removeClass('is-busy');
+				}
+			});
+		},
+
+		/**
 		 * Handle delete campaign (permanent removal).
 		 *
 		 * @param {Event} e Click event.
@@ -215,7 +266,7 @@
 
 	// Initialize on document ready
 	$(document).ready(function() {
-		if ($('.aips-admin-page').length && window.location.href.indexOf('aips-campaigns') > -1) {
+		if ($('.aips-admin-page').length && (window.location.href.indexOf('aips-campaigns') > -1 || window.location.href.indexOf('aips-campaign-detail') > -1)) {
 			AIPS.Campaigns.init();
 		}
 	});
