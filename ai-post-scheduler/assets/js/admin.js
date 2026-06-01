@@ -239,7 +239,7 @@
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
-            $(document).on('click', '.aips-wizard-step', this.wizardStepClick);
+            $(document).on('click', '.aips-wizard-modal .aips-wizard-step', this.wizardStepClick);
 
             // Post-save next steps
             $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);

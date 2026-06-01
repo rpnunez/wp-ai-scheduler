@@ -28,9 +28,19 @@
     ]
   },
   "scripts": {
-    "test": "php vendor/bin/phpunit --configuration phpunit.xml",
-    "test:coverage": "php vendor/bin/phpunit --configuration phpunit.xml --coverage-html coverage",
-    "test:verbose": "php vendor/bin/phpunit --configuration phpunit.xml --verbose",
+    "test:setup": "bash bin/prepare-wp-tests.sh",
+    "test": [
+      "@test:setup",
+      "php vendor/bin/phpunit --configuration phpunit.xml"
+    ],
+    "test:coverage": [
+      "@test:setup",
+      "php vendor/bin/phpunit --configuration phpunit.xml --coverage-html coverage"
+    ],
+    "test:verbose": [
+      "@test:setup",
+      "php vendor/bin/phpunit --configuration phpunit.xml --verbose"
+    ],
     "lint:repository-boundary": "php tools/check-repository-boundary.php"
   },
   "config": {

@@ -23,7 +23,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 		?>
 		<tr data-campaign-id="<?php echo esc_attr($campaign->id); ?>">
 			<td>
-				<div class="cell-primary"><?php echo esc_html($campaign->name); ?></div>
+				<div class="cell-primary"><a href="<?php echo esc_url(add_query_arg(array('page' => AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG, 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>"><?php echo esc_html($campaign->name); ?></a></div>
 				<div class="cell-meta"><?php echo esc_html($campaign->content_goal); ?></div>
 			</td>
 			<td><?php echo esc_html((int) $campaign->linked_template_count); ?></td>
@@ -81,7 +81,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 				<div class="aips-page-actions">
 					<a href="<?php echo esc_url($campaign_wizard_url); ?>" class="aips-btn aips-btn-primary">
 						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Create New Campaign', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Add New Campaign', 'ai-post-scheduler'); ?>
 					</a>
 				</div>
 			</div>

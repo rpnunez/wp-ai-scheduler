@@ -105,7 +105,7 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 		return (object) array(
 			'id'              => 1,
 			'name'            => 'Test Template',
-			'prompt_template' => 'Write about {topic}',
+			'prompt_template' => 'Write about {{topic}}',
 			'is_active'       => 1,
 		);
 	}

@@ -260,6 +260,7 @@
          *   @param {string}   [fields[].className] - Optional CSS class(es) for the input.
          *   @param {*}        [fields[].value]     - Default/initial value.
          *   @param {string}   [fields[].placeholder] - Placeholder text.
+         *   @param {string}   [fields[].description] - Helper text shown below the field.
          *   @param {number}   [fields[].min]       - Min value (for number inputs).
          *   @param {number}   [fields[].max]       - Max value (for number inputs).
          *   @param {Array}    [fields[].options]   - Array of {value, label} objects (for select inputs).
@@ -415,6 +416,15 @@
                 };
 
                 $formGroup.append($input);
+
+                if (field.description) {
+                    $formGroup.append(
+                        $('<p class="description"></p>')
+                            .css({ marginTop: '6px' })
+                            .text(field.description)
+                    );
+                }
+
                 $body.append($formGroup);
             });
 
