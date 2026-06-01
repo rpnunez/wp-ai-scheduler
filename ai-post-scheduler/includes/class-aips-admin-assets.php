@@ -107,7 +107,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-        if (self::PAGE_CAMPAIGNS === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)) {
+        if (
+            self::PAGE_CAMPAIGNS === $page
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_campaigns_assets();
 		}
 
@@ -443,6 +448,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
           );
 
+                    wp_enqueue_style(
+                        'aips-admin-post-review-style',
+                        AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                        array('aips-authors-style'),
+                        AIPS_VERSION
+                    );
+
           wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
@@ -494,6 +506,10 @@ class AIPS_Admin_Assets {
             'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
             'topicDetails' => __('Topic Details', 'ai-post-scheduler'),
             'generatedAt' => __('Date Topic Generated', 'ai-post-scheduler'),
+            'dateApproved' => __('Date Approved', 'ai-post-scheduler'),
+            'dateRejected' => __('Date Rejected', 'ai-post-scheduler'),
+            'datePostGenerated' => __('Date Post Generated', 'ai-post-scheduler'),
+            'moreActions' => __('More actions', 'ai-post-scheduler'),
             'actions' => __('Actions', 'ai-post-scheduler'),
             'approve' => __('Approve', 'ai-post-scheduler'),
             'reject' => __('Reject', 'ai-post-scheduler'),
@@ -1267,6 +1283,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the campaigns page.
      */
     private function enqueue_campaigns_assets() {
+            wp_enqueue_style(
+                'aips-campaigns-style',
+                AIPS_PLUGIN_URL . 'assets/css/campaigns.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',

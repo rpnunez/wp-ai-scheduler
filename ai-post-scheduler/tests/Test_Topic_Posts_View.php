@@ -31,6 +31,24 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	public function tearDown(): void {
 		parent::tearDown();
 	}
+
+	/**
+	 * Capture JSON output produced by a controller AJAX method.
+	 *
+	 * @param callable $callable Controller method to invoke.
+	 * @return array Decoded response array.
+	 */
+	private function call_ajax( callable $callable ) {
+		$_REQUEST = array_merge( $_REQUEST, $_POST );
+		ob_start();
+		try {
+			$callable();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected after wp_send_json_*.
+		}
+
+		return json_decode( ob_get_clean(), true );
+	}
 	
 	/**
 	 * Test that ajax_get_author_topics includes post_count for each topic
@@ -78,6 +96,48 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 		
 		$this->assertCount(1, $topics);
 		$this->assertEquals(1, $topics[0]->post_count);
+	}
+
+	/**
+	 * Test that posts_generated AJAX payload includes the latest post-generation timestamp.
+	 */
+	public function test_get_author_topics_includes_post_generated_timestamp() {
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+		$authors_repo = new AIPS_Authors_Repository();
+		$author_id = $authors_repo->create(array(
+			'name' => 'Timestamp Author',
+			'field_niche' => 'Technology',
+			'is_active' => 1
+		));
+
+		$topic_id = $this->topics_repository->create(array(
+			'author_id' => $author_id,
+			'topic_title' => 'Timestamp Topic',
+			'topic_prompt' => 'Test prompt',
+			'status' => 'approved'
+		));
+
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Timestamp Post',
+			'post_status' => 'publish'
+		));
+
+		$this->logs_repository->log_post_generation($topic_id, $post_id);
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'author_id' => $author_id,
+			'status'    => 'posts_generated',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->call_ajax( array( $this->controller, 'ajax_get_author_topics' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertCount( 1, $response['data']['topics'] );
+		$this->assertSame( 1, $response['data']['topics'][0]['post_count'] );
+		$this->assertNotEmpty( $response['data']['topics'][0]['post_generated_at'] );
 	}
 	
 	/**
