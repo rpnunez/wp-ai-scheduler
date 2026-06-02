@@ -47,7 +47,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Saved.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 
@@ -60,7 +60,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Author created.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 
@@ -73,7 +73,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Template created.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 
@@ -104,7 +104,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Topics generated.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 
@@ -126,7 +126,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Post generated.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 
@@ -170,7 +170,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Reset.');
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && AIPS.refreshContentPanel) { AIPS.refreshContentPanel('.aips-page-container'); } else { window.location.reload(); }
 		});
 	});
 });
