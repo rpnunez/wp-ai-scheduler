@@ -1,3 +1,6 @@
 ## 2024-05-23 - Accessibility Patterns for WordPress Admin
 **Learning:** Standard WordPress Admin UI patterns (like modals and empty states with Dashicons) often lack default ARIA attributes. Specifically, modal close buttons (`&times;`) are frequently missing `aria-label`, and decorative Dashicons are missing `aria-hidden="true"`.
 **Action:** When working on WP Admin interfaces, always audit modal close buttons and decorative icons for these specific attributes. Use `esc_attr_e('Close modal', 'text-domain')` for consistency.
+## 2024-05-30 - Accessible Calendar Navigation
+**Learning:** Icon-only navigation buttons in WordPress admin interfaces (like previous/next month arrows using Dashicons) frequently lack accessible names. Adding `aria-label` provides necessary context for screen readers, while adding `aria-hidden="true"` to the inner Dashicon prevents redundant or confusing announcements. Furthermore, buttons inside forms or form-like containers should always have `type="button"` to prevent accidental submissions.
+**Action:** Always add explicit `aria-label` to icon-only buttons and explicitly hide decorative icons with `aria-hidden="true"`. Use `type="button"` defensively for all interactive elements intended only for JavaScript handlers.
