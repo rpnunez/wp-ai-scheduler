@@ -1,9 +1,12 @@
 /**
  * History Page JavaScript
  *
- * Manages the History admin page: search/filter, pagination, row selection,
- * bulk delete, retry, and the logs modal that renders all aips_history_log
- * entries for a selected history container.
+ * Manages the History admin page with two main modules:
+ * - AIPS.HistoryModalShared: Shared utilities for modal header management, log filtering,
+ *   JSON viewer toggling, detail toggling, copy-to-clipboard, and standalone modal operations.
+ * - AIPS.History: Main History page module handling search/filter, pagination, row selection,
+ *   bulk/individual delete, retry, and the logs modal that renders all aips_history_log
+ *   entries for a selected history container.
  *
  * @package AI_Post_Scheduler
  * @since 2.1.0
@@ -15,12 +18,385 @@
 	window.AIPS = window.AIPS || {};
 
 	/**
-	 * AIPS.History — self-contained module for the History admin page.
+	 * Shared utilities for managing history modals.
 	 *
-	 * Follows the same init() / bindEvents() naming convention used throughout
-	 * this plugin (e.g. authors.js / GenerationQueueModule) so the page can
-	 * be bootstrapped with a single AIPS.History.init() call, without
-	 * polluting the global AIPS namespace with page-specific handlers.
+	 * Provides methods for updating and resetting modal headers with title, actions, and status information.
+	 *
+	 * @namespace AIPS.HistoryModalShared
+	 * @type {Object}
+	 */
+	AIPS.HistoryModalShared = {
+		updateModalHeader: function ($modal, container, options) {
+			var settings = $.extend({
+				titleSelector: '',
+				actionsSelector: '',
+				statusSelector: '',
+				defaultTitle: 'History Details'
+			}, options || {});
+			var title = container && container.header_title
+				? container.header_title
+				: settings.defaultTitle;
+			var actions = container && Array.isArray(container.header_actions)
+				? container.header_actions
+				: [];
+			var $title = settings.titleSelector ? $modal.find(settings.titleSelector) : $();
+			var $actions = settings.actionsSelector ? $modal.find(settings.actionsSelector) : $();
+			var $status = settings.statusSelector ? $modal.find(settings.statusSelector) : $();
+			var statusHtml = '';
+			var actionsHtml = '';
+
+			$title.text(title);
+
+			actions.forEach(function (action) {
+				if (!action || !action.url || !action.label) {
+					return;
+				}
+
+				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" target="_blank" rel="noopener noreferrer">'
+					+ $('<div>').text(String(action.label)).html()
+					+ '</a>';
+			});
+
+			if (container && container.status && container.status_class) {
+				statusHtml = '<span class="aips-badge '
+					+ $('<div>').text(String(container.status_class)).html()
+					+ '">'
+					+ $('<div>').text(String(container.status)).html()
+					+ '</span>';
+			}
+
+			$actions.html(actionsHtml);
+			$status.html(statusHtml);
+		},
+
+		resetModalHeader: function ($modal, options) {
+			var settings = $.extend({
+				titleSelector: '',
+				actionsSelector: '',
+				statusSelector: '',
+				defaultTitle: 'History Details'
+			}, options || {});
+
+			if (settings.titleSelector) {
+				$modal.find(settings.titleSelector).text(settings.defaultTitle);
+			}
+			if (settings.actionsSelector) {
+				$modal.find(settings.actionsSelector).empty();
+			}
+			if (settings.statusSelector) {
+				$modal.find(settings.statusSelector).empty();
+			}
+		},
+
+		getRowTypes: function ($row) {
+			return String($row.attr('data-type-ids') || $row.data('type-id') || '')
+				.split(',')
+				.map(function (value) {
+					return $.trim(String(value));
+				})
+				.filter(Boolean);
+		},
+
+		rowMatchesType: function (rowTypes, typeId) {
+			var normalizedTypeId = String(typeId || '');
+
+			if (!normalizedTypeId || normalizedTypeId === 'all') {
+				return true;
+			}
+
+			if (normalizedTypeId === 'ai_request_response') {
+				return rowTypes.indexOf('5') !== -1 || rowTypes.indexOf('6') !== -1;
+			}
+
+			return rowTypes.indexOf(normalizedTypeId) !== -1;
+		},
+
+		applyTypeFilter: function ($modal, $button) {
+			var typeId = $button.data('type-id');
+			var self = this;
+
+			$modal.find('.aips-log-type-filter-btn')
+				.removeClass('aips-btn-primary')
+				.addClass('aips-btn-ghost');
+			$button.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
+
+			$modal.find('.aips-history-logs-table tbody tr').each(function () {
+				var $row = $(this);
+				$row.toggle(self.rowMatchesType(self.getRowTypes($row), typeId));
+			});
+		},
+
+		toggleLogDetail: function ($scope, $button, labels) {
+			var targetSelector = $button.data('target');
+			var $target = $scope.find(targetSelector);
+			var showLabel = labels && labels.show ? labels.show : 'Show details';
+			var hideLabel = labels && labels.hide ? labels.hide : 'Hide details';
+
+			if (!$target.length) {
+				return;
+			}
+
+			$target.slideToggle(150, function () {
+				$button.text($target.is(':visible') ? hideLabel : showLabel);
+			});
+		},
+
+		toggleJsonViewerMode: function ($toggle) {
+			var $renderer = $toggle.closest('.aips-history-log-renderer');
+
+			if (!$renderer.length) {
+				return;
+			}
+
+			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+		},
+
+		copyDetailFallback: function ($target) {
+			var $pre = $target.find('pre').first();
+			var range;
+			var selection;
+
+			if (!$pre.length) {
+				return false;
+			}
+
+			try {
+				$target.show();
+				range = document.createRange();
+				range.selectNodeContents($pre[0]);
+				selection = window.getSelection();
+
+				if (!selection) {
+					return false;
+				}
+
+				selection.removeAllRanges();
+				selection.addRange(range);
+
+				if (!document.execCommand('copy')) {
+					selection.removeAllRanges();
+					return false;
+				}
+
+				selection.removeAllRanges();
+				return true;
+			} catch (error) {
+				if (selection) {
+					selection.removeAllRanges();
+				}
+
+				return false;
+			}
+		},
+
+		showCopySuccess: function ($button, labels, options) {
+			var settings = $.extend({
+				disable: false,
+				duration: 1500
+			}, options || {});
+			var copyLabel = labels && labels.copy ? labels.copy : 'Copy';
+			var copiedLabel = labels && labels.copied ? labels.copied : 'Copied!';
+
+			$button.text(copiedLabel);
+			if (settings.disable) {
+				$button.prop('disabled', true);
+			}
+
+			setTimeout(function () {
+				$button.text(copyLabel);
+				if (settings.disable) {
+					$button.prop('disabled', false);
+				}
+			}, settings.duration);
+		},
+
+		copyLogDetail: function ($scope, $button, labels, options) {
+			var targetSelector = $button.data('copy-target');
+			var $target = $scope.find(targetSelector);
+			var text = $target.find('pre').text();
+			var self = this;
+
+			if (!text) {
+				return;
+			}
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text)
+					.then(function () {
+						self.showCopySuccess($button, labels, options);
+					})
+					.catch(function () {
+						if (self.copyDetailFallback($target)) {
+							self.showCopySuccess($button, labels, options);
+						}
+					});
+				return;
+			}
+
+			if (self.copyDetailFallback($target)) {
+				self.showCopySuccess($button, labels, options);
+			}
+		},
+
+		initStandaloneOpener: function () {
+			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+		},
+
+		getModalL10n: function () {
+			return window.aipsHistoryModalL10n || window.aipsHistoryL10n || {};
+		},
+
+		onStandaloneOpenClick: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			this.openStandaloneHistoryModal($(e.currentTarget));
+		},
+
+		getStandaloneAjaxConfig: function () {
+			if (window.aipsAjax && window.aipsAjax.ajaxUrl && window.aipsAjax.nonce) {
+				return window.aipsAjax;
+			}
+
+			if (window.aipsHistoryModalAjax && window.aipsHistoryModalAjax.ajaxUrl && window.aipsHistoryModalAjax.nonce) {
+				return window.aipsHistoryModalAjax;
+			}
+
+			return null;
+		},
+
+		openStandaloneHistoryModal: function ($button) {
+			var historyId = parseInt($button.data('history-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+			var $modal = $('#aips-history-modal');
+			var l10n = this.getModalL10n();
+			var self = this;
+
+			if (!historyId) {
+				AIPS.Utilities.showToast(l10n.invalidHistoryId || 'Invalid history ID.', 'error');
+				return;
+			}
+
+			if (!ajaxConfig) {
+				AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+				return;
+			}
+
+			if (!$modal.length) {
+				return;
+			}
+
+			self.showStandaloneModalLoading($modal);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_history_modal_html',
+					nonce: ajaxConfig.nonce,
+					history_id: historyId
+				},
+				success: function (response) {
+					if (!response || !response.success || !response.data) {
+						var message = response && response.data && response.data.message
+							? response.data.message
+							: (l10n.loadingFailed || 'Failed to load history modal.');
+						AIPS.Utilities.showToast(message, 'error');
+						$modal.fadeOut(200);
+						return;
+					}
+
+					self.updateModalHeader($modal, response.data.container || {}, {
+						titleSelector: '#aips-history-modal-title',
+						actionsSelector: '#aips-history-modal-actions',
+						statusSelector: '#aips-history-modal-status',
+						defaultTitle: l10n.historyDetailsTitle || 'History Details'
+					});
+					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
+					self.bindStandaloneModalEvents($modal);
+					$modal.fadeIn(200);
+				},
+				error: function () {
+					AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+					$modal.fadeOut(200);
+				}
+			});
+		},
+
+		showStandaloneModalLoading: function ($modal) {
+			var l10n = this.getModalL10n();
+			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> '
+				+ (l10n.loading || 'Loading…')
+				+ '</div>';
+
+			this.resetModalHeader($modal, {
+				titleSelector: '#aips-history-modal-title',
+				actionsSelector: '#aips-history-modal-actions',
+				statusSelector: '#aips-history-modal-status',
+				defaultTitle: l10n.historyDetailsTitle || 'History Details'
+			});
+			$modal.find('#aips-history-modal-content').html(loadingHtml);
+			$modal.fadeIn(200);
+		},
+
+		bindStandaloneModalEvents: function ($modal) {
+			var self = this;
+			var l10n = this.getModalL10n();
+
+			$modal.find('.aips-modal-close').off('click').on('click', function (e) {
+				e.preventDefault();
+				$modal.fadeOut(200);
+			});
+
+			$modal.off('click.historyModal').on('click.historyModal', function (e) {
+				if ($(e.target).is('#aips-history-modal')) {
+					$modal.fadeOut(200);
+				}
+			});
+
+			$modal.find('.aips-log-type-filter-btn').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.applyTypeFilter($modal, $(this));
+			});
+
+			$modal.find('.aips-log-toggle').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.toggleLogDetail($modal, $(this), {
+					show: l10n.showDetails || 'Show details',
+					hide: l10n.hideDetails || 'Hide details'
+				});
+			});
+
+			$modal.find('.aips-json-viewer-toggle').off('change').on('change', function () {
+				self.toggleJsonViewerMode($(this));
+			});
+
+			$modal.find('[data-copy-target]').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.copyLogDetail($modal, $(this), {
+					copy: l10n.copyDetails || 'Copy',
+					copied: l10n.copiedDetails || 'Copied!'
+				}, {
+					disable: true,
+					duration: 1500
+				});
+			});
+
+			$(document).off('keydown.historyModal').on('keydown.historyModal', function (e) {
+				if (e.keyCode === 27 && $modal.is(':visible')) {
+					$modal.fadeOut(200);
+				}
+			});
+		}
+	};
+
+	/**
+	 * Main History page module for managing search, filter, pagination, and bulk operations.
+	 *
+	 * Handles search/filter, pagination, row selection, bulk/individual delete, retry, and the logs modal
+	 * that renders all aips_history_log entries for a selected history container.
+	 *
+	 * @namespace AIPS.History
+	 * @type {Object}
 	 */
 	AIPS.History = {
 
@@ -47,6 +423,10 @@
 		 * Initialise the History module.
 		 */
 		init: function () {
+			if (!this.isHistoryPage()) {
+				return;
+			}
+
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
@@ -74,6 +454,7 @@
 
 			// Log type filter tabs inside the modal.
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
+			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
 
 			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
@@ -173,13 +554,16 @@
 				return;
 			}
 
-			var self     = this;
 			var $modal   = $('#aips-history-logs-modal');
 			var $content = $('#aips-history-logs-content');
-			var $title   = $('#aips-history-logs-modal-title');
 			var T        = AIPS.Templates;
 
-			$title.text(aipsHistoryL10n.historyDetailsTitle || 'History Details');
+			AIPS.HistoryModalShared.resetModalHeader($modal, {
+				titleSelector: '#aips-history-logs-modal-title',
+				actionsSelector: '#aips-history-logs-modal-actions',
+				statusSelector: '#aips-history-logs-modal-status',
+				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+			});
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
 				text: aipsHistoryL10n.loadingLogs || 'Loading logs\u2026'
 			}));
@@ -189,7 +573,7 @@
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
-					action: 'aips_get_history_logs',
+					action: 'aips_get_history_modal_html',
 					nonce: aipsAjax.nonce,
 					history_id: historyId
 				},
@@ -204,19 +588,15 @@
 					}
 
 					var container = response.data.container;
-					var logs      = response.data.logs;
+					var modalHtml = response.data.modal_html || '';
 
-					// Set modal title to the generated post title when available.
-					if (container.generated_title) {
-						$title.text(container.generated_title);
-					} else {
-						$title.text(
-							(aipsHistoryL10n.historyDetailsTitle || 'History Details')
-							+ ' #' + container.id
-						);
-					}
-
-					$content.html(self.renderLogsModalContent(container, logs));
+					AIPS.HistoryModalShared.updateModalHeader($modal, container, {
+						titleSelector: '#aips-history-logs-modal-title',
+						actionsSelector: '#aips-history-logs-modal-actions',
+						statusSelector: '#aips-history-logs-modal-status',
+						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+					});
+					$content.html(modalHtml);
 				},
 				error: function () {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
@@ -233,77 +613,20 @@
 		 */
 		toggleLogDetail: function (e) {
 			e.preventDefault();
-			var $button = $(e.currentTarget);
-			var targetSelector = $button.data('target');
-			var $target = $(targetSelector);
-			if ($target.length) {
-				var showLabel = aipsHistoryL10n.showDetails || 'Show details';
-				var hideLabel = aipsHistoryL10n.hideDetails || 'Hide details';
-
-				$target.slideToggle(150, function () {
-					$button.text($target.is(':visible') ? hideLabel : showLabel);
-				});
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
 			}
+			AIPS.HistoryModalShared.toggleLogDetail($scope, $(e.currentTarget), {
+				show: aipsHistoryL10n.showDetails || 'Show details',
+				hide: aipsHistoryL10n.hideDetails || 'Hide details'
+			});
 		},
 
-		/**
-		 * Show temporary copied-state feedback on a copy button.
-		 *
-		 * @param {jQuery} $button    Copy button element.
-		 * @param {string} copyLabel   Default button label.
-		 * @param {string} copiedLabel Success button label.
-		 */
-		showCopySuccess: function ($button, copyLabel, copiedLabel) {
-			$button.text(copiedLabel);
-			setTimeout(function () {
-				$button.text(copyLabel);
-			}, 2000);
-		},
-
-		/**
-		 * Copy log detail text using the legacy execCommand fallback.
-		 *
-		 * @param {jQuery} $target Detail container.
-		 * @return {boolean} True when the fallback copy succeeded.
-		 */
-		copyLogDetailFallback: function ($target) {
-			var $pre = $target.find('pre');
-			var range;
-			var sel;
-
-			if (!$pre.length || !$pre[0]) {
-				return false;
-			}
-
-			try {
-				// Fallback: expose the detail block, select text, copy.
-				$target.show();
-				range = document.createRange();
-				range.selectNodeContents($pre[0]);
-				sel = window.getSelection();
-
-				if (!sel) {
-					return false;
-				}
-
-				sel.removeAllRanges();
-				sel.addRange(range);
-
-				if (!document.execCommand('copy')) {
-					sel.removeAllRanges();
-					return false;
-				}
-
-				sel.removeAllRanges();
-
-				return true;
-			} catch (error) {
-				if (sel) {
-					sel.removeAllRanges();
-				}
-
-				return false;
-			}
+		isHistoryPage: function () {
+			return $('#aips-history-logs-modal').length > 0
+				|| $('#aips-history-search-input').length > 0
+				|| $('#aips-history-tbody').length > 0;
 		},
 
 		/**
@@ -313,32 +636,17 @@
 		 */
 		copyLogDetail: function (e) {
 			e.preventDefault();
-
-			var self           = this;
-			var $button        = $(e.currentTarget);
-			var targetSelector = $button.data('target');
-			var $target        = $(targetSelector);
-			var text           = $target.find('pre').text();
-			var copyLabel      = aipsHistoryL10n.copyDetails || 'Copy';
-			var copiedLabel    = aipsHistoryL10n.copiedDetails || 'Copied!';
-
-			if (!text) {
-				return;
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
 			}
-
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text)
-					.then(function () {
-						self.showCopySuccess($button, copyLabel, copiedLabel);
-					})
-					.catch(function () {
-						if (self.copyLogDetailFallback($target)) {
-							self.showCopySuccess($button, copyLabel, copiedLabel);
-						}
-					});
-			} else if (self.copyLogDetailFallback($target)) {
-				self.showCopySuccess($button, copyLabel, copiedLabel);
-			}
+			AIPS.HistoryModalShared.copyLogDetail($scope, $(e.currentTarget), {
+				copy: aipsHistoryL10n.copyDetails || 'Copy',
+				copied: aipsHistoryL10n.copiedDetails || 'Copied!'
+			}, {
+				disable: false,
+				duration: 2000
+			});
 		},
 
 		/**
@@ -348,411 +656,16 @@
 		 */
 		filterLogsByType: function (e) {
 			e.preventDefault();
-			var $btn    = $(e.currentTarget);
-			var typeId  = $btn.data('type-id');
-			var $modal  = $('#aips-history-logs-modal');
-
-			$modal.find('.aips-log-type-filter-btn')
-				.removeClass('aips-btn-primary')
-				.addClass('aips-btn-ghost');
-			$btn.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
-
-			var $rows = $modal.find('.aips-history-logs-table tbody tr');
-			if (!typeId || typeId === 'all') {
-				$rows.show();
-			} else {
-				$rows.each(function () {
-					var rowType = $(this).data('type-id');
-					$(this).toggle(String(rowType) === String(typeId));
-				});
-			}
+			AIPS.HistoryModalShared.applyTypeFilter($('#aips-history-logs-modal'), $(e.currentTarget));
 		},
 
 		/**
-		 * Build the HTML for the logs modal body using AIPS.Templates.
+		 * Toggle JSON tree view vs. raw JSON for the current modal content.
 		 *
-		 * @param {Object}   container History container summary fields.
-		 * @param {Object[]} logs      Array of log entry objects.
-		 * @return {string} HTML string.
+		 * @param {Event} e Change event.
 		 */
-		renderLogsModalContent: function (container, logs) {
-			var self = this;
-			var T    = AIPS.Templates;
-			var html = '';
-			var inferredAction = self.inferWhatHappened(container, logs);
-			var inferredOutcome = self.humanizeOutcome(container.status);
-			var changedHighlights = self.detectWhatChanged(logs, container);
-
-			// ---- Container summary ----
-			var rows = '';
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelContainerId || 'Container ID',
-				value: container.id ? String(container.id) : ''
-			});
-
-			if (container.generated_title) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelTitle || 'Title',
-					value: container.generated_title
-				});
-			}
-			if (container.template_name) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelTemplate || 'Template',
-					value: container.template_name
-				});
-			}
-
-			if (container.creation_method) {
-				var methodLabel = container.creation_method.replace(/_/g, ' ');
-				methodLabel = methodLabel.charAt(0).toUpperCase() + methodLabel.slice(1);
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCreationMethod || 'Method',
-					value: methodLabel
-				});
-			}
-
-			var statusClass = container.status === 'completed' ? 'aips-badge-success'
-				: (container.status === 'failed' ? 'aips-badge-error' : 'aips-badge-neutral');
-			rows += T.renderRaw('aips-tmpl-history-summary-status-row', {
-				label:       T.escape(aipsHistoryL10n.labelStatus || 'Status'),
-				statusClass: T.escape(statusClass),
-				status:      T.escape(container.status)
-			});
-
-			if (container.created_at) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCreated || 'Created',
-					value: container.created_at
-				});
-			}
-			if (container.completed_at) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCompleted || 'Completed',
-					value: container.completed_at
-				});
-			}
-
-			// Duration row.
-			if (container.duration_seconds !== null && container.duration_seconds !== undefined) {
-				rows += T.render('aips-tmpl-history-summary-duration-row', {
-					label: aipsHistoryL10n.labelDuration || 'Duration',
-					value: AIPS.DateTime.formatDuration(container.duration_seconds)
-				});
-			}
-
-			if (container.error_message) {
-				rows += T.render('aips-tmpl-history-summary-error-row', {
-					label:   aipsHistoryL10n.labelError || 'Error',
-					message: container.error_message
-				});
-			}
-
-			// Post link row.
-			if (container.post_id && container.post_url && container.post_edit_url) {
-				rows += T.renderRaw('aips-tmpl-history-summary-post-row', {
-					label:     T.escape(aipsHistoryL10n.labelPostId || 'Post'),
-					url:       T.escape(container.post_url),
-					postId:    T.escape(String(container.post_id)),
-					editUrl:   T.escape(container.post_edit_url || ''),
-					editLabel: T.escape(aipsHistoryL10n.editPostLabel || 'Edit')
-				});
-			} else if (container.post_id) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelPostId || 'Post ID',
-					value: String(container.post_id)
-				});
-			}
-
-			rows = T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelWhatHappened || 'What happened',
-				value: inferredAction
-			}) + rows;
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelOutcome || 'Outcome',
-				value: inferredOutcome
-			});
-
-			var relatedEntities = self.collectRelatedEntities(container, logs);
-			if (relatedEntities) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelRelatedEntities || 'Related entities',
-					value: relatedEntities
-				});
-			}
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelWhatChanged || 'What changed',
-				value: changedHighlights
-			});
-
-			html += '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>';
-			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
-
-			// ---- Log type filter toolbar ----
-			var typeCounts = { all: logs.length };
-			$.each(logs, function (i, log) {
-				var tid = String(log.history_type_id);
-				typeCounts[tid] = (typeCounts[tid] || 0) + 1;
-			});
-
-			if (logs.length > 0) {
-				var filterButtons = '';
-
-				// "All" button.
-				filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
-					typeId:      T.escape('all'),
-					activeClass: T.escape('aips-btn-primary'),
-					label:       T.escape(aipsHistoryL10n.filterAll || 'All'),
-					count:       T.escape(String(typeCounts.all))
-				});
-
-				// Per-type buttons (only types that appear in the log set).
-				var typeOrder = [2, 3, 4, 5, 6, 8, 1, 7, 9, 10];
-				$.each(typeOrder, function (i, tid) {
-					if (!typeCounts[String(tid)]) {
-						return;
-					}
-					var typeLabel = (aipsHistoryL10n.typeLabels && aipsHistoryL10n.typeLabels[tid])
-						|| self.typeLabelFallback(tid);
-					filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
-						typeId:      T.escape(String(tid)),
-						activeClass: T.escape('aips-btn-ghost'),
-						label:       T.escape(typeLabel),
-						count:       T.escape(String(typeCounts[String(tid)]))
-					});
-				});
-
-				html += T.renderRaw('aips-tmpl-history-log-type-filter', {
-					filterLabel: T.escape(aipsHistoryL10n.filterByType || 'Filter:'),
-					buttons:     filterButtons
-				});
-			}
-
-			// ---- Log entries heading ----
-			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
-			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
-			html += T.renderRaw('aips-tmpl-history-logs-heading', {
-				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
-				count:   logs.length
-			});
-
-			if (logs.length === 0) {
-				html += T.render('aips-tmpl-history-no-logs', {
-					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
-				});
-				html += '</details>';
-				return html;
-			}
-
-			var rowsHtml = '';
-			$.each(logs, function (i, log) {
-				var typeClass   = self.typeClass(log.history_type_id);
-				var message     = (log.details && log.details.message) ? log.details.message : '';
-				var detailsHtml = '';
-
-				if (message) {
-					detailsHtml += T.render('aips-tmpl-history-log-message', { message: message });
-				}
-
-				// Render extra details (input/output/context) as a collapsible block.
-				var extra = {};
-				$.each(log.details, function (key, val) {
-					if (key !== 'message' && key !== 'timestamp') {
-						extra[key] = val;
-					}
-				});
-
-				if (Object.keys(extra).length > 0) {
-					detailsHtml += T.render('aips-tmpl-history-log-detail-block', {
-						rowId:     'aips-log-detail-' + i,
-						showLabel: aipsHistoryL10n.showDetails || 'Show details',
-						copyLabel: aipsHistoryL10n.copyDetails  || 'Copy',
-						details:   JSON.stringify(extra, null, 2)
-					});
-				}
-
-				rowsHtml += T.renderRaw('aips-tmpl-history-log-row', {
-					timestamp:   T.escape(log.timestamp),
-					typeClass:   T.escape(typeClass),
-					typeLabel:   T.escape(log.type_label),
-					logType:     T.escape(log.log_type),
-					detailsHtml: detailsHtml,
-					typeId:      T.escape(String(log.history_type_id))
-				});
-			});
-
-			html += T.renderRaw('aips-tmpl-history-logs-table', {
-				colTimestamp: T.escape(aipsHistoryL10n.colTimestamp || 'Timestamp'),
-				colType:      T.escape(aipsHistoryL10n.colType || 'Type'),
-				colLogType:   T.escape(aipsHistoryL10n.colLogType || 'Log Type'),
-				colDetails:   T.escape(aipsHistoryL10n.colDetails || 'Details'),
-				rows:         rowsHtml
-			});
-
-			html += '</details>';
-
-			return html;
-		},
-
-		inferWhatHappened: function (container, logs) {
-			var text = ((container.creation_method || '') + ' ' + (container.template_name || '')).toLowerCase();
-			if (text.indexOf('research') !== -1) { return aipsHistoryL10n.summaryActionResearchRun || 'Research run'; }
-			if (text.indexOf('embedding') !== -1) { return aipsHistoryL10n.summaryActionEmbeddings || 'Embeddings processing'; }
-			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return aipsHistoryL10n.summaryActionAuthorTopics || 'Author topic generation'; }
-			if (text.indexOf('schedule') !== -1) { return aipsHistoryL10n.summaryActionScheduledPosts || 'Scheduled post generation'; }
-
-			var sawAI = false;
-			$.each(logs || [], function (i, log) {
-				if (String(log.history_type_id) === '5' || String(log.history_type_id) === '6') {
-					sawAI = true;
-				}
-			});
-			return sawAI
-				? (aipsHistoryL10n.summaryActionPostGeneration || 'Post generation')
-				: (aipsHistoryL10n.summaryActionAutomationTask || 'Automation task');
-		},
-
-		humanizeOutcome: function (status) {
-			if (status === 'completed') { return aipsHistoryL10n.summaryOutcomeSuccess || 'Success'; }
-			if (status === 'failed') { return aipsHistoryL10n.summaryOutcomeFailed || 'Failed'; }
-			return aipsHistoryL10n.summaryOutcomeInProgress || 'In progress';
-		},
-
-		collectRelatedEntities: function (container, logs) {
-			var entities = [];
-			var seen = {};
-			var addEntity = function (label, value) {
-				if (!value) {
-					return;
-				}
-				var text = String(value);
-				var key = label + '|' + text;
-				if (seen[key]) {
-					return;
-				}
-				seen[key] = true;
-				entities.push(label + ': ' + text);
-			};
-			addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', container.generated_title);
-			addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', container.template_name);
-			addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', container.post_id);
-			addEntity(
-				aipsHistoryL10n.summaryEntityMethod || 'Method',
-				container.creation_method ? container.creation_method.replace(/_/g, ' ') : ''
-			);
-
-			$.each(logs || [], function (i, log) {
-				var details = log && log.details ? log.details : null;
-				if (!details) {
-					return;
-				}
-				if (!container.generated_title) {
-					addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', details.generated_title || details.title);
-				}
-				if (!container.template_name) {
-					addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', details.template_name);
-				}
-				if (!container.post_id) {
-					addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', details.post_id);
-				}
-			});
-
-			return entities.length ? entities.join(' | ') : (aipsHistoryL10n.summaryNoRelatedEntities || 'No related entities detected');
-		},
-
-		detectWhatChanged: function (logs, container) {
-			var details = [];
-			var sawTitleChange = false;
-			var sawContentChange = false;
-			var sawImageChange = false;
-			var sawPublishedResult = false;
-			var sawDraftResult = false;
-			var scanTextForKeywords = function (value) {
-				if (typeof value !== 'string' || value === '') {
-					return;
-				}
-				var normalized = value.toLowerCase();
-				if (normalized.indexOf('title') !== -1) { sawTitleChange = true; }
-				if (normalized.indexOf('content') !== -1 || normalized.indexOf('body') !== -1) { sawContentChange = true; }
-				if (normalized.indexOf('featured image') !== -1 || normalized.indexOf('image') !== -1) { sawImageChange = true; }
-				if (normalized.indexOf('publish') !== -1) { sawPublishedResult = true; }
-				if (normalized.indexOf('draft') !== -1) { sawDraftResult = true; }
-			};
-
-			$.each(logs || [], function (i, log) {
-				if (!log || !log.details) {
-					return;
-				}
-				$.each(log.details, function (key, val) {
-					if (typeof val === 'string') {
-						scanTextForKeywords(val);
-						return;
-					}
-					if (val && typeof val === 'object') {
-						$.each(val, function (nestedKey, nestedVal) {
-							if (typeof nestedVal === 'string') {
-								scanTextForKeywords(nestedVal);
-							}
-						});
-					}
-				});
-			});
-
-			if (sawTitleChange) { details.push(aipsHistoryL10n.summaryChangedTitle || 'Title updated'); }
-			if (sawContentChange) { details.push(aipsHistoryL10n.summaryChangedContent || 'Content updated'); }
-			if (sawImageChange) { details.push(aipsHistoryL10n.summaryChangedImage || 'Image generated/updated'); }
-			if (sawPublishedResult) { details.push(aipsHistoryL10n.summaryChangedPublished || 'Published result'); }
-			else if (sawDraftResult) { details.push(aipsHistoryL10n.summaryChangedDraft || 'Draft result'); }
-			if (container.status === 'failed') { details.push(aipsHistoryL10n.summaryChangedError || 'Run ended with an error'); }
-			return details.length ? details.join('; ') : (aipsHistoryL10n.summaryChangedNone || 'No major content changes detected');
-		},
-
-		/**
-		 * Return a fallback human-readable label for a history type ID.
-		 *
-		 * Used when the server-side l10n map is not available for a given type.
-		 *
-		 * @param {number} typeId
-		 * @return {string}
-		 */
-		typeLabelFallback: function (typeId) {
-			var map = {
-				1:  'Log',
-				2:  'Error',
-				3:  'Warning',
-				4:  'Info',
-				5:  'AI Request',
-				6:  'AI Response',
-				7:  'Debug',
-				8:  'Activity',
-				9:  'Session',
-				10: 'Metric'
-			};
-			return map[typeId] || 'Unknown';
-		},
-
-		/**
-		 * Return a badge CSS class for a history_type_id constant.
-		 *
-		 * @param {number} typeId
-		 * @return {string}
-		 */
-		typeClass: function (typeId) {
-			var map = {
-				1: 'aips-badge-neutral',   // LOG
-				2: 'aips-badge-error',     // ERROR
-				3: 'aips-badge-warning',   // WARNING
-				4: 'aips-badge-info',      // INFO
-				5: 'aips-badge-ai',        // AI_REQUEST
-				6: 'aips-badge-ai',        // AI_RESPONSE
-				7: 'aips-badge-neutral',   // DEBUG
-				8: 'aips-badge-success',   // ACTIVITY
-				9: 'aips-badge-neutral'    // SESSION_METADATA
-			};
-			return map[typeId] || 'aips-badge-neutral';
+		toggleJsonViewerMode: function (e) {
+			AIPS.HistoryModalShared.toggleJsonViewerMode($(e.currentTarget));
 		},
 
 		/**
@@ -1295,6 +1208,7 @@
 	/* ---------------------------------------------------------------------- */
 	$(document).ready(function () {
 		AIPS.History.init();
+		AIPS.HistoryModalShared.initStandaloneOpener();
 	});
 
 })(jQuery);

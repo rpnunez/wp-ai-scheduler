@@ -201,12 +201,21 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
 
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
+            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => $frequency,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+            'blackout_dates' => isset($data['blackout_dates']) ? $data['blackout_dates'] : null,
+            'time_window_start' => isset($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null,
+            'time_window_end' => isset($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null,
+            'day_preferences' => isset($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null,
+            'season_end_date' => isset($data['season_end_date']) ? absint($data['season_end_date']) : null,
         );
 
         if (!empty($data['id'])) {

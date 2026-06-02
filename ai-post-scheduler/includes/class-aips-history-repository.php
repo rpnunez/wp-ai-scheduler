@@ -181,6 +181,40 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         return $updated;
     }
 
+    /**
+     * Backfill missing campaign attribution from linked templates.
+     *
+     * Repairs history rows created before generator-facing template entries
+     * started carrying campaign_id forward.
+     *
+     * @param int $campaign_id Optional campaign ID scope.
+     * @return void
+     */
+    public function repair_missing_campaign_ids($campaign_id = 0) {
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $campaign_id = absint($campaign_id);
+
+        if ($campaign_id > 0) {
+            $this->wpdb->query($this->wpdb->prepare(
+                "UPDATE {$this->table_name} h
+                INNER JOIN {$templates_table} t ON h.template_id = t.id
+                SET h.campaign_id = t.campaign_id
+                WHERE h.campaign_id IS NULL
+                AND t.campaign_id = %d",
+                $campaign_id
+            ));
+            return;
+        }
+
+        $this->wpdb->query(
+            "UPDATE {$this->table_name} h
+            INNER JOIN {$templates_table} t ON h.template_id = t.id
+            SET h.campaign_id = t.campaign_id
+            WHERE h.campaign_id IS NULL
+            AND t.campaign_id IS NOT NULL"
+        );
+    }
+
     public function get_daily_success_failure_trend($days = 14) {
         $days = max(1, absint($days));
 
@@ -248,6 +282,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'status' => '',
             'search' => '',
             'template_id' => 0,
+            'campaign_id' => 0,
             'author_id' => 0,
             'correlation_id' => '',
             'domain' => '',
@@ -260,7 +295,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
         
         $args = wp_parse_args($args, $defaults);
-        
+
         $offset = ($args['page'] - 1) * $args['per_page'];
 
         $domain_patterns = array(
@@ -295,21 +330,21 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name";
         } else {
             // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
         }
 
         // Build where clauses
@@ -330,6 +365,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['template_id'])) {
             $where_clauses[] = "h.template_id = %d";
             $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['campaign_id'])) {
+            $where_clauses[] = "h.campaign_id = %d";
+            $where_args[] = $args['campaign_id'];
         }
 
         if (!empty($args['author_id'])) {
@@ -464,6 +504,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'page' => 1,
             'search' => '',
             'template_id' => 0,
+            'campaign_id' => 0,
             'author_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
@@ -472,6 +513,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $args = wp_parse_args($args, $defaults);
         $args['page'] = max(1, (int) $args['page']);
         $args['per_page'] = (int) $args['per_page'];
+
         $use_limit = $args['per_page'] > 0;
         $offset = $use_limit ? (($args['page'] - 1) * $args['per_page']) : 0;
 
@@ -485,6 +527,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['template_id'])) {
             $where_clauses[] = 'h.template_id = %d';
             $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['campaign_id'])) {
+            $where_clauses[] = 'h.campaign_id = %d';
+            $where_args[] = $args['campaign_id'];
         }
 
         if (!empty($args['author_id'])) {
@@ -643,7 +690,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_by_post_id($post_id) {
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
+            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
                     creation_method, status, generated_title, error_message,
                     created_at, completed_at
              FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
@@ -795,21 +842,22 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array<string, array{completed: int, failed: int, total: int}>
      */
     public function get_daily_generation_counts( $days = 14 ) {
-        $days  = max( 1, absint( $days ) );
-        $start = wp_date( 'Y-m-d', current_time( 'timestamp', true ) - ( ( $days - 1 ) * DAY_IN_SECONDS ), wp_timezone() );
+        $days      = max( 1, absint( $days ) );
+        $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
+        $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
-                    DATE(created_at) AS day,
+                    DATE(FROM_UNIXTIME(created_at)) AS day,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
                     SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
                     COUNT(*) AS total
                  FROM {$this->table_name}
-                 WHERE created_at >= %s
+                 WHERE created_at >= %d
                    AND COALESCE(creation_method, '') <> 'schedule_lifecycle'
                    AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-                 GROUP BY DATE(created_at)
+                 GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
                 $start
             )
@@ -1068,6 +1116,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
+            'campaign_id' => isset($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
             'creation_method' => isset($data['creation_method']) ? sanitize_text_field($data['creation_method']) : null,
@@ -1080,7 +1129,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'created_at' => absint($data['created_at']),
         );
         
-        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -1136,6 +1185,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $update_data['topic_id'] = absint($data['topic_id']);
             $format[] = '%d';
         }
+
+        if (array_key_exists('campaign_id', $data)) {
+            $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
+            $format[] = '%d';
+        }
         
         if (isset($data['creation_method'])) {
             $update_data['creation_method'] = sanitize_text_field($data['creation_method']);
@@ -1176,6 +1230,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
+            return false;
+        }
+
+        if ($status === 'all') {
             return $this->wpdb->query("DELETE FROM {$this->table_name}");
         }
         
@@ -1281,9 +1339,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($query_args)) {
             $count = $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} $where_clause", $query_args));
             $deleted = $this->wpdb->query($this->wpdb->prepare("DELETE FROM {$this->table_name} $where_clause", $query_args));
-        } else {
+        } elseif (($args['status'] ?? '') === 'all' && empty($where)) {
             $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
             $deleted = $this->wpdb->query("DELETE FROM {$this->table_name}");
+        } else {
+            return array(
+                'success' => false,
+                'deleted' => 0,
+                'message' => "Invalid filter arguments for history deletion"
+            );
         }
         
         // Clear cache

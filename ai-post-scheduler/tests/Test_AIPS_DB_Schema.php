@@ -9,6 +9,10 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+
+		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+			$this->markTestSkipped('DB schema tests require the full WordPress test library.');
+		}
 		
 		// Install tables to ensure they exist
 		AIPS_DB_Manager::install_tables();
@@ -210,6 +214,39 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$this->assertNotNull($description_column, 'Description column should be found');
 		$this->assertEquals('YES', $description_column->Null, 'Description column should be nullable');
 		$this->assertStringContainsString('text', strtolower($description_column->Type), 'Description column should be TEXT type');
+	}
+
+	/**
+	 * Test that the canonical campaigns table exists.
+	 */
+	public function test_campaigns_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_campaigns';
+
+		$table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
+		$this->assertEquals($table_name, $table_exists, 'aips_campaigns table should exist');
+	}
+
+	/**
+	 * Test that campaign ownership columns exist on core child tables.
+	 */
+	public function test_campaign_id_columns_exist_on_core_tables() {
+		global $wpdb;
+
+		$tables = array(
+			$wpdb->prefix . 'aips_templates',
+			$wpdb->prefix . 'aips_schedule',
+			$wpdb->prefix . 'aips_history',
+		);
+
+		foreach ($tables as $table_name) {
+			$columns = $wpdb->get_results("SHOW COLUMNS FROM {$table_name}");
+			$column_names = array_map(function($col) {
+				return $col->Field;
+			}, $columns);
+
+			$this->assertContains('campaign_id', $column_names, "Column 'campaign_id' should exist in {$table_name}");
+		}
 	}
 
 	/**

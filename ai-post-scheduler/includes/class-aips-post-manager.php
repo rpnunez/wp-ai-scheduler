@@ -20,14 +20,14 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Post_Manager {
 
-	/**
-	 * @var AIPS_Post_Repository
-	 */
-	private $post_repository;
+    /**
+     * @var AIPS_Post_Repository
+     */
+    private $post_repository;
 
-	public function __construct($post_repository = null) {
-		$this->post_repository = $post_repository instanceof AIPS_Post_Repository ? $post_repository : new AIPS_Post_Repository();
-	}
+    public function __construct($post_repository = null) {
+        $this->post_repository = $post_repository instanceof AIPS_Post_Repository ? $post_repository : new AIPS_Post_Repository();
+    }
 
     /**
      * Create a new post from generated content.
@@ -63,13 +63,17 @@ class AIPS_Post_Manager {
         $template = isset($data['template']) ? $data['template'] : null;
 
         // If we have a context, use it; otherwise fall back to template
+        $post_type = 'post';
+
         if ($context instanceof AIPS_Generation_Context) {
             $post_status = $context->get_post_status();
+            $post_type = $context->get_post_type();
             $post_author = $context->get_post_author();
             $post_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();
         } elseif ($template) {
             $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
+            $post_type = !empty($template->post_type) ? sanitize_key($template->post_type) : 'post';
             $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
@@ -86,7 +90,7 @@ class AIPS_Post_Manager {
             'post_excerpt' => $excerpt,
             'post_status' => $post_status,
             'post_author' => $post_author,
-            'post_type' => 'post',
+            'post_type' => post_type_exists($post_type) ? $post_type : 'post',
         );
 
         if (!empty($post_category)) {
@@ -122,6 +126,8 @@ class AIPS_Post_Manager {
             $meta_description = $data['meta_description'];
         } elseif ($excerpt !== '') {
             $meta_description = $excerpt;
+        } elseif ($content !== '') {
+            $meta_description = $content;
         }
 
         $seo_data = array(

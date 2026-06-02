@@ -54,8 +54,6 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
      * Ensure explicit SEO inputs populate Yoast and RankMath fields when plugins are active.
      */
     public function test_sets_focus_keyword_and_meta_description() {
-        global $aips_test_meta;
-
         $this->activate_seo_plugins();
 
         $template = (object) array(
@@ -75,19 +73,16 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
             'seo_title' => 'Custom SEO Title',
         ));
 
-        $this->assertArrayHasKey($post_id, $aips_test_meta);
-        $this->assertSame('Primary Keyword', $aips_test_meta[$post_id]['_yoast_wpseo_focuskw']);
-        $this->assertSame('Primary Keyword', $aips_test_meta[$post_id]['rank_math_focus_keyword']);
-        $this->assertSame('Meta description value here.', $aips_test_meta[$post_id]['_yoast_wpseo_metadesc']);
-        $this->assertSame('Custom SEO Title', $aips_test_meta[$post_id]['rank_math_title']);
+        $this->assertSame('Primary Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_focuskw'));
+        $this->assertSame('Primary Keyword', $this->get_stored_post_meta($post_id, 'rank_math_focus_keyword'));
+        $this->assertSame('Meta description value here.', $this->get_stored_post_meta($post_id, '_yoast_wpseo_metadesc'));
+        $this->assertSame('Custom SEO Title', $this->get_stored_post_meta($post_id, 'rank_math_title'));
     }
 
     /**
      * Ensure sensible defaults populate SEO meta when optional fields are omitted and plugins are active.
      */
     public function test_defaults_focus_keyword_and_description_when_missing() {
-        global $aips_test_meta;
-
         $this->activate_seo_plugins();
 
         $template = (object) array(
@@ -105,18 +100,16 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
             'template' => $template,
         ));
 
-        $this->assertSame('Title Used As Keyword', $aips_test_meta[$post_id]['_yoast_wpseo_focuskw']);
-        $this->assertSame('Title Used As Keyword', $aips_test_meta[$post_id]['_yoast_wpseo_title']);
-        $this->assertSame('Another generated body with more details for description.', $aips_test_meta[$post_id]['_yoast_wpseo_metadesc']);
-        $this->assertSame('Another generated body with more details for description.', $aips_test_meta[$post_id]['rank_math_description']);
+        $this->assertSame('Title Used As Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_focuskw'));
+        $this->assertSame('Title Used As Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_title'));
+        $this->assertSame('Another generated body with more details for description.', $this->get_stored_post_meta($post_id, '_yoast_wpseo_metadesc'));
+        $this->assertSame('Another generated body with more details for description.', $this->get_stored_post_meta($post_id, 'rank_math_description'));
     }
 
     /**
      * Ensure generation status metadata is stored for partial generations.
      */
     public function test_stores_partial_generation_meta_statuses() {
-        global $aips_test_meta;
-
         $template = (object) array(
             'post_status' => 'draft',
             'post_author' => 1,
@@ -139,10 +132,9 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
             ),
         ));
 
-        $this->assertArrayHasKey($post_id, $aips_test_meta);
-        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_incomplete'));
 
-        $decoded_statuses = json_decode($aips_test_meta[$post_id]['aips_post_generation_component_statuses'], true);
+        $decoded_statuses = json_decode($this->get_stored_post_meta($post_id, 'aips_post_generation_component_statuses'), true);
         $this->assertSame(
             array(
                 'post_title' => true,
@@ -153,17 +145,15 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
             $decoded_statuses
         );
 
-        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_had_partial']);
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_had_partial'));
     }
 
     /**
      * Ensure historical partial flag remains true after a post is fully resolved.
      */
     public function test_historical_partial_flag_is_sticky_after_resolution() {
-        global $aips_test_meta;
-
         $creator = new AIPS_Post_Manager();
-        $post_id = 999;
+        $post_id = $this->factory->post->create();
 
         $creator->update_generation_status_meta(
             $post_id,
@@ -187,8 +177,8 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
             false
         );
 
-        $this->assertSame('false', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
-        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_had_partial']);
+        $this->assertSame('false', $this->get_stored_post_meta($post_id, 'aips_post_generation_incomplete'));
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_had_partial'));
     }
 
     /**
@@ -204,5 +194,19 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
         if (!defined('RANK_MATH_VERSION')) {
             define('RANK_MATH_VERSION', 'test');
         }
+    }
+
+    private function get_stored_post_meta($post_id, $meta_key) {
+        $value = get_post_meta($post_id, $meta_key, true);
+        if ($value !== '' || metadata_exists('post', $post_id, $meta_key)) {
+            return $value;
+        }
+
+        global $aips_test_meta;
+        if (isset($aips_test_meta[$post_id]) && array_key_exists($meta_key, $aips_test_meta[$post_id])) {
+            return $aips_test_meta[$post_id][$meta_key];
+        }
+
+        return '';
     }
 }
