@@ -235,9 +235,21 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 
 ## Testing
 - Tests live in `ai-post-scheduler/tests/`; run with `composer test` from `ai-post-scheduler/`.
-- Test classes extend `WP_UnitTestCase`.
-- `tests/bootstrap.php` provides WordPress mocks. New `includes/*.php` classes must be `require_once`'d there for limited-mode runs.
+- `composer test`, `composer test:verbose`, and `composer test:coverage` run an automatic setup step first (`composer test:setup`) to prepare WordPress test paths and dependencies when missing.
+- `composer test:setup` prefers `svn` when available, but agent sessions do not require it; when `svn` is missing, the installer falls back to the packaged `ai-post-scheduler/vendor/wp-phpunit/wp-phpunit` test library.
+- In agent sessions, prefer this sequence when setup is uncertain:
+  1. `cd ai-post-scheduler`
+  2. `composer test:setup`
+  3. `composer test`
+- The suite always runs in full WordPress test-library mode; `tests/bootstrap.php` requires a valid `WP_TESTS_DIR` and `WP_CORE_DIR`.
+- If the runtime cannot create test databases, set `AIPS_WP_TEST_SKIP_DB_CREATE=true` before running `composer test`.
+- Docker-backed execution via `bash scripts/run-wp-tests-docker.sh` is the supported local workflow.
 - Prefer one test file per feature/class. Test both success and failure paths.
+
+## Repository skills
+- Repository-specific task playbooks live under `.codex/skills/`.
+- Start with `.codex/skills/README.md` to discover available skills.
+- Each skill is defined in `.codex/skills/<skill>/SKILL.md`.
 
 ## Useful docs
 - `.github/copilot-instructions.md` for the fuller repository guide.

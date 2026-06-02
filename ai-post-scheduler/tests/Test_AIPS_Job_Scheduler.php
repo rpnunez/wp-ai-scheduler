@@ -161,8 +161,7 @@ class Test_AIPS_Job_Scheduler extends WP_UnitTestCase {
 			->method('dispatch')
 			->with($this->callback(function($job) use ($prefix_args) {
 				$args = $job->get_args();
-				// First args should be prefix_args
-				$this->assertEquals(123, $args[0]['schedule_id']);
+				$this->assertEquals(123, $args['schedule_id']);
 				return true;
 			}))
 			->willReturn(true);

@@ -150,7 +150,7 @@ class AIPS_Authors_Controller {
 		
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$now = current_time('mysql');
+			$now = AIPS_DateTime::now()->timestamp();
 			$data['topic_generation_next_run'] = $now;
 			$data['post_generation_next_run'] = $now;
 		}
@@ -286,9 +286,13 @@ class AIPS_Authors_Controller {
 		foreach ($topics as &$topic) {
 			$logs = $this->logs_repository->get_by_topic($topic->id);
 			$post_count = 0;
+			$topic->post_generated_at = null;
 			foreach ($logs as $log) {
 				if ($log->action === 'post_generated' && $log->post_id) {
 					$post_count++;
+					if (null === $topic->post_generated_at && isset($log->created_at)) {
+						$topic->post_generated_at = absint($log->created_at);
+					}
 				}
 			}
 			$topic->post_count = $post_count;

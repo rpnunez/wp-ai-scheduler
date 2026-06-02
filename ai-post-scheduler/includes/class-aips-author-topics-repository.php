@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+
 /**
  * Class AIPS_Author_Topics_Repository
  *
@@ -468,15 +469,16 @@ class AIPS_Author_Topics_Repository {
 	 * @return array<string, int>
 	 */
 	public function get_daily_topic_counts( $days = 14 ) {
-		$days  = max( 1, absint( $days ) );
-		$start = date( 'Y-m-d', current_time( 'timestamp' ) - ( ( $days - 1 ) * DAY_IN_SECONDS ) );
+		$days      = max( 1, absint( $days ) );
+		$start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
+		$start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT DATE(created_at) AS day, COUNT(*) AS total
+				"SELECT DATE(FROM_UNIXTIME(generated_at)) AS day, COUNT(*) AS total
 				 FROM {$this->table_name}
-				 WHERE created_at >= %s
-				 GROUP BY DATE(created_at)
+				 WHERE generated_at >= %d
+				 GROUP BY DATE(FROM_UNIXTIME(generated_at))
 				 ORDER BY day ASC",
 				$start
 			)
@@ -490,5 +492,3 @@ class AIPS_Author_Topics_Repository {
 		return $data;
 	}
 }
-
-

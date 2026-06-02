@@ -914,3 +914,5 @@ $site_ctx = AIPS_Site_Context::get();
 <span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
 </script>
 
+	<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
+

@@ -61,9 +61,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 					'author_id'   => $this->author_id,
 					'topic_title' => 'Today topic ' . $i,
 					'status'      => 'pending',
-					'created_at'  => $today . ' 09:00:00',
+					'generated_at'=> strtotime( $today . ' 09:00:00' ),
 				),
-				array( '%d', '%s', '%s', '%s' )
+				array( '%d', '%s', '%s', '%d' )
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -75,9 +75,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 					'author_id'   => $this->author_id,
 					'topic_title' => 'Yesterday topic ' . $i,
 					'status'      => 'pending',
-					'created_at'  => $yesterday . ' 09:00:00',
+					'generated_at'=> strtotime( $yesterday . ' 09:00:00' ),
 				),
-				array( '%d', '%s', '%s', '%s' )
+				array( '%d', '%s', '%s', '%d' )
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -148,9 +148,9 @@ class AIPS_Author_Topics_Repository_Test extends WP_UnitTestCase {
 				'author_id'   => $this->author_id,
 				'topic_title' => 'Old topic outside window',
 				'status'      => 'pending',
-				'created_at'  => $far_past_day . ' 12:00:00',
+				'generated_at'=> strtotime( $far_past_day . ' 12:00:00' ),
 			),
-			array( '%d', '%s', '%s', '%s' )
+			array( '%d', '%s', '%s', '%d' )
 		);
 		$inserted_id = $wpdb->insert_id;
 

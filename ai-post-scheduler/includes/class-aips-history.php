@@ -1399,7 +1399,17 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
-            $item->formatted_date = date_i18n($format, strtotime($item->created_at));
+            $created_at = isset( $item->created_at ) ? $item->created_at : 0;
+            $date_time  = is_numeric( $created_at )
+                ? AIPS_DateTime::fromTimestampOrNull( absint( $created_at ) )
+                : AIPS_DateTime::fromMysqlOrNull( (string) $created_at );
+
+            if ( ! ( $date_time instanceof AIPS_DateTime ) ) {
+                $item->formatted_date = '';
+                continue;
+            }
+
+            $item->formatted_date = $date_time->toDisplay( $format );
         }
     }
 }

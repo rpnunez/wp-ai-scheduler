@@ -55,6 +55,21 @@ class AIPS_Ajax_Registry {
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
 
+		// Admin Campaign Wizard
+		'aips_campaign_wizard_save_draft'    => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_validate_step' => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_finalize'      => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_ai_generate'   => 'AIPS_Campaigns_Controller',
+
+		// Campaigns Controller
+		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
+
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
 		'aips_reject_topic'               => 'AIPS_Author_Topics_Controller',
@@ -233,8 +248,10 @@ class AIPS_Ajax_Registry {
 		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 		'aips_status_reschedule_missed_cron' => 'AIPS_System_Status_Controller',
 		'aips_status_retry_failed_slices' => 'AIPS_System_Status_Controller',
+		'aips_status_repair_campaign_data' => 'AIPS_System_Status_Controller',
 		'aips_status_clear_partial_generations' => 'AIPS_System_Status_Controller',
 		'aips_status_cleanup_stale_jobs_cache' => 'AIPS_System_Status_Controller',
+		'aips_rebuild_caches'            => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -250,6 +267,10 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
+
+		// AI Assistance Controller
+		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
+		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 	);
 
 	/**

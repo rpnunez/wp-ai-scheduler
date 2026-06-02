@@ -1634,7 +1634,7 @@
     z-index: 0;
 }
 
-.aips-wizard-step {
+.aips-wizard-modal .aips-wizard-step {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1646,11 +1646,11 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.aips-wizard-step:hover {
+.aips-wizard-modal .aips-wizard-step:hover {
     opacity: 0.8;
 }
 
-.aips-wizard-step:active {
+.aips-wizard-modal .aips-wizard-step:active {
     transform: scale(0.98);
 }
 
@@ -1668,20 +1668,20 @@
     transition: all 0.3s ease;
 }
 
-.aips-wizard-step.active .aips-step-number {
+.aips-wizard-modal .aips-wizard-step.active .aips-step-number {
     background: #2271b1;
     border-color: #2271b1;
     color: #fff;
 }
 
-.aips-wizard-step.completed .aips-step-number {
+.aips-wizard-modal .aips-wizard-step.completed .aips-step-number {
     background: #00a32a;
     border-color: #00a32a;
     color: transparent; /* Hide original step number text */
     position: relative;
 }
 
-.aips-wizard-step.completed .aips-step-number::before {
+.aips-wizard-modal .aips-wizard-step.completed .aips-step-number::before {
     content: '✓';
     color: #fff;
     font-weight: 700;
@@ -1694,7 +1694,7 @@
     text-align: center;
 }
 
-.aips-wizard-step.active .aips-step-label {
+.aips-wizard-modal .aips-wizard-step.active .aips-step-label {
     color: #2271b1;
     font-weight: 600;
 }
@@ -4497,4 +4497,28 @@ float: none;
 
 .aips-ai-engine-download-wrap {
 margin-top: 10px;
+}
+
+.aips-ai-preview-grid {
+display: grid;
+grid-template-columns: 220px 1fr;
+gap: 10px 16px;
+margin: 0 0 16px;
+}
+
+.aips-ai-preview-columns {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 16px;
+}
+
+.aips-ai-preview-list {
+margin-top: 8px;
+}
+
+.aips-ai-preview-actions {
+display: flex;
+gap: 8px;
+margin-top: 16px;
+flex-wrap: wrap;
 }

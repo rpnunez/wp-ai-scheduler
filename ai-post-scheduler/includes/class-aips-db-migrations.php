@@ -71,13 +71,19 @@ class AIPS_DB_Migrations {
 	 * subsequent calls are skipped.
 	 *
 	 * Call order (must not be changed):
-	 *   1. Versioned migrations run first — they handle the structural changes
-	 *      that dbDelta cannot (column renames, type changes, index drops/adds,
-	 *      data backfills). The schema must be consistent before dbDelta runs.
-	 *   2. AIPS_DB_Manager::install_tables() runs second — dbDelta then applies
+	 *   1. Structural migrations run first — they handle changes that dbDelta
+	 *      cannot (column renames, type changes, index drops/adds). The schema
+	 *      must be in a consistent state before dbDelta runs.
+	 *   2. AIPS_DB_Manager::install_tables() runs second — dbDelta applies
 	 *      CREATE TABLE and ADD COLUMN for any new schema objects introduced in
 	 *      the current plugin version.
-	 *   3. aips_db_version is stamped to AIPS_VERSION via AIPS_Config::set_option()
+	 *   3. Data-backfill migrations that depend on newly-created tables or
+	 *      columns run after install_tables(). These are an intentional
+	 *      exception to the "migrations before dbDelta" rule: they require the
+	 *      schema to be fully up-to-date before they can operate safely. All
+	 *      such migrations must guard themselves with SHOW COLUMNS / SHOW TABLES
+	 *      checks so they are no-ops when the target schema is absent.
+	 *   4. aips_db_version is stamped to AIPS_VERSION via AIPS_Config::set_option()
 	 *      so the Config in-memory cache is kept in sync and subsequent reads
 	 *      within the same request see the updated value.
 	 *
@@ -130,6 +136,18 @@ class AIPS_DB_Migrations {
 
 			// Return without stamping the version so the next request retries.
 			return;
+		}
+
+		// migrate_to_2_8_2() is a data-backfill migration that requires the
+		// aips_campaigns table and the campaign_id columns introduced in this
+		// release to already exist (created above by install_tables()). It must
+		// therefore run after install_tables() rather than before it.
+		if ( version_compare( $from_version, '2.8.2', '<' ) ) {
+			$this->migrate_to_2_8_2();
+		}
+
+		if ( version_compare( $from_version, '2.8.3', '<' ) ) {
+			$this->migrate_to_2_8_3();
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -341,5 +359,394 @@ class AIPS_DB_Migrations {
 				AIPS_DB_Manager::convert_datetime_column_to_bigint( $table, $col_def[0] );
 			}
 		}
+	}
+
+	/**
+	 * Migration for version 2.8.2.
+	 *
+	 * Adds the canonical campaigns parent table plus campaign ownership
+	 * columns on templates, schedules, and history. Existing campaign-style
+	 * template schedules are backfilled into parent campaign rows for the
+	 * current local installation.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_8_2() {
+		global $wpdb;
+
+		$table_campaigns = $wpdb->prefix . 'aips_campaigns';
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_schedule  = $wpdb->prefix . 'aips_schedule';
+		$table_history   = $wpdb->prefix . 'aips_history';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_schedule ) );
+		if ( $table_exists !== $table_schedule ) {
+			return;
+		}
+
+		$template_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+		$schedule_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_schedule}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+		$history_campaign_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_history}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'campaign_id'
+		) );
+
+		if ( ! $template_campaign_column || ! $schedule_campaign_column || ! $history_campaign_column ) {
+			return;
+		}
+
+		$campaigns_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_campaigns ) );
+		if ( $campaigns_table_exists !== $table_campaigns ) {
+			return;
+		}
+
+		$existing_campaign_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_campaigns}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( $existing_campaign_count > 0 ) {
+			$wpdb->query(
+				"UPDATE {$table_history} h
+				INNER JOIN {$table_templates} t ON h.template_id = t.id
+				SET h.campaign_id = t.campaign_id
+				WHERE h.campaign_id IS NULL
+				AND t.campaign_id IS NOT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			);
+			return;
+		}
+
+		$schedules = $wpdb->get_results(
+			"SELECT s.*, t.name AS template_name
+			FROM {$table_schedule} s
+			LEFT JOIN {$table_templates} t ON s.template_id = t.id
+			WHERE s.schedule_type = 'post_generation'", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $schedules ) ) {
+			return;
+		}
+
+		foreach ( $schedules as $schedule ) {
+			$created_at = ! empty( $schedule['created_at'] ) ? absint( $schedule['created_at'] ) : AIPS_DateTime::now()->timestamp();
+			$updated_at = AIPS_DateTime::now()->timestamp();
+			$campaign_name = ! empty( $schedule['title'] ) ? $schedule['title'] : ( ! empty( $schedule['template_name'] ) ? $schedule['template_name'] : sprintf( 'Campaign %d', absint( $schedule['id'] ) ) );
+			$content_goal = isset( $schedule['topic'] ) ? (string) $schedule['topic'] : '';
+			$campaign_mode = ! empty( $schedule['campaign_mode'] ) ? sanitize_key( $schedule['campaign_mode'] ) : 'template';
+			$is_active = ! empty( $schedule['is_active'] ) ? 1 : 0;
+			$is_archived = ( isset( $schedule['status'] ) && 'archived' === $schedule['status'] ) ? 1 : 0;
+
+			$wpdb->insert(
+				$table_campaigns,
+				array(
+					'name'          => sanitize_text_field( $campaign_name ),
+					'content_goal'  => sanitize_textarea_field( $content_goal ),
+					'campaign_mode' => $campaign_mode,
+					'is_active'     => $is_active,
+					'is_archived'   => $is_archived,
+					'created_at'    => $created_at,
+					'updated_at'    => $updated_at,
+				),
+				array( '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
+			);
+
+			$campaign_id = (int) $wpdb->insert_id;
+			if ( ! $campaign_id ) {
+				continue;
+			}
+
+			$wpdb->update(
+				$table_schedule,
+				array( 'campaign_id' => $campaign_id ),
+				array( 'id' => absint( $schedule['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( ! empty( $schedule['template_id'] ) ) {
+				$wpdb->update(
+					$table_templates,
+					array( 'campaign_id' => $campaign_id ),
+					array( 'id' => absint( $schedule['template_id'] ) ),
+					array( '%d' ),
+					array( '%d' )
+				);
+			}
+		}
+
+		$wpdb->query(
+			"UPDATE {$table_history} h
+			INNER JOIN {$table_templates} t ON h.template_id = t.id
+			SET h.campaign_id = t.campaign_id
+			WHERE h.campaign_id IS NULL
+			AND t.campaign_id IS NOT NULL"
+		);
+	}
+
+	/**
+	 * Migration for version 2.8.3.
+	 *
+	 * Repairs corrupted scheduling timestamps left behind by legacy writes that
+	 * stored MySQL datetime strings in BIGINT-backed schedule columns. This
+	 * reuses the central date/time repair utility for poisoned next-run values,
+	 * then backfills template schedule last_run from run_state.timestamp when
+	 * the stored last_run value is clearly invalid.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_8_3() {
+		$summary = ( new AIPS_Date_Time_DB_Repair() )->run();
+		$fixed_last_runs = $this->repair_schedule_last_run_from_run_state();
+		$fixed_template_alignments = $this->repair_template_schedule_next_runs_from_last_run();
+		$fixed_author_alignments   = $this->repair_author_schedule_next_runs_from_last_run();
+
+		$this->logger->log(
+			sprintf(
+				'2.8.3 schedule repair: normalized=%d, fixed_schedule_next_runs=%d, fixed_author_next_runs=%d, fixed_source_next_runs=%d, fixed_schedule_last_runs=%d, fixed_template_alignments=%d, fixed_author_alignments=%d',
+				isset( $summary['normalized_null_values'] ) ? (int) $summary['normalized_null_values'] : 0,
+				isset( $summary['fixed_schedule_next_runs'] ) ? (int) $summary['fixed_schedule_next_runs'] : 0,
+				isset( $summary['fixed_author_next_runs'] ) ? (int) $summary['fixed_author_next_runs'] : 0,
+				isset( $summary['fixed_source_next_runs'] ) ? (int) $summary['fixed_source_next_runs'] : 0,
+				$fixed_last_runs,
+				$fixed_template_alignments,
+				$fixed_author_alignments
+			),
+			'info'
+		);
+	}
+
+	/**
+	 * Backfill invalid schedule.last_run values from run_state.timestamp.
+	 *
+	 * @return int Number of schedule rows updated.
+	 */
+	private function repair_schedule_last_run_from_run_state() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, last_run, run_state FROM `{$table}` WHERE run_state IS NOT NULL AND run_state != ''", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$updated = 0;
+
+		foreach ( $rows as $row ) {
+			$current_last_run = isset( $row['last_run'] ) ? (int) $row['last_run'] : 0;
+			if ( $current_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$state = json_decode( (string) $row['run_state'], true );
+			if ( ! is_array( $state ) || empty( $state['timestamp'] ) ) {
+				continue;
+			}
+
+			$run_at_ts = $this->normalize_run_state_timestamp( $state['timestamp'] );
+			if ( $run_at_ts < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				array( 'last_run' => $run_at_ts ),
+				array( 'id' => absint( $row['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated++;
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Realign template schedule next_run values from last_run using 2.8.3 rules.
+	 *
+	 * @return int
+	 */
+	private function repair_template_schedule_next_runs_from_last_run() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, frequency, next_run, last_run FROM `{$table}`", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$calculator = new AIPS_Interval_Calculator();
+		$updated    = 0;
+
+		foreach ( $rows as $row ) {
+			$last_run = $this->normalize_timestamp_value( $row['last_run'] ?? 0 );
+			if ( $last_run < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				continue;
+			}
+
+			$frequency = isset( $row['frequency'] ) ? (string) $row['frequency'] : '';
+			if ( ! $calculator->is_valid_frequency( $frequency ) ) {
+				continue;
+			}
+
+			$expected_next_run = (int) $calculator->calculate_next_run( $frequency, $last_run );
+			$current_next_run  = $this->normalize_timestamp_value( $row['next_run'] ?? 0 );
+
+			if ( $current_next_run === $expected_next_run ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				array( 'next_run' => $expected_next_run ),
+				array( 'id' => absint( $row['id'] ) ),
+				array( '%d' ),
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated++;
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Realign author topic/post next_run values from last_run using 2.8.3 rules.
+	 *
+	 * @return int
+	 */
+	private function repair_author_schedule_next_runs_from_last_run() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			"SELECT id, topic_generation_frequency, topic_generation_next_run, topic_generation_last_run, post_generation_frequency, post_generation_next_run, post_generation_last_run FROM `{$table}`", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return 0;
+		}
+
+		$calculator = new AIPS_Interval_Calculator();
+		$updated    = 0;
+
+		foreach ( $rows as $row ) {
+			$update_data   = array();
+			$update_format = array();
+
+			$topic_last_run = $this->normalize_timestamp_value( $row['topic_generation_last_run'] ?? 0 );
+			if ( $topic_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				$frequency = isset( $row['topic_generation_frequency'] ) ? (string) $row['topic_generation_frequency'] : '';
+				if ( $calculator->is_valid_frequency( $frequency ) ) {
+					$expected_topic_next = (int) $calculator->calculate_next_run( $frequency, $topic_last_run );
+					$current_topic_next  = $this->normalize_timestamp_value( $row['topic_generation_next_run'] ?? 0 );
+
+					if ( $current_topic_next !== $expected_topic_next ) {
+						$update_data['topic_generation_next_run'] = $expected_topic_next;
+						$update_format[]                          = '%d';
+					}
+				}
+			}
+
+			$post_last_run = $this->normalize_timestamp_value( $row['post_generation_last_run'] ?? 0 );
+			if ( $post_last_run >= AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP ) {
+				$frequency = isset( $row['post_generation_frequency'] ) ? (string) $row['post_generation_frequency'] : '';
+				if ( $calculator->is_valid_frequency( $frequency ) ) {
+					$expected_post_next = (int) $calculator->calculate_next_run( $frequency, $post_last_run );
+					$current_post_next  = $this->normalize_timestamp_value( $row['post_generation_next_run'] ?? 0 );
+
+					if ( $current_post_next !== $expected_post_next ) {
+						$update_data['post_generation_next_run'] = $expected_post_next;
+						$update_format[]                         = '%d';
+					}
+				}
+			}
+
+			if ( empty( $update_data ) ) {
+				continue;
+			}
+
+			$result = $wpdb->update(
+				$table,
+				$update_data,
+				array( 'id' => absint( $row['id'] ) ),
+				$update_format,
+				array( '%d' )
+			);
+
+			if ( false !== $result ) {
+				$updated += count( $update_data );
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * Normalize mixed timestamp-like values to integers.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return int
+	 */
+	private function normalize_timestamp_value( $value ) {
+		return is_numeric( $value ) ? max( 0, (int) $value ) : 0;
+	}
+
+	/**
+	 * Normalize the run_state timestamp payload into a Unix timestamp.
+	 *
+	 * @param mixed $value Raw run_state timestamp value.
+	 * @return int
+	 */
+	private function normalize_run_state_timestamp( $value ) {
+		if ( is_numeric( $value ) ) {
+			return max( 0, (int) $value );
+		}
+
+		if ( ! is_string( $value ) || '' === $value ) {
+			return 0;
+		}
+
+		try {
+			$run_at = new DateTimeImmutable( $value, new DateTimeZone( 'UTC' ) );
+		} catch ( Exception $e ) {
+			return 0;
+		}
+
+		return (int) $run_at->getTimestamp();
 	}
 }
