@@ -82,6 +82,10 @@ class AIPS_Author_Topic_Logs_Repository {
 	 * @return int|false The ID of the created log or false on failure.
 	 */
 	public function create($data) {
+		if (!isset($data['created_at'])) {
+			$data['created_at'] = AIPS_DateTime::now()->timestamp();
+		}
+
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}

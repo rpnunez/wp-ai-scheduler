@@ -408,7 +408,7 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$reflection->setValue($object, $value);
 	}
 
-	private function getActualOutput() {
+	public function getActualOutput(): string {
 		$output = ob_get_contents();
 
 		if ($output === false) {

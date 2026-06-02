@@ -140,7 +140,7 @@ class AIPS_Config {
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_topic_similarity_threshold' => 0.8,
+            'aips_topic_similarity_threshold' => 0.85,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(

@@ -105,10 +105,22 @@ if (!defined('ABSPATH')) {
                     <div class="aips-btn-group aips-action-group">
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_reschedule_missed_cron"><?php esc_html_e('Reschedule Missed Cron Hooks', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_retry_failed_slices"><?php esc_html_e('Retry Failed Slices', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_repair_campaign_data"><?php esc_html_e('Repair Campaign Data', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_clear_partial_generations"><?php esc_html_e('Clear Stuck Partial Generations', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-secondary aips-status-op" data-op="aips_status_cleanup_stale_jobs_cache"><?php esc_html_e('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'); ?></button>
                     </div>
                     <div class="aips-status-op-result"></div>
+                    <?php $cache_subsystems = AIPS_Cache_Policy::get_subsystems(); ?>
+                    <div class="aips-cache-rebuild-controls">
+                        <label for="aips-cache-subsystem"><strong><?php esc_html_e('Rebuild caches:', 'ai-post-scheduler'); ?></strong></label>
+                        <select id="aips-cache-subsystem">
+                            <option value="all"><?php esc_html_e('All subsystems', 'ai-post-scheduler'); ?></option>
+                            <?php foreach ($cache_subsystems as $key => $info) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($info['label']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
+                    </div>
                 </div>
             </div>
 

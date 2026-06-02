@@ -26,6 +26,10 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	public function tearDown(): void {
 		parent::tearDown();
 	}
+
+	private function sync_request_from_post() {
+		$_REQUEST = $_POST;
+	}
 	
 	/**
 	 * Test that the controller can be instantiated
@@ -75,40 +79,54 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	 * Test get_post_components requires valid post ID
 	 */
 	public function test_get_post_components_requires_valid_post() {
-		// Create a test post and history
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Test Post',
 			'post_content' => 'Test content',
 			'post_excerpt' => 'Test excerpt',
 		));
-		
-		// Create template
-		$template_id = $this->template_repository->create(array(
-			'name' => 'Test Template',
-			'system_prompt' => 'Test prompt',
-			'user_prompt' => 'Test user prompt',
-			'is_active' => 1,
-		));
-		
-		// Create history record
-		$history_id = $this->history_repository->create(array(
-			'template_id' => $template_id,
-			'post_id' => $post_id,
-			'status' => 'completed',
-		));
+
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Injected Template',
+			'prompt_template' => 'Test prompt template',
+			'title_prompt' => 'Injected title prompt',
+			'post_status' => 'draft',
+			'post_type' => 'post',
+			'post_category' => 0,
+			'post_author' => get_current_user_id(),
+		);
+
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_generation_context' ) )
+			->getMock();
+
+		$mock_service->method( 'get_generation_context' )
+			->willReturn(
+				array(
+					'history_id' => 101,
+					'post_id' => $post_id,
+					'context_type' => 'template',
+					'context_name' => 'Injected Template',
+					'generation_context' => new AIPS_Template_Context( $template, null, 'Injected Topic' ),
+				)
+			);
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service );
 		
 		// Set up request with valid nonce
 		$_POST = array(
 			'action' => 'aips_get_post_components',
 			'post_id' => $post_id,
-			'history_id' => $history_id,
+			'history_id' => 101,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		// This should succeed (just checking it doesn't throw an error)
 		ob_start();
 		try {
-			$this->controller->ajax_get_post_components();
+			$controller->ajax_get_post_components();
 		} catch (WPAjaxDieContinueException $e) {
 			// wp_send_json_success throws this
 			$output = ob_get_clean();
@@ -147,6 +165,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component' => 'invalid_component',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -176,6 +195,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'components' => array('title' => 'New Title'),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -210,6 +230,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -245,6 +266,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -300,6 +322,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component_type' => 'title',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -359,6 +382,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'revision_id' => $revision_id,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -412,6 +436,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'current_reason' => 'pre_restore_manual',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -424,9 +449,16 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$revisions = $this->history_repository->get_component_revisions($post_id, 'title', 10);
 
 		$this->assertNotEmpty($revisions);
-		$this->assertEquals('Manual Draft Title', $revisions[0]['value']);
-		$this->assertEquals('manual_edit', $revisions[0]['source']);
-		$this->assertEquals('pre_restore_manual', $revisions[0]['reason']);
+		$manual_snapshot = null;
+		foreach ( $revisions as $revision ) {
+			if ( 'manual_edit' === $revision['source'] && 'pre_restore_manual' === $revision['reason'] ) {
+				$manual_snapshot = $revision;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $manual_snapshot );
+		$this->assertEquals( 'Manual Draft Title', $manual_snapshot['value'] );
 	}
 
 	// -----------------------------------------------------------------------

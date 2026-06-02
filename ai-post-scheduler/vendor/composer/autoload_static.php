@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
+class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
 {
     public static $files = array (
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
@@ -20,6 +20,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         ),
         'D' =>
         array (
+            'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
         ),
     );
@@ -29,6 +30,10 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
+        'Doctrine\\Instantiator\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
+        ),
         'DeepCopy\\' =>
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
@@ -36,11 +41,15 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
     );
 
     public static $classMap = array (
+        'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
+        'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
+        'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
         'AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-edit-controller.php',
         'AIPS_AI_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-service.php',
         'AIPS_AI_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-ai-service-interface.php',
         'AIPS_Admin_Assets' => __DIR__ . '/../..' . '/includes/class-aips-admin-assets.php',
         'AIPS_Admin_Bar' => __DIR__ . '/../..' . '/includes/class-aips-admin-bar.php',
+        'AIPS_Admin_Flow_Controller' => __DIR__ . '/../..' . '/includes/class-aips-admin-flow-controller.php',
         'AIPS_Admin_Menu' => __DIR__ . '/../..' . '/includes/class-aips-admin-menu.php',
         'AIPS_Admin_Menu_Helper' => __DIR__ . '/../..' . '/includes/class-aips-admin-menu-helper.php',
         'AIPS_Ajax_Registry' => __DIR__ . '/../..' . '/includes/class-aips-ajax-registry.php',
@@ -60,6 +69,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Author_Topics_Repository_Test' => __DIR__ . '/../..' . '/tests/AIPS_Author_Topics_Repository_Test.php',
         'AIPS_Author_Topics_Scheduler' => __DIR__ . '/../..' . '/includes/class-aips-author-topics-scheduler.php',
         'AIPS_Authors_Controller' => __DIR__ . '/../..' . '/includes/class-aips-authors-controller.php',
+        'AIPS_Authors_Controller_Generate_Topics_Now_Test' => __DIR__ . '/../..' . '/tests/test-authors-controller-generate-topics-now.php',
         'AIPS_Authors_Controller_Save_Test' => __DIR__ . '/../..' . '/tests/AIPS_Authors_Controller_Save_Test.php',
         'AIPS_Authors_Repository' => __DIR__ . '/../..' . '/includes/class-aips-authors-repository.php',
         'AIPS_Autoloader' => __DIR__ . '/../..' . '/includes/class-aips-autoloader.php',
@@ -76,10 +86,14 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Cache_Db_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-db-driver.php',
         'AIPS_Cache_Driver' => __DIR__ . '/../..' . '/includes/interface-aips-cache-driver.php',
         'AIPS_Cache_Factory' => __DIR__ . '/../..' . '/includes/class-aips-cache-factory.php',
+        'AIPS_Cache_Invalidation_Bus' => __DIR__ . '/../..' . '/includes/class-aips-cache-invalidation-bus.php',
+        'AIPS_Cache_Policy' => __DIR__ . '/../..' . '/includes/class-aips-cache-policy.php',
         'AIPS_Cache_Redis_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-redis-driver.php',
         'AIPS_Cache_Session_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-session-driver.php',
         'AIPS_Cache_Wp_Object_Cache_Driver' => __DIR__ . '/../..' . '/includes/class-aips-cache-wp-object-cache-driver.php',
         'AIPS_Calendar_Controller' => __DIR__ . '/../..' . '/includes/class-aips-calendar-controller.php',
+        'AIPS_Campaigns_Controller' => __DIR__ . '/../..' . '/includes/class-aips-campaigns-controller.php',
+        'AIPS_Campaigns_Repository' => __DIR__ . '/../..' . '/includes/class-aips-campaigns-repository.php',
         'AIPS_Component_Regeneration_Service' => __DIR__ . '/../..' . '/includes/class-aips-component-regeneration-service.php',
         'AIPS_Config' => __DIR__ . '/../..' . '/includes/class-aips-config.php',
         'AIPS_Container' => __DIR__ . '/../..' . '/includes/class-aips-container.php',
@@ -221,6 +235,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'AIPS_Template_Type_Selector_Test' => __DIR__ . '/../..' . '/tests/AIPS_Template_Type_Selector_Test.php',
         'AIPS_Templates' => __DIR__ . '/../..' . '/includes/class-aips-templates.php',
         'AIPS_Templates_Controller' => __DIR__ . '/../..' . '/includes/class-aips-templates-controller.php',
+        'AIPS_Test_Campaigns_Repository_WPDB_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Repository.php',
         'AIPS_Test_History_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_History_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_Notifications_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
@@ -273,6 +288,11 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'DeepCopy\\TypeFilter\\Spl\\SplDoublyLinkedListFilter' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/TypeFilter/Spl/SplDoublyLinkedListFilter.php',
         'DeepCopy\\TypeFilter\\TypeFilter' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/TypeFilter/TypeFilter.php',
         'DeepCopy\\TypeMatcher\\TypeMatcher' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/TypeMatcher/TypeMatcher.php',
+        'Doctrine\\Instantiator\\Exception\\ExceptionInterface' => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator/Exception/ExceptionInterface.php',
+        'Doctrine\\Instantiator\\Exception\\InvalidArgumentException' => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator/Exception/InvalidArgumentException.php',
+        'Doctrine\\Instantiator\\Exception\\UnexpectedValueException' => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator/Exception/UnexpectedValueException.php',
+        'Doctrine\\Instantiator\\Instantiator' => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator/Instantiator.php',
+        'Doctrine\\Instantiator\\InstantiatorInterface' => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator/InstantiatorInterface.php',
         'Mock_WPDB_Query_Counter' => __DIR__ . '/../..' . '/tests/Test_Template_Repository_Cache.php',
         'Mock_WPDB_Stateful_Voices' => __DIR__ . '/../..' . '/tests/AIPS_Voices_Repository_Test.php',
         'PHPUnit\\Event\\Application\\Finished' => __DIR__ . '/..' . '/phpunit/phpunit/src/Event/Events/Application/Finished.php',
@@ -1679,6 +1699,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'SebastianBergmann\\ObjectEnumerator\\Enumerator' => __DIR__ . '/..' . '/sebastian/object-enumerator/src/Enumerator.php',
         'SebastianBergmann\\ObjectReflector\\ObjectReflector' => __DIR__ . '/..' . '/sebastian/object-reflector/src/ObjectReflector.php',
         'SebastianBergmann\\RecursionContext\\Context' => __DIR__ . '/..' . '/sebastian/recursion-context/src/Context.php',
+        'SebastianBergmann\\ResourceOperations\\ResourceOperations' => __DIR__ . '/..' . '/sebastian/resource-operations/src/ResourceOperations.php',
         'SebastianBergmann\\Template\\Exception' => __DIR__ . '/..' . '/phpunit/php-text-template/src/exceptions/Exception.php',
         'SebastianBergmann\\Template\\InvalidArgumentException' => __DIR__ . '/..' . '/phpunit/php-text-template/src/exceptions/InvalidArgumentException.php',
         'SebastianBergmann\\Template\\RuntimeException' => __DIR__ . '/..' . '/phpunit/php-text-template/src/exceptions/RuntimeException.php',
@@ -1711,9 +1732,11 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'SebastianBergmann\\Type\\UnknownType' => __DIR__ . '/..' . '/sebastian/type/src/type/UnknownType.php',
         'SebastianBergmann\\Type\\VoidType' => __DIR__ . '/..' . '/sebastian/type/src/type/VoidType.php',
         'SebastianBergmann\\Version' => __DIR__ . '/..' . '/sebastian/version/src/Version.php',
+        'Test_AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Assistance_Controller.php',
         'Test_AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Edit_Controller.php',
         'Test_AIPS_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service.php',
         'Test_AIPS_Admin_Bar_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Bar_Cache.php',
+        'Test_AIPS_Admin_Flow_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Flow_Controller.php',
         'Test_AIPS_Admin_Menu' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Menu.php',
         'Test_AIPS_Ajax_Registry_Response' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Registry_Response.php',
         'Test_AIPS_Author_Post_Generator_Batching' => __DIR__ . '/../..' . '/tests/Test_AIPS_Author_Post_Generator_Batching.php',
@@ -1733,6 +1756,9 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Cache_Session_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Cache_Wp_Object_Cache_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cache_Array_Driver.php',
         'Test_AIPS_Calendar_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Calendar_Controller.php',
+        'Test_AIPS_Campaign_Ajax_Routing' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaign_Ajax_Routing.php',
+        'Test_AIPS_Campaigns_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Controller.php',
+        'Test_AIPS_Campaigns_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Repository.php',
         'Test_AIPS_Config' => __DIR__ . '/../..' . '/tests/Test_AIPS_Config.php',
         'Test_AIPS_Config_Option_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Config_Option_Cache.php',
         'Test_AIPS_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Container.php',
@@ -1748,6 +1774,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Generation_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Context.php',
         'Test_AIPS_Generation_Logger' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Logger.php',
         'Test_AIPS_Generation_Result' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Result.php',
+        'Test_AIPS_Generator_Content_Cleanup' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Content_Cleanup.php',
         'Test_AIPS_History_Security' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Security.php',
         'Test_AIPS_Image_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service.php',
         'Test_AIPS_Image_Service_Collision' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service_Collision.php',
@@ -1792,6 +1819,7 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'Test_AIPS_Sources_Data_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Data_Repository.php',
         'Test_AIPS_Sources_Fetcher' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Fetcher.php',
         'Test_AIPS_System_Diagnostics_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_System_Diagnostics_Service.php',
+        'Test_AIPS_System_Status_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_System_Status_Controller.php',
         'Test_AIPS_Telemetry' => __DIR__ . '/../..' . '/tests/Test_AIPS_Telemetry.php',
         'Test_AIPS_Template_Data' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Result.php',
         'Test_AIPS_Template_Entry' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Result.php',
@@ -1844,19 +1872,14 @@ class ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934
         'TheSeer\\Tokenizer\\TokenCollectionException' => __DIR__ . '/..' . '/theseer/tokenizer/src/TokenCollectionException.php',
         'TheSeer\\Tokenizer\\Tokenizer' => __DIR__ . '/..' . '/theseer/tokenizer/src/Tokenizer.php',
         'TheSeer\\Tokenizer\\XMLSerializer' => __DIR__ . '/..' . '/theseer/tokenizer/src/XMLSerializer.php',
-        'WPAjaxDieContinueException' => __DIR__ . '/../..' . '/tests/bootstrap.php',
-        'WPAjaxDieStopException' => __DIR__ . '/../..' . '/tests/bootstrap.php',
-        'WP_Admin_Bar' => __DIR__ . '/../..' . '/tests/bootstrap.php',
-        'WP_Error' => __DIR__ . '/../..' . '/tests/bootstrap.php',
-        'WP_UnitTestCase' => __DIR__ . '/../..' . '/tests/bootstrap.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit35ade7d9f044c669e934e5a8a32e7934::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -76,9 +76,9 @@ class AIPS_Dashboard_Controller {
         $daily_topics      = $author_topics_repo->get_daily_topic_counts( $days );
 
         // Build a complete ordered label set for the date range.
-        // Use UTC-based timestamps with wp_date()/wp_timezone() so day boundaries
-        // are calculated in the site timezone, matching DATE(created_at) SQL buckets.
-        $now_ts           = current_time( 'timestamp', true );
+        // Labels are rendered in the site timezone for display. Daily SQL buckets
+        // are grouped by DATE(FROM_UNIXTIME(...)), which follows DB/session timezone.
+        $now_ts           = AIPS_DateTime::now()->timestamp();
         $timezone         = wp_timezone();
         $chart_labels     = array();
         $chart_completed  = array();
@@ -129,17 +129,14 @@ class AIPS_Dashboard_Controller {
     }
 
     /**
-     * Format a next_run MySQL datetime as a human-readable relative string.
+     * Format a next_run timestamp as a human-readable relative string.
      *
      * Returns a relative label ("in 2 hours", "in 1 day and 3 hours", etc.) for
      * events within the next 30 days, and an absolute date/time string otherwise.
      *
-     * next_run is stored as a site-local MySQL datetime.  We convert it to a UTC
-     * timestamp via get_gmt_from_date() so that subsequent comparisons with
-     * current_time('timestamp', true) are consistent, and wp_date() output
-     * correctly applies the site timezone offset once (not twice).
+     * next_run is stored as a Unix timestamp.
      *
-     * @param string $next_run    MySQL datetime string (site-local).
+     * @param int|string $next_run Timestamp.
      * @param string $date_format WordPress date_format option value.
      * @param string $time_format WordPress time_format option value.
      * @return string
@@ -149,9 +146,11 @@ class AIPS_Dashboard_Controller {
             return '—';
         }
 
-        // Convert site-local datetime to UTC via AIPS_DateTime for consistent parsing.
-        $next_run_gmt = get_gmt_from_date( $next_run );
-        $run_at       = AIPS_DateTime::fromMysqlOrNull( $next_run_gmt );
+        if ( ! is_numeric( $next_run ) ) {
+            return '—';
+        }
+
+        $run_at = AIPS_DateTime::fromTimestampOrNull( (int) $next_run );
         if ( null === $run_at ) {
             return '—';
         }

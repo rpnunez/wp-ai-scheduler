@@ -1,0 +1,4 @@
+# Paths relative to ai-post-scheduler/ allowed to use direct wpdb in non-repository layers.
+# Keep this list short and temporary; include rationale in PRs for new entries.
+includes/class-aips-telemetry.php
+includes/class-aips-db-migrations.php

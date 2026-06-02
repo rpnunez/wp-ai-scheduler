@@ -5,6 +5,7 @@
  *   - nonce                           {string} wp_nonce for aips_reset_circuit_breaker
  *   - nonceCronReschedule             {string} wp_nonce for aips_status_reschedule_missed_cron
  *   - nonceRetrySlices                {string} wp_nonce for aips_status_retry_failed_slices
+ *   - nonceRepairCampaignData         {string} wp_nonce for aips_status_repair_campaign_data
  *   - nonceClearPartialGenerations    {string} wp_nonce for aips_status_clear_partial_generations
  *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
  *   - hideDetails                     {string} "Hide Details" label
@@ -49,6 +50,7 @@
 			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
+			$(document).on('click', '.aips-rebuild-cache-btn', this.rebuildCaches.bind(this));
 		},
 
 		/**
@@ -140,6 +142,7 @@
 			var nonceMap = {
 				'aips_status_reschedule_missed_cron': l10n.nonceCronReschedule || '',
 				'aips_status_retry_failed_slices': l10n.nonceRetrySlices || '',
+				'aips_status_repair_campaign_data': l10n.nonceRepairCampaignData || '',
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
 				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || ''
 			};
@@ -148,6 +151,27 @@
 
 			$btn.prop('disabled', true);
 			$.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
+				if (response && response.success) {
+					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
+				} else {
+					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
+				}
+				$btn.prop('disabled', false);
+			}).fail(function() {
+				$result.text(l10n.requestFailed || 'Request failed.').show();
+				$btn.prop('disabled', false);
+			});
+		},
+
+
+		rebuildCaches: function(e) {
+			e.preventDefault();
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+			var subsystem = $('#aips-cache-subsystem').val() || 'all';
+			var $result = $('.aips-status-op-result');
+			$btn.prop('disabled', true);
+			$.post(ajaxurl, { action: 'aips_rebuild_caches', nonce: l10n.nonceRebuildCaches || '', subsystem: subsystem }, function(response) {
 				if (response && response.success) {
 					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
 				} else {
