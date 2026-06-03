@@ -33,14 +33,14 @@ if (!defined('ABSPATH')) {
 				<!-- Calendar Header with Navigation -->
 				<div class="aips-calendar-header">
 					<div class="aips-calendar-nav">
-						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-calendar-prev" title="<?php esc_attr_e('Previous Month', 'ai-post-scheduler'); ?>">
-							<span class="dashicons dashicons-arrow-left-alt2"></span>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-calendar-prev" title="<?php esc_attr_e('Previous Month', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Previous Month', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 						</button>
 						<h2 class="aips-calendar-title">
 							<span class="aips-calendar-month-year"></span>
 						</h2>
-						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-calendar-next" title="<?php esc_attr_e('Next Month', 'ai-post-scheduler'); ?>">
-							<span class="dashicons dashicons-arrow-right-alt2"></span>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-calendar-next" title="<?php esc_attr_e('Next Month', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Next Month', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
 						</button>
 					</div>
 					
