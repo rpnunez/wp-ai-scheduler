@@ -492,8 +492,14 @@
          * @param {Event} e - Click event from a `.nav-tab` element.
          */
         switchTab: function(e) {
-            e.preventDefault();
             var tabId = $(this).data('tab');
+
+            // If no data-tab attribute, the tab is a server-side navigation link — let the browser handle it.
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
 
             // Update the URL hash instead of query parameter
             window.location.hash = '#' + tabId;
