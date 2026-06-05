@@ -34,8 +34,19 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		$policy = $this->normalize_repository_cache_policy( $policy );
-		if ($this->repository_cache_should_bypass( $policy, $options )) {
-			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $this->resolve_bypass_reason( $policy, $options ) );
+		$bypass_options = $options;
+		if ( ! empty( $bypass_options['force_refresh'] ) ) {
+			unset( $bypass_options['force_refresh'] );
+		}
+
+		if ( $this->repository_cache_should_bypass( $policy, $bypass_options ) ) {
+			return $this->run_repository_cache_bypass(
+				$operation_id,
+				$args,
+				$callback,
+				$policy,
+				$this->resolve_bypass_reason( $policy, $options )
+			);
 		}
 
 		$cache = AIPS_Repository_Cache_Config::resolve_cache_instance( $this->repository_cache_group(), $policy );
