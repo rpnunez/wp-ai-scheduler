@@ -271,6 +271,11 @@ class AIPS_Ajax_Registry {
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+
+		// Blueprint Presets Controller
+		'aips_save_blueprint_preset'    => 'AIPS_Blueprint_Presets_Controller',
+		'aips_get_blueprint_preset'     => 'AIPS_Blueprint_Presets_Controller',
+		'aips_delete_blueprint_preset'  => 'AIPS_Blueprint_Presets_Controller',
 	);
 
 	/**

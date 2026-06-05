@@ -31,6 +31,7 @@ class AIPS_DB_Manager {
         'aips_telemetry',
         'aips_ai_assistance',
         'aips_bulk_batch_jobs',
+        'aips_blueprint_presets',
     );
 
     public function __construct() {
@@ -587,6 +588,26 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_updated (status, updated_at)
+        ) $charset_collate;";
+
+        $table_blueprint_presets = $tables['aips_blueprint_presets'];
+        $sql[] = "CREATE TABLE $table_blueprint_presets (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            structure_id bigint(20) DEFAULT NULL,
+            voice_id bigint(20) DEFAULT NULL,
+            slice_ids text DEFAULT NULL,
+            section_overrides text DEFAULT NULL,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            is_default tinyint(1) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY is_default (is_default),
+            KEY structure_id (structure_id),
+            KEY voice_id (voice_id)
         ) $charset_collate;";
 
         return $sql;

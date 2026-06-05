@@ -51,6 +51,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_BLUEPRINTS = 'aips-blueprints';
 
     /**
      * Initialize the class.
@@ -166,6 +167,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
 			$this->enqueue_internal_links_assets();
+		}
+
+        if (self::PAGE_BLUEPRINTS === $page || $this->hook_contains($hook, self::PAGE_BLUEPRINTS)) {
+			$this->enqueue_blueprints_assets();
 		}
 
 	}
@@ -1657,6 +1662,51 @@ class AIPS_Admin_Assets {
                 'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
                 'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the unified Blueprints page.
+     *
+     * Loads the appropriate scripts based on the active tab.
+     *
+     * @since 2.9.0
+     */
+    private function enqueue_blueprints_assets() {
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'structures';
+
+        // Always load structures assets (they are the default tab).
+        if ('structures' === $tab || 'sections' === $tab) {
+            $this->enqueue_structures_assets();
+        }
+
+        if ('voices' === $tab) {
+            $this->enqueue_voices_assets();
+        }
+
+        if ('slices' === $tab) {
+            $this->enqueue_post_slices_assets();
+        }
+
+        if ('presets' === $tab) {
+            // Blueprint presets use the base admin script for AJAX + modal patterns.
+            wp_enqueue_script(
+                'aips-admin-blueprint-presets',
+                AIPS_PLUGIN_URL . 'assets/js/blueprint-presets.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-blueprint-presets', 'aipsBlueprintPresetsL10n', array(
+                'nonce'           => wp_create_nonce('aips_blueprint_presets_nonce'),
+                'confirmDelete'   => __('Are you sure you want to delete this preset?', 'ai-post-scheduler'),
+                'saveSuccess'     => __('Preset saved.', 'ai-post-scheduler'),
+                'saveFailed'      => __('Failed to save preset.', 'ai-post-scheduler'),
+                'deleteSuccess'   => __('Preset deleted.', 'ai-post-scheduler'),
+                'deleteFailed'    => __('Failed to delete preset.', 'ai-post-scheduler'),
+                'nameRequired'    => __('Preset name is required.', 'ai-post-scheduler'),
+            ));
+        }
     }
 
 }
