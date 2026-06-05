@@ -14,6 +14,7 @@
 	var AIPS = window.AIPS;
 
 	AIPS.BlueprintPresets = {
+		containerSelector: '.aips-blueprint-presets-container',
 
 		/**
 		 * Bootstrap the Blueprint Presets module.
@@ -36,8 +37,6 @@
 			this.$modalTitle = $('#aips-blueprint-preset-modal-title');
 			this.$saveButton = $('#aips-save-blueprint-preset-btn');
 			this.$nameField = $('#aips-blueprint-preset-name');
-			this.$searchField = $('#aips-preset-search');
-			this.$searchClearButton = $('#aips-preset-search-clear');
 		},
 
 		/**
@@ -250,11 +249,11 @@
 				this.getL10nValue('confirmTitle', 'Confirm'),
 				[
 					{
-						label: this.getAdminL10nValue('confirmCancelButton', 'No, cancel'),
+						label: this.getSharedAdminL10nValue('confirmCancelButton', 'No, cancel'),
 						className: 'aips-btn aips-btn-primary'
 					},
 					{
-						label: this.getAdminL10nValue('confirmDeleteButton', 'Yes, delete'),
+						label: this.getSharedAdminL10nValue('confirmDeleteButton', 'Yes, delete'),
 						className: 'aips-btn aips-btn-danger-solid',
 						action: function() {
 							self.deletePreset(presetId);
@@ -315,10 +314,11 @@
 		 */
 		filterPresets: function(e) {
 			var term = $.trim($(e.currentTarget).val() || '').toLowerCase();
+			var $presetRows = $('#aips-blueprint-presets-table tbody tr');
 
-			this.$searchClearButton.toggle(term.length > 0);
+			$('#aips-preset-search-clear').toggle(term.length > 0);
 
-			$('#aips-blueprint-presets-table tbody tr').each(function() {
+			$presetRows.each(function() {
 				var text = $(this).text().toLowerCase();
 				$(this).toggle(!term || text.indexOf(term) !== -1);
 			});
@@ -333,7 +333,7 @@
 		clearSearch: function(e) {
 			e.preventDefault();
 
-			this.$searchField.val('').trigger('input').trigger('focus');
+			$('#aips-preset-search').val('').trigger('input').trigger('focus');
 		},
 
 		/**
@@ -378,7 +378,7 @@
 		 * @return {void}
 		 */
 		refreshList: function() {
-			AIPS.refreshContentPanel('.aips-blueprint-presets-container');
+			AIPS.refreshContentPanel(this.containerSelector, this.containerSelector, this.cacheElements.bind(this));
 		},
 
 		/**
@@ -446,7 +446,7 @@
 		 * @param {string} fallback Fallback string.
 		 * @return {string}
 		 */
-		getAdminL10nValue: function(key, fallback) {
+		getSharedAdminL10nValue: function(key, fallback) {
 			return (window.aipsAdminL10n && window.aipsAdminL10n[key]) || fallback;
 		},
 
