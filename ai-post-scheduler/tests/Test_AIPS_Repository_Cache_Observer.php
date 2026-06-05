@@ -119,6 +119,26 @@ class Test_AIPS_Repository_Cache_Observer extends WP_UnitTestCase {
 		$this->assertSame('cache_disabled', $context['invalidation_reason']);
 	}
 
+	public function test_record_warning_uses_warning_log_level() {
+		$logger   = new AIPS_Test_Repository_Cache_Observer_Logger();
+		$observer = new AIPS_Repository_Cache_Observer($logger);
+
+		$observer->record_warning(array(
+			'repository'   => 'AIPS_Authors_Repository',
+			'operation_id' => 'authors.get_by_id',
+			'cache_group'  => 'aips_authors',
+			'reason'       => 'unknown_placeholder:author_id',
+		));
+
+		$entry = $logger->entries[0];
+
+		$this->assertSame('Repository cache warning', $entry['message']);
+		$this->assertSame('warning', $entry['level']);
+		$this->assertSame('repository_cache_warning', $entry['context']['type']);
+		$this->assertSame('warning', $entry['context']['event_type']);
+		$this->assertSame('unknown_placeholder:author_id', $entry['context']['invalidation_reason']);
+	}
+
 	public function test_observer_does_not_throw_when_logger_fails() {
 		$observer = new AIPS_Repository_Cache_Observer(new AIPS_Test_Repository_Cache_Observer_Failing_Logger());
 

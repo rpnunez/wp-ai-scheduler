@@ -78,6 +78,16 @@ class AIPS_Repository_Cache_Observer {
 	}
 
 	/**
+	 * Record a repository cache warning event.
+	 *
+	 * @param array $event Event metadata.
+	 * @return void
+	 */
+	public function record_warning(array $event) {
+		$this->record('warning', $event);
+	}
+
+	/**
 	 * Normalize and emit an observability event.
 	 *
 	 * @param string $event_type Event type.
@@ -161,7 +171,8 @@ class AIPS_Repository_Cache_Observer {
 				return;
 			}
 
-			$logger->log('Repository cache ' . $context['event_type'], 'debug', $context);
+			$level = 'warning' === $context['event_type'] ? 'warning' : 'debug';
+			$logger->log('Repository cache ' . $context['event_type'], $level, $context);
 		} catch (Throwable $e) {
 			// Logging failures should not affect repository cache behavior.
 		}

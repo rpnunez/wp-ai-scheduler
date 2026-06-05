@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Authors_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to authors.
  */
 class AIPS_Authors_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -49,18 +54,12 @@ class AIPS_Authors_Repository {
 	private $wpdb;
 
 	/**
-	 * @var AIPS_Cache In-request identity-map cache.
-	 */
-	private $cache = null;
-	
-	/**
 	 * Initialize the repository.
 	 */
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_authors';
-		$this->cache = AIPS_Cache_Factory::named( 'aips_authors_repository' );
 	}
 	
 	/**
@@ -74,21 +73,24 @@ class AIPS_Authors_Repository {
 	 * @return array Array of author objects.
 	 */
 	public function get_all($active_only = false) {
-		$key = 'all:' . ( $active_only ? '1' : '0' );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		if ( $active_only ) {
-			$sql = $this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY name ASC",
-				1
-			);
-		} else {
-			$sql = "SELECT * FROM {$this->table_name} ORDER BY name ASC";
-		}
-		$result = $this->wpdb->get_results( $sql );
-		$this->cache->set( $key, $result );
-		return $result;
+		return $this->cache_read(
+			'authors.get_all',
+			array(
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $active_only ) {
+				if ( $active_only ) {
+					$sql = $this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY name ASC",
+						1
+					);
+				} else {
+					$sql = "SELECT * FROM {$this->table_name} ORDER BY name ASC";
+				}
+
+				return $this->wpdb->get_results( $sql );
+			}
+		);
 	}
 	
 	/**
@@ -101,18 +103,20 @@ class AIPS_Authors_Repository {
 	 * @return object|null Author object or null if not found.
 	 */
 	public function get_by_id($id) {
-		$key = 'id:' . (int) $id;
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$result = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			$id
-		) );
-		if ( $result !== null ) {
-			$this->cache->set( $key, $result );
-		}
-		return $result;
+		return $this->cache_read(
+			'authors.get_by_id',
+			array(
+				'author_id' => absint( $id ),
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE id = %d",
+						$id
+					)
+				);
+			}
+		);
 	}
 	
 	/**
@@ -134,7 +138,13 @@ class AIPS_Authors_Repository {
 
 		$result = $this->wpdb->insert($this->table_name, $data);
 		if ( $result ) {
-			$this->cache->flush();
+			$this->invalidate_cache_tags(
+				array(
+					'authors',
+					'author:' . (int) $this->wpdb->insert_id,
+				),
+				'author_created'
+			);
 		}
 		return $result ? $this->wpdb->insert_id : false;
 	}
@@ -159,7 +169,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $id, 'author_updated' );
 		}
 		return $result;
 	}
@@ -177,7 +187,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $id, 'author_deleted' );
 		}
 		return $result;
 	}
@@ -237,7 +247,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $author_id, 'author_topic_generation_active_updated' );
 		}
 		return $result;
 	}
@@ -261,7 +271,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_active_updated' );
 		}
 		return $result;
 	}
@@ -286,7 +296,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $author_id, 'author_topic_generation_schedule_updated' );
 		}
 		return $result;
 	}
@@ -311,8 +321,56 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 		if ( $result !== false ) {
-			$this->cache->flush();
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_schedule_updated' );
 		}
 		return $result;
+	}
+
+	/**
+	 * Return the repository cache group for author reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_authors';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for author reads.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'authors.get_all'   => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'authors' ),
+				'description' => 'Cache author list reads, including active-only filtering.',
+			),
+			'authors.get_by_id' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'authors', 'author:{author_id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single-author reads by ID.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate author read caches for list and single-author operations.
+	 *
+	 * @param int    $author_id Author ID.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_author_cache( $author_id, $reason ) {
+		$this->invalidate_cache_tags(
+			array(
+				'authors',
+				'author:' . (int) absint( $author_id ),
+			),
+			(string) $reason
+		);
 	}
 }

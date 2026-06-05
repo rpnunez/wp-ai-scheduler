@@ -194,6 +194,59 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 1, $calls );
 	}
 
+	public function test_policy_tag_placeholders_resolve_from_read_args() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_by_id' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors', 'author:{author_id}' ),
+				),
+			),
+			$logger
+		);
+
+		$subject->read(
+			'authors.get_by_id',
+			array(
+				'author_id' => 44,
+			),
+			function() {
+				return (object) array( 'id' => 44 );
+			}
+		);
+
+		$this->assertSame( array( 'authors', 'author_44' ), $logger->entries[0]['context']['tags'] );
+	}
+
+	public function test_unknown_placeholder_records_warning_without_fatal_error() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_by_id' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors', 'author:{missing_id}' ),
+				),
+			),
+			$logger
+		);
+
+		$result = $subject->read(
+			'authors.get_by_id',
+			array(
+				'author_id' => 44,
+			),
+			function() {
+				return (object) array( 'id' => 44 );
+			}
+		);
+
+		$this->assertEquals( 44, $result->id );
+		$this->assertSame( 'Repository cache warning', $logger->entries[0]['message'] );
+		$this->assertSame( 'warning', $logger->entries[0]['level'] );
+		$this->assertSame( 'warning', $logger->entries[0]['context']['event_type'] );
+		$this->assertSame( 'unknown_placeholder:missing_id', $logger->entries[0]['context']['invalidation_reason'] );
+		$this->assertSame( array( 'authors' ), $logger->entries[1]['context']['tags'] );
+	}
+
 	public function test_force_refresh_rebuilds_cached_value_and_updates_cache() {
 		$subject = $this->make_subject(
 			array(
@@ -271,6 +324,36 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$subject->read( 'authors.get_all', array(), $callback, array( 'bypass_cache' => true ) );
 
 		$this->assertSame( 2, $calls );
+	}
+
+	public function test_bypass_ajax_policy_skips_cache_during_ajax_requests() {
+		add_filter( 'wp_doing_ajax', '__return_true' );
+
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier'        => 'medium',
+					'tags'        => array( 'authors' ),
+					'bypass_ajax' => true,
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first  = $subject->read( 'authors.get_all', array(), $callback );
+		$second = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $second );
+		$this->assertSame( 2, $calls );
+		$this->assertSame( 'Repository cache bypass', $logger->entries[0]['message'] );
+		$this->assertSame( 'ajax_bypass', $logger->entries[0]['context']['invalidation_reason'] );
 	}
 
 	public function test_invalidate_cache_tags_changes_tag_versions_without_deleting_existing_values() {

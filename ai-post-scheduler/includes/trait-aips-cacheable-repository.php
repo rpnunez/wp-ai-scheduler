@@ -24,8 +24,8 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		$policy = $this->normalize_repository_cache_policy( $policy );
-		if ( ! empty( $options['bypass_cache'] ) ) {
-			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, 'bypass_cache' );
+		if ($this->should_bypass_repository_cache_policy( $policy, $options )) {
+			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $this->resolve_bypass_reason( $policy, $options ) );
 		}
 
 		$cache = AIPS_Repository_Cache_Config::resolve_cache_instance( $this->repository_cache_group(), $policy );
@@ -39,6 +39,7 @@ trait AIPS_Cacheable_Repository {
 		$key_hash     = hash( 'sha256', $key );
 		$observer     = $this->repository_cache_observer();
 		$tier         = isset( $policy['tier'] ) ? (string) $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE;
+		$allow_stale  = !empty( $policy['allow_stale_reads'] );
 
 		if (empty( $options['force_refresh'] ) && $cache->has( $key, $this->repository_cache_group() )) {
 			$start   = microtime( true );
@@ -52,6 +53,7 @@ trait AIPS_Cacheable_Repository {
 					'tags'         => $tags,
 					'hit'          => true,
 					'miss'         => false,
+					'stale'        => false,
 					'elapsed_ms'   => $this->elapsed_ms( $start ),
 				)
 			);
@@ -87,6 +89,7 @@ trait AIPS_Cacheable_Repository {
 				'tags'         => $tags,
 				'hit'          => false,
 				'miss'         => true,
+				'stale'        => false,
 				'elapsed_ms'   => $rebuild_ms,
 			)
 		);
@@ -109,6 +112,7 @@ trait AIPS_Cacheable_Repository {
 				'key_hash'     => $key_hash,
 				'tier'         => $tier,
 				'tags'         => $tags,
+				'stale'        => $allow_stale ? false : null,
 				'elapsed_ms'   => $rebuild_ms,
 			)
 		);
@@ -266,6 +270,10 @@ trait AIPS_Cacheable_Repository {
 			$policy['bypass_on_cron'] = (bool) $policy['bypass_cron'];
 		}
 
+		if (isset( $policy['allow_stale'] ) && !isset( $policy['allow_stale_reads'] )) {
+			$policy['allow_stale_reads'] = (bool) $policy['allow_stale'];
+		}
+
 		return $policy;
 	}
 
@@ -288,7 +296,56 @@ trait AIPS_Cacheable_Repository {
 			return array();
 		}
 
-		return $this->sanitize_repository_cache_tags( $policy['tags'] );
+		return $this->sanitize_repository_cache_tags( $this->resolve_repository_cache_tag_templates( $policy['tags'], $args ) );
+	}
+
+	/**
+	 * Resolve placeholder-based tag templates from the supplied read arguments.
+	 *
+	 * Unknown placeholders emit an observer warning and the affected tag is skipped.
+	 *
+	 * @param array $tags Raw policy tags.
+	 * @param array $args Read arguments.
+	 * @return array<int, string>
+	 */
+	private function resolve_repository_cache_tag_templates( array $tags, array $args ): array {
+		$resolved = array();
+
+		foreach ( $tags as $tag ) {
+			if (!is_scalar( $tag )) {
+				continue;
+			}
+
+			$tag = (string) $tag;
+			if (!preg_match_all( '/\{([a-zA-Z0-9_]+)\}/', $tag, $matches )) {
+				$resolved[] = $tag;
+				continue;
+			}
+
+			$skip_tag = false;
+			foreach ( $matches[1] as $placeholder ) {
+				if (!array_key_exists( $placeholder, $args ) || is_array( $args[ $placeholder ] ) || is_object( $args[ $placeholder ] )) {
+					$this->record_repository_cache_warning(
+						$this->repository_cache_observer(),
+						array(
+							'operation_id'        => 'repository.policy.placeholder',
+							'tags'                => array( $tag ),
+							'invalidation_reason' => 'unknown_placeholder:' . $placeholder,
+						)
+					);
+					$skip_tag = true;
+					break;
+				}
+
+				$tag = str_replace( '{' . $placeholder . '}', (string) $args[ $placeholder ], $tag );
+			}
+
+			if (!$skip_tag) {
+				$resolved[] = $tag;
+			}
+		}
+
+		return $resolved;
 	}
 
 	/**
@@ -384,6 +441,17 @@ trait AIPS_Cacheable_Repository {
 	}
 
 	/**
+	 * Record a normalized repository cache warning event.
+	 *
+	 * @param AIPS_Repository_Cache_Observer $observer Observer instance.
+	 * @param array                          $event Event payload.
+	 * @return void
+	 */
+	private function record_repository_cache_warning( AIPS_Repository_Cache_Observer $observer, array $event ) {
+		$observer->record_warning( $this->repository_cache_event_context( $event ) );
+	}
+
+	/**
 	 * Build common observer context for repository cache events.
 	 *
 	 * @param array $event Event-specific payload.
@@ -419,11 +487,51 @@ trait AIPS_Cacheable_Repository {
 			return 'cron_bypass';
 		}
 
+		if ($this->is_doing_ajax() && !empty( $policy['bypass_ajax'] )) {
+			return 'ajax_bypass';
+		}
+
 		if (AIPS_Repository_Cache_Config::TIER_NONE === ( isset( $policy['tier'] ) ? $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE )) {
 			return 'tier_none';
 		}
 
 		return 'cache_unavailable';
+	}
+
+	/**
+	 * Determine whether the current request should bypass this cache policy.
+	 *
+	 * @param array $policy Repository cache policy.
+	 * @param array $options Per-call options.
+	 * @return bool
+	 */
+	private function should_bypass_repository_cache_policy( array $policy, array $options ): bool {
+		if ( ! empty( $options['bypass_cache'] ) ) {
+			return true;
+		}
+
+		if ($this->is_doing_ajax() && !empty( $policy['bypass_ajax'] )) {
+			return true;
+		}
+
+		if (function_exists( 'wp_doing_cron' ) && wp_doing_cron() && !empty( $policy['bypass_on_cron'] )) {
+			return true;
+		}
+
+		return AIPS_Repository_Cache_Config::TIER_NONE === ( isset( $policy['tier'] ) ? $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE );
+	}
+
+	/**
+	 * Determine whether the current request is an AJAX request.
+	 *
+	 * @return bool
+	 */
+	private function is_doing_ajax(): bool {
+		if (function_exists( 'wp_doing_ajax' )) {
+			return wp_doing_ajax();
+		}
+
+		return defined( 'DOING_AJAX' ) && DOING_AJAX;
 	}
 
 	/**
