@@ -5,8 +5,6 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Templates {
     
-    private $table_name;
-    
     /**
      * @var AIPS_Template_Repository Repository for database operations
      */
@@ -23,8 +21,6 @@ class AIPS_Templates {
     private $interval_calculator;
     
     public function __construct() {
-        global $wpdb;
-        $this->table_name          = $wpdb->prefix . 'aips_templates';
         $this->repository          = new AIPS_Template_Repository();
         $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->interval_calculator = new AIPS_Interval_Calculator();

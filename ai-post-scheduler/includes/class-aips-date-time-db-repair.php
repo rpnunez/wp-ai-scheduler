@@ -35,6 +35,11 @@ class AIPS_Date_Time_DB_Repair {
 	private $interval_calculator;
 
 	/**
+	 * @var AIPS_History_Repository
+	 */
+	private $history_repository;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -42,6 +47,7 @@ class AIPS_Date_Time_DB_Repair {
 
 		$this->wpdb                = $wpdb;
 		$this->interval_calculator = new AIPS_Interval_Calculator();
+		$this->history_repository  = new AIPS_History_Repository();
 	}
 
 	/**
@@ -56,6 +62,7 @@ class AIPS_Date_Time_DB_Repair {
 			'fixed_schedule_next_runs' => 0,
 			'fixed_author_next_runs'   => 0,
 			'fixed_source_next_runs'   => 0,
+			'fixed_history_datetimes'  => 0,
 		);
 
 		$summary['converted_columns']      = $this->convert_legacy_datetime_columns();
@@ -63,6 +70,7 @@ class AIPS_Date_Time_DB_Repair {
 		$summary['fixed_schedule_next_runs'] = $this->repair_template_schedule_next_runs();
 		$summary['fixed_author_next_runs']   = $this->repair_author_next_runs();
 		$summary['fixed_source_next_runs']   = $this->repair_source_next_runs();
+		$summary['fixed_history_datetimes']  = $this->history_repository->repair_invalid_datetimes( self::MIN_VALID_TIMESTAMP );
 
 		return $summary;
 	}

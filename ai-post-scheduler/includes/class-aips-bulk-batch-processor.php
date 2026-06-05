@@ -9,7 +9,7 @@
  * PHP closures are not serialisable and therefore cannot be stored in the
  * database or passed as WP-Cron event arguments.  AIPS_Bulk_Batch_Processor
  * solves this by decoupling the job descriptor (stored in
- * AIPS_Bulk_Batch_Job_Store) from the callable that processes each item.
+ * AIPS_Bulk_Batch_Jobs_Repository) from the callable that processes each item.
  *
  * At boot time, each caller registers a named strategy:
  *
@@ -66,7 +66,7 @@ class AIPS_Bulk_Batch_Processor {
 	private $strategies = array();
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store
+	 * @var AIPS_Bulk_Batch_Jobs_Repository
 	 */
 	private $job_store;
 
@@ -83,16 +83,16 @@ class AIPS_Bulk_Batch_Processor {
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Bulk_Batch_Job_Store|null $job_store       Injectable for testing.
+	 * @param AIPS_Bulk_Batch_Jobs_Repository|null $job_store       Injectable for testing.
 	 * @param AIPS_History_Service|null      $history_service Injectable for testing.
 	 * @param AIPS_Logger|null               $logger          Injectable for testing.
 	 */
 	public function __construct(
-		?AIPS_Bulk_Batch_Job_Store $job_store       = null,
+		?AIPS_Bulk_Batch_Jobs_Repository $job_store       = null,
 		?AIPS_History_Service      $history_service = null,
 		?AIPS_Logger               $logger          = null
 	) {
-		$this->job_store       = $job_store       ?: new AIPS_Bulk_Batch_Job_Store();
+		$this->job_store       = $job_store       ?: new AIPS_Bulk_Batch_Jobs_Repository();
 		$this->history_service = $history_service ?: new AIPS_History_Service();
 		$this->logger          = $logger          ?: new AIPS_Logger();
 	}
@@ -119,13 +119,13 @@ class AIPS_Bulk_Batch_Processor {
 	 * The callable receives three arguments:
 	 *   - $item    — a single item from the stored items array
 	 *   - $job_id  — UUID string of the parent job
-	 *   - $job     — the full job object from AIPS_Bulk_Batch_Job_Store::get()
+	 *   - $job     — the full job object from AIPS_Bulk_Batch_Jobs_Repository::get()
 	 *                (includes $job->options for reading per-job context like template_id)
 	 *
 	 * It must return an int (post ID) or WP_Error.
 	 *
 	 * @param string   $job_type Strategy key; must match the `job_type` used
-	 *                           when creating the job via AIPS_Bulk_Batch_Job_Store.
+	 *                           when creating the job via AIPS_Bulk_Batch_Jobs_Repository.
 	 * @param callable $handler  fn( $item, string $job_id, object $job ): int|WP_Error
 	 * @return void
 	 */
@@ -194,7 +194,7 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
-		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED ) {
+		if ( $job->status === AIPS_Bulk_Batch_Jobs_Repository::STATUS_COMPLETED ) {
 			$this->logger->log(
 				sprintf( 'Bulk batch processor: job %s already completed; skipping duplicate slice.', $job_id ),
 				'warning'
@@ -209,7 +209,7 @@ class AIPS_Bulk_Batch_Processor {
 				sprintf( 'Bulk batch processor: no strategy registered for job type "%s" — skipping.', $job_type ),
 				'warning'
 			);
-			$this->job_store->update_status( $job_id, AIPS_Bulk_Batch_Job_Store::STATUS_FAILED );
+			$this->job_store->update_status( $job_id, AIPS_Bulk_Batch_Jobs_Repository::STATUS_FAILED );
 			return;
 		}
 
@@ -226,7 +226,7 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
-		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PENDING ) {
+		if ( $job->status === AIPS_Bulk_Batch_Jobs_Repository::STATUS_PENDING ) {
 			$this->job_store->start_processing( $job_id );
 			$this->logger->log(
 				sprintf( 'Bulk batch processor: job %s transitioned from pending to processing.', $job_id ),
