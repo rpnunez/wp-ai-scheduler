@@ -81,20 +81,15 @@
 			.replace( />/g, '&gt;' );
 	}
 
-	function bindEvents() {
-		// -----------------------------------------------------------------------
-		// Tab switching
-		// -----------------------------------------------------------------------
+	AIPS.CacheMonitor = {
+		init: function() {
+			this.bindEvents();
+			if ( $( '#aips-cache-entries-tbody' ).length ) {
+				loadEntries();
+			}
+		},
 
-		$( '.aips-tab-link' ).on( 'click', function ( e ) {
-		// Allow natural href navigation (full URL with ?tab=xxx) so that
-		// server-side tab content is served correctly. JS handles the active-class toggle
-		// for immediate visual feedback without waiting for the page reload.
-		var $link = $( this );
-		$( '.aips-tab-link' ).removeClass( 'nav-tab-active' );
-		$link.addClass( 'nav-tab-active' );
-		} );
-
+		bindEvents: function() {
 	// -----------------------------------------------------------------------
 	// Refresh button
 	// -----------------------------------------------------------------------
@@ -603,16 +598,7 @@
 			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
 		} );
 		} );
-	}
-
-	AIPS.CacheMonitor = {
-		init: function() {
-			bindEvents();
-			if ( $( '#aips-cache-entries-tbody' ).length ) {
-				loadEntries();
-			}
-		},
-		bindEvents: bindEvents
+		}
 	};
 
 	AIPS.CacheMonitor.init();

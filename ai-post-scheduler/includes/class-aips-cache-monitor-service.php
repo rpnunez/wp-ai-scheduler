@@ -715,7 +715,14 @@ class AIPS_Cache_Monitor_Service {
 		}
 
 		if (is_string( $value )) {
-			if ( function_exists( 'mb_check_encoding' ) && ! mb_check_encoding( $value, 'UTF-8' ) ) {
+			$is_binary = false;
+			if (strpos( $value, "\0" ) !== false) {
+				$is_binary = true;
+			} elseif ( function_exists( 'mb_check_encoding' ) && ! mb_check_encoding( $value, 'UTF-8' ) ) {
+				$is_binary = true;
+			}
+
+			if ( $is_binary ) {
 				return '[Binary Data]';
 			}
 			$truncated = strlen( $value ) > $preview_length
