@@ -21,6 +21,10 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to author topics.
  */
 class AIPS_Author_Topics_Repository {
+    /**
+     * @var AIPS_Cache|null In-request identity-map cache.
+     */
+    private $cache = null;
 	
 	/**
 	 * @var string The author_topics table name (with prefix)
@@ -39,6 +43,7 @@ class AIPS_Author_Topics_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_author_topics';
+		$this->cache      = AIPS_Cache_Factory::named('aips_author_topics_repository', 'array');
 	}
 	
 	/**
@@ -87,6 +92,7 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		if ($result) $this->clear_aggregate_caches();
 		return $result ? $this->wpdb->insert_id : false;
 	}
 	
@@ -189,13 +195,15 @@ class AIPS_Author_Topics_Repository {
 	 * @return int|false The number of rows updated, or false on error.
 	 */
 	public function update($id, $data) {
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table_name,
 			$data,
 			array('id' => $id),
 			null,
 			array('%d')
 		);
+		if ($result !== false) $this->clear_aggregate_caches();
+		return $result;
 	}
 	
 	/**
@@ -447,6 +455,11 @@ class AIPS_Author_Topics_Repository {
 	 * @return array<int, int> Map of author_id => topic count.
 	 */
 	public function get_counts_grouped_by_author() {
+		$cache_key = 'counts_grouped_by_author';
+		if ($this->cache !== null && $this->cache->has($cache_key)) {
+			return $this->cache->get($cache_key);
+		}
+
 		$results = $this->wpdb->get_results(
 			"SELECT author_id, COUNT(*) AS cnt FROM {$this->table_name} GROUP BY author_id"
 		);
@@ -454,6 +467,10 @@ class AIPS_Author_Topics_Repository {
 		$counts = array();
 		foreach ( $results as $row ) {
 			$counts[ (int) $row->author_id ] = (int) $row->cnt;
+		}
+
+		if ($this->cache !== null) {
+			$this->cache->set($cache_key, $counts, HOUR_IN_SECONDS);
 		}
 
 		return $counts;
@@ -490,5 +507,14 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Clear aggregate stats cache.
+	 */
+	private function clear_aggregate_caches() {
+		if ($this->cache !== null) {
+			$this->cache->clear();
+		}
 	}
 }

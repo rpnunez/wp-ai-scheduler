@@ -20,6 +20,10 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to generation history.
  */
 class AIPS_History_Repository implements AIPS_History_Repository_Interface {
+    /**
+     * @var AIPS_Cache|null In-request identity-map cache.
+     */
+    private $cache = null;
 
     /**
      * @var self|null Singleton instance.
@@ -59,6 +63,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+        $this->cache          = AIPS_Cache_Factory::named('aips_history_repository', 'array');
     }
 
     /**
@@ -793,6 +798,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_daily_generation_counts( $days = 14 ) {
         $days      = max( 1, absint( $days ) );
+
+        $cache_key = 'daily_gen_counts_' . $days;
+        if ($this->cache !== null && $this->cache->has($cache_key)) {
+            return $this->cache->get($cache_key);
+        }
+
         $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
         $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
@@ -822,6 +833,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             );
         }
 
+        if ($this->cache !== null) {
+            $this->cache->set($cache_key, $data, HOUR_IN_SECONDS);
+        }
+
         return $data;
     }
 
@@ -844,6 +859,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Associative array of template ID => count.
      */
     public function get_all_template_stats() {
+        $cache_key = 'all_template_stats';
+        if ($this->cache !== null && $this->cache->has($cache_key)) {
+            return $this->cache->get($cache_key);
+        }
+
         $results = $this->wpdb->get_results("
             SELECT template_id, COUNT(*) as count
             FROM {$this->table_name}
@@ -854,6 +874,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $stats = array();
         foreach ($results as $row) {
             $stats[$row->template_id] = (int) $row->count;
+        }
+
+        if ($this->cache !== null) {
+            $this->cache->set($cache_key, $stats, HOUR_IN_SECONDS);
         }
 
         return $stats;
@@ -874,6 +898,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if (empty($history_ids)) {
             return array();
+        }
+
+        sort($history_ids);
+        $cache_key = 'schedule_gen_counts_' . md5(implode(',', $history_ids));
+
+        if ($this->cache !== null && $this->cache->has($cache_key)) {
+            return $this->cache->get($cache_key);
         }
 
         $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
@@ -903,6 +934,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $counts = array();
         foreach ($results as $row) {
             $counts[(int) $row->history_id] = (int) $row->count;
+        }
+
+        if ($this->cache !== null) {
+            $this->cache->set($cache_key, $counts, HOUR_IN_SECONDS);
         }
 
         return $counts;
@@ -1085,6 +1120,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         if ($result) {
             delete_transient('aips_history_stats');
+            $this->clear_aggregate_caches();
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -1165,6 +1201,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            $this->clear_aggregate_caches();
         }
 
         return $result !== false;
@@ -1178,6 +1215,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function delete_by_status($status = '') {
         delete_transient('aips_history_stats');
+        $this->clear_aggregate_caches();
 
         if (empty($status)) {
             return false;
@@ -1201,6 +1239,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            $this->clear_aggregate_caches();
         }
 
         return $result !== false;
@@ -1236,6 +1275,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            $this->clear_aggregate_caches();
         }
 
         return $result;
@@ -1303,6 +1343,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Clear cache
         if ($deleted !== false && $deleted > 0) {
             delete_transient('aips_history_stats');
+            $this->clear_aggregate_caches();
         }
         
         return array(
@@ -1427,5 +1468,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $revisions;
+    }
+
+    /**
+     * Clear aggregate stats cache.
+     */
+    private function clear_aggregate_caches() {
+        if ($this->cache !== null) {
+            $this->cache->clear();
+        }
     }
 }
