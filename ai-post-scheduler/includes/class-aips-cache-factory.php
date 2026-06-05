@@ -58,10 +58,11 @@ class AIPS_Cache_Factory {
 	 * Create and return a new AIPS_Cache instance configured from settings.
 	 *
 	 * @param string|null $driver_name Override driver name. Null = read from settings.
+	 * @param string      $namespace   Optional namespace prepended to DB cache keys.
 	 * @return AIPS_Cache
 	 */
-	public static function make( $driver_name = null ) {
-		$driver = self::make_driver( $driver_name );
+	public static function make( $driver_name = null, $namespace = '' ) {
+		$driver = self::make_driver( $driver_name, $namespace );
 		return new AIPS_Cache( $driver );
 	}
 
@@ -83,9 +84,10 @@ class AIPS_Cache_Factory {
 	 * the equivalent typed accessor intended for all other callers.
 	 *
 	 * @param string|null $driver_name Optional override. Null = read from settings.
+	 * @param string      $namespace   Optional namespace prepended to DB cache keys.
 	 * @return AIPS_Cache_Driver
 	 */
-	public static function make_driver( $driver_name = null ) {
+	public static function make_driver( $driver_name = null, $namespace = '' ) {
 		// When the cache system is disabled, skip expensive driver initialisation
 		// (Redis connection, DB queries, etc.) and return the lightest driver.
 		$system_enabled_raw = get_option( 'aips_enable_cache_system', '1' );
@@ -101,6 +103,9 @@ class AIPS_Cache_Factory {
 		switch ( (string) $driver_name ) {
 			case 'db':
 				$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
+				if (!empty($namespace)) {
+					$prefix = $prefix !== '' ? $prefix . ':' . $namespace : $namespace;
+				}
 				return new AIPS_Cache_Db_Driver( $prefix );
 
 			case 'session':
@@ -163,7 +168,7 @@ class AIPS_Cache_Factory {
 	 */
 	public static function named( $name, $driver_name = null ) {
 		if (!isset( self::$named[ $name ] )) {
-			self::$named[ $name ] = self::make( $driver_name );
+			self::$named[ $name ] = self::make( $driver_name, $name );
 		}
 		return self::$named[ $name ];
 	}
