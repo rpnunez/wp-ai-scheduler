@@ -12,6 +12,9 @@ if (!defined('ABSPATH')) {
  * Handles TTL-based expiration and allows an optional key namespace/prefix to
  * isolate entries from different callers when sharing the same table.
  *
+ * All SQL access is delegated to AIPS_Cache_Db_Repository; this class is only
+ * concerned with cache semantics (TTL, key namespacing, (un)serialization).
+ *
  * The table schema is managed by AIPS_DB_Manager; this class never creates or
  * alters the table itself.
  *
@@ -28,28 +31,29 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	private $prefix;
 
 	/**
+	 * Repository handling all SQL access for the cache table.
+	 *
+	 * @var AIPS_Cache_Db_Repository
+	 */
+	private $repository;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param string $prefix Optional key prefix/namespace. Default ''.
+	 * @param string                        $prefix     Optional key prefix/namespace. Default ''.
+	 * @param AIPS_Cache_Db_Repository|null $repository Optional repository for SQL access.
+	 *                                                  Defaults to the shared singleton.
 	 */
-	public function __construct( $prefix = '' ) {
-		$this->prefix = (string) $prefix;
+	public function __construct( $prefix = '', AIPS_Cache_Db_Repository $repository = null ) {
+		$this->prefix     = (string) $prefix;
+		$this->repository = $repository ?: AIPS_Cache_Db_Repository::instance();
 	}
 
 	/**
 	 * {@inheritdoc}
 	 */
 	public function get( $key, $group = 'default' ) {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache';
-		$row   = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->prepare(
-				"SELECT value, expires_at FROM `{$table}` WHERE cache_key = %s AND cache_group = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$this->namespace_key( $key ),
-				(string) $group
-			)
-		);
+		$row = $this->repository->find( $this->namespace_key( $key ), (string) $group );
 
 		if (!$row) {
 			return null;
@@ -68,63 +72,25 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	 * {@inheritdoc}
 	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
-		global $wpdb;
+		$now_ts     = AIPS_DateTime::now()->timestamp();
+		// TTL = 0 means "never expires". Store expires_at = 0 to match the NOT NULL DEFAULT 0
+		// schema contract. The get() and purge_expired() methods treat 0 as "never expires".
+		$expires_at = $ttl > 0 ? $now_ts + (int) $ttl : 0;
 
-		$table       = $wpdb->prefix . 'aips_cache';
-		$cache_key   = $this->namespace_key( $key );
-		$cache_group = (string) $group;
-		$cache_value = maybe_serialize( $value );
-
-		$now_ts = AIPS_DateTime::now()->timestamp();
-
-		if ($ttl > 0) {
-			$expires_at = $now_ts + (int) $ttl;
-
-			$result = $wpdb->replace( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-				$table,
-				array(
-					'cache_key'   => $cache_key,
-					'cache_group' => $cache_group,
-					'value'       => $cache_value,
-					'expires_at'  => $expires_at,
-					'updated_at'  => $now_ts,
-				),
-				array( '%s', '%s', '%s', '%d', '%d' )
-			);
-		} else {
-			// TTL = 0 means "never expires". Store expires_at = 0 to match the NOT NULL DEFAULT 0
-			// schema contract. The get() and purge_expired() methods treat 0 as "never expires".
-			$result = $wpdb->replace( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-				$table,
-				array(
-					'cache_key'   => $cache_key,
-					'cache_group' => $cache_group,
-					'value'       => $cache_value,
-					'expires_at'  => 0,
-					'updated_at'  => $now_ts,
-				),
-				array( '%s', '%s', '%s', '%d', '%d' )
-			);
-		}
-
-		return false !== $result && '' === $wpdb->last_error;
+		return $this->repository->replace(
+			$this->namespace_key( $key ),
+			(string) $group,
+			maybe_serialize( $value ),
+			$expires_at,
+			$now_ts
+		);
 	}
 
 	/**
 	 * {@inheritdoc}
 	 */
 	public function delete( $key, $group = 'default' ) {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache';
-		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$table,
-			array(
-				'cache_key'   => $this->namespace_key( $key ),
-				'cache_group' => (string) $group,
-			),
-			array( '%s', '%s' )
-		);
+		$this->repository->delete( $this->namespace_key( $key ), (string) $group );
 
 		return true;
 	}
@@ -135,13 +101,7 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	 * Removes ALL rows from the cache table (not prefix-scoped).
 	 */
 	public function flush() {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		// TRUNCATE is a DDL statement and cannot be used with $wpdb->prepare().
-		// $table is constructed from $wpdb->prefix which is set and sanitized by WordPress core.
-		$wpdb->query( "TRUNCATE TABLE `{$table}`" );
+		$this->repository->truncate();
 
 		return true;
 	}
@@ -150,19 +110,11 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	 * {@inheritdoc}
 	 */
 	public function has( $key, $group = 'default' ) {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache';
-		$row   = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->prepare(
-				"SELECT 1 FROM `{$table}` WHERE cache_key = %s AND cache_group = %s AND " . $this->get_non_expired_predicate_sql() . " LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$this->namespace_key( $key ),
-				(string) $group,
-				AIPS_DateTime::now()->timestamp()
-			)
+		return $this->repository->exists_unexpired(
+			$this->namespace_key( $key ),
+			(string) $group,
+			AIPS_DateTime::now()->timestamp()
 		);
-
-		return null !== $row;
 	}
 
 	/**
@@ -174,32 +126,12 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	 * @return int|false Number of rows deleted, or false on failure.
 	 */
 	public function purge_expired() {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache';
-		return $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->prepare(
-				"DELETE FROM `{$table}` WHERE expires_at > 0 AND expires_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				AIPS_DateTime::now()->timestamp()
-			)
-		);
+		return $this->repository->delete_expired( AIPS_DateTime::now()->timestamp() );
 	}
 
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
-
-	/**
-	 * SQL predicate for rows that should be treated as non-expired.
-	 *
-	 * Mirrors get() semantics: expires_at = 0 never expires, otherwise
-	 * expires_at must be greater than or equal to the current timestamp.
-	 *
-	 * @return string
-	 */
-	private function get_non_expired_predicate_sql() {
-		return '(expires_at = 0 OR expires_at >= %d)';
-	}
 
 	/**
 	 * Optionally prepend the configured prefix to a cache key.

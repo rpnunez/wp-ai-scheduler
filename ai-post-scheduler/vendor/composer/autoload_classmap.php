@@ -49,6 +49,7 @@ return array(
     'AIPS_Cache' => $baseDir . '/includes/class-aips-cache.php',
     'AIPS_Cache_Array_Driver' => $baseDir . '/includes/class-aips-cache-array-driver.php',
     'AIPS_Cache_Db_Driver' => $baseDir . '/includes/class-aips-cache-db-driver.php',
+    'AIPS_Cache_Db_Repository' => $baseDir . '/includes/class-aips-cache-db-repository.php',
     'AIPS_Cache_Driver' => $baseDir . '/includes/interface-aips-cache-driver.php',
     'AIPS_Cache_Factory' => $baseDir . '/includes/class-aips-cache-factory.php',
     'AIPS_Cache_Invalidation_Bus' => $baseDir . '/includes/class-aips-cache-invalidation-bus.php',
