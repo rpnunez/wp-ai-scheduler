@@ -27,15 +27,14 @@ class AIPS_Admin_Menu {
     /**
      * Add menu pages to the WordPress admin dashboard.
      *
-     * Registers a traditional flat submenu structure:
-     * Dashboard, Templates, Voices, Article Structures, Authors, Research,
-     * Schedule, Schedule Calendar, Generated Posts, History,
-     * Settings, System Status, Seeder, Dev Tools (when enabled).
+     * Registers a task-oriented visible submenu while keeping legacy page slugs
+     * URL-accessible as hidden pages. The visible submenu is intentionally small:
+     * Dashboard, Create, Plan, Content, Strategy, Insights, and Settings.
      *
      * @return void
      */
     public function add_menu_pages() {
-        // Main menu page
+        // Main menu page.
         add_menu_page(
             __('AI Post Scheduler', 'ai-post-scheduler'),
             __('AI Post Scheduler', 'ai-post-scheduler'),
@@ -46,7 +45,7 @@ class AIPS_Admin_Menu {
             30
         );
 
-        // Dashboard (top level)
+        // Visible task-oriented navigation.
         add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
@@ -58,8 +57,8 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Templates', 'ai-post-scheduler'),
-            __('Templates', 'ai-post-scheduler'),
+            __('Create', 'ai-post-scheduler'),
+            __('Create', 'ai-post-scheduler'),
             'manage_options',
             'aips-templates',
             array($this, 'render_templates_page')
@@ -67,6 +66,52 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Plan', 'ai-post-scheduler'),
+            __('Plan', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-schedule',
+            array($this, 'render_schedule_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Content', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-generated-posts',
+            array($this, 'render_generated_posts_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Strategy', 'ai-post-scheduler'),
+            __('Strategy', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-sources',
+            array($this, 'render_sources_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Insights', 'ai-post-scheduler'),
+            __('Insights', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-operations-insights',
+            array($this, 'render_operations_insights_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Settings', 'ai-post-scheduler'),
+            __('Settings', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-settings',
+            array($this, 'render_settings_page')
+        );
+
+        // Hidden Create pages. These retain direct admin.php?page= access for existing links.
+        add_submenu_page(
+            null,
             __('Voices', 'ai-post-scheduler'),
             __('Voices', 'ai-post-scheduler'),
             'manage_options',
@@ -75,7 +120,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
             'manage_options',
@@ -84,7 +129,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',
@@ -93,7 +138,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Post Slices', 'ai-post-scheduler'),
             __('Post Slices', 'ai-post-scheduler'),
             'manage_options',
@@ -101,7 +146,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_post_slices_page')
         );
 
-        // Author Topics page - hidden from menu navigation, accessible via URL.
         add_submenu_page(
             null,
             __('Author Topics', 'ai-post-scheduler'),
@@ -111,8 +155,9 @@ class AIPS_Admin_Menu {
             array($this, 'render_author_topics_page')
         );
 
+        // Hidden Plan pages.
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Research', 'ai-post-scheduler'),
             __('Research', 'ai-post-scheduler'),
             'manage_options',
@@ -121,16 +166,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Schedule', 'ai-post-scheduler'),
-            __('Schedule', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-schedule',
-            array($this, 'render_schedule_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Campaigns', 'ai-post-scheduler'),
             __('Campaigns', 'ai-post-scheduler'),
             'manage_options',
@@ -156,9 +192,8 @@ class AIPS_Admin_Menu {
             array($this, 'render_campaign_detail_page')
         );
 
-
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Schedule Calendar', 'ai-post-scheduler'),
             __('Schedule Calendar', 'ai-post-scheduler'),
             'manage_options',
@@ -166,43 +201,19 @@ class AIPS_Admin_Menu {
             array($this, 'render_schedule_calendar_page')
         );
 
+        // Hidden Content pages.
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Content', 'ai-post-scheduler'),
-            __('Content', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-generated-posts',
-            array($this, 'render_generated_posts_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
             'aips-history',
             array($this, 'render_history_page')
         );
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Operations Insights', 'ai-post-scheduler'),
-            __('Operations Insights', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-operations-insights',
-            array($this, 'render_operations_insights_page')
-        );
 
+        // Hidden Strategy pages.
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Sources', 'ai-post-scheduler'),
-            __('Sources', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-sources',
-            array($this, 'render_sources_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Taxonomy', 'ai-post-scheduler'),
             __('Taxonomy', 'ai-post-scheduler'),
             'manage_options',
@@ -211,7 +222,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Internal Links', 'ai-post-scheduler'),
             __('Internal Links', 'ai-post-scheduler'),
             'manage_options',
@@ -219,17 +230,9 @@ class AIPS_Admin_Menu {
             array($this, 'render_internal_links_page')
         );
 
+        // Hidden Insights/System pages.
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Settings', 'ai-post-scheduler'),
-            __('Settings', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-settings',
-            array($this, 'render_settings_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('System Status', 'ai-post-scheduler'),
             __('System Status', 'ai-post-scheduler'),
             'manage_options',
@@ -239,7 +242,7 @@ class AIPS_Admin_Menu {
 
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
             add_submenu_page(
-                'ai-post-scheduler',
+                null,
                 __('Telemetry', 'ai-post-scheduler'),
                 __('Telemetry', 'ai-post-scheduler'),
                 'manage_options',
@@ -249,7 +252,7 @@ class AIPS_Admin_Menu {
         }
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Seeder', 'ai-post-scheduler'),
             __('Seeder', 'ai-post-scheduler'),
             'manage_options',
@@ -259,7 +262,7 @@ class AIPS_Admin_Menu {
 
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
-                'ai-post-scheduler',
+                null,
                 __('Dev Tools', 'ai-post-scheduler'),
                 __('Dev Tools', 'ai-post-scheduler'),
                 'manage_options',
@@ -270,7 +273,7 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
+     * Expand the "AI Post Scheduler" top-level menu when on hidden plugin pages.
      *
      * WordPress collapses the parent menu when a page is registered with null parent_slug.
      * This filter overrides that behaviour so the plugin menu stays open.
@@ -280,30 +283,58 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
+        if (isset($this->get_hidden_page_parent_map()[$page])) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
     }
 
     /**
-     * Highlight the "Authors" submenu item when on the hidden Author Topics page.
+     * Highlight the visible task-oriented submenu item for hidden plugin pages.
      *
-     * Because the Author Topics page is registered with a null parent, WordPress
-     * does not activate any submenu item. This filter makes "Authors" appear active.
+     * Because hidden pages are registered with a null parent, WordPress does not
+     * activate any submenu item. This filter maps legacy page slugs to their
+     * closest visible task bucket.
      *
      * @param string $submenu_file The current submenu file slug.
      * @return string
      */
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics') {
-            return 'aips-authors';
-        }
-        if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
-            return 'aips-campaigns';
+        $parent_map = $this->get_hidden_page_parent_map();
+        if (isset($parent_map[$page])) {
+            return $parent_map[$page];
         }
         return $submenu_file;
+    }
+
+    /**
+     * Return hidden legacy pages mapped to their visible task-oriented submenu item.
+     *
+     * @return array<string, string>
+     */
+    private function get_hidden_page_parent_map() {
+        $map = array(
+            'aips-voices'                      => 'aips-templates',
+            'aips-structures'                  => 'aips-templates',
+            'aips-authors'                     => 'aips-templates',
+            'aips-post-slices'                 => 'aips-templates',
+            'aips-author-topics'               => 'aips-templates',
+            'aips-research'                    => 'aips-schedule',
+            'aips-campaigns'                   => 'aips-schedule',
+            'aips-schedule-calendar'           => 'aips-schedule',
+            'aips-history'                     => 'aips-generated-posts',
+            'aips-taxonomy'                    => 'aips-sources',
+            'aips-internal-links'              => 'aips-sources',
+            'aips-status'                      => 'aips-operations-insights',
+            'aips-telemetry'                   => 'aips-operations-insights',
+            'aips-seeder'                      => 'aips-settings',
+            'aips-dev-tools'                   => 'aips-settings',
+            AIPS_Campaigns_Controller::PAGE_SLUG        => 'aips-schedule',
+            AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG => 'aips-schedule',
+        );
+
+        return $map;
     }
 
     /**

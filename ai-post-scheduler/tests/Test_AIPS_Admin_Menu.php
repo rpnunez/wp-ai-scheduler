@@ -69,17 +69,61 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_fix_author_topics_submenu_file() {
 		$_GET['page'] = 'aips-author-topics';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-authors', $result);
+		$this->assertEquals('aips-templates', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-campaigns', $result);
+		$this->assertEquals('aips-schedule', $result);
 
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('some-other-file', $result);
 
 		unset($_GET['page']);
+	}
+
+
+	/**
+	 * Regression test: visible submenu should stay task-oriented and compact.
+	 */
+	public function test_visible_submenu_is_task_oriented() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$submenu_pages  = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+		$submenu_labels = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 0) : array();
+
+		$this->assertEquals(
+			array(
+				'ai-post-scheduler',
+				'aips-templates',
+				'aips-schedule',
+				'aips-generated-posts',
+				'aips-sources',
+				'aips-operations-insights',
+				'aips-settings',
+			),
+			$submenu_pages,
+			'Only the task-oriented submenu target pages should be visible.'
+		);
+
+		$this->assertEquals(
+			array(
+				'Dashboard',
+				'Create',
+				'Plan',
+				'Content',
+				'Strategy',
+				'Insights',
+				'Settings',
+			),
+			$submenu_labels,
+			'Visible menu labels should be the compact task-oriented labels.'
+		);
 	}
 
 	/**
@@ -93,18 +137,38 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
-		$this->assertArrayHasKey(
-			'admin_page_aips-author-topics',
-			$_registered_pages,
-			'Author Topics page should be registered for direct admin.php?page= access.'
+		$hidden_pages = array(
+			'aips-voices',
+			'aips-structures',
+			'aips-authors',
+			'aips-post-slices',
+			'aips-author-topics',
+			'aips-research',
+			'aips-campaigns',
+			'aips-campaign-wizard',
+			'aips-campaign-detail',
+			'aips-schedule-calendar',
+			'aips-history',
+			'aips-taxonomy',
+			'aips-internal-links',
+			'aips-status',
+			'aips-seeder',
 		);
 
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
-		$this->assertNotContains(
-			'aips-author-topics',
-			$submenu_pages,
-			'Author Topics page should remain hidden from the visible submenu.'
-		);
+		foreach ($hidden_pages as $hidden_page) {
+			$this->assertArrayHasKey(
+				'admin_page_' . $hidden_page,
+				$_registered_pages,
+				$hidden_page . ' should be registered for direct admin.php?page= access.'
+			);
+
+			$this->assertNotContains(
+				$hidden_page,
+				$submenu_pages,
+				$hidden_page . ' should remain hidden from the visible submenu.'
+			);
+		}
 	}
 }
