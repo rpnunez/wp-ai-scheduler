@@ -126,6 +126,8 @@ class AIPS_Blueprint_Presets_Repository {
 			'structure_id'      => !empty($data['structure_id']) ? absint($data['structure_id']) : null,
 			'voice_id'          => !empty($data['voice_id']) ? absint($data['voice_id']) : null,
 			'slice_ids'         => isset($data['slice_ids']) ? $this->sanitize_json_array($data['slice_ids']) : null,
+			// Reserved for future use: runtime section override substitution is tracked
+			// in a follow-up issue and is not yet applied during generation.
 			'section_overrides' => isset($data['section_overrides']) ? $this->sanitize_json_array($data['section_overrides']) : null,
 			'is_active'         => !empty($data['is_active']) ? 1 : 0,
 			'is_default'        => !empty($data['is_default']) ? 1 : 0,
@@ -185,6 +187,8 @@ class AIPS_Blueprint_Presets_Repository {
 		}
 
 		if (array_key_exists('section_overrides', $data)) {
+			// Reserved for future use: persisted now so future runtime composition can
+			// safely evolve without another schema change.
 			$update_data['section_overrides'] = $this->sanitize_json_array($data['section_overrides']);
 			$formats[] = '%s';
 		}

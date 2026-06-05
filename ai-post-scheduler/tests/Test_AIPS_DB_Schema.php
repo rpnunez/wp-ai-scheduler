@@ -69,6 +69,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$expected_indexes = array(
 			'PRIMARY',
 			'template_id',
+			'blueprint_preset_id',
 			'article_structure_id',
 			'next_run',
 			'is_active_next_run',
@@ -104,6 +105,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$expected_columns = array(
 			'id',
 			'template_id',
+			'blueprint_preset_id',
 			'article_structure_id',
 			'rotation_pattern',
 			'frequency',
