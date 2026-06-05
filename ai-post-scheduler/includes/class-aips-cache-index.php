@@ -180,7 +180,7 @@ class AIPS_Cache_Index {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $wpdb->query(
 				"DELETE ci FROM `{$index_table}` ci
-				 LEFT JOIN `{$cache_table}` c ON c.cache_key = ci.cache_key AND c.cache_group = ci.cache_group
+				 LEFT JOIN `{$cache_table}` c ON c.cache_group = ci.cache_group AND (c.cache_key = ci.cache_key OR c.cache_key LIKE CONCAT('%:', ci.cache_key))
 				 WHERE c.cache_key IS NULL"
 			);
 
@@ -209,49 +209,63 @@ class AIPS_Cache_Index {
 			$index_table = $wpdb->prefix . 'aips_cache_index';
 			$cache_table = $wpdb->prefix . 'aips_cache';
 			$now         = AIPS_DateTime::now()->timestamp();
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$rows = $wpdb->get_results( "SELECT cache_key, cache_group, expires_at, updated_at, LENGTH(value) as value_size FROM `{$cache_table}`", ARRAY_A );
-
-			if (!is_array( $rows )) {
-				return 0;
-			}
-
+			$limit       = 1000;
+			$offset      = 0;
 			$inserted = 0;
-			foreach ($rows as $row) {
-				$composite = $row['cache_group'] . ':' . $row['cache_key'];
-				$key_hash  = hash( 'sha256', $composite );
-				$expires   = (int) $row['expires_at'];
-				$ttl       = $expires > 0 ? max( 0, $expires - $now ) : 0;
 
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-				$result = $wpdb->replace(
-					$index_table,
-					array(
-						'cache_key'       => $row['cache_key'],
-						'key_hash'        => $key_hash,
-						'cache_group'     => $row['cache_group'],
-						'driver'          => 'db',
-						'tier'            => '',
-						'operation_id'    => '',
-						'repository_class' => '',
-						'tags'            => '',
-						'domain'          => '',
-						'ttl'             => $ttl,
-						'created_at'      => (int) ($row['updated_at'] ?: $now),
-						'updated_at'      => (int) ($row['updated_at'] ?: $now),
-						'expires_at'      => $expires,
-						'value_size'      => (int) $row['value_size'],
-						'value_type'      => '',
-						'last_accessed_at' => 0,
+			do {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$rows = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT cache_key, cache_group, expires_at, updated_at, LENGTH(value) as value_size FROM `{$cache_table}` LIMIT %d OFFSET %d",
+						$limit,
+						$offset
 					),
-					array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%d' )
+					ARRAY_A
 				);
 
-				if (false !== $result) {
-					$inserted++;
+				if (empty( $rows ) || !is_array( $rows )) {
+					break;
 				}
-			}
+
+				foreach ($rows as $row) {
+					$cache_key = $this->normalize_db_cache_key( (string) $row['cache_key'] );
+					$composite = $row['cache_group'] . ':' . $cache_key;
+					$key_hash  = hash( 'sha256', $composite );
+					$expires   = (int) $row['expires_at'];
+					$ttl       = $expires > 0 ? max( 0, $expires - $now ) : 0;
+
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					$result = $wpdb->replace(
+						$index_table,
+						array(
+							'cache_key'       => $cache_key,
+							'key_hash'        => $key_hash,
+							'cache_group'     => $row['cache_group'],
+							'driver'          => 'db',
+							'tier'            => '',
+							'operation_id'    => '',
+							'repository_class' => '',
+							'tags'            => '',
+							'domain'          => '',
+							'ttl'             => $ttl,
+							'created_at'      => (int) ($row['updated_at'] ?: $now),
+							'updated_at'      => (int) ($row['updated_at'] ?: $now),
+							'expires_at'      => $expires,
+							'value_size'      => (int) $row['value_size'],
+							'value_type'      => '',
+							'last_accessed_at' => 0,
+						),
+						array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%d' )
+					);
+
+					if (false !== $result) {
+						$inserted++;
+					}
+				}
+
+				$offset += $limit;
+			} while ( count( $rows ) === $limit );
 
 			return $inserted;
 		} catch ( Throwable $e ) {
@@ -373,5 +387,23 @@ class AIPS_Cache_Index {
 		$wpdb->query(
 			$wpdb->prepare( "DELETE FROM `{$table}` ORDER BY updated_at ASC LIMIT %d", $excess )
 		);
+	}
+
+	/**
+	 * Remove the configured global DB prefix from a persisted cache key.
+	 *
+	 * @param string $cache_key Persisted DB cache key.
+	 * @return string
+	 */
+	private function normalize_db_cache_key( string $cache_key ): string {
+		$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
+		if ('' !== $prefix) {
+			$needle = $prefix . ':';
+			if (strpos( $cache_key, $needle ) === 0) {
+				return substr( $cache_key, strlen( $needle ) );
+			}
+		}
+
+		return $cache_key;
 	}
 }

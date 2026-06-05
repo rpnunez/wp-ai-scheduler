@@ -285,7 +285,7 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 		foreach ($rows as $row) {
 			$result[] = array(
 				'cache_key'   => $row['cache_key'],
-				'key_hash'    => hash( 'sha256', $row['cache_key'] ),
+				'key_hash'    => hash( 'sha256', $row['cache_group'] . ':' . $row['cache_key'] ),
 				'cache_group' => $row['cache_group'],
 				'expires_at'  => (int) $row['expires_at'],
 				'updated_at'  => (int) $row['updated_at'],
@@ -369,7 +369,7 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 
 		return array(
 			'cache_key'     => $row['cache_key'],
-			'key_hash'      => hash( 'sha256', $row['cache_key'] ),
+			'key_hash'      => hash( 'sha256', $row['cache_group'] . ':' . $row['cache_key'] ),
 			'cache_group'   => $row['cache_group'],
 			'expires_at'    => (int) $row['expires_at'],
 			'updated_at'    => (int) $row['updated_at'],

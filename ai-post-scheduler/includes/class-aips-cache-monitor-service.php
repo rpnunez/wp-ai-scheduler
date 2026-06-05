@@ -395,8 +395,11 @@ class AIPS_Cache_Monitor_Service {
 	public function flush_group( string $group ): int {
 		$driver  = $this->resolve_active_driver();
 		$affected = 0;
+		$capabilities = $driver instanceof AIPS_Cache_Monitorable_Driver
+			? $driver->get_monitor_capabilities()
+			: array();
 
-		if ($driver instanceof AIPS_Cache_Monitorable_Driver && $driver->get_monitor_capabilities()['delete_group']) {
+		if ($driver instanceof AIPS_Cache_Monitorable_Driver && !empty( $capabilities['delete_group'] )) {
 			$driver->delete_group( $group );
 			$affected = $this->repository->delete_index_group( $group );
 		} else {
@@ -712,6 +715,9 @@ class AIPS_Cache_Monitor_Service {
 		}
 
 		if (is_string( $value )) {
+			if ( function_exists( 'mb_check_encoding' ) && ! mb_check_encoding( $value, 'UTF-8' ) ) {
+				return '[Binary Data]';
+			}
 			$truncated = strlen( $value ) > $preview_length
 				? substr( $value, 0, $preview_length ) . '…'
 				: $value;

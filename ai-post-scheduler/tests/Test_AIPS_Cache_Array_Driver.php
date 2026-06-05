@@ -242,6 +242,24 @@ class AIPS_Test_Cache_Tag_Observer_Logger implements AIPS_Logger_Interface {
 	public function addSeparator($text) {}
 }
 
+class AIPS_Test_Cache_Index_Recorder extends AIPS_Cache_Index {
+	public $set_contexts = array();
+	public $accesses     = array();
+
+	public function __construct() {}
+
+	public function record_set( string $key, $value, int $ttl, string $group, array $context = array() ): void {
+		$this->set_contexts[] = $context;
+	}
+
+	public function record_access( string $key, string $group ): void {
+		$this->accesses[] = array(
+			'key'   => $key,
+			'group' => $group,
+		);
+	}
+}
+
 class Test_AIPS_Cache extends WP_UnitTestCase {
 
 	/** @var AIPS_Cache */
@@ -418,6 +436,73 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 		$this->assertSame( 'aips_history', $logger->entries[0]['context']['cache_group'] );
 		$this->assertSame( array( 'history_entries' ), $logger->entries[0]['context']['tags'] );
 		$this->assertSame( 'tag_bump', $logger->entries[0]['context']['invalidation_reason'] );
+	}
+
+	public function test_get_cache_index_is_resolved_per_instance() {
+		update_option( 'aips_cache_monitor_index_enabled', '1' );
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$cache_one = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+		$cache_two = new AIPS_Cache( new AIPS_Cache_Array_Driver() );
+
+		$method = new ReflectionMethod( 'AIPS_Cache', 'get_cache_index' );
+		$method->setAccessible( true );
+
+		$first_index  = $method->invoke( $cache_one );
+		$second_index = $method->invoke( $cache_two );
+
+		$this->assertInstanceOf( 'AIPS_Cache_Index', $first_index );
+		$this->assertInstanceOf( 'AIPS_Cache_Index', $second_index );
+	}
+
+	public function test_with_context_is_consumed_after_one_set() {
+		$index = new AIPS_Test_Cache_Index_Recorder();
+		$this->inject_cache_index( $index );
+
+		$this->cache->with_context(
+			array(
+				'tags' => array( 'alpha' ),
+				'tier' => 'repository',
+			)
+		)->set( 'context:key', 'value', 60, 'ctx' );
+		$this->cache->set( 'context:key-2', 'value', 60, 'ctx' );
+
+		$this->assertSame( array( 'tags' => array( 'alpha' ), 'tier' => 'repository' ), $index->set_contexts[0] );
+		$this->assertSame( array(), $index->set_contexts[1] );
+	}
+
+	public function test_get_and_has_record_index_access_on_hits() {
+		$index = new AIPS_Test_Cache_Index_Recorder();
+		$this->inject_cache_index( $index );
+
+		$this->cache->set( 'hit-key', 'present', 30, 'hit-group' );
+
+		$this->assertSame( 'present', $this->cache->get( 'hit-key', 'hit-group' ) );
+		$this->assertTrue( $this->cache->has( 'hit-key', 'hit-group' ) );
+
+		$this->assertCount( 2, $index->accesses );
+		$this->assertSame( 'hit-key', $index->accesses[0]['key'] );
+		$this->assertSame( 'hit-group', $index->accesses[0]['group'] );
+	}
+
+	public function test_with_context_is_cleared_even_when_index_is_disabled() {
+		update_option( 'aips_cache_monitor_index_enabled', '0' );
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->cache->with_context( array( 'operation_id' => 'disabled-index' ) )->set( 'disabled:key', 'value', 10, 'ctx' );
+
+		$pending_context_property = new ReflectionProperty( 'AIPS_Cache', 'pending_context' );
+		$pending_context_property->setAccessible( true );
+		$this->assertSame( array(), $pending_context_property->getValue( $this->cache ) );
+
+		update_option( 'aips_cache_monitor_index_enabled', '1' );
+		AIPS_Config::get_instance()->flush_option_cache();
+	}
+
+	private function inject_cache_index( AIPS_Cache_Index $index ) {
+		$property = new ReflectionProperty( 'AIPS_Cache', 'cache_index' );
+		$property->setAccessible( true );
+		$property->setValue( $this->cache, $index );
 	}
 
 	// ------------------------------------------------------------------

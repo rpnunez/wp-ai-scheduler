@@ -1681,7 +1681,7 @@ class AIPS_Admin_Assets {
             'nonce'       => wp_create_nonce('aips_cache_monitor'),
             'actionNonce' => wp_create_nonce('aips_cache_monitor_action'),
             'i18n'        => array(
-                'loading'          => __('Loading\u2026', 'ai-post-scheduler'),
+                'loading'          => __('Loading…', 'ai-post-scheduler'),
                 'never'            => __('Never', 'ai-post-scheduler'),
                 'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
                 'noOps'            => __('No operations found.', 'ai-post-scheduler'),

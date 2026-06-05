@@ -43,6 +43,13 @@ class AIPS_Cache {
 	private $cache_index = null;
 
 	/**
+	 * Whether get_cache_index() has already attempted index resolution.
+	 *
+	 * @var bool
+	 */
+	private $cache_index_checked = false;
+
+	/**
 	 * Context for the next set() call. Consumed after one use.
 	 *
 	 * @var array
@@ -88,7 +95,7 @@ class AIPS_Cache {
 	 * @param array $context Metadata: tags, tier, operation_id, repository_class, domain.
 	 * @return static Fluent return.
 	 */
-	public function with_context( array $context ): static {
+	public function with_context( array $context ) {
 		$this->pending_context = $context;
 		return $this;
 	}
@@ -104,12 +111,10 @@ class AIPS_Cache {
 		if ($this->cache_index !== null) {
 			return $this->cache_index;
 		}
-		// Avoid double-instantiation on repeated misses by checking the flag.
-		static $checked = false;
-		if ($checked) {
+		if ($this->cache_index_checked) {
 			return null;
 		}
-		$checked = true;
+		$this->cache_index_checked = true;
 
 		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
 		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
@@ -172,6 +177,12 @@ class AIPS_Cache {
 			return $default;
 		}
 		$value = $this->driver->get( $key, $group );
+		if ($value !== null) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_access( (string) $key, (string) $group );
+			}
+		}
 		$this->record_cache_event(
 			'get',
 			array(
@@ -264,6 +275,12 @@ class AIPS_Cache {
 			return false;
 		}
 		$result = $this->driver->has( $key, $group );
+		if ($result) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_access( (string) $key, (string) $group );
+			}
+		}
 		$this->record_cache_event(
 			'has',
 			array(

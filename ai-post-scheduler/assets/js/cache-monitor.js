@@ -18,6 +18,9 @@
 (function ( $ ) {
 	'use strict';
 
+	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
+
 	var ajaxUrl   = aipsAjax.ajaxUrl;
 
 	// Nonces are embedded as data attributes on action buttons/elements
@@ -78,32 +81,33 @@
 			.replace( />/g, '&gt;' );
 	}
 
-	// -----------------------------------------------------------------------
-	// Tab switching
-	// -----------------------------------------------------------------------
+	function bindEvents() {
+		// -----------------------------------------------------------------------
+		// Tab switching
+		// -----------------------------------------------------------------------
 
-	$( '.aips-tab-link' ).on( 'click', function ( e ) {
+		$( '.aips-tab-link' ).on( 'click', function ( e ) {
 		// Allow natural href navigation (full URL with ?tab=xxx) so that
 		// server-side tab content is served correctly. JS handles the active-class toggle
 		// for immediate visual feedback without waiting for the page reload.
 		var $link = $( this );
 		$( '.aips-tab-link' ).removeClass( 'nav-tab-active' );
 		$link.addClass( 'nav-tab-active' );
-	} );
+		} );
 
 	// -----------------------------------------------------------------------
 	// Refresh button
 	// -----------------------------------------------------------------------
 
-	$( '.aips-cache-monitor-refresh' ).on( 'click', function () {
+		$( '.aips-cache-monitor-refresh' ).on( 'click', function () {
 		location.reload();
-	} );
+		} );
 
 	// -----------------------------------------------------------------------
 	// Flush expired
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-flush-expired', function () {
+		$( document ).on( 'click', '.aips-cache-flush-expired', function () {
 		var $btn = $( this );
 		$btn.prop( 'disabled', true );
 		$.post( ajaxUrl, {
@@ -119,14 +123,14 @@
 		} ).fail( function () {
 			$btn.prop( 'disabled', false );
 			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
-		} );
+			} );
 	} );
 
 	// -----------------------------------------------------------------------
 	// Flush All (requires confirmation)
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-flush-all-btn', function () {
+		$( document ).on( 'click', '.aips-cache-flush-all-btn', function () {
 		var actionNonce = $( this ).data( 'nonce' ) || ACTION_NONCE;
 		var confirmMsg  = aipsCacheMonitor.i18n.confirmFlushAll || 'This will flush ALL plugin-owned cache. Are you sure?';
 
@@ -147,7 +151,7 @@
 						} else {
 							AIPS.Utilities.showToast( res.data.message, 'error' );
 						}
-					} );
+						} );
 				}
 			} ]
 		);
@@ -157,7 +161,7 @@
 	// Flush Group
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-flush-group', function () {
+		$( document ).on( 'click', '.aips-cache-flush-group', function () {
 		var $btn        = $( this );
 		var group       = $btn.data( 'group' );
 		var actionNonce = $btn.data( 'nonce' ) || ACTION_NONCE;
@@ -181,7 +185,7 @@
 						} else {
 							AIPS.Utilities.showToast( res.data.message, 'error' );
 						}
-					} );
+						} );
 				}
 			} ]
 		);
@@ -191,7 +195,7 @@
 	// Invalidate tag
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-invalidate-tag', function () {
+		$( document ).on( 'click', '.aips-cache-invalidate-tag', function () {
 		var $btn = $( this );
 		var tag  = $btn.data( 'tag' );
 
@@ -206,14 +210,14 @@
 			} else {
 				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
-		} );
+			} );
 	} );
 
 	// -----------------------------------------------------------------------
 	// Invalidate domain
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-invalidate-domain', function () {
+		$( document ).on( 'click', '.aips-cache-invalidate-domain', function () {
 		var $btn   = $( this );
 		var domain = $btn.data( 'domain' );
 
@@ -227,7 +231,7 @@
 			} else {
 				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
-		} );
+			} );
 	} );
 
 	// -----------------------------------------------------------------------
@@ -316,44 +320,39 @@
 		} );
 	}
 
-	// Auto-load when on Entries tab.
-	if ( $( '#aips-cache-entries-tbody' ).length ) {
-		loadEntries();
-	}
-
-	$( '#aips-cache-entries-search-btn' ).on( 'click', function () {
+		$( '#aips-cache-entries-search-btn' ).on( 'click', function () {
 		entriesState.filters.search    = $( '#aips-cache-search' ).val();
 		entriesState.filters.group     = $( '#aips-cache-filter-group' ).val();
 		entriesState.filters.tier      = $( '#aips-cache-filter-tier' ).val();
 		entriesState.filters.ttl_state = $( '#aips-cache-filter-ttl' ).val();
 		entriesState.page              = 1;
 		loadEntries();
-	} );
+		} );
 
 	// Enter key triggers search.
-	$( '#aips-cache-search' ).on( 'keydown', function ( e ) {
+		$( '#aips-cache-search' ).on( 'keydown', function ( e ) {
 		if ( e.key === 'Enter' ) { $( '#aips-cache-entries-search-btn' ).trigger( 'click' ); }
-	} );
+		} );
 
-	$( document ).on( 'click', '.aips-entries-prev', function () { entriesState.page--; loadEntries(); } );
-	$( document ).on( 'click', '.aips-entries-next', function () { entriesState.page++; loadEntries(); } );
+		$( document ).on( 'click', '.aips-entries-prev', function () { entriesState.page--; loadEntries(); } );
+		$( document ).on( 'click', '.aips-entries-next', function () { entriesState.page++; loadEntries(); } );
 
-	$( '#aips-cache-per-page' ).on( 'change', function () {
+		$( '#aips-cache-per-page' ).on( 'change', function () {
 		entriesState.perPage = parseInt( $( this ).val(), 10 );
 		entriesState.page    = 1;
 		loadEntries();
-	} );
+		} );
 
 	// Select all checkbox.
-	$( '#aips-cache-select-all' ).on( 'change', function () {
+		$( '#aips-cache-select-all' ).on( 'change', function () {
 		$( '.aips-cache-entry-cb' ).prop( 'checked', $( this ).is( ':checked' ) );
-	} );
+		} );
 
 	// -----------------------------------------------------------------------
 	// Inspect entry modal
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-inspect-link, .aips-cache-inspect-btn', function ( e ) {
+		$( document ).on( 'click', '.aips-cache-inspect-link, .aips-cache-inspect-btn', function ( e ) {
 		e.preventDefault();
 		var hash = $( this ).data( 'hash' );
 
@@ -397,25 +396,25 @@
 			}
 
 			$( '#aips-cache-inspect-body' ).html( html );
-		} );
+			} );
 	} );
 
-	$( document ).on( 'click', '.aips-modal-close', function () {
+		$( document ).on( 'click', '.aips-modal-close', function () {
 		$( this ).closest( '.aips-modal' ).hide();
-	} );
+		} );
 
 	// Close modal on backdrop click.
-	$( document ).on( 'click', '.aips-modal', function ( e ) {
+		$( document ).on( 'click', '.aips-modal', function ( e ) {
 		if ( $( e.target ).hasClass( 'aips-modal' ) ) {
 			$( this ).hide();
 		}
-	} );
+		} );
 
 	// -----------------------------------------------------------------------
 	// Delete single entry
 	// -----------------------------------------------------------------------
 
-	$( document ).on( 'click', '.aips-cache-delete-link', function ( e ) {
+		$( document ).on( 'click', '.aips-cache-delete-link', function ( e ) {
 		e.preventDefault();
 		var $el         = $( this );
 		var hash        = $el.data( 'hash' );
@@ -432,21 +431,21 @@
 			} else {
 				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
-		} );
+			} );
 	} );
 
 	// -----------------------------------------------------------------------
 	// Bulk delete
 	// -----------------------------------------------------------------------
 
-	$( '#aips-cache-bulk-apply' ).on( 'click', function () {
+		$( '#aips-cache-bulk-apply' ).on( 'click', function () {
 		var action = $( '#aips-cache-bulk-action' ).val();
 		if ( action !== 'delete' ) { return; }
 
 		var hashes = [];
 		$( '.aips-cache-entry-cb:checked' ).each( function () {
 			hashes.push( $( this ).val() );
-		} );
+			} );
 
 		if ( ! hashes.length ) {
 			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.noneSelected || 'No entries selected.', 'warning' );
@@ -471,7 +470,7 @@
 	// Operations tab
 	// -----------------------------------------------------------------------
 
-	$( '#aips-ops-search-btn' ).on( 'click', function () {
+		$( '#aips-ops-search-btn' ).on( 'click', function () {
 		var params = {
 			action:           'aips_cache_monitor_operations',
 			nonce:            $( this ).data( 'nonce' ) || READ_NONCE,
@@ -498,7 +497,7 @@
 				html += '<td>' + formatBytes( op.total_size ) + '</td>';
 				html += '<td>' + formatTs( op.last_updated ) + '</td>';
 				html += '</tr>';
-			} );
+				} );
 
 			if ( ! html ) {
 				html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>';
@@ -550,16 +549,16 @@
 		} );
 	}
 
-	$( '#aips-events-load-btn' ).on( 'click', function () {
+		$( '#aips-events-load-btn' ).on( 'click', function () {
 		eventsPage = 1;
 		loadEvents();
-	} );
+		} );
 
 	// -----------------------------------------------------------------------
 	// Maintenance tab
 	// -----------------------------------------------------------------------
 
-	$( '.aips-maintenance-action-btn' ).on( 'click', function () {
+		$( '.aips-maintenance-action-btn' ).on( 'click', function () {
 		var $btn        = $( this );
 		var action      = $btn.data( 'action' );
 		var actionNonce = $btn.data( 'nonce' ) || ACTION_NONCE;
@@ -603,6 +602,19 @@
 			$btn.prop( 'disabled', false );
 			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
 		} );
-	} );
+		} );
+	}
+
+	AIPS.CacheMonitor = {
+		init: function() {
+			bindEvents();
+			if ( $( '#aips-cache-entries-tbody' ).length ) {
+				loadEntries();
+			}
+		},
+		bindEvents: bindEvents
+	};
+
+	AIPS.CacheMonitor.init();
 
 } )( jQuery );
