@@ -197,15 +197,27 @@ class AIPS_Authors_Repository {
 	 */
 	public function get_due_for_topic_generation() {
 		$current_time = AIPS_DateTime::now()->timestamp();
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} 
-			WHERE is_active = 1 
-			AND (topic_generation_is_active IS NULL OR topic_generation_is_active = 1)
-			AND topic_generation_next_run IS NOT NULL 
-			AND topic_generation_next_run <= %d
-			ORDER BY topic_generation_next_run ASC",
-			$current_time
-		));
+
+		return $this->cache_read(
+			'authors.get_due_for_topic_generation',
+			array(
+				'current_time' => (int) $current_time,
+			),
+			function() use ( $current_time ) {
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name}
+					WHERE is_active = 1
+					AND (topic_generation_is_active IS NULL OR topic_generation_is_active = 1)
+					AND topic_generation_next_run IS NOT NULL
+					AND topic_generation_next_run <= %d
+					ORDER BY topic_generation_next_run ASC",
+					$current_time
+				));
+			},
+			array(
+				'queue_sensitive' => true,
+			)
+		);
 	}
 	
 	/**
@@ -215,15 +227,27 @@ class AIPS_Authors_Repository {
 	 */
 	public function get_due_for_post_generation() {
 		$current_time = AIPS_DateTime::now()->timestamp();
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} 
-			WHERE is_active = 1 
-			AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
-			AND post_generation_next_run IS NOT NULL 
-			AND post_generation_next_run <= %d
-			ORDER BY post_generation_next_run ASC",
-			$current_time
-		));
+
+		return $this->cache_read(
+			'authors.get_due_for_post_generation',
+			array(
+				'current_time' => (int) $current_time,
+			),
+			function() use ( $current_time ) {
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name}
+					WHERE is_active = 1
+					AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
+					AND post_generation_next_run IS NOT NULL
+					AND post_generation_next_run <= %d
+					ORDER BY post_generation_next_run ASC",
+					$current_time
+				));
+			},
+			array(
+				'queue_sensitive' => true,
+			)
+		);
 	}
 
 	/**
@@ -351,6 +375,16 @@ class AIPS_Authors_Repository {
 				'tags'        => array( 'authors', 'author:{author_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-author reads by ID.',
+			),
+			'authors.get_due_for_topic_generation' => array(
+				'tier'         => 'none',
+				'bypass_cron'  => true,
+				'description'  => 'Leave topic-generation due-item reads uncached.',
+			),
+			'authors.get_due_for_post_generation'  => array(
+				'tier'         => 'none',
+				'bypass_cron'  => true,
+				'description'  => 'Leave post-generation due-item reads uncached.',
 			),
 		);
 	}

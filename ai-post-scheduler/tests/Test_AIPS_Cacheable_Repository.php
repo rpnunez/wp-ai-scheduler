@@ -58,6 +58,14 @@ class AIPS_Test_Cacheable_Repository_Subject {
 		$this->invalidate_cache_tags( $tags, $reason );
 	}
 
+	public function should_bypass( array $policy, array $options = array() ) {
+		return $this->repository_cache_should_bypass( $policy, $options );
+	}
+
+	public function without_cache( callable $callback ) {
+		return $this->without_repository_cache( $callback );
+	}
+
 	protected function repository_cache_group(): string {
 		return 'test_repository';
 	}
@@ -378,6 +386,145 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 2, $calls );
 		$this->assertSame( 'Repository cache bypass', $logger->entries[0]['message'] );
 		$this->assertSame( 'ajax_bypass', $logger->entries[0]['context']['invalidation_reason'] );
+	}
+
+	public function test_repository_cache_should_bypass_returns_true_for_tier_none() {
+		$subject = $this->make_subject( array() );
+
+		$this->assertTrue(
+			$subject->should_bypass(
+				array(
+					'tier' => 'none',
+				)
+			)
+		);
+	}
+
+	public function test_repository_cache_should_bypass_returns_true_for_force_refresh() {
+		$subject = $this->make_subject( array() );
+
+		$this->assertTrue(
+			$subject->should_bypass(
+				array(
+					'tier' => 'medium',
+				),
+				array(
+					'force_refresh' => true,
+				)
+			)
+		);
+	}
+
+	public function test_repository_cache_should_bypass_returns_true_for_queue_sensitive_reads() {
+		$subject = $this->make_subject( array() );
+
+		$this->assertTrue(
+			$subject->should_bypass(
+				array(
+					'tier' => 'medium',
+				),
+				array(
+					'queue_sensitive' => true,
+				)
+			)
+		);
+	}
+
+	public function test_repository_cache_should_bypass_returns_true_for_lock_sensitive_reads() {
+		$subject = $this->make_subject( array() );
+
+		$this->assertTrue(
+			$subject->should_bypass(
+				array(
+					'tier' => 'medium',
+				),
+				array(
+					'lock_sensitive' => true,
+				)
+			)
+		);
+	}
+
+	public function test_without_repository_cache_bypasses_nested_reads_within_scope() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$subject->read( 'authors.get_all', array(), $callback );
+
+		$scoped = $subject->without_cache(
+			function() use ( $subject, $callback ) {
+				return $subject->read( 'authors.get_all', array(), $callback );
+			}
+		);
+
+		$after = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_2', $scoped );
+		$this->assertSame( 'value_1', $after );
+		$this->assertSame( 2, $calls );
+		$this->assertSame( 'Repository cache bypass', $logger->entries[2]['message'] );
+		$this->assertSame( 'scoped_bypass', $logger->entries[2]['context']['invalidation_reason'] );
+	}
+
+	public function test_queue_sensitive_option_records_bypass_event() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$subject->read( 'authors.get_all', array(), $callback, array( 'queue_sensitive' => true ) );
+		$subject->read( 'authors.get_all', array(), $callback, array( 'queue_sensitive' => true ) );
+
+		$this->assertSame( 2, $calls );
+		$this->assertSame( 'queue_sensitive', $logger->entries[0]['context']['invalidation_reason'] );
+	}
+
+	public function test_lock_sensitive_option_records_bypass_event() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$subject->read( 'authors.get_all', array(), $callback, array( 'lock_sensitive' => true ) );
+		$subject->read( 'authors.get_all', array(), $callback, array( 'lock_sensitive' => true ) );
+
+		$this->assertSame( 2, $calls );
+		$this->assertSame( 'lock_sensitive', $logger->entries[0]['context']['invalidation_reason'] );
 	}
 
 	public function test_invalidate_cache_tags_changes_tag_versions_without_deleting_existing_values() {

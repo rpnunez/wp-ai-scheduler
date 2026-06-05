@@ -9,6 +9,16 @@ if (!defined('ABSPATH')) {
 trait AIPS_Cacheable_Repository {
 
 	/**
+	 * Scoped repository-cache bypass depth.
+	 *
+	 * When greater than zero, repository cache reads are bypassed for the
+	 * lifetime of the current without_repository_cache() scope.
+	 *
+	 * @var int
+	 */
+	private $repository_cache_bypass_depth = 0;
+
+	/**
 	 * Read through the repository cache using an explicit operation ID.
 	 *
 	 * @param string   $operation_id Explicit repository operation identifier.
@@ -24,7 +34,7 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		$policy = $this->normalize_repository_cache_policy( $policy );
-		if ($this->should_bypass_repository_cache_policy( $policy, $options )) {
+		if ($this->repository_cache_should_bypass( $policy, $options )) {
 			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $this->resolve_bypass_reason( $policy, $options ) );
 		}
 
@@ -215,6 +225,57 @@ trait AIPS_Cacheable_Repository {
 	 */
 	protected function repository_cache_observer() {
 		return new AIPS_Repository_Cache_Observer();
+	}
+
+	/**
+	 * Determine whether the current request should bypass this cache policy.
+	 *
+	 * @param array $policy Repository cache policy.
+	 * @param array $options Per-call options.
+	 * @return bool
+	 */
+	protected function repository_cache_should_bypass( array $policy, array $options = array() ): bool {
+		if ($this->repository_cache_bypass_depth > 0) {
+			return true;
+		}
+
+		if ( ! empty( $options['bypass_cache'] ) ) {
+			return true;
+		}
+
+		if ( ! empty( $options['force_refresh'] ) ) {
+			return true;
+		}
+
+		if ( ! empty( $options['queue_sensitive'] ) || ! empty( $options['lock_sensitive'] ) ) {
+			return true;
+		}
+
+		if ($this->is_doing_ajax() && !empty( $policy['bypass_ajax'] )) {
+			return true;
+		}
+
+		if (function_exists( 'wp_doing_cron' ) && wp_doing_cron() && !empty( $policy['bypass_on_cron'] )) {
+			return true;
+		}
+
+		return AIPS_Repository_Cache_Config::TIER_NONE === ( isset( $policy['tier'] ) ? $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE );
+	}
+
+	/**
+	 * Execute a callback while forcing repository-cache bypass within this scope.
+	 *
+	 * @param callable $callback Callback to execute.
+	 * @return mixed
+	 */
+	protected function without_repository_cache( callable $callback ) {
+		$this->repository_cache_bypass_depth++;
+
+		try {
+			return $callback();
+		} finally {
+			$this->repository_cache_bypass_depth = max( 0, $this->repository_cache_bypass_depth - 1 );
+		}
 	}
 
 	/**
@@ -485,6 +546,18 @@ trait AIPS_Cacheable_Repository {
 			return 'bypass_cache';
 		}
 
+		if ($this->repository_cache_bypass_depth > 0) {
+			return 'scoped_bypass';
+		}
+
+		if ( ! empty( $options['queue_sensitive'] ) ) {
+			return 'queue_sensitive';
+		}
+
+		if ( ! empty( $options['lock_sensitive'] ) ) {
+			return 'lock_sensitive';
+		}
+
 		if (function_exists( 'wp_doing_cron' ) && wp_doing_cron() && !empty( $policy['bypass_on_cron'] )) {
 			return 'cron_bypass';
 		}
@@ -505,27 +578,6 @@ trait AIPS_Cacheable_Repository {
 	 *
 	 * @param array $policy Repository cache policy.
 	 * @param array $options Per-call options.
-	 * @return bool
-	 */
-	private function should_bypass_repository_cache_policy( array $policy, array $options ): bool {
-		if ( ! empty( $options['bypass_cache'] ) ) {
-			return true;
-		}
-
-		if ($this->is_doing_ajax() && !empty( $policy['bypass_ajax'] )) {
-			return true;
-		}
-
-		if (function_exists( 'wp_doing_cron' ) && wp_doing_cron() && !empty( $policy['bypass_on_cron'] )) {
-			return true;
-		}
-
-		return AIPS_Repository_Cache_Config::TIER_NONE === ( isset( $policy['tier'] ) ? $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE );
-	}
-
-	/**
-	 * Determine whether the current request is an AJAX request.
-	 *
 	 * @return bool
 	 */
 	private function is_doing_ajax(): bool {
