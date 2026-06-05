@@ -228,6 +228,20 @@ class Test_AIPS_Cache_Wp_Object_Cache_Driver extends WP_UnitTestCase {
 /**
  * @covers AIPS_Cache
  */
+class AIPS_Test_Cache_Tag_Observer_Logger implements AIPS_Logger_Interface {
+	public $entries = array();
+
+	public function log($message, $level = 'info', $context = array()) {
+		$this->entries[] = array(
+			'message' => $message,
+			'level'   => $level,
+			'context' => $context,
+		);
+	}
+
+	public function addSeparator($text) {}
+}
+
 class Test_AIPS_Cache extends WP_UnitTestCase {
 
 	/** @var AIPS_Cache */
@@ -338,6 +352,72 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 
 	public function test_decrement_from_zero() {
 		$this->assertSame( -1, $this->cache->decrement( 'neg' ) );
+	}
+
+	public function test_get_tag_version_defaults_to_one_for_missing_tag() {
+		$this->assertSame( 1, $this->cache->get_tag_version( 'History Entries' ) );
+	}
+
+	public function test_get_tag_versions_returns_stable_sanitized_versions() {
+		$versions = $this->cache->get_tag_versions(
+			array(
+				'History Entries',
+				'history-entries',
+				'author/42',
+				'',
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'history_entries' => 1,
+				'history-entries' => 1,
+				'author_42'       => 1,
+			),
+			$versions
+		);
+	}
+
+	public function test_bump_tag_version_advances_missing_tag_from_default_version_one() {
+		$this->assertSame( 2, $this->cache->bump_tag_version( 'History Entries' ) );
+		$this->assertSame( 2, $this->cache->get_tag_version( 'history entries' ) );
+	}
+
+	public function test_bump_tag_versions_changes_tag_version_set_without_deleting_existing_cached_values() {
+		$operation_id = 'history:stats';
+		$args         = array( 'template_id' => 55 );
+		$group        = 'aips_history';
+
+		$initial_versions = $this->cache->get_tag_versions( array( 'history', 'template:55' ), $group );
+		$initial_key      = AIPS_Repository_Cache_Key_Builder::build_key( $operation_id, $args, $initial_versions );
+
+		$this->cache->set( $initial_key, array( 'count' => 12 ), 300, $group );
+		$this->cache->bump_tag_version( 'history', $group );
+
+		$updated_versions = $this->cache->get_tag_versions( array( 'history', 'template:55' ), $group );
+		$updated_key      = AIPS_Repository_Cache_Key_Builder::build_key( $operation_id, $args, $updated_versions );
+
+		$this->assertNotSame( $initial_versions, $updated_versions );
+		$this->assertNotSame( $initial_key, $updated_key );
+		$this->assertSame( array( 'count' => 12 ), $this->cache->get( $initial_key, $group ) );
+		$this->assertFalse( $this->cache->has( $updated_key, $group ) );
+	}
+
+	public function test_bump_tag_version_records_repository_cache_invalidation_event() {
+		$logger   = new AIPS_Test_Cache_Tag_Observer_Logger();
+		$observer = new AIPS_Repository_Cache_Observer( $logger );
+		$cache    = new AIPS_Cache( new AIPS_Cache_Array_Driver(), $observer );
+
+		$version = $cache->bump_tag_version( 'History Entries', 'aips_history' );
+
+		$this->assertSame( 2, $version );
+		$this->assertCount( 1, $logger->entries );
+		$this->assertSame( 'Repository cache invalidation', $logger->entries[0]['message'] );
+		$this->assertSame( 'debug', $logger->entries[0]['level'] );
+		$this->assertSame( 'invalidation', $logger->entries[0]['context']['event_type'] );
+		$this->assertSame( 'aips_history', $logger->entries[0]['context']['cache_group'] );
+		$this->assertSame( array( 'history_entries' ), $logger->entries[0]['context']['tags'] );
+		$this->assertSame( 'tag_bump', $logger->entries[0]['context']['invalidation_reason'] );
 	}
 
 	// ------------------------------------------------------------------
