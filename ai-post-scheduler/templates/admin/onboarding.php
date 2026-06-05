@@ -42,9 +42,29 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 			</div>
 		</div>
 
-		<?php if (!$ai_engine_active) : ?>
+		<?php if (!$ai_backend_supported) : ?>
 			<div class="notice notice-error" style="margin: 16px 0;">
-				<p><?php esc_html_e('AI Engine is not installed or activated. You can complete the setup steps, but topic/post generation requires AI Engine to be active.', 'ai-post-scheduler'); ?></p>
+				<p>
+					<?php
+					printf(
+						/* translators: %s: backend label */
+						esc_html__('%s is not installed or available in this WordPress environment. You can complete the setup steps, but topic and post generation will stay disabled until that backend is available.', 'ai-post-scheduler'),
+						esc_html($ai_backend_label)
+					);
+					?>
+				</p>
+			</div>
+		<?php elseif (!$ai_backend_available) : ?>
+			<div class="notice notice-warning" style="margin: 16px 0;">
+				<p>
+					<?php
+					printf(
+						/* translators: %s: backend label */
+						esc_html__('%s is installed, but it is not ready for generation yet. Finish configuring provider credentials before generating topics or posts.', 'ai-post-scheduler'),
+						esc_html($ai_backend_label)
+					);
+					?>
+				</p>
 			</div>
 		<?php endif; ?>
 
@@ -282,7 +302,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 				<?php else : ?>
 					<p class="description"><?php esc_html_e('This will generate topic ideas for your onboarding author.', 'ai-post-scheduler'); ?></p>
 					<p>
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-topics" <?php disabled(!$template_complete || !$ai_engine_active); ?>>
+						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-topics" <?php disabled(!$template_complete || !$ai_backend_available); ?>>
 							<span class="dashicons dashicons-lightbulb"></span>
 							<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 						</button>
@@ -316,7 +336,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						<input type="text" class="regular-text" id="aips-onboarding-topic" value="<?php echo esc_attr(!empty($state['first_topic']) ? $state['first_topic'] : ''); ?>" <?php disabled(!$topics_complete); ?>>
 					</p>
 					<p>
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-post" <?php disabled(!$topics_complete || !$ai_engine_active); ?>>
+						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-post" <?php disabled(!$topics_complete || !$ai_backend_available); ?>>
 							<span class="dashicons dashicons-edit"></span>
 							<?php esc_html_e('Generate Post', 'ai-post-scheduler'); ?>
 						</button>

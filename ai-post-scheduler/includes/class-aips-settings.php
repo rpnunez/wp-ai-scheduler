@@ -108,6 +108,10 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_circuit_breaker_timeout'],
         ));
+        register_setting('aips_settings', 'aips_ai_backend', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_ai_backend'),
+            'default'           => $defaults['aips_ai_backend'],
+        ));
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => $defaults['aips_ai_model'],
@@ -186,8 +190,16 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_backend',
+            __('AI Backend', 'ai-post-scheduler'),
+            array($this->ui, 'ai_backend_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
             'aips_ai_model',
-            __('AI Model', 'ai-post-scheduler'),
+            __('Preferred Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
             'aips-settings',
             'aips_ai_section'
@@ -198,7 +210,10 @@ class AIPS_Settings {
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_section',
+            array(
+                'class' => 'aips-ai-backend-row aips-ai-backend-meow',
+            )
         );
 
         add_settings_field(

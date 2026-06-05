@@ -532,11 +532,11 @@ class AIPS_Research_Controller {
             $template = $templates[0];
         }
 
-        // Check AI Engine availability before running the batch.
+        // Check the selected backend before running the batch.
         $generator = new AIPS_Generator();
 
         if (!$generator->is_available()) {
-            $message = __('AI Engine is not available. Please install and configure Meow Apps AI Engine before generating posts.', 'ai-post-scheduler');
+            $message = __('The selected AI backend is not available. Configure it before generating posts.', 'ai-post-scheduler');
 
             $this->logger->log($message, 'error', array(
                 'action'      => 'ajax_generate_trending_topics_bulk',

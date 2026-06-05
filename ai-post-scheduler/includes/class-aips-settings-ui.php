@@ -28,7 +28,52 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function ai_section_callback() {
-        echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Select the AI backend used for content generation and configure any backend-specific preferences.', 'ai-post-scheduler') . '</p>';
+        echo '<p class="description">' . esc_html__('Embeddings and internal-link indexing still depend on the Meow Apps AI Engine backend in this phase.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the AI backend selector.
+     *
+     * @return void
+     */
+    public function ai_backend_field_callback() {
+        $value    = AIPS_AI_Service_Factory::get_backend_id();
+        $backends = AIPS_AI_Service_Factory::get_registered_backends();
+        ?>
+        <select name="aips_ai_backend" id="aips_ai_backend">
+            <?php foreach ($backends as $backend_id => $backend) : ?>
+                <?php
+                $supported = AIPS_AI_Service_Factory::is_backend_supported($backend_id);
+                $disabled  = (!$supported && $value !== $backend_id) ? ' disabled="disabled"' : '';
+                $label     = isset($backend['label']) ? $backend['label'] : $backend_id;
+
+                if (!$supported) {
+                    $label .= ' ' . __('(Unavailable)', 'ai-post-scheduler');
+                }
+                ?>
+                <option value="<?php echo esc_attr($backend_id); ?>" <?php selected($value, $backend_id); ?><?php echo $disabled; ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Choose which AI runtime powers generation. WordPress AI Client uses the site-level AI credentials screen in WordPress. Meow Apps AI Engine uses this plugin\'s Environment ID field below.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize the AI backend option.
+     *
+     * @param mixed $value Raw input value.
+     * @return string
+     */
+    public function sanitize_ai_backend($value) {
+        $value    = sanitize_key((string) $value);
+        $backends = AIPS_AI_Service_Factory::get_registered_backends();
+
+        if (!isset($backends[ $value ])) {
+            return '';
+        }
+
+        return AIPS_AI_Service_Factory::is_backend_supported($value) ? $value : '';
     }
 
     /**
@@ -99,7 +144,7 @@ class AIPS_Settings_UI {
     /**
      * Render the AI model setting field.
      *
-     * Displays a text input for specifying a custom AI Engine model.
+     * Displays a text input for specifying a preferred model when supported.
      *
      * @return void
      */
@@ -107,14 +152,14 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Optional preferred model. Leave empty to let the selected backend choose automatically.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
     /**
      * Render the AI environment ID setting field.
      *
-     * Displays a text input for specifying a custom AI Engine environment ID.
+     * Displays a text input for specifying a custom Meow AI Engine environment ID.
      *
      * @return void
      */
@@ -122,7 +167,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
         <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Meow Apps AI Engine environment ID to use. This setting is ignored by the WordPress AI Client backend.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 

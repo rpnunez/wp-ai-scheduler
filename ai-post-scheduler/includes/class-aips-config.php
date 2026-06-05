@@ -124,6 +124,7 @@ class AIPS_Config {
             'aips_onboarding_completed' => false,
             'aips_log_secret' => '',
             // AI model
+            'aips_ai_backend' => '',
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
@@ -367,6 +368,7 @@ class AIPS_Config {
      * token limit, and temperature.
      *
      * @return array AI model configuration with keys:
+     *               'backend'          (string) Selected backend identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
@@ -374,6 +376,7 @@ class AIPS_Config {
      */
     public function get_ai_config() {
         return array(
+            'backend'          => (string) $this->get_option('aips_ai_backend'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
