@@ -122,7 +122,7 @@ if (!defined('ABSPATH')) {
                             <?php endforeach; ?>
                         </select>
                         <button type="button" class="aips-btn aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
-            </div>
+                    </div>
                     </div>
                 </div>
 
