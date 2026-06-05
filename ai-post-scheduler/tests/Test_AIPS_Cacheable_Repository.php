@@ -218,6 +218,30 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( array( 'authors', 'author_44' ), $logger->entries[0]['context']['tags'] );
 	}
 
+	public function test_dependency_map_tags_are_merged_into_read_tags() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_by_id' => array(
+					'tier' => 'medium',
+					'tags' => array( 'custom_author_tag' ),
+				),
+			),
+			$logger
+		);
+
+		$subject->read(
+			'authors.get_by_id',
+			array(
+				'author_id' => 44,
+			),
+			function() {
+				return (object) array( 'id' => 44 );
+			}
+		);
+
+		$this->assertSame( array( 'authors', 'author_44', 'custom_author_tag' ), $logger->entries[0]['context']['tags'] );
+	}
+
 	public function test_unknown_placeholder_records_warning_without_fatal_error() {
 		$subject = $this->make_subject(
 			array(
@@ -381,7 +405,7 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 2, $calls );
 	}
 
-	public function test_invalidate_cache_domain_falls_back_to_domain_tag() {
+	public function test_invalidate_cache_domain_uses_dependency_map_when_available() {
 		$subject = $this->make_subject(
 			array(
 				'authors.get_all' => array(
@@ -392,10 +416,10 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 			$logger
 		);
 
-		$subject->invalidate_domain( 'authors', array( 'author_id' => 12 ), 'author_saved' );
+		$subject->invalidate_domain( 'author', array( 'author_id' => 12 ), 'author_saved' );
 
 		$this->assertSame( 'Repository cache invalidation', $logger->entries[0]['message'] );
-		$this->assertSame( array( 'authors' ), $logger->entries[0]['context']['tags'] );
+		$this->assertSame( array( 'authors', 'author_generation_schedule', 'dashboard_counts', 'unified_schedule', 'author_12' ), $logger->entries[0]['context']['tags'] );
 		$this->assertSame( 'author_saved', $logger->entries[0]['context']['invalidation_reason'] );
 	}
 }

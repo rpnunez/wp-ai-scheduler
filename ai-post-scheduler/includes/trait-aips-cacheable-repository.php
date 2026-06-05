@@ -33,7 +33,7 @@ trait AIPS_Cacheable_Repository {
 			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $this->resolve_bypass_reason( $policy, $options ) );
 		}
 
-		$tags         = $this->repository_cache_tags( $policy, $args );
+		$tags         = $this->repository_cache_tags( $operation_id, $policy, $args );
 		$tag_versions = $cache->get_tag_versions( $tags, $this->repository_cache_group() );
 		$key          = AIPS_Repository_Cache_Key_Builder::build_key( $operation_id, $args, $tag_versions );
 		$key_hash     = hash( 'sha256', $key );
@@ -231,7 +231,7 @@ trait AIPS_Cacheable_Repository {
 		$start    = microtime( true );
 		$value    = $callback();
 		$observer = $this->repository_cache_observer();
-		$tags     = $this->repository_cache_tags( $policy, $args );
+		$tags     = $this->repository_cache_tags( $operation_id, $policy, $args );
 
 		$this->record_repository_cache_bypass(
 			$observer,
@@ -284,19 +284,21 @@ trait AIPS_Cacheable_Repository {
 	 * @param array $args Read arguments.
 	 * @return array<int, string>
 	 */
-	private function repository_cache_tags( array $policy, array $args ): array {
-		if (class_exists( 'AIPS_Repository_Cache_Dependencies' ) && method_exists( 'AIPS_Repository_Cache_Dependencies', 'tags_for_read' ) && !empty( $policy['dependency_tags'] )) {
-			$dependency_tags = AIPS_Repository_Cache_Dependencies::tags_for_read( (string) $policy['dependency_tags'], $args );
+	private function repository_cache_tags( string $operation_id, array $policy, array $args ): array {
+		$tags = array();
+
+		if (class_exists( 'AIPS_Repository_Cache_Dependencies' ) && method_exists( 'AIPS_Repository_Cache_Dependencies', 'tags_for_read' )) {
+			$dependency_tags = AIPS_Repository_Cache_Dependencies::tags_for_read( $operation_id, $args );
 			if (is_array( $dependency_tags ) && !empty( $dependency_tags )) {
-				return $this->sanitize_repository_cache_tags( $dependency_tags );
+				$tags = array_merge( $tags, $dependency_tags );
 			}
 		}
 
-		if (empty( $policy['tags'] ) || !is_array( $policy['tags'] )) {
-			return array();
+		if (!empty( $policy['tags'] ) && is_array( $policy['tags'] )) {
+			$tags = array_merge( $tags, $this->resolve_repository_cache_tag_templates( $policy['tags'], $args ) );
 		}
 
-		return $this->sanitize_repository_cache_tags( $this->resolve_repository_cache_tag_templates( $policy['tags'], $args ) );
+		return $this->sanitize_repository_cache_tags( $tags );
 	}
 
 	/**

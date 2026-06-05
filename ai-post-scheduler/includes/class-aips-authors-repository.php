@@ -138,11 +138,9 @@ class AIPS_Authors_Repository {
 
 		$result = $this->wpdb->insert($this->table_name, $data);
 		if ( $result ) {
-			$this->invalidate_cache_tags(
-				array(
-					'authors',
-					'author:' . (int) $this->wpdb->insert_id,
-				),
+			$this->invalidate_cache_domain(
+				'author',
+				array(),
 				'author_created'
 			);
 		}
@@ -365,10 +363,10 @@ class AIPS_Authors_Repository {
 	 * @return void
 	 */
 	private function invalidate_author_cache( $author_id, $reason ) {
-		$this->invalidate_cache_tags(
+		$this->invalidate_cache_domain(
+			'author',
 			array(
-				'authors',
-				'author:' . (int) absint( $author_id ),
+				'author_id' => absint( $author_id ),
 			),
 			(string) $reason
 		);

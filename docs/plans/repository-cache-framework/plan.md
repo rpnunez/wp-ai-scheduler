@@ -503,30 +503,6 @@ Test cases:
 
 ---
 
-## Phase 12 — Add admin/debug visibility after rollout starts
-
-Once repository caching exists, make it diagnosable.
-
-:::task-stub{title="Expose repository cache diagnostics in system status"}
-Extend the existing system status or telemetry UI to include repository cache diagnostics.
-
-Show:
-
-- enabled/disabled state
-- configured cache driver
-- repository cache tier defaults
-- top operation IDs by hit count
-- top operation IDs by miss count
-- top invalidated domains
-- recent bypass reasons
-- recent slow rebuilds
-- current tag versions for selected domains when debug/dev mode is enabled
-
-Keep full cache keys hidden. Display operation IDs and key hashes only.
-:::
-
----
-
 ## Recommended implementation sequence
 
 1. `AIPS_Repository_Cache_Observer`
@@ -540,8 +516,3 @@ Keep full cache keys hidden. Display operation IDs and key hashes only.
 9. Expand to `AIPS_Author_Topics_Repository`
 10. Add tests
 11. Roll out repository-by-repository
-12. Add system-status diagnostics
-
-## Testing / checks
-
-⚠️ Not run — formatting-only response; no repository commands executed and no files modified.
