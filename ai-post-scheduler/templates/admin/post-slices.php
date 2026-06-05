@@ -189,10 +189,10 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 	</div>
 </div>
 
-<div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-post-slice-modal-title">
+<div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-post-slice-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Post Slice', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Add New Post Slice', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

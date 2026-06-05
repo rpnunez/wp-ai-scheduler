@@ -250,10 +250,10 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 </div><!-- .wrap -->
 
 <!-- Add / Edit Source Modal -->
-<div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
+<div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-source-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Source', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Add New Source', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
@@ -340,10 +340,10 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 </div>
 
 <!-- Manage Source Groups Modal -->
-<div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
+<div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-groups-modal-title" class="aips-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

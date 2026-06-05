@@ -514,7 +514,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-schedule-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
@@ -594,10 +594,10 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
 <div id="aips-schedule-history-modal" class="aips-modal" style="display:none;"
-	role="dialog" aria-modal="true" aria-labelledby="aips-schedule-history-modal-title">
+	role="dialog" aria-modal="true">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
-			<h2 id="aips-schedule-history-modal-title" class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

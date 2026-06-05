@@ -457,7 +457,7 @@
 			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
 
 			// Close modal via close button or backdrop click.
-			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
+			// $(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this)); // Handled globally by admin.js
 			$(document).on('click', '#aips-history-logs-modal', this.closeLogsModalOnOverlay.bind(this));
 
 			// Select-all and individual row checkboxes.
@@ -555,7 +555,7 @@
 			}
 
 			var $modal   = $('#aips-history-logs-modal');
-			var $content = $('#aips-history-logs-content');
+			var $content = $('#aips-history-logs-modal').find('.aips-modal-content-body');
 			var T        = AIPS.Templates;
 
 			AIPS.HistoryModalShared.resetModalHeader($modal, {

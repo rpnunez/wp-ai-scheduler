@@ -624,8 +624,8 @@
 		 * @return {void}
 		 */
 		openDetailsModal: function(title, bodyHtml) {
-			var $content = $('#aips-telemetry-details-content');
-			$('#aips-telemetry-details-title').text(title);
+			var $content = $('#aips-telemetry-details-modal').find('.aips-modal-content-body');
+			$('#aips-telemetry-details-modal').find('.aips-modal-title').text(title);
 			$content.html(bodyHtml);
 			this.initPayloadSections($content);
 			$('#aips-telemetry-details-modal').fadeIn(150);

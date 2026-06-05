@@ -415,8 +415,8 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <div id="aips-trending-topic-posts-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
             <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-            <h2 id="aips-trending-topic-posts-modal-title" class="aips-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-            <div id="aips-trending-topic-posts-content" class="aips-modal-content-body">
+            <h2 class="aips-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+            <div class="aips-modal-content-body">
                 <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
             </div>
         </div>

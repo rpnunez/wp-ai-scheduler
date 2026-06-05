@@ -209,7 +209,7 @@ if (!defined('ABSPATH')) {
     <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
-                <h2 id="aips-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
+                <h2 class="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             
@@ -682,7 +682,7 @@ if (!defined('ABSPATH')) {
 
                     <div class="aips-form-row">
                         <label><strong><?php esc_html_e('Generated Content:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-content" class="aips-preview-box aips-modal-content-body" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                        <div class="aips-preview-box aips-modal-content-body" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
                     </div>
                 </div>
             </div>
@@ -695,7 +695,7 @@ if (!defined('ABSPATH')) {
     <div id="aips-post-success-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
-                <h2 id="aips-post-success-modal-title" class="aips-modal-title"
+                <h2 class="aips-modal-title"
                     data-singular-title="<?php echo esc_attr__('Post Successfully Generated', 'ai-post-scheduler'); ?>"
                     data-plural-title="<?php echo esc_attr__('Posts Successfully Generated', 'ai-post-scheduler'); ?>"
                 ><?php esc_html_e('Post Successfully Generated', 'ai-post-scheduler'); ?></h2>

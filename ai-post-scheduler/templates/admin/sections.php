@@ -121,7 +121,7 @@ if (!isset($sections) || !is_array($sections)) {
 	<!-- Section Modal (kept as-is for JavaScript compatibility) --><div id="aips-section-modal" class="aips-modal" style="display: none;">
 		<div class="aips-modal-content">
 			<div class="aips-modal-header">
-				<h2 id="aips-section-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Prompt Section', 'ai-post-scheduler'); ?></h2>
+				<h2 class="aips-modal-title"><?php esc_html_e('Add New Prompt Section', 'ai-post-scheduler'); ?></h2>
 				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 			</div>
 			<div class="aips-modal-body">
