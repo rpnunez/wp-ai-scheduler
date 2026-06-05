@@ -604,8 +604,8 @@ class Test_AIPS_Cache_Factory_Disabled extends WP_UnitTestCase {
 
 	public function test_make_driver_returns_array_driver_when_cache_disabled() {
 		// Even if the configured driver is something else, the factory must
-		// return an ArrayDriver without attempting a Redis/DB connection.
-		update_option( 'aips_cache_driver', 'redis' );
+		// return an ArrayDriver without attempting other driver setup.
+		update_option( 'aips_cache_driver', 'wp_object_cache' );
 
 		$driver = AIPS_Cache_Factory::make_driver();
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
@@ -613,7 +613,7 @@ class Test_AIPS_Cache_Factory_Disabled extends WP_UnitTestCase {
 
 	public function test_make_driver_ignores_explicit_driver_name_when_disabled() {
 		// An explicit $driver_name argument must also be ignored when disabled.
-		$driver = AIPS_Cache_Factory::make_driver( 'redis' );
+		$driver = AIPS_Cache_Factory::make_driver( 'wp_object_cache' );
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
 	}
 }
@@ -658,17 +658,6 @@ class Test_AIPS_Cache_Factory extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
 	}
 
-	public function test_make_redis_without_extension_falls_back_to_array() {
-		// Without the redis extension installed in the test environment,
-		// the factory must fall back to the ArrayDriver silently.
-		if (extension_loaded( 'redis' )) {
-			$this->markTestSkipped( 'PHP redis extension is loaded; fallback path not testable here.' );
-		}
-
-		$cache  = AIPS_Cache_Factory::make( 'redis' );
-		$driver = $cache->get_driver();
-		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
-	}
 
 	public function test_instance_returns_same_object_on_repeated_calls() {
 		$a = AIPS_Cache_Factory::instance();
@@ -689,214 +678,17 @@ class Test_AIPS_Cache_Factory extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $driver );
 	}
 
-	public function test_make_session_driver_returns_session_driver() {
+	public function test_make_legacy_session_driver_migrates_to_wp_object_cache_driver() {
 		$cache  = AIPS_Cache_Factory::make( 'session' );
 		$driver = $cache->get_driver();
-		$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $driver );
+		$this->assertInstanceOf( 'AIPS_Cache_Wp_Object_Cache_Driver', $driver );
 	}
-}
 
-// ============================================================================
-// AIPS_Cache_Session_Driver tests
-// ============================================================================
-
-/**
- * @covers AIPS_Cache_Session_Driver
- */
-class Test_AIPS_Cache_Session_Driver extends WP_UnitTestCase {
-
-/** @var AIPS_Cache_Session_Driver */
-private $driver;
-
-/** @var string Unique namespace per run to prevent cross-test pollution. */
-private $ns;
-
-public function setUp(): void {
-parent::setUp();
-// Each test uses a unique namespace so leftover keys can't bleed through.
-$this->ns     = 'aips_test_' . uniqid();
-$this->driver = new AIPS_Cache_Session_Driver( $this->ns );
-// Flush this namespace before each test for a clean slate.
-$this->driver->flush();
-}
-
-public function tearDown(): void {
-// Flush after test so subsequent tests start clean.
-if ($this->driver) {
-$this->driver->flush();
-}
-parent::tearDown();
-}
-
-// ------------------------------------------------------------------
-// Session availability
-// ------------------------------------------------------------------
-
-public function test_session_is_available_in_cli() {
-// In PHP CLI mode session_start() works; the driver should be available.
-$this->assertTrue( $this->driver->is_session_available() );
-}
-
-// ------------------------------------------------------------------
-// get / set
-// ------------------------------------------------------------------
-
-public function test_set_and_get_string() {
-$this->driver->set( 'key1', 'hello' );
-$this->assertSame( 'hello', $this->driver->get( 'key1' ) );
-}
-
-public function test_get_returns_null_on_miss() {
-$this->assertNull( $this->driver->get( 'no_such_key' ) );
-}
-
-public function test_set_and_get_array_value() {
-$data = array( 'x' => 1, 'y' => 2 );
-$this->driver->set( 'arr', $data );
-$this->assertSame( $data, $this->driver->get( 'arr' ) );
-}
-
-public function test_set_and_get_with_group() {
-$this->driver->set( 'key', 'grp_value', 0, 'mygroup' );
-$this->assertSame( 'grp_value', $this->driver->get( 'key', 'mygroup' ) );
-}
-
-public function test_different_groups_are_isolated() {
-$this->driver->set( 'key', 'val_a', 0, 'ga' );
-$this->driver->set( 'key', 'val_b', 0, 'gb' );
-
-$this->assertSame( 'val_a', $this->driver->get( 'key', 'ga' ) );
-$this->assertSame( 'val_b', $this->driver->get( 'key', 'gb' ) );
-}
-
-public function test_set_returns_true_when_session_available() {
-$this->assertTrue( $this->driver->set( 'k', 'v' ) );
-}
-
-// ------------------------------------------------------------------
-// TTL / expiration
-// ------------------------------------------------------------------
-
-public function test_zero_ttl_does_not_expire() {
-$this->driver->set( 'perm', 'forever', 0 );
-$this->assertSame( 'forever', $this->driver->get( 'perm' ) );
-}
-
-public function test_live_ttl_entry_is_readable() {
-$this->driver->set( 'live', 'alive', 3600 );
-$this->assertSame( 'alive', $this->driver->get( 'live' ) );
-}
-
-public function test_expired_entry_returns_null_and_is_removed() {
-// Manually write an already-expired entry directly into $_SESSION.
-$session_key              = $this->ns . '::default:expired_key';
-$_SESSION[ $session_key ] = array(
-'value'   => maybe_serialize( 'stale' ),
-'expires' => time() - 1, // 1 second in the past
-);
-
-$this->assertNull( $this->driver->get( 'expired_key' ) );
-$this->assertFalse( isset( $_SESSION[ $session_key ] ), 'Stale entry should be removed on read.' );
-}
-
-// ------------------------------------------------------------------
-// delete
-// ------------------------------------------------------------------
-
-public function test_delete_removes_entry() {
-$this->driver->set( 'del', 'bye' );
-$this->driver->delete( 'del' );
-$this->assertNull( $this->driver->get( 'del' ) );
-}
-
-public function test_delete_returns_true() {
-$this->assertTrue( $this->driver->delete( 'nonexistent' ) );
-}
-
-public function test_delete_only_removes_matching_group() {
-$this->driver->set( 'k', 'a', 0, 'g1' );
-$this->driver->set( 'k', 'b', 0, 'g2' );
-$this->driver->delete( 'k', 'g1' );
-
-$this->assertNull( $this->driver->get( 'k', 'g1' ) );
-$this->assertSame( 'b', $this->driver->get( 'k', 'g2' ) );
-}
-
-// ------------------------------------------------------------------
-// has
-// ------------------------------------------------------------------
-
-public function test_has_returns_true_for_existing_key() {
-$this->driver->set( 'exist', 'yes' );
-$this->assertTrue( $this->driver->has( 'exist' ) );
-}
-
-public function test_has_returns_false_for_missing_key() {
-$this->assertFalse( $this->driver->has( 'nope' ) );
-}
-
-// ------------------------------------------------------------------
-// flush
-// ------------------------------------------------------------------
-
-public function test_flush_clears_namespace_entries() {
-$this->driver->set( 'a', 1 );
-$this->driver->set( 'b', 2 );
-$this->driver->flush();
-
-$this->assertNull( $this->driver->get( 'a' ) );
-$this->assertNull( $this->driver->get( 'b' ) );
-}
-
-public function test_flush_returns_true() {
-$this->assertTrue( $this->driver->flush() );
-}
-
-public function test_flush_only_removes_own_namespace() {
-// Write an entry under a different namespace.
-$other_ns        = 'other_ns_' . uniqid();
-$other_key       = $other_ns . '::default:other_key';
-$_SESSION[ $other_key ] = array( 'value' => 'intact', 'expires' => 0 );
-
-$this->driver->flush();
-
-// The other-namespace key must survive.
-$this->assertTrue( isset( $_SESSION[ $other_key ] ) );
-// Clean up.
-unset( $_SESSION[ $other_key ] );
-}
-
-// ------------------------------------------------------------------
-// Cross-request persistence simulation
-// ------------------------------------------------------------------
-
-public function test_values_persist_across_driver_instantiations() {
-// Write via first driver instance.
-$this->driver->set( 'persisted', 'cross_page_value' );
-
-// Simulate a new page load by creating a fresh driver with the same
-// namespace — the session is still active in the same PHP process.
-$driver2 = new AIPS_Cache_Session_Driver( $this->ns );
-$this->assertSame( 'cross_page_value', $driver2->get( 'persisted' ) );
-}
-
-// ------------------------------------------------------------------
-// Namespace isolation between driver instances
-// ------------------------------------------------------------------
-
-public function test_different_namespaces_are_isolated() {
-$ns_b   = 'aips_test_b_' . uniqid();
-$driver_b = new AIPS_Cache_Session_Driver( $ns_b );
-$driver_b->flush();
-
-$this->driver->set( 'key', 'from_a' );
-$driver_b->set( 'key', 'from_b' );
-
-$this->assertSame( 'from_a', $this->driver->get( 'key' ) );
-$this->assertSame( 'from_b', $driver_b->get( 'key' ) );
-
-$driver_b->flush();
-}
+	public function test_make_legacy_redis_driver_migrates_to_wp_object_cache_driver() {
+		$cache  = AIPS_Cache_Factory::make( 'redis' );
+		$driver = $cache->get_driver();
+		$this->assertInstanceOf( 'AIPS_Cache_Wp_Object_Cache_Driver', $driver );
+	}
 }
 
 // ============================================================================
@@ -956,10 +748,10 @@ $this->assertSame( 'from_a', $a->get( 'x' ) );
 $this->assertSame( 'from_b', $b->get( 'x' ) );
 }
 
-public function test_named_session_driver() {
+public function test_named_legacy_session_driver_maps_to_wp_object_cache_driver() {
 $cache  = AIPS_Cache_Factory::named( 'sess_cache', 'session' );
 $driver = $cache->get_driver();
-$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $driver );
+$this->assertInstanceOf( 'AIPS_Cache_Wp_Object_Cache_Driver', $driver );
 }
 
 // ------------------------------------------------------------------
@@ -1187,125 +979,3 @@ $this->assertSame( 'testkey', $method->invoke( $this->driver, 'testkey' ) );
 }
 }
 
-// ============================================================================
-// AIPS_Cache_Redis_Driver tests
-// ============================================================================
-
-/**
- * @covers AIPS_Cache_Redis_Driver
- *
- * These tests cover behaviour that can be exercised without a live Redis
- * server — namely disconnected no-ops and internal key-prefix formatting.
- * Tests that require the redis extension to actually be absent are skipped
- * when the extension is loaded and a server happens to be reachable.
- */
-class Test_AIPS_Cache_Redis_Driver extends WP_UnitTestCase {
-
-/** @var AIPS_Cache_Redis_Driver */
-private $driver;
-
-public function setUp(): void {
-parent::setUp();
-// The driver will fail to connect in environments without a Redis
-// server (or the extension), making connected = false.
-$this->driver = new AIPS_Cache_Redis_Driver();
-}
-
-// ------------------------------------------------------------------
-// Disconnected / no-op behaviour
-// ------------------------------------------------------------------
-
-private function skip_if_connected() {
-if ($this->driver->is_connected()) {
-$this->markTestSkipped(
-'Redis is connected; disconnected no-op tests require an unreachable server.'
-);
-}
-}
-
-public function test_is_not_connected_without_available_server() {
-$this->skip_if_connected();
-$this->assertFalse( $this->driver->is_connected() );
-}
-
-public function test_get_returns_null_when_not_connected() {
-$this->skip_if_connected();
-$this->assertNull( $this->driver->get( 'key' ) );
-}
-
-public function test_set_returns_false_when_not_connected() {
-$this->skip_if_connected();
-$this->assertFalse( $this->driver->set( 'key', 'val' ) );
-}
-
-public function test_delete_returns_false_when_not_connected() {
-$this->skip_if_connected();
-$this->assertFalse( $this->driver->delete( 'key' ) );
-}
-
-public function test_has_returns_false_when_not_connected() {
-$this->skip_if_connected();
-$this->assertFalse( $this->driver->has( 'key' ) );
-}
-
-public function test_flush_returns_false_when_not_connected() {
-$this->skip_if_connected();
-$this->assertFalse( $this->driver->flush() );
-}
-
-public function test_get_last_error_is_empty_when_extension_missing() {
-if (extension_loaded( 'redis' )) {
-$this->markTestSkipped( 'redis extension loaded.' );
-}
-// When extension is absent, connect() returns early without an error.
-$this->assertSame( '', $this->driver->get_last_error() );
-}
-
-// ------------------------------------------------------------------
-// prefix_key() — does not require a connection
-// ------------------------------------------------------------------
-
-public function test_prefix_key_with_default_prefix() {
-// Default prefix is 'aips'. Format: {prefix}:{group}:{key}
-$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
-$method->setAccessible( true );
-
-$this->assertSame(
-'aips:default:mykey',
-$method->invoke( $this->driver, 'mykey', 'default' )
-);
-}
-
-public function test_prefix_key_with_custom_group() {
-$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
-$method->setAccessible( true );
-
-$this->assertSame(
-'aips:posts:post_1',
-$method->invoke( $this->driver, 'post_1', 'posts' )
-);
-}
-
-public function test_prefix_key_with_empty_prefix() {
-$driver = new AIPS_Cache_Redis_Driver( '127.0.0.1', 6379, '', 0, '', 2.0 );
-$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
-$method->setAccessible( true );
-
-// No prefix: {group}:{key}
-$this->assertSame(
-'default:mykey',
-$method->invoke( $driver, 'mykey', 'default' )
-);
-}
-
-public function test_prefix_key_with_custom_prefix() {
-$driver = new AIPS_Cache_Redis_Driver( '127.0.0.1', 6379, '', 0, 'myplugin', 2.0 );
-$method = new ReflectionMethod( 'AIPS_Cache_Redis_Driver', 'prefix_key' );
-$method->setAccessible( true );
-
-$this->assertSame(
-'myplugin:items:item_42',
-$method->invoke( $driver, 'item_42', 'items' )
-);
-}
-}

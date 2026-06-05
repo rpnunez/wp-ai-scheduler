@@ -521,30 +521,6 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_cache_default_ttl'],
         ));
-        register_setting('aips_settings', 'aips_cache_redis_host', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_host'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_port', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_port'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_password', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_password'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_db', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_db'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_prefix', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_prefix'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_timeout', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_timeout'],
-        ));
 
         add_settings_section(
             'aips_cache_section',
@@ -585,53 +561,11 @@ class AIPS_Settings {
             'aips_cache_section'
         );
 
-        add_settings_field(
-            'aips_cache_redis_host',
-            __('Redis Host', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_host_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_port',
-            __('Redis Port', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_port_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_password',
-            __('Redis Password', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_password_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_db',
-            __('Redis Database Index', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_db_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_prefix',
-            __('Redis Key Prefix', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_prefix_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_timeout',
-            __('Redis Connection Timeout (seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_timeout_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
     }
 
     /**
