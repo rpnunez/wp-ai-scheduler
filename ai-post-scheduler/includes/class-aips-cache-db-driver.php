@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.3.0
  */
-class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
+class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_Driver {
 
 	/**
 	 * Optional prefix applied to every cache key before writing to the DB.
@@ -182,6 +182,86 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 				"DELETE FROM `{$table}` WHERE expires_at > 0 AND expires_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				AIPS_DateTime::now()->timestamp()
 			)
+		);
+	}
+
+
+	// -----------------------------------------------------------------------
+	// Cache Monitor introspection
+	// -----------------------------------------------------------------------
+
+	public function get_monitor_capabilities() {
+		return array(
+			'list_keys' => true,
+			'inspect_entry' => true,
+			'delete_key' => true,
+			'delete_group' => true,
+			'flush_plugin' => true,
+			'size_bytes' => true,
+			'ttl_remaining' => true,
+			'tag_versions' => false,
+			'live_metrics' => false,
+		);
+	}
+
+	public function list_entries( array $filters = array(), $limit = 100, $offset = 0 ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		$limit = max( 1, min( 500, (int) $limit ) );
+		$offset = max( 0, (int) $offset );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT cache_key, cache_group, value, expires_at, updated_at FROM `{$table}` ORDER BY updated_at DESC LIMIT %d OFFSET %d", $limit, $offset ), ARRAY_A );
+		$entries = array();
+		foreach ((array) $rows as $row) {
+			$entries[] = array(
+				'cache_key' => $row['cache_key'],
+				'key_hash' => hash( 'sha256', $row['cache_key'] ),
+				'cache_group' => $row['cache_group'],
+				'driver' => 'db',
+				'expires_at' => (int) $row['expires_at'],
+				'updated_at' => (int) $row['updated_at'],
+				'ttl_remaining' => (int) $row['expires_at'] > 0 ? max( 0, (int) $row['expires_at'] - AIPS_DateTime::now()->timestamp() ) : null,
+				'estimated_size' => strlen( (string) $row['value'] ),
+				'value_type' => 'serialized',
+			);
+		}
+		return $entries;
+	}
+
+	public function count_entries( array $filters = array() ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" );
+	}
+
+	public function get_entry_metadata( $key, $group = 'default' ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT cache_key, cache_group, value, expires_at, updated_at FROM `{$table}` WHERE cache_key = %s AND cache_group = %s LIMIT 1", $this->namespace_key( $key ), (string) $group ), ARRAY_A );
+		if (!$row) {
+			return array();
+		}
+		$row['key_hash'] = hash( 'sha256', $row['cache_key'] );
+		$row['value'] = maybe_unserialize( $row['value'] );
+		return $row;
+	}
+
+	public function delete_entry( $key, $group = 'default' ) {
+		return $this->delete( $key, $group );
+	}
+
+	public function delete_group( $group ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		$wpdb->delete( $table, array( 'cache_group' => (string) $group ), array( '%s' ) );
+		return true;
+	}
+
+	public function estimate_size( array $filters = array() ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		return array(
+			'bytes' => (int) $wpdb->get_var( "SELECT COALESCE(SUM(CHAR_LENGTH(value)),0) FROM `{$table}`" ),
+			'entries' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" ),
 		);
 	}
 

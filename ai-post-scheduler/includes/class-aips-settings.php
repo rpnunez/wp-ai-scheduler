@@ -546,6 +546,43 @@ class AIPS_Settings {
             'default'           => $defaults['aips_cache_redis_timeout'],
         ));
 
+        register_setting('aips_settings', 'aips_cache_monitor_enabled', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_cache_monitor_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_index_enabled', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_cache_monitor_index_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_metrics_enabled', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_cache_monitor_metrics_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_event_retention_days', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_event_retention_days'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_max_index_entries', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_max_index_entries'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_preview_length', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_preview_length'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_full_value_debug_only', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_cache_monitor_full_value_debug_only'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_live_refresh_enabled', array(
+            'sanitize_callback' => array($this->ui, 'sanitize_enable_cache_system'),
+            'default'           => $defaults['aips_cache_monitor_live_refresh_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_live_refresh_interval', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_live_refresh_interval'],
+        ));
+
         add_settings_section(
             'aips_cache_section',
             '',
@@ -629,6 +666,62 @@ class AIPS_Settings {
             'aips_cache_redis_timeout',
             __('Redis Connection Timeout (seconds)', 'ai-post-scheduler'),
             array($this->ui, 'cache_redis_timeout_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_enabled',
+            __('Enable Cache Monitor?', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_enabled_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_index_enabled',
+            __('Track Cache Index?', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_index_enabled_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_metrics_enabled',
+            __('Track Cache Metrics?', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_metrics_enabled_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_event_retention_days',
+            __('Cache Event Retention Days', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_event_retention_days_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_preview_length',
+            __('Cache Preview Length', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_preview_length_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_live_refresh_enabled',
+            __('Cache Monitor Live Refresh?', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_live_refresh_enabled_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_live_refresh_interval',
+            __('Live Refresh Interval', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_live_refresh_interval_field_callback'),
             'aips-settings',
             'aips_cache_section'
         );

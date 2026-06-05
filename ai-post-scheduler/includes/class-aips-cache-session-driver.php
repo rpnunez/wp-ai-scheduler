@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.4.0
  */
-class AIPS_Cache_Session_Driver implements AIPS_Cache_Driver {
+class AIPS_Cache_Session_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_Driver {
 
 	/**
 	 * Namespace prefix used for every key stored in $_SESSION.
@@ -170,6 +170,56 @@ class AIPS_Cache_Session_Driver implements AIPS_Cache_Driver {
 	 */
 	public function is_session_available() {
 		return $this->session_available;
+	}
+
+
+	// -----------------------------------------------------------------------
+	// Cache Monitor introspection
+	// -----------------------------------------------------------------------
+
+	public function get_monitor_capabilities() {
+		return array( 'list_keys' => true, 'inspect_entry' => true, 'delete_key' => true, 'delete_group' => true, 'flush_plugin' => true, 'size_bytes' => true, 'ttl_remaining' => true, 'tag_versions' => false, 'live_metrics' => false );
+	}
+
+	public function list_entries( array $filters = array(), $limit = 100, $offset = 0 ) {
+		if (!$this->session_available) { return array(); }
+		$prefix = $this->namespace . '::';
+		$entries = array();
+		foreach ($_SESSION as $session_key => $entry) {
+			if (!str_starts_with( $session_key, $prefix ) || !is_array( $entry )) { continue; }
+			$parts = explode( ':', substr( $session_key, strlen( $prefix ) ), 2 );
+			$key = isset( $parts[1] ) ? $parts[1] : '';
+			$group = isset( $parts[0] ) ? $parts[0] : 'default';
+			$value = isset( $entry['value'] ) ? $entry['value'] : '';
+			$expires = isset( $entry['expires'] ) ? (int) $entry['expires'] : 0;
+			$entries[] = array( 'cache_key' => $key, 'key_hash' => hash( 'sha256', $key ), 'cache_group' => $group, 'driver' => 'session', 'expires_at' => $expires, 'ttl_remaining' => $expires > 0 ? max( 0, $expires - time() ) : null, 'estimated_size' => strlen( (string) $value ), 'value_type' => 'serialized' );
+		}
+		return array_slice( $entries, max( 0, (int) $offset ), max( 1, (int) $limit ) );
+	}
+
+	public function count_entries( array $filters = array() ) {
+		return count( $this->list_entries( $filters, 10000, 0 ) );
+	}
+
+	public function get_entry_metadata( $key, $group = 'default' ) {
+		return array( 'cache_key' => (string) $key, 'key_hash' => hash( 'sha256', (string) $key ), 'cache_group' => (string) $group, 'value' => $this->get( $key, $group ) );
+	}
+
+	public function delete_entry( $key, $group = 'default' ) {
+		return $this->delete( $key, $group );
+	}
+
+	public function delete_group( $group ) {
+		if (!$this->session_available) { return false; }
+		$prefix = $this->namespace . '::' . (string) $group . ':';
+		foreach (array_keys( $_SESSION ) as $key) { if (str_starts_with( $key, $prefix )) { unset( $_SESSION[ $key ] ); } }
+		return true;
+	}
+
+	public function estimate_size( array $filters = array() ) {
+		$total = 0; $count = 0;
+		foreach ($this->list_entries( $filters, 10000, 0 ) as $entry) { $total += (int) $entry['estimated_size']; $count++; }
+		return array( 'bytes' => $total, 'entries' => $count );
 	}
 
 	// -----------------------------------------------------------------------

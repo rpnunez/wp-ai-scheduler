@@ -214,6 +214,18 @@ class AIPS_Ajax_Registry {
 		'aips_create_taxonomy_term'       => 'AIPS_Taxonomy_Controller',
 		'aips_search_posts'               => 'AIPS_Taxonomy_Controller',
 
+		// Cache Monitor
+		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_entries'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_inspect'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_entry'      => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_group'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_tag'    => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_domain' => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
+
 		// Settings Ajax
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
 		'aips_notifications_data_hygiene' => 'AIPS_Settings_Ajax',

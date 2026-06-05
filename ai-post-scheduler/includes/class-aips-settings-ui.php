@@ -888,6 +888,59 @@ class AIPS_Settings_UI {
         <?php
     }
 
+    private function render_cache_monitor_yes_no( $option_name, $description ) {
+        $value = AIPS_Config::get_instance()->get_option($option_name);
+        $enabled = ($value !== '0' && $value !== 0 && $value !== false);
+        ?>
+        <fieldset>
+            <label><input type="radio" name="<?php echo esc_attr($option_name); ?>" value="1" <?php checked($enabled, true); ?>> <?php esc_html_e('Yes', 'ai-post-scheduler'); ?></label>
+            &nbsp;&nbsp;
+            <label><input type="radio" name="<?php echo esc_attr($option_name); ?>" value="0" <?php checked($enabled, false); ?>> <?php esc_html_e('No', 'ai-post-scheduler'); ?></label>
+        </fieldset>
+        <p class="description"><?php echo esc_html($description); ?></p>
+        <?php
+    }
+
+    public function cache_monitor_enabled_field_callback() {
+        $this->render_cache_monitor_yes_no('aips_cache_monitor_enabled', __('Show and operate the dedicated Cache Monitor admin subsystem.', 'ai-post-scheduler'));
+    }
+
+    public function cache_monitor_index_enabled_field_callback() {
+        $this->render_cache_monitor_yes_no('aips_cache_monitor_index_enabled', __('Record plugin-owned cache metadata on writes and deletes so non-listable cache drivers can be inspected safely.', 'ai-post-scheduler'));
+    }
+
+    public function cache_monitor_metrics_enabled_field_callback() {
+        $this->render_cache_monitor_yes_no('aips_cache_monitor_metrics_enabled', __('Persist operation-level cache activity where repository cache observers report metrics.', 'ai-post-scheduler'));
+    }
+
+    public function cache_monitor_event_retention_days_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_event_retention_days');
+        ?>
+        <input type="number" name="aips_cache_monitor_event_retention_days" value="<?php echo esc_attr($value); ?>" min="1" max="3650" class="small-text">
+        <p class="description"><?php esc_html_e('Number of days to keep Cache Monitor audit/debug events before automatic pruning.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    public function cache_monitor_preview_length_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_preview_length');
+        ?>
+        <input type="number" name="aips_cache_monitor_preview_length" value="<?php echo esc_attr($value); ?>" min="100" max="10000" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum safe preview length for cached string values. Sensitive fields are redacted.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    public function cache_monitor_live_refresh_enabled_field_callback() {
+        $this->render_cache_monitor_yes_no('aips_cache_monitor_live_refresh_enabled', __('Allow Cache Monitor AJAX refreshes for summary cards and tables.', 'ai-post-scheduler'));
+    }
+
+    public function cache_monitor_live_refresh_interval_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_live_refresh_interval');
+        ?>
+        <input type="number" name="aips_cache_monitor_live_refresh_interval" value="<?php echo esc_attr($value); ?>" min="5" max="3600" class="small-text">
+        <p class="description"><?php esc_html_e('Live refresh interval in seconds when live refresh is enabled.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
     /**
      * Sanitize and validate the selected cache driver value.
      *

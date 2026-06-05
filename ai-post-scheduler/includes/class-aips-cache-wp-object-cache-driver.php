@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.3.0
  */
-class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
+class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_Driver {
 
 	/**
 	 * Base group name used as the prefix for all groups.
@@ -119,6 +119,39 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 		$found = false;
 		wp_cache_get( $key, $this->resolve_group( $group ), false, $found );
 		return $found;
+	}
+
+
+	// -----------------------------------------------------------------------
+	// Cache Monitor introspection
+	// -----------------------------------------------------------------------
+
+	public function get_monitor_capabilities() {
+		return array( 'list_keys' => false, 'inspect_entry' => false, 'delete_key' => true, 'delete_group' => false, 'flush_plugin' => true, 'size_bytes' => false, 'ttl_remaining' => false, 'tag_versions' => false, 'live_metrics' => false );
+	}
+
+	public function list_entries( array $filters = array(), $limit = 100, $offset = 0 ) {
+		return array();
+	}
+
+	public function count_entries( array $filters = array() ) {
+		return 0;
+	}
+
+	public function get_entry_metadata( $key, $group = 'default' ) {
+		return array();
+	}
+
+	public function delete_entry( $key, $group = 'default' ) {
+		return $this->delete( $key, $group );
+	}
+
+	public function delete_group( $group ) {
+		return false;
+	}
+
+	public function estimate_size( array $filters = array() ) {
+		return array( 'bytes' => 0, 'entries' => 0 );
 	}
 
 	// -----------------------------------------------------------------------

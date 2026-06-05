@@ -104,6 +104,9 @@ class AIPS_Cache {
 			return $default;
 		}
 		$value = $this->driver->get( $key, $group );
+		if ($value !== null && class_exists( 'AIPS_Cache_Index' ) && !$this->is_monitor_cache_group( $group )) {
+			AIPS_Cache_Index::get_instance()->record_access( $key, $group );
+		}
 		$this->record_cache_event(
 			'get',
 			array(
@@ -131,6 +134,9 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
+		if ($result && class_exists( 'AIPS_Cache_Index' ) && !$this->is_monitor_cache_group( $group )) {
+			AIPS_Cache_Index::get_instance()->record_set( $key, $value, (int) $ttl, $group, $this->driver );
+		}
 		$this->record_cache_event(
 			'set',
 			array(
@@ -157,6 +163,9 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->delete( $key, $group );
+		if ($result && class_exists( 'AIPS_Cache_Index' ) && !$this->is_monitor_cache_group( $group )) {
+			AIPS_Cache_Index::get_instance()->record_delete( $key, $group );
+		}
 		$this->record_cache_event(
 			'delete',
 			array(
@@ -205,6 +214,9 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->flush();
+		if ($result && class_exists( 'AIPS_Cache_Index' )) {
+			AIPS_Cache_Index::get_instance()->record_flush();
+		}
 		$this->record_cache_event(
 			'flush',
 			array(
@@ -340,6 +352,10 @@ class AIPS_Cache {
 	 */
 	public function get_driver() {
 		return $this->driver;
+	}
+
+	private function is_monitor_cache_group( $group ) {
+		return strpos( (string) $group, 'cache_monitor' ) !== false;
 	}
 
 	/**

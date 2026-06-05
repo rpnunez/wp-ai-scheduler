@@ -112,6 +112,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_cache_monitor_maintenance' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -758,6 +762,10 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        add_action('aips_cache_monitor_maintenance', function() {
+            (new AIPS_Cache_Monitor_Service())->run_maintenance();
+        });
     }
 
     /**
