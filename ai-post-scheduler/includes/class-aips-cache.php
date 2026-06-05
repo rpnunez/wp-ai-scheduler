@@ -29,6 +29,13 @@ class AIPS_Cache {
 	private $driver;
 
 	/**
+	 * Repository cache observer for tag invalidation telemetry.
+	 *
+	 * @var AIPS_Repository_Cache_Observer|null
+	 */
+	private $repository_cache_observer;
+
+	/**
 	 * Per-request memoised result of the system-enabled check.
 	 *
 	 * Null means "not yet read". Populated on the first call to
@@ -45,11 +52,12 @@ class AIPS_Cache {
 	 *                                        factory resolves the driver from
 	 *                                        the current admin settings.
 	 */
-	public function __construct( AIPS_Cache_Driver $driver = null ) {
+	public function __construct( AIPS_Cache_Driver $driver = null, AIPS_Repository_Cache_Observer $repository_cache_observer = null ) {
 		if ($driver === null) {
 			$driver = AIPS_Cache_Factory::make_driver();
 		}
-		$this->driver = $driver;
+		$this->driver                    = $driver;
+		$this->repository_cache_observer = $repository_cache_observer;
 	}
 
 	// -----------------------------------------------------------------------
@@ -329,6 +337,110 @@ class AIPS_Cache {
 		return $value;
 	}
 
+	/**
+	 * Retrieve the current version for a cache invalidation tag.
+	 *
+	 * Missing tags default to version 1 without writing to storage.
+	 *
+	 * @param string $tag Cache invalidation tag.
+	 * @param string $group Cache group. Default 'default'.
+	 * @return int Tag version.
+	 */
+	public function get_tag_version( $tag, $group = 'default' ) {
+		if (!self::is_system_enabled()) {
+			return 1;
+		}
+
+		$key     = $this->build_tag_version_key( $tag );
+		$version = $this->get( $key, $group, 1 );
+
+		return max( 1, (int) $version );
+	}
+
+	/**
+	 * Increment and return the version for a cache invalidation tag.
+	 *
+	 * Missing tags are seeded to version 1 before incrementing so the first
+	 * bump advances them to version 2.
+	 *
+	 * @param string $tag Cache invalidation tag.
+	 * @param string $group Cache group. Default 'default'.
+	 * @return int New tag version.
+	 */
+	public function bump_tag_version( $tag, $group = 'default' ) {
+		$tag_key = $this->sanitize_tag( $tag );
+
+		if (!self::is_system_enabled()) {
+			$this->record_tag_bump_event( array( $tag_key ), $group );
+			return 2;
+		}
+
+		$key = $this->build_tag_version_key( $tag_key );
+		if (!$this->has( $key, $group )) {
+			$this->set( $key, 1, 0, $group );
+		}
+
+		$version = $this->increment( $key, 1, $group );
+		$this->record_tag_bump_event( array( $tag_key ), $group );
+
+		return max( 1, (int) $version );
+	}
+
+	/**
+	 * Retrieve the current versions for multiple cache invalidation tags.
+	 *
+	 * Missing tags default to version 1. Returned keys are sanitized tag names.
+	 *
+	 * @param array  $tags Cache invalidation tags.
+	 * @param string $group Cache group. Default 'default'.
+	 * @return array<string, int>
+	 */
+	public function get_tag_versions( array $tags, $group = 'default' ) {
+		$versions = array();
+
+		foreach ( $this->sanitize_tags( $tags ) as $tag ) {
+			$versions[ $tag ] = $this->get_tag_version( $tag, $group );
+		}
+
+		return $versions;
+	}
+
+	/**
+	 * Increment and return versions for multiple cache invalidation tags.
+	 *
+	 * Returned keys are sanitized tag names.
+	 *
+	 * @param array  $tags Cache invalidation tags.
+	 * @param string $group Cache group. Default 'default'.
+	 * @return array<string, int>
+	 */
+	public function bump_tag_versions( array $tags, $group = 'default' ) {
+		$versions       = array();
+		$sanitized_tags = $this->sanitize_tags( $tags );
+
+		if (!self::is_system_enabled()) {
+			foreach ( $sanitized_tags as $tag ) {
+				$versions[ $tag ] = 2;
+			}
+
+			$this->record_tag_bump_event( $sanitized_tags, $group );
+			return $versions;
+		}
+
+		foreach ( $sanitized_tags as $tag ) {
+			$key = $this->build_tag_version_key( $tag );
+			if (!$this->has( $key, $group )) {
+				$this->set( $key, 1, 0, $group );
+			}
+
+			$versions[ $tag ] = max( 1, (int) $this->increment( $key, 1, $group ) );
+		}
+
+		$this->record_tag_bump_event( $sanitized_tags, $group );
+
+		return $versions;
+	}
+
 	// -----------------------------------------------------------------------
 	// Introspection
 	// -----------------------------------------------------------------------
@@ -366,5 +478,91 @@ class AIPS_Cache {
 				$data
 			)
 		);
+	}
+
+	/**
+	 * Build the underlying cache key used to store a tag version counter.
+	 *
+	 * @param string $tag Cache invalidation tag.
+	 * @return string
+	 */
+	private function build_tag_version_key( $tag ) {
+		return 'tag_version:' . $this->sanitize_tag( $tag );
+	}
+
+	/**
+	 * Normalize a tag into a stable cache-safe identifier.
+	 *
+	 * @param string $tag Cache invalidation tag.
+	 * @return string
+	 */
+	private function sanitize_tag( $tag ) {
+		$tag = strtolower( trim( (string) $tag ) );
+		$tag = preg_replace( '/[^a-z0-9_-]+/', '_', $tag );
+		$tag = trim( (string) $tag, '_' );
+
+		return '' !== $tag ? $tag : 'tag';
+	}
+
+	/**
+	 * Normalize and de-duplicate a list of tags while preserving first-seen order.
+	 *
+	 * @param array $tags Raw cache invalidation tags.
+	 * @return array<int, string>
+	 */
+	private function sanitize_tags( array $tags ) {
+		$clean = array();
+
+		foreach ( $tags as $tag ) {
+			$sanitized = $this->sanitize_tag( $tag );
+			if (!in_array( $sanitized, $clean, true )) {
+				$clean[] = $sanitized;
+			}
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * Record a repository-cache invalidation event for one or more bumped tags.
+	 *
+	 * @param array  $tags Sanitized cache invalidation tags.
+	 * @param string $group Cache group.
+	 * @return void
+	 */
+	private function record_tag_bump_event( array $tags, $group ) {
+		$observer = $this->get_repository_cache_observer();
+		if (!$observer || empty( $tags )) {
+			return;
+		}
+
+		$observer->record_invalidation(
+			array(
+				'repository'          => 'AIPS_Cache',
+				'operation_id'        => 'cache.tag.bump',
+				'cache_group'         => (string) $group,
+				'tags'                => $tags,
+				'invalidation_reason' => 'tag_bump',
+			)
+		);
+	}
+
+	/**
+	 * Resolve the repository cache observer lazily when available.
+	 *
+	 * @return AIPS_Repository_Cache_Observer|null
+	 */
+	private function get_repository_cache_observer() {
+		if ($this->repository_cache_observer instanceof AIPS_Repository_Cache_Observer) {
+			return $this->repository_cache_observer;
+		}
+
+		if (!class_exists( 'AIPS_Repository_Cache_Observer' )) {
+			return null;
+		}
+
+		$this->repository_cache_observer = new AIPS_Repository_Cache_Observer();
+
+		return $this->repository_cache_observer;
 	}
 }
