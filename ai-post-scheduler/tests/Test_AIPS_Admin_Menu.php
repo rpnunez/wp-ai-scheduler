@@ -107,4 +107,46 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'Author Topics page should remain hidden from the visible submenu.'
 		);
 	}
+
+	/**
+	 * Diagnostics consolidates operational tools into one visible submenu.
+	 */
+	public function test_diagnostics_submenu_replaces_visible_diagnostics_tools() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+
+		$this->assertContains(
+			'aips-diagnostics',
+			$submenu_pages,
+			'Diagnostics should be visible in the primary submenu.'
+		);
+
+		foreach (array('aips-operations-insights', 'aips-status', 'aips-seeder') as $hidden_page) {
+			$this->assertNotContains(
+				$hidden_page,
+				$submenu_pages,
+				$hidden_page . ' should be hidden from the primary submenu.'
+			);
+			$this->assertArrayHasKey(
+				'admin_page_' . $hidden_page,
+				$_registered_pages,
+				$hidden_page . ' should remain registered for direct admin.php?page= access.'
+			);
+		}
+	}
+
+	/**
+	 * Diagnostics rendering is delegated to a controller and template.
+	 */
+	public function test_diagnostics_controller_and_template_exist() {
+		$this->assertTrue(class_exists('AIPS_Diagnostics_Controller'));
+		$this->assertFileExists(AIPS_PLUGIN_DIR . 'templates/admin/diagnostics.php');
+	}
+
 }

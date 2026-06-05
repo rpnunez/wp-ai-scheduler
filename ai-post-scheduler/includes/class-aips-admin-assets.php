@@ -44,6 +44,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
 	private const PAGE_ONBOARDING = 'aips-onboarding';
+	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
@@ -139,11 +140,11 @@ class AIPS_Admin_Assets {
 			$this->enqueue_onboarding_assets();
 		}
 
-        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
@@ -160,7 +161,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
@@ -168,6 +169,21 @@ class AIPS_Admin_Assets {
 			$this->enqueue_internal_links_assets();
 		}
 
+	}
+
+	/**
+	 * Determine whether the Diagnostics page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_diagnostics_tab($page, $tab) {
+		if (self::PAGE_DIAGNOSTICS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
 	}
 
     /**

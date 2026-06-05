@@ -27,10 +27,8 @@ class AIPS_Admin_Menu {
     /**
      * Add menu pages to the WordPress admin dashboard.
      *
-     * Registers a traditional flat submenu structure:
-     * Dashboard, Templates, Voices, Article Structures, Authors, Research,
-     * Schedule, Schedule Calendar, Generated Posts, History,
-     * Settings, System Status, Seeder, Dev Tools (when enabled).
+     * Registers the primary admin submenu structure. Diagnostics-only tools are
+     * grouped under the Diagnostics page while retaining hidden direct routes.
      *
      * @return void
      */
@@ -185,15 +183,6 @@ class AIPS_Admin_Menu {
         );
         add_submenu_page(
             'ai-post-scheduler',
-            __('Operations Insights', 'ai-post-scheduler'),
-            __('Operations Insights', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-operations-insights',
-            array($this, 'render_operations_insights_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
             __('Sources', 'ai-post-scheduler'),
             __('Sources', 'ai-post-scheduler'),
             'manage_options',
@@ -230,6 +219,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Diagnostics', 'ai-post-scheduler'),
+            __('Diagnostics', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-diagnostics',
+            array($this, 'render_diagnostics_page')
+        );
+
+        add_submenu_page(
+            null,
             __('System Status', 'ai-post-scheduler'),
             __('System Status', 'ai-post-scheduler'),
             'manage_options',
@@ -237,9 +235,27 @@ class AIPS_Admin_Menu {
             array($this, 'render_status_page')
         );
 
+        add_submenu_page(
+            null,
+            __('Seeder', 'ai-post-scheduler'),
+            __('Seeder', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-seeder',
+            array($this, 'render_seeder_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Operations Insights', 'ai-post-scheduler'),
+            __('Operations Insights', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-operations-insights',
+            array($this, 'render_operations_insights_page')
+        );
+
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
             add_submenu_page(
-                'ai-post-scheduler',
+                null,
                 __('Telemetry', 'ai-post-scheduler'),
                 __('Telemetry', 'ai-post-scheduler'),
                 'manage_options',
@@ -248,18 +264,9 @@ class AIPS_Admin_Menu {
             );
         }
 
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Seeder', 'ai-post-scheduler'),
-            __('Seeder', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-seeder',
-            array($this, 'render_seeder_page')
-        );
-
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
-                'ai-post-scheduler',
+                null,
                 __('Dev Tools', 'ai-post-scheduler'),
                 __('Dev Tools', 'ai-post-scheduler'),
                 'manage_options',
@@ -280,7 +287,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -303,7 +310,30 @@ class AIPS_Admin_Menu {
         if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
             return 'aips-campaigns';
         }
+        if ($this->is_diagnostics_child_page($page)) {
+            return 'aips-diagnostics';
+        }
         return $submenu_file;
+    }
+
+    /**
+     * Determine whether a hidden page belongs under Diagnostics.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_diagnostics_child_page($page) {
+        return in_array(
+            $page,
+            array(
+                'aips-operations-insights',
+                'aips-status',
+                'aips-telemetry',
+                'aips-seeder',
+                'aips-dev-tools',
+            ),
+            true
+        );
     }
 
     /**
@@ -492,6 +522,16 @@ class AIPS_Admin_Menu {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Diagnostics page.
+     *
+     * @return void
+     */
+    public function render_diagnostics_page() {
+        $controller = new AIPS_Diagnostics_Controller();
+        $controller->render_page();
     }
 
     public function render_operations_insights_page() {

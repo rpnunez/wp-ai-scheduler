@@ -114,6 +114,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_DateTime' => __DIR__ . '/../..' . '/includes/class-aips-date-time.php',
         'AIPS_Date_Time_DB_Repair' => __DIR__ . '/../..' . '/includes/class-aips-date-time-db-repair.php',
         'AIPS_Dev_Tools' => __DIR__ . '/../..' . '/includes/class-aips-dev-tools.php',
+        'AIPS_Diagnostics_Controller' => __DIR__ . '/../..' . '/includes/class-aips-diagnostics-controller.php',
         'AIPS_Dispatch_Summary' => __DIR__ . '/../..' . '/includes/job/class-aips-dispatch-summary.php',
         'AIPS_Embeddings_Cron' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-cron.php',
         'AIPS_Embeddings_Service' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-service.php',

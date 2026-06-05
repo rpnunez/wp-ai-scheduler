@@ -15,7 +15,12 @@ class AIPS_Seeder_Admin {
     }
 
     public function enqueue_assets($hook) {
-        if (strpos($hook, 'aips-seeder') === false) {
+        $page = filter_input(INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $tab  = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $page = $page ? sanitize_key($page) : '';
+        $tab  = $tab ? sanitize_key($tab) : '';
+
+        if (strpos($hook, 'aips-seeder') === false && !('aips-diagnostics' === $page && 'seeder' === $tab)) {
             return;
         }
 
