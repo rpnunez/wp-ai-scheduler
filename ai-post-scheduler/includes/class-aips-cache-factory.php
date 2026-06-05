@@ -7,8 +7,7 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Cache_Factory
  *
  * Builds a ready-to-use AIPS_Cache instance based on the admin-configured
- * cache driver, with automatic fallback to the ArrayDriver when the selected
- * driver cannot initialise.
+ * cache driver.
  *
  * Usage:
  *   $cache = AIPS_Cache_Factory::instance(); // shared singleton
@@ -28,11 +27,6 @@ class AIPS_Cache_Factory {
 
 	/**
 	 * Registry of named AIPS_Cache instances.
-	 *
-	 * Named instances let different plugin subsystems each use a different
-	 * driver independently. For example, one subsystem can use the Array
-	 * driver for request-scoped caching while another uses the Session driver
-	 * for cross-request persistence.
 	 *
 	 * @var array<string, AIPS_Cache>
 	 */
@@ -69,12 +63,10 @@ class AIPS_Cache_Factory {
 	/**
 	 * Resolve and instantiate the configured driver.
 	 *
-	 * Falls back to ArrayDriver if the chosen driver cannot be initialised
-	 * (e.g. Redis extension missing) and optionally schedules an admin notice.
+	 * Falls back to ArrayDriver when the selected value is unsupported.
 	 *
 	 * When the 'aips_enable_cache_system' option is falsy the Array driver is
-	 * returned immediately, preventing unnecessary Redis/DB connection attempts
-	 * and avoiding related admin notices while the cache system is disabled.
+	 * returned immediately.
 	 *
 	 * Note: This method intentionally uses direct get_option() calls instead of
 	 * AIPS_Config::get_instance()->get_option(). AIPS_Config relies on
@@ -100,26 +92,26 @@ class AIPS_Cache_Factory {
 			$driver_name = get_option( 'aips_cache_driver', 'array' );
 		}
 
-		switch ( (string) $driver_name ) {
+		$raw_driver_name = (string) $driver_name;
+		$driver_name     = self::normalize_driver_name( $raw_driver_name );
+
+		if ($driver_name !== $raw_driver_name) {
+			if ($driver_name !== get_option( 'aips_cache_driver', 'array' )) {
+				update_option( 'aips_cache_driver', $driver_name );
+			}
+
+			self::schedule_admin_notice(
+				__( 'AI Post Scheduler: The selected cache driver is no longer supported and was migrated to WP Object Cache.', 'ai-post-scheduler' )
+			);
+		}
+
+		switch ( $driver_name ) {
 			case 'db':
 				$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
 				if (!empty($namespace)) {
 					$prefix = $prefix !== '' ? $prefix . ':' . $namespace : $namespace;
 				}
 				return new AIPS_Cache_Db_Driver( $prefix );
-
-			case 'session':
-				return new AIPS_Cache_Session_Driver();
-
-			case 'redis':
-				$notice = '';
-				$driver = self::try_make_redis_driver( $notice );
-				if ($driver !== null) {
-					return $driver;
-				}
-				// Could not connect — fall back and warn.
-				self::schedule_admin_notice( $notice );
-				return new AIPS_Cache_Array_Driver();
 
 			case 'wp_object_cache':
 				return new AIPS_Cache_Wp_Object_Cache_Driver();
@@ -154,8 +146,8 @@ class AIPS_Cache_Factory {
 	 *   // Request-scoped caching for compiled templates.
 	 *   $templates     = AIPS_Cache_Factory::named( 'templates', 'array' );
 	 *
-	 *   // Cross-request caching for notifications (5-minute TTL).
-	 *   $notifications = AIPS_Cache_Factory::named( 'notifications', 'session' );
+	 *   // Persistent caching for notifications (5-minute TTL).
+	 *   $notifications = AIPS_Cache_Factory::named( 'notifications', 'db' );
 	 *
 	 * If a named instance already exists it is returned as-is, regardless of
 	 * the $driver_name parameter. To force a new driver, call register() first.
@@ -187,7 +179,7 @@ class AIPS_Cache_Factory {
 	 *   );
 	 *   AIPS_Cache_Factory::register(
 	 *       'notifications',
-	 *       new AIPS_Cache( new AIPS_Cache_Session_Driver() )
+	 *       new AIPS_Cache( new AIPS_Cache_Db_Driver() )
 	 *   );
 	 *
 	 * @param string     $name  Instance name.
@@ -203,41 +195,25 @@ class AIPS_Cache_Factory {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Attempt to build a Redis driver from settings.
+	 * Normalize any persisted driver value to the currently supported set.
 	 *
-	 * @param string &$notice Populated with a human-readable notice when the
-	 *                        driver cannot be initialised, otherwise empty.
-	 * @return AIPS_Cache_Redis_Driver|null Null when the extension is missing
-	 *                                       or the connection fails.
+	 * @param string $driver_name Raw driver name.
+	 * @return string One of: array, db, wp_object_cache.
 	 */
-	private static function try_make_redis_driver( &$notice = '' ) {
-		if (!extension_loaded( 'redis' )) {
-			$notice = __( 'AI Post Scheduler: Redis cache driver could not load — the PHP <code>redis</code> extension is not installed. Falling back to the in-memory Array driver. Install the extension via PECL (<code>pecl install redis</code>) and restart your web server.', 'ai-post-scheduler' );
-			return null;
+	private static function normalize_driver_name( $driver_name ) {
+		switch ( (string) $driver_name ) {
+			case 'db':
+			case 'wp_object_cache':
+			case 'array':
+				return (string) $driver_name;
+
+			case 'redis':
+			case 'session':
+				return 'wp_object_cache';
+
+			default:
+				return 'array';
 		}
-
-		$host     = (string) get_option( 'aips_cache_redis_host', '127.0.0.1' );
-		$port     = (int) get_option( 'aips_cache_redis_port', 6379 );
-		$password = (string) get_option( 'aips_cache_redis_password', '' );
-		$db       = (int) get_option( 'aips_cache_redis_db', 0 );
-		$prefix   = (string) get_option( 'aips_cache_redis_prefix', 'aips' );
-		$timeout  = (float) get_option( 'aips_cache_redis_timeout', 2.0 );
-
-		$driver = new AIPS_Cache_Redis_Driver( $host, $port, $password, $db, $prefix, $timeout );
-
-		if (!$driver->is_connected()) {
-			$error_detail = $driver->get_last_error();
-			/* translators: %s: connection error message from the Redis extension. */
-			$notice = sprintf(
-				__( 'AI Post Scheduler: Redis cache driver could not connect to <code>%1$s:%2$d</code>. Falling back to the in-memory Array driver. Error: %3$s', 'ai-post-scheduler' ),
-				esc_html( $host ),
-				$port,
-				esc_html( $error_detail ?: __( 'unknown error', 'ai-post-scheduler' ) )
-			);
-			return null;
-		}
-
-		return $driver;
 	}
 
 	/**

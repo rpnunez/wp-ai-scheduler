@@ -131,7 +131,7 @@
 			updateCacheDriverFields();
 		} else {
 			// Hide all driver-specific rows when the whole system is off.
-			$('.aips-cache-redis-fields, .aips-cache-db-fields').each(function() {
+			$('.aips-cache-db-fields').each(function() {
 				$(this).closest('tr').hide();
 			});
 		}
@@ -140,9 +140,8 @@
 	/**
 	 * Toggle visibility of driver-specific cache setting rows.
 	 *
-	 * Rows containing .aips-cache-redis-fields are only shown when the redis
-	 * driver is selected. Rows containing .aips-cache-db-fields are only
-	 * shown when the db driver is selected.
+	 * Rows containing .aips-cache-db-fields are only shown when the db
+	 * driver is selected.
 	 *
 	 * @return {void}
 	 */
@@ -151,10 +150,6 @@
 
 		// Each driver-specific field wraps its content in a div with a
 		// driver-scoped class. Walk up to the <tr> to show/hide the whole row.
-		$('.aips-cache-redis-fields').each(function() {
-			$(this).closest('tr').toggle(driver === 'redis');
-		});
-
 		$('.aips-cache-db-fields').each(function() {
 			$(this).closest('tr').toggle(driver === 'db');
 		});
