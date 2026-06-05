@@ -375,12 +375,10 @@ class AIPS_Cache {
 			return 2;
 		}
 
-		$key = $this->build_tag_version_key( $tag_key );
-		if (!$this->has( $key, $group )) {
-			$this->set( $key, 1, 0, $group );
-		}
-
-		$version = $this->increment( $key, 1, $group );
+		$key     = $this->build_tag_version_key( $tag_key );
+		$current = $this->get( $key, $group, null );
+		$version = null === $current ? 2 : max( 2, (int) $current + 1 );
+		$this->set( $key, $version, 0, $group );
 		$this->record_tag_bump_event( array( $tag_key ), $group );
 
 		return max( 1, (int) $version );
@@ -428,12 +426,11 @@ class AIPS_Cache {
 		}
 
 		foreach ( $sanitized_tags as $tag ) {
-			$key = $this->build_tag_version_key( $tag );
-			if (!$this->has( $key, $group )) {
-				$this->set( $key, 1, 0, $group );
-			}
-
-			$versions[ $tag ] = max( 1, (int) $this->increment( $key, 1, $group ) );
+			$key     = $this->build_tag_version_key( $tag );
+			$current = $this->get( $key, $group, null );
+			$version = null === $current ? 2 : max( 2, (int) $current + 1 );
+			$this->set( $key, $version, 0, $group );
+			$versions[ $tag ] = $version;
 		}
 
 		$this->record_tag_bump_event( $sanitized_tags, $group );
@@ -528,9 +525,6 @@ class AIPS_Cache {
 				$clean[] = $sanitized;
 			}
 		}
-
-		return $clean;
-	}
 
 		return $clean;
 	}

@@ -22,19 +22,15 @@ class AIPS_Repository_Cache_Key_Builder {
 	 * @return string
 	 */
 	public static function build_key( string $operation_id, array $args, array $tag_versions = array(), array $context = array() ): string {
-		$normalized_args         = self::normalize_args( $args );
-		$normalized_tag_versions = self::normalize_args( $tag_versions );
-		$normalized_context      = self::normalize_args( self::build_context( $context ) );
-
 		return implode(
 			':',
 			array(
 				self::KEY_PREFIX,
 				self::normalize_operation_id( $operation_id ),
-				self::hash_args( $normalized_args ),
-				self::hash_args( $normalized_tag_versions ),
+				self::hash_args( $args ),
+				self::hash_args( $tag_versions ),
 				'ctx',
-				self::hash_args( $normalized_context ),
+				self::hash_args( self::build_context( $context ) ),
 			)
 		);
 	}
@@ -166,6 +162,10 @@ class AIPS_Repository_Cache_Key_Builder {
 	 * @return bool
 	 */
 	private static function is_associative_array( array $value ): bool {
+		if ( array() === $value ) {
+			return false;
+		}
+
 		return array_keys( $value ) !== range( 0, count( $value ) - 1 );
 	}
 

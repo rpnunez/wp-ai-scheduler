@@ -400,10 +400,10 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_repository_cache_should_bypass_returns_true_for_force_refresh() {
+	public function test_repository_cache_should_bypass_returns_false_for_force_refresh() {
 		$subject = $this->make_subject( array() );
 
-		$this->assertTrue(
+		$this->assertFalse(
 			$subject->should_bypass(
 				array(
 					'tier' => 'medium',

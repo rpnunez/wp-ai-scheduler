@@ -168,4 +168,11 @@ class Test_AIPS_Repository_Cache_Key_Builder extends PHPUnit\Framework\TestCase 
 		$this->assertNotSame( $base, $changed_tag );
 		$this->assertNotSame( $base, $changed_context );
 	}
+
+	public function test_is_associative_array_treats_empty_array_as_non_associative() {
+		$method = new ReflectionMethod( 'AIPS_Repository_Cache_Key_Builder', 'is_associative_array' );
+		$method->setAccessible( true );
+
+		$this->assertFalse( $method->invoke( null, array() ) );
+	}
 }

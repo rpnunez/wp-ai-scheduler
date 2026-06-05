@@ -191,13 +191,14 @@ trait AIPS_Cacheable_Repository {
 	 * @return void
 	 */
 	protected function invalidate_cache_tags( array $tags, string $reason = '' ) {
-		$cache = AIPS_Cache_Factory::instance();
-		$tags  = $this->sanitize_repository_cache_tags( $tags );
+		$tags = $this->sanitize_repository_cache_tags( $tags );
 		if (empty( $tags )) {
 			return;
 		}
 
-		$cache->bump_tag_versions( $tags, $this->repository_cache_group() );
+		foreach ( $this->repository_cache_invalidation_caches() as $cache ) {
+			$cache->bump_tag_versions( $tags, $this->repository_cache_group() );
+		}
 
 		$this->record_repository_cache_invalidation(
 			$this->repository_cache_observer(),
@@ -251,10 +252,6 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		if ( ! empty( $options['bypass_cache'] ) ) {
-			return true;
-		}
-
-		if ( ! empty( $options['force_refresh'] ) ) {
 			return true;
 		}
 
@@ -549,10 +546,6 @@ trait AIPS_Cacheable_Repository {
 	 * @return string
 	 */
 	private function resolve_bypass_reason( array $policy, array $options ): string {
-		if ( ! empty( $options['force_refresh'] ) ) {
-			return 'force_refresh';
-		}
-
 		if ( ! empty( $options['bypass_cache'] ) ) {
 			return 'bypass_cache';
 		}
@@ -582,6 +575,48 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		return 'cache_unavailable';
+	}
+
+	/**
+	 * Resolve distinct cache instances that must receive tag-version invalidations.
+	 *
+	 * @return array<int, AIPS_Cache>
+	 */
+	private function repository_cache_invalidation_caches(): array {
+		$caches = array();
+		$seen   = array();
+
+		foreach ( $this->repository_cache_policies() as $policy ) {
+			if (!is_array( $policy )) {
+				continue;
+			}
+
+			$policy = $this->normalize_repository_cache_policy( $policy );
+			$tier   = isset( $policy['tier'] ) ? (string) $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE;
+			if (AIPS_Repository_Cache_Config::TIER_NONE === $tier) {
+				continue;
+			}
+
+			$policy['bypass_on_cron'] = false;
+			$cache                    = AIPS_Repository_Cache_Config::resolve_cache_instance( $this->repository_cache_group(), $policy );
+			if (!$cache) {
+				continue;
+			}
+
+			$cache_id = spl_object_hash( $cache );
+			if (isset( $seen[ $cache_id ] )) {
+				continue;
+			}
+
+			$seen[ $cache_id ] = true;
+			$caches[]          = $cache;
+		}
+
+		if (empty( $caches )) {
+			$caches[] = AIPS_Cache_Factory::instance();
+		}
+
+		return $caches;
 	}
 
 	/**
