@@ -3,6 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
+<?php if (empty($embedded)) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -20,6 +21,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+<?php endif; ?>
 
         <!-- Content -->
         <div class="aips-status-page">
@@ -120,9 +122,9 @@ if (!defined('ABSPATH')) {
                             <?php endforeach; ?>
                         </select>
                         <button type="button" class="aips-btn aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
+            </div>
                     </div>
                 </div>
-            </div>
 
             <!-- Tools Row: Cron + AI Engine -->
             <div class="aips-status-tools-row">
@@ -434,6 +436,8 @@ if (!defined('ABSPATH')) {
                     </p>
                 </div>
             </div>
+    <?php if (empty($embedded)) : ?>
         </div>
     </div>
+    <?php endif; ?>
 </div>

@@ -160,7 +160,7 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_status_tab() {
 		$status_handler = new AIPS_System_Status();
-		$status_handler->render_page();
+		$status_handler->render_page(true);
 	}
 
 	/**
@@ -169,7 +169,8 @@ class AIPS_Diagnostics_Controller {
 	 * @return void
 	 */
 	private function render_seeder_tab() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+		$seeder_admin = new AIPS_Seeder_Admin();
+		$seeder_admin->render_page(true);
 	}
 
 	/**
@@ -179,7 +180,7 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_operations_insights_tab() {
 		$controller = new AIPS_Operations_Insights_Controller();
-		$controller->render_page();
+		$controller->render_page(true);
 	}
 
 	/**
@@ -189,7 +190,7 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_telemetry_tab() {
 		$controller = new AIPS_Telemetry_Controller();
-		$controller->render_page();
+		$controller->render_page(true);
 	}
 
 	/**
@@ -199,6 +200,6 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_dev_tools_tab() {
 		$dev_tools = new AIPS_Dev_Tools();
-		$dev_tools->render_page();
+		$dev_tools->render_page(true);
 	}
 }

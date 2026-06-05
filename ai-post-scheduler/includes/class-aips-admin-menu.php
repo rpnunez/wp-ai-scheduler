@@ -606,7 +606,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_seeder_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+        $seeder_admin = new AIPS_Seeder_Admin();
+        $seeder_admin->render_page();
     }
 
     /**

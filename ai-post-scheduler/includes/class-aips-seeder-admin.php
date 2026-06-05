@@ -33,6 +33,12 @@ class AIPS_Seeder_Admin {
         );
     }
 
+    public function render_page($embedded = false) {
+        $embedded = (bool) $embedded;
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+    }
+
     public function ajax_process_seeder() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
