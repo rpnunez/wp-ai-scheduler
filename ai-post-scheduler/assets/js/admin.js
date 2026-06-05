@@ -344,7 +344,7 @@
             $(document).on('click', '#aips-test-connection', this.testConnection);
 
             // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '.nav-tab[data-tab]', this.switchTab);
             $(document).on('click', '.aips-tab-link', this.switchAipsTab);
             
             // Preserve tab hash on form submissions
@@ -492,8 +492,13 @@
          * @param {Event} e - Click event from a `.nav-tab` element.
          */
         switchTab: function(e) {
-            e.preventDefault();
             var tabId = $(this).data('tab');
+
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
 
             // Update the URL hash instead of query parameter
             window.location.hash = '#' + tabId;
