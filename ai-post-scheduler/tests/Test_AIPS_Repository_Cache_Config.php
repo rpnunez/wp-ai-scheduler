@@ -93,6 +93,32 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $cache->get_driver() );
 	}
 
+	public function test_request_tier_cache_does_not_persist_across_factory_reset() {
+		$first_cache = AIPS_Repository_Cache_Config::resolve_cache_instance(
+			'aips_repository_cache',
+			array(
+				'tier' => 'request',
+			)
+		);
+
+		$this->assertInstanceOf( 'AIPS_Cache', $first_cache );
+		$first_cache->set( 'request_only_key', 'value', 0, 'test_group' );
+		$this->assertSame( 'value', $first_cache->get( 'request_only_key', 'test_group' ) );
+
+		AIPS_Cache_Factory::reset();
+
+		$second_cache = AIPS_Repository_Cache_Config::resolve_cache_instance(
+			'aips_repository_cache',
+			array(
+				'tier' => 'request',
+			)
+		);
+
+		$this->assertInstanceOf( 'AIPS_Cache', $second_cache );
+		$this->assertInstanceOf( 'AIPS_Cache_Array_Driver', $second_cache->get_driver() );
+		$this->assertNull( $second_cache->get( 'request_only_key', 'test_group' ) );
+	}
+
 	public function test_resolve_cache_instance_returns_named_persistent_cache_for_medium_tier() {
 		$cache = AIPS_Repository_Cache_Config::resolve_cache_instance(
 			'aips_repository_cache',

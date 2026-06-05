@@ -83,6 +83,30 @@ class Test_AIPS_Repository_Cache_Key_Builder extends PHPUnit\Framework\TestCase 
 		$this->assertNotSame( $first, $second );
 	}
 
+	public function test_different_filters_produce_different_keys() {
+		$approved = AIPS_Repository_Cache_Key_Builder::build_key(
+			'author_topics:list',
+			array(
+				'filters' => array(
+					'status' => 'approved',
+					'search' => 'wordpress',
+				),
+			)
+		);
+
+		$rejected = AIPS_Repository_Cache_Key_Builder::build_key(
+			'author_topics:list',
+			array(
+				'filters' => array(
+					'status' => 'rejected',
+					'search' => 'wordpress',
+				),
+			)
+		);
+
+		$this->assertNotSame( $approved, $rejected );
+	}
+
 	public function test_typed_numeric_ids_and_booleans_are_normalized() {
 		$first = AIPS_Repository_Cache_Key_Builder::normalize_args(
 			array(

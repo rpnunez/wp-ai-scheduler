@@ -806,6 +806,7 @@ class Test_Authors_Repository_Cache extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb = $this->original_wpdb;
 		AIPS_Cache_Factory::reset();
+		remove_all_filters( 'wp_doing_cron' );
 		parent::tearDown();
 	}
 
@@ -913,6 +914,17 @@ class Test_Authors_Repository_Cache extends WP_UnitTestCase {
 		$repo_b->get_by_id( 8 );
 
 		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_get_due_for_topic_generation_skips_cache_during_cron_reads() {
+		add_filter( 'wp_doing_cron', '__return_true' );
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 11, 'name' => 'Queued Author' ) );
+		$repo = new AIPS_Authors_Repository();
+
+		$repo->get_due_for_topic_generation();
+		$repo->get_due_for_topic_generation();
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
 	}
 }
 
