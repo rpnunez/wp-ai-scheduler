@@ -514,11 +514,23 @@ class AIPS_Cache {
 		$clean = array();
 
 		foreach ( $tags as $tag ) {
+			if ( ! is_scalar( $tag ) ) {
+				continue;
+			}
+
+			$tag = trim( (string) $tag );
+			if ( '' === $tag ) {
+				continue;
+			}
+
 			$sanitized = $this->sanitize_tag( $tag );
-			if (!in_array( $sanitized, $clean, true )) {
+			if ( ! in_array( $sanitized, $clean, true ) ) {
 				$clean[] = $sanitized;
 			}
 		}
+
+		return $clean;
+	}
 
 		return $clean;
 	}
