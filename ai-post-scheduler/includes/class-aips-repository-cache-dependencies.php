@@ -29,6 +29,47 @@ class AIPS_Repository_Cache_Dependencies {
 				}
 				return $tags;
 
+			case 'author_topics.get_by_author':
+				return self::author_topic_read_tags( $args );
+
+			case 'author_topics.get_by_id':
+				$tags = array( 'author_topics' );
+				if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
+					$tags[] = 'author_topics:author:' . (int) $args['author_id'];
+				}
+				if (isset( $args['topic_id'] ) && is_numeric( $args['topic_id'] )) {
+					$tags[] = 'author_topic:' . (int) $args['topic_id'];
+				}
+				return self::unique_tags( $tags );
+
+			case 'author_topics.get_approved_summary':
+				return self::unique_tags(
+					array_merge(
+						self::author_topic_read_tags( $args ),
+						self::author_id_tag( 'author_generation_summary', $args )
+					)
+				);
+
+			case 'author_topics.get_rejected_summary':
+			case 'author_topics.get_status_counts':
+				return self::author_topic_read_tags( $args );
+
+			case 'author_topics.get_global_status_counts':
+			case 'author_topics.get_counts_grouped_by_author':
+			case 'author_topics.get_daily_topic_counts':
+				return array( 'author_topics', 'dashboard_counts' );
+
+			case 'author_topics.get_approved_for_generation':
+				return self::unique_tags(
+					array_merge(
+						self::author_topic_read_tags( $args ),
+						self::author_id_tag( 'author_post_queue', $args )
+					)
+				);
+
+			case 'author_topics.get_all_approved_for_queue':
+				return array( 'author_topics', 'dashboard_counts' );
+
 			default:
 				return array();
 		}
@@ -143,6 +184,37 @@ class AIPS_Repository_Cache_Dependencies {
 		}
 
 		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve standard author-topic read tags.
+	 *
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function author_topic_read_tags( array $args ): array {
+		$tags = array( 'author_topics' );
+
+		if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
+			$tags[] = 'author_topics:author:' . (int) $args['author_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Build an author-scoped tag when author_id is available.
+	 *
+	 * @param string $prefix Tag prefix.
+	 * @param array  $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function author_id_tag( string $prefix, array $args ): array {
+		if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
+			return array( $prefix . ':' . (int) $args['author_id'] );
+		}
+
+		return array();
 	}
 
 	/**

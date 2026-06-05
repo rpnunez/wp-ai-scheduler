@@ -30,6 +30,31 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_tags_for_read_returns_expected_tags_for_author_topics_get_by_author() {
+		$this->assertSame(
+			array( 'author_topics', 'author_topics:author:44' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'author_topics.get_by_author',
+				array(
+					'author_id' => 44,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_author_topics_get_by_id() {
+		$this->assertSame(
+			array( 'author_topics', 'author_topics:author:44', 'author_topic:88' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'author_topics.get_by_id',
+				array(
+					'author_id' => 44,
+					'topic_id'  => 88,
+				)
+			)
+		);
+	}
+
 	public function test_tags_for_invalidation_returns_author_domain_tags() {
 		$this->assertSame(
 			array(
