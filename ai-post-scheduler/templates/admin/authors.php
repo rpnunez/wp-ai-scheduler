@@ -377,9 +377,11 @@ $site_ctx = AIPS_Site_Context::get();
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-topic-logs-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
-        <div id="aips-topic-logs-content">
+        <div class="aips-modal-header">
+            <h2 id="aips-topic-logs-modal-title" class="aips-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        </div>
+        <div class="aips-modal-body aips-modal-content-body" id="aips-topic-logs-content">
             <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
@@ -388,8 +390,11 @@ $site_ctx = AIPS_Site_Context::get();
 <!-- Author Edit/Create Modal -->
 <div id="aips-author-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
+        <div class="aips-modal-header">
+            <h2 id="aips-author-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        </div>
+        <div class="aips-modal-body">
 
         <div id="aips-author-modal-loader" style="display: none; text-align: center; padding: 20px;">
             <span class="spinner is-active" style="float: none; margin: 0 auto;"></span>
@@ -607,20 +612,21 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="button button-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+            <div class="aips-modal-footer form-actions">
+                <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Author Suggestions Modal -->
 <div id="aips-suggest-authors-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-suggest-authors-modal-title">
     <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <div class="aips-modal-header">
-            <h2 id="aips-suggest-authors-modal-title"><?php esc_html_e('Suggest Authors with AI', 'ai-post-scheduler'); ?></h2>
+            <h2 id="aips-suggest-authors-modal-title" class="aips-modal-title"><?php esc_html_e('Suggest Authors with AI', 'ai-post-scheduler'); ?></h2>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             <p class="description">
                 <?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?>
                 <?php if (!empty($site_ctx['niche'])) : ?>
@@ -661,7 +667,8 @@ $site_ctx = AIPS_Site_Context::get();
                         <option value="5">5</option>
                     </select>
                 </div>
-                <div class="form-actions">
+                <div class="aips-modal-footer form-actions">
+                    <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                     <button type="submit" id="aips-suggest-authors-submit" class="aips-btn aips-btn-primary">
                         <span class="dashicons dashicons-lightbulb"></span>
                         <?php esc_html_e('Generate Suggestions', 'ai-post-scheduler'); ?>

@@ -185,10 +185,10 @@ if (!defined('ABSPATH')) {
 		<div id="aips-telemetry-details-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-telemetry-details-title">
 			<div class="aips-modal-content aips-modal-large">
 				<div class="aips-modal-header">
-					<h2 id="aips-telemetry-details-title"><?php esc_html_e('Telemetry Details', 'ai-post-scheduler'); ?></h2>
+					<h2 id="aips-telemetry-details-title" class="aips-modal-title"><?php esc_html_e('Telemetry Details', 'ai-post-scheduler'); ?></h2>
 					<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 				</div>
-				<div class="aips-modal-body" id="aips-telemetry-details-content">
+				<div class="aips-modal-body aips-modal-content-body" id="aips-telemetry-details-content">
 					<p class="aips-telemetry-loading"><?php esc_html_e('Select a telemetry row to view its details.', 'ai-post-scheduler'); ?></p>
 				</div>
 			</div>

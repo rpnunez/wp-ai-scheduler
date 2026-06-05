@@ -253,8 +253,8 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-source-modal-title"><?php esc_html_e('Add New Source', 'ai-post-scheduler'); ?></h2>
-			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+			<h2 id="aips-source-modal-title" class="aips-modal-title"><?php esc_html_e('Add New Source', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
 			<form id="aips-source-form" novalidate>
@@ -331,8 +331,8 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			</form>
 		</div>
 		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-			<button type="button" class="button button-primary" id="aips-save-source-btn">
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="aips-btn aips-btn-primary" id="aips-save-source-btn">
 				<?php esc_html_e('Save Source', 'ai-post-scheduler'); ?>
 			</button>
 		</div>
@@ -343,8 +343,8 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 <div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-groups-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>
-			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+			<h2 id="aips-groups-modal-title" class="aips-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
 			<p class="description" style="margin-bottom:16px;"><?php esc_html_e('Source Groups let you categorize sources. Authors and Templates can then specify which groups to include in their AI prompts.', 'ai-post-scheduler'); ?></p>
@@ -388,7 +388,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			</div>
 		</div>
 		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
 		</div>
 	</div>
 </div>

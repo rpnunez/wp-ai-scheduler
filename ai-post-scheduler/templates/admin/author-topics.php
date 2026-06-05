@@ -203,9 +203,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-topic-logs-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
-		<div id="aips-topic-logs-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-topic-logs-modal-title" class="aips-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body aips-modal-content-body" id="aips-topic-logs-content">
 			<p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
 		</div>
 	</div>
@@ -214,9 +216,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <!-- Topic Posts Modal -->
 <div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-		<div id="aips-topic-posts-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-topic-posts-modal-title" class="aips-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body aips-modal-content-body" id="aips-topic-posts-content">
 			<p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
 		</div>
 	</div>
@@ -225,8 +229,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <!-- Feedback Modal -->
 <div id="aips-feedback-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+		<div class="aips-modal-header">
+			<h2 id="aips-feedback-modal-title" class="aips-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
 		<form id="aips-feedback-form">
 			<input type="hidden" id="feedback_topic_id" name="topic_id" value="">
 			<input type="hidden" id="feedback_action" name="action_type" value="">
@@ -245,11 +252,12 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
 			</div>
 
-			<div class="form-actions">
-				<button type="submit" class="button button-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
-				<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<div class="aips-modal-footer form-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
 			</div>
 		</form>
+		</div>
 	</div>
 </div>
 

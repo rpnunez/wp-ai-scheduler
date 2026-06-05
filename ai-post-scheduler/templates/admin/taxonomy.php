@@ -128,8 +128,11 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
+		<div class="aips-modal-header">
+			<h2 id="aips-generate-taxonomy-modal-title" class="aips-modal-title"><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
 		<form id="aips-generate-taxonomy-form">
 			<div class="form-group">
 				<label for="taxonomy_type"><?php esc_html_e('Taxonomy Type', 'ai-post-scheduler'); ?></label>
@@ -154,11 +157,12 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				<div id="selected-posts-container" style="margin-top: 10px;"></div>
 			</div>
 
-			<div class="form-actions">
-				<button type="submit" class="button button-primary" id="generate-taxonomy-submit-btn"><?php esc_html_e('Generate', 'ai-post-scheduler'); ?></button>
-				<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<div class="aips-modal-footer form-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="generate-taxonomy-submit-btn"><?php esc_html_e('Generate', 'ai-post-scheduler'); ?></button>
 			</div>
 		</form>
+		</div>
 	</div>
 </div>
 
