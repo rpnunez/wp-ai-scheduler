@@ -27,10 +27,8 @@ class AIPS_Admin_Menu {
     /**
      * Add menu pages to the WordPress admin dashboard.
      *
-     * Registers a traditional flat submenu structure:
-     * Dashboard, Templates, Voices, Article Structures, Authors, Research,
-     * Schedule, Schedule Calendar, Generated Posts, History,
-     * Settings, System Status, Seeder, Dev Tools (when enabled).
+     * Registers a traditional flat submenu structure while keeping legacy
+     * Content/History routes available behind one visible Content submenu.
      *
      * @return void
      */
@@ -175,8 +173,9 @@ class AIPS_Admin_Menu {
             array($this, 'render_generated_posts_page')
         );
 
+        // Legacy History route - hidden from menu navigation, exposed from the Content tabs.
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -270,7 +269,7 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
+     * Expand the "AI Post Scheduler" top-level menu when on hidden plugin pages.
      *
      * WordPress collapses the parent menu when a page is registered with null parent_slug.
      * This filter overrides that behaviour so the plugin menu stays open.
@@ -280,17 +279,18 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
+        if (in_array($page, array('aips-author-topics', 'aips-history', AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG), true)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
     }
 
     /**
-     * Highlight the "Authors" submenu item when on the hidden Author Topics page.
+     * Highlight the visible parent submenu item when on hidden plugin pages.
      *
-     * Because the Author Topics page is registered with a null parent, WordPress
-     * does not activate any submenu item. This filter makes "Authors" appear active.
+     * Because hidden pages are registered with a null parent, WordPress does
+     * not activate any submenu item. This filter maps them back to their
+     * visible navigation entries.
      *
      * @param string $submenu_file The current submenu file slug.
      * @return string
@@ -299,6 +299,9 @@ class AIPS_Admin_Menu {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'aips-authors';
+        }
+        if ($page === 'aips-history') {
+            return 'aips-generated-posts';
         }
         if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
             return 'aips-campaigns';

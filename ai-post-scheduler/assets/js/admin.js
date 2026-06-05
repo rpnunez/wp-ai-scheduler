@@ -531,9 +531,14 @@
          * @param {Event} e - Click event from an `.aips-tab-link` element.
          */
         switchAipsTab: function(e) {
-            e.preventDefault();
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
+
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
             var $tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
 
             if (!$tabNav.length) {
