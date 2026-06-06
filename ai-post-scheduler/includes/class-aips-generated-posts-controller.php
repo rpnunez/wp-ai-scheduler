@@ -143,7 +143,7 @@ class AIPS_Generated_Posts_Controller {
 		}
 
 		$existing_search_query = isset($_GET['existing_s']) ? sanitize_text_field(wp_unslash($_GET['existing_s'])) : '';
-		$existing_posts_controller = new AIPS_Existing_Post_Improvement_Controller();
+		$existing_posts_controller = new AIPS_Post_Improvement_Controller();
 		$existing_posts_data = $existing_posts_controller->get_pending_suggestions(array(
 			'page' => isset($_GET['existing_paged']) ? absint($_GET['existing_paged']) : 1,
 			'search' => $existing_search_query,

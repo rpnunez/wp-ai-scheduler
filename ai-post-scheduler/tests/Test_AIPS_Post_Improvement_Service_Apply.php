@@ -5,12 +5,12 @@
  * @package AI_Post_Scheduler
  */
 
-class Test_AIPS_Existing_Post_Improvement_Service_Apply extends WP_UnitTestCase {
+class Test_AIPS_Post_Improvement_Service_Apply extends WP_UnitTestCase {
 
-	/** @var AIPS_Existing_Post_Improvement_Repository */
+	/** @var AIPS_Post_Improvement_Repository */
 	private $repository;
 
-	/** @var AIPS_Existing_Post_Improvement_Service */
+	/** @var AIPS_Post_Improvement_Service */
 	private $service;
 
 	private $post_id     = 0;
@@ -23,8 +23,8 @@ class Test_AIPS_Existing_Post_Improvement_Service_Apply extends WP_UnitTestCase 
 		}
 
 		AIPS_DB_Manager::install_tables();
-		$this->repository = new AIPS_Existing_Post_Improvement_Repository();
-		$this->service    = new AIPS_Existing_Post_Improvement_Service($this->repository);
+		$this->repository = new AIPS_Post_Improvement_Repository();
+		$this->service    = new AIPS_Post_Improvement_Service($this->repository);
 
 		$this->post_id = self::factory()->post->create(
 			array(

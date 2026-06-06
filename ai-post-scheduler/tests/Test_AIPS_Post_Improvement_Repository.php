@@ -5,9 +5,9 @@
  * @package AI_Post_Scheduler
  */
 
-class Test_AIPS_Existing_Post_Improvement_Repository extends WP_UnitTestCase {
+class Test_AIPS_Post_Improvement_Repository extends WP_UnitTestCase {
 
-	/** @var AIPS_Existing_Post_Improvement_Repository */
+	/** @var AIPS_Post_Improvement_Repository */
 	private $repository;
 
 	private $schedule_ids = array();
@@ -19,7 +19,7 @@ class Test_AIPS_Existing_Post_Improvement_Repository extends WP_UnitTestCase {
 		}
 
 		AIPS_DB_Manager::install_tables();
-		$this->repository = new AIPS_Existing_Post_Improvement_Repository();
+		$this->repository = new AIPS_Post_Improvement_Repository();
 	}
 
 	public function tearDown(): void {

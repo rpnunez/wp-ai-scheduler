@@ -781,7 +781,7 @@ final class AI_Post_Scheduler {
 
 		// Existing post improvement scan cron handler.
 		add_action('aips_process_existing_post_scans', function() {
-			(new AIPS_Existing_Post_Improvement_Service())->process_due_schedules();
+			(new AIPS_Post_Improvement_Service())->process_due_schedules();
 		});
 	}
 

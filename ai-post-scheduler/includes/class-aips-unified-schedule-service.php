@@ -53,7 +53,7 @@ class AIPS_Unified_Schedule_Service {
 	private $author_topic_logs_repository;
 
 	/**
-	 * @var AIPS_Existing_Post_Improvement_Repository
+	 * @var AIPS_Post_Improvement_Repository
 	 */
 	private $existing_posts_repository;
 
@@ -66,7 +66,7 @@ class AIPS_Unified_Schedule_Service {
 		$this->history_repository           = new AIPS_History_Repository();
 		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
 		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->existing_posts_repository    = new AIPS_Existing_Post_Improvement_Repository();
+		$this->existing_posts_repository    = new AIPS_Post_Improvement_Repository();
 	}
 
 	/**
@@ -200,7 +200,7 @@ class AIPS_Unified_Schedule_Service {
 				return $generator->generate_posts_for_author($author, $quantity, 'manual', true);
 
 			case self::TYPE_EXISTING_POST_SCAN:
-				$service = new AIPS_Existing_Post_Improvement_Service();
+				$service = new AIPS_Post_Improvement_Service();
 				return $service->run_schedule($id, 'manual');
 
 			default:
