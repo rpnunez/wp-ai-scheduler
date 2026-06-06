@@ -268,8 +268,9 @@ class AIPS_Telemetry_Repository {
 				),
 				ARRAY_A
 			);
-
-			foreach ($rows as $row) {
+			if (!is_array($rows)) {
+				$rows = array();
+			}
 				$date_key = AIPS_DateTime::fromTimestamp((int) $row['inserted_at'])->toDisplay('Y-m-d');
 				if (!isset($buckets[$date_key])) {
 					$buckets[$date_key] = array(
