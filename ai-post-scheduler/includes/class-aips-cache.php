@@ -36,6 +36,27 @@ class AIPS_Cache {
 	private $repository_cache_observer;
 
 	/**
+	 * Cache index for the Cache Monitor.
+	 *
+	 * @var AIPS_Cache_Index|null
+	 */
+	private $cache_index = null;
+
+	/**
+	 * Whether get_cache_index() has already attempted index resolution.
+	 *
+	 * @var bool
+	 */
+	private $cache_index_checked = false;
+
+	/**
+	 * Context for the next set() call. Consumed after one use.
+	 *
+	 * @var array
+	 */
+	private $pending_context = array();
+
+	/**
 	 * Per-request memoised result of the system-enabled check.
 	 *
 	 * Null means "not yet read". Populated on the first call to
@@ -58,6 +79,50 @@ class AIPS_Cache {
 		}
 		$this->driver                    = $driver;
 		$this->repository_cache_observer = $repository_cache_observer;
+	}
+
+	// -----------------------------------------------------------------------
+	// Driver + Index accessors
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Fluently set metadata context for the next set() call.
+	 *
+	 * The context array is consumed once by the next set() invocation and
+	 * then cleared, so callers should call with_context() immediately before
+	 * set() / remember() in the same execution frame.
+	 *
+	 * @param array $context Metadata: tags, tier, operation_id, repository_class, domain.
+	 * @return static Fluent return.
+	 */
+	public function with_context( array $context ) {
+		$this->pending_context = $context;
+		return $this;
+	}
+
+	/**
+	 * Lazy-initialise and return the Cache Index singleton for this request.
+	 *
+	 * If the Cache Monitor or the index is disabled, returns null.
+	 *
+	 * @return AIPS_Cache_Index|null
+	 */
+	private function get_cache_index(): ?AIPS_Cache_Index {
+		if ($this->cache_index !== null) {
+			return $this->cache_index;
+		}
+		if ($this->cache_index_checked) {
+			return null;
+		}
+		$this->cache_index_checked = true;
+
+		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
+		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
+			return null;
+		}
+
+		$this->cache_index = new AIPS_Cache_Index();
+		return $this->cache_index;
 	}
 
 	// -----------------------------------------------------------------------
@@ -112,6 +177,12 @@ class AIPS_Cache {
 			return $default;
 		}
 		$value = $this->driver->get( $key, $group );
+		if ($value !== null) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_access( (string) $key, (string) $group );
+			}
+		}
 		$this->record_cache_event(
 			'get',
 			array(
@@ -139,6 +210,14 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
+		if ($result) {
+			$context               = $this->pending_context;
+			$this->pending_context = array();
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_set( (string) $key, $value, (int) $ttl, (string) $group, $context );
+			}
+		}
 		$this->record_cache_event(
 			'set',
 			array(
@@ -165,6 +244,12 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->delete( $key, $group );
+		if ($result) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_delete( (string) $key, (string) $group );
+			}
+		}
 		$this->record_cache_event(
 			'delete',
 			array(
@@ -190,6 +275,12 @@ class AIPS_Cache {
 			return false;
 		}
 		$result = $this->driver->has( $key, $group );
+		if ($result) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_access( (string) $key, (string) $group );
+			}
+		}
 		$this->record_cache_event(
 			'has',
 			array(
@@ -213,6 +304,12 @@ class AIPS_Cache {
 			return true;
 		}
 		$result = $this->driver->flush();
+		if ($result) {
+			$index = $this->get_cache_index();
+			if ($index) {
+				$index->record_flush();
+			}
+		}
 		$this->record_cache_event(
 			'flush',
 			array(
@@ -447,7 +544,7 @@ class AIPS_Cache {
 	 *
 	 * @return AIPS_Cache_Driver
 	 */
-	public function get_driver() {
+	public function get_driver(): AIPS_Cache_Driver {
 		return $this->driver;
 	}
 

@@ -202,7 +202,7 @@ class AIPS_Settings {
 		}
 	}
 
-    /**
+     /**
      * Register plugin settings and fields.
      *
      * Defines the settings section and fields for general configuration including
