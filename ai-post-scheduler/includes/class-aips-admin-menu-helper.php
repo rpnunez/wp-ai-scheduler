@@ -69,14 +69,18 @@ class AIPS_Admin_Menu_Helper {
 	 */
 	public static function get_page_url($page, $args = array()) {
 		if (isset(self::$diagnostics_tabs[$page])) {
-			$args = array_merge(array('tab' => self::$diagnostics_tabs[$page]), $args);
-			$url  = admin_url('admin.php?page=aips-diagnostics');
+			$tab = self::$diagnostics_tabs[$page];
 
-			if (!empty($args)) {
-				$url = add_query_arg($args, $url);
+			if (self::should_route_to_diagnostics($tab)) {
+				$args = array_merge(array('tab' => $tab), $args);
+				$url  = admin_url('admin.php?page=aips-diagnostics');
+
+				if (!empty($args)) {
+					$url = add_query_arg($args, $url);
+				}
+
+				return $url;
 			}
-
-			return $url;
 		}
 
 		if (!isset(self::$page_slugs[$page])) {
@@ -103,5 +107,31 @@ class AIPS_Admin_Menu_Helper {
 	 */
 	public static function get_slug($page) {
 		return isset(self::$page_slugs[$page]) ? self::$page_slugs[$page] : $page;
+	}
+
+	/**
+	 * Determine whether a page should route through Diagnostics.
+	 *
+	 * Falls back to the legacy page slug when the Diagnostics tab is feature-gated off.
+	 *
+	 * @param string $tab Diagnostics tab key.
+	 * @return bool
+	 */
+	private static function should_route_to_diagnostics($tab) {
+		$normalized_tab = ('operations-insights' === $tab) ? 'insights' : $tab;
+
+		if (class_exists('AIPS_Diagnostics_Controller') && method_exists('AIPS_Diagnostics_Controller', 'is_tab_available')) {
+			return AIPS_Diagnostics_Controller::is_tab_available($normalized_tab);
+		}
+
+		if ('telemetry' === $normalized_tab) {
+			return (bool) AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
+		}
+
+		if ('dev-tools' === $normalized_tab) {
+			return (bool) AIPS_Config::get_instance()->get_option('aips_developer_mode');
+		}
+
+		return true;
 	}
 }
