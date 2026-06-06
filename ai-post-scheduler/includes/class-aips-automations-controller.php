@@ -76,7 +76,7 @@ class AIPS_Automations_Controller {
 	 * @return string
 	 */
 	public static function get_active_tab_key() {
-		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_UNSAFE_RAW);
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
 
 		if (!self::is_tab_available($active_tab)) {
