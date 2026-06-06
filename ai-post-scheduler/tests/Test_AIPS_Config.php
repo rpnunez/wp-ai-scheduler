@@ -430,15 +430,10 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	public function test_get_cache_config_returns_expected_keys() {
 		$c = $this->config->get_cache_config();
 
+		$this->assertArrayHasKey( 'enabled',        $c );
 		$this->assertArrayHasKey( 'driver',         $c );
 		$this->assertArrayHasKey( 'db_prefix',      $c );
 		$this->assertArrayHasKey( 'default_ttl',    $c );
-		$this->assertArrayHasKey( 'redis_host',     $c );
-		$this->assertArrayHasKey( 'redis_port',     $c );
-		$this->assertArrayHasKey( 'redis_password', $c );
-		$this->assertArrayHasKey( 'redis_db',       $c );
-		$this->assertArrayHasKey( 'redis_prefix',   $c );
-		$this->assertArrayHasKey( 'redis_timeout',  $c );
 	}
 
 	/** @test */
@@ -446,40 +441,23 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 		delete_option( 'aips_cache_driver' );
 		delete_option( 'aips_cache_db_prefix' );
 		delete_option( 'aips_cache_default_ttl' );
-		delete_option( 'aips_cache_redis_host' );
-		delete_option( 'aips_cache_redis_port' );
-		delete_option( 'aips_cache_redis_password' );
-		delete_option( 'aips_cache_redis_db' );
-		delete_option( 'aips_cache_redis_prefix' );
-		delete_option( 'aips_cache_redis_timeout' );
 
 		$c = $this->config->get_cache_config();
 
+		$this->assertTrue( $c['enabled'] );
 		$this->assertSame( 'array',     $c['driver'] );
 		$this->assertSame( '',          $c['db_prefix'] );
 		$this->assertSame( 3600,        $c['default_ttl'] );
-		$this->assertSame( '127.0.0.1', $c['redis_host'] );
-		$this->assertSame( 6379,        $c['redis_port'] );
-		$this->assertSame( '',          $c['redis_password'] );
-		$this->assertSame( 0,           $c['redis_db'] );
-		$this->assertSame( 'aips',      $c['redis_prefix'] );
-		$this->assertSame( 2.0,         $c['redis_timeout'] );
 	}
 
 	/** @test */
 	public function test_get_cache_config_casts_types_correctly() {
 		update_option( 'aips_cache_driver',      'db' );
-		update_option( 'aips_cache_redis_port',  '6380' );
-		update_option( 'aips_cache_redis_db',    '1' );
-		update_option( 'aips_cache_redis_timeout', '5' );
 		update_option( 'aips_cache_default_ttl', '7200' );
 
 		$c = $this->config->get_cache_config();
 
 		$this->assertIsString( $c['driver'] );
-		$this->assertIsInt(    $c['redis_port'] );
-		$this->assertIsInt(    $c['redis_db'] );
-		$this->assertIsFloat(  $c['redis_timeout'] );
 		$this->assertIsInt(    $c['default_ttl'] );
 	}
 

@@ -264,6 +264,14 @@ class AIPS_Admin_Menu {
             );
         }
 
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Cache Monitor', 'ai-post-scheduler'),
+            __('Cache Monitor', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-cache-monitor',
+            array($this, 'render_cache_monitor_page')
+        );
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
@@ -608,6 +616,16 @@ class AIPS_Admin_Menu {
     public function render_seeder_page() {
         $seeder_admin = new AIPS_Seeder_Admin();
         $seeder_admin->render_page();
+    }
+
+    /**
+     * Render the Cache Monitor page.
+     *
+     * @return void
+     */
+    public function render_cache_monitor_page() {
+        $controller = new AIPS_Cache_Monitor_Controller();
+        $controller->render_page();
     }
 
     /**
