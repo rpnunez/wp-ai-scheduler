@@ -19,7 +19,7 @@ $authors = get_users(array(
 					<p class="aips-page-description"><?php esc_html_e('Build a campaign template, publishing defaults, review policy, and schedule in one flow.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>">
-					<span class="dashicons dashicons-calendar-alt"></span>
+					<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
 					<?php esc_html_e('Schedules', 'ai-post-scheduler'); ?>
 				</a>
 			</div>
@@ -216,7 +216,7 @@ $authors = get_users(array(
 										</div>
 										<div style="padding-top: 20px;">
 											<button type="button" class="button button-small aips-remove-post-type-rule" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>
+												<span class="dashicons dashicons-no-alt" aria-hidden="true" style="margin-top: 2px;"></span>
 											</button>
 										</div>
 									</div>
@@ -227,7 +227,7 @@ $authors = get_users(array(
 						?>
 					</div>
 					<button type="button" id="aips-add-post-type-rule" class="button" style="margin-top: 10px;">
-						<span class="dashicons dashicons-plus-alt2" style="margin-top: 2px;"></span> <?php esc_html_e('Add Post Type Rule', 'ai-post-scheduler'); ?>
+						<span class="dashicons dashicons-plus-alt2" aria-hidden="true" style="margin-top: 2px;"></span> <?php esc_html_e('Add Post Type Rule', 'ai-post-scheduler'); ?>
 					</button>
 				</section>
 

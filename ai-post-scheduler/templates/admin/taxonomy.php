@@ -226,6 +226,6 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 <script type="text/html" id="aips-tmpl-selected-post">
 <div class="aips-selected-post" data-post-id="{{id}}">
 	<span>{{title}}</span>
-	<button type="button" class="aips-remove-post" data-post-id="{{id}}">&times;</button>
+	<button type="button" class="aips-remove-post" data-post-id="{{id}}" aria-label="<?php esc_attr_e('Remove post', 'ai-post-scheduler'); ?>">&times;</button>
 </div>
 </script>
