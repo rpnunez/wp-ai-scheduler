@@ -590,6 +590,36 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'current_page' => $args['page'],
         );
     }
+
+    /**
+     * Count posts that have (or previously had) partial generation state.
+     *
+     * This lightweight count path is intended for dashboard cards that only
+     * need the aggregate total and do not require row hydration.
+     *
+     * @return int
+     */
+    public function count_partial_generations() {
+        $posts_table = $this->wpdb->posts;
+        $postmeta_table = $this->wpdb->postmeta;
+
+        $total = $this->wpdb->get_var(
+            "SELECT COUNT(*)
+            FROM {$this->table_name} h
+            INNER JOIN (
+                SELECT post_id, MAX(id) AS latest_history_id
+                FROM {$this->table_name}
+                WHERE status = 'completed' AND post_id IS NOT NULL
+                GROUP BY post_id
+            ) latest ON latest.latest_history_id = h.id
+            INNER JOIN {$posts_table} p ON h.post_id = p.ID
+            LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
+            LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+            WHERE (pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')"
+        );
+
+        return (int) $total;
+    }
     
     /**
      * Get a single history item by ID.

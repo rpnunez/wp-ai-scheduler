@@ -56,10 +56,52 @@ class AIPS_Author_Topic_Logs_Repository {
 				$limit
 			));
 		}
+
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC",
 			$author_topic_id
 		));
+	}
+
+	/**
+	 * Get generated-post stats keyed by topic ID for a batch of topics.
+	 *
+	 * @param int[] $topic_ids Topic IDs to aggregate.
+	 * @return array<int, array{post_count:int,post_generated_at:int|null}>
+	 */
+	public function get_generated_post_stats_by_topic_ids(array $topic_ids) {
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$topic_ids = array_values(array_filter(array_map('absint', $topic_ids)));
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$query = $this->wpdb->prepare(
+			"SELECT author_topic_id, COUNT(*) AS post_count, MAX(created_at) AS post_generated_at
+			FROM {$this->table_name}
+			WHERE action = 'post_generated'
+				AND post_id IS NOT NULL
+				AND author_topic_id IN ({$placeholders})
+			GROUP BY author_topic_id",
+			...$topic_ids
+		);
+		$results = $this->wpdb->get_results($query);
+
+		$stats = array();
+		foreach ($results as $row) {
+			$topic_id = (int) $row->author_topic_id;
+			$stats[$topic_id] = array(
+				'post_count' => (int) $row->post_count,
+				'post_generated_at' => isset($row->post_generated_at) ? (int) $row->post_generated_at : null,
+			);
+		}
+
+		return $stats;
 	}
 	
 	/**
@@ -239,4 +281,3 @@ class AIPS_Author_Topic_Logs_Repository {
 		return $counts;
 	}
 }
-
