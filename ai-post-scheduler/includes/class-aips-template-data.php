@@ -321,7 +321,9 @@ class AIPS_Template_Data {
 		}
 
 		if ( is_array( $value ) ) {
-			return array_values( array_filter( array_map( 'intval', $value ) ) );
+			return array_values( array_filter( array_map( 'intval', $value ), static function ( $id ) {
+				return $id > 0;
+			} ) );
 		}
 
 		if ( is_int( $value ) ) {
@@ -331,7 +333,9 @@ class AIPS_Template_Data {
 		if ( is_string( $value ) ) {
 			$decoded = json_decode( $value, true );
 			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
-				return array_values( array_filter( array_map( 'intval', $decoded ) ) );
+				return array_values( array_filter( array_map( 'intval', $decoded ), static function ( $id ) {
+					return $id > 0;
+				} ) );
 			}
 			// Not valid JSON — treat as a legacy plain integer string.
 			$int_val = (int) $value;

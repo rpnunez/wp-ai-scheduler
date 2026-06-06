@@ -460,6 +460,26 @@ class Test_AIPS_Template_Data extends WP_UnitTestCase {
 		$this->assertSame( '[1,2]', $tpl->source_group_ids );
 	}
 
+	/**
+	 * parse_post_categories() handles documented input variants.
+	 */
+	public function test_parse_post_categories_handles_documented_variants() {
+		$this->assertSame( array( 1, 3 ), AIPS_Template_Data::parse_post_categories( '[1,3]' ) );
+		$this->assertSame( array( 2, 4 ), AIPS_Template_Data::parse_post_categories( array( '2', 4 ) ) );
+		$this->assertSame( array( 5 ), AIPS_Template_Data::parse_post_categories( '5' ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '' ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[]' ) );
+	}
+
+	/**
+	 * parse_post_categories() drops zero/negative IDs and malformed JSON.
+	 */
+	public function test_parse_post_categories_filters_invalid_ids_and_json() {
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[-5,0]' ) );
+		$this->assertSame( array( 7 ), AIPS_Template_Data::parse_post_categories( array( '-1', '0', '7' ) ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[1,2' ) );
+	}
+
 	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------

@@ -56,6 +56,10 @@ if (!defined('ABSPATH')) {
                         foreach ($campaign_options as $campaign_option) {
                             $campaign_map[(int) $campaign_option->id] = $campaign_option;
                         }
+                        $category_name_map = array();
+                        foreach ($categories as $category) {
+                            $category_name_map[(int) $category->term_id] = $category->name;
+                        }
 
                         // Pre-fetch stats to avoid N+1 queries
                         $all_generated_counts = $history_service->get_all_template_stats();
@@ -88,9 +92,8 @@ if (!defined('ABSPATH')) {
                                 if (!empty($cats)) {
                                     $cat_names = array();
                                     foreach ($cats as $cat_id) {
-                                        $cat = get_category($cat_id);
-                                        if ($cat && !is_wp_error($cat)) {
-                                            $cat_names[] = esc_html($cat->name);
+                                        if (isset($category_name_map[(int) $cat_id])) {
+                                            $cat_names[] = esc_html($category_name_map[(int) $cat_id]);
                                         }
                                     }
                                     if (!empty($cat_names)) {

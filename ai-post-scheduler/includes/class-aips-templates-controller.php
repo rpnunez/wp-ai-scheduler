@@ -466,9 +466,11 @@ class AIPS_Templates_Controller {
      */
     private function extract_post_categories( $raw ): array {
         if ( is_array( $raw ) ) {
-            return array_values( array_filter( array_map( 'absint', $raw ) ) );
+            return array_values( array_filter( array_map( 'intval', $raw ), static function ( $id ) {
+                return $id > 0;
+            } ) );
         }
-        $single = absint( $raw );
+        $single = intval( $raw );
         return $single > 0 ? array( $single ) : array();
     }
 }
