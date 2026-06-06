@@ -8,9 +8,10 @@ if (!defined('ABSPATH')) {
         <?php foreach ($timeline_items as $item): ?>
             <?php
             $created_at = isset($item->created_at) ? (int) $item->created_at : 0;
-            $group_label = isset($history_handler) && method_exists($history_handler, 'get_timeline_group_label')
-                ? $history_handler->get_timeline_group_label($created_at, isset($now_timestamp) ? (int) $now_timestamp : null)
-                : __('Older', 'ai-post-scheduler');
+            $group_label = __('Unknown date', 'ai-post-scheduler');
+            if ($created_at > 0) {
+                $group_label = $history_handler->get_timeline_group_label($created_at, isset($now_timestamp) ? (int) $now_timestamp : null);
+            }
             $title = !empty($item->event_label) ? $item->event_label : (!empty($item->generated_title) ? $item->generated_title : __('Generation Event', 'ai-post-scheduler'));
             $status = !empty($item->status) ? $item->status : __('unknown', 'ai-post-scheduler');
             $domain = !empty($item->event_domain) ? $item->event_domain : __('unknown', 'ai-post-scheduler');

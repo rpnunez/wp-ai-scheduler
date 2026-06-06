@@ -10,6 +10,11 @@ if (!defined('ABSPATH')) {
  * retrieval, export, stats, and admin page rendering.
  */
 class AIPS_History {
+
+    /**
+     * Maximum number of items shown in timeline sidebar.
+     */
+    private const TIMELINE_MAX_ITEMS = 30;
     
     /**
      * @var AIPS_History_Repository Repository for database operations
@@ -1396,7 +1401,7 @@ class AIPS_History {
      * @return void
      */
     public function render_timeline_html(array $items) {
-        $timeline_items = array_slice($items, 0, 30);
+        $timeline_items = array_slice($items, 0, self::TIMELINE_MAX_ITEMS);
         $now_timestamp = current_time('timestamp', true);
         $history_handler = $this;
 

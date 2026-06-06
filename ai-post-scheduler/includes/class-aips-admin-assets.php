@@ -1106,8 +1106,6 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the history page.
      */
     private function enqueue_history_assets() {
-            wp_enqueue_script('heartbeat');
-
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
@@ -1199,6 +1197,7 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
             ));
     }
 

@@ -409,6 +409,7 @@
 
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
+		MIN_HEARTBEAT_INTERVAL: 5,
 		domainFilter: '',
 		actorFilter: '',
 		correlationId: '',
@@ -508,7 +509,7 @@
 			$(document).on('change', '#aips-history-auto-refresh', this.toggleAutoRefresh.bind(this));
 			$(document).on('change', '#aips-history-heartbeat-interval', this.changeHeartbeatInterval.bind(this));
 			$(document).on('heartbeat-tick.aipsHistory', this.onHeartbeatTick.bind(this));
-			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.disableAutoRefresh.bind(this));
+			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.onPageExit.bind(this));
 		},
 
 
@@ -645,13 +646,23 @@
 		 */
 		initHeartbeatAutoRefresh: function () {
 			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
-				$('#aips-history-auto-refresh').prop('disabled', true);
-				$('#aips-history-heartbeat-interval').prop('disabled', true);
+				var heartbeatUnavailableText = aipsHistoryL10n.heartbeatUnavailable || 'Heartbeat API unavailable.';
+				$('#aips-history-auto-refresh')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-heartbeat-interval')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-auto-refresh-help').text(heartbeatUnavailableText);
 				return;
 			}
 
 			this.defaultHeartbeatInterval = wp.heartbeat.interval();
-			this.heartbeatIntervalSeconds = parseInt($('#aips-history-heartbeat-interval').val() || '5', 10);
+			$('#aips-history-auto-refresh-help').empty();
+			this.heartbeatIntervalSeconds = parseInt(
+				$('#aips-history-heartbeat-interval').val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
 		},
 
 		/**
@@ -669,7 +680,10 @@
 				return;
 			}
 
-			this.heartbeatIntervalSeconds = parseInt($intervalSelect.val() || '5', 10);
+			this.heartbeatIntervalSeconds = parseInt(
+				$intervalSelect.val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
 			this.applyHeartbeatInterval();
 
 			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
@@ -681,7 +695,10 @@
 		 * Update heartbeat interval selection while auto refresh is enabled.
 		 */
 		changeHeartbeatInterval: function (e) {
-			this.heartbeatIntervalSeconds = parseInt($(e.currentTarget).val() || '5', 10);
+			this.heartbeatIntervalSeconds = parseInt(
+				$(e.currentTarget).val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
 
 			if (!this.autoRefreshEnabled) {
 				return;
@@ -702,7 +719,15 @@
 				return;
 			}
 
-			var interval = Math.max(5, parseInt(this.heartbeatIntervalSeconds, 10) || 5);
+			// Keep 5s as the supported lower bound for this page's explicit quick-refresh option.
+			var parsedInterval = parseInt(this.heartbeatIntervalSeconds, 10);
+			if (isNaN(parsedInterval)) {
+				parsedInterval = this.MIN_HEARTBEAT_INTERVAL;
+			}
+			var interval = Math.max(
+				this.MIN_HEARTBEAT_INTERVAL,
+				parsedInterval
+			);
 			wp.heartbeat.interval(interval);
 		},
 
@@ -718,6 +743,15 @@
 			this.isAutoRefreshing = false;
 			$('#aips-history-auto-refresh').prop('checked', false);
 			$('#aips-history-heartbeat-interval').prop('disabled', true);
+		},
+
+		/**
+		 * Cleanup heartbeat state and namespaced listeners when leaving page.
+		 */
+		onPageExit: function () {
+			this.disableAutoRefresh();
+			$(document).off('heartbeat-tick.aipsHistory');
+			$(window).off('.aipsHistory');
 		},
 
 		/**
@@ -1066,10 +1100,13 @@
 		/**
 		 * Reload the history table via AJAX applying the current filter and search.
 		 *
-		 * @param {number} [paged=1] 1-based page number to load.
+		 * @param {number} [paged=current URL page] 1-based page number to load.
+		 *                                          Defaults to current `paged` URL query param.
 		 */
 		reload: function (paged, options) {
-			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+			paged = (paged === undefined || paged === null)
+				? this.getCurrentPage()
+				: Math.max(1, parseInt(paged, 10));
 			options = $.extend({
 				fromHeartbeat: false
 			}, options || {});

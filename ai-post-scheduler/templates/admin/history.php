@@ -197,11 +197,13 @@ if (is_object($history)) {
                                     <input type="checkbox" id="aips-history-auto-refresh" value="1">
                                     <span><?php esc_html_e('Auto refresh', 'ai-post-scheduler'); ?></span>
                                 </label>
+                                <label class="aips-history-auto-refresh-interval-label" for="aips-history-heartbeat-interval"><?php esc_html_e('Refresh interval', 'ai-post-scheduler'); ?></label>
                                 <select id="aips-history-heartbeat-interval" class="aips-form-select aips-form-select-sm" disabled>
                                     <option value="5"><?php esc_html_e('5 seconds', 'ai-post-scheduler'); ?></option>
                                     <option value="15"><?php esc_html_e('15 seconds', 'ai-post-scheduler'); ?></option>
                                     <option value="60"><?php esc_html_e('1 minute', 'ai-post-scheduler'); ?></option>
                                 </select>
+                                <p id="aips-history-auto-refresh-help" class="aips-sr-only" aria-live="polite"></p>
                             </div>
                         </div>
                         <div id="aips-history-timeline-content">

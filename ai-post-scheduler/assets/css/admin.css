@@ -123,6 +123,9 @@
 	--aips-z-modal: 1000;
 	--aips-z-popover: 1100;
 	--aips-z-tooltip: 1200;
+
+	/* Layout offsets */
+	--aips-admin-bar-height: 32px;
 }
 
 /* ==========================================================================
@@ -786,7 +789,7 @@
 	background: var(--aips-gray-50);
 	padding: var(--aips-space-4);
 	position: sticky;
-	top: calc(32px + var(--aips-space-4));
+	top: calc(var(--aips-admin-bar-height) + var(--aips-space-4));
 }
 
 .aips-history-timeline-header {
@@ -810,6 +813,11 @@
 	font-size: var(--aips-text-sm);
 	font-weight: var(--aips-font-medium);
 	color: var(--aips-gray-700);
+}
+
+.aips-history-auto-refresh-interval-label {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
 }
 
 .aips-form-select-sm {
@@ -1294,6 +1302,10 @@
    ========================================================================== */
 
 @media (max-width: 782px) {
+	:root {
+		--aips-admin-bar-height: 46px;
+	}
+
 	.aips-page-container {
 		margin: var(--aips-space-4) auto;
 		padding: 0 var(--aips-space-3);
