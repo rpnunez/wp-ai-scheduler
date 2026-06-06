@@ -159,6 +159,36 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 	
 	/**
+	 * Get all logs for multiple topics in a single query, grouped by topic ID.
+	 *
+	 * Replaces N calls to get_by_topic() when enriching a list of topics with
+	 * their log data (e.g. post counts and generation timestamps).
+	 *
+	 * @param int[] $topic_ids Array of author_topic IDs to fetch logs for.
+	 * @return array<int, array> Map of topic_id => array of log objects, ordered DESC by created_at.
+	 */
+	public function get_by_topic_ids(array $topic_ids) {
+		$topic_ids = array_filter(array_map('absint', $topic_ids));
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE author_topic_id IN ({$placeholders}) ORDER BY created_at DESC",
+				...$topic_ids
+			)
+		);
+
+		$grouped = array();
+		foreach ($rows as $row) {
+			$grouped[(int) $row->author_topic_id][] = $row;
+		}
+		return $grouped;
+	}
+
+	/**
 	 * Delete all logs for the given topic IDs.
 	 *
 	 * @param int[] $topic_ids Array of author_topic IDs whose logs should be deleted.

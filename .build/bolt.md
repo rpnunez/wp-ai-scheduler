@@ -26,3 +26,10 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+
+## 2026-06-06 - [N+1 Fix: Author Topics Log Enrichment]
+**Area:** `AIPS_Author_Topic_Logs_Repository`, `AIPS_Authors_Controller::ajax_get_author_topics()`
+**Status:** opened PR
+**PR:** ⚡ Bolt: Eliminate N+1 queries in author topics log enrichment
+**Learning:** `ajax_get_author_topics()` called `get_by_topic($topic->id)` once per topic inside the enrichment loop, resulting in N DB queries for N topics. Replacing with a single `get_by_topic_ids(array $topic_ids)` call before the loop reduces this to 1 query.
+**Action:** When augmenting a list with per-item repository data, always pre-fetch all items in one bulk call and build a lookup map before the loop.

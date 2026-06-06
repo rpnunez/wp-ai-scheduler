@@ -281,10 +281,12 @@ class AIPS_Authors_Controller {
 			$topic_ids[] = (int) $topic->id;
 		}
 		$latest_feedback_by_topic = $this->feedback_repository->get_latest_by_topics($topic_ids);
+		// Fetch all topic logs in one query to avoid an N+1 per topic.
+		$logs_by_topic_id = $this->logs_repository->get_by_topic_ids($topic_ids);
 		
 		// Add post count and latest feedback summary to each topic.
 		foreach ($topics as &$topic) {
-			$logs = $this->logs_repository->get_by_topic($topic->id);
+			$logs = $logs_by_topic_id[(int) $topic->id] ?? array();
 			$post_count = 0;
 			$topic->post_generated_at = null;
 			foreach ($logs as $log) {
