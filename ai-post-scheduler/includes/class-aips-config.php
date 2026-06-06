@@ -178,6 +178,8 @@ class AIPS_Config {
             'aips_site_content_language' => 'en',
             'aips_site_content_guidelines' => '',
             'aips_site_excluded_topics' => '',
+            'aips_generation_instructions' => '',
+            'aips_generation_instructions_enabled' => false,
             // Cache framework settings.
             'aips_enable_cache_system'  => true,
             'aips_cache_driver'         => 'array',
