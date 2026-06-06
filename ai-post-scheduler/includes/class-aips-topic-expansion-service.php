@@ -518,8 +518,8 @@ class AIPS_Topic_Expansion_Service {
 		// Create new history container
 		return $this->history_service->create('author_embeddings', array(
 			'author_id' => $author_id,
+			'creation_method' => 'author_embeddings',
 		));
 	}
 }
-
 

@@ -26,6 +26,13 @@
 	 * @type {Object}
 	 */
 	AIPS.HistoryModalShared = {
+		/**
+		 * Update modal header with container-specific title, actions, and status badge.
+		 *
+		 * @param {jQuery} $modal     Modal element.
+		 * @param {Object} container  History container object with header_title, header_actions, status, status_class.
+		 * @param {Object} options    Configuration with titleSelector, actionsSelector, statusSelector, defaultTitle.
+		 */
 		updateModalHeader: function ($modal, container, options) {
 			var settings = $.extend({
 				titleSelector: '',
@@ -69,6 +76,12 @@
 			$status.html(statusHtml);
 		},
 
+		/**
+		 * Reset modal header to default empty state.
+		 *
+		 * @param {jQuery} $modal  Modal element.
+		 * @param {Object} options Configuration with titleSelector, actionsSelector, statusSelector, defaultTitle.
+		 */
 		resetModalHeader: function ($modal, options) {
 			var settings = $.extend({
 				titleSelector: '',
@@ -88,6 +101,12 @@
 			}
 		},
 
+		/**
+		 * Extract log type IDs from a log row element.
+		 *
+		 * @param {jQuery} $row Log row element with data-type-ids or data-type-id attribute.
+		 * @return {Array} Array of trimmed type ID strings.
+		 */
 		getRowTypes: function ($row) {
 			return String($row.attr('data-type-ids') || $row.data('type-id') || '')
 				.split(',')
@@ -97,6 +116,13 @@
 				.filter(Boolean);
 		},
 
+		/**
+		 * Check if a row matches a specific type filter.
+		 *
+		 * @param {Array}  rowTypes Array of type IDs from the row.
+		 * @param {string} typeId   Type ID to match.
+		 * @return {boolean} True if row matches the type, false otherwise.
+		 */
 		rowMatchesType: function (rowTypes, typeId) {
 			var normalizedTypeId = String(typeId || '');
 
@@ -111,6 +137,12 @@
 			return rowTypes.indexOf(normalizedTypeId) !== -1;
 		},
 
+		/**
+		 * Apply type filter to log rows in the modal.
+		 *
+		 * @param {jQuery} $modal  Modal element containing log rows.
+		 * @param {jQuery} $button Filter button that was clicked.
+		 */
 		applyTypeFilter: function ($modal, $button) {
 			var typeId = $button.data('type-id');
 			var self = this;
@@ -126,6 +158,13 @@
 			});
 		},
 
+		/**
+		 * Toggle collapsible log detail section.
+		 *
+		 * @param {jQuery} $scope  Scope element containing the detail section.
+		 * @param {jQuery} $button Toggle button element.
+		 * @param {Object} labels  Label strings for expand/collapse states.
+		 */
 		toggleLogDetail: function ($scope, $button, labels) {
 			var targetSelector = $button.data('target');
 			var $target = $scope.find(targetSelector);
@@ -141,6 +180,11 @@
 			});
 		},
 
+		/**
+		 * Toggle JSON viewer mode between raw and formatted display.
+		 *
+		 * @param {jQuery} $toggle Checkbox toggle element.
+		 */
 		toggleJsonViewerMode: function ($toggle) {
 			var $renderer = $toggle.closest('.aips-history-log-renderer');
 
@@ -151,6 +195,12 @@
 			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
 		},
 
+		/**
+		 * Fallback copy method using textarea for older browsers.
+		 *
+		 * @param {jQuery} $target Element containing text to copy.
+		 * @return {boolean} True if copy succeeded, false otherwise.
+		 */
 		copyDetailFallback: function ($target) {
 			var $pre = $target.find('pre').first();
 			var range;
@@ -189,6 +239,13 @@
 			}
 		},
 
+		/**
+		 * Show copy success feedback to user.
+		 *
+		 * @param {jQuery} $button Button element to update.
+		 * @param {Object} labels  Label strings for copy/copied states.
+		 * @param {Object} options Configuration with disable and duration properties.
+		 */
 		showCopySuccess: function ($button, labels, options) {
 			var settings = $.extend({
 				disable: false,
@@ -210,6 +267,16 @@
 			}, settings.duration);
 		},
 
+		/**
+		 * Copy log detail text to clipboard.
+		 *
+		 * Uses modern Clipboard API with fallback to execCommand for older browsers.
+		 *
+		 * @param {jQuery} $scope  Scope element containing the target.
+		 * @param {jQuery} $button Copy button element.
+		 * @param {Object} labels  Label strings for copy/copied states.
+		 * @param {Object} options Configuration for success feedback.
+		 */
 		copyLogDetail: function ($scope, $button, labels, options) {
 			var targetSelector = $button.data('copy-target');
 			var $target = $scope.find(targetSelector);
@@ -238,14 +305,27 @@
 			}
 		},
 
+		/**
+		 * Initialize standalone history modal opener for use outside History page.
+		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
 		},
 
+		/**
+		 * Get localized strings for history modal.
+		 *
+		 * @return {Object} Localization object.
+		 */
 		getModalL10n: function () {
 			return window.aipsHistoryModalL10n || window.aipsHistoryL10n || {};
 		},
 
+		/**
+		 * Handle click on standalone history modal opener button.
+		 *
+		 * @param {Event} e Click event.
+		 */
 		onStandaloneOpenClick: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -322,6 +402,11 @@
 			});
 		},
 
+		/**
+		 * Show loading indicator in standalone modal.
+		 *
+		 * @param {jQuery} $modal Modal element.
+		 */
 		showStandaloneModalLoading: function ($modal) {
 			var l10n = this.getModalL10n();
 			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> '
@@ -338,6 +423,11 @@
 			$modal.fadeIn(200);
 		},
 
+		/**
+		 * Bind event listeners for standalone modal interactions.
+		 *
+		 * @param {jQuery} $modal Modal element.
+		 */
 		bindStandaloneModalEvents: function ($modal) {
 			var self = this;
 			var l10n = this.getModalL10n();
@@ -400,27 +490,56 @@
 	 */
 	AIPS.History = {
 
-		/* ------------------------------------------------------------------ */
-		/* State                                                                */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * State Properties
+		 * ======================================================================== */
 
-		/** @type {string} Current status filter value */
+		/** @type {string} Current status filter value (e.g., 'failed', 'success', 'pending') */
 		statusFilter: '',
 
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
+
+		/** @type {number} Minimum allowed heartbeat interval in seconds */
+		MIN_HEARTBEAT_INTERVAL: 5,
+
+		/** @type {string} Domain filter value (template, author-topic, author-post, etc.) */
 		domainFilter: '',
+
+		/** @type {string} Actor filter value (cron, manual, etc.) */
 		actorFilter: '',
+
+		/** @type {string} Correlation ID filter for request tracing */
 		correlationId: '',
+
+		/** @type {string} Date range filter start (YYYY-MM-DD format) */
 		dateFrom: '',
+
+		/** @type {string} Date range filter end (YYYY-MM-DD format) */
 		dateTo: '',
 
-		/* ------------------------------------------------------------------ */
-		/* Init / events                                                        */
-		/* ------------------------------------------------------------------ */
+		/** @type {boolean} Whether auto-refresh via heartbeat is currently enabled */
+		autoRefreshEnabled: false,
+
+		/** @type {number} Current heartbeat polling interval in seconds */
+		heartbeatIntervalSeconds: 5,
+
+		/** @type {number|null} Default WordPress heartbeat interval to restore on disable */
+		defaultHeartbeatInterval: null,
+
+		/** @type {boolean} Flag to prevent concurrent auto-refresh AJAX requests */
+		isAutoRefreshing: false,
+
+		/* ========================================================================
+		 * Initialization & Event Binding
+		 * ======================================================================== */
 
 		/**
-		 * Initialise the History module.
+		 * Initialize the History module.
+		 *
+		 * Reads initial filter/search state from DOM, binds event listeners,
+		 * initializes heartbeat auto-refresh controls, and opens a specific history
+		 * container if query params are present.
 		 */
 		init: function () {
 			if (!this.isHistoryPage()) {
@@ -436,80 +555,106 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.initHeartbeatAutoRefresh();
 			this.maybeOpenFromQuery();
 		},
 
 		/**
 		 * Register all event listeners for the History admin page.
+		 *
+		 * Uses delegated event handlers for dynamic content and namespaced
+		 * events for heartbeat and page exit cleanup.
 		 */
 		bindEvents: function () {
-			// Open logs modal.
+			/* --- Modal Events --- */
+			// Open logs modal
 			$(document).on('click', '.aips-view-history-logs', this.openLogsModal.bind(this));
 
-			// Collapsible log-detail sections inside the modal.
+			// Collapsible log-detail sections inside the modal
 			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
 
-			// Copy log detail to clipboard.
+			// Copy log detail to clipboard
 			$(document).on('click', '.aips-log-copy', this.copyLogDetail.bind(this));
 
-			// Log type filter tabs inside the modal.
+			// Log type filter tabs inside the modal
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
 			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
 
-			// Close modal via close button or backdrop click.
+			// Close modal via close button or backdrop click
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
 			$(document).on('click', '#aips-history-logs-modal', this.closeLogsModalOnOverlay.bind(this));
 
-			// Select-all and individual row checkboxes.
+			/* --- Bulk Selection Events --- */
+			// Select-all and individual row checkboxes
 			$(document).on('change', '#aips-cb-select-all', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 
-			// Bulk delete.
+			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
 
-			// Individual row delete.
+			/* --- Row Action Events --- */
+			// Individual row delete
 			$(document).on('click', '.aips-delete-history', this.deleteSingleItem.bind(this));
 
-			// Retry failed generation.
+			// Retry failed generation
 			$(document).on('click', '.aips-retry-generation', this.retryGeneration.bind(this));
 
-			// Clear history (failed / all).
+			// Clear history (failed / all)
 			$(document).on('click', '.aips-clear-history', this.clearHistory.bind(this));
 
-			// Reload button.
+			/* --- Reload & Pagination Events --- */
+			// Reload button
 			$(document).on('click', '#aips-reload-history-btn', this.onReloadClick.bind(this));
 
-			// Pagination links.
+			// Pagination links
 			$(document).on(
 				'click',
 				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next',
 				this.loadPage.bind(this)
 			);
 
-			// Filter button and status dropdown.
+			/* --- Filter & Search Events --- */
+			// Filter button and status dropdown
 			$(document).on('click', '#aips-filter-btn', this.applyFilter.bind(this));
 			$(document).on('change', '#aips-filter-status', this.applyFilter.bind(this));
 
-			// Search: live client-side row filter + server reload on Enter.
+			// Search: live client-side row filter + server reload on Enter
 			$(document).on('input', '#aips-history-search-input', this.onSearchInput.bind(this));
 			$(document).on('keydown', '#aips-history-search-input', this.onSearchKeydown.bind(this));
 			$(document).on('click', '#aips-history-search-clear', this.clearSearch.bind(this));
 			$(document).on('click', '.aips-clear-history-search-btn', this.clearSearch.bind(this));
 
-			// Export CSV.
+			/* --- Export Event --- */
+			// Export CSV
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+
+			/* --- Auto Refresh / Heartbeat Events --- */
+			// Auto refresh controls
+			$(document).on('change', '#aips-history-auto-refresh', this.toggleAutoRefresh.bind(this));
+			$(document).on('change', '#aips-history-heartbeat-interval', this.changeHeartbeatInterval.bind(this));
+
+			// Heartbeat tick (namespaced for cleanup)
+			$(document).on('heartbeat-tick.aipsHistory', this.onHeartbeatTick.bind(this));
+
+			// Page exit cleanup (namespaced)
+			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.onPageExit.bind(this));
 		},
 
 
 
 		/**
 		 * Auto-open a specific history container from query args when available.
+		 *
+		 * Supports two query parameters:
+		 * - `history_id`: Opens the logs modal for a specific history container ID
+		 * - `post_id`: Pre-fills the search box with the post ID and filters the table
 		 */
 		maybeOpenFromQuery: function () {
 			var params = new URLSearchParams(window.location.search || '');
 			var historyId = parseInt(params.get('history_id') || 0, 10);
 			var postId = parseInt(params.get('post_id') || 0, 10);
 
+			// Pre-fill search with post_id if provided
 			if (postId > 0 && !this.searchQuery) {
 				this.searchQuery = String(postId);
 				$('#aips-history-search-input').val(String(postId));
@@ -517,15 +662,18 @@
 				$('#aips-history-search-input').trigger('input');
 			}
 
+			// Auto-open modal for specific history_id
 			if (historyId > 0) {
 				this.openLogsModalFromId(historyId);
 			}
 		},
 
 		/**
-		 * Open history logs modal for a known history id.
+		 * Open history logs modal for a known history ID.
 		 *
-		 * @param {number} historyId History container id.
+		 * Creates a synthetic trigger element and calls openLogsModal with a mock event.
+		 *
+		 * @param {number} historyId History container ID.
 		 */
 		openLogsModalFromId: function (historyId) {
 			var $trigger = $('<button type="button" class="aips-view-history-logs" data-id="' + historyId + '"></button>');
@@ -536,9 +684,9 @@
 			});
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Logs modal                                                           */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Logs Modal - View History Details
+		 * ======================================================================== */
 
 		/**
 		 * Fetch and display all history_log entries for the clicked container.
@@ -623,10 +771,210 @@
 			});
 		},
 
+		/**
+		 * Check if current page is the History admin page.
+		 *
+		 * @return {boolean} True if on History page, false otherwise.
+		 */
 		isHistoryPage: function () {
 			return $('#aips-history-logs-modal').length > 0
 				|| $('#aips-history-search-input').length > 0
 				|| $('#aips-history-tbody').length > 0;
+		},
+
+		/* ========================================================================
+		 * Auto Refresh & Heartbeat
+		 * ======================================================================== */
+
+		/**
+		 * Initialize heartbeat auto-refresh controls and defaults.
+		 *
+		 * Checks for WordPress Heartbeat API availability and configures UI accordingly.
+		 * Disables controls if Heartbeat is unavailable.
+		 */
+		initHeartbeatAutoRefresh: function () {
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				// Disable auto-refresh controls and show unavailability message
+				$('#aips-history-auto-refresh')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-heartbeat-interval')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-auto-refresh-help').text(heartbeatUnavailableText);
+				return;
+			}
+
+			// Store default heartbeat interval for restoration on disable
+			this.defaultHeartbeatInterval = wp.heartbeat.interval();
+
+			// Clear help text (no errors)
+			$('#aips-history-auto-refresh-help').empty();
+
+			// Read initial interval from DOM
+			this.heartbeatIntervalSeconds = parseInt(
+				$('#aips-history-heartbeat-interval').val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+		},
+
+		/**
+		 * Enable or disable auto-refresh polling on heartbeat.
+		 *
+		 * @param {Event} e Change event from #aips-history-auto-refresh checkbox.
+		 */
+		toggleAutoRefresh: function (e) {
+			var enabled = $(e.currentTarget).is(':checked');
+			var $intervalSelect = $('#aips-history-heartbeat-interval');
+
+			// Update state
+			this.autoRefreshEnabled = enabled;
+			$intervalSelect.prop('disabled', !enabled);
+
+			// If disabling, restore defaults and exit
+			if (!enabled) {
+				this.disableAutoRefresh();
+				return;
+			}
+
+			// Read current interval selection
+			this.heartbeatIntervalSeconds = parseInt(
+				$intervalSelect.val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+
+			// Apply interval to WordPress Heartbeat API
+			this.applyHeartbeatInterval();
+
+			// Trigger immediate heartbeat connection
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
+		},
+
+		/**
+		 * Update heartbeat interval selection while auto-refresh is enabled.
+		 *
+		 * @param {Event} e Change event from #aips-history-heartbeat-interval select.
+		 */
+		changeHeartbeatInterval: function (e) {
+			// Update interval state
+			this.heartbeatIntervalSeconds = parseInt(
+				$(e.currentTarget).val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+
+			// Only apply if auto-refresh is currently enabled
+			if (!this.autoRefreshEnabled) {
+				return;
+			}
+
+			// Apply new interval to WordPress Heartbeat API
+			this.applyHeartbeatInterval();
+
+			// Trigger immediate reconnection with new interval
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
+		},
+
+		/**
+		 * Apply current heartbeat interval to WordPress Heartbeat API.
+		 *
+		 * Enforces minimum interval of MIN_HEARTBEAT_INTERVAL seconds.
+		 */
+		applyHeartbeatInterval: function () {
+			// Ensure Heartbeat API is available
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				return;
+			}
+
+			// Parse and validate interval
+			var parsedInterval = parseInt(this.heartbeatIntervalSeconds, 10);
+			if (isNaN(parsedInterval)) {
+				parsedInterval = this.MIN_HEARTBEAT_INTERVAL;
+			}
+
+			// Enforce minimum interval (5 seconds for quick refresh)
+			var interval = Math.max(
+				this.MIN_HEARTBEAT_INTERVAL,
+				parsedInterval
+			);
+
+			// Apply to WordPress Heartbeat API
+			wp.heartbeat.interval(interval);
+		},
+
+		/**
+		 * Restore the default heartbeat interval and disable auto-refresh state.
+		 *
+		 * Resets heartbeat to WordPress default and clears auto-refresh flags.
+		 */
+		disableAutoRefresh: function () {
+			// Restore default heartbeat interval if available
+			var defaultInterval = parseInt(this.defaultHeartbeatInterval, 10);
+			if (
+				window.wp
+				&& wp.heartbeat
+				&& typeof wp.heartbeat.interval === 'function'
+				&& this.defaultHeartbeatInterval !== null
+				&& this.defaultHeartbeatInterval !== undefined
+				&& !isNaN(defaultInterval)
+			) {
+				wp.heartbeat.interval(defaultInterval);
+			}
+
+			// Reset state flags
+			this.autoRefreshEnabled = false;
+			this.isAutoRefreshing = false;
+
+			// Update UI
+			$('#aips-history-auto-refresh').prop('checked', false);
+			$('#aips-history-heartbeat-interval').prop('disabled', true);
+		},
+
+		/**
+		 * Cleanup heartbeat state and namespaced listeners when leaving page.
+		 *
+		 * Prevents heartbeat interval changes from persisting across page loads.
+		 */
+		onPageExit: function () {
+			// Restore default heartbeat and clear state
+			this.disableAutoRefresh();
+
+			// Remove namespaced event listeners
+			$(document).off('heartbeat-tick.aipsHistory');
+			$(window).off('.aipsHistory');
+		},
+
+		/**
+		 * Handle heartbeat tick updates for background polling.
+		 *
+		 * Triggered by WordPress Heartbeat API at configured interval.
+		 * Reloads history table in the background without user interaction.
+		 */
+		onHeartbeatTick: function () {
+			// Skip if auto-refresh is disabled or already in progress
+			if (!this.autoRefreshEnabled || this.isAutoRefreshing) {
+				return;
+			}
+
+			// Set flag to prevent concurrent refresh requests
+			this.isAutoRefreshing = true;
+
+			// Reload current page via AJAX
+			this.reload(this.getCurrentPage(), { fromHeartbeat: true });
+		},
+
+		/**
+		 * Resolve current page number from URL query params.
+		 *
+		 * @return {number} Current page number (1-based), defaults to 1.
+		 */
+		getCurrentPage: function () {
+			var params = new URLSearchParams(window.location.search || '');
+			var paged = parseInt(params.get('paged') || '1', 10);
+			return !isNaN(paged) && paged > 0 ? paged : 1;
 		},
 
 		/**
@@ -689,9 +1037,9 @@
 			}
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Selection / bulk delete                                             */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Row Selection & Bulk Delete
+		 * ======================================================================== */
 
 		/**
 		 * Toggle all row checkboxes to match the select-all checkbox state.
@@ -831,9 +1179,9 @@
 			]);
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Retry generation                                                     */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Retry Generation
+		 * ======================================================================== */
 
 		/**
 		 * Retry a failed history entry via the `aips_retry_generation` AJAX action.
@@ -879,9 +1227,9 @@
 			});
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Clear history                                                        */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Clear History
+		 * ======================================================================== */
 
 		/**
 		 * Clear history by status (or all) after an accessible confirmation dialog.
@@ -935,9 +1283,9 @@
 			]);
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Reload / pagination / filter / search                               */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Reload, Pagination, Filters & Search
+		 * ======================================================================== */
 
 		/**
 		 * Handle a click on the Reload button.
@@ -952,14 +1300,21 @@
 		/**
 		 * Reload the history table via AJAX applying the current filter and search.
 		 *
-		 * @param {number} [paged=1] 1-based page number to load.
+		 * @param {number} [paged=current URL page] 1-based page number to load.
+		 *                                          Defaults to current `paged` URL query param.
 		 */
-		reload: function (paged) {
-			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+		reload: function (paged, options) {
+			paged = (paged === undefined || paged === null)
+				? this.getCurrentPage()
+				: Math.max(1, parseInt(paged, 10));
+			options = $.extend({
+				fromHeartbeat: false
+			}, options || {});
 
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
-			var $pagCell   = $('.aips-history-pagination-cell');
+			var $pagWrap   = $('#aips-history-pagination-wrap');
+			var $timeline  = $('#aips-history-timeline-content');
 			var $reloadBtn = $('#aips-reload-history-btn');
 			var origHtml   = $reloadBtn.html();
 
@@ -969,10 +1324,12 @@
 					text: aipsHistoryL10n.loading || 'Loading\u2026'
 				}));
 			}
-			$reloadBtn.prop('disabled', true).html(
-				'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
-				+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
-			);
+			if (!options.fromHeartbeat) {
+				$reloadBtn.prop('disabled', true).html(
+					'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
+					+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+				);
+			}
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -992,12 +1349,14 @@
 				},
 				success: function (response) {
 					if (!response.success) {
-						AIPS.Utilities.showToast(
-							response.data && response.data.message
-								? response.data.message
-								: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
-							'error'
-						);
+						if (!options.fromHeartbeat) {
+							AIPS.Utilities.showToast(
+								response.data && response.data.message
+									? response.data.message
+									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+								'error'
+							);
+						}
 						return;
 					}
 
@@ -1015,8 +1374,12 @@
 						}
 					}
 
-					if ($pagCell.length && response.data.pagination_html !== undefined) {
-						$pagCell.html(response.data.pagination_html);
+					if ($pagWrap.length && response.data.pagination_html !== undefined) {
+						$pagWrap.html(response.data.pagination_html);
+					}
+
+					if ($timeline.length && response.data.timeline_html !== undefined) {
+						$timeline.html(response.data.timeline_html);
 					}
 
 					// Refresh stat cards.
@@ -1042,10 +1405,15 @@
 					self.updateDeleteButton();
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					if (!options.fromHeartbeat) {
+						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					}
 				},
 				complete: function () {
-					$reloadBtn.prop('disabled', false).html(origHtml);
+					if (!options.fromHeartbeat) {
+						$reloadBtn.prop('disabled', false).html(origHtml);
+					}
+					self.isAutoRefreshing = false;
 				}
 			});
 		},

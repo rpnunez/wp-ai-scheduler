@@ -102,22 +102,36 @@ class AIPS_Generation_Execution_Runner {
 				)
 			);
 
-			$history = $this->history_service->create($history_type, $history_meta);
+			$history = $this->history_service->create(
+				$history_type,
+				array_merge($history_meta, array('creation_method' => $history_type))
+			);
 
 			if ($history) {
+				$failure_message = sprintf(
+					/* translators: %s: error message */
+					__('Generation run failed with unexpected error: %s', 'ai-post-scheduler'),
+					$e->getMessage()
+				);
+
 				$history->record(
 					'error',
-					sprintf(
-						/* translators: %s: error message */
-						__('Generation run failed with unexpected error: %s', 'ai-post-scheduler'),
-						$e->getMessage()
-					),
+					$failure_message,
 					array(
 						'event_type'   => 'generation_exception',
 						'event_status' => 'failed',
 					),
 					null,
 					array_merge($history_meta, array('error' => $e->getMessage()))
+				);
+
+				$this->history_service->update_history_record(
+					$history->get_id(),
+					array(
+						'status' => 'failed',
+						'error_message' => wp_strip_all_tags($e->getMessage()),
+						'completed_at' => AIPS_DateTime::now()->timestamp(),
+					)
 				);
 			}
 
