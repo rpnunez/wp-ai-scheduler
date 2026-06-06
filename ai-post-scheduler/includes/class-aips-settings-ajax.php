@@ -81,7 +81,7 @@ class AIPS_Settings_AJAX {
 
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
-			'updated' => $updated,
+			'updated' => array_keys($updated),
 		));
 	}
 
