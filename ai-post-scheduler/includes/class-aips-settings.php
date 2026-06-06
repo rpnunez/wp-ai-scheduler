@@ -72,6 +72,43 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_telemetry'],
         ));
+        // Cache Monitor settings
+        register_setting('aips_settings', 'aips_cache_monitor_enabled', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_index_enabled', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_index_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_metrics_enabled', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_metrics_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_event_retention_days', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_event_retention_days'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_max_index_entries', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_max_index_entries'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_preview_length', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_preview_length'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_full_value_debug_only', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_full_value_debug_only'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_live_refresh_enabled', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_live_refresh_enabled'],
+        ));
+        register_setting('aips_settings', 'aips_cache_monitor_live_refresh_interval', array(
+            'sanitize_callback' => 'absint',
+            'default'           => $defaults['aips_cache_monitor_live_refresh_interval'],
+        ));
         register_setting('aips_settings', 'aips_enable_retry', array(
             'sanitize_callback' => 'absint',
             'default'           => $defaults['aips_enable_retry'],
