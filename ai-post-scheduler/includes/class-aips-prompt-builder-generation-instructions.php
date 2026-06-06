@@ -40,7 +40,7 @@ class AIPS_Prompt_Builder_Generation_Instructions {
 	private static $registered = false;
 
 	/**
-	 * Register filter hooks if the feature is currently enabled.
+	 * Register filter hooks.
 	 *
 	 * Safe to call multiple times; hooks are only registered once per request.
 	 *
