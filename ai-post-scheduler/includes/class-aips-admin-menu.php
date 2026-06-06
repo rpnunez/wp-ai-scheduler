@@ -265,7 +265,7 @@ class AIPS_Admin_Menu {
         }
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Cache Monitor', 'ai-post-scheduler'),
             __('Cache Monitor', 'ai-post-scheduler'),
             'manage_options',
@@ -339,6 +339,7 @@ class AIPS_Admin_Menu {
                 'aips-telemetry',
                 'aips-seeder',
                 'aips-dev-tools',
+                'aips-cache-monitor',
             ),
             true
         );

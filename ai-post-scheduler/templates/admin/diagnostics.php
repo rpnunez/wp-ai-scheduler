@@ -28,9 +28,9 @@ if (!defined('ABSPATH')) {
 				</a>
 			<?php endforeach; ?>
 		</div>
-	</div>
 
-	<div class="aips-diagnostics-tab-content">
-		<?php $diagnostics_controller->render_tab_content($active_tab); ?>
+		<div class="aips-diagnostics-tab-content">
+			<?php $diagnostics_controller->render_tab_content($active_tab); ?>
+		</div>
 	</div>
 </div>

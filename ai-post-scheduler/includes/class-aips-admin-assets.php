@@ -170,7 +170,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_internal_links_assets();
 		}
 
-		if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR)) {
+        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
 			$this->enqueue_cache_monitor_assets();
 		}
 

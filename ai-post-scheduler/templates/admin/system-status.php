@@ -25,15 +25,40 @@ if (!defined('ABSPATH')) {
 
         <!-- Content -->
         <div class="aips-status-page">
+            <div class="aips-status-data-controls">
+                <button type="button" class="aips-btn aips-btn-ghost aips-btn-sm aips-status-sections-toggle" data-mode="expand">
+                    <?php esc_html_e('Expand all', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
+
+            <?php $section_index = 0; ?>
             <?php foreach ($system_info as $section => $checks) : ?>
                 <?php if (empty($checks)) continue; ?>
+                <?php
+                $section_title = ucwords(str_replace(array('_', '-'), ' ', (string) $section));
+                $is_expanded = $section_index < 3;
+                $section_body_id = 'aips-status-section-body-' . sanitize_title((string) $section) . '-' . (string) $section_index;
+                ?>
 
                 <!-- Section Panel -->
-                <div class="aips-content-panel">
+                <div class="aips-content-panel aips-status-data-panel">
                     <div class="aips-panel-header">
-                        <h2><?php echo esc_html(ucwords(str_replace(array('_', '-'), ' ', (string) $section))); ?></h2>
+                        <h2><?php echo esc_html($section_title); ?></h2>
+                        <button
+                            type="button"
+                            class="aips-btn aips-btn-ghost aips-btn-sm aips-panel-collapse-toggle"
+                            data-target="<?php echo esc_attr($section_body_id); ?>"
+                            aria-expanded="<?php echo esc_attr($is_expanded ? 'true' : 'false'); ?>"
+                        >
+                            <span class="dashicons <?php echo esc_attr($is_expanded ? 'dashicons-arrow-up-alt2' : 'dashicons-arrow-down-alt2'); ?>" aria-hidden="true"></span>
+                            <span class="aips-panel-collapse-label"><?php echo esc_html($is_expanded ? __('Collapse', 'ai-post-scheduler') : __('Expand', 'ai-post-scheduler')); ?></span>
+                        </button>
                     </div>
-                    <div class="aips-panel-body no-padding">
+                    <div
+                        id="<?php echo esc_attr($section_body_id); ?>"
+                        class="aips-panel-body no-padding aips-status-data-panel-body"
+                        <?php if (!$is_expanded) : ?>style="display:none;" aria-hidden="true"<?php else : ?>aria-hidden="false"<?php endif; ?>
+                    >
                         <table class="aips-table aips-health-check-table">
                             <thead>
                                 <tr>
@@ -95,9 +120,10 @@ if (!defined('ABSPATH')) {
                         </table>
                     </div>
                 </div>
+                <?php $section_index++; ?>
             <?php endforeach; ?>
 
-
+            <div class="aips-status-actions-sections">
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2><span class="dashicons dashicons-chart-area"></span> <?php esc_html_e('Unified Operations Health', 'ai-post-scheduler'); ?></h2>
@@ -340,101 +366,6 @@ if (!defined('ABSPATH')) {
                     <div class="aips-notifications-hygiene-result"></div>
                 </div>
             </div>
-
-            <!-- Operator Runbook -->
-            <div class="aips-content-panel">
-                <div class="aips-panel-header">
-                    <h2>
-                        <span class="dashicons dashicons-media-document"></span>
-                        <?php esc_html_e('Operator Runbook: Queue &amp; Generation Incidents', 'ai-post-scheduler'); ?>
-                    </h2>
-                </div>
-                <div class="aips-panel-body">
-                    <p><?php esc_html_e('Use the following procedures to investigate and recover from common queue and generation incidents. Follow each section in order and stop when the issue is resolved.', 'ai-post-scheduler'); ?></p>
-
-                    <!-- RB-1 -->
-                    <h3 class="aips-runbook-section">
-                        <span class="dashicons dashicons-search"></span>
-                        <?php esc_html_e('RB-1 — Stuck or Missing Generations', 'ai-post-scheduler'); ?>
-                    </h3>
-                    <ol>
-                        <li><?php esc_html_e('Check the "Queue Health" section above for stuck-job count and age.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Check "Scheduler Health" → WP-Cron events. If any hook shows 0 or duplicate instances, click "Flush WP-Cron Events" above.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Open History, filter by status = pending or partial, and note the correlation IDs.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('In History detail view, look for the last log entry to identify where the run stopped (ai_request, error, partial completion).', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('If AI Engine is unreachable, verify the API key in AI Engine settings and confirm the API quota has not been exhausted.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Use "Partial Generation Recovery" in the History detail view to resume any partially completed post.', 'ai-post-scheduler'); ?></li>
-                    </ol>
-
-                    <!-- RB-2 -->
-                    <h3 class="aips-runbook-section">
-                        <span class="dashicons dashicons-warning"></span>
-                        <?php esc_html_e('RB-2 — High Failure Rate / Retry Saturation', 'ai-post-scheduler'); ?>
-                    </h3>
-                    <ol>
-                        <li><?php esc_html_e('Check "Queue Health" → Retry Saturation percentage. A value above 50 % is a strong signal of an upstream API problem.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Check "Generation Metrics" → Recent Outcomes for repeated error messages. Common causes: rate limit exceeded, model unavailable, invalid prompt.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Review AI Engine logs (Settings → AI Engine → Logs) for raw API error responses.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('If a specific template is failing, open that template and test with a simplified prompt to rule out prompt-level errors.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('If the issue is transient API congestion, temporarily pause active schedules and resume after the outage window.', 'ai-post-scheduler'); ?></li>
-                    </ol>
-
-                    <!-- RB-3 -->
-                    <h3 class="aips-runbook-section">
-                        <span class="dashicons dashicons-block-default"></span>
-                        <?php esc_html_e('RB-3 — Circuit Breaker is Open', 'ai-post-scheduler'); ?>
-                    </h3>
-                    <ol>
-                        <li><?php esc_html_e('The circuit breaker opens after a configured number of consecutive AI failures to prevent runaway retry storms.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Check the underlying cause: review "Generation Metrics" → Recent Outcomes and AI Engine logs before resetting.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Once the root cause is resolved (API key valid, quota restored, model available), click the "Reset Circuit Breaker" button below.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('After resetting, monitor "Queue Health" for a few minutes to confirm failure rate returns to normal before enabling more schedules.', 'ai-post-scheduler'); ?></li>
-                    </ol>
-                    <?php if ( class_exists( 'AIPS_AI_Service' ) ) : ?>
-                    <div class="notice notice-warning inline aips-runbook-notice">
-                        <p>
-                            <?php esc_html_e('Circuit breaker reset is not available from this screen yet. Resolve the underlying AI service issue first, then use the plugin’s implemented recovery/reset workflow when available.', 'ai-post-scheduler'); ?>
-                        </p>
-                    </div>
-                    <?php endif; ?>
-
-                    <!-- RB-4 -->
-                    <h3 class="aips-runbook-section">
-                        <span class="dashicons dashicons-database"></span>
-                        <?php esc_html_e('RB-4 — Backlog Not Draining', 'ai-post-scheduler'); ?>
-                    </h3>
-                    <ol>
-                        <li><?php esc_html_e('Check "Queue Health" → Queue Backlog. A growing pending count indicates jobs are being created faster than they are consumed.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Verify WP-Cron is running: many hosts disable WP-Cron for busy sites. Consider adding a server-side cron to trigger wp-cron.php directly.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Check active schedule frequency. If you have many high-frequency schedules, the queue may be draining slower than it fills — consider reducing frequency or post quantity.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Use "Scheduler Health" → Active Schedules to audit and disable schedules that are no longer needed.', 'ai-post-scheduler'); ?></li>
-                    </ol>
-
-                    <!-- RB-5 -->
-                    <h3 class="aips-runbook-section">
-                        <span class="dashicons dashicons-image-filter"></span>
-                        <?php esc_html_e('RB-5 — High Image Generation Failure Rate', 'ai-post-scheduler'); ?>
-                    </h3>
-                    <ol>
-                        <li><?php esc_html_e('Check "Generation Metrics" → Image Generation Failure Rate. Values above 30 % warrant investigation.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Verify the image generation model is enabled in AI Engine settings and the API key has image-generation permissions.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Check if image prompts in templates contain content that might be rejected by the moderation layer.', 'ai-post-scheduler'); ?></li>
-                        <li><?php esc_html_e('Use "Partial Generation Recovery" to regenerate featured images for posts where generation failed.', 'ai-post-scheduler'); ?></li>
-                    </ol>
-
-                    <p class="aips-runbook-footer">
-                        <?php
-                        echo wp_kses(
-                            sprintf(
-                                /* translators: %s: link to docs/RUNBOOK.md on GitHub */
-                                __( 'Full runbook with escalation procedures: <a href="%s" target="_blank" rel="noopener noreferrer">docs/RUNBOOK.md</a>', 'ai-post-scheduler' ),
-                                esc_url( 'https://github.com/rpnunez/wp-ai-scheduler/blob/main/docs/RUNBOOK.md' )
-                            ),
-                            array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ) )
-                        );
-                        ?>
-                    </p>
-                </div>
             </div>
     <?php if (empty($embedded)) : ?>
         </div>

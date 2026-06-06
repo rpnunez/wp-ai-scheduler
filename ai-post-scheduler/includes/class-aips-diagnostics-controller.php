@@ -49,12 +49,6 @@ class AIPS_Diagnostics_Controller {
 			'status' => array(
 				'label' => __('System Status', 'ai-post-scheduler'),
 			),
-			'seeder' => array(
-				'label' => __('Seeder', 'ai-post-scheduler'),
-			),
-			'operations-insights' => array(
-				'label' => __('Operations Insights', 'ai-post-scheduler'),
-			),
 		);
 
 		if (self::is_tab_available('telemetry')) {
@@ -62,6 +56,20 @@ class AIPS_Diagnostics_Controller {
 				'label' => __('Telemetry', 'ai-post-scheduler'),
 			);
 		}
+
+		if (self::is_tab_available('cache-monitor')) {
+			$tabs['cache-monitor'] = array(
+				'label' => __('Cache Monitor', 'ai-post-scheduler'),
+			);
+		}
+
+		$tabs['insights'] = array(
+			'label' => __('Insights', 'ai-post-scheduler'),
+		);
+
+		$tabs['seeder'] = array(
+			'label' => __('Seeder', 'ai-post-scheduler'),
+		);
 
 		if (self::is_tab_available('dev-tools')) {
 			$tabs['dev-tools'] = array(
@@ -81,6 +89,11 @@ class AIPS_Diagnostics_Controller {
 		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
 
+		// Backward compatibility for previous Diagnostics tab key.
+		if ('operations-insights' === $active_tab) {
+			$active_tab = 'insights';
+		}
+
 		if (!self::is_tab_available($active_tab)) {
 			return self::DEFAULT_TAB;
 		}
@@ -95,7 +108,7 @@ class AIPS_Diagnostics_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
-		if (in_array($tab, array('status', 'seeder', 'operations-insights'), true)) {
+		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor'), true)) {
 			return true;
 		}
 
@@ -137,8 +150,12 @@ class AIPS_Diagnostics_Controller {
 			case 'seeder':
 				$this->render_seeder_tab();
 				break;
-			case 'operations-insights':
+				case 'operations-insights':
+			case 'insights':
 				$this->render_operations_insights_tab();
+				break;
+			case 'cache-monitor':
+				$this->render_cache_monitor_tab();
 				break;
 			case 'telemetry':
 				$this->render_telemetry_tab();
@@ -190,6 +207,16 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_telemetry_tab() {
 		$controller = new AIPS_Telemetry_Controller();
+		$controller->render_page(true);
+	}
+
+	/**
+	 * Render the Cache Monitor tab.
+	 *
+	 * @return void
+	 */
+	private function render_cache_monitor_tab() {
+		$controller = new AIPS_Cache_Monitor_Controller();
 		$controller->render_page(true);
 	}
 
