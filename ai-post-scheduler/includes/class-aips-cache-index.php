@@ -390,7 +390,8 @@ class AIPS_Cache_Index {
 			return strlen( $value );
 		}
 		if (is_int( $value ) || is_float( $value )) {
-			return PHP_INT_SIZE;
+			// PHP floats are always 8 bytes (IEEE 754 double) regardless of platform.
+			return 8;
 		}
 		if (is_bool( $value ) || is_null( $value )) {
 			return 1;
