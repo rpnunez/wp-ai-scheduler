@@ -735,8 +735,16 @@
 		 * Restore the page heartbeat interval and disable auto refresh state.
 		 */
 		disableAutoRefresh: function () {
-			if (window.wp && wp.heartbeat && typeof wp.heartbeat.interval === 'function' && this.defaultHeartbeatInterval !== null) {
-				wp.heartbeat.interval(this.defaultHeartbeatInterval);
+			var defaultInterval = parseInt(this.defaultHeartbeatInterval, 10);
+			if (
+				window.wp
+				&& wp.heartbeat
+				&& typeof wp.heartbeat.interval === 'function'
+				&& this.defaultHeartbeatInterval !== null
+				&& this.defaultHeartbeatInterval !== undefined
+				&& !isNaN(defaultInterval)
+			) {
+				wp.heartbeat.interval(defaultInterval);
 			}
 
 			this.autoRefreshEnabled = false;
