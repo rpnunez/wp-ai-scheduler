@@ -28,9 +28,9 @@ class AIPS_Prompt_Builder_Generation_Instructions {
 
 	/**
 	 * Priority at which the filter callbacks run.
-	 * Lower than default (10) so instructions are prepended early.
+	 * Higher than default (10) so this prepend runs late and remains the first block.
 	 */
-	const FILTER_PRIORITY = 5;
+	const FILTER_PRIORITY = 20;
 
 	/**
 	 * Whether the filter hooks have been registered in this request.
