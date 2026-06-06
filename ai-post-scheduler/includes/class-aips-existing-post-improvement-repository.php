@@ -329,7 +329,11 @@ $params[] = (int) $args['per_page'];
 $params[] = $offset;
 $items = $this->wpdb->get_results($this->wpdb->prepare($query, $params));
 
-$count_query = "SELECT COUNT(*) FROM {$this->table_suggestions} s INNER JOIN {$this->wpdb->posts} p ON p.ID = s.post_id WHERE {$where_sql}";
+$count_query = "SELECT COUNT(DISTINCT s.id)
+FROM {$this->table_suggestions} s
+INNER JOIN {$this->wpdb->posts} p ON p.ID = s.post_id
+INNER JOIN {$this->table_items} i ON i.suggestion_id = s.id AND i.status = 'pending'
+WHERE {$where_sql}";
 $total = (int) $this->wpdb->get_var($this->wpdb->prepare($count_query, array_slice($params, 0, count($params) - 2)));
 
 return array(

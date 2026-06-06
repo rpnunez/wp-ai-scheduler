@@ -13,6 +13,10 @@ private $schedule_id = 0;
 
 public function setUp(): void {
 parent::setUp();
+if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+$this->markTestSkipped('Unified schedule existing-post scan tests require the full WordPress test library.');
+}
+AIPS_DB_Manager::install_tables();
 $this->repository = new AIPS_Existing_Post_Improvement_Repository();
 $this->schedule_id = $this->repository->create_schedule(array(
 'title' => 'Unified Existing Scan',

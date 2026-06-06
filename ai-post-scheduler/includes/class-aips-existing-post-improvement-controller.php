@@ -59,7 +59,8 @@ AIPS_Ajax_Response::success($detail);
 public function ajax_apply_suggestions() {
 $this->assert_nonce_and_capability('aips_existing_posts_apply', 'nonce_apply');
 $suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
-$item_ids = isset($_POST['item_ids']) ? (array) $_POST['item_ids'] : array();
+$item_ids = isset($_POST['item_ids']) ? (array) wp_unslash($_POST['item_ids']) : array();
+$item_ids = $this->normalize_item_ids_for_suggestion($suggestion_id, $item_ids);
 $result = $this->service->apply_items($suggestion_id, $item_ids, get_current_user_id());
 if (is_wp_error($result)) {
 AIPS_Ajax_Response::error($result->get_error_message());
@@ -73,7 +74,8 @@ AIPS_Ajax_Response::success(array(
 public function ajax_dismiss_suggestions() {
 $this->assert_nonce_and_capability('aips_existing_posts_dismiss', 'nonce_dismiss');
 $suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
-$item_ids = isset($_POST['item_ids']) ? (array) $_POST['item_ids'] : array();
+$item_ids = isset($_POST['item_ids']) ? (array) wp_unslash($_POST['item_ids']) : array();
+$item_ids = $this->normalize_item_ids_for_suggestion($suggestion_id, $item_ids);
 $count = $this->service->dismiss_items($suggestion_id, $item_ids, get_current_user_id());
 AIPS_Ajax_Response::success(array(
 'message' => __('Suggestions dismissed.', 'ai-post-scheduler'),
@@ -148,5 +150,22 @@ AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 if (!current_user_can('manage_options')) {
 AIPS_Ajax_Response::permission_denied();
 }
+}
+
+private function normalize_item_ids_for_suggestion($suggestion_id, $item_ids) {
+if (in_array('all', array_map('strval', (array) $item_ids), true)) {
+$detail = $this->repository->get_suggestion_detail($suggestion_id);
+if (!$detail || empty($detail['items']) || !is_array($detail['items'])) {
+return array();
+}
+$pending_ids = array();
+foreach ($detail['items'] as $item) {
+if (isset($item->status) && 'pending' === $item->status) {
+$pending_ids[] = (int) $item->id;
+}
+}
+return array_values(array_filter($pending_ids));
+}
+return array_values(array_filter(array_map('absint', (array) $item_ids)));
 }
 }

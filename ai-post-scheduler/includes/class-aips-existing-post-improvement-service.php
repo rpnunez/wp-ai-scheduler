@@ -92,12 +92,16 @@ continue;
 }
 
 $items = $this->build_suggestions_for_post($post);
+if (empty($items)) {
+$this->repository->mark_suggestion_as($suggestion_id, 'closed');
+continue;
+}
+$metrics['suggestions_created']++;
 foreach ($items as $item) {
 $item['suggestion_id'] = $suggestion_id;
 $item['run_id'] = $run_id;
 $item['post_id'] = $post->ID;
 $this->repository->add_suggestion_item($item);
-$metrics['suggestions_created']++;
 }
 }
 
