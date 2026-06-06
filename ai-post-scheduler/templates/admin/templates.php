@@ -84,9 +84,7 @@ if (!defined('ABSPATH')) {
                             </td>
                             <td class="column-category">
                                 <?php 
-                                $cats = is_array($template->post_category)
-                                    ? $template->post_category
-                                    : AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
+                                $cats = AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
                                 if (!empty($cats)) {
                                     $cat_names = array();
                                     foreach ($cats as $cat_id) {
@@ -95,7 +93,11 @@ if (!defined('ABSPATH')) {
                                             $cat_names[] = esc_html($cat->name);
                                         }
                                     }
-                                    echo implode(', ', $cat_names) ?: '<span class="cell-meta">—</span>';
+                                    if (!empty($cat_names)) {
+                                        echo implode(', ', $cat_names);
+                                    } else {
+                                        echo '<span class="cell-meta">—</span>';
+                                    }
                                 } else {
                                     echo '<span class="cell-meta">—</span>';
                                 }

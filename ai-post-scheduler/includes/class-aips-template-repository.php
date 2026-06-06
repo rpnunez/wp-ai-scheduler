@@ -136,30 +136,8 @@ class AIPS_Template_Repository {
      * @return string|null JSON array string or null.
      */
     private function sanitise_post_categories( $value ) {
-        if ( is_null( $value ) || $value === '' || $value === 0 || $value === '0' ) {
-            return null;
-        }
-
-        if ( is_array( $value ) ) {
-            $ids = array_values( array_filter( array_map( 'intval', $value ) ) );
-            return empty( $ids ) ? null : wp_json_encode( $ids );
-        }
-
-        if ( is_int( $value ) ) {
-            return $value > 0 ? wp_json_encode( array( $value ) ) : null;
-        }
-
-        if ( is_string( $value ) ) {
-            $decoded = json_decode( $value, true );
-            if ( is_array( $decoded ) ) {
-                $ids = array_values( array_filter( array_map( 'intval', $decoded ) ) );
-                return empty( $ids ) ? null : wp_json_encode( $ids );
-            }
-            $int_val = (int) $value;
-            return $int_val > 0 ? wp_json_encode( array( $int_val ) ) : null;
-        }
-
-        return null;
+        $ids = AIPS_Template_Data::parse_post_categories( $value );
+        return empty( $ids ) ? null : wp_json_encode( $ids );
     }
 
     /**

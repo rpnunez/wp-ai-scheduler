@@ -283,31 +283,12 @@ class AIPS_Template_Entry {
 	/**
 	 * Normalise a raw post_category value to an array of integer term IDs.
 	 *
+	 * Delegates to AIPS_Template_Data::parse_post_categories() as the canonical implementation.
+	 *
 	 * @param mixed $value Raw value (int, string, JSON array string, PHP array, or null).
 	 * @return array<int>
 	 */
 	public static function parse_post_categories( $value ): array {
-		if ( is_null( $value ) || $value === '' || $value === 0 || $value === '0' ) {
-			return array();
-		}
-
-		if ( is_array( $value ) ) {
-			return array_values( array_filter( array_map( 'intval', $value ) ) );
-		}
-
-		if ( is_int( $value ) ) {
-			return $value > 0 ? array( $value ) : array();
-		}
-
-		if ( is_string( $value ) ) {
-			$decoded = json_decode( $value, true );
-			if ( is_array( $decoded ) ) {
-				return array_values( array_filter( array_map( 'intval', $decoded ) ) );
-			}
-			$int_val = (int) $value;
-			return $int_val > 0 ? array( $int_val ) : array();
-		}
-
-		return array();
+		return AIPS_Template_Data::parse_post_categories( $value );
 	}
 }
