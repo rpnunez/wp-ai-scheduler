@@ -44,6 +44,7 @@ class AIPS_Admin_Menu_Helper {
 		'seeder'               => 'aips-seeder',
 		'dev_tools'            => 'aips-dev-tools',
 		'diagnostics'          => 'aips-diagnostics',
+		'automations'          => 'aips-automations',
 		'research'             => 'aips-research',
 	);
 
@@ -58,6 +59,22 @@ class AIPS_Admin_Menu_Helper {
 		'operations_insights' => 'operations-insights',
 		'telemetry'          => 'telemetry',
 		'dev_tools'          => 'dev-tools',
+	);
+
+	/**
+	 * Map of logical automation page names to Automations tabs.
+	 *
+	 * @var array<string, string>
+	 */
+	private static $automations_tabs = array(
+		'schedule'       => 'schedules',
+		'campaigns'      => 'campaigns',
+		'templates'      => 'templates',
+		'authors'        => 'authors',
+		'author_topics'  => 'author-topics',
+		'sources'        => 'sources',
+		'internal_links' => 'internal-links',
+		'taxonomy'       => 'taxonomy',
 	);
 
 	/**
@@ -81,6 +98,17 @@ class AIPS_Admin_Menu_Helper {
 
 				return $url;
 			}
+		}
+
+		if (isset(self::$automations_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$automations_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-automations');
+
+			if (!empty($args)) {
+				$url = add_query_arg($args, $url);
+			}
+
+			return $url;
 		}
 
 		if (!isset(self::$page_slugs[$page])) {

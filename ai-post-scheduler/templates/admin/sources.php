@@ -36,7 +36,9 @@ if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
 if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 	$source_term_ids_map = array();
 }
+$is_embedded_sources_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_sources_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 
@@ -58,6 +60,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 					</button>
 				</div>
 			</div>
+<?php endif; ?>
 		</div>
 
 		<div class="aips-content-panel">
@@ -246,8 +249,10 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<?php endif; ?>
 		</div>
 
+<?php if (!$is_embedded_sources_view) : ?>
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap -->
+<?php endif; ?>
 
 <!-- Add / Edit Source Modal -->
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-modal-title">
