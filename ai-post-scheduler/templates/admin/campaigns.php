@@ -14,6 +14,7 @@ $campaigns_repo = AIPS_Campaigns_Repository::instance();
 $active_campaigns = $campaigns_repo->get_campaigns(false);
 $archived_campaigns = $campaigns_repo->get_campaigns(true);
 $stats = $campaigns_repo->get_summary_stats();
+$is_embedded_campaigns_view = !empty($embedded);
 
 $render_campaign_rows = static function($campaigns, $archived = false) {
 	foreach ($campaigns as $campaign) :
@@ -70,6 +71,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 	endforeach;
 };
 ?>
+<?php if (!$is_embedded_campaigns_view) : ?>
 <div class="wrap aips-wrap aips-admin-page">
 	<div class="aips-page-container aips-campaigns-page">
 		<div class="aips-page-header">
@@ -86,6 +88,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<div class="aips-stats-grid">
 			<div class="aips-stat-card"><div class="aips-stat-content"><span class="aips-stat-number"><?php echo esc_html($stats['total']); ?></span><span class="aips-stat-label"><?php esc_html_e('Total Campaigns', 'ai-post-scheduler'); ?></span></div></div>
@@ -148,5 +151,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 				<?php endif; ?>
 			</div>
 		</div>
+<?php if (!$is_embedded_campaigns_view) : ?>
 	</div>
 </div>
+<?php endif; ?>
