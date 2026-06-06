@@ -233,8 +233,8 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<h2 class="aips-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
-		<div class="aips-modal-body">
 		<form id="aips-feedback-form">
+			<div class="aips-modal-body">
 			<input type="hidden" id="feedback_topic_id" name="topic_id" value="">
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
@@ -251,13 +251,12 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
 				<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
 			</div>
-
+			</div>
 			<div class="aips-modal-footer form-actions">
 				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
 				<button type="submit" class="aips-btn aips-btn-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
 			</div>
 		</form>
-		</div>
 	</div>
 </div>
 
