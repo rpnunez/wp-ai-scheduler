@@ -29,6 +29,7 @@ class AIPS_Admin_Menu_Helper {
 		'templates'            => 'aips-templates',
 		'authors'              => 'aips-authors',
 		'post_slices'          => 'aips-post-slices',
+		'content_components'   => 'aips-content-components',
 		'schedule'             => 'aips-schedule',
 		'campaigns'            => 'aips-campaigns',
 		'campaign_wizard'      => 'aips-campaign-wizard',
