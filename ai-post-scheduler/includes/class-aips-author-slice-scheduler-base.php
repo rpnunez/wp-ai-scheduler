@@ -200,10 +200,20 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 			);
 
 			// Log critical failure to history
-			$history = $this->history_service->create( $this->get_history_type(), array() );
+			$history_type = $this->get_history_type();
+			$history = $this->history_service->create(
+				$history_type,
+				array(
+					'creation_method' => $history_type,
+				)
+			);
+			$failure_message = sprintf( 'Failed to schedule retry for %d failed author slices', count( $failed_authors ) );
+			if ( ! $history ) {
+				return;
+			}
 			$history->record(
 				'retry_schedule_failed',
-				sprintf( 'Failed to schedule retry for %d failed author slices', count( $failed_authors ) ),
+				$failure_message,
 				array(
 					'event_type'   => 'retry_schedule_failed',
 					'event_status' => 'failed',
@@ -211,6 +221,14 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 				null,
 				array(
 					'failed_author_ids' => $author_ids,
+				)
+			);
+			$this->history_service->update_history_record(
+				$history->get_id(),
+				array(
+					'status' => 'failed',
+					'error_message' => $failure_message,
+					'completed_at' => AIPS_DateTime::now()->timestamp(),
 				)
 			);
 		}
