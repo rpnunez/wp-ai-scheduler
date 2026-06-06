@@ -37,8 +37,10 @@ class AIPS_Cache_Index {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->enabled     = (bool) AIPS_Config::get_instance()->get_option( 'aips_cache_monitor_index_enabled', true );
-		$this->max_entries = (int) AIPS_Config::get_instance()->get_option( 'aips_cache_monitor_max_index_entries', 10000 );
+		// Read directly from WordPress options here to avoid re-entering the
+		// config cache while the cache index itself is being initialised.
+		$this->enabled     = (bool) get_option( 'aips_cache_monitor_index_enabled', true );
+		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
 	}
 
 	// -----------------------------------------------------------------------
@@ -166,7 +168,7 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_orphans(): int {
-		$driver = AIPS_Config::get_instance()->get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -198,7 +200,7 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows inserted/updated.
 	 */
 	public function rebuild_from_db(): int {
-		$driver = AIPS_Config::get_instance()->get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -299,7 +301,7 @@ class AIPS_Cache_Index {
 		$serialized  = maybe_serialize( $value );
 		$value_size  = strlen( $serialized );
 		$value_type  = $this->resolve_value_type( $value );
-		$driver_name = AIPS_Config::get_instance()->get_option( 'aips_cache_driver', 'array' );
+		$driver_name = (string) get_option( 'aips_cache_driver', 'array' );
 
 		$tags_raw   = isset( $context['tags'] ) && is_array( $context['tags'] ) ? implode( ',', $context['tags'] ) : '';
 		$tier       = isset( $context['tier'] ) ? sanitize_key( $context['tier'] ) : '';

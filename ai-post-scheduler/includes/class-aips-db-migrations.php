@@ -57,7 +57,9 @@ class AIPS_DB_Migrations {
 	 * @return void
 	 */
 	public static function check_and_run() {
-		$current_version = AIPS_Config::get_instance()->get_option( 'aips_db_version' );
+		// Read the stored DB version directly to avoid bootstrapping the config
+		// cache before the schema upgrade path has had a chance to run.
+		$current_version = (string) get_option( 'aips_db_version', '0' );
 
 		if ( version_compare( $current_version, AIPS_VERSION, '<' ) ) {
 			$instance = new self();
