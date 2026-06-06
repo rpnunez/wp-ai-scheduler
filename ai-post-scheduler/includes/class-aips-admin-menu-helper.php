@@ -36,12 +36,28 @@ class AIPS_Admin_Menu_Helper {
 		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',
 		'system_status'        => 'aips-status',
+		'operations_insights'   => 'aips-operations-insights',
 		'telemetry'            => 'aips-telemetry',
 		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
 		'history'              => 'aips-history',
 		'seeder'               => 'aips-seeder',
+		'dev_tools'            => 'aips-dev-tools',
+		'diagnostics'          => 'aips-diagnostics',
 		'research'             => 'aips-research',
+	);
+
+	/**
+	 * Map of logical diagnostics page names to Diagnostics tabs.
+	 *
+	 * @var array<string, string>
+	 */
+	private static $diagnostics_tabs = array(
+		'system_status'      => 'status',
+		'seeder'             => 'seeder',
+		'operations_insights' => 'operations-insights',
+		'telemetry'          => 'telemetry',
+		'dev_tools'          => 'dev-tools',
 	);
 
 	/**
@@ -52,6 +68,17 @@ class AIPS_Admin_Menu_Helper {
 	 * @return string The escaped admin URL.
 	 */
 	public static function get_page_url($page, $args = array()) {
+		if (isset(self::$diagnostics_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$diagnostics_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-diagnostics');
+
+			if (!empty($args)) {
+				$url = add_query_arg($args, $url);
+			}
+
+			return $url;
+		}
+
 		if (!isset(self::$page_slugs[$page])) {
 			// Fallback to the provided slug if it's not in our map
 			$slug = $page;
