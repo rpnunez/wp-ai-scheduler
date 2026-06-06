@@ -873,6 +873,7 @@ class AIPS_Admin_Assets {
                 'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
                 'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
                 'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
+                'typeExistingPostsLabel'         => __('Existing Post Scans', 'ai-post-scheduler'),
                 'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
                 'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
                 /* translators: %d: number of overdue schedules */
@@ -999,6 +1000,21 @@ class AIPS_Admin_Assets {
                 true
             );
 
+            wp_enqueue_script(
+                'aips-admin-existing-posts',
+                AIPS_PLUGIN_URL . 'assets/js/admin-existing-posts.js',
+                array('aips-admin-script', 'aips-admin-generated-posts'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_enqueue_style(
+                'aips-admin-existing-posts',
+                AIPS_PLUGIN_URL . 'assets/css/admin-existing-posts.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             // Pass client-side threshold from config to JS
             $config = AIPS_Config::get_instance();
             $client_threshold = (int) $config->get_option('generated_posts_log_threshold_client', 20);
@@ -1039,6 +1055,21 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
+            ));
+
+            wp_localize_script('aips-admin-existing-posts', 'aipsExistingPostsL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonceFetch' => wp_create_nonce('aips_existing_posts_fetch'),
+                'nonceReview' => wp_create_nonce('aips_existing_posts_review'),
+                'nonceApply' => wp_create_nonce('aips_existing_posts_apply'),
+                'nonceDismiss' => wp_create_nonce('aips_existing_posts_dismiss'),
+                'nonceSchedule' => wp_create_nonce('aips_existing_posts_schedule'),
+                'detailError' => __('Failed to load suggestion details.', 'ai-post-scheduler'),
+                'updateError' => __('Failed to update suggestions.', 'ai-post-scheduler'),
+                'updateSuccess' => __('Suggestion update completed.', 'ai-post-scheduler'),
+                'selectItemsError' => __('Select at least one suggestion item.', 'ai-post-scheduler'),
+                'originalLabel' => __('Original', 'ai-post-scheduler'),
+                'suggestedLabel' => __('Suggested', 'ai-post-scheduler'),
             ));
 
             // AI Edit Modal (for Generated Posts page)

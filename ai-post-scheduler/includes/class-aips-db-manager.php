@@ -33,6 +33,10 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
+        'aips_existing_post_scan_schedules',
+        'aips_existing_post_scan_runs',
+        'aips_existing_post_suggestions',
+        'aips_existing_post_suggestion_items',
     );
 
     public function __construct() {
@@ -94,6 +98,10 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
+        $table_existing_scan_schedules = $tables['aips_existing_post_scan_schedules'];
+        $table_existing_scan_runs      = $tables['aips_existing_post_scan_runs'];
+        $table_existing_suggestions    = $tables['aips_existing_post_suggestions'];
+        $table_existing_suggestion_items = $tables['aips_existing_post_suggestion_items'];
 
         $sql = array();
 
@@ -227,6 +235,95 @@ class AIPS_DB_Manager {
             KEY circuit_state (circuit_state),
             KEY campaign_mode (campaign_mode),
             KEY season_end_date (season_end_date)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_existing_scan_schedules (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            title varchar(255) NOT NULL,
+            description text,
+            frequency varchar(50) NOT NULL DEFAULT 'daily',
+            category_filters longtext,
+            include_generated_posts tinyint(1) NOT NULL DEFAULT 0,
+            status varchar(20) NOT NULL DEFAULT 'active',
+            next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            lock_token varchar(64) DEFAULT '',
+            lock_expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            run_cursor bigint(20) unsigned NOT NULL DEFAULT 0,
+            retry_count int NOT NULL DEFAULT 0,
+            last_error text,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY status_next_run (status, next_run),
+            KEY lock_expires_at (lock_expires_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_existing_scan_runs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            schedule_id bigint(20) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'running',
+            posts_scanned int NOT NULL DEFAULT 0,
+            suggestions_created int NOT NULL DEFAULT 0,
+            suggestions_applied int NOT NULL DEFAULT 0,
+            posts_skipped_unchanged int NOT NULL DEFAULT 0,
+            failures_count int NOT NULL DEFAULT 0,
+            error_summary text,
+            ai_trace longtext,
+            started_by varchar(20) DEFAULT 'cron',
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY schedule_started (schedule_id, started_at),
+            KEY status (status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_existing_suggestions (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            run_id bigint(20) NOT NULL,
+            schedule_id bigint(20) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            priority varchar(20) NOT NULL DEFAULT 'medium',
+            severity varchar(20) NOT NULL DEFAULT 'medium',
+            content_hash varchar(64) DEFAULT '',
+            freshness_marker varchar(50) DEFAULT '',
+            last_scanned_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            applied_items_count int NOT NULL DEFAULT 0,
+            dismissed_items_count int NOT NULL DEFAULT 0,
+            metadata longtext,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY post_status (post_id, status),
+            KEY run_id (run_id),
+            KEY schedule_id (schedule_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_existing_suggestion_items (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            suggestion_id bigint(20) NOT NULL,
+            run_id bigint(20) NOT NULL,
+            post_id bigint(20) NOT NULL,
+            component varchar(50) NOT NULL,
+            item_type varchar(50) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            original_value longtext,
+            suggested_value longtext,
+            rationale text,
+            confidence decimal(5,2) NOT NULL DEFAULT 0,
+            diff_payload longtext,
+            audit_meta longtext,
+            decided_by bigint(20) NOT NULL DEFAULT 0,
+            decided_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            applied_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY suggestion_status (suggestion_id, status),
+            KEY post_component (post_id, component)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (

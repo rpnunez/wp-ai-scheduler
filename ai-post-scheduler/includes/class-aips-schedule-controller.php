@@ -68,6 +68,7 @@ class AIPS_Schedule_Controller {
             AIPS_Unified_Schedule_Service::TYPE_TEMPLATE => 'aips_generate_scheduled_posts',
             AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC => 'aips_generate_author_topics',
             AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST => 'aips_generate_author_posts',
+            AIPS_Unified_Schedule_Service::TYPE_EXISTING_POST_SCAN => 'aips_process_existing_post_scans',
         );
 
         $next_runs = array();
@@ -82,6 +83,7 @@ class AIPS_Schedule_Controller {
             'aips_process_author_post_slice',
             'aips_retry_failed_author_slices_posts',
             'aips_process_bulk_batch',
+            'aips_process_existing_post_scans',
             'aips_process_author_embeddings',
             'aips_index_posts_batch',
         );
@@ -810,6 +812,10 @@ class AIPS_Schedule_Controller {
                 'post_ids' => $post_ids,
                 'post_id'  => $post_id,
                 'edit_url' => $edit_url,
+            ));
+        } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_EXISTING_POST_SCAN) {
+            AIPS_Ajax_Response::success(array(
+                'message' => __('Existing-post scan executed successfully.', 'ai-post-scheduler'),
             ));
         } else {
             AIPS_Ajax_Response::success(array(), __('Schedule executed successfully.', 'ai-post-scheduler'));

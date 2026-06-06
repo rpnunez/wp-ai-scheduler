@@ -1,0 +1,51 @@
+.aips-existing-posts-table .aips-btn-group {
+flex-wrap: wrap;
+gap: 6px;
+}
+
+.aips-existing-posts-toolbar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin: 12px 0;
+gap: 8px;
+}
+
+.aips-existing-review-component {
+border: 1px solid #e5e7eb;
+border-radius: 6px;
+padding: 12px;
+margin-bottom: 12px;
+background: #fff;
+}
+
+.aips-existing-review-item {
+margin: 10px 0;
+padding: 10px;
+border: 1px solid #edf2f7;
+border-radius: 6px;
+background: #fafafa;
+}
+
+.aips-existing-review-diff {
+display: grid;
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 12px;
+margin-top: 8px;
+}
+
+.aips-existing-review-diff pre {
+white-space: pre-wrap;
+word-break: break-word;
+background: #fff;
+border: 1px solid #e5e7eb;
+border-radius: 4px;
+padding: 8px;
+max-height: 240px;
+overflow: auto;
+}
+
+.aips-existing-review-rationale {
+margin: 8px 0 0;
+color: #4b5563;
+}
