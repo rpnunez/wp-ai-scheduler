@@ -23,6 +23,11 @@ class AIPS_Automations_Controller {
 	private const DEFAULT_TAB = 'schedules';
 
 	/**
+	 * Author topics tab key.
+	 */
+	public const TAB_AUTHOR_TOPICS = 'author-topics';
+
+	/**
 	 * Render the Automations page.
 	 *
 	 * @return void
@@ -70,11 +75,11 @@ class AIPS_Automations_Controller {
 			),
 		);
 
-		if ('author-topics' === $active_tab) {
+		if (self::TAB_AUTHOR_TOPICS === $active_tab) {
 			$tabs = array_merge(
 				array_slice($tabs, 0, 4, true),
 				array(
-					'author-topics' => array(
+					self::TAB_AUTHOR_TOPICS => array(
 						'label'   => __("Author's Topics", 'ai-post-scheduler'),
 						'special' => true,
 					),
@@ -109,7 +114,7 @@ class AIPS_Automations_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
-		if ('author-topics' === $tab) {
+		if (self::TAB_AUTHOR_TOPICS === $tab) {
 			return self::get_request_author_id() > 0;
 		}
 
@@ -132,7 +137,7 @@ class AIPS_Automations_Controller {
 			'tab'  => $tab,
 		);
 
-		if ('author-topics' === $tab) {
+		if (self::TAB_AUTHOR_TOPICS === $tab) {
 			$author_id = self::get_request_author_id();
 			if ($author_id > 0) {
 				$args['author_id'] = $author_id;
@@ -162,7 +167,7 @@ class AIPS_Automations_Controller {
 			case 'sources':
 				$this->render_sources_tab();
 				break;
-			case 'author-topics':
+			case self::TAB_AUTHOR_TOPICS:
 				$this->render_author_topics_tab();
 				break;
 			case 'internal-links':
@@ -303,6 +308,12 @@ class AIPS_Automations_Controller {
 	 * @return int
 	 */
 	private static function get_request_author_id() {
-		return (int) absint((int) filter_input(INPUT_GET, 'author_id', FILTER_VALIDATE_INT));
+		$author_id = filter_input(INPUT_GET, 'author_id', FILTER_VALIDATE_INT);
+
+		if (null === $author_id || false === $author_id) {
+			return 0;
+		}
+
+		return absint($author_id);
 	}
 }

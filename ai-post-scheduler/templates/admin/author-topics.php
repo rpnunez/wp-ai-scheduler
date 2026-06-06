@@ -20,7 +20,8 @@ $authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 if (!$author_id) {
 	?>
 	<?php if (!$is_embedded_author_topics_view) : ?>
-	<div class="wrap aips-wrap"><div class="aips-page-container">
+	<div class="wrap aips-wrap">
+		<div class="aips-page-container">
 	<?php endif; ?>
 		<div class="notice notice-error"><p>
 			<?php esc_html_e('Invalid author ID.', 'ai-post-scheduler'); ?>
@@ -28,7 +29,8 @@ if (!$author_id) {
 		</p></div>
 	<?php if (!$is_embedded_author_topics_view) : ?>
 		</div>
-	</div><?php endif; ?>
+	</div>
+	<?php endif; ?>
 	<?php
 	return;
 }
@@ -39,7 +41,8 @@ $author = $authors_repository->get_by_id($author_id);
 if (!$author) {
 	?>
 	<?php if (!$is_embedded_author_topics_view) : ?>
-	<div class="wrap aips-wrap"><div class="aips-page-container">
+	<div class="wrap aips-wrap">
+		<div class="aips-page-container">
 	<?php endif; ?>
 		<div class="notice notice-error"><p>
 			<?php esc_html_e('Author not found.', 'ai-post-scheduler'); ?>
@@ -47,7 +50,8 @@ if (!$author) {
 		</p></div>
 	<?php if (!$is_embedded_author_topics_view) : ?>
 		</div>
-	</div><?php endif; ?>
+	</div>
+	<?php endif; ?>
 	<?php
 	return;
 }

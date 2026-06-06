@@ -86,7 +86,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, 'author-topics')) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -270,7 +270,7 @@ class AIPS_Admin_Assets {
 	 * @return string
 	 */
 	private function get_current_tab_key() {
-		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_SPECIAL_CHARS);
 
 		if (!is_string($tab) || '' === $tab) {
 			return '';
@@ -504,7 +504,7 @@ class AIPS_Admin_Assets {
 		  $current_page = $this->get_current_page_slug();
 		  $current_tab  = $this->get_current_tab_key();
 		  $is_author_topics_context = self::PAGE_AUTHOR_TOPICS === $current_page
-			  || (self::PAGE_AUTOMATIONS === $current_page && 'author-topics' === $current_tab);
+			  || (self::PAGE_AUTOMATIONS === $current_page && AIPS_Automations_Controller::TAB_AUTHOR_TOPICS === $current_tab);
 		  $is_authors_listing_context = self::PAGE_AUTHORS === $current_page
 			  || (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
 
