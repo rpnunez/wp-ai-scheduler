@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "xdebug.php-debug",
+    "bmewburn.vscode-intelephense-client",
+    "ms-azuretools.vscode-docker",
+    "editorconfig.editorconfig",
+    "eamodio.gitlens"
+  ]
+}
