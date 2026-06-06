@@ -72,7 +72,7 @@ class AIPS_Settings_AJAX {
 
 			$sanitized_value = sanitize_option($option_name, $raw_value);
 			update_option($option_name, $sanitized_value);
-			$updated[$option_name] = $sanitized_value;
+			$updated[] = $option_name;
 		}
 
 		if (empty($updated)) {

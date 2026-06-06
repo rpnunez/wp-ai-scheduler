@@ -205,7 +205,8 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 		$this->assertTrue($response['success']);
 		$this->assertSame('existing-model', get_option('aips_ai_model'));
-		$this->assertArrayNotHasKey('aips_ai_model', $response['data']['updated']);
+		$this->assertNotContains('aips_ai_model', $response['data']['updated']);
+		$this->assertContains('aips_enable_retry', $response['data']['updated']);
 		$this->assertSame(1, (int) get_option('aips_enable_retry'));
 	}
 }
