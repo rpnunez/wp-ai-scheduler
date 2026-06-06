@@ -40,8 +40,8 @@ class AIPS_Cache_Index {
 		// Use get_option() directly to avoid routing through AIPS_Config's internal
 		// AIPS_Cache instance. AIPS_Config::get_option() with a non-null default
 		// always calls config_cache->set() after reading from the DB, which would
-		// trigger the index on the config cache, which calls upsert_index_row(),
-		// which calls get_option() again — producing infinite recursion.
+		// trigger the index on the config cache (record_set() -> upsert_index_row()),
+		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
 		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
