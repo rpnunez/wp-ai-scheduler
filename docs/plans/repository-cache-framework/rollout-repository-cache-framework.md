@@ -74,9 +74,9 @@ For each repository migrated:
 ### Low risk
 
 - [x] `AIPS_Template_Repository`
-- [ ] `AIPS_Voices_Repository`
-- [ ] `AIPS_Article_Structure_Repository`
-- [ ] `AIPS_Prompt_Section_Repository`
+- [x] `AIPS_Voices_Repository`
+- [x] `AIPS_Article_Structure_Repository`
+- [x] `AIPS_Prompt_Section_Repository`
 
 ### Medium risk
 
