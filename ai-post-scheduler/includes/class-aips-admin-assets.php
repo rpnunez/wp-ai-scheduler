@@ -45,6 +45,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_HISTORY = 'aips-history';
 	private const PAGE_ONBOARDING = 'aips-onboarding';
 	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
+	private const PAGE_AUTOMATIONS = 'aips-automations';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
@@ -85,7 +86,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors')) {
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -93,7 +94,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
 			$this->enqueue_templates_assets();
 		}
 
@@ -105,7 +106,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_structures_assets();
 		}
 
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -114,6 +115,7 @@ class AIPS_Admin_Assets {
             || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
             || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
             || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+            || $this->is_automations_tab($page, 'campaigns')
         ) {
 			$this->enqueue_campaigns_assets();
 		}
@@ -150,11 +152,11 @@ class AIPS_Admin_Assets {
 			$this->enqueue_status_2_assets();
 		}
 
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy')) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->is_automations_tab($page, 'sources')) {
 			$this->enqueue_sources_assets();
 		}
 
@@ -166,7 +168,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_telemetry_assets();
 		}
 
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
 			$this->enqueue_internal_links_assets();
 		}
 
@@ -189,6 +191,21 @@ class AIPS_Admin_Assets {
 		}
 
 		return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
+	}
+
+	/**
+	 * Determine whether the Automations page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_automations_tab($page, $tab) {
+		if (self::PAGE_AUTOMATIONS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Automations_Controller::get_active_tab_key();
 	}
 
     /**

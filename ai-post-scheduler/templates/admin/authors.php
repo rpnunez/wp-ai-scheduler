@@ -11,7 +11,10 @@ $structures_repository = null;
 $authors = array();
 $article_structures = array();
 
-if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
+$current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+$is_embedded_authors_view = !empty($embedded);
+
+if ($current_page === 'aips-authors' || $is_embedded_authors_view) {
     $authors_repository = new AIPS_Authors_Repository();
     $authors = $authors_repository->get_all();
 
@@ -921,4 +924,3 @@ $site_ctx = AIPS_Site_Context::get();
 </script>
 
 	<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
-

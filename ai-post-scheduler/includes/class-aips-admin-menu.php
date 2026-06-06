@@ -56,6 +56,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Automations', 'ai-post-scheduler'),
+            __('Automations', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-automations',
+            array($this, 'render_automations_page')
+        );
+
+        add_submenu_page(
+            null,
             __('Templates', 'ai-post-scheduler'),
             __('Templates', 'ai-post-scheduler'),
             'manage_options',
@@ -82,7 +91,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',
@@ -119,7 +128,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -128,7 +137,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Campaigns', 'ai-post-scheduler'),
             __('Campaigns', 'ai-post-scheduler'),
             'manage_options',
@@ -182,7 +191,7 @@ class AIPS_Admin_Menu {
             array($this, 'render_history_page')
         );
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Sources', 'ai-post-scheduler'),
             __('Sources', 'ai-post-scheduler'),
             'manage_options',
@@ -191,7 +200,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Taxonomy', 'ai-post-scheduler'),
             __('Taxonomy', 'ai-post-scheduler'),
             'manage_options',
@@ -200,7 +209,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Internal Links', 'ai-post-scheduler'),
             __('Internal Links', 'ai-post-scheduler'),
             'manage_options',
@@ -295,7 +304,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -312,14 +321,11 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics') {
-            return 'aips-authors';
-        }
-        if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
-            return 'aips-campaigns';
-        }
         if ($this->is_diagnostics_child_page($page)) {
             return 'aips-diagnostics';
+        }
+        if ($this->is_automations_child_page($page)) {
+            return 'aips-automations';
         }
         return $submenu_file;
     }
@@ -346,6 +352,30 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Determine whether a hidden page belongs under Automations.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_automations_child_page($page) {
+        return in_array(
+            $page,
+            array(
+                'aips-schedule',
+                'aips-campaigns',
+                'aips-templates',
+                'aips-authors',
+                'aips-sources',
+                'aips-taxonomy',
+                'aips-internal-links',
+                'aips-author-topics',
+                AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
+            ),
+            true
+        );
+    }
+
+    /**
      * Render the main dashboard page.
      *
      * Fetches statistics and recent activity from the database to display
@@ -355,6 +385,16 @@ class AIPS_Admin_Menu {
      */
     public function render_dashboard_page() {
         $controller = new AIPS_Dashboard_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Automations page.
+     *
+     * @return void
+     */
+    public function render_automations_page() {
+        $controller = new AIPS_Automations_Controller();
         $controller->render_page();
     }
 
