@@ -22,7 +22,12 @@ if (!defined('ABSPATH')) {
 
 		<div class="aips-tab-nav">
 			<?php foreach ($tabs as $tab_key => $tab) : ?>
-				<?php $tab_classes = 'aips-tab-link' . ($active_tab === $tab_key ? ' active' : ''); ?>
+				<?php
+				$tab_classes = 'aips-tab-link' . ($active_tab === $tab_key ? ' active' : '');
+				if (!empty($tab['special'])) {
+					$tab_classes .= ' aips-tab-link-special';
+				}
+				?>
 				<a href="<?php echo esc_url($automations_controller->get_tab_url($tab_key)); ?>" class="<?php echo esc_attr($tab_classes); ?>">
 					<?php echo esc_html($tab['label']); ?>
 				</a>

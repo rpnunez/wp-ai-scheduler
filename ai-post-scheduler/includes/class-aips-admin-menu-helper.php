@@ -71,6 +71,7 @@ class AIPS_Admin_Menu_Helper {
 		'campaigns'      => 'campaigns',
 		'templates'      => 'templates',
 		'authors'        => 'authors',
+		'author_topics'  => 'author-topics',
 		'sources'        => 'sources',
 		'internal_links' => 'internal-links',
 		'taxonomy'       => 'taxonomy',

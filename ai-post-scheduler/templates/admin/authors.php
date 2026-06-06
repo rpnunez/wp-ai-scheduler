@@ -220,7 +220,7 @@ $site_ctx = AIPS_Site_Context::get();
                                     </td>
                                     <td>
                                         <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
-                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-author-topics', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                            <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'author_topics', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php echo esc_html(sprintf(_n('%d Topic', '%d Topics', $total_topics, 'ai-post-scheduler'), $total_topics)); ?>
                                             </a>

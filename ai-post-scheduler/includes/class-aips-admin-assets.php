@@ -86,7 +86,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors')) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, 'author-topics')) {
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -263,6 +263,21 @@ class AIPS_Admin_Assets {
 
         return sanitize_key(wp_unslash($page));
     }
+
+	/**
+	 * Get the current sanitized tab key from the request.
+	 *
+	 * @return string
+	 */
+	private function get_current_tab_key() {
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+		if (!is_string($tab) || '' === $tab) {
+			return '';
+		}
+
+		return sanitize_key(wp_unslash($tab));
+	}
 
 	/**
 	 * Check whether the current admin hook includes a page slug.
@@ -486,6 +501,13 @@ class AIPS_Admin_Assets {
      * @param string $hook The current admin page hook.
      */
     private function enqueue_authors_assets($hook) {
+		  $current_page = $this->get_current_page_slug();
+		  $current_tab  = $this->get_current_tab_key();
+		  $is_author_topics_context = self::PAGE_AUTHOR_TOPICS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && 'author-topics' === $current_tab);
+		  $is_authors_listing_context = self::PAGE_AUTHORS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
+
           wp_enqueue_style(
             'aips-authors-style',
             AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -509,7 +531,7 @@ class AIPS_Admin_Assets {
           );
 
           // Localize script with translations and nonce
-          $page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
+          $page_author_id = $is_author_topics_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
 
           wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
@@ -696,7 +718,7 @@ class AIPS_Admin_Assets {
 
           // Pass page-context data (not i18n) in a separate object so it stays
           // semantically distinct from the translation strings above.
-          $deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
+          $deep_link_author_id = $is_authors_listing_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
           wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,

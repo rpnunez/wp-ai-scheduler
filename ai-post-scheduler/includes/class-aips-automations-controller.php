@@ -32,8 +32,8 @@ class AIPS_Automations_Controller {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
-		$tabs = $this->get_tabs();
 		$active_tab = self::get_active_tab_key();
+		$tabs = $this->get_tabs($active_tab);
 		$automations_controller = $this;
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/automations.php';
@@ -42,10 +42,11 @@ class AIPS_Automations_Controller {
 	/**
 	 * Get available Automations tabs.
 	 *
-	 * @return array<string, array{label:string}>
+	 * @param string $active_tab Active tab key.
+	 * @return array<string, array{label:string, special?:bool}>
 	 */
-	public function get_tabs() {
-		return array(
+	public function get_tabs($active_tab = '') {
+		$tabs = array(
 			'schedules' => array(
 				'label' => __('Schedules', 'ai-post-scheduler'),
 			),
@@ -68,6 +69,21 @@ class AIPS_Automations_Controller {
 				'label' => __('Taxonomy', 'ai-post-scheduler'),
 			),
 		);
+
+		if ('author-topics' === $active_tab) {
+			$tabs = array_merge(
+				array_slice($tabs, 0, 4, true),
+				array(
+					'author-topics' => array(
+						'label'   => __("Author's Topics", 'ai-post-scheduler'),
+						'special' => true,
+					),
+				),
+				array_slice($tabs, 4, null, true)
+			);
+		}
+
+		return $tabs;
 	}
 
 	/**
@@ -93,6 +109,10 @@ class AIPS_Automations_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
+		if ('author-topics' === $tab) {
+			return self::get_request_author_id() > 0;
+		}
+
 		return in_array(
 			$tab,
 			array('schedules', 'campaigns', 'templates', 'authors', 'sources', 'internal-links', 'taxonomy'),
@@ -107,13 +127,19 @@ class AIPS_Automations_Controller {
 	 * @return string
 	 */
 	public function get_tab_url($tab) {
-		return add_query_arg(
-			array(
-				'page' => self::PAGE_SLUG,
-				'tab'  => $tab,
-			),
-			admin_url('admin.php')
+		$args = array(
+			'page' => self::PAGE_SLUG,
+			'tab'  => $tab,
 		);
+
+		if ('author-topics' === $tab) {
+			$author_id = self::get_request_author_id();
+			if ($author_id > 0) {
+				$args['author_id'] = $author_id;
+			}
+		}
+
+		return add_query_arg($args, admin_url('admin.php'));
 	}
 
 	/**
@@ -135,6 +161,9 @@ class AIPS_Automations_Controller {
 				break;
 			case 'sources':
 				$this->render_sources_tab();
+				break;
+			case 'author-topics':
+				$this->render_author_topics_tab();
 				break;
 			case 'internal-links':
 				$this->render_internal_links_tab();
@@ -256,5 +285,24 @@ class AIPS_Automations_Controller {
 	private function render_taxonomy_tab() {
 		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+	}
+
+	/**
+	 * Render author topics tab content.
+	 *
+	 * @return void
+	 */
+	private function render_author_topics_tab() {
+		$embedded = true;
+		include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+	}
+
+	/**
+	 * Read and sanitize author_id from request.
+	 *
+	 * @return int
+	 */
+	private static function get_request_author_id() {
+		return (int) absint((int) filter_input(INPUT_GET, 'author_id', FILTER_VALIDATE_INT));
 	}
 }
