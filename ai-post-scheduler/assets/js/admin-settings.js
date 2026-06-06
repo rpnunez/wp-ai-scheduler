@@ -35,7 +35,9 @@
 				return;
 			}
 
-			var $link = $('#aips-settings-tab-nav .aips-tab-link[data-tab="' + hash + '"]');
+			var $link = $('#aips-settings-tab-nav .aips-tab-link').filter(function() {
+				return $(this).attr('data-tab') === hash;
+			});
 			if ($link.length) {
 				$link.trigger('click');
 			}
@@ -62,7 +64,11 @@
 
 			var $form = $(this);
 			var $activeTab = $form.find('.aips-tab-content:visible').first();
-			var $submit = $activeTab.find('input[type="submit"], button[type="submit"]').first();
+			var $submit = $activeTab.find('input[type="submit"], button[type="submit"]');
+			if (!$submit.length) {
+				$submit = $form.find('input[type="submit"], button[type="submit"]');
+			}
+			$submit = $submit.first();
 			var defaultLabel = $submit.is('input') ? $submit.val() : $submit.text();
 			var savingLabel = (window.aipsSettingsL10n && aipsSettingsL10n.saving) ? aipsSettingsL10n.saving : 'Saving...';
 			var settings = AIPS.collectSettingsPayload($activeTab);

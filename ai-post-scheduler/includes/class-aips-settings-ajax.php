@@ -66,8 +66,12 @@ class AIPS_Settings_AJAX {
 				continue;
 			}
 
+			if (is_array($raw_value) && 'aips_notification_preferences' !== $option_name) {
+				continue;
+			}
+
 			$sanitized_value = sanitize_option($option_name, $raw_value);
-			update_option($option_name, $sanitized_value, false);
+			update_option($option_name, $sanitized_value);
 			$updated[$option_name] = $sanitized_value;
 		}
 

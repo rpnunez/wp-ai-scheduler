@@ -188,6 +188,26 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertFalse($response['success']);
 		$this->assertSame('invalid_request', $response['data']['code']);
 	}
+
+	public function test_ajax_save_settings_ignores_array_payload_for_scalar_option() {
+		update_option('aips_ai_model', 'existing-model');
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_ai_model' => array('bad' => 'value'),
+			'aips_enable_retry' => '1',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('existing-model', get_option('aips_ai_model'));
+		$this->assertArrayNotHasKey('aips_ai_model', $response['data']['updated']);
+		$this->assertSame(1, (int) get_option('aips_enable_retry'));
+	}
 }
 
 class Test_AIPS_Settings_Ajax_Fake_AI_Service implements AIPS_AI_Service_Interface {

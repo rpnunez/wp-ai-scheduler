@@ -48,9 +48,12 @@ class AIPS_Settings {
 
 		$hooks_registered = true;
 
-		add_action('update_option_aips_enable_cache_system', function() {
+		$reset_cache_flag = function() {
 			AIPS_Cache::reset_system_enabled_flag();
-		});
+		};
+
+		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
+		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
 	}
 
 	/**
