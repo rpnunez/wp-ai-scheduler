@@ -389,7 +389,10 @@ class AIPS_Cache_Index {
 			// Exact for strings — the most common cached type (HTML, JSON, etc.).
 			return strlen( $value );
 		}
-		if (is_int( $value ) || is_float( $value )) {
+		if (is_int( $value )) {
+			return PHP_INT_SIZE;
+		}
+		if (is_float( $value )) {
 			// PHP floats are always 8 bytes (IEEE 754 double) regardless of platform.
 			return 8;
 		}
