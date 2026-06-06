@@ -51,7 +51,7 @@ class AIPS_Cache_Index {
 		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
 		$normalized_enabled = filter_var( $enabled, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
-		$this->enabled     = null === $normalized_enabled ? (bool) $enabled : $normalized_enabled;
+		$this->enabled     = null === $normalized_enabled ? false : $normalized_enabled;
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
 	}
 
@@ -181,7 +181,7 @@ class AIPS_Cache_Index {
 	 */
 	public function prune_orphans(): int {
 		// Use get_option() directly — see constructor comment.
-		$driver = get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -214,7 +214,7 @@ class AIPS_Cache_Index {
 	 */
 	public function rebuild_from_db(): int {
 		// Use get_option() directly — see constructor comment.
-		$driver = get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -316,7 +316,7 @@ class AIPS_Cache_Index {
 		$value_type  = $this->resolve_value_type( $value );
 		// Use get_option() directly to avoid routing through AIPS_Config's internal
 		// AIPS_Cache instance, which would trigger record_set() recursively.
-		$driver_name = get_option( 'aips_cache_driver', 'array' );
+		$driver_name = (string) get_option( 'aips_cache_driver', 'array' );
 
 		$tags_raw   = isset( $context['tags'] ) && is_array( $context['tags'] ) ? implode( ',', $context['tags'] ) : '';
 		$tier       = isset( $context['tier'] ) ? sanitize_key( $context['tier'] ) : '';
