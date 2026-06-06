@@ -643,9 +643,7 @@ class AIPS_Cache_Monitor_Service {
 		$labels = array(
 			'array'          => __( 'In-Memory Array', 'ai-post-scheduler' ),
 			'db'             => __( 'Database', 'ai-post-scheduler' ),
-			'redis'          => __( 'Redis', 'ai-post-scheduler' ),
 			'wp_object_cache' => __( 'WP Object Cache', 'ai-post-scheduler' ),
-			'session'        => __( 'PHP Session', 'ai-post-scheduler' ),
 		);
 
 		return $labels[ $driver_name ] ?? $driver_name;

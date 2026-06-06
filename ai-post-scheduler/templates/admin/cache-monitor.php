@@ -625,7 +625,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<?php endif; ?>
 
 						<?php if (!empty($driver_info['memory_info'])): ?>
-						<h3><?php esc_html_e('Redis Memory Info', 'ai-post-scheduler'); ?></h3>
+						<h3><?php esc_html_e('Cache Backend Memory Info', 'ai-post-scheduler'); ?></h3>
 						<table class="aips-table">
 							<tbody>
 								<?php foreach ($driver_info['memory_info'] as $mk => $mv): ?>

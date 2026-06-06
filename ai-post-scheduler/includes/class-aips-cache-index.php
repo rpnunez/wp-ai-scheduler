@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
  *
  * Maintains a plugin-owned metadata index for every value written via
  * AIPS_Cache::set(). This makes cache entries enumerable even when the
- * underlying driver (Redis, WP Object Cache) cannot list its keys.
+ * underlying driver (for example, WP Object Cache) cannot list its keys.
  *
  * The index stores metadata only — never the cached value. Writes are
  * fire-and-forget: any DB error is silently swallowed so that a failing

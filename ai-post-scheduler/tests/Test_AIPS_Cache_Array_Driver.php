@@ -4,8 +4,7 @@
  *
  * Covers AIPS_Cache_Array_Driver, AIPS_Cache_Wp_Object_Cache_Driver, AIPS_Cache,
  * and AIPS_Cache_Factory. All tests run in the in-process fallback environment
- * (no WordPress test library required) so they never touch a real database or
- * Redis server.
+ * (no WordPress test library required) so they never touch a real database.
  *
  * @package AI_Post_Scheduler
  * @since   2.3.0
@@ -1063,4 +1062,3 @@ $method->setAccessible( true );
 $this->assertSame( 'testkey', $method->invoke( $this->driver, 'testkey' ) );
 }
 }
-
