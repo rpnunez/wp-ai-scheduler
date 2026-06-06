@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Prompt_Section_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to prompt sections.
  */
 class AIPS_Prompt_Section_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -42,17 +47,12 @@ class AIPS_Prompt_Section_Repository {
 	 * @var string The prompt sections table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
 
-	/**
-	 * @var AIPS_Cache In-request identity-map cache.
-	 */
-	private $cache = null;
-	
 	/**
 	 * Initialize the repository.
 	 */
@@ -60,78 +60,87 @@ class AIPS_Prompt_Section_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_prompt_sections';
-		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY ) );
 	}
-	
+
 	/**
 	 * Get all prompt sections with optional filtering.
 	 *
-	 * Results are cached for the duration of the request using the named
-	 * named cache instance so repeat calls within the same request
-	 * do not issue additional DB queries.
+	 * Results are cached for the duration of the request using the named cache
+	 * instance so repeat calls within the same request do not issue additional DB
+	 * queries.
 	 *
 	 * @param bool $active_only Optional. Return only active sections. Default false.
 	 * @return array Array of section objects.
 	 */
 	public function get_all($active_only = false) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'all', array('active_only' => $active_only) );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$where  = $active_only ? "WHERE is_active = 1" : "";
-		$result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
-		$this->cache->set( $key, $result );
-		return $result;
+		return $this->cache_read(
+			'prompt_sections.get_all',
+			array(
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $active_only ) {
+				$where  = $active_only ? 'WHERE is_active = 1' : '';
+				return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+			}
+		);
 	}
-	
+
 	/**
 	 * Get a single prompt section by ID.
 	 *
-	 * Non-null results are cached for the duration of the request. Null
-	 * results (record not found) are always fetched fresh from the DB.
+	 * Non-null results are cached for the duration of the request. Null results
+	 * (record not found) are always fetched fresh from the DB.
 	 *
 	 * @param int $id Section ID.
 	 * @return object|null Section object or null if not found.
 	 */
 	public function get_by_id($id) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'id', array('id' => $id) );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$result = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			$id
-		) );
-		if ( $result !== null ) {
-			$this->cache->set( $key, $result );
-		}
-		return $result;
+		$id = absint( $id );
+
+		return $this->cache_read(
+			'prompt_sections.get_by_id',
+			array(
+				'section_id' => $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE id = %d",
+						$id
+					)
+				);
+			}
+		);
 	}
-	
+
 	/**
 	 * Get a prompt section by its key.
 	 *
-	 * Non-null results are cached for the duration of the request. Null
-	 * results (record not found) are always fetched fresh from the DB.
+	 * Non-null results are cached for the duration of the request. Null results
+	 * (record not found) are always fetched fresh from the DB.
 	 *
 	 * @param string $section_key Section key.
 	 * @return object|null Section object or null if not found.
 	 */
 	public function get_by_key($section_key) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'key', array('section_key' => $section_key) );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$result = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE section_key = %s",
-			$section_key
-		) );
-		if ( $result !== null ) {
-			$this->cache->set( $key, $result );
-		}
-		return $result;
+		$section_key = sanitize_key($section_key);
+
+		return $this->cache_read(
+			'prompt_sections.get_by_key',
+			array(
+				'section_key' => $section_key,
+			),
+			function() use ( $section_key ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE section_key = %s",
+						$section_key
+					)
+				);
+			}
+		);
 	}
-	
+
 	/**
 	 * Get multiple sections by their keys.
 	 *
@@ -139,25 +148,36 @@ class AIPS_Prompt_Section_Repository {
 	 * @return array Array of section objects indexed by section_key.
 	 */
 	public function get_by_keys($section_keys) {
+		$section_keys = array_values(array_unique(array_map('sanitize_key', (array) $section_keys)));
+		$section_keys = array_values(array_filter($section_keys, 'strlen'));
+		sort($section_keys);
+
 		if (empty($section_keys)) {
 			return array();
 		}
-		
-		$placeholders = implode(',', array_fill(0, count($section_keys), '%s'));
-		$sections = $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE section_key IN ($placeholders)",
-			$section_keys
-		));
-		
-		// Index by section_key for easy lookup
-		$indexed = array();
-		foreach ($sections as $section) {
-			$indexed[$section->section_key] = $section;
-		}
-		
-		return $indexed;
+
+		return $this->cache_read(
+			'prompt_sections.get_by_keys',
+			array(
+				'section_keys' => $section_keys,
+			),
+			function() use ( $section_keys ) {
+				$placeholders = implode(',', array_fill(0, count($section_keys), '%s'));
+				$sections = $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE section_key IN ($placeholders)",
+					$section_keys
+				));
+
+				$indexed = array();
+				foreach ($sections as $section) {
+					$indexed[$section->section_key] = $section;
+				}
+
+				return $indexed;
+			}
+		);
 	}
-	
+
 	/**
 	 * Create a new prompt section.
 	 *
@@ -184,18 +204,25 @@ class AIPS_Prompt_Section_Repository {
 			'created_at' => $now,
 			'updated_at' => $now,
 		);
-		
+
 		$format = array('%s', '%s', '%s', '%s', '%d', '%d', '%d');
-		
+
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-		
+
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'prompt_section',
+				array(
+					'section_id' => $this->wpdb->insert_id,
+					'section_key' => $insert_data['section_key'],
+				),
+				'prompt_section_created'
+			);
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Update an existing prompt section.
 	 *
@@ -206,39 +233,39 @@ class AIPS_Prompt_Section_Repository {
 	public function update($id, $data) {
 		$update_data = array();
 		$format = array();
-		
+
 		if (isset($data['name'])) {
 			$update_data['name'] = sanitize_text_field($data['name']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['description'])) {
 			$update_data['description'] = sanitize_textarea_field($data['description']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['section_key'])) {
 			$update_data['section_key'] = sanitize_key($data['section_key']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['content'])) {
 			$update_data['content'] = wp_kses_post($data['content']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['is_active'])) {
 			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
 			$format[] = '%d';
 		}
-		
+
 		if (empty($update_data)) {
 			return false;
 		}
 
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		$format[] = '%d';
-		
+
 		$result = $this->wpdb->update(
 			$this->table_name,
 			$update_data,
@@ -248,12 +275,18 @@ class AIPS_Prompt_Section_Repository {
 		) !== false;
 
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'prompt_section',
+				array(
+					'section_id' => absint( $id ),
+				),
+				'prompt_section_updated'
+			);
 		}
 
 		return $result;
 	}
-	
+
 	/**
 	 * Delete a prompt section by ID.
 	 *
@@ -263,11 +296,17 @@ class AIPS_Prompt_Section_Repository {
 	public function delete($id) {
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_PROMPT_SECTION_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'prompt_section',
+				array(
+					'section_id' => absint( $id ),
+				),
+				'prompt_section_deleted'
+			);
 		}
 		return $result;
 	}
-	
+
 	/**
 	 * Toggle section active status.
 	 *
@@ -278,7 +317,7 @@ class AIPS_Prompt_Section_Repository {
 	public function set_active($id, $is_active) {
 		return $this->update($id, array('is_active' => $is_active));
 	}
-	
+
 	/**
 	 * Count sections by status.
 	 *
@@ -288,19 +327,25 @@ class AIPS_Prompt_Section_Repository {
 	 * }
 	 */
 	public function count_by_status() {
-		$results = $this->wpdb->get_row("
-			SELECT
-				COUNT(*) as total,
-				SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
-			FROM {$this->table_name}
-		");
-		
-		return array(
-			'total' => isset($results->total) ? (int) $results->total : 0,
-			'active' => isset($results->active) ? (int) $results->active : 0,
+		return $this->cache_read(
+			'prompt_sections.count_by_status',
+			array(),
+			function() {
+				$results = $this->wpdb->get_row("
+					SELECT
+						COUNT(*) as total,
+						SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+					FROM {$this->table_name}
+				");
+
+				return array(
+					'total' => isset($results->total) ? (int) $results->total : 0,
+					'active' => isset($results->active) ? (int) $results->active : 0,
+				);
+			}
 		);
 	}
-	
+
 	/**
 	 * Check if a section key already exists.
 	 *
@@ -309,19 +354,82 @@ class AIPS_Prompt_Section_Repository {
 	 * @return bool True if key exists, false otherwise.
 	 */
 	public function key_exists($section_key, $exclude_id = 0) {
-		if ($exclude_id > 0) {
-			$result = $this->wpdb->get_var($this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s AND id != %d",
-				$section_key,
-				$exclude_id
-			));
-		} else {
-			$result = $this->wpdb->get_var($this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s",
-				$section_key
-			));
-		}
-		
-		return $result > 0;
+		$section_key = sanitize_key($section_key);
+		$exclude_id  = absint($exclude_id);
+
+		return $this->cache_read(
+			'prompt_sections.key_exists',
+			array(
+				'section_key' => $section_key,
+				'exclude_id' => $exclude_id,
+			),
+			function() use ( $section_key, $exclude_id ) {
+				if ($exclude_id > 0) {
+					$result = $this->wpdb->get_var($this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s AND id != %d",
+						$section_key,
+						$exclude_id
+					));
+				} else {
+					$result = $this->wpdb->get_var($this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s",
+						$section_key
+					));
+				}
+
+				return $result > 0;
+			}
+		);
+	}
+
+	/**
+	 * Return the repository cache group for prompt-section reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_prompt_sections';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'prompt_sections.get_all' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections' ),
+				'description' => 'Cache prompt section lists, including active-only filtering.',
+			),
+			'prompt_sections.get_by_id' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections', 'prompt_section:{section_id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache prompt sections by ID.',
+			),
+			'prompt_sections.get_by_key' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections', 'prompt_section:key:{section_key}' ),
+				'cache_null'  => false,
+				'description' => 'Cache prompt sections by section key.',
+			),
+			'prompt_sections.get_by_keys' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections' ),
+				'description' => 'Cache bulk prompt section lookups by key set.',
+			),
+			'prompt_sections.count_by_status' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections', 'dashboard_counts' ),
+				'description' => 'Cache prompt section status counts.',
+			),
+			'prompt_sections.key_exists' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'prompt_sections' ),
+				'description' => 'Cache prompt section key-existence checks.',
+			),
+		);
 	}
 }

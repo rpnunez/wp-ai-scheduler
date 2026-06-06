@@ -12,10 +12,15 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Post_Slices_Repository
  */
 class AIPS_Post_Slices_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null
@@ -31,11 +36,6 @@ class AIPS_Post_Slices_Repository {
 	 * @var wpdb
 	 */
 	private $wpdb;
-
-	/**
-	 * @var AIPS_Cache
-	 */
-	private $cache = null;
 
 	/**
 	 * @return self
@@ -55,7 +55,6 @@ class AIPS_Post_Slices_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_post_slices';
-		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY ) );
 	}
 
 	/**
@@ -65,28 +64,25 @@ class AIPS_Post_Slices_Repository {
 	 * @return array
 	 */
 	public function get_all($active_only = false) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'all', array('active_only' => $active_only) );
-		if ($this->cache->has($key)) {
-			return $this->cache->get($key);
-		}
+		return $this->cache_read(
+			'post_slices.get_all',
+			array(
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $active_only ) {
+				if ($active_only) {
+					$sql = $this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY sort_order ASC, name ASC, id ASC",
+						1
+					);
+				} else {
+					$sql = "SELECT * FROM {$this->table_name} ORDER BY sort_order ASC, name ASC, id ASC";
+				}
 
-		if ($active_only) {
-			$sql = $this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY sort_order ASC, name ASC, id ASC",
-				1
-			);
-		} else {
-			$sql = "SELECT * FROM {$this->table_name} ORDER BY sort_order ASC, name ASC, id ASC";
-		}
-
-		$result = $this->wpdb->get_results($sql);
-		if (!is_array($result)) {
-			$result = array();
-		}
-
-		$this->cache->set($key, $result);
-
-		return $result;
+				$result = $this->wpdb->get_results($sql);
+				return is_array($result) ? $result : array();
+			}
+		);
 	}
 
 	/**
@@ -96,23 +92,22 @@ class AIPS_Post_Slices_Repository {
 	 * @return object|null
 	 */
 	public function get_by_id($id) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'id', array('id' => $id) );
-		if ($this->cache->has($key)) {
-			return $this->cache->get($key);
-		}
+		$id = absint( $id );
 
-		$result = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE id = %d",
-				$id
-			)
+		return $this->cache_read(
+			'post_slices.get_by_id',
+			array(
+				'slice_id' => $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE id = %d",
+						$id
+					)
+				);
+			}
 		);
-
-		if ($result !== null) {
-			$this->cache->set($key, $result);
-		}
-
-		return $result;
 	}
 
 	/**
@@ -139,7 +134,11 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'post_slice',
+				array( 'slice_id' => $this->wpdb->insert_id ),
+				'post_slice_created'
+			);
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -188,7 +187,11 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result !== false) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'post_slice',
+				array( 'slice_id' => absint( $id ) ),
+				'post_slice_updated'
+			);
 		}
 
 		return $result;
@@ -208,7 +211,11 @@ class AIPS_Post_Slices_Repository {
 		);
 
 		if ($result !== false) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'post_slice',
+				array( 'slice_id' => absint( $id ) ),
+				'post_slice_deleted'
+			);
 		}
 
 		return $result;
@@ -261,7 +268,11 @@ class AIPS_Post_Slices_Repository {
 		$result = $this->wpdb->query($sql);
 
 		if ($result !== false) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'post_slice',
+				array(),
+				'post_slices_bulk_active_updated'
+			);
 		}
 
 		return $result;
@@ -295,7 +306,11 @@ class AIPS_Post_Slices_Repository {
 		$result = $this->wpdb->query($sql);
 
 		if ($result !== false) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_POST_SLICES_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'post_slice',
+				array(),
+				'post_slices_bulk_deleted'
+			);
 		}
 
 		return $result;
@@ -309,22 +324,32 @@ class AIPS_Post_Slices_Repository {
 	 * @return bool
 	 */
 	public function name_exists($name, $exclude_id = 0) {
-		$name = sanitize_text_field($name);
+		$name       = sanitize_text_field($name);
+		$exclude_id = absint( $exclude_id );
 
-		if ($exclude_id > 0) {
-			$sql = $this->wpdb->prepare(
-				"SELECT id FROM {$this->table_name} WHERE name = %s AND id != %d LIMIT 1",
-				$name,
-				$exclude_id
-			);
-		} else {
-			$sql = $this->wpdb->prepare(
-				"SELECT id FROM {$this->table_name} WHERE name = %s LIMIT 1",
-				$name
-			);
-		}
+		return $this->cache_read(
+			'post_slices.name_exists',
+			array(
+				'name'       => $name,
+				'exclude_id' => $exclude_id,
+			),
+			function() use ( $name, $exclude_id ) {
+				if ($exclude_id > 0) {
+					$sql = $this->wpdb->prepare(
+						"SELECT id FROM {$this->table_name} WHERE name = %s AND id != %d LIMIT 1",
+						$name,
+						$exclude_id
+					);
+				} else {
+					$sql = $this->wpdb->prepare(
+						"SELECT id FROM {$this->table_name} WHERE name = %s LIMIT 1",
+						$name
+					);
+				}
 
-		return (bool) $this->wpdb->get_var($sql);
+				return (bool) $this->wpdb->get_var($sql);
+			}
+		);
 	}
 
 	/**
@@ -333,32 +358,38 @@ class AIPS_Post_Slices_Repository {
 	 * @return array
 	 */
 	public function get_counts() {
-		$results = $this->wpdb->get_results(
-			"SELECT is_active, COUNT(*) AS count FROM {$this->table_name} GROUP BY is_active",
-			ARRAY_A
-		);
-		if (!is_array($results)) {
-			$results = array();
-		}
+		return $this->cache_read(
+			'post_slices.get_counts',
+			array(),
+			function() {
+				$results = $this->wpdb->get_results(
+					"SELECT is_active, COUNT(*) AS count FROM {$this->table_name} GROUP BY is_active",
+					ARRAY_A
+				);
+				if (!is_array($results)) {
+					$results = array();
+				}
 
-		$counts = array(
-			'total'    => 0,
-			'active'   => 0,
-			'inactive' => 0,
-		);
+				$counts = array(
+					'total'    => 0,
+					'active'   => 0,
+					'inactive' => 0,
+				);
 
-		foreach ($results as $row) {
-			$count = (int) $row['count'];
-			$counts['total'] += $count;
+				foreach ($results as $row) {
+					$count = (int) $row['count'];
+					$counts['total'] += $count;
 
-			if ((int) $row['is_active'] === 1) {
-				$counts['active'] = $count;
-			} else {
-				$counts['inactive'] = $count;
+					if ((int) $row['is_active'] === 1) {
+						$counts['active'] = $count;
+					} else {
+						$counts['inactive'] = $count;
+					}
+				}
+
+				return $counts;
 			}
-		}
-
-		return $counts;
+		);
 	}
 
 	/**
@@ -378,6 +409,46 @@ class AIPS_Post_Slices_Repository {
 					$rows
 				)
 			)
+		);
+	}
+
+	/**
+	 * Return the repository cache group for post-slice reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_post_slices';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'post_slices.get_all' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'post_slices' ),
+				'description' => 'Cache post slice list reads, including active-only filtering.',
+			),
+			'post_slices.get_by_id' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'post_slices', 'post_slice:{slice_id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single post slice lookups by ID.',
+			),
+			'post_slices.name_exists' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'post_slices' ),
+				'description' => 'Cache post slice name-existence checks.',
+			),
+			'post_slices.get_counts' => array(
+				'tier'        => 'medium',
+				'tags'        => array( 'post_slices', 'dashboard_counts' ),
+				'description' => 'Cache post slice dashboard counts.',
+			),
 		);
 	}
 }

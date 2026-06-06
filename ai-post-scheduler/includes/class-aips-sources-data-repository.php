@@ -14,6 +14,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Sources_Data_Repository
  *
@@ -22,6 +26,7 @@ if (!defined('ABSPATH')) {
  * Rows are deduplicated by content_hash; num_used tracks prompt usage for round-robin selection.
  */
 class AIPS_Sources_Data_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -128,6 +133,11 @@ class AIPS_Sources_Data_Repository {
 
 		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d' );
 		$result = $this->wpdb->insert( $this->table_name, $row, $format );
+
+		if ( false !== $result ) {
+			$this->invalidate_source_data_cache( $source_id, 'source_data_inserted' );
+		}
+
 		return $result !== false;
 	}
 
@@ -138,11 +148,21 @@ class AIPS_Sources_Data_Repository {
 	 * @return object|null Row object or null if not found.
 	 */
 	public function get_by_source_id( $source_id ) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE source_id = %d ORDER BY id DESC LIMIT 1",
-				absint( $source_id )
-			)
+		$source_id = absint( $source_id );
+
+		return $this->cache_read(
+			'sources_data.get_by_source_id',
+			array(
+				'source_id' => $source_id,
+			),
+			function() use ( $source_id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE source_id = %d ORDER BY id DESC LIMIT 1",
+						$source_id
+					)
+				);
+			}
 		);
 	}
 
@@ -157,11 +177,21 @@ class AIPS_Sources_Data_Repository {
 	 * @return object|null Row object or null if no success row exists.
 	 */
 	public function get_latest_success_by_source_id( $source_id ) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE source_id = %d AND fetch_status = 'success' ORDER BY id DESC LIMIT 1",
-				absint( $source_id )
-			)
+		$source_id = absint( $source_id );
+
+		return $this->cache_read(
+			'sources_data.get_latest_success_by_source_id',
+			array(
+				'source_id' => $source_id,
+			),
+			function() use ( $source_id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE source_id = %d AND fetch_status = 'success' ORDER BY id DESC LIMIT 1",
+						$source_id
+					)
+				);
+			}
 		);
 	}
 
@@ -180,29 +210,38 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		$source_ids   = array_map( 'absint', $source_ids );
+		sort( $source_ids );
 		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT sd.* FROM {$this->table_name} sd
-				 INNER JOIN (
-				     SELECT source_id, MAX(id) AS max_id
-				     FROM {$this->table_name}
-				     WHERE source_id IN ($placeholders)
-				     GROUP BY source_id
-				 ) latest ON sd.id = latest.max_id",
-				...$source_ids
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $this->cache_read(
+			'sources_data.get_by_source_ids',
+			array(
+				'source_ids' => $source_ids,
+			),
+			function() use ( $placeholders, $source_ids ) {
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT sd.* FROM {$this->table_name} sd
+						 INNER JOIN (
+						     SELECT source_id, MAX(id) AS max_id
+						     FROM {$this->table_name}
+						     WHERE source_id IN ($placeholders)
+						     GROUP BY source_id
+						 ) latest ON sd.id = latest.max_id",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-		$map = array();
-		foreach ( $rows as $row ) {
-			$map[ (int) $row->source_id ] = $row;
-		}
-		return $map;
+				$map = array();
+				foreach ( $rows as $row ) {
+					$map[ (int) $row->source_id ] = $row;
+				}
+				return $map;
+			}
+		);
 	}
 
 	/**
@@ -222,31 +261,39 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		$source_ids   = array_map( 'absint', $source_ids );
+		sort( $source_ids );
 		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$this->table_name}
-				 WHERE source_id IN ($placeholders)
-				   AND extracted_text != ''
-				   AND fetch_status = 'success'
-				 ORDER BY source_id ASC, num_used ASC, id ASC",
-				...$source_ids
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $this->cache_read(
+			'sources_data.get_extracted_texts_by_source_ids',
+			array(
+				'source_ids' => $source_ids,
+			),
+			function() use ( $placeholders, $source_ids ) {
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT * FROM {$this->table_name}
+						 WHERE source_id IN ($placeholders)
+						   AND extracted_text != ''
+						   AND fetch_status = 'success'
+						 ORDER BY source_id ASC, num_used ASC, id ASC",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-		// Keep only the first (best) row per source_id.
-		$map = array();
-		foreach ( $rows as $row ) {
-			$sid = (int) $row->source_id;
-			if ( ! isset( $map[ $sid ] ) ) {
-				$map[ $sid ] = $row;
+				$map = array();
+				foreach ( $rows as $row ) {
+					$sid = (int) $row->source_id;
+					if ( ! isset( $map[ $sid ] ) ) {
+						$map[ $sid ] = $row;
+					}
+				}
+				return $map;
 			}
-		}
-		return $map;
+		);
 	}
 
 	/**
@@ -267,31 +314,39 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		$source_ids   = array_map( 'absint', $source_ids );
+		sort( $source_ids );
 		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$this->table_name}
-				 WHERE source_id IN ($placeholders)
-				   AND extracted_text != ''
-				   AND fetch_status = 'success'
-				 ORDER BY source_id ASC, num_used ASC, id ASC",
-				...$source_ids
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $this->cache_read(
+			'sources_data.pick_next_for_prompt_bulk',
+			array(
+				'source_ids' => $source_ids,
+			),
+			function() use ( $placeholders, $source_ids ) {
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT * FROM {$this->table_name}
+						 WHERE source_id IN ($placeholders)
+						   AND extracted_text != ''
+						   AND fetch_status = 'success'
+						 ORDER BY source_id ASC, num_used ASC, id ASC",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-		// PHP-side: keep the first row per source_id (lowest num_used, oldest id wins).
-		$map = array();
-		foreach ( $rows as $row ) {
-			$sid = (int) $row->source_id;
-			if ( ! isset( $map[ $sid ] ) ) {
-				$map[ $sid ] = $row;
+				$map = array();
+				foreach ( $rows as $row ) {
+					$sid = (int) $row->source_id;
+					if ( ! isset( $map[ $sid ] ) ) {
+						$map[ $sid ] = $row;
+					}
+				}
+				return $map;
 			}
-		}
-		return $map;
+		);
 	}
 
 	/**
@@ -308,12 +363,23 @@ class AIPS_Sources_Data_Repository {
 		if ( $id <= 0 ) {
 			return;
 		}
+		$source_id = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT source_id FROM {$this->table_name} WHERE id = %d",
+				$id
+			)
+		);
+
 		$this->wpdb->query(
 			$this->wpdb->prepare(
 				"UPDATE {$this->table_name} SET num_used = num_used + 1 WHERE id = %d",
 				$id
 			)
 		);
+
+		if ( $source_id > 0 ) {
+			$this->invalidate_source_data_cache( $source_id, 'source_data_num_used_incremented' );
+		}
 	}
 
 	/**
@@ -325,12 +391,22 @@ class AIPS_Sources_Data_Repository {
 	 * @return int Number of archived content rows.
 	 */
 	public function get_count_by_source_id( $source_id ) {
-		return (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name}
-				 WHERE source_id = %d AND fetch_status = 'success' AND extracted_text != ''",
-				absint( $source_id )
-			)
+		$source_id = absint( $source_id );
+
+		return $this->cache_read(
+			'sources_data.get_count_by_source_id',
+			array(
+				'source_id' => $source_id,
+			),
+			function() use ( $source_id ) {
+				return (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_name}
+						 WHERE source_id = %d AND fetch_status = 'success' AND extracted_text != ''",
+						$source_id
+					)
+				);
+			}
 		);
 	}
 
@@ -348,28 +424,37 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		$source_ids   = array_map( 'absint', $source_ids );
+		sort( $source_ids );
 		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT source_id, COUNT(*) AS content_count
-				 FROM {$this->table_name}
-				 WHERE source_id IN ($placeholders)
-				   AND fetch_status = 'success'
-				   AND extracted_text != ''
-				 GROUP BY source_id",
-				...$source_ids
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $this->cache_read(
+			'sources_data.get_counts_by_source_ids',
+			array(
+				'source_ids' => $source_ids,
+			),
+			function() use ( $placeholders, $source_ids ) {
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT source_id, COUNT(*) AS content_count
+						 FROM {$this->table_name}
+						 WHERE source_id IN ($placeholders)
+						   AND fetch_status = 'success'
+						   AND extracted_text != ''
+						 GROUP BY source_id",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-		$map = array();
-		foreach ( $rows as $row ) {
-			$map[ (int) $row->source_id ] = (int) $row->content_count;
-		}
-		return $map;
+				$map = array();
+				foreach ( $rows as $row ) {
+					$map[ (int) $row->source_id ] = (int) $row->content_count;
+				}
+				return $map;
+			}
+		);
 	}
 
 	/**
@@ -379,11 +464,14 @@ class AIPS_Sources_Data_Repository {
 	 * @return void
 	 */
 	public function delete_by_source_id( $source_id ) {
+		$source_id = absint( $source_id );
 		$this->wpdb->delete(
 			$this->table_name,
-			array( 'source_id' => absint( $source_id ) ),
+			array( 'source_id' => $source_id ),
 			array( '%d' )
 		);
+
+		$this->invalidate_source_data_cache( $source_id, 'source_data_deleted' );
 	}
 
 	/**
@@ -440,5 +528,73 @@ class AIPS_Sources_Data_Repository {
 				array( '%d', '%s', '%d', '%s', '%d', '%d', '%d' )
 			);
 		}
+
+		$this->invalidate_source_data_cache( $source_id, 'source_data_fetch_failed' );
+	}
+
+	/**
+	 * Return the repository cache group for sources-data reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_sources_data';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'sources_data.get_by_source_id' => array(
+				'tier'        => 'medium',
+				'cache_null'  => false,
+				'description' => 'Cache latest fetch snapshots per source.',
+			),
+			'sources_data.get_latest_success_by_source_id' => array(
+				'tier'        => 'medium',
+				'cache_null'  => false,
+				'description' => 'Cache latest successful fetch snapshots per source.',
+			),
+			'sources_data.get_by_source_ids' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache bulk latest snapshot lookups.',
+			),
+			'sources_data.get_extracted_texts_by_source_ids' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache bulk extracted-text lookup projections.',
+			),
+			'sources_data.pick_next_for_prompt_bulk' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache prompt row selection snapshots by source set.',
+			),
+			'sources_data.get_count_by_source_id' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache per-source archived content counts.',
+			),
+			'sources_data.get_counts_by_source_ids' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache bulk archived content count queries.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate source-data-domain cache tags.
+	 *
+	 * @param int    $source_id Source ID.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_source_data_cache( $source_id, $reason ) {
+		$this->invalidate_cache_domain(
+			'source_data',
+			array(
+				'source_id' => absint( $source_id ),
+			),
+			$reason
+		);
 	}
 }

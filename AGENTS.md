@@ -287,4 +287,3 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 - `README.md` and `docs/` for feature and setup documentation.
 - `ai-post-scheduler/CHANGELOG.md` for plugin release history.
 - `docs/DEVELOPMENT_GUIDELINES.md` for project-specific coding and architectural guidelines that all developers and AI agents must follow.
-  

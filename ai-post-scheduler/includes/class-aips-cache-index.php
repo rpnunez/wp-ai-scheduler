@@ -20,6 +20,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Cache_Index {
 
 	/**
+	 * Display-only estimate used for array value sizing in the cache monitor.
+	 *
+	 * @var int
+	 */
+	private const ESTIMATED_BYTES_PER_ARRAY_ELEMENT = 64;
+
+	/**
 	 * Whether the index is currently enabled.
 	 *
 	 * @var bool
@@ -43,7 +50,8 @@ class AIPS_Cache_Index {
 		// trigger the index on the config cache (record_set() -> upsert_index_row()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
-		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
+		$normalized_enabled = filter_var( $enabled, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+		$this->enabled     = null === $normalized_enabled ? false : $normalized_enabled;
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
 	}
 
@@ -173,7 +181,7 @@ class AIPS_Cache_Index {
 	 */
 	public function prune_orphans(): int {
 		// Use get_option() directly — see constructor comment.
-		$driver = get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -206,7 +214,7 @@ class AIPS_Cache_Index {
 	 */
 	public function rebuild_from_db(): int {
 		// Use get_option() directly — see constructor comment.
-		$driver = get_option( 'aips_cache_driver', 'array' );
+		$driver = (string) get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -308,7 +316,7 @@ class AIPS_Cache_Index {
 		$value_type  = $this->resolve_value_type( $value );
 		// Use get_option() directly to avoid routing through AIPS_Config's internal
 		// AIPS_Cache instance, which would trigger record_set() recursively.
-		$driver_name = get_option( 'aips_cache_driver', 'array' );
+		$driver_name = (string) get_option( 'aips_cache_driver', 'array' );
 
 		$tags_raw   = isset( $context['tags'] ) && is_array( $context['tags'] ) ? implode( ',', $context['tags'] ) : '';
 		$tier       = isset( $context['tier'] ) ? sanitize_key( $context['tier'] ) : '';
@@ -400,9 +408,9 @@ class AIPS_Cache_Index {
 			return 1;
 		}
 		if (is_array( $value )) {
-			// Rough estimate: avoid full serialization of potentially huge arrays.
-			// 64 bytes per element is a conservative approximation.
-			return count( $value ) * 64;
+			// Rough monitoring heuristic: avoid full serialization of potentially
+			// huge arrays. This is display-only and not an exact memory measurement.
+			return count( $value ) * self::ESTIMATED_BYTES_PER_ARRAY_ELEMENT;
 		}
 		// Objects and other types: skip expensive serialization.
 		return 0;

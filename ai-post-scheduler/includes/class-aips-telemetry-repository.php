@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Telemetry_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * aips_telemetry table.
  */
 class AIPS_Telemetry_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var AIPS_Telemetry_Repository|null Singleton instance.
@@ -106,6 +111,9 @@ class AIPS_Telemetry_Repository {
 		if ($inserted === false) {
 			return false;
 		}
+
+		$this->invalidate_cache_domain( 'telemetry', array(), 'telemetry_inserted' );
+
 		return (int) $this->wpdb->insert_id;
 	}
 
@@ -120,14 +128,26 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_page($per_page = 10, $offset = 0) {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} ORDER BY id DESC LIMIT %d OFFSET %d",
-				(int) $per_page,
-				(int) $offset
+		$per_page = absint( $per_page );
+		$offset   = absint( $offset );
+
+		return $this->cache_read(
+			'telemetry.get_page',
+			array(
+				'per_page' => $per_page,
+				'offset'   => $offset,
 			),
-			ARRAY_A
+			function() use ( $per_page, $offset ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} ORDER BY id DESC LIMIT %d OFFSET %d",
+						$per_page,
+						$offset
+					),
+					ARRAY_A
+				);
+			}
 		);
 	}
 
@@ -141,25 +161,37 @@ class AIPS_Telemetry_Repository {
 	 * @return array Array of associative-array rows.
 	 */
 	public function get_filtered_page($start_date, $end_date, array $filters = array(), $per_page = 25, $offset = 0) {
+		$per_page = absint( $per_page );
+		$offset   = absint( $offset );
+
 		list($start_timestamp, $end_timestamp) = $this->resolve_date_range_timestamps($start_date, $end_date);
 		$where = array('inserted_at >= %d', 'inserted_at < %d');
 		$params = array($start_timestamp, $end_timestamp);
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT %d OFFSET %d",
-				...array_merge(
-					$params,
-					array(
-				(int) $per_page,
-				(int) $offset
-					)
-				)
+		return $this->cache_read(
+			'telemetry.get_filtered_page',
+			array(
+				'start_date' => (string) $start_date,
+				'end_date'   => (string) $end_date,
+				'filters'    => (array) $filters,
+				'per_page'   => $per_page,
+				'offset'     => $offset,
 			),
-			ARRAY_A
+			function() use ( $where, $params, $per_page, $offset ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, inserted_at FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT %d OFFSET %d",
+						...array_merge(
+							$params,
+							array( $per_page, $offset )
+						)
+					),
+					ARRAY_A
+				);
+			}
 		);
 	}
 
@@ -172,16 +204,24 @@ class AIPS_Telemetry_Repository {
 	 * @return array|null Full row data, or null when no row exists.
 	 */
 	public function get_row($id) {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, payload, inserted_at FROM {$this->table} WHERE id = %d LIMIT 1",
-				(int) $id
-			),
-			ARRAY_A
-		);
+		$id = absint( $id );
 
-		return is_array($row) ? $row : null;
+		return $this->cache_read(
+			'telemetry.get_row',
+			array( 'telemetry_id' => $id ),
+			function() use ( $id ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$row = $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT id, type, page, event_categories, request_method, user_id, num_queries, total_events, cache_calls, cache_hits, cache_misses, slow_query_count, duplicate_query_count, peak_memory_bytes, elapsed_ms, payload, inserted_at FROM {$this->table} WHERE id = %d LIMIT 1",
+						$id
+					),
+					ARRAY_A
+				);
+
+				return is_array($row) ? $row : null;
+			}
+		);
 	}
 
 	/**
@@ -190,8 +230,14 @@ class AIPS_Telemetry_Repository {
 	 * @return int
 	 */
 	public function count() {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
+		return (int) $this->cache_read(
+			'telemetry.count',
+			array(),
+			function() {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
+			}
+		);
 	}
 
 	/**
@@ -208,12 +254,22 @@ class AIPS_Telemetry_Repository {
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
-		return (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
-				...$params
-			)
+		return (int) $this->cache_read(
+			'telemetry.count_filtered',
+			array(
+				'start_date' => (string) $start_date,
+				'end_date'   => (string) $end_date,
+				'filters'    => (array) $filters,
+			),
+			function() use ( $where, $params ) {
+				return (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+						...$params
+					)
+				);
+			}
 		);
 	}
 
@@ -231,54 +287,62 @@ class AIPS_Telemetry_Repository {
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
-		// Fetch raw rows and aggregate in PHP so that metric_date labels are
-		// derived in the site timezone (via AIPS_DateTime::fromTimestamp()
-		// ->toDisplay()), matching the date-window bounds produced by
-		// resolve_date_range_timestamps().  This avoids the DATE(FROM_UNIXTIME())
-		// drift that occurs when the MySQL server timezone differs from the WP
-		// site timezone.
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT inserted_at, num_queries, peak_memory_bytes, elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY inserted_at ASC",
-				...$params
+		return $this->cache_read(
+			'telemetry.get_daily_rollup',
+			array(
+				'start_date' => (string) $start_date,
+				'end_date'   => (string) $end_date,
+				'filters'    => (array) $filters,
 			),
-			ARRAY_A
-		);
-
-		$buckets = array();
-		foreach ($rows as $row) {
-			$date_key = AIPS_DateTime::fromTimestamp((int) $row['inserted_at'])->toDisplay('Y-m-d');
-			if (!isset($buckets[$date_key])) {
-				$buckets[$date_key] = array(
-					'metric_date'           => $date_key,
-					'request_count'         => 0,
-					'total_queries'         => 0,
-					'peak_memory_bytes_max' => 0,
-					'_elapsed_sum'          => 0.0,
+			function() use ( $where, $params ) {
+				// Fetch raw rows and aggregate in PHP so that metric_date labels are
+				// derived in the site timezone (via AIPS_DateTime::fromTimestamp()
+				// ->toDisplay()), matching the date-window bounds produced by
+				// resolve_date_range_timestamps().
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT inserted_at, num_queries, peak_memory_bytes, elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY inserted_at ASC",
+						...$params
+					),
+					ARRAY_A
 				);
+
+				$buckets = array();
+				foreach ($rows as $row) {
+					$date_key = AIPS_DateTime::fromTimestamp((int) $row['inserted_at'])->toDisplay('Y-m-d');
+					if (!isset($buckets[$date_key])) {
+						$buckets[$date_key] = array(
+							'metric_date'           => $date_key,
+							'request_count'         => 0,
+							'total_queries'         => 0,
+							'peak_memory_bytes_max' => 0,
+							'_elapsed_sum'          => 0.0,
+						);
+					}
+					$buckets[$date_key]['request_count']++;
+					$buckets[$date_key]['total_queries']        += (int) $row['num_queries'];
+					$buckets[$date_key]['peak_memory_bytes_max'] = max(
+						$buckets[$date_key]['peak_memory_bytes_max'],
+						(int) $row['peak_memory_bytes']
+					);
+					$buckets[$date_key]['_elapsed_sum'] += (float) $row['elapsed_ms'];
+				}
+
+				ksort($buckets);
+
+				$result = array();
+				foreach ($buckets as $bucket) {
+					$bucket['avg_elapsed_ms'] = $bucket['request_count'] > 0
+						? $bucket['_elapsed_sum'] / $bucket['request_count']
+						: 0.0;
+					unset($bucket['_elapsed_sum']);
+					$result[] = $bucket;
+				}
+
+				return $result;
 			}
-			$buckets[$date_key]['request_count']++;
-			$buckets[$date_key]['total_queries']        += (int) $row['num_queries'];
-			$buckets[$date_key]['peak_memory_bytes_max'] = max(
-				$buckets[$date_key]['peak_memory_bytes_max'],
-				(int) $row['peak_memory_bytes']
-			);
-			$buckets[$date_key]['_elapsed_sum'] += (float) $row['elapsed_ms'];
-		}
-
-		ksort($buckets); // ensure ASC order by date key
-
-		$result = array();
-		foreach ($buckets as $bucket) {
-			$bucket['avg_elapsed_ms'] = $bucket['request_count'] > 0
-				? $bucket['_elapsed_sum'] / $bucket['request_count']
-				: 0.0;
-			unset($bucket['_elapsed_sum']);
-			$result[] = $bucket;
-		}
-
-		return $result;
+		);
 	}
 
 	/**
@@ -341,16 +405,76 @@ class AIPS_Telemetry_Repository {
 	 * @return array|null Decoded payload array, or null if not found.
 	 */
 	public function get_payload($id) {
-		$json = $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT payload FROM {$this->table} WHERE id = %d",
-				(int) $id
-			)
+		$id = absint( $id );
+
+		return $this->cache_read(
+			'telemetry.get_payload',
+			array( 'telemetry_id' => $id ),
+			function() use ( $id ) {
+				$json = $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT payload FROM {$this->table} WHERE id = %d",
+						$id
+					)
+				);
+
+				if ($json === null) {
+					return null;
+				}
+
+				return json_decode($json, true);
+			},
+			array( 'force_refresh' => false )
 		);
-		if ($json === null) {
-			return null;
-		}
-		return json_decode($json, true);
+	}
+
+	/**
+	 * Return the repository cache group for telemetry reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_telemetry';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'telemetry.get_page' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache paginated telemetry list reads.',
+			),
+			'telemetry.get_filtered_page' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache filtered telemetry list reads.',
+			),
+			'telemetry.get_row' => array(
+				'tier'        => 'medium',
+				'cache_null'  => false,
+				'description' => 'Cache telemetry row lookups by ID.',
+			),
+			'telemetry.count' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache total telemetry row counts.',
+			),
+			'telemetry.count_filtered' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache filtered telemetry row counts.',
+			),
+			'telemetry.get_daily_rollup' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache telemetry daily rollup aggregates.',
+			),
+			'telemetry.get_payload' => array(
+				'tier'        => 'medium',
+				'cache_null'  => false,
+				'description' => 'Cache telemetry payload lookups by ID.',
+			),
+		);
 	}
 }

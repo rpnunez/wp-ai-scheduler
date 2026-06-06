@@ -20,6 +20,20 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_System_Status_Controller {
 	/**
+	 * Supported cache rebuild targets for the System Status tool.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	public static function get_cache_rebuild_subsystems(): array {
+		return array(
+			'admin_bar' => array(
+				'label'      => __('Admin Bar', 'ai-post-scheduler'),
+				'cache_name' => 'aips_admin_bar',
+			),
+		);
+	}
+
+	/**
 	 * @var AIPS_Resilience_Service|null
 	 */
 	private $resilience_service;
@@ -191,13 +205,13 @@ class AIPS_System_Status_Controller {
 		}
 
 		$subsystem = isset($_POST['subsystem']) ? sanitize_key(wp_unslash($_POST['subsystem'])) : 'all';
-		$subsystems = AIPS_Cache_Policy::get_subsystems();
+		$subsystems = self::get_cache_rebuild_subsystems();
 		$allowed_subsystems = array_keys($subsystems);
 		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
 			$subsystem = 'all';
 		}
 
-		$affected = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
+		$affected = $this->rebuild_caches_for_subsystem($subsystem, $subsystems);
 		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
 		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
 
@@ -208,6 +222,41 @@ class AIPS_System_Status_Controller {
 			'subsystem' => $subsystem,
 			'affected' => $affected,
 		));
+	}
+
+	/**
+	 * Flush cache instances for a selected subsystem set.
+	 *
+	 * @param string                                 $subsystem Selected subsystem or 'all'.
+	 * @param array<string, array<string, string>>   $subsystems Available subsystem map.
+	 * @return array<int, string>
+	 */
+	private function rebuild_caches_for_subsystem( string $subsystem, array $subsystems ): array {
+		$targets = array();
+
+		if ('all' === $subsystem) {
+			$targets = $subsystems;
+		} elseif (isset($subsystems[$subsystem])) {
+			$targets = array(
+				$subsystem => $subsystems[$subsystem],
+			);
+		}
+
+		$affected = array();
+
+		foreach ($targets as $target) {
+			$cache_name = isset($target['cache_name']) ? (string) $target['cache_name'] : '';
+			if ('' === $cache_name) {
+				continue;
+			}
+
+			$cache = AIPS_Cache_Factory::named($cache_name);
+			if ($cache && $cache->flush()) {
+				$affected[] = $cache_name;
+			}
+		}
+
+		return array_values(array_unique($affected));
 	}
 
 }

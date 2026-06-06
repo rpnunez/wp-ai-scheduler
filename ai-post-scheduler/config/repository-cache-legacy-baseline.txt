@@ -1,0 +1,3 @@
+# Repository cache legacy baseline for the migration window.
+# New repository usage of AIPS_Cache_Policy or AIPS_Cache_Invalidation_Bus is blocked.
+# Remove entries as repositories migrate to AIPS_Cacheable_Repository.

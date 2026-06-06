@@ -143,7 +143,20 @@ class AIPS_Repository_Cache_Config {
 		$driver_name = get_option( 'aips_cache_driver', 'array' );
 		$driver_name = is_scalar( $driver_name ) ? strtolower( trim( (string) $driver_name ) ) : 'array';
 
-		return '' !== $driver_name ? $driver_name : 'array';
+		if ('' === $driver_name) {
+			return 'array';
+		}
+
+		switch ( $driver_name ) {
+			case 'db':
+			case 'wp_object_cache':
+			case 'array':
+				return $driver_name;
+
+
+			default:
+				return 'array';
+		}
 	}
 
 	/**
