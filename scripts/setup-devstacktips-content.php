@@ -200,7 +200,6 @@ class AIPS_DevStackTips_Setup {
 		echo "<h3>Cache Configuration</h3>\n";
 		update_option('aips_enable_cache_system', true);
 		update_option('aips_cache_driver', 'db');
-		update_option('aips_cache_db_prefix', '');
 		update_option('aips_cache_default_ttl', 3600);
 		echo "✓ Enabled cache system (DB driver, 1 hour TTL)\n";
 
@@ -1589,7 +1588,6 @@ Critical areas to address:
 			'aips_enable_telemetry',
 			'aips_enable_cache_system',
 			'aips_cache_driver',
-			'aips_cache_db_prefix',
 			'aips_cache_default_ttl',
 			'aips_log_retention_days',
 			'aips_default_post_status',
@@ -1697,9 +1695,10 @@ Critical areas to address:
 
 		$defaults = AIPS_Config::get_instance()->get_default_options();
 		foreach ($this->get_configured_setting_keys() as $key) {
-			$default_value = array_key_exists($key, $defaults) ? $defaults[$key] : null;
-			update_option($key, $default_value);
-			$deleted['settings']++;
+			if (array_key_exists($key, $defaults)) {
+				update_option($key, $defaults[$key]);
+				$deleted['settings']++;
+			}
 		}
 		echo "✓ Reset configured settings to plugin defaults\n";
 
@@ -1786,13 +1785,18 @@ Critical areas to address:
 			'Symfony Blog',
 		);
 		$sources_repo = new AIPS_Sources_Repository();
+		$sources_by_label = array();
+		foreach ($sources_repo->get_all() as $existing_source) {
+			if (!empty($existing_source->id) && !empty($existing_source->label)) {
+				if (!isset($sources_by_label[(string) $existing_source->label])) {
+					$sources_by_label[(string) $existing_source->label] = array();
+				}
+				$sources_by_label[(string) $existing_source->label][] = (int) $existing_source->id;
+			}
+		}
+
 		foreach ($source_names as $name) {
-			$source_ids = $wpdb->get_col(
-				$wpdb->prepare(
-					"SELECT id FROM {$wpdb->prefix}aips_sources WHERE label = %s",
-					$name
-				)
-			);
+			$source_ids = isset($sources_by_label[$name]) ? $sources_by_label[$name] : array();
 			foreach ($source_ids as $source_id) {
 				$sources_repo->delete_source_terms((int) $source_id);
 			}
@@ -1819,6 +1823,10 @@ Critical areas to address:
 				if (!is_wp_error($result)) {
 					$deleted['source_groups']++;
 					echo "✓ Deleted source group: {$slug}\n";
+				} else {
+					$error_message = $result->get_error_message();
+					$this->errors[] = "Failed to delete source group: {$slug} ({$error_message})";
+					echo "✗ Failed to delete source group: {$slug} ({$error_message})\n";
 				}
 			}
 		}
@@ -1970,6 +1978,10 @@ Critical areas to address:
 				if (!is_wp_error($result)) {
 					$deleted['categories']++;
 					echo "✓ Deleted category: {$slug}\n";
+				} else {
+					$error_message = $result->get_error_message();
+					$this->errors[] = "Failed to delete category: {$slug} ({$error_message})";
+					echo "✗ Failed to delete category: {$slug} ({$error_message})\n";
 				}
 			}
 		}
