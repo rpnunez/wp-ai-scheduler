@@ -27,12 +27,12 @@ Roll out the repository cache framework by repository category, not all at once.
 
 ## Phase 1 — Stabilize framework blockers
 
-- [ ] Fix cache instance parity so invalidation bumps tag versions on the same cache instance used by repository reads
-- [ ] Fix `force_refresh` to do read bypass + write-through refresh
-- [ ] Add focused PHPUnit coverage for:
-    - [ ] named cache instance parity
-    - [ ] `force_refresh` refresh behavior
-    - [ ] tag-version invalidation correctness
+- [x] Fix cache instance parity so invalidation bumps tag versions on the same cache instance used by repository reads
+- [x] Fix `force_refresh` to do read bypass + write-through refresh
+- [x] Add focused PHPUnit coverage for:
+    - [x] named cache instance parity
+    - [x] `force_refresh` refresh behavior
+    - [x] tag-version invalidation correctness
 
 ## Phase 2 — Repository rollout
 

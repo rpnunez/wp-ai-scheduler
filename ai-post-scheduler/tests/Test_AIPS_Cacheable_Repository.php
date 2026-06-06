@@ -552,6 +552,39 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 2, $calls );
 	}
 
+	public function test_invalidate_cache_tags_bumps_versions_on_same_named_cache_instance_used_for_reads() {
+		$policy = array(
+			'tier' => 'medium',
+			'tags' => array( 'authors' ),
+		);
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => $policy,
+			)
+		);
+
+		$cache = AIPS_Repository_Cache_Config::resolve_cache_instance( 'test_repository', $policy );
+
+		$this->assertInstanceOf( 'AIPS_Cache', $cache );
+		$this->assertSame( 1, $cache->get_tag_version( 'authors', 'test_repository' ) );
+
+		$subject->read(
+			'authors.get_all',
+			array(),
+			function() {
+				return 'value_1';
+			}
+		);
+
+		$subject->invalidate_tags_public( array( 'authors' ), 'author_saved' );
+
+		$this->assertSame( 2, $cache->get_tag_version( 'authors', 'test_repository' ) );
+		$this->assertSame(
+			$cache,
+			AIPS_Repository_Cache_Config::resolve_cache_instance( 'test_repository', $policy )
+		);
+	}
+
 	public function test_invalidate_cache_domain_uses_dependency_map_when_available() {
 		$subject = $this->make_subject(
 			array(
