@@ -1425,10 +1425,10 @@ class AIPS_History {
             $now_timestamp = current_time('timestamp', true);
         }
 
-        $utc_timezone = new DateTimeZone('UTC');
-        $today = wp_date('Y-m-d', $now_timestamp, $utc_timezone);
-        $yesterday = wp_date('Y-m-d', $now_timestamp - DAY_IN_SECONDS, $utc_timezone);
-        $item_date = wp_date('Y-m-d', $timestamp, $utc_timezone);
+        $site_timezone = wp_timezone();
+        $today = wp_date('Y-m-d', $now_timestamp, $site_timezone);
+        $yesterday = wp_date('Y-m-d', $now_timestamp - DAY_IN_SECONDS, $site_timezone);
+        $item_date = wp_date('Y-m-d', $timestamp, $site_timezone);
 
         if ($item_date === $today) {
             return __('Today', 'ai-post-scheduler');
