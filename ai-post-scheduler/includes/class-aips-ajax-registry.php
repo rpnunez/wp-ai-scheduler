@@ -276,6 +276,21 @@ class AIPS_Ajax_Registry {
 		'aips_save_blueprint_preset'    => 'AIPS_Blueprint_Presets_Controller',
 		'aips_get_blueprint_preset'     => 'AIPS_Blueprint_Presets_Controller',
 		'aips_delete_blueprint_preset'  => 'AIPS_Blueprint_Presets_Controller',
+
+		// Cache Monitor Controller
+		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_entries'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_inspect'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_entry'      => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_bulk'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_group'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_expired'     => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_all'         => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_tag'    => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_domain' => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
 	);
 
 	/**

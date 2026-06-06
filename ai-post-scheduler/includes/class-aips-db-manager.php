@@ -32,6 +32,8 @@ class AIPS_DB_Manager {
         'aips_ai_assistance',
         'aips_bulk_batch_jobs',
         'aips_blueprint_presets',
+        'aips_cache_index',
+        'aips_cache_events',
     );
 
     public function __construct() {
@@ -91,6 +93,9 @@ class AIPS_DB_Manager {
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_blueprint_presets    = $tables['aips_blueprint_presets'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
 
         $sql = array();
 
@@ -592,7 +597,6 @@ class AIPS_DB_Manager {
             KEY status_updated (status, updated_at)
         ) $charset_collate;";
 
-        $table_blueprint_presets = $tables['aips_blueprint_presets'];
         $sql[] = "CREATE TABLE $table_blueprint_presets (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -610,6 +614,53 @@ class AIPS_DB_Manager {
             KEY is_default (is_default),
             KEY structure_id (structure_id),
             KEY voice_id (voice_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache_index (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            cache_key varchar(512) NOT NULL DEFAULT '',
+            key_hash varchar(64) NOT NULL DEFAULT '',
+            cache_group varchar(128) NOT NULL DEFAULT 'default',
+            driver varchar(64) NOT NULL DEFAULT '',
+            tier varchar(32) NOT NULL DEFAULT '',
+            operation_id varchar(128) NOT NULL DEFAULT '',
+            repository_class varchar(128) NOT NULL DEFAULT '',
+            tags text NOT NULL,
+            domain varchar(128) NOT NULL DEFAULT '',
+            ttl int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            value_size int(11) NOT NULL DEFAULT 0,
+            value_type varchar(32) NOT NULL DEFAULT '',
+            last_accessed_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY key_hash_group (key_hash, cache_group),
+            KEY cache_group (cache_group),
+            KEY expires_at (expires_at),
+            KEY driver (driver),
+            KEY tier (tier),
+            KEY operation_id (operation_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache_events (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            event_type varchar(64) NOT NULL DEFAULT '',
+            user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            correlation_id varchar(36) NOT NULL DEFAULT '',
+            cache_group varchar(128) NOT NULL DEFAULT '',
+            key_hash varchar(64) NOT NULL DEFAULT '',
+            operation_id varchar(128) NOT NULL DEFAULT '',
+            tags text NOT NULL,
+            domain varchar(128) NOT NULL DEFAULT '',
+            affected_count int(11) NOT NULL DEFAULT 0,
+            elapsed_ms float NOT NULL DEFAULT 0,
+            message text NOT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY event_type (event_type),
+            KEY created_at (created_at),
+            KEY user_id (user_id)
         ) $charset_collate;";
 
         return $sql;

@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.3.0
  */
-class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
+class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_Driver {
 
 	/**
 	 * Base group name used as the prefix for all groups.
@@ -143,5 +143,84 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 			: $this->base_group . '_' . $group;
 
 		return $this->generation > 0 ? $base . '_g' . $this->generation : $base;
+	}
+
+	// -----------------------------------------------------------------------
+	// AIPS_Cache_Monitorable_Driver implementation
+	// -----------------------------------------------------------------------
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * WP Object Cache does not expose its internal key list.
+	 */
+	public function get_monitor_capabilities(): array {
+		return array(
+			'list_keys'     => false,
+			'inspect_entry' => false,
+			'delete_key'    => true,
+			'delete_group'  => false,
+			'flush_plugin'  => true,
+			'size_bytes'    => false,
+			'ttl_remaining' => false,
+			'tag_versions'  => false,
+			'live_metrics'  => false,
+		);
+	}
+
+	/** {@inheritdoc} */
+	public function list_entries( array $filters = array(), int $limit = 100, int $offset = 0 ): array {
+		return array();
+	}
+
+	/** {@inheritdoc} */
+	public function count_entries( array $filters = array() ): int {
+		return 0;
+	}
+
+	/** {@inheritdoc} */
+	public function get_entry_metadata( string $key, string $group = 'default' ): array {
+		return array();
+	}
+
+	/** {@inheritdoc} */
+	public function delete_entry( string $key, string $group = 'default' ): bool {
+		return $this->delete( $key, $group );
+	}
+
+	/** {@inheritdoc} */
+	public function delete_group( string $group ): bool {
+		return false;
+	}
+
+	/** {@inheritdoc} */
+	public function estimate_size( array $filters = array() ): array {
+		return array(
+			'total_bytes'   => 0,
+			'row_count'     => 0,
+			'expired_bytes' => 0,
+			'expired_count' => 0,
+			'available'     => false,
+		);
+	}
+
+	/** {@inheritdoc} */
+	public function get_driver_info(): array {
+		$has_persistent = (bool) wp_using_ext_object_cache();
+
+		return array(
+			'driver'         => 'wp_object_cache',
+			'label'          => __( 'WP Object Cache', 'ai-post-scheduler' ),
+			'persistent'     => $has_persistent,
+			'base_group'     => $this->base_group,
+			'generation'     => $this->generation,
+			'limitations'    => array(
+				__( 'Key listing is not available from the WP Object Cache API.', 'ai-post-scheduler' ),
+				__( 'Use the Cache Index tab to browse entries written through AIPS_Cache.', 'ai-post-scheduler' ),
+				$has_persistent
+					? __( 'A persistent object cache drop-in is active — data survives page loads.', 'ai-post-scheduler' )
+					: __( 'No persistent object cache detected — data is request-scoped only.', 'ai-post-scheduler' ),
+			),
+		);
 	}
 }

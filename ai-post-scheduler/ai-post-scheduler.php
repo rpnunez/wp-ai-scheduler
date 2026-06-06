@@ -112,6 +112,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_cache_monitor_maintenance' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -729,6 +733,18 @@ final class AI_Post_Scheduler {
                     'info'
                 );
             }
+        });
+
+        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
+        add_action('aips_cache_monitor_maintenance', function() {
+            $repository  = new AIPS_Cache_Monitor_Repository();
+            $cache_index = new AIPS_Cache_Index();
+            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+            $result      = $service->run_maintenance();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.

@@ -52,6 +52,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
 	private const PAGE_BLUEPRINTS = 'aips-blueprints';
+	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 
     /**
      * Initialize the class.
@@ -171,6 +172,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_BLUEPRINTS === $page || $this->hook_contains($hook, self::PAGE_BLUEPRINTS)) {
 			$this->enqueue_blueprints_assets();
+		}
+
+		if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR)) {
+			$this->enqueue_cache_monitor_assets();
 		}
 
 	}
@@ -1707,6 +1712,44 @@ class AIPS_Admin_Assets {
                 'nameRequired'    => __('Preset name is required.', 'ai-post-scheduler'),
             ));
         }
+    }
+
+    /**
+     * Enqueue assets for the Cache Monitor page.
+     *
+     * @return void
+     */
+    private function enqueue_cache_monitor_assets() {
+        wp_enqueue_script(
+            'aips-cache-monitor',
+            AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+        wp_localize_script('aips-cache-monitor', 'aipsCacheMonitor', array(
+            'nonce'       => wp_create_nonce('aips_cache_monitor'),
+            'actionNonce' => wp_create_nonce('aips_cache_monitor_action'),
+            'i18n'        => array(
+                'loading'          => __('Loading…', 'ai-post-scheduler'),
+                'never'            => __('Never', 'ai-post-scheduler'),
+                'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
+                'noOps'            => __('No operations found.', 'ai-post-scheduler'),
+                'noEvents'         => __('No events found.', 'ai-post-scheduler'),
+                'noneSelected'     => __('No entries selected.', 'ai-post-scheduler'),
+                'requestFailed'    => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'inspect'          => __('Inspect', 'ai-post-scheduler'),
+                'delete'           => __('Delete', 'ai-post-scheduler'),
+                'preview'          => __('Preview', 'ai-post-scheduler'),
+                'prev'             => __('Prev', 'ai-post-scheduler'),
+                'next'             => __('Next', 'ai-post-scheduler'),
+                'confirmFlushAll'  => __('This will flush ALL plugin-owned cache. Are you absolutely sure?', 'ai-post-scheduler'),
+                'flushAllTitle'    => __('Flush All Plugin Cache', 'ai-post-scheduler'),
+                'confirmBtn'       => __('Confirm Flush', 'ai-post-scheduler'),
+                'flushGroupTitle'  => __('Flush Cache Group', 'ai-post-scheduler'),
+                'flushGroupBtn'    => __('Flush Group', 'ai-post-scheduler'),
+            ),
+        ));
     }
 
 }
