@@ -35,6 +35,7 @@ if ($current_page === 'aips-authors' || $is_embedded_authors_view) {
 // Site-wide content settings used to pre-fill the Author Suggestions modal
 $site_ctx = AIPS_Site_Context::get();
 ?>
+<?php if (!$is_embedded_authors_view) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -55,6 +56,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </button>
                 </div>
             </div>
+<?php endif; ?>
         </div>
 
         <!-- Add tabs for Authors List and Generation Queue -->
@@ -374,8 +376,10 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
         </div>
+<?php if (!$is_embedded_authors_view) : ?>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
+<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">

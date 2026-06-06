@@ -311,10 +311,11 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Highlight the "Authors" submenu item when on the hidden Author Topics page.
+     * Highlight consolidated submenu items for hidden child pages.
      *
-     * Because the Author Topics page is registered with a null parent, WordPress
-     * does not activate any submenu item. This filter makes "Authors" appear active.
+     * Hidden pages registered with a null parent do not automatically activate a submenu
+     * item in WordPress. This filter maps Diagnostics and Automations child pages to
+     * their corresponding visible submenu entries.
      *
      * @param string $submenu_file The current submenu file slug.
      * @return string
@@ -369,6 +370,7 @@ class AIPS_Admin_Menu {
                 'aips-taxonomy',
                 'aips-internal-links',
                 'aips-author-topics',
+                AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
             ),
             true

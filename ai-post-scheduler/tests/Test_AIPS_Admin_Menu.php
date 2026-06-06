@@ -56,6 +56,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('ai-post-scheduler', $result);
 
+		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
+		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
+		$this->assertEquals('ai-post-scheduler', $result);
+
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('some-other-file', $result);
@@ -72,6 +76,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->assertEquals('aips-automations', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
+		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
+		$this->assertEquals('aips-automations', $result);
+
+		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('aips-automations', $result);
 

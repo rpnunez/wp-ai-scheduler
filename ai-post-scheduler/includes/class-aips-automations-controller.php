@@ -166,7 +166,7 @@ class AIPS_Automations_Controller {
 	 */
 	private function render_campaigns_tab() {
 		$controller = new AIPS_Campaigns_Controller();
-		$controller->render_page();
+		$controller->render_page(true);
 	}
 
 	/**
@@ -176,7 +176,7 @@ class AIPS_Automations_Controller {
 	 */
 	private function render_templates_tab() {
 		$templates_handler = new AIPS_Templates();
-		$templates_handler->render_page();
+		$templates_handler->render_page(true);
 	}
 
 	/**
@@ -232,8 +232,15 @@ class AIPS_Automations_Controller {
 		global $aips_internal_links_controller;
 
 		if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-			$aips_internal_links_controller->render_page();
-			return;
+			try {
+				$aips_internal_links_controller->render_page(true);
+				return;
+			} catch (Throwable $throwable) {
+				echo '<div class="notice notice-error"><p>' .
+					esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+				'</p></div>';
+				return;
+			}
 		}
 
 		echo '<div class="notice notice-error"><p>' .

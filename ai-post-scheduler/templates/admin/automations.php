@@ -20,10 +20,10 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 
-		<div class="aips-tab-nav" role="tablist">
+		<div class="aips-tab-nav">
 			<?php foreach ($tabs as $tab_key => $tab) : ?>
 				<?php $tab_classes = 'aips-tab-link' . ($active_tab === $tab_key ? ' active' : ''); ?>
-				<a href="<?php echo esc_url($automations_controller->get_tab_url($tab_key)); ?>" class="<?php echo esc_attr($tab_classes); ?>" role="tab" aria-selected="<?php echo esc_attr($active_tab === $tab_key ? 'true' : 'false'); ?>">
+				<a href="<?php echo esc_url($automations_controller->get_tab_url($tab_key)); ?>" class="<?php echo esc_attr($tab_classes); ?>">
 					<?php echo esc_html($tab['label']); ?>
 				</a>
 			<?php endforeach; ?>
