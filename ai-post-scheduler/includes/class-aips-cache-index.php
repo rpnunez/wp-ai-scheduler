@@ -180,7 +180,7 @@ class AIPS_Cache_Index {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $wpdb->query(
 				"DELETE ci FROM `{$index_table}` ci
-				 LEFT JOIN `{$cache_table}` c ON c.cache_group = ci.cache_group AND (c.cache_key = ci.cache_key OR RIGHT(c.cache_key, CHAR_LENGTH(ci.cache_key) + 1) = CONCAT(':', ci.cache_key))
+				 LEFT JOIN `{$cache_table}` c ON c.cache_group = ci.cache_group AND (c.cache_key = ci.cache_key OR c.cache_key LIKE CONCAT('%:', REPLACE(REPLACE(REPLACE(ci.cache_key, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_')) ESCAPE '\\')
 				 WHERE c.cache_key IS NULL"
 			);
 
