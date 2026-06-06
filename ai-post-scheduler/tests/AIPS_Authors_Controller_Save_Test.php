@@ -120,6 +120,26 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 			public function esc_like($text) {
 				return $this->delegate->esc_like($text);
 			}
+
+			public function __get($name) {
+				return $this->delegate->$name;
+			}
+
+			public function __set($name, $value) {
+				$this->delegate->$name = $value;
+			}
+
+			public function __isset($name) {
+				return isset($this->delegate->$name);
+			}
+
+			public function __unset($name) {
+				unset($this->delegate->$name);
+			}
+
+			public function __call($method, $args) {
+				return $this->delegate->$method(...$args);
+			}
 		};
 	}
 
@@ -130,13 +150,18 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 	 * @return array Decoded response array.
 	 */
 	private function capture_ajax(callable $callable) {
+		if (isset($_POST['nonce'])) {
+			$_REQUEST['nonce'] = $_POST['nonce'];
+		}
 		ob_start();
 		try {
 			$callable();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected after wp_send_json_*.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected in full WordPress mode when no buffered output exists yet.
 		}
-		return json_decode(ob_get_clean(), true);
+		return json_decode(strtok(trim(ob_get_clean()), "\r\n"), true);
 	}
 
 	// =========================================================================
@@ -225,6 +250,12 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 	public function test_existing_author_next_run_not_included_in_update() {
 		wp_set_current_user($this->admin_user_id);
 
+		$existing_author_id = (new AIPS_Authors_Repository())->create(array(
+			'name'        => 'Existing Author',
+			'field_niche' => 'Science',
+			'is_active'   => 1,
+		));
+
 		global $wpdb;
 		$original_wpdb = $wpdb;
 
@@ -236,7 +267,7 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 
 			$_POST = array(
 				'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
-				'author_id'                  => 42,
+				'author_id'                  => $existing_author_id,
 				'name'                       => 'Test Author Existing',
 				'field_niche'                => 'Science',
 				'topic_generation_frequency' => 'weekly',

@@ -124,6 +124,9 @@ class AIPS_History_Container {
 		if (isset($history->template_id) && $history->template_id) {
 			$metadata['template_id'] = $history->template_id;
 		}
+		if (isset($history->campaign_id) && $history->campaign_id) {
+			$metadata['campaign_id'] = $history->campaign_id;
+		}
 		if (isset($history->author_id) && $history->author_id) {
 			$metadata['author_id'] = $history->author_id;
 		}
@@ -134,8 +137,12 @@ class AIPS_History_Container {
 			$metadata['creation_method'] = $history->creation_method;
 		}
 		
+		$history_type = isset($history->type) && $history->type
+			? $history->type
+			: (isset($history->creation_method) && $history->creation_method ? $history->creation_method : 'post_generation');
+
 		// Create container with existing ID and preserved metadata
-		return new self($repository, $history->type, $metadata, $history_id);
+		return new self($repository, $history_type, $metadata, $history_id);
 	}
 
 	/**
@@ -265,7 +272,7 @@ class AIPS_History_Container {
 		// Build details array
 		$details = array(
 			'message' => $message,
-			'timestamp' => current_time('mysql'),
+			'timestamp' => AIPS_DateTime::now()->timestamp(),
 		);
 		
 		// Add input if provided
@@ -407,7 +414,7 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
@@ -442,7 +449,7 @@ class AIPS_History_Container {
 		return $this->repository->update($this->history_id, array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
 		)) !== false;
 	}
 	

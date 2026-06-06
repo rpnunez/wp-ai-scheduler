@@ -11,6 +11,8 @@ DB_PASS=$3
 DB_HOST=${4-localhost}
 WP_VERSION=${5-latest}
 SKIP_DB_CREATE=${6-false}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+WP_PHPUNIT_DIR=${WP_PHPUNIT_DIR-$SCRIPT_DIR/../ai-post-scheduler/vendor/wp-phpunit/wp-phpunit}
 
 TMPDIR=${TMPDIR-/tmp}
 TMPDIR=$(echo $TMPDIR | sed -e "s/\/$//")
@@ -23,6 +25,40 @@ download() {
     elif [ `which wget` ]; then
         wget -nv -O "$2" "$1"
     fi
+}
+
+copy_wp_phpunit_dir() {
+	local source_name=$1
+	local target_dir=$2
+	local source_dir="$WP_PHPUNIT_DIR/$source_name"
+
+	if [ ! -d "$source_dir" ]; then
+		return 1
+	fi
+
+	rm -rf "$target_dir"
+	mkdir -p "$target_dir"
+	cp -R "$source_dir/." "$target_dir/"
+}
+
+install_wp_phpunit_component() {
+	local source_name=$1
+	local target_dir=$2
+	local svn_url=$3
+
+	if command -v svn >/dev/null 2>&1; then
+		rm -rf "$target_dir"
+		svn co --quiet "$svn_url" "$target_dir"
+		return 0
+	fi
+
+	if copy_wp_phpunit_dir "$source_name" "$target_dir"; then
+		echo "svn not found; using packaged wp-phpunit/$source_name fallback from $WP_PHPUNIT_DIR"
+		return 0
+	fi
+
+	echo "svn is not available and wp-phpunit fallback was not found at $WP_PHPUNIT_DIR" >&2
+	return 1
 }
 
 if [[ $WP_VERSION =~ ^[0-9]+\.[0-9]+$ ]]; then
@@ -100,15 +136,16 @@ install_test_suite() {
 		local ioption='-i'
 	fi
 
-	# set up testing suite if it doesn't yet exist
-	if [ ! -d $WP_TESTS_DIR ]; then
-		# set up testing suite
-		mkdir -p $WP_TESTS_DIR
-		svn co --quiet https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/includes/ $WP_TESTS_DIR/includes
-		svn co --quiet https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/data/ $WP_TESTS_DIR/data
+	# set up testing suite components if required files are missing
+	mkdir -p "$WP_TESTS_DIR"
+	if [ ! -f "$WP_TESTS_DIR/includes/functions.php" ]; then
+		install_wp_phpunit_component "includes" "$WP_TESTS_DIR/includes" "https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/includes/"
+	fi
+	if [ ! -f "$WP_TESTS_DIR/data/formatting/entities.txt" ]; then
+		install_wp_phpunit_component "data" "$WP_TESTS_DIR/data" "https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/data/"
 	fi
 
-	if [ ! -f wp-tests-config.php ]; then
+	if [ ! -f "$WP_TESTS_DIR/wp-tests-config.php" ]; then
 		download https://develop.svn.wordpress.org/${WP_TESTS_TAG}/wp-tests-config-sample.php "$WP_TESTS_DIR"/wp-tests-config.php
 		# remove all forward slashes in the end
 		WP_CORE_DIR=$(echo $WP_CORE_DIR | sed "s:/\+$::")

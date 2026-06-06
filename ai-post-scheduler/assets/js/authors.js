@@ -66,6 +66,10 @@
 			$(document).on('click', '.aips-cancel-edit-topic', this.cancelEditTopic.bind(this));
 			$(document).on('click', '.aips-generate-post-now', this.generatePostNow.bind(this));
 			$(document).on('click', '.aips-view-topic-log', this.viewTopicLog.bind(this));
+			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
+			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
+			$(document).on('click', this.onDocumentClick.bind(this));
+			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Bulk actions
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
@@ -236,6 +240,12 @@
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
+
+			// Show form and hide loader
+			this.currentAuthorId = null;
+			$('#aips-author-modal-loader').hide();
+			$('#aips-author-form').show();
+
 			// Reset source group fields.
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
@@ -267,8 +277,10 @@
 			const authorId = $(e.currentTarget).data('id');
 			this.currentAuthorId = authorId;
 
-			// Show loading
+			// Show loading state
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.loading);
+			$('#aips-author-form').hide();
+			$('#aips-author-modal-loader').show();
 			$('#aips-author-modal').fadeIn();
 
 			// Load author data
@@ -284,6 +296,11 @@
 					if (response.success && response.data.author) {
 						const author = response.data.author;
 
+						if (String(this.currentAuthorId) !== String(author.id) || !$('#aips-author-modal').is(':visible')) {
+							return;
+						}
+						$('#aips-author-modal-loader').hide();
+						$('#aips-author-form').show();
 						$('#aips-author-modal-title').text(aipsAuthorsL10n.editAuthor);
 						$('#author_id').val(author.id);
 						$('#author_name').val(author.name);
@@ -687,8 +704,24 @@
 			}
 
 			let rowsHtml = '';
+			let secondaryDateHeaderHtml = '';
+			if (status === 'approved') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateApproved || 'Date Approved') + '</th>';
+			} else if (status === 'rejected') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateRejected || 'Date Rejected') + '</th>';
+			} else if (status === 'posts_generated') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.datePostGenerated || 'Date Post Generated') + '</th>';
+			}
+
+			const dtL10n = {
+				today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
+				yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
+			};
 
 			topics.forEach(topic => {
+				const rawReviewedAt = topic.reviewed_at || '';
+				const formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
+
 				let detailContentHtml = '';
 				if (topic.topic_description) {
 					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
@@ -705,7 +738,7 @@
 				if (topic.reviewed_at && topic.reviewed_by) {
 					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
 						label: aipsAuthorsL10n.reviewed || 'Reviewed',
-						value: String(topic.reviewed_at) + ' by User ID ' + String(topic.reviewed_by)
+						value: String(formattedReviewedAt) + ' by User ID ' + String(topic.reviewed_by)
 					});
 				}
 				if (topic.last_feedback) {
@@ -761,7 +794,7 @@
 					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
 					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
 					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
-					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
+					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning" aria-hidden="true"></span> ' + safeDupLabel + '</span>';
 				}
 
 				let feedbackBadgeHtml = '';
@@ -775,11 +808,30 @@
 					}
 				}
 
+				let secondaryDateCellHtml = '';
+				let secondaryDateValue = '';
+
+				if (status === 'approved') {
+					secondaryDateValue = topic.reviewed_at || '';
+				} else if (status === 'rejected') {
+					secondaryDateValue = topic.reviewed_at || '';
+				} else if (status === 'posts_generated') {
+					secondaryDateValue = topic.post_generated_at || '';
+				}
+
+				if (secondaryDateHeaderHtml) {
+					const formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
+					secondaryDateCellHtml = '<td class="column-date"><div class="cell-meta">' + AIPS.Utilities.escapeHtml(formattedSecondaryDate) + '</div></td>';
+				}
+
 				let actionsHtml = '';
 				if (status === 'pending') {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
 						id: topic.id,
 						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						editTitle: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
+						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
 						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
 						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
 					});
@@ -787,7 +839,9 @@
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
 						id: topic.id,
 						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
+						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions')
 					});
 				} else {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
@@ -796,12 +850,8 @@
 					});
 				}
 
-				var rawGeneratedAt = topic.generated_at || '';
-				var dtL10n = {
-					today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
-					yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
-				};
-				var formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
+				const rawGeneratedAt = topic.generated_at || '';
+				const formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
 
 				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
 					id: topic.id,
@@ -812,6 +862,7 @@
 					feedbackBadge: feedbackBadgeHtml,
 					detailContent: detailSectionHtml,
 					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
+					secondaryDateCell: secondaryDateCellHtml,
 					actions: actionsHtml
 				});
 			});
@@ -819,6 +870,7 @@
 			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
 				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
 				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
+				secondaryDateHeader: secondaryDateHeaderHtml,
 				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
 				rows: rowsHtml
 			});
@@ -874,7 +926,7 @@
 						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
 
 						if ($slot.length) {
-							$slot.html('<span class="aips-topic-similarity-badge ' + badgeClass + '" title="' + label + '">' + label + '</span>');
+							$slot.html('<span class="aips-topic-similarity-badge ' + badgeClass + '" title="' + label + '"><span class="dashicons dashicons-info" aria-hidden="true"></span> ' + label + '</span>');
 						}
 					});
 				},
@@ -1012,6 +1064,7 @@
 			$('#stat-pending-count').text(pending);
 			$('#stat-approved-count').text(approved);
 			$('#stat-rejected-count').text(rejected);
+			$('#stat-generated-count').text(postsGenerated);
 		},
 
 		/**
@@ -1456,14 +1509,17 @@
 			const $row = $btn.closest('tr');
 			const $titleSpan = $row.find('.topic-title');
 			const $titleInput = $row.find('.topic-title-edit');
+			const $rowActions = $row.find('.cell-actions');
 
 			$titleSpan.hide();
 			$titleInput.show().focus();
 
+			this.closeAllRowActionMenus();
 			$btn.hide();
+			$rowActions.hide();
 			$row.find('.topic-actions').append(
-				'<button class="button aips-save-topic">' + aipsAuthorsL10n.save + '</button> ' +
-				'<button class="button aips-cancel-edit-topic">' + aipsAuthorsL10n.cancel + '</button>'
+				'<button type="button" class="button aips-save-topic">' + aipsAuthorsL10n.save + '</button> ' +
+				'<button type="button" class="button aips-cancel-edit-topic">' + aipsAuthorsL10n.cancel + '</button>'
 			);
 		},
 
@@ -1500,6 +1556,7 @@
 					if (response.success) {
 						$row.find('.topic-title').text(newTitle).show();
 						$row.find('.topic-title-edit').hide();
+						$row.find('.cell-actions').show();
 						$row.find('.aips-edit-topic').show();
 						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 					} else {
@@ -1525,6 +1582,7 @@
 			const $row = $(e.currentTarget).closest('tr');
 			$row.find('.topic-title').show();
 			$row.find('.topic-title-edit').hide();
+			$row.find('.cell-actions').show();
 			$row.find('.aips-edit-topic').show();
 			$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 		},
@@ -1580,6 +1638,80 @@
 					}
 				}
 			]);
+		},
+
+		/**
+		 * Toggle a compact row overflow menu.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRowActionOverflowToggle: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const $toggle = $(e.currentTarget);
+			const menuId = $toggle.attr('aria-controls');
+			const $menu = menuId ? $('#' + menuId) : $();
+
+			if (!$menu.length) {
+				return;
+			}
+
+			const isExpanded = $toggle.attr('aria-expanded') === 'true';
+			this.closeAllRowActionMenus();
+
+			if (!isExpanded) {
+				$toggle.attr('aria-expanded', 'true');
+				$menu.prop('hidden', false);
+			}
+		},
+
+		/**
+		 * Close the overflow menu after an item is selected.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRowActionItemClick: function (e) {
+			e.preventDefault();
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close row action menus when clicking outside them.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onDocumentClick: function (e) {
+			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+				return;
+			}
+
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close row action menus when Escape is pressed.
+		 *
+		 * @param {KeyboardEvent} e Keyboard event.
+		 * @return {void}
+		 */
+		onDocumentKeyDown: function (e) {
+			if (e.key === 'Escape') {
+				this.closeAllRowActionMenus();
+			}
+		},
+
+		/**
+		 * Hide every open row-action overflow menu.
+		 *
+		 * @return {void}
+		 */
+		closeAllRowActionMenus: function () {
+			$('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+			$('.aips-row-action-menu').prop('hidden', true);
 		},
 
 		/**

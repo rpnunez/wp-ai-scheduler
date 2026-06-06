@@ -140,7 +140,7 @@ class AIPS_Config {
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_topic_similarity_threshold' => 0.8,
+            'aips_topic_similarity_threshold' => 0.85,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -183,16 +183,20 @@ class AIPS_Config {
             'aips_cache_driver'         => 'array',
             'aips_cache_db_prefix'      => '',
             'aips_cache_default_ttl'    => 3600,
-            'aips_cache_redis_host'     => '127.0.0.1',
-            'aips_cache_redis_port'     => 6379,
-            'aips_cache_redis_password' => '',
-            'aips_cache_redis_db'       => 0,
-            'aips_cache_redis_prefix'   => 'aips',
-            'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Cache Monitor
+            'aips_cache_monitor_enabled'               => true,
+            'aips_cache_monitor_index_enabled'         => true,
+            'aips_cache_monitor_metrics_enabled'       => true,
+            'aips_cache_monitor_event_retention_days'  => 30,
+            'aips_cache_monitor_max_index_entries'     => 10000,
+            'aips_cache_monitor_preview_length'        => 500,
+            'aips_cache_monitor_full_value_debug_only' => true,
+            'aips_cache_monitor_live_refresh_enabled'  => false,
+            'aips_cache_monitor_live_refresh_interval' => 30,
         );
     }
     
@@ -500,7 +504,7 @@ class AIPS_Config {
      * Get cache framework configuration.
      *
      * Returns all settings that configure the plugin's cache layer, including
-     * driver selection, DB prefix, default TTL, and Redis connection details.
+     * driver selection, DB prefix, and default TTL.
      *
      * Note: AIPS_Cache_Factory::make_driver() reads these settings via direct
      * get_option() calls to avoid a bootstrapping circular dependency (AIPS_Config
@@ -509,28 +513,16 @@ class AIPS_Config {
      *
      * @return array Cache configuration with keys:
      *               'enabled'        (bool)   Whether the cache system is enabled.
-     *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
+     *               'driver'         (string) Cache driver name ('array', 'db', 'wp_object_cache').
      *               'db_prefix'      (string) Table prefix for the DB driver.
      *               'default_ttl'    (int)    Default time-to-live in seconds.
-     *               'redis_host'     (string) Redis hostname.
-     *               'redis_port'     (int)    Redis port.
-     *               'redis_password' (string) Redis auth password (empty = no auth).
-     *               'redis_db'       (int)    Redis database index.
-     *               'redis_prefix'   (string) Key prefix for Redis entries.
-     *               'redis_timeout'  (float)  Connection timeout in seconds.
      */
     public function get_cache_config() {
         return array(
-            'enabled'        => (bool)   $this->get_option('aips_enable_cache_system'),
-            'driver'         => (string) $this->get_option('aips_cache_driver'),
-            'db_prefix'      => (string) $this->get_option('aips_cache_db_prefix'),
-            'default_ttl'    => (int)    $this->get_option('aips_cache_default_ttl'),
-            'redis_host'     => (string) $this->get_option('aips_cache_redis_host'),
-            'redis_port'     => (int)    $this->get_option('aips_cache_redis_port'),
-            'redis_password' => (string) $this->get_option('aips_cache_redis_password'),
-            'redis_db'       => (int)    $this->get_option('aips_cache_redis_db'),
-            'redis_prefix'   => (string) $this->get_option('aips_cache_redis_prefix'),
-            'redis_timeout'  => (float)  $this->get_option('aips_cache_redis_timeout'),
+            'enabled'     => (bool)   $this->get_option('aips_enable_cache_system'),
+            'driver'      => (string) $this->get_option('aips_cache_driver'),
+            'db_prefix'   => (string) $this->get_option('aips_cache_db_prefix'),
+            'default_ttl' => (int)    $this->get_option('aips_cache_default_ttl'),
         );
     }
 

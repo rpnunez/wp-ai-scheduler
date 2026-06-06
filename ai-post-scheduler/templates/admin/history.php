@@ -118,7 +118,7 @@ if (is_object($history)) {
                         <span class="dashicons dashicons-dismiss"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
+                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="all">
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>
@@ -237,8 +237,14 @@ if (is_object($history)) {
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
-            <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <div class="aips-history-modal-header-main">
+                <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                <div id="aips-history-logs-modal-actions" class="aips-history-modal-header-links"></div>
+            </div>
+            <div class="aips-history-modal-header-side">
+                <div id="aips-history-logs-modal-status"></div>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
         </div>
         <div class="aips-modal-body" id="aips-history-logs-content">
             <p><?php esc_html_e('Preparing plain-language summary and technical logs...', 'ai-post-scheduler'); ?></p>
@@ -328,7 +334,7 @@ if (is_object($history)) {
 
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
-	<tr data-type-id="{{typeId}}">
+	<tr data-type-ids="{{typeIds}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>

@@ -66,7 +66,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository' );
+        $this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY ) );
     }
     
     /**
@@ -79,7 +79,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return array Array of schedule objects with template names.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'all', array('active_only' => $active_only) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -104,7 +104,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return object|null Schedule object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'id', array('id' => $id) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -135,7 +135,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             $current_time = AIPS_DateTime::now()->timestamp();
         }
         $current_time = (int) $current_time;
-        $key = 'due:' . $current_time . ':' . (int) $limit;
+        $key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'due', array('current_time' => $current_time, 'limit' => $limit) );
         if ( $this->cache->has( $key ) ) {
             return $this->cache->get( $key );
         }
@@ -216,10 +216,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
-        
-        $format = array('%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s');
+
+        $format = array('%d', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -229,6 +230,46 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if (isset($data['rotation_pattern'])) {
             $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
             $format[] = '%s';
+        }
+
+        if (isset($data['author_id'])) {
+            $insert_data['author_id'] = !empty($data['author_id']) ? absint($data['author_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['campaign_mode'])) {
+            $insert_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('post_type_rules', $data)) {
+            $insert_data['post_type_rules'] = !empty($data['post_type_rules']) ? wp_unslash($data['post_type_rules']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('blackout_dates', $data)) {
+            $insert_data['blackout_dates'] = !empty($data['blackout_dates']) ? sanitize_textarea_field($data['blackout_dates']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_start', $data)) {
+            $insert_data['time_window_start'] = !empty($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_end', $data)) {
+            $insert_data['time_window_end'] = !empty($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('day_preferences', $data)) {
+            $insert_data['day_preferences'] = !empty($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('season_end_date', $data)) {
+            $insert_data['season_end_date'] = !empty($data['season_end_date']) ? absint($data['season_end_date']) : null;
+            $format[] = '%d';
         }
 
         if (isset($data['circuit_state'])) {
@@ -252,7 +293,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -303,6 +344,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             $update_data['topic'] = sanitize_text_field($data['topic']);
             $format[] = '%s';
         }
+
+        if (array_key_exists('campaign_id', $data)) {
+            $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
+            $format[] = '%d';
+        }
         
         if (isset($data['article_structure_id'])) {
             $update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -312,6 +358,46 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if (isset($data['rotation_pattern'])) {
             $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
             $format[] = '%s';
+        }
+
+        if (isset($data['author_id'])) {
+            $update_data['author_id'] = !empty($data['author_id']) ? absint($data['author_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['campaign_mode'])) {
+            $update_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('post_type_rules', $data)) {
+            $update_data['post_type_rules'] = !empty($data['post_type_rules']) ? wp_unslash($data['post_type_rules']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('blackout_dates', $data)) {
+            $update_data['blackout_dates'] = !empty($data['blackout_dates']) ? sanitize_textarea_field($data['blackout_dates']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_start', $data)) {
+            $update_data['time_window_start'] = !empty($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_end', $data)) {
+            $update_data['time_window_end'] = !empty($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('day_preferences', $data)) {
+            $update_data['day_preferences'] = !empty($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('season_end_date', $data)) {
+            $update_data['season_end_date'] = !empty($data['season_end_date']) ? absint($data['season_end_date']) : null;
+            $format[] = '%d';
         }
         
         if (isset($data['status'])) {
@@ -360,7 +446,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
 		return $result !== false;
@@ -394,7 +480,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
 		if ($result !== false && $result > 0) {
 			delete_transient('aips_pending_schedule_stats');
-			$this->cache->flush();
+			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
 			return true;
 		}
 
@@ -412,12 +498,52 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result !== false;
     }
-    
+
+    /**
+     * Count schedules owned by a campaign.
+     *
+     * @param int $campaign_id Campaign ID.
+     * @return int
+     */
+    public function count_by_campaign($campaign_id) {
+        return (int) $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->schedule_table} WHERE campaign_id = %d",
+            absint($campaign_id)
+        ));
+    }
+
+    /**
+     * Return the subset of the given IDs that belong to a campaign.
+     *
+     * Uses a single IN() query instead of one get_by_id() call per ID,
+     * avoiding the N+1 pattern in bulk-delete guards.
+     *
+     * @param int[] $ids Array of schedule IDs to check.
+     * @return int[] Schedule IDs that have a non-NULL campaign_id.
+     */
+    public function get_campaign_owned_ids(array $ids) {
+        $ids = array_filter(array_map('absint', $ids));
+
+        if (empty($ids)) {
+            return array();
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $rows = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->schedule_table} WHERE id IN ($placeholders) AND campaign_id IS NOT NULL",
+                $ids
+            )
+        );
+
+        return array_map('intval', $rows);
+    }
+
     /**
      * Delete all schedules for a template.
      *
@@ -429,7 +555,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -512,7 +638,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             array('%d')
         );
         if ( $result !== false ) {
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
         return $result !== false;
     }
@@ -584,7 +710,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -618,7 +744,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;
@@ -655,7 +781,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
         }
 
         return $result;

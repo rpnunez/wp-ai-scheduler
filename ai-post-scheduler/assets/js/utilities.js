@@ -260,6 +260,7 @@
          *   @param {string}   [fields[].className] - Optional CSS class(es) for the input.
          *   @param {*}        [fields[].value]     - Default/initial value.
          *   @param {string}   [fields[].placeholder] - Placeholder text.
+         *   @param {string}   [fields[].description] - Helper text shown below the field.
          *   @param {number}   [fields[].min]       - Min value (for number inputs).
          *   @param {number}   [fields[].max]       - Max value (for number inputs).
          *   @param {Array}    [fields[].options]   - Array of {value, label} objects (for select inputs).
@@ -415,6 +416,15 @@
                 };
 
                 $formGroup.append($input);
+
+                if (field.description) {
+                    $formGroup.append(
+                        $('<p class="description"></p>')
+                            .css({ marginTop: '6px' })
+                            .text(field.description)
+                    );
+                }
+
                 $body.append($formGroup);
             });
 
@@ -563,6 +573,22 @@
                 }
             });
         },
+
+        /**
+		 * Show feedback in the wizard notice region and toast system.
+		 *
+		 * @param {string} type    Notice type: success, error, warning, or info.
+		 * @param {string} message Plain-text notice message.
+		 * @return {void}
+		 */
+		showNotice: function(type, message) {
+			var noticeClass = type === 'success' ? 'notice notice-success' : 'notice notice-error';
+			var $notice = $(document.createElement('div')).addClass(noticeClass);
+			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
+
+			$('#aips-campaign-wizard-notice').empty().append($notice.append($message));
+			this.showToast(message, type);
+		},
 
         /**
          * Opens a non-dismissable progress-bar modal to give feedback during a
@@ -859,6 +885,40 @@
             return String(text).replace(/[&"'<>\r\n\t]/g, function(match) {
                 return AIPS_ATTR_ENTITY_MAP[match];
             });
+        },
+
+        /**
+         * Sanitize a plain-text scalar by stripping ASCII control characters.
+         *
+         * Suitable for short single-line values such as action names, step keys,
+         * and notice text. Newlines and tabs are removed.
+         *
+         * @param {*} value Value to sanitize.
+         * @return {string} Sanitized plain-text value.
+         */
+        sanitizePlainText: function(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+        },
+
+        /**
+         * Sanitize textarea text while preserving user-authored formatting.
+         *
+         * Removes null bytes and non-printable ASCII controls, but keeps line
+         * breaks and tabs intact so multi-line prompts remain readable.
+         *
+         * @param {*} value Value to sanitize.
+         * @return {string} Sanitized multi-line text.
+         */
+        sanitizeTextareaText: function(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
         },
 
         /**

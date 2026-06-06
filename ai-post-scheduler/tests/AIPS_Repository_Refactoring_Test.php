@@ -111,6 +111,26 @@ class AIPS_Repository_Refactoring_Test extends WP_UnitTestCase {
 			public function esc_like($text) {
 				return $this->delegate->esc_like($text);
 			}
+
+			public function __get($name) {
+				return $this->delegate->$name;
+			}
+
+			public function __set($name, $value) {
+				$this->delegate->$name = $value;
+			}
+
+			public function __isset($name) {
+				return isset($this->delegate->$name);
+			}
+
+			public function __unset($name) {
+				unset($this->delegate->$name);
+			}
+
+			public function __call($method, $args) {
+				return $this->delegate->$method(...$args);
+			}
 		};
 	}
 
@@ -121,13 +141,18 @@ class AIPS_Repository_Refactoring_Test extends WP_UnitTestCase {
 	 * @return array Decoded response array.
 	 */
 	private function capture_ajax(callable $callable) {
+		if (isset($_POST['nonce'])) {
+			$_REQUEST['nonce'] = $_POST['nonce'];
+		}
 		ob_start();
 		try {
 			$callable();
 		} catch (WPAjaxDieContinueException $e) {
 			// Expected after wp_send_json_*.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected in full WordPress mode when no buffered output exists yet.
 		}
-		return json_decode(ob_get_clean(), true);
+		return json_decode(strtok(trim(ob_get_clean()), "\r\n"), true);
 	}
 
 	// =========================================================================

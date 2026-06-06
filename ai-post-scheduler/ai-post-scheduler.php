@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.6.0
+ * Version: 2.9.0
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '2.6.0');
+    define('AIPS_VERSION', '2.9.0');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -112,6 +112,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
             ),
+            'aips_cache_monitor_maintenance' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -163,6 +167,7 @@ final class AI_Post_Scheduler {
     private function includes() {
         // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
         $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        
         if ( file_exists( $vendor_autoload ) ) {
             require_once $vendor_autoload;
         }
@@ -728,6 +733,18 @@ final class AI_Post_Scheduler {
                     'info'
                 );
             }
+        });
+
+        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
+        add_action('aips_cache_monitor_maintenance', function() {
+            $repository  = new AIPS_Cache_Monitor_Repository();
+            $cache_index = new AIPS_Cache_Index();
+            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+            $result      = $service->run_maintenance();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.

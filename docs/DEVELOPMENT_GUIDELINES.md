@@ -63,3 +63,9 @@ Never call the native `confirm()` function. Always use:
 Never call `location.reload()` after an AJAX action. Instead:
 - Re-fetch the updated data via a follow-up AJAX call and re-render the affected UI region using `AIPS.Templates.render()` / `renderRaw()`.
 - Only replace or patch the specific DOM nodes that changed; leave the rest of the page untouched.
+
+---
+
+## Admin UI Design System
+
+For all admin interface work, use `ai-post-scheduler/docs/Design_Guidelines.md` as the single source of truth for tokens, shared component classes, approved usage, and migration patterns.
