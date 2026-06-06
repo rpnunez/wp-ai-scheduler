@@ -81,6 +81,42 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_tags_for_read_returns_expected_tags_for_voices_get_by_id() {
+		$this->assertSame(
+			array( 'voices', 'voice:44' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'voices.get_by_id',
+				array(
+					'voice_id' => 44,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_article_structures_get_by_id() {
+		$this->assertSame(
+			array( 'article_structures', 'article_structure:44' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'article_structures.get_by_id',
+				array(
+					'structure_id' => 44,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_prompt_sections_get_by_keys() {
+		$this->assertSame(
+			array( 'prompt_sections', 'prompt_section:key:intro', 'prompt_section:key:body' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'prompt_sections.get_by_keys',
+				array(
+					'section_keys' => array( 'intro', 'body' ),
+				)
+			)
+		);
+	}
+
 	public function test_tags_for_invalidation_returns_author_domain_tags() {
 		$this->assertSame(
 			array(
@@ -177,6 +213,43 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 					'schedule_id' => 22,
 					'template_id' => 7,
 					'campaign_id' => 3,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_voice_domain_tags() {
+		$this->assertSame(
+			array( 'voices', 'voice:12' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'voice',
+				array(
+					'voice_id' => 12,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_article_structure_domain_tags() {
+		$this->assertSame(
+			array( 'article_structures', 'article_structure:12' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'article_structure',
+				array(
+					'structure_id' => 12,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_prompt_section_domain_tags() {
+		$this->assertSame(
+			array( 'prompt_sections', 'prompt_section:88', 'prompt_section:key:intro' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'prompt_section',
+				array(
+					'section_id'  => 88,
+					'section_key' => 'intro',
 				)
 			)
 		);
