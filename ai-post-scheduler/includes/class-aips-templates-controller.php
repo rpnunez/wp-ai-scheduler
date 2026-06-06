@@ -115,9 +115,7 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
-            'post_category' => isset($_POST['post_category']) && is_array($_POST['post_category'])
-                ? array_map('absint', $_POST['post_category'])
-                : (isset($_POST['post_category']) && absint($_POST['post_category']) > 0 ? array(absint($_POST['post_category'])) : array()),
+            'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
@@ -308,9 +306,7 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
-            'post_category' => isset($_POST['post_category']) && is_array($_POST['post_category'])
-                ? array_map('absint', $_POST['post_category'])
-                : (isset($_POST['post_category']) && absint($_POST['post_category']) > 0 ? array(absint($_POST['post_category'])) : array()),
+            'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
         );
@@ -457,5 +453,22 @@ class AIPS_Templates_Controller {
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+    }
+
+    /**
+     * Extract and sanitise the post_category array from a POST superglobal value.
+     *
+     * Accepts a PHP array (multi-select submit) or a scalar integer string (legacy
+     * single-value submit) and always returns an array of positive int term IDs.
+     *
+     * @param mixed $raw Raw $_POST['post_category'] value.
+     * @return array<int>
+     */
+    private function extract_post_categories( $raw ): array {
+        if ( is_array( $raw ) ) {
+            return array_values( array_filter( array_map( 'absint', $raw ) ) );
+        }
+        $single = absint( $raw );
+        return $single > 0 ? array( $single ) : array();
     }
 }

@@ -330,9 +330,10 @@ class AIPS_Template_Data {
 
 		if ( is_string( $value ) ) {
 			$decoded = json_decode( $value, true );
-			if ( is_array( $decoded ) ) {
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
 				return array_values( array_filter( array_map( 'intval', $decoded ) ) );
 			}
+			// Not valid JSON — treat as a legacy plain integer string.
 			$int_val = (int) $value;
 			return $int_val > 0 ? array( $int_val ) : array();
 		}
