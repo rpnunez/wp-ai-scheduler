@@ -13,6 +13,8 @@ $actor_filter = isset($actor_filter) ? $actor_filter : (isset($_GET['actor']) ? 
 $correlation_filter = isset($correlation_id) ? $correlation_id : (isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '');
 $date_from = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '');
 $date_to = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '');
+$content_tab = isset($_GET['content_tab']) ? sanitize_key(wp_unslash($_GET['content_tab'])) : '';
+$active_content_tab = ($status_filter === 'failed' || $content_tab === 'failed_runs') ? 'failed_runs' : 'history';
 
 $items       = array();
 $total_items = 0;
@@ -44,8 +46,8 @@ if (is_object($history)) {
         <div class="aips-page-header">
             <div class="aips-page-header-top">
                 <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('View generation history containers and inspect every logged step, AI call, and error for each run.', 'ai-post-scheduler'); ?></p>
+                    <h1 class="aips-page-title"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php esc_html_e('View generated posts, review drafts, and inspect generation history from one consolidated content workspace.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
                     <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
@@ -55,6 +57,8 @@ if (is_object($history)) {
                 </div>
             </div>
         </div>
+
+        <?php include AIPS_PLUGIN_DIR . 'templates/admin/content-tabs.php'; ?>
 
         <?php
         $has_active_filter = !empty($status_filter) || !empty($search_query);

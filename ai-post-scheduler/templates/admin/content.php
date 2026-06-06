@@ -2,11 +2,9 @@
 /**
  * Content Admin Template
  *
- * Container for the Content admin page with three tab panels:
- *
- * Tab 1: Generated Posts  - @see templates/admin/tab-generated-posts.php
- * Tab 2: Partial Generations - @see templates/admin/tab-partial-generations.php
- * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
+ * Container for the consolidated Content admin page. Local tabs render
+ * generated posts, drafts/review, and partial generations; history tabs link
+ * to the hidden legacy history route for backward compatibility.
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -17,6 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 /** @var AIPS_Generated_Posts_Controller $controller */
+$active_content_tab = 'generated_posts';
 ?>
 
 <div class="wrap aips-wrap">
@@ -32,11 +31,7 @@ if (!defined('ABSPATH')) {
 		</div>
 
 		<!-- Tabs navigation -->
-		<div class="aips-tab-nav">
-			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-partial-generations" class="aips-tab-link" data-tab="aips-partial-generations"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
-		</div>
+		<?php include AIPS_PLUGIN_DIR . 'templates/admin/content-tabs.php'; ?>
 
 		<!-- Tab 1: Generated Posts -->
 		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
