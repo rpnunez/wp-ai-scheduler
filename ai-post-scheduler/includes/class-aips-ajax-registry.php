@@ -271,6 +271,21 @@ class AIPS_Ajax_Registry {
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+
+		// Cache Monitor Controller
+		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_entries'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_inspect'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_entry'      => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_bulk'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_group'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_expired'     => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_all'         => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_tag'    => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_domain' => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
 	);
 
 	/**
