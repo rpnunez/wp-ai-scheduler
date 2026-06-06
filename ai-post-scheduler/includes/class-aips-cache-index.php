@@ -37,9 +37,13 @@ class AIPS_Cache_Index {
 	 * Constructor.
 	 */
 	public function __construct() {
-		// Read directly from WordPress options here to avoid re-entering the
-		// config cache while the cache index itself is being initialised.
-		$this->enabled     = (bool) get_option( 'aips_cache_monitor_index_enabled', true );
+		// Use get_option() directly to avoid routing through AIPS_Config's internal
+		// AIPS_Cache instance. AIPS_Config::get_option() with a non-null default
+		// always calls config_cache->set() after reading from the DB, which would
+		// trigger the index on the config cache (record_set() -> upsert_index_row()),
+		// which previously called back into AIPS_Config::get_option() and recursed.
+		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
+		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
 	}
 
@@ -168,7 +172,8 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_orphans(): int {
-		$driver = (string) get_option( 'aips_cache_driver', 'array' );
+		// Use get_option() directly — see constructor comment.
+		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -200,7 +205,8 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows inserted/updated.
 	 */
 	public function rebuild_from_db(): int {
-		$driver = (string) get_option( 'aips_cache_driver', 'array' );
+		// Use get_option() directly — see constructor comment.
+		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
@@ -298,10 +304,11 @@ class AIPS_Cache_Index {
 		$now       = AIPS_DateTime::now()->timestamp();
 		$expires   = $ttl > 0 ? $now + $ttl : 0;
 
-		$serialized  = maybe_serialize( $value );
-		$value_size  = strlen( $serialized );
+		$value_size  = $this->estimate_value_size( $value );
 		$value_type  = $this->resolve_value_type( $value );
-		$driver_name = (string) get_option( 'aips_cache_driver', 'array' );
+		// Use get_option() directly to avoid routing through AIPS_Config's internal
+		// AIPS_Cache instance, which would trigger record_set() recursively.
+		$driver_name = get_option( 'aips_cache_driver', 'array' );
 
 		$tags_raw   = isset( $context['tags'] ) && is_array( $context['tags'] ) ? implode( ',', $context['tags'] ) : '';
 		$tier       = isset( $context['tier'] ) ? sanitize_key( $context['tier'] ) : '';
@@ -363,6 +370,42 @@ class AIPS_Cache_Index {
 			return 'object:' . get_class( $value );
 		}
 		return gettype( $value );
+	}
+
+	/**
+	 * Return a memory-safe byte-size estimate for a cached value.
+	 *
+	 * Calling maybe_serialize() on large arrays or deep object graphs to
+	 * measure their serialized length can double peak memory usage and, when
+	 * cache writes are frequent (or recursive through AIPS_Config), exhaust
+	 * the PHP memory limit.  Because the size column is used only for display
+	 * in the Cache Monitor, an approximation is acceptable.
+	 *
+	 * @param mixed $value The cached value.
+	 * @return int Estimated byte size.
+	 */
+	private function estimate_value_size( $value ): int {
+		if (is_string( $value )) {
+			// Exact for strings — the most common cached type (HTML, JSON, etc.).
+			return strlen( $value );
+		}
+		if (is_int( $value )) {
+			return PHP_INT_SIZE;
+		}
+		if (is_float( $value )) {
+			// PHP floats are always 8 bytes (IEEE 754 double) regardless of platform.
+			return 8;
+		}
+		if (is_bool( $value ) || is_null( $value )) {
+			return 1;
+		}
+		if (is_array( $value )) {
+			// Rough estimate: avoid full serialization of potentially huge arrays.
+			// 64 bytes per element is a conservative approximation.
+			return count( $value ) * 64;
+		}
+		// Objects and other types: skip expensive serialization.
+		return 0;
 	}
 
 	/**
