@@ -21,5 +21,11 @@ class AIPS_Onboarding_Wizard_Test extends WP_UnitTestCase {
 		$url = AIPS_Admin_Menu_Helper::get_page_url('onboarding');
 		$this->assertStringContainsString('admin.php?page=aips-onboarding', $url);
 	}
+
+	public function test_admin_menu_helper_routes_status_to_diagnostics_tab() {
+		$url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
+		$this->assertStringContainsString('admin.php?page=aips-diagnostics', $url);
+		$this->assertStringContainsString('tab=status', $url);
+	}
 }
 

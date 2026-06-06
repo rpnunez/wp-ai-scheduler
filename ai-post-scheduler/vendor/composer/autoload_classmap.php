@@ -83,6 +83,7 @@ return array(
     'AIPS_DateTime' => $baseDir . '/includes/class-aips-date-time.php',
     'AIPS_Date_Time_DB_Repair' => $baseDir . '/includes/class-aips-date-time-db-repair.php',
     'AIPS_Dev_Tools' => $baseDir . '/includes/class-aips-dev-tools.php',
+    'AIPS_Diagnostics_Controller' => $baseDir . '/includes/class-aips-diagnostics-controller.php',
     'AIPS_Dispatch_Summary' => $baseDir . '/includes/job/class-aips-dispatch-summary.php',
     'AIPS_Embeddings_Cron' => $baseDir . '/includes/class-aips-embeddings-cron.php',
     'AIPS_Embeddings_Service' => $baseDir . '/includes/class-aips-embeddings-service.php',

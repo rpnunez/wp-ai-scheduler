@@ -6,9 +6,10 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Status {
 
 
-    public function render_page() {
+    public function render_page($embedded = false) {
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
+        $embedded = (bool) $embedded;
 
         if ( $data_management ) {
             $export_formats = $data_management->get_export_formats();
