@@ -497,7 +497,7 @@
 		 */
 		refreshPage: function () {
 			if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') {
-				AIPS.refreshContentPanel('.aips-sources-table', '.aips-content-panel');
+				AIPS.refreshContentPanel('.aips-content-panel', '.aips-content-panel');
 			} else {
 				window.location.reload();
 			}
