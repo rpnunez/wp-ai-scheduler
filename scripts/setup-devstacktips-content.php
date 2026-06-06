@@ -1269,10 +1269,7 @@ Critical areas to address:
 				'post_tags' => '',
 				'post_author' => get_current_user_id() ?: (get_users(array('role' => 'administrator', 'number' => 1))[0]->ID ?? 1),
 				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
-				'featured_image_source' => isset($template_data['featured_image_source']) ? $template_data['featured_image_source'] : 'ai_prompt',
-				'image_prompt' => isset($template_data['image_prompt']) ? $template_data['image_prompt'] : '',
-				'unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
-				'include_sources' => isset($template_data['include_sources']) ? $template_data['include_sources'] : 0,
+				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
 				'source_group_ids' => wp_json_encode($source_group_ids),
 				'is_active' => 1,
 			));
