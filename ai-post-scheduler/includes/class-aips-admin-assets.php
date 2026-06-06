@@ -107,7 +107,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_schedule_assets($hook);
 		}
 
-        if (self::PAGE_CAMPAIGNS === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)) {
+        if (
+            self::PAGE_CAMPAIGNS === $page
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_campaigns_assets();
 		}
 
@@ -375,29 +380,30 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_script() {
         wp_enqueue_script(
-            'aips-history-modal-opener',
-            AIPS_PLUGIN_URL . 'assets/js/admin-history-modal-opener.js',
+            'aips-admin-history',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
             array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
         );
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalAjax', array(
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('aips_ajax_nonce'),
         ));
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalOpenerL10n', array(
-            'historyDetails'  => __('History Details', 'ai-post-scheduler'),
-            'closeModal'      => __('Close modal', 'ai-post-scheduler'),
-            'loading'         => __('Loading…', 'ai-post-scheduler'),
-            'showDetails'     => __('Show details', 'ai-post-scheduler'),
-            'hideDetails'     => __('Hide details', 'ai-post-scheduler'),
-            'copy'            => __('Copy', 'ai-post-scheduler'),
-            'copied'          => __('Copied!', 'ai-post-scheduler'),
-            'invalidHistoryId' => __('Invalid history ID.', 'ai-post-scheduler'),
-            'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
-            'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalL10n', array(
+            'historyDetailsTitle' => __('History Details', 'ai-post-scheduler'),
+            'closeModal'          => __('Close modal', 'ai-post-scheduler'),
+            'loading'             => __('Loading…', 'ai-post-scheduler'),
+            'loadingLogs'         => __('Loading logs…', 'ai-post-scheduler'),
+            'showDetails'         => __('Show details', 'ai-post-scheduler'),
+            'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
+            'copyDetails'         => __('Copy', 'ai-post-scheduler'),
+            'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
+            'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
+            'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
+            'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
         ));
 
         static $scaffold_registered = false;
@@ -422,8 +428,14 @@ class AIPS_Admin_Assets {
         <div id="aips-history-modal" class="aips-modal" style="display: none;" aria-hidden="true">
             <div class="aips-modal-content aips-modal-large">
                 <div class="aips-modal-header">
-                    <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-                    <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    <div class="aips-history-modal-header-main">
+                        <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                        <div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>
+                    </div>
+                    <div class="aips-history-modal-header-side">
+                        <div id="aips-history-modal-status"></div>
+                        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content"></div>
             </div>
@@ -442,6 +454,13 @@ class AIPS_Admin_Assets {
             array('aips-admin-style'),
             AIPS_VERSION
           );
+
+                    wp_enqueue_style(
+                        'aips-admin-post-review-style',
+                        AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                        array('aips-authors-style'),
+                        AIPS_VERSION
+                    );
 
           wp_enqueue_script(
             'aips-authors-script',
@@ -494,6 +513,10 @@ class AIPS_Admin_Assets {
             'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
             'topicDetails' => __('Topic Details', 'ai-post-scheduler'),
             'generatedAt' => __('Date Topic Generated', 'ai-post-scheduler'),
+            'dateApproved' => __('Date Approved', 'ai-post-scheduler'),
+            'dateRejected' => __('Date Rejected', 'ai-post-scheduler'),
+            'datePostGenerated' => __('Date Post Generated', 'ai-post-scheduler'),
+            'moreActions' => __('More actions', 'ai-post-scheduler'),
             'actions' => __('Actions', 'ai-post-scheduler'),
             'approve' => __('Approve', 'ai-post-scheduler'),
             'reject' => __('Reject', 'ai-post-scheduler'),
@@ -1267,6 +1290,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the campaigns page.
      */
     private function enqueue_campaigns_assets() {
+            wp_enqueue_style(
+                'aips-campaigns-style',
+                AIPS_PLUGIN_URL . 'assets/css/campaigns.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',
@@ -1409,6 +1439,7 @@ class AIPS_Admin_Assets {
                 'nonce'                                 => wp_create_nonce('aips_reset_circuit_breaker'),
                 'nonceCronReschedule'                   => wp_create_nonce('aips_status_reschedule_missed_cron'),
                 'nonceRetrySlices'                      => wp_create_nonce('aips_status_retry_failed_slices'),
+                'nonceRepairCampaignData'               => wp_create_nonce('aips_status_repair_campaign_data'),
                 'nonceClearPartialGenerations'          => wp_create_nonce('aips_status_clear_partial_generations'),
                 'nonceCleanupStaleJobsCache'            => wp_create_nonce('aips_status_cleanup_stale_jobs_cache'),
                 'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),

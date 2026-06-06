@@ -5,6 +5,7 @@
  *   - nonce                           {string} wp_nonce for aips_reset_circuit_breaker
  *   - nonceCronReschedule             {string} wp_nonce for aips_status_reschedule_missed_cron
  *   - nonceRetrySlices                {string} wp_nonce for aips_status_retry_failed_slices
+ *   - nonceRepairCampaignData         {string} wp_nonce for aips_status_repair_campaign_data
  *   - nonceClearPartialGenerations    {string} wp_nonce for aips_status_clear_partial_generations
  *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
  *   - hideDetails                     {string} "Hide Details" label
@@ -141,6 +142,7 @@
 			var nonceMap = {
 				'aips_status_reschedule_missed_cron': l10n.nonceCronReschedule || '',
 				'aips_status_retry_failed_slices': l10n.nonceRetrySlices || '',
+				'aips_status_repair_campaign_data': l10n.nonceRepairCampaignData || '',
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
 				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || ''
 			};

@@ -390,6 +390,12 @@ $site_ctx = AIPS_Site_Context::get();
     <div class="aips-modal-content">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
+
+        <div id="aips-author-modal-loader" style="display: none; text-align: center; padding: 20px;">
+            <span class="spinner is-active" style="float: none; margin: 0 auto;"></span>
+            <p><?php esc_html_e('Loading author data...', 'ai-post-scheduler'); ?></p>
+        </div>
+
         <form id="aips-author-form">
             <input type="hidden" id="author_id" name="author_id" value="">
 
