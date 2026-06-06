@@ -2,6 +2,7 @@
 
 This guide is designed for direct use in the plugin UI and reflects the actual admin screens:
 
+- **WordPress → Posts → Categories** (create categories first)
 - **AI Post Scheduler → Voices**
 - **AI Post Scheduler → Article Structures** (tabs: **Article Structures** + **Structure Sections**)
 - **AI Post Scheduler → Templates**
@@ -10,9 +11,47 @@ This guide is designed for direct use in the plugin UI and reflects the actual a
 
 ---
 
+## 0) WordPress Category Setup (create before everything else)
+
+Create these 8 categories in **WordPress → Posts → Categories** before configuring any templates or campaigns. Each category maps directly to one content pillar and one template.
+
+| # | Category Name | Slug | Description | Maps To |
+|---|---------------|------|-------------|---------|
+| 1 | Foundations | `foundations` | Entry-level tutorials and how-to guides for core developer skills | Template 1 — Dev Foundations |
+| 2 | Backend Engineering | `backend-engineering` | Intermediate-to-advanced backend implementation patterns | Template 2 — Backend Engineering |
+| 3 | Security | `security` | Practical security hardening, threat models, and secure coding | Template 3 — Security First |
+| 4 | Architecture & Scale | `architecture-scale` | System design, scalability patterns, and reliability engineering | Template 4 — Architecture Deep Dive |
+| 5 | Comparisons | `comparisons` | Framework, tool, and technology decision guides | Template 5 — Framework Comparison |
+| 6 | Developer Tooling | `developer-tooling` | Git, Docker, CI/CD, and local development workflows | Template 6 — Developer Tooling |
+| 7 | AI for Developers | `ai-for-developers` | Practical AI usage, review loops, and governance for engineers | Template 7 — AI for Developers |
+| 8 | Industry Trends | `industry-trends` | Timely ecosystem analysis and developer-relevant commentary | Template 8 — Trends / Timely Analysis |
+
+### How to create each category
+
+Go to **WordPress → Posts → Categories**, then for each row above fill in:
+- **Name** — use the Name column exactly as shown
+- **Slug** — use the Slug column exactly as shown (controls the URL)
+- **Description** — paste the Description column text
+- Leave **Parent Category** empty (all are top-level)
+- Click **Add New Category**
+
+> **Why flat categories?** A flat, keyword-rich slug structure (e.g. `/category/backend-engineering/`) improves crawlability and keeps URLs short. Avoid nesting under a parent like "DevStackTips" — the extra path segment adds no SEO value and makes URLs longer.
+
+---
+
 ## 1) Plugin-Specific Setup Checklist (screen-by-screen)
 
-## A. Voices (create first)
+## A. Categories (create first — WordPress core)
+
+Screen: **WordPress → Posts → Categories**
+
+Create the 8 categories defined in **Section 0** above before doing anything else in the plugin. Templates and Campaigns need a `post_category` value and that value must already exist.
+
+Dependency: No dependencies — this is the starting point.
+
+---
+
+## B. Voices (create second)
 
 Screen: **AI Post Scheduler → Voices**
 
@@ -28,7 +67,7 @@ Dependency: Voices should exist before creating Templates.
 
 ---
 
-## B. Article Structures + Structure Sections (create second)
+## C. Article Structures + Structure Sections (create third)
 
 Screen: **AI Post Scheduler → Article Structures**
 
@@ -58,7 +97,7 @@ Dependency: Structure Sections should exist before Article Structures.
 
 ---
 
-## C. Templates (create third)
+## D. Templates (create fourth)
 
 Screen: **AI Post Scheduler → Templates** → **Add Template**
 
@@ -76,14 +115,15 @@ In the template wizard configure:
 
 ### Step 4: Review & Post Settings
 - **Post Status** = `Draft` (required for this rollout)
-- **Category**, **Tags**, **Author**
+- **Category** — assign the category listed for each template in Section 5
+- **Tags**, **Author**
 - **Template is active** = checked
 
-Dependency: Voices + Article Structures should be done first.
+Dependency: Categories (Section 0) + Voices + Article Structures should be done first.
 
 ---
 
-## D. Campaigns (create fourth)
+## E. Campaigns (create fifth)
 
 Screen: **AI Post Scheduler → Campaigns** (open **Campaign Wizard**)
 
@@ -121,7 +161,7 @@ Dependency: Templates should be done first.
 
 ---
 
-## E. Author Workflow (required by this strategy)
+## F. Author Workflow (required by this strategy)
 
 Screen: **AI Post Scheduler → Authors**
 
@@ -582,6 +622,7 @@ All templates: set **Post Status = Draft**.
 - **Purpose:** Foundational tutorials.
 - **Voice:** Hands-On Tutorial Coach
 - **Structure:** Evergreen How-To Guide
+- **Category:** `Foundations` (slug: `foundations`)
 - **Content Prompt preset:**
 ```text
 Write an implementation-first tutorial about {{topic}} for software developers.
@@ -595,6 +636,7 @@ Include at least one practical command/code example.
 - **Purpose:** Practical backend depth.
 - **Voice:** DevStackTips Default
 - **Structure:** Advanced Technical Tutorial
+- **Category:** `Backend Engineering` (slug: `backend-engineering`)
 - **Content Prompt preset:**
 ```text
 Write a production-oriented backend engineering tutorial on {{topic}}.
@@ -607,6 +649,7 @@ Cover implementation strategy, tradeoffs, performance, and validation.
 - **Purpose:** Security implementation quality.
 - **Voice:** Senior Backend Mentor
 - **Structure:** Security Best Practices
+- **Category:** `Security` (slug: `security`)
 - **Content Prompt preset:**
 ```text
 Write a security-first guide for {{topic}}.
@@ -619,6 +662,7 @@ Include threat model, secure patterns, testing, and operational monitoring.
 - **Purpose:** Design/system authority content.
 - **Voice:** Senior Backend Mentor
 - **Structure:** Architecture Deep Dive
+- **Category:** `Architecture & Scale` (slug: `architecture-scale`)
 - **Content Prompt preset:**
 ```text
 Write an architecture deep dive on {{topic}}.
@@ -631,6 +675,7 @@ Explain component design, request/data flow, reliability controls, and tradeoffs
 - **Purpose:** Choice-guidance comparison posts.
 - **Voice:** Neutral Technical Analyst
 - **Structure:** Comparison Article
+- **Category:** `Comparisons` (slug: `comparisons`)
 - **Content Prompt preset:**
 ```text
 Write a balanced comparison article for {{topic}}.
@@ -643,6 +688,7 @@ Use explicit decision criteria and scenario-based recommendations.
 - **Purpose:** Workflow and tooling efficiency posts.
 - **Voice:** Hands-On Tutorial Coach
 - **Structure:** Tool / Workflow Explainer
+- **Category:** `Developer Tooling` (slug: `developer-tooling`)
 - **Content Prompt preset:**
 ```text
 Write a practical tooling workflow guide for {{topic}}.
@@ -655,6 +701,7 @@ Include core commands, sequence, common failures, and debugging tips.
 - **Purpose:** AI usage for engineering workflows.
 - **Voice:** AI Engineering Editor
 - **Structure:** AI-for-Devs Article
+- **Category:** `AI for Developers` (slug: `ai-for-developers`)
 - **Content Prompt preset:**
 ```text
 Write a practical AI-for-developers article on {{topic}}.
@@ -667,6 +714,7 @@ Cover where AI helps, where it fails, and required human review controls.
 - **Purpose:** Timely ecosystem interpretation.
 - **Voice:** Neutral Technical Analyst
 - **Structure:** News / Trend Analysis
+- **Category:** `Industry Trends` (slug: `industry-trends`)
 - **Content Prompt preset:**
 ```text
 Analyze {{topic}} with a neutral technical lens.
