@@ -3,7 +3,7 @@
  * DevStackTips Content Setup Script
  *
  * Creates a complete content strategy for DevStackTips including:
- * - Plugin settings (Content Strategy + Resilience & Limits)
+ * - Plugin settings (Content Strategy + Resilience & Limits + Production Settings)
  * - 7 Categories
  * - 5 Voices (writing styles)
  * - 8 Article Structures
@@ -13,6 +13,15 @@
  * - 8 Templates
  * - 6 Campaigns
  * - 8 Schedules
+ *
+ * Plugin Settings Configured:
+ * - Default Article Structure, Research Niches, Notifications
+ * - Telemetry, Cache System, Topic Similarity Threshold
+ * - Log Retention, Default Post Settings, Unsplash Key (placeholder)
+ *
+ * Note: After running, manually configure:
+ * - Notification email address in Settings > Notifications
+ * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
  *
  * Usage:
  *   Run this from WordPress admin via wp-admin/admin.php?page=aips-dev-tools
@@ -45,17 +54,17 @@ class AIPS_DevStackTips_Setup {
 		echo "<h1>DevStackTips Content Setup</h1>\n";
 		echo "<p>Creating complete content production system...</p>\n";
 
-		// Step 1: Configure Plugin Settings
-		$this->configure_settings();
-
-		// Step 2: Create Categories
+		// Step 1: Create Categories
 		$this->create_categories();
 
-		// Step 3: Create Voices
+		// Step 2: Create Voices
 		$this->create_voices();
 
-		// Step 4: Create Article Structures (with sections)
+		// Step 3: Create Article Structures (with sections)
 		$this->create_article_structures();
+
+		// Step 4: Configure Plugin Settings (needs category & structure IDs)
+		$this->configure_settings();
 
 		// Step 5: Create Authors
 		$this->create_authors();
@@ -80,7 +89,7 @@ class AIPS_DevStackTips_Setup {
 	}
 
 	private function configure_settings() {
-		echo "<h2>Step 1: Configuring Plugin Settings</h2>\n";
+		echo "<h2>Step 4: Configuring Plugin Settings</h2>\n";
 
 		// Content Strategy Settings
 		echo "<h3>Content Strategy</h3>\n";
@@ -125,11 +134,98 @@ class AIPS_DevStackTips_Setup {
 			echo "✓ Set {$key} = {$value}\n";
 		}
 
-		echo "✓ Plugin settings configured for production\n";
+		// Default Article Structure
+		echo "<h3>Default Article Structure</h3>\n";
+		$structures = $this->get_created_structures_by_name();
+		if (isset($structures['Evergreen How-To Guide'])) {
+			update_option('aips_default_article_structure_id', $structures['Evergreen How-To Guide']);
+			echo "✓ Set default article structure: Evergreen How-To Guide (ID: {$structures['Evergreen How-To Guide']})\n";
+		}
+
+		// Notification Settings
+		echo "<h3>Notification Preferences</h3>\n";
+		update_option('aips_review_notifications_email', '');
+		echo "⚠ Email not configured - Please add notification email in Settings > Notifications\n";
+		
+		$notification_prefs = array(
+			'generation_failed' => 'email',
+			'quota_alert' => 'email',
+			'post_ready_for_review' => 'both',
+			'template_generated' => 'db',
+			'manual_generation_completed' => 'db',
+			'partial_generation_completed' => 'both',
+			'author_topics_generated' => 'db',
+			'author_topics_failed' => 'email',
+			'author_posts_generated' => 'db',
+			'author_posts_failed' => 'email',
+			'bulk_batch_completed' => 'db',
+			'errors' => 'email',
+			'daily_digest' => 'email',
+			'weekly_digest' => 'email',
+			'monthly_digest' => 'email',
+		);
+		update_option('aips_notification_preferences', $notification_prefs);
+		echo "✓ Set notification preferences (email for critical, DB for routine)\n";
+
+		// Research Niches
+		echo "<h3>Research & Discovery</h3>\n";
+		$research_niches = array(
+			'PHP and Backend Development Trends',
+			'Application Security and Vulnerability Prevention',
+			'Modern Framework Comparisons (Laravel, Symfony, etc.)',
+			'DevOps Tools and Automation',
+			'AI Tools for Developers',
+			'Database Optimization and Best Practices',
+			'Software Architecture Patterns',
+			'API Design and Integration',
+		);
+		update_option('aips_research_niches', $research_niches);
+		echo "✓ Set research niches (8 DevStackTips topics)\n";
+		
+		update_option('aips_topic_similarity_threshold', 0.75);
+		echo "✓ Set topic similarity threshold: 0.75 (allows more variety)\n";
+
+		// Unsplash Configuration
+		echo "<h3>Featured Images</h3>\n";
+		update_option('aips_unsplash_access_key', '');
+		echo "⚠ Unsplash key not configured - Please add Unsplash Access Key in Settings if using Unsplash images\n";
+
+		// Telemetry
+		echo "<h3>Performance Monitoring</h3>\n";
+		update_option('aips_enable_telemetry', true);
+		echo "✓ Enabled telemetry (slow query & request tracking)\n";
+
+		// Cache System
+		echo "<h3>Cache Configuration</h3>\n";
+		update_option('aips_enable_cache_system', true);
+		update_option('aips_cache_driver', 'db');
+		update_option('aips_cache_default_ttl', 3600);
+		echo "✓ Enabled cache system (DB driver, 1 hour TTL)\n";
+
+		// Log Retention
+		echo "<h3>Log Management</h3>\n";
+		update_option('aips_log_retention_days', 60);
+		echo "✓ Set log retention: 60 days\n";
+
+		// Default Post Settings
+		echo "<h3>Default Post Settings</h3>\n";
+		update_option('aips_default_post_status', 'draft');
+		echo "✓ Set default post status: draft\n";
+		
+		$categories = $this->get_created_categories_by_name();
+		if (isset($categories['Backend Development'])) {
+			update_option('aips_default_category', $categories['Backend Development']);
+			echo "✓ Set default category: Backend Development (ID: {$categories['Backend Development']})\n";
+		}
+		
+		update_option('aips_default_post_author', 1);
+		echo "✓ Set default post author: 1 (admin)\n";
+
+		echo "✓ All plugin settings configured for production\n";
 	}
 
 	private function create_categories() {
-		echo "<h2>Step 2: Creating Categories</h2>\n";
+		echo "<h2>Step 1: Creating Categories</h2>\n";
 
 		$categories = array(
 			array(
@@ -1169,9 +1265,9 @@ Critical areas to address:
 				'post_quantity' => isset($template_data['post_quantity']) ? $template_data['post_quantity'] : 1,
 				'post_status' => 'draft', // Start with drafts for review
 				'post_type' => 'post',
-				'post_category' => implode(',', $category_ids),
+				'post_category' => !empty($category_ids) ? $category_ids[0] : 0,
 				'post_tags' => '',
-				'post_author' => get_current_user_id(),
+				'post_author' => get_current_user_id() ?: (get_users(array('role' => 'administrator', 'number' => 1))[0]->ID ?? 1),
 				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
 				'featured_image_source' => isset($template_data['featured_image_source']) ? $template_data['featured_image_source'] : 'ai_prompt',
 				'image_prompt' => isset($template_data['image_prompt']) ? $template_data['image_prompt'] : '',
@@ -1333,17 +1429,17 @@ Critical areas to address:
 
 			$template_id = $templates[$schedule_data['template_name']];
 
-			// Calculate next run time using AIPS_DateTime and AIPS_Interval_Calculator
+			// Calculate next run time using WordPress site timezone
 			$start_time = $schedule_data['start_time'];
-			list($hour, $minute) = explode(':', $start_time);
 			
-			// Create a datetime for today at the specified time
-			$today_at_time = AIPS_DateTime::now();
-			$today_at_time_ts = mktime((int)$hour, (int)$minute, 0, (int)date('n'), (int)date('j'), (int)date('Y'));
+			// Use WordPress site timezone for accurate schedule calculation
+			$site_tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone(get_option('timezone_string') ?: 'UTC');
+			$today_site = new DateTimeImmutable('today ' . $start_time, $site_tz);
+			$today_at_time_ts = $today_site->getTimestamp();
 			
 			// If that time has passed today, use tomorrow
 			if ($today_at_time_ts < AIPS_DateTime::now()->timestamp()) {
-				$today_at_time_ts = mktime((int)$hour, (int)$minute, 0, (int)date('n'), (int)date('j') + 1, (int)date('Y'));
+				$today_at_time_ts = $today_site->modify('+1 day')->getTimestamp();
 			}
 
 			// Use interval calculator to get the proper next run based on frequency
@@ -1424,10 +1520,16 @@ Critical areas to address:
 	private function print_summary() {
 		echo "\n<h2>Setup Complete!</h2>\n";
 		
-		echo "<h3>Configured Settings:</h3>\n";
+		echo "<h3>Configured Settings (16 total):</h3>\n";
 		echo "<ul>\n";
-		echo "<li><strong>Content Strategy:</strong> Site niche, target audience, content goals, brand voice, guidelines, and excluded topics configured for DevStackTips</li>\n";
-		echo "<li><strong>Resilience & Limits:</strong> Retry (3 attempts), Rate limiting (20 req/min), Circuit breaker (enabled) - Production settings</li>\n";
+		echo "<li><strong>Content Strategy:</strong> Site niche, target audience, content goals, brand voice, guidelines, excluded topics</li>\n";
+		echo "<li><strong>Resilience & Limits:</strong> Retry (3 attempts), Rate limiting (20 req/min), Circuit breaker (enabled)</li>\n";
+		echo "<li><strong>Default Article Structure:</strong> Evergreen How-To Guide</li>\n";
+		echo "<li><strong>Notifications:</strong> Email for critical alerts, DB for routine events, digest rollups enabled</li>\n";
+		echo "<li><strong>Research & Discovery:</strong> 8 DevStackTips topics, similarity threshold 0.75</li>\n";
+		echo "<li><strong>Performance:</strong> Telemetry enabled, Cache system (DB driver), 60-day log retention</li>\n";
+		echo "<li><strong>Default Post Settings:</strong> Draft status, Backend Development category, admin author</li>\n";
+		echo "<li><strong>⚠ Manual Configuration Required:</strong> Notification email address, Unsplash Access Key</li>\n";
 		echo "</ul>\n";
 		
 		echo "<h3>Created Items:</h3>\n";
@@ -1466,13 +1568,14 @@ Critical areas to address:
 
 		echo "\n<h3>Next Steps:</h3>\n";
 		echo "<ol>\n";
-		echo "<li>Review the plugin Settings page to verify Content Strategy and Resilience settings</li>\n";
-		echo "<li>Review the created Categories and Templates in the WordPress admin</li>\n";
-		echo "<li>Verify the Schedules are configured correctly (20 posts/week target)</li>\n";
-		echo "<li>Check the Source Groups and Sources for proper RSS feed URLs</li>\n";
-		echo "<li>Start with 'Draft' post status to review content quality</li>\n";
-		echo "<li>After validating quality, switch templates to 'Publish' for auto-publishing</li>\n";
-		echo "<li>Monitor the History page and Operations Insights for generation metrics</li>\n";
+		echo "<li><strong>⚠ REQUIRED:</strong> Add notification email in Settings > Notifications</li>\n";
+		echo "<li><strong>⚠ If using Unsplash:</strong> Add Unsplash Access Key in Settings > Featured Images</li>\n";
+		echo "<li>Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)</li>\n";
+		echo "<li>Review created Categories, Templates, Voices, Structures in WordPress admin</li>\n";
+		echo "<li>Verify Schedules are configured correctly (20 posts/week target)</li>\n";
+		echo "<li>Check Source Groups and Sources for proper RSS feed URLs</li>\n";
+		echo "<li>Start with 'Draft' post status to review content quality before auto-publishing</li>\n";
+		echo "<li>Monitor History page, Operations Insights, and Telemetry for generation metrics</li>\n";
 		echo "<li>Review and approve Author Topics before they generate posts</li>\n";
 		echo "</ol>\n";
 
@@ -1543,8 +1646,32 @@ Critical areas to address:
 		
 		foreach ($resilience_defaults as $key => $default) {
 			update_option($key, $default);
+			$deleted['settings']++;
 		}
 		echo "✓ Reset Resilience & Limits settings to defaults\n";
+
+		// Reset Production settings
+		$production_defaults = array(
+			'aips_default_article_structure_id' => '',
+			'aips_review_notifications_email' => '',
+			'aips_notification_preferences' => array(),
+			'aips_research_niches' => array(),
+			'aips_topic_similarity_threshold' => 0.85,
+			'aips_unsplash_access_key' => '',
+			'aips_enable_telemetry' => false,
+			'aips_enable_cache_system' => false,
+			'aips_cache_driver' => 'array',
+			'aips_cache_default_ttl' => 3600,
+			'aips_log_retention_days' => 30,
+			'aips_default_post_status' => 'draft',
+			'aips_default_category' => '',
+			'aips_default_post_author' => 1,
+		);
+		foreach ($production_defaults as $key => $value) {
+			update_option($key, $value);
+			$deleted['settings']++;
+		}
+		echo "✓ Reset Production settings to defaults\n";
 
 		// Delete in reverse order of creation to maintain referential integrity
 
@@ -1722,32 +1849,32 @@ Critical areas to address:
 		// 9. Delete Prompt Sections (delete all sections created by this script)
 		echo "<h2>Deleting Prompt Sections</h2>\n";
 		$section_names = array(
-			'How-To Introduction',
-			'How-To Prerequisites',
-			'How-To Step-by-Step',
-			'How-To Common Pitfalls',
-			'How-To Conclusion',
-			'Tutorial Problem Statement',
-			'Tutorial Solution Overview',
-			'Tutorial Implementation',
-			'Tutorial Testing',
-			'Tutorial Optimization',
-			'Comparison Introduction',
-			'Comparison Feature Analysis',
-			'Comparison Use Cases',
-			'Comparison Verdict',
-			'Architecture Context',
-			'Architecture Design Patterns',
-			'Architecture Trade-offs',
-			'Architecture Implementation',
-			'Security Vulnerability Overview',
-			'Security Attack Vectors',
-			'Security Prevention',
-			'Security Code Examples',
-			'Tool Overview',
-			'Tool Setup',
-			'Tool Usage',
-			'AI Introduction',
+			'Introduction',
+			'What You\'ll Learn',
+			'Prerequisites',
+			'Core Concepts',
+			'Step-by-Step Instructions',
+			'Code Examples',
+			'Common Mistakes',
+			'Best Practices',
+			'When to Use / When Not to Use',
+			'Conclusion',
+			'FAQ',
+			'Problem Statement',
+			'Technical Context',
+			'Implementation Strategy',
+			'Performance Considerations',
+			'Security Considerations',
+			'Testing / Validation',
+			'Operational Tips',
+			'Overview',
+			'Quick Summary Table',
+			'What Option A Is',
+			'What Option B Is',
+			'Developer Experience',
+			'Ecosystem / Community',
+			'Best Use Cases',
+			'Final Recommendation',
 		);
 		foreach ($section_names as $name) {
 			$count = $wpdb->delete(
