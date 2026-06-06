@@ -700,7 +700,7 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function cache_section_callback() {
-        echo '<p>' . esc_html__('Configure the caching layer used by the plugin. Choose a driver and supply any required connection details.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure the caching layer used by the plugin. Choose between Array, WP Object Cache, or Database.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
@@ -751,10 +751,8 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_cache_driver');
         $drivers = array(
             'array'           => __('Array (in-memory, request-scoped) (default)', 'ai-post-scheduler'),
-            'session'         => __('Session (PHP session, user-scoped across pages)', 'ai-post-scheduler'),
-            'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
-            'redis'           => __('Redis (persistent, requires PHP redis extension)', 'ai-post-scheduler'),
             'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
+            'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
         );
         ?>
         <div class="aips-cache-system-fields">
@@ -763,7 +761,7 @@ class AIPS_Settings_UI {
                     <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
                 <?php endforeach; ?>
             </select>
-            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. Session persists across page loads for the current user. DB is persistent for all users. Redis requires the PHP redis extension.', 'ai-post-scheduler'); ?></p>
+            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. WP Object Cache is recommended when your site has a persistent object cache backend. Database provides persistent plugin-managed storage.', 'ai-post-scheduler'); ?></p>
         </div>
         <?php
     }
@@ -799,104 +797,20 @@ class AIPS_Settings_UI {
     }
 
     /**
-     * Render the Redis Host field.
-     *
-     * @return void
-     */
-    public function cache_redis_host_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_host');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="text" name="aips_cache_redis_host" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="127.0.0.1">
-            <p class="description"><?php esc_html_e('Redis server hostname or IP address.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Render the Redis Port field.
-     *
-     * @return void
-     */
-    public function cache_redis_port_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_port');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="number" name="aips_cache_redis_port" value="<?php echo esc_attr($value); ?>" min="1" max="65535" class="small-text">
-            <p class="description"><?php esc_html_e('Redis server port. Default: 6379.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Render the Redis Password field.
-     *
-     * @return void
-     */
-    public function cache_redis_password_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_password');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="password" name="aips_cache_redis_password" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('Leave empty if not required', 'ai-post-scheduler'); ?>" autocomplete="new-password">
-            <p class="description"><?php esc_html_e('Redis authentication password. Leave empty if your Redis server does not require authentication.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Render the Redis Database Index field.
-     *
-     * @return void
-     */
-    public function cache_redis_db_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_db');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="number" name="aips_cache_redis_db" value="<?php echo esc_attr($value); ?>" min="0" max="15" class="small-text">
-            <p class="description"><?php esc_html_e('Redis database index (0–15). Default: 0.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Render the Redis Key Prefix field.
-     *
-     * @return void
-     */
-    public function cache_redis_prefix_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_prefix');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="text" name="aips_cache_redis_prefix" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="aips">
-            <p class="description"><?php esc_html_e('Prefix prepended to every Redis key. Helps avoid collisions with other applications on the same server. Default: aips.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Render the Redis Connection Timeout field.
-     *
-     * @return void
-     */
-    public function cache_redis_timeout_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_redis_timeout');
-        ?>
-        <div class="aips-cache-redis-fields">
-            <input type="number" name="aips_cache_redis_timeout" value="<?php echo esc_attr($value); ?>" min="1" max="30" class="small-text">
-            <p class="description"><?php esc_html_e('Maximum time in seconds to wait for a Redis connection to be established. Default: 2.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
-
-    /**
      * Sanitize and validate the selected cache driver value.
      *
      * @param mixed $value Raw input value.
      * @return string Sanitized driver name, or 'array' as safe fallback.
      */
     public function sanitize_cache_driver( $value ) {
-        $allowed = array('array', 'session', 'db', 'redis', 'wp_object_cache');
+        $allowed = array('array', 'db', 'wp_object_cache');
+        $legacy  = array('session', 'redis');
         $value   = sanitize_text_field( (string) $value );
+
+        if (in_array($value, $legacy, true)) {
+            return 'wp_object_cache';
+        }
+
         return in_array($value, $allowed, true) ? $value : 'array';
     }
 
