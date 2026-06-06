@@ -12,6 +12,8 @@ exit;
 
 class AIPS_Existing_Post_Improvement_Repository {
 
+const SCHEDULE_TYPE = 'existing_post_scan';
+
 /** @var wpdb */
 private $wpdb;
 /** @var string */
@@ -28,7 +30,7 @@ private $table_history;
 public function __construct() {
 global $wpdb;
 $this->wpdb              = $wpdb;
-$this->table_schedules   = $wpdb->prefix . 'aips_existing_post_scan_schedules';
+$this->table_schedules   = $wpdb->prefix . 'aips_schedule';
 $this->table_runs        = $wpdb->prefix . 'aips_existing_post_scan_runs';
 $this->table_suggestions = $wpdb->prefix . 'aips_existing_post_suggestions';
 $this->table_items       = $wpdb->prefix . 'aips_existing_post_suggestion_items';
@@ -37,25 +39,30 @@ $this->table_history     = $wpdb->prefix . 'aips_history';
 
 public function create_schedule($data) {
 $now = time();
+$state = array(
+'category_filters' => isset($data['category_filters']) ? array_values(array_map('absint', (array) $data['category_filters'])) : array(),
+'include_generated_posts' => !empty($data['include_generated_posts']) ? 1 : 0,
+'lock_token' => '',
+'lock_expires_at' => 0,
+'run_cursor' => 0,
+'retry_count' => 0,
+'last_error' => '',
+);
 $row = array(
+'template_id'            => 0,
 'title'                  => isset($data['title']) ? sanitize_text_field($data['title']) : '',
-'description'            => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
+'topic'                  => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 'frequency'              => isset($data['frequency']) ? sanitize_key($data['frequency']) : 'daily',
-'category_filters'       => isset($data['category_filters']) ? wp_json_encode(array_values(array_map('absint', (array) $data['category_filters']))) : wp_json_encode(array()),
-'include_generated_posts'=> !empty($data['include_generated_posts']) ? 1 : 0,
 'status'                 => isset($data['status']) ? sanitize_key($data['status']) : 'active',
+'is_active'              => (!isset($data['status']) || 'active' === sanitize_key($data['status'])) ? 1 : 0,
+'schedule_type'          => self::SCHEDULE_TYPE,
 'next_run'               => isset($data['next_run']) ? absint($data['next_run']) : 0,
 'last_run'               => isset($data['last_run']) ? absint($data['last_run']) : 0,
-'lock_token'             => '',
-'lock_expires_at'        => 0,
-'run_cursor'             => 0,
-'retry_count'            => 0,
-'last_error'             => '',
+'run_state'              => wp_json_encode($state),
 'created_at'             => $now,
-'updated_at'             => $now,
 );
 
-$inserted = $this->wpdb->insert($this->table_schedules, $row, array('%s','%s','%s','%s','%d','%s','%d','%d','%s','%d','%d','%d','%s','%d','%d'));
+$inserted = $this->wpdb->insert($this->table_schedules, $row, array('%d','%s','%s','%s','%s','%d','%s','%d','%d','%s','%d'));
 if (false === $inserted) {
 return 0;
 }
@@ -69,44 +76,80 @@ if (!$id) {
 return false;
 }
 
-$fields = array('updated_at' => time());
-$formats = array('%d');
+$existing = $this->get_schedule_by_id($id);
+if (!$existing) {
+return false;
+}
+
+$fields = array();
+$formats = array();
 
 $map = array(
 'title' => '%s',
-'description' => '%s',
+'topic' => '%s',
 'frequency' => '%s',
 'status' => '%s',
 'next_run' => '%d',
 'last_run' => '%d',
-'include_generated_posts' => '%d',
-'run_cursor' => '%d',
-'retry_count' => '%d',
-'last_error' => '%s',
 );
 
 foreach ($map as $key => $format) {
-if (!array_key_exists($key, $data)) {
+if ('topic' === $key && !array_key_exists('description', $data)) {
 continue;
 }
-$value = $data[$key];
+if ('topic' !== $key && !array_key_exists($key, $data)) {
+continue;
+}
+$value = 'topic' === $key ? $data['description'] : $data[$key];
 if ('%d' === $format) {
 $value = absint($value);
 } elseif (in_array($key, array('status', 'frequency'), true)) {
 $value = sanitize_key((string) $value);
 } else {
-$value = sanitize_text_field((string) $value);
+$value = 'topic' === $key ? sanitize_textarea_field((string) $value) : sanitize_text_field((string) $value);
 }
 $fields[$key] = $value;
 $formats[] = $format;
 }
 
+if (array_key_exists('status', $data)) {
+$fields['is_active'] = ('active' === sanitize_key((string) $data['status'])) ? 1 : 0;
+$formats[] = '%d';
+}
+
+$state = $this->decode_schedule_state(isset($existing->run_state) ? $existing->run_state : '');
 if (array_key_exists('category_filters', $data)) {
-$fields['category_filters'] = wp_json_encode(array_values(array_map('absint', (array) $data['category_filters'])));
+$state['category_filters'] = array_values(array_map('absint', (array) $data['category_filters']));
+}
+if (array_key_exists('include_generated_posts', $data)) {
+$state['include_generated_posts'] = !empty($data['include_generated_posts']) ? 1 : 0;
+}
+if (array_key_exists('lock_token', $data)) {
+$state['lock_token'] = sanitize_text_field((string) $data['lock_token']);
+}
+if (array_key_exists('lock_expires_at', $data)) {
+$state['lock_expires_at'] = absint($data['lock_expires_at']);
+}
+if (array_key_exists('run_cursor', $data)) {
+$state['run_cursor'] = absint($data['run_cursor']);
+}
+if (array_key_exists('retry_count', $data)) {
+$state['retry_count'] = absint($data['retry_count']);
+}
+if (array_key_exists('last_error', $data)) {
+$state['last_error'] = sanitize_textarea_field((string) $data['last_error']);
+}
+
+if (!empty($state)) {
+$fields['run_state'] = wp_json_encode($state);
 $formats[] = '%s';
 }
 
-$result = $this->wpdb->update($this->table_schedules, $fields, array('id' => $id), $formats, array('%d'));
+if (empty($fields)) {
+return false;
+}
+
+$result = $this->wpdb->update($this->table_schedules, $fields, array('id' => $id, 'schedule_type' => self::SCHEDULE_TYPE), $formats, array('%d', '%s'));
 return false !== $result;
 }
 
@@ -115,38 +158,59 @@ $id = absint($id);
 if (!$id) {
 return null;
 }
-return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE id = %d", $id));
+$schedule = $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE id = %d AND schedule_type = %s", $id, self::SCHEDULE_TYPE));
+if (!$schedule) {
+return null;
+}
+return $this->hydrate_schedule($schedule);
 }
 
 public function get_schedules($status = '') {
 if (!empty($status)) {
-return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE status = %s ORDER BY next_run ASC, id DESC", sanitize_key($status)));
+$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s AND status = %s ORDER BY next_run ASC, id DESC", self::SCHEDULE_TYPE, sanitize_key($status)));
+return array_map(array($this, 'hydrate_schedule'), $schedules);
 }
-return $this->wpdb->get_results("SELECT * FROM {$this->table_schedules} ORDER BY next_run ASC, id DESC");
+$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s ORDER BY next_run ASC, id DESC", self::SCHEDULE_TYPE));
+return array_map(array($this, 'hydrate_schedule'), $schedules);
 }
 
 public function get_due_schedules($now = null, $limit = 10) {
 $now = null === $now ? time() : absint($now);
 $limit = max(1, absint($limit));
-return $this->wpdb->get_results($this->wpdb->prepare(
-"SELECT * FROM {$this->table_schedules} WHERE status = %s AND next_run > 0 AND next_run <= %d AND (lock_expires_at = 0 OR lock_expires_at < %d) ORDER BY next_run ASC LIMIT %d",
-'active', $now, $now, $limit
+$schedules = $this->wpdb->get_results($this->wpdb->prepare(
+"SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s AND status = %s AND next_run > 0 AND next_run <= %d ORDER BY next_run ASC LIMIT %d",
+self::SCHEDULE_TYPE, 'active', $now, $limit * 3
 ));
+$available = array();
+foreach ($schedules as $schedule) {
+$hydrated = $this->hydrate_schedule($schedule);
+if ((int) $hydrated->lock_expires_at > 0 && (int) $hydrated->lock_expires_at >= $now) {
+continue;
+}
+$available[] = $hydrated;
+if (count($available) >= $limit) {
+break;
+}
+}
+return $available;
 }
 
 public function acquire_schedule_lock($schedule_id, $token, $ttl = 300) {
 $schedule_id = absint($schedule_id);
 $token = sanitize_text_field($token);
 $ttl = max(30, absint($ttl));
+$schedule = $this->get_schedule_by_id($schedule_id);
+if (!$schedule) {
+return false;
+}
 $now = time();
-$expires = $now + $ttl;
-$result = $this->wpdb->query($this->wpdb->prepare(
-"UPDATE {$this->table_schedules}
- SET lock_token = %s, lock_expires_at = %d, updated_at = %d
- WHERE id = %d AND (lock_expires_at = 0 OR lock_expires_at < %d)",
-$token, $expires, $now, $schedule_id, $now
+if (!empty($schedule->lock_expires_at) && (int) $schedule->lock_expires_at >= $now) {
+return false;
+}
+return $this->update_schedule($schedule_id, array(
+'lock_token' => $token,
+'lock_expires_at' => $now + $ttl,
 ));
-return !empty($result);
 }
 
 public function release_schedule_lock($schedule_id, $token = '') {
@@ -155,18 +219,19 @@ if ($schedule_id <= 0) {
 return false;
 }
 if (!empty($token)) {
-$result = $this->wpdb->query($this->wpdb->prepare(
-"UPDATE {$this->table_schedules} SET lock_token = '', lock_expires_at = 0, updated_at = %d WHERE id = %d AND lock_token = %s",
-time(), $schedule_id, sanitize_text_field($token)
-));
-return false !== $result;
+$schedule = $this->get_schedule_by_id($schedule_id);
+if (!$schedule || !isset($schedule->lock_token) || !hash_equals((string) $schedule->lock_token, sanitize_text_field($token))) {
+return false;
 }
-$result = $this->wpdb->update($this->table_schedules, array('lock_token' => '', 'lock_expires_at' => 0, 'updated_at' => time()), array('id' => $schedule_id), array('%s','%d','%d'), array('%d'));
-return false !== $result;
+}
+return $this->update_schedule($schedule_id, array(
+'lock_token' => '',
+'lock_expires_at' => 0,
+));
 }
 
 public function delete_schedule($id) {
-return false !== $this->wpdb->delete($this->table_schedules, array('id' => absint($id)), array('%d'));
+return false !== $this->wpdb->delete($this->table_schedules, array('id' => absint($id), 'schedule_type' => self::SCHEDULE_TYPE), array('%d', '%s'));
 }
 
 public function create_run($schedule_id, $status = 'running', $started_by = 'cron') {
@@ -469,5 +534,45 @@ return true;
 }
 }
 return false;
+}
+
+private function decode_schedule_state($run_state) {
+$state = json_decode((string) $run_state, true);
+if (!is_array($state)) {
+$state = array();
+}
+
+$defaults = array(
+'category_filters' => array(),
+'include_generated_posts' => 0,
+'lock_token' => '',
+'lock_expires_at' => 0,
+'run_cursor' => 0,
+'retry_count' => 0,
+'last_error' => '',
+);
+$state = wp_parse_args($state, $defaults);
+$state['category_filters'] = array_values(array_map('absint', (array) $state['category_filters']));
+$state['include_generated_posts'] = !empty($state['include_generated_posts']) ? 1 : 0;
+$state['lock_token'] = sanitize_text_field((string) $state['lock_token']);
+$state['lock_expires_at'] = absint($state['lock_expires_at']);
+$state['run_cursor'] = absint($state['run_cursor']);
+$state['retry_count'] = absint($state['retry_count']);
+$state['last_error'] = sanitize_textarea_field((string) $state['last_error']);
+
+return $state;
+}
+
+private function hydrate_schedule($schedule) {
+$state = $this->decode_schedule_state(isset($schedule->run_state) ? $schedule->run_state : '');
+$schedule->description = isset($schedule->topic) ? (string) $schedule->topic : '';
+$schedule->category_filters = wp_json_encode($state['category_filters']);
+$schedule->include_generated_posts = (int) $state['include_generated_posts'];
+$schedule->lock_token = (string) $state['lock_token'];
+$schedule->lock_expires_at = (int) $state['lock_expires_at'];
+$schedule->run_cursor = (int) $state['run_cursor'];
+$schedule->retry_count = (int) $state['retry_count'];
+$schedule->last_error = (string) $state['last_error'];
+return $schedule;
 }
 }

@@ -33,7 +33,6 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
-        'aips_existing_post_scan_schedules',
         'aips_existing_post_scan_runs',
         'aips_existing_post_suggestions',
         'aips_existing_post_suggestion_items',
@@ -98,7 +97,6 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
-        $table_existing_scan_schedules = $tables['aips_existing_post_scan_schedules'];
         $table_existing_scan_runs      = $tables['aips_existing_post_scan_runs'];
         $table_existing_suggestions    = $tables['aips_existing_post_suggestions'];
         $table_existing_suggestion_items = $tables['aips_existing_post_suggestion_items'];
@@ -235,28 +233,6 @@ class AIPS_DB_Manager {
             KEY circuit_state (circuit_state),
             KEY campaign_mode (campaign_mode),
             KEY season_end_date (season_end_date)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_existing_scan_schedules (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            title varchar(255) NOT NULL,
-            description text,
-            frequency varchar(50) NOT NULL DEFAULT 'daily',
-            category_filters longtext,
-            include_generated_posts tinyint(1) NOT NULL DEFAULT 0,
-            status varchar(20) NOT NULL DEFAULT 'active',
-            next_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            last_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            lock_token varchar(64) DEFAULT '',
-            lock_expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            run_cursor bigint(20) unsigned NOT NULL DEFAULT 0,
-            retry_count int NOT NULL DEFAULT 0,
-            last_error text,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY (id),
-            KEY status_next_run (status, next_run),
-            KEY lock_expires_at (lock_expires_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_existing_scan_runs (
