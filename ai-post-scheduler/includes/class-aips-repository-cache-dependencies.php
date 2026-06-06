@@ -70,6 +70,70 @@ class AIPS_Repository_Cache_Dependencies {
 			case 'author_topics.get_all_approved_for_queue':
 				return array( 'author_topics', 'dashboard_counts' );
 
+				case 'templates.get_all':
+				case 'templates.search':
+				case 'templates.name_exists':
+					return array( 'templates' );
+
+				case 'templates.get_by_id':
+					$tags = array( 'templates' );
+					if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+						$tags[] = 'template:' . (int) $args['template_id'];
+					}
+					return self::unique_tags( $tags );
+
+				case 'templates.count_by_campaign':
+					return self::unique_tags(
+						array_merge(
+							array( 'templates' ),
+							self::campaign_id_tag( 'campaign', $args )
+						)
+					);
+
+				case 'templates.count_by_status':
+					return array( 'templates', 'dashboard_counts' );
+
+				case 'schedules.get_all':
+				case 'schedules.get_due':
+				case 'schedules.get_upcoming':
+					return array( 'schedules', 'templates', 'unified_schedule' );
+
+				case 'schedules.get_by_id':
+					$tags = array( 'schedules', 'unified_schedule' );
+					if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
+						$tags[] = 'schedule:' . (int) $args['schedule_id'];
+					}
+					return self::unique_tags( $tags );
+
+				case 'schedules.get_by_template':
+				case 'schedules.get_active_by_template':
+					return self::unique_tags(
+						array_merge(
+							array( 'schedules', 'templates', 'unified_schedule' ),
+							self::template_id_tag( 'template', $args )
+						)
+					);
+
+				case 'schedules.count_by_campaign':
+					return self::unique_tags(
+						array_merge(
+							array( 'schedules', 'unified_schedule' ),
+							self::campaign_id_tag( 'campaign', $args )
+						)
+					);
+
+				case 'schedules.get_campaign_owned_ids':
+					return array( 'schedules', 'unified_schedule' );
+
+				case 'schedules.get_active':
+					return array( 'schedules', 'unified_schedule' );
+
+				case 'schedules.count_by_status':
+					return array( 'schedules', 'dashboard_counts', 'unified_schedule' );
+
+				case 'schedules.get_post_count_for_schedules':
+					return array( 'schedules', 'templates', 'unified_schedule' );
+
 			default:
 				return array();
 		}
@@ -101,6 +165,12 @@ class AIPS_Repository_Cache_Dependencies {
 
 			case 'unified_schedule':
 				return array( 'unified_schedule' );
+
+				case 'template':
+					return self::tags_for_template_invalidation( $context );
+
+				case 'schedule':
+					return self::tags_for_schedule_invalidation( $context );
 
 			default:
 				$domain = sanitize_key( $domain );
@@ -187,6 +257,58 @@ class AIPS_Repository_Cache_Dependencies {
 	}
 
 	/**
+	 * Resolve template-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_template_invalidation( array $context ): array {
+		$tags = array(
+			'templates',
+			'dashboard_counts',
+			'unified_schedule',
+		);
+
+		if (isset( $context['template_id'] ) && is_numeric( $context['template_id'] )) {
+			$tags[] = 'template:' . (int) $context['template_id'];
+		}
+
+		if (isset( $context['campaign_id'] ) && is_numeric( $context['campaign_id'] ) && (int) $context['campaign_id'] > 0) {
+			$tags[] = 'campaign:' . (int) $context['campaign_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve schedule-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_schedule_invalidation( array $context ): array {
+		$tags = array(
+			'schedules',
+			'dashboard_counts',
+			'unified_schedule',
+		);
+
+		if (isset( $context['schedule_id'] ) && is_numeric( $context['schedule_id'] )) {
+			$tags[] = 'schedule:' . (int) $context['schedule_id'];
+		}
+
+		if (isset( $context['template_id'] ) && is_numeric( $context['template_id'] )) {
+			$tags[] = 'template:' . (int) $context['template_id'];
+		}
+
+		if (isset( $context['campaign_id'] ) && is_numeric( $context['campaign_id'] ) && (int) $context['campaign_id'] > 0) {
+			$tags[] = 'campaign:' . (int) $context['campaign_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
 	 * Resolve standard author-topic read tags.
 	 *
 	 * @param array $args Operation arguments.
@@ -212,6 +334,36 @@ class AIPS_Repository_Cache_Dependencies {
 	private static function author_id_tag( string $prefix, array $args ): array {
 		if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
 			return array( $prefix . ':' . (int) $args['author_id'] );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Build a template-scoped tag when template_id is available.
+	 *
+	 * @param string $prefix Tag prefix.
+	 * @param array  $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function template_id_tag( string $prefix, array $args ): array {
+		if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+			return array( $prefix . ':' . (int) $args['template_id'] );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Build a campaign-scoped tag when campaign_id is available.
+	 *
+	 * @param string $prefix Tag prefix.
+	 * @param array  $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function campaign_id_tag( string $prefix, array $args ): array {
+		if (isset( $args['campaign_id'] ) && is_numeric( $args['campaign_id'] ) && (int) $args['campaign_id'] > 0) {
+			return array( $prefix . ':' . (int) $args['campaign_id'] );
 		}
 
 		return array();

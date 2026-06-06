@@ -55,6 +55,32 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_tags_for_read_returns_expected_tags_for_templates_count_by_status() {
+		$this->assertSame(
+			array( 'templates', 'dashboard_counts' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read( 'templates.count_by_status' )
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_schedules_get_by_template() {
+		$this->assertSame(
+			array( 'schedules', 'templates', 'unified_schedule', 'template:7' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'schedules.get_by_template',
+				array(
+					'template_id' => 7,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_schedules_count_by_status() {
+		$this->assertSame(
+			array( 'schedules', 'dashboard_counts', 'unified_schedule' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read( 'schedules.count_by_status' )
+		);
+	}
+
 	public function test_tags_for_invalidation_returns_author_domain_tags() {
 		$this->assertSame(
 			array(
@@ -111,6 +137,46 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 					'author_id' => 12,
 					'topic_id'  => 88,
 					'post_id'   => 99,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_template_domain_tags() {
+		$this->assertSame(
+			array(
+				'templates',
+				'dashboard_counts',
+				'unified_schedule',
+				'template:7',
+				'campaign:3',
+			),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'template',
+				array(
+					'template_id' => 7,
+					'campaign_id' => 3,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_schedule_domain_tags() {
+		$this->assertSame(
+			array(
+				'schedules',
+				'dashboard_counts',
+				'unified_schedule',
+				'schedule:22',
+				'template:7',
+				'campaign:3',
+			),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'schedule',
+				array(
+					'schedule_id' => 22,
+					'template_id' => 7,
+					'campaign_id' => 3,
 				)
 			)
 		);

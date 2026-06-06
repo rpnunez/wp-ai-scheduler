@@ -73,14 +73,14 @@ For each repository migrated:
 
 ### Low risk
 
-- [ ] `AIPS_Template_Repository`
+- [x] `AIPS_Template_Repository`
 - [ ] `AIPS_Voices_Repository`
 - [ ] `AIPS_Article_Structure_Repository`
 - [ ] `AIPS_Prompt_Section_Repository`
 
 ### Medium risk
 
-- [ ] `AIPS_Schedule_Repository`
+- [x] `AIPS_Schedule_Repository`
 - [ ] `AIPS_Sources_Repository`
 - [ ] `AIPS_Sources_Data_Repository`
 - [ ] `AIPS_Internal_Links_Repository`

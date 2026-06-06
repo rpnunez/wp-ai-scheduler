@@ -4,4 +4,3 @@
 includes/class-aips-article-structure-repository.php
 includes/class-aips-post-slices-repository.php
 includes/class-aips-prompt-section-repository.php
-includes/class-aips-schedule-repository.php

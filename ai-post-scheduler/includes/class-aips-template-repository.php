@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Template_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to templates.
  */
 class AIPS_Template_Repository {
+  use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -49,18 +54,12 @@ class AIPS_Template_Repository {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache.
-     */
-    private $cache = null;
-    
-    /**
      * Initialize the repository.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_template_repository' );
     }
     
     /**
@@ -74,14 +73,17 @@ class AIPS_Template_Repository {
      * @return array Array of template objects.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $where  = $active_only ? "WHERE is_active = 1" : "";
-        $result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
-        $this->cache->set( $key, $result );
-        return $result;
+        return $this->cache_read(
+          'templates.get_all',
+          array(
+            'active_only' => (bool) $active_only,
+          ),
+          function() use ( $active_only ) {
+            $where = $active_only ? "WHERE is_active = 1" : "";
+
+            return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+          }
+        );
     }
     
     /**
@@ -94,18 +96,20 @@ class AIPS_Template_Repository {
      * @return object|null Template object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $result = $this->wpdb->get_row( $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE id = %d",
-            $id
-        ) );
-        if ( $result !== null ) {
-            $this->cache->set( $key, $result );
-        }
-        return $result;
+        return $this->cache_read(
+          'templates.get_by_id',
+          array(
+            'template_id' => absint( $id ),
+          ),
+          function() use ( $id ) {
+            return $this->wpdb->get_row(
+              $this->wpdb->prepare(
+                "SELECT * FROM {$this->table_name} WHERE id = %d",
+                $id
+              )
+            );
+          }
+        );
     }
     
     /**
@@ -115,10 +119,22 @@ class AIPS_Template_Repository {
      * @return array Array of matching template objects.
      */
     public function search($search_term) {
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE name LIKE %s ORDER BY name ASC",
-            '%' . $this->wpdb->esc_like($search_term) . '%'
-        ));
+        $search_term = (string) $search_term;
+
+        return $this->cache_read(
+          'templates.search',
+          array(
+            'search_term' => $search_term,
+          ),
+          function() use ( $search_term ) {
+            return $this->wpdb->get_results(
+              $this->wpdb->prepare(
+                "SELECT * FROM {$this->table_name} WHERE name LIKE %s ORDER BY name ASC",
+                '%' . $this->wpdb->esc_like( $search_term ) . '%'
+              )
+            );
+          }
+        );
     }
     
     /**
@@ -180,7 +196,14 @@ class AIPS_Template_Repository {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
         if ( $result ) {
-            $this->cache->flush();
+              $this->invalidate_cache_domain(
+                'template',
+                array(
+                  'template_id' => (int) $this->wpdb->insert_id,
+                  'campaign_id' => !empty( $insert_data['campaign_id'] ) ? (int) $insert_data['campaign_id'] : 0,
+                ),
+                'template_created'
+              );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -310,7 +333,14 @@ class AIPS_Template_Repository {
         ) !== false;
 
         if ( $result ) {
-            $this->cache->flush();
+              $this->invalidate_cache_domain(
+                'template',
+                array(
+                  'template_id' => absint( $id ),
+                  'campaign_id' => isset( $update_data['campaign_id'] ) && !empty( $update_data['campaign_id'] ) ? (int) $update_data['campaign_id'] : 0,
+                ),
+                'template_updated'
+              );
         }
 
         return $result;
@@ -325,7 +355,13 @@ class AIPS_Template_Repository {
     public function delete($id) {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
         if ( $result ) {
-            $this->cache->flush();
+          $this->invalidate_cache_domain(
+            'template',
+            array(
+              'template_id' => absint( $id ),
+            ),
+            'template_deleted'
+          );
         }
         return $result;
     }
@@ -337,10 +373,22 @@ class AIPS_Template_Repository {
      * @return int
      */
     public function count_by_campaign($campaign_id) {
-        return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE campaign_id = %d",
-            absint($campaign_id)
-        ));
+        $campaign_id = absint( $campaign_id );
+
+        return (int) $this->cache_read(
+          'templates.count_by_campaign',
+          array(
+            'campaign_id' => $campaign_id,
+          ),
+          function() use ( $campaign_id ) {
+            return (int) $this->wpdb->get_var(
+              $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name} WHERE campaign_id = %d",
+                $campaign_id
+              )
+            );
+          }
+        );
     }
     
     /**
@@ -363,16 +411,22 @@ class AIPS_Template_Repository {
      * }
      */
     public function count_by_status() {
-        $results = $this->wpdb->get_row("
-            SELECT
+        return $this->cache_read(
+          'templates.count_by_status',
+          array(),
+          function() {
+            $results = $this->wpdb->get_row("
+              SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
-            FROM {$this->table_name}
-        ");
-        
-        return array(
-            'total' => isset($results->total) ? (int) $results->total : 0,
-            'active' => isset($results->active) ? (int) $results->active : 0,
+              FROM {$this->table_name}
+            ");
+
+            return array(
+              'total' => isset($results->total) ? (int) $results->total : 0,
+              'active' => isset($results->active) ? (int) $results->active : 0,
+            );
+          }
         );
     }
     
@@ -384,19 +438,79 @@ class AIPS_Template_Repository {
      * @return bool True if name exists, false otherwise.
      */
     public function name_exists($name, $exclude_id = 0) {
-        if ($exclude_id > 0) {
-            $result = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} WHERE name = %s AND id != %d",
-                $name,
-                $exclude_id
-            ));
-        } else {
-            $result = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} WHERE name = %s",
-                $name
-            ));
-        }
-        
-        return $result > 0;
+        $name       = (string) $name;
+        $exclude_id = absint( $exclude_id );
+
+        return (bool) $this->cache_read(
+          'templates.name_exists',
+          array(
+            'name'       => $name,
+            'exclude_id' => $exclude_id,
+          ),
+          function() use ( $name, $exclude_id ) {
+            if ($exclude_id > 0) {
+              $result = $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                  "SELECT COUNT(*) FROM {$this->table_name} WHERE name = %s AND id != %d",
+                  $name,
+                  $exclude_id
+                )
+              );
+            } else {
+              $result = $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                  "SELECT COUNT(*) FROM {$this->table_name} WHERE name = %s",
+                  $name
+                )
+              );
+            }
+
+            return $result > 0;
+          }
+        );
     }
+
+      /**
+       * Return the repository cache group for template reads.
+       *
+       * @return string
+       */
+      protected function repository_cache_group(): string {
+        return 'aips_templates';
+      }
+
+      /**
+       * Return the explicit repository cache policies for template reads.
+       *
+       * @return array
+       */
+      protected function repository_cache_policies(): array {
+        return array(
+          'templates.get_all' => array(
+            'tier'        => 'medium',
+            'description' => 'Cache template list reads, including active-only filtering.',
+          ),
+          'templates.get_by_id' => array(
+            'tier'        => 'medium',
+            'cache_null'  => false,
+            'description' => 'Cache single-template reads by ID.',
+          ),
+          'templates.search' => array(
+            'tier'        => 'short',
+            'description' => 'Cache template search results for repeated admin filtering.',
+          ),
+          'templates.count_by_campaign' => array(
+            'tier'        => 'short',
+            'description' => 'Cache campaign template counts used by campaign flows.',
+          ),
+          'templates.count_by_status' => array(
+            'tier'        => 'short',
+            'description' => 'Cache dashboard-facing template status totals.',
+          ),
+          'templates.name_exists' => array(
+            'tier'        => 'short',
+            'description' => 'Cache duplicate-name checks during admin form validation.',
+          ),
+        );
+      }
 }

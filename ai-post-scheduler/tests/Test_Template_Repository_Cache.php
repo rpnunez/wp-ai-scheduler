@@ -224,6 +224,18 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls, 'All-templates and active-only queries use separate cache keys.' );
 	}
 
+	public function test_count_by_status_returns_cached_result_on_second_call() {
+		$this->mock_wpdb->get_row_return = (object) array( 'total' => 4, 'active' => 3 );
+		$repo = $this->make_repository();
+
+		$first  = $repo->count_by_status();
+		$second = $repo->count_by_status();
+
+		$this->assertSame( array( 'total' => 4, 'active' => 3 ), $first );
+		$this->assertSame( $first, $second );
+		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls, 'Dashboard template counts should be cached after the first query.' );
+	}
+
 	// -----------------------------------------------------------------------
 	// Cache invalidation on mutations
 	// -----------------------------------------------------------------------
@@ -265,6 +277,17 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		$repo->get_all(); // Should re-query.
 
 		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls, 'Cache should be flushed after delete().' );
+	}
+
+	public function test_count_by_status_is_invalidated_after_update() {
+		$this->mock_wpdb->get_row_return = (object) array( 'total' => 4, 'active' => 3 );
+		$repo = $this->make_repository();
+
+		$repo->count_by_status();
+		$repo->update( 5, array( 'name' => 'Updated' ) );
+		$repo->count_by_status();
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_row_calls, 'Template status counts should be invalidated after template updates.' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -355,6 +378,18 @@ class Test_Schedule_Repository_Cache extends WP_UnitTestCase {
 		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
 	}
 
+	public function test_count_by_status_cached_after_first_call() {
+		$this->mock_wpdb->get_row_return = (object) array( 'total' => 6, 'active' => 2 );
+		$repo = new AIPS_Schedule_Repository();
+
+		$first  = $repo->count_by_status();
+		$second = $repo->count_by_status();
+
+		$this->assertSame( array( 'total' => 6, 'active' => 2 ), $first );
+		$this->assertSame( $first, $second );
+		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls );
+	}
+
 	public function test_cache_flushed_after_delete() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1 ) );
 		$repo = new AIPS_Schedule_Repository();
@@ -373,6 +408,17 @@ class Test_Schedule_Repository_Cache extends WP_UnitTestCase {
 		$repo->get_by_id( 5 );
 		$repo->update( 5, array( 'frequency' => 'weekly' ) );
 		$repo->get_by_id( 5 );
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_count_by_status_is_invalidated_after_delete() {
+		$this->mock_wpdb->get_row_return = (object) array( 'total' => 6, 'active' => 2 );
+		$repo = new AIPS_Schedule_Repository();
+
+		$repo->count_by_status();
+		$repo->delete( 1 );
+		$repo->count_by_status();
 
 		$this->assertEquals( 2, $this->mock_wpdb->get_row_calls );
 	}
