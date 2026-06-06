@@ -20,6 +20,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Cache_Index {
 
 	/**
+	 * Display-only estimate used for array value sizing in the cache monitor.
+	 *
+	 * @var int
+	 */
+	private const ESTIMATED_BYTES_PER_ARRAY_ELEMENT = 64;
+
+	/**
 	 * Whether the index is currently enabled.
 	 *
 	 * @var bool
@@ -403,7 +410,7 @@ class AIPS_Cache_Index {
 		if (is_array( $value )) {
 			// Rough monitoring heuristic: avoid full serialization of potentially
 			// huge arrays. This is display-only and not an exact memory measurement.
-			return count( $value ) * 64;
+			return count( $value ) * self::ESTIMATED_BYTES_PER_ARRAY_ELEMENT;
 		}
 		// Objects and other types: skip expensive serialization.
 		return 0;
