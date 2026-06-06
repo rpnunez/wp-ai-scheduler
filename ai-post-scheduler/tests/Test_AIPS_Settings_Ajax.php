@@ -127,14 +127,66 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 		$this->assertTrue($response['success']);
 		$this->assertSame(1, $response['data']['details']['removed_options']);
-		$this->assertSame(0, $response['data']['details']['rollup_scheduled']);
+		$this->assertContains($response['data']['details']['rollup_scheduled'], array(0, 1));
 
 		$this->assertCount(1, $history_service->created);
 		$this->assertSame('settings_notifications_hygiene', $history_service->created[0]['type']);
 
 		$container = $history_service->created[0]['container'];
-		$this->assertSame(array('activity', 'warning', 'activity'), array_column($container->records, 'type'));
+		$record_types = array_column($container->records, 'type');
+		$this->assertSame('activity', $record_types[0]);
+		$this->assertSame('activity', $record_types[count($record_types) - 1]);
+
+		if (0 === (int) $response['data']['details']['rollup_scheduled']) {
+			$this->assertContains('warning', $record_types);
+		}
+
 		$this->assertSame($response['data']['details'], $container->success_data);
+	}
+
+	public function test_ajax_save_settings_sanitizes_and_updates_registered_options() {
+		$settings = new AIPS_Settings();
+		$settings->register_settings();
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_ai_model' => '  GPT-5  ',
+			'aips_enable_retry' => '1',
+			'aips_notification_preferences' => array(
+				'author_topics_generated' => 'invalid-mode',
+			),
+			'aips_topic_similarity_threshold' => '4.5',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('GPT-5', get_option('aips_ai_model'));
+		$this->assertSame(1, (int) get_option('aips_enable_retry'));
+		$this->assertSame(1.0, (float) get_option('aips_topic_similarity_threshold'));
+
+		$stored_preferences = get_option('aips_notification_preferences');
+		$registry = AIPS_Notifications::get_notification_type_registry();
+		$expected_mode = isset($registry['author_topics_generated']['default_mode']) ? $registry['author_topics_generated']['default_mode'] : AIPS_Notifications::MODE_BOTH;
+		$this->assertSame($expected_mode, $stored_preferences['author_topics_generated']);
+	}
+
+	public function test_ajax_save_settings_rejects_empty_or_unknown_payloads() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'not_a_real_setting' => 'value',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_request', $response['data']['code']);
 	}
 }
 

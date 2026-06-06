@@ -1422,6 +1422,13 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+			wp_localize_script('aips-admin-settings', 'aipsSettingsL10n', array(
+				'saving'        => __('Saving…', 'ai-post-scheduler'),
+				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
+				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
+				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+			));
     }
 
     /**

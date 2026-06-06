@@ -36,8 +36,49 @@ class AIPS_Settings_AJAX {
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 
+		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
 		add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
+	}
+
+	/**
+	 * Save one settings payload via AJAX without reloading the page.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_settings() {
+		$this->verify_request();
+
+		$settings = isset($_POST['settings']) ? wp_unslash($_POST['settings']) : array();
+
+		if (!is_array($settings)) {
+			AIPS_Ajax_Response::invalid_request(__('Invalid settings payload.', 'ai-post-scheduler'));
+		}
+
+		AIPS_Settings::register_setting_schema(new AIPS_Settings_UI());
+		$registered_settings = AIPS_Settings::get_registered_settings_args();
+		$updated = array();
+
+		foreach ($settings as $option_name => $raw_value) {
+			$option_name = is_string($option_name) ? sanitize_key($option_name) : '';
+
+			if (empty($option_name) || !isset($registered_settings[$option_name])) {
+				continue;
+			}
+
+			$sanitized_value = sanitize_option($option_name, $raw_value);
+			update_option($option_name, $sanitized_value, false);
+			$updated[$option_name] = $sanitized_value;
+		}
+
+		if (empty($updated)) {
+			AIPS_Ajax_Response::invalid_request(__('No valid settings were provided.', 'ai-post-scheduler'));
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
+			'updated' => $updated,
+		));
 	}
 
 	/**
