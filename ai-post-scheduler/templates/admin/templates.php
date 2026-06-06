@@ -2,7 +2,9 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+$is_embedded_templates_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_templates_view): ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -20,7 +22,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
-        
+<?php endif; ?>
         <?php if (!empty($templates)): ?>
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
@@ -202,8 +204,10 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
         <?php endif; ?>
+<?php if (!$is_embedded_templates_view): ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
     <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
