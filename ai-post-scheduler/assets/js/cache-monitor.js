@@ -82,14 +82,28 @@
 	}
 
 	AIPS.CacheMonitor = {
+		entriesState: null,
+		eventsPage: 1,
+
 		init: function() {
+			if ( ! this.entriesState ) {
+				this.entriesState = {
+					page:    1,
+					perPage: 50,
+					filters: {},
+					orderby: 'updated_at',
+					order:   'DESC'
+				};
+			}
+
 			this.bindEvents();
 			if ( $( '#aips-cache-entries-tbody' ).length ) {
-				loadEntries();
+				this.loadEntries();
 			}
 		},
 
 		bindEvents: function() {
+			var self = this;
 	// -----------------------------------------------------------------------
 	// Refresh button
 	// -----------------------------------------------------------------------
@@ -233,95 +247,13 @@
 	// Entries tab
 	// -----------------------------------------------------------------------
 
-	var entriesState = {
-		page:    1,
-		perPage: 50,
-		filters: {},
-		orderby: 'updated_at',
-		order:   'DESC'
-	};
-
-	/**
-	 * Load / refresh the entries table.
-	 */
-	function loadEntries() {
-		var params = $.extend( {}, entriesState.filters, {
-			action:   'aips_cache_monitor_entries',
-			nonce:    READ_NONCE,
-			page:     entriesState.page,
-			per_page: entriesState.perPage,
-			orderby:  entriesState.orderby,
-			order:    entriesState.order
-		} );
-
-		$( '#aips-cache-entries-tbody' ).html(
-			'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
-		);
-
-		$.post( ajaxUrl, params ).done( function ( res ) {
-			if ( ! res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
-				return;
-			}
-
-			var rows = res.data.rows || [];
-			var html = '';
-
-			$.each( rows, function ( i, row ) {
-				var expiresFmt = row.expires_at > 0 ? formatTs( row.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
-				var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
-
-				html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
-				html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" /></td>';
-				html += '<td class="cell-primary">';
-				html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
-				html += '<div class="row-actions">';
-				html += '<span><a href="#" class="aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</a></span> | ';
-				html += '<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.delete || 'Delete' ) + '</a></span>';
-				html += '</div>';
-				html += '</td>';
-				html += '<td>' + esc( row.cache_group ) + '</td>';
-				html += '<td><small>' + esc( row.operation_id ) + '</small></td>';
-				html += '<td>' + esc( row.tier ) + '</td>';
-				html += '<td>' + esc( row.driver ) + '</td>';
-				html += '<td><small>' + esc( row.value_type ) + '</small></td>';
-				html += '<td>' + formatBytes( row.value_size ) + '</td>';
-				html += '<td>' + esc( expiresFmt ) + '</td>';
-				html += '<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</button></td>';
-				html += '</tr>';
-			} );
-
-			if ( ! html ) {
-				html = '<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.noEntries || 'No entries found.' ) + '</td></tr>';
-			}
-
-			$( '#aips-cache-entries-tbody' ).html( html );
-
-			// Pagination
-			var totalPages  = res.data.total_pages || 1;
-			var currentPage = res.data.page        || 1;
-			var pagHtml     = '';
-
-			if ( totalPages > 1 ) {
-				pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + res.data.total + ' total)' ) + '</span> ';
-				if ( currentPage > 1 ) {
-					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
-				}
-				if ( currentPage < totalPages ) {
-					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
-				}
-			}
-			$( '#aips-cache-entries-pagination' ).html( pagHtml );
-		} );
-	}
-
 		$( '#aips-cache-entries-search-btn' ).on( 'click', function () {
-		entriesState.filters.search    = $( '#aips-cache-search' ).val();
-		entriesState.filters.group     = $( '#aips-cache-filter-group' ).val();
-		entriesState.filters.tier      = $( '#aips-cache-filter-tier' ).val();
-		entriesState.filters.ttl_state = $( '#aips-cache-filter-ttl' ).val();
-		entriesState.page              = 1;
-		loadEntries();
+		self.entriesState.filters.search    = $( '#aips-cache-search' ).val();
+		self.entriesState.filters.group     = $( '#aips-cache-filter-group' ).val();
+		self.entriesState.filters.tier      = $( '#aips-cache-filter-tier' ).val();
+		self.entriesState.filters.ttl_state = $( '#aips-cache-filter-ttl' ).val();
+		self.entriesState.page              = 1;
+		self.loadEntries();
 		} );
 
 	// Enter key triggers search.
@@ -329,13 +261,13 @@
 		if ( e.key === 'Enter' ) { $( '#aips-cache-entries-search-btn' ).trigger( 'click' ); }
 		} );
 
-		$( document ).on( 'click', '.aips-entries-prev', function () { entriesState.page--; loadEntries(); } );
-		$( document ).on( 'click', '.aips-entries-next', function () { entriesState.page++; loadEntries(); } );
+		$( document ).on( 'click', '.aips-entries-prev', function () { self.entriesState.page--; self.loadEntries(); } );
+		$( document ).on( 'click', '.aips-entries-next', function () { self.entriesState.page++; self.loadEntries(); } );
 
 		$( '#aips-cache-per-page' ).on( 'change', function () {
-		entriesState.perPage = parseInt( $( this ).val(), 10 );
-		entriesState.page    = 1;
-		loadEntries();
+		self.entriesState.perPage = parseInt( $( this ).val(), 10 );
+		self.entriesState.page    = 1;
+		self.loadEntries();
 		} );
 
 	// Select all checkbox.
@@ -454,7 +386,7 @@
 		} ).done( function ( res ) {
 			if ( res.success ) {
 				AIPS.Utilities.showToast( res.data.message, 'success' );
-				loadEntries();
+				self.loadEntries();
 			} else {
 				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
@@ -505,48 +437,9 @@
 	// Events tab
 	// -----------------------------------------------------------------------
 
-	var eventsPage = 1;
-
-	function loadEvents() {
-		var params = {
-			action:     'aips_cache_monitor_events',
-			nonce:      READ_NONCE,
-			event_type: $( '#aips-events-filter-type' ).val(),
-			page:       eventsPage,
-			per_page:   50
-		};
-
-		$( '#aips-events-tbody' ).html(
-			'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
-		);
-
-		$.post( ajaxUrl, params ).done( function ( res ) {
-			if ( ! res.success ) { AIPS.Utilities.showToast( res.data.message, 'error' ); return; }
-
-			var rows = res.data.rows || [];
-			var html = '';
-
-			$.each( rows, function ( i, ev ) {
-				html += '<tr>';
-				html += '<td>' + esc( formatTs( ev.created_at ) ) + '</td>';
-				html += '<td><code>' + esc( ev.event_type ) + '</code></td>';
-				html += '<td>' + esc( ev.cache_group ) + '</td>';
-				html += '<td>' + esc( ev.affected_count ) + '</td>';
-				html += '<td>' + esc( ev.user_id ) + '</td>';
-				html += '<td>' + esc( ev.message ) + '</td>';
-				html += '</tr>';
-			} );
-
-			if ( ! html ) {
-				html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>';
-			}
-			$( '#aips-events-tbody' ).html( html );
-		} );
-	}
-
 		$( '#aips-events-load-btn' ).on( 'click', function () {
-		eventsPage = 1;
-		loadEvents();
+		self.eventsPage = 1;
+		self.loadEvents();
 		} );
 
 	// -----------------------------------------------------------------------
@@ -598,9 +491,121 @@
 			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
 		} );
 		} );
+		},
+
+		loadEntries: function() {
+			var self = this;
+			var params = $.extend( {}, self.entriesState.filters, {
+				action:   'aips_cache_monitor_entries',
+				nonce:    READ_NONCE,
+				page:     self.entriesState.page,
+				per_page: self.entriesState.perPage,
+				orderby:  self.entriesState.orderby,
+				order:    self.entriesState.order
+			} );
+
+			$( '#aips-cache-entries-tbody' ).html(
+				'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
+			);
+
+			$.post( ajaxUrl, params ).done( function ( res ) {
+				if ( ! res.success ) {
+					AIPS.Utilities.showToast( res.data.message, 'error' );
+					return;
+				}
+
+				var rows = res.data.rows || [];
+				var html = '';
+
+				$.each( rows, function ( i, row ) {
+					var expiresFmt = row.expires_at > 0 ? formatTs( row.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
+					var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
+
+					html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
+					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" /></td>';
+					html += '<td class="cell-primary">';
+					html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
+					html += '<div class="row-actions">';
+					html += '<span><a href="#" class="aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</a></span> | ';
+					html += '<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.delete || 'Delete' ) + '</a></span>';
+					html += '</div>';
+					html += '</td>';
+					html += '<td>' + esc( row.cache_group ) + '</td>';
+					html += '<td><small>' + esc( row.operation_id ) + '</small></td>';
+					html += '<td>' + esc( row.tier ) + '</td>';
+					html += '<td>' + esc( row.driver ) + '</td>';
+					html += '<td><small>' + esc( row.value_type ) + '</small></td>';
+					html += '<td>' + formatBytes( row.value_size ) + '</td>';
+					html += '<td>' + esc( expiresFmt ) + '</td>';
+					html += '<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</button></td>';
+					html += '</tr>';
+				} );
+
+				if ( ! html ) {
+					html = '<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.noEntries || 'No entries found.' ) + '</td></tr>';
+				}
+
+				$( '#aips-cache-entries-tbody' ).html( html );
+
+				// Pagination
+				var totalPages  = res.data.total_pages || 1;
+				var currentPage = res.data.page        || 1;
+				var pagHtml     = '';
+
+				if ( totalPages > 1 ) {
+					pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + res.data.total + ' total)' ) + '</span> ';
+					if ( currentPage > 1 ) {
+						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
+					}
+					if ( currentPage < totalPages ) {
+						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
+					}
+				}
+				$( '#aips-cache-entries-pagination' ).html( pagHtml );
+			} );
+		},
+
+		loadEvents: function() {
+			var self = this;
+			var params = {
+				action:     'aips_cache_monitor_events',
+				nonce:      READ_NONCE,
+				event_type: $( '#aips-events-filter-type' ).val(),
+				page:       self.eventsPage,
+				per_page:   50
+			};
+
+			$( '#aips-events-tbody' ).html(
+				'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
+			);
+
+			$.post( ajaxUrl, params ).done( function ( res ) {
+				if ( ! res.success ) { AIPS.Utilities.showToast( res.data.message, 'error' ); return; }
+
+				var rows = res.data.rows || [];
+				var html = '';
+
+				$.each( rows, function ( i, ev ) {
+					html += '<tr>';
+					html += '<td>' + esc( formatTs( ev.created_at ) ) + '</td>';
+					html += '<td><code>' + esc( ev.event_type ) + '</code></td>';
+					html += '<td>' + esc( ev.cache_group ) + '</td>';
+					html += '<td>' + esc( ev.affected_count ) + '</td>';
+					html += '<td>' + esc( ev.user_id ) + '</td>';
+					html += '<td>' + esc( ev.message ) + '</td>';
+					html += '</tr>';
+				} );
+
+				if ( ! html ) {
+					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>';
+				}
+				$( '#aips-events-tbody' ).html( html );
+			} );
 		}
 	};
 
-	AIPS.CacheMonitor.init();
+	$( function () {
+		AIPS.CacheMonitor.init();
+	} );
 
 } )( jQuery );
