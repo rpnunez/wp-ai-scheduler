@@ -43,7 +43,8 @@ class AIPS_Cache_Index {
 		// trigger the index on the config cache (record_set() -> upsert_index_row()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
-		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
+		$normalized_enabled = filter_var( $enabled, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+		$this->enabled     = null === $normalized_enabled ? (bool) $enabled : $normalized_enabled;
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
 	}
 
@@ -400,8 +401,8 @@ class AIPS_Cache_Index {
 			return 1;
 		}
 		if (is_array( $value )) {
-			// Rough estimate: avoid full serialization of potentially huge arrays.
-			// 64 bytes per element is a conservative approximation.
+			// Rough monitoring heuristic: avoid full serialization of potentially
+			// huge arrays. This is display-only and not an exact memory measurement.
 			return count( $value ) * 64;
 		}
 		// Objects and other types: skip expensive serialization.
