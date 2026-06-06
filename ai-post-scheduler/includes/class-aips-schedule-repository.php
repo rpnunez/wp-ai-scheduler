@@ -595,23 +595,25 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             return array();
         }
 
-        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
-            return $this->cache_read(
-              'schedules.get_campaign_owned_ids',
-              array(
+        $placeholders = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+        sort( $ids );
+
+        return $this->cache_read(
+            'schedules.get_campaign_owned_ids',
+            array(
                 'ids' => $ids,
-              ),
-              function() use ( $ids, $placeholders ) {
+            ),
+            function() use ( $ids, $placeholders ) {
                 $rows = $this->wpdb->get_col(
-                  $this->wpdb->prepare(
-                    "SELECT id FROM {$this->schedule_table} WHERE id IN ($placeholders) AND campaign_id IS NOT NULL",
-                    $ids
-                  )
+                    $this->wpdb->prepare(
+                    	"SELECT id FROM {$this->schedule_table} WHERE id IN ($placeholders) AND campaign_id IS NOT NULL",
+                    	$ids
+                    )
                 );
 
-                return array_map('intval', $rows);
-              }
-            );
+                return array_map( 'intval', $rows );
+            }
+        );
     }
 
     /**
@@ -890,27 +892,28 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             return 0;
         }
 
-            $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $placeholders = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+        sort( $ids );
 
-            return (int) $this->cache_read(
-              'schedules.get_post_count_for_schedules',
-              array(
+        return (int) $this->cache_read(
+            'schedules.get_post_count_for_schedules',
+            array(
                 'ids' => $ids,
-              ),
-              function() use ( $ids, $placeholders ) {
+            ),
+            function() use ( $ids, $placeholders ) {
                 $result = $this->wpdb->get_var(
-                  $this->wpdb->prepare(
-                    "SELECT SUM(COALESCE(NULLIF(t.post_quantity, 0), 1))
-                     FROM {$this->schedule_table} s
-                     LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
-                     WHERE s.id IN ($placeholders)",
-                    $ids
-                  )
+                    $this->wpdb->prepare(
+                    	"SELECT SUM(COALESCE(NULLIF(t.post_quantity, 0), 1))
+                    	 FROM {$this->schedule_table} s
+                    	 LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+                    	 WHERE s.id IN ($placeholders)",
+                    	$ids
+                    )
                 );
 
                 return (int) $result;
-              }
-            );
+            }
+        );
     }
 
     /**
