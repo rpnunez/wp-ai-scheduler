@@ -18,6 +18,15 @@ if (!defined('ABSPATH')) {
  * @since 1.8.0
  */
 class AIPS_Admin_Bar {
+	/**
+	 * Cache group used for admin-bar unread counts.
+	 */
+	private const CACHE_GROUP = 'aips_admin_bar';
+
+	/**
+	 * Cache TTL for admin-bar unread counts.
+	 */
+	private const CACHE_TTL = MINUTE_IN_SECONDS;
 
 	/**
 	 * Lazily-resolved notifications repository.
@@ -88,6 +97,16 @@ class AIPS_Admin_Bar {
 	}
 
 	/**
+	 * Build unread-count cache key for the current user.
+	 *
+	 * @param int $user_id WordPress user ID.
+	 * @return string
+	 */
+	private function unread_count_cache_key( int $user_id ): string {
+		return 'aips_unread_count_' . $user_id;
+	}
+
+	/**
 	 * Add the AI Post Scheduler node to the admin toolbar.
 	 *
 	 * @param WP_Admin_Bar $wp_admin_bar Admin bar object.
@@ -98,14 +117,14 @@ class AIPS_Admin_Bar {
 		}
 
 		$cache        = AIPS_Cache_Factory::instance();
-		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
+		$cache_key    = $this->unread_count_cache_key( (int) get_current_user_id() );
 		$unread_count = $cache->remember(
 			$cache_key,
-			AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ),
+			self::CACHE_TTL,
 			function() {
 				return $this->get_repository()->count_unread();
 			},
-			'aips_admin_bar'
+			self::CACHE_GROUP
 		);
 
 		// ---------- Root node (icon + badge) ----------
@@ -256,10 +275,10 @@ class AIPS_Admin_Bar {
 			AIPS_Ajax_Response::error(__('Notification could not be updated or was already read.', 'ai-post-scheduler'));
 		}
 
-		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
+		$cache_key    = $this->unread_count_cache_key( (int) get_current_user_id() );
 		$unread_count = $this->get_repository()->count_unread();
 
-		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ), 'aips_admin_bar');
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, self::CACHE_TTL, self::CACHE_GROUP);
 
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
@@ -280,10 +299,10 @@ class AIPS_Admin_Bar {
 
 		$result       = $this->get_repository()->mark_all_as_read();
 
-		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
+		$cache_key    = $this->unread_count_cache_key( (int) get_current_user_id() );
 		$unread_count = $this->get_repository()->count_unread();
 
-		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ), 'aips_admin_bar');
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, self::CACHE_TTL, self::CACHE_GROUP);
 
 		// If the repository reported a failure and there are still unread notifications, return an error.
 		if (false === $result && $unread_count > 0) {

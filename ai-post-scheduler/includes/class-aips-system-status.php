@@ -9,6 +9,9 @@ class AIPS_System_Status {
     public function render_page() {
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
+        $cache_subsystems = class_exists( 'AIPS_System_Status_Controller' )
+            ? AIPS_System_Status_Controller::get_cache_rebuild_subsystems()
+            : array();
 
         if ( $data_management ) {
             $export_formats = $data_management->get_export_formats();

@@ -130,3 +130,5 @@ Tracking artifact: `docs/plans/repository-cache-framework/phase-3-legacy-callsit
 - [ ] Updated dependency-map coverage for migrated repositories
 - [ ] PHPUnit coverage for each migration wave
 - [ ] Final deprecation/removal PR after repository legacy usage reaches zero
+
+Phase 5 tracker: `docs/plans/repository-cache-framework/phase-5-removal-checklist.md`.
