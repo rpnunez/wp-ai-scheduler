@@ -160,6 +160,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
+		$base_time = strtotime($start_date);
 
 		$this->set_valid_post(array(
 			'topics'      => array('Topic A', 'Topic B', 'Topic C', 'Topic D', 'Topic E'),
@@ -176,12 +177,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// They should be staggered by 10 minutes (600 seconds)
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * 600));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
 		}
 	}
@@ -195,6 +197,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
+		$base_time = strtotime($start_date);
 
 		$this->set_valid_post(array(
 			'topics'      => array('Daily A', 'Daily B', 'Daily C'),
@@ -211,10 +214,11 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * 86400));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
 		}
 	}
