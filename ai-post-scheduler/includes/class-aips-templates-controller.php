@@ -115,7 +115,9 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
-            'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
+            'post_category' => isset($_POST['post_category']) && is_array($_POST['post_category'])
+                ? array_map('absint', $_POST['post_category'])
+                : (isset($_POST['post_category']) && absint($_POST['post_category']) > 0 ? array(absint($_POST['post_category'])) : array()),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
@@ -306,7 +308,9 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
-            'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
+            'post_category' => isset($_POST['post_category']) && is_array($_POST['post_category'])
+                ? array_map('absint', $_POST['post_category'])
+                : (isset($_POST['post_category']) && absint($_POST['post_category']) > 0 ? array(absint($_POST['post_category'])) : array()),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
         );

@@ -84,9 +84,18 @@ if (!defined('ABSPATH')) {
                             </td>
                             <td class="column-category">
                                 <?php 
-                                if ($template->post_category) {
-                                    $cat = get_category($template->post_category);
-                                    echo esc_html($cat ? $cat->name : '-');
+                                $cats = is_array($template->post_category)
+                                    ? $template->post_category
+                                    : AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
+                                if (!empty($cats)) {
+                                    $cat_names = array();
+                                    foreach ($cats as $cat_id) {
+                                        $cat = get_category($cat_id);
+                                        if ($cat && !is_wp_error($cat)) {
+                                            $cat_names[] = esc_html($cat->name);
+                                        }
+                                    }
+                                    echo implode(', ', $cat_names) ?: '<span class="cell-meta">—</span>';
                                 } else {
                                     echo '<span class="cell-meta">—</span>';
                                 }
@@ -507,13 +516,13 @@ if (!defined('ABSPATH')) {
                             </div>
                             
                             <div class="aips-form-row">
-                                <label for="post_category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></label>
-                                <select id="post_category" name="post_category">
-                                    <option value="0"><?php esc_html_e('Select Category', 'ai-post-scheduler'); ?></option>
+                                <label for="post_category"><?php esc_html_e('Categories', 'ai-post-scheduler'); ?></label>
+                                <select id="post_category" name="post_category[]" multiple size="5" style="min-height:100px;">
                                     <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo esc_attr($cat->term_id); ?>"><?php echo esc_html($cat->name); ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <p class="description"><?php esc_html_e('Hold Ctrl / Cmd to select multiple categories.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
                         
