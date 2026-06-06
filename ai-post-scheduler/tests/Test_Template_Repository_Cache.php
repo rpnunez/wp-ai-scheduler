@@ -367,7 +367,7 @@ class Test_Schedule_Repository_Cache extends WP_UnitTestCase {
 		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
 	}
 
-	public function test_get_due_schedules_cached_for_same_parameters() {
+	public function test_get_due_schedules_not_cached_for_queue_sensitive_path() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'schedule_id' => 1 ) );
 		$repo = new AIPS_Schedule_Repository();
 		$time = '2025-01-01 10:00:00';
@@ -375,7 +375,7 @@ class Test_Schedule_Repository_Cache extends WP_UnitTestCase {
 		$repo->get_due_schedules( $time, 5 );
 		$repo->get_due_schedules( $time, 5 );
 
-		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
 	}
 
 	public function test_count_by_status_cached_after_first_call() {

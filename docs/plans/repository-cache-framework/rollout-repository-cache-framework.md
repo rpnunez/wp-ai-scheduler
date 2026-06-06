@@ -88,23 +88,25 @@ For each repository migrated:
 
 ### High risk
 
-- [ ] `AIPS_History_Repository`
-- [ ] `AIPS_Telemetry_Repository`
-- [ ] job and batch queue classes
-- [ ] due/claim/retry generation queries
+- [x] `AIPS_History_Repository`
+- [x] `AIPS_Telemetry_Repository`
+- [x] job and batch queue classes
+- [x] due/claim/retry generation queries
 
 ## Phase 3 — Legacy compatibility window
 
-- [ ] Keep legacy classes available for remaining non-repository consumers
-- [ ] Mark repository-facing legacy entry points as deprecated once migration begins
-- [ ] Track remaining repository call sites until usage reaches zero
+- [x] Keep legacy classes available for remaining non-repository consumers
+- [x] Mark repository-facing legacy entry points as deprecated once migration begins
+- [x] Track remaining repository call sites until usage reaches zero
+
+Tracking artifact: `docs/plans/repository-cache-framework/phase-3-legacy-callsite-tracker.md`.
 
 ## Phase 4 — Deprecation and removal
 
 ### Exit criteria
 
-- [ ] All repositories migrated to the new framework
-- [ ] No repository call sites remain on legacy bus/policy
+- [x] All repositories migrated to the new framework
+- [x] No repository call sites remain on legacy bus/policy
 - [ ] Migration test suite passes for:
     - [ ] tag-version invalidation
     - [ ] bypass controls
@@ -112,7 +114,7 @@ For each repository migrated:
 
 ### Removal tasks
 
-- [ ] Remove repository-specific legacy pathways
+- [x] Remove repository-specific legacy pathways
 - [ ] Remove legacy classes only after confirming no remaining consumers
 
 ## Validation per migration wave

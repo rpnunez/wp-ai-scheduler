@@ -167,6 +167,79 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_tags_for_read_returns_expected_tags_for_post_slices_get_by_id() {
+		$this->assertSame(
+			array( 'post_slices', 'post_slice:19' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'post_slices.get_by_id',
+				array(
+					'slice_id' => 19,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_history_count_completed_for_schedule() {
+		$this->assertSame(
+			array( 'history', 'schedules', 'dashboard_counts', 'schedule:22', 'template:7' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'history.count_completed_for_schedule',
+				array(
+					'schedule_id' => 22,
+					'template_id' => 7,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_telemetry_get_row() {
+		$this->assertSame(
+			array( 'telemetry', 'dashboard_counts', 'telemetry_item:42' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'telemetry.get_row',
+				array(
+					'telemetry_id' => 42,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_history_get_template_stats() {
+		$this->assertSame(
+			array( 'history', 'templates', 'dashboard_counts', 'template:7' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'history.get_template_stats',
+				array(
+					'template_id' => 7,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_history_get_by_post_id() {
+		$this->assertSame(
+			array( 'history', 'dashboard_counts', 'post:55' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'history.get_by_post_id',
+				array(
+					'post_id' => 55,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_bulk_batch_jobs_get_status_counts() {
+		$this->assertSame(
+			array( 'bulk_batch_jobs', 'dashboard_counts', 'bulk_batch_job:status:pending', 'bulk_batch_job:status:failed' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'bulk_batch_jobs.get_status_counts',
+				array(
+					'statuses' => array( 'pending', 'failed' ),
+				)
+			)
+		);
+	}
+
 	public function test_tags_for_invalidation_returns_author_domain_tags() {
 		$this->assertSame(
 			array(
@@ -363,6 +436,69 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 					'taxonomy_id'   => 31,
 					'taxonomy_type' => 'post_tag',
 					'status'        => 'pending',
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_post_slice_domain_tags() {
+		$this->assertSame(
+			array( 'post_slices', 'dashboard_counts', 'post_slice:5' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'post_slice',
+				array(
+					'slice_id' => 5,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_history_domain_tags() {
+		$this->assertSame(
+			array( 'history', 'dashboard_counts', 'history_item:77', 'post:99', 'history_status:failed' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'history',
+				array(
+					'history_id' => 77,
+					'post_id'    => 99,
+					'status'     => 'failed',
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_history_schedule_count_domain_tags() {
+		$this->assertSame(
+			array( 'history', 'schedules', 'dashboard_counts', 'schedule:22' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'history_schedule_count',
+				array(
+					'schedule_id' => 22,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_telemetry_domain_tags() {
+		$this->assertSame(
+			array( 'telemetry', 'dashboard_counts', 'telemetry_item:88' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'telemetry',
+				array(
+					'telemetry_id' => 88,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_bulk_batch_job_domain_tags() {
+		$this->assertSame(
+			array( 'bulk_batch_jobs', 'dashboard_counts', 'bulk_batch_job:job-123', 'bulk_batch_job:status:processing' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'bulk_batch_job',
+				array(
+					'job_id'  => 'job-123',
+					'status'  => 'processing',
 				)
 			)
 		);

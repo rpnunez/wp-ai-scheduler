@@ -18,278 +18,544 @@ class AIPS_Repository_Cache_Dependencies {
 	 * @return array<int, string>
 	 */
 	public static function tags_for_read( string $operation_id, array $args = array() ): array {
-		switch ($operation_id) {
-			case 'authors.get_all':
-				return array( 'authors' );
-
-			case 'authors.get_by_id':
-				$tags = array( 'authors' );
-				if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
-					$tags[] = 'author:' . (int) $args['author_id'];
-				}
-				return $tags;
-
-			case 'author_topics.get_by_author':
-				return self::author_topic_read_tags( $args );
-
-			case 'author_topics.get_by_id':
-				$tags = array( 'author_topics' );
-				if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
-					$tags[] = 'author_topics:author:' . (int) $args['author_id'];
-				}
-				if (isset( $args['topic_id'] ) && is_numeric( $args['topic_id'] )) {
-					$tags[] = 'author_topic:' . (int) $args['topic_id'];
-				}
-				return self::unique_tags( $tags );
-
-			case 'author_topics.get_approved_summary':
-				return self::unique_tags(
-					array_merge(
-						self::author_topic_read_tags( $args ),
-						self::author_id_tag( 'author_generation_summary', $args )
-					)
-				);
-
-			case 'author_topics.get_rejected_summary':
-			case 'author_topics.get_status_counts':
-				return self::author_topic_read_tags( $args );
-
-			case 'author_topics.get_global_status_counts':
-			case 'author_topics.get_counts_grouped_by_author':
-			case 'author_topics.get_daily_topic_counts':
-				return array( 'author_topics', 'dashboard_counts' );
-
-			case 'author_topics.get_approved_for_generation':
-				return self::unique_tags(
-					array_merge(
-						self::author_topic_read_tags( $args ),
-						self::author_id_tag( 'author_post_queue', $args )
-					)
-				);
-
-			case 'author_topics.get_all_approved_for_queue':
-				return array( 'author_topics', 'dashboard_counts' );
-
-				case 'voices.get_all':
-				case 'voices.search':
-					return array( 'voices' );
-
-				case 'voices.get_by_id':
-					$tags = array( 'voices' );
-					if (isset( $args['voice_id'] ) && is_numeric( $args['voice_id'] )) {
-						$tags[] = 'voice:' . (int) $args['voice_id'];
-					}
-					return self::unique_tags( $tags );
-
-				case 'article_structures.get_all':
-					return array( 'article_structures' );
-
-				case 'article_structures.get_by_id':
-					$tags = array( 'article_structures' );
-					if (isset( $args['structure_id'] ) && is_numeric( $args['structure_id'] )) {
-						$tags[] = 'article_structure:' . (int) $args['structure_id'];
-					}
-					return self::unique_tags( $tags );
-
-				case 'article_structures.count_by_status':
-					return array( 'article_structures', 'dashboard_counts' );
-
-				case 'article_structures.name_exists':
-					return array( 'article_structures' );
-
-				case 'prompt_sections.get_all':
-					return array( 'prompt_sections' );
-
-				case 'prompt_sections.get_by_id':
-					$tags = array( 'prompt_sections' );
-					if (isset( $args['section_id'] ) && is_numeric( $args['section_id'] )) {
-						$tags[] = 'prompt_section:' . (int) $args['section_id'];
-					}
-					return self::unique_tags( $tags );
-
-				case 'prompt_sections.get_by_key':
-					$tags = array( 'prompt_sections' );
-					if (isset( $args['section_key'] ) && is_scalar( $args['section_key'] )) {
-						$tags[] = 'prompt_section:key:' . sanitize_key( (string) $args['section_key'] );
-					}
-					return self::unique_tags( $tags );
-
-				case 'prompt_sections.get_by_keys':
-					return self::prompt_section_key_tags( $args );
-
-				case 'prompt_sections.count_by_status':
-					return array( 'prompt_sections', 'dashboard_counts' );
-
-				case 'prompt_sections.key_exists':
-					return array( 'prompt_sections' );
-
-				case 'templates.get_all':
-				case 'templates.search':
-				case 'templates.name_exists':
-					return array( 'templates' );
-
-				case 'templates.get_by_id':
-					$tags = array( 'templates' );
-					if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
-						$tags[] = 'template:' . (int) $args['template_id'];
-					}
-					return self::unique_tags( $tags );
-
-				case 'templates.count_by_campaign':
-					return self::unique_tags(
-						array_merge(
-							array( 'templates' ),
-							self::campaign_id_tag( 'campaign', $args )
-						)
-					);
-
-				case 'templates.count_by_status':
-					return array( 'templates', 'dashboard_counts' );
-
-				case 'schedules.get_all':
-				case 'schedules.get_due':
-				case 'schedules.get_upcoming':
-					return array( 'schedules', 'templates', 'unified_schedule' );
-
-				case 'schedules.get_by_id':
-					$tags = array( 'schedules', 'unified_schedule' );
-					if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
-						$tags[] = 'schedule:' . (int) $args['schedule_id'];
-					}
-					return self::unique_tags( $tags );
-
-				case 'schedules.get_by_template':
-				case 'schedules.get_active_by_template':
-					return self::unique_tags(
-						array_merge(
-							array( 'schedules', 'templates', 'unified_schedule' ),
-							self::template_id_tag( 'template', $args )
-						)
-					);
-
-				case 'schedules.count_by_campaign':
-					return self::unique_tags(
-						array_merge(
-							array( 'schedules', 'unified_schedule' ),
-							self::campaign_id_tag( 'campaign', $args )
-						)
-					);
-
-				case 'schedules.get_campaign_owned_ids':
-					return array( 'schedules', 'unified_schedule' );
-
-				case 'schedules.get_active':
-					return array( 'schedules', 'unified_schedule' );
-
-				case 'schedules.count_by_status':
-					return array( 'schedules', 'dashboard_counts', 'unified_schedule' );
-
-				case 'schedules.get_post_count_for_schedules':
-					return array( 'schedules', 'templates', 'unified_schedule' );
-
-							case 'sources.get_all':
-							case 'sources.get_active_urls':
-							case 'sources.url_exists':
-								return array( 'sources' );
-
-							case 'sources.get_by_id':
-							case 'sources.get_source_term_ids':
-								$tags = array( 'sources' );
-								if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
-									$tags[] = 'source:' . (int) $args['source_id'];
-								}
-								return self::unique_tags( $tags );
-
-							case 'sources.get_term_ids_for_sources':
-								return self::source_ids_tags( $args );
-
-							case 'sources.get_urls_by_group_term_ids':
-							case 'sources.get_by_group_term_ids':
-								return self::source_group_term_tags( $args );
-
-							case 'sources_data.get_by_source_id':
-							case 'sources_data.get_latest_success_by_source_id':
-							case 'sources_data.get_count_by_source_id':
-								$tags = array( 'sources_data', 'sources' );
-								if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
-									$source_id = (int) $args['source_id'];
-									$tags[] = 'source_data:source:' . $source_id;
-									$tags[] = 'source:' . $source_id;
-								}
-								return self::unique_tags( $tags );
-
-							case 'sources_data.get_by_source_ids':
-							case 'sources_data.get_extracted_texts_by_source_ids':
-							case 'sources_data.pick_next_for_prompt_bulk':
-							case 'sources_data.get_counts_by_source_ids':
-								return self::source_data_source_ids_tags( $args );
-
-							case 'internal_links.get_by_id':
-								$tags = array( 'internal_links' );
-								if (isset( $args['internal_link_id'] ) && is_numeric( $args['internal_link_id'] )) {
-									$tags[] = 'internal_link:' . (int) $args['internal_link_id'];
-								}
-								return self::unique_tags( $tags );
-
-							case 'internal_links.get_by_source_post':
-								$tags = array( 'internal_links' );
-								if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
-									$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
-									$tags[] = 'post:' . (int) $args['source_post_id'];
-								}
-								if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
-									$tags[] = 'internal_links:status:' . sanitize_key( (string) $args['status'] );
-								}
-								return self::unique_tags( $tags );
-
-							case 'internal_links.get_paginated':
-							case 'internal_links.get_paginated_count':
-							case 'internal_links.get_status_counts':
-								return array( 'internal_links', 'dashboard_counts' );
-
-							case 'internal_links.exists':
-								$tags = array( 'internal_links' );
-								if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
-									$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
-								}
-								if (isset( $args['target_post_id'] ) && is_numeric( $args['target_post_id'] )) {
-									$tags[] = 'internal_links:target:' . (int) $args['target_post_id'];
-								}
-								return self::unique_tags( $tags );
-
-							case 'taxonomy.get_by_type':
-								$tags = array( 'taxonomy' );
-								if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
-									$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
-								}
-								return self::unique_tags( $tags );
-
-							case 'taxonomy.get_by_status_and_type':
-								$tags = array( 'taxonomy' );
-								if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
-									$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
-								}
-								if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
-									$tags[] = 'taxonomy_status:' . sanitize_key( (string) $args['status'] );
-								}
-								return self::unique_tags( $tags );
-
-							case 'taxonomy.get_by_id':
-								$tags = array( 'taxonomy' );
-								if (isset( $args['taxonomy_id'] ) && is_numeric( $args['taxonomy_id'] )) {
-									$tags[] = 'taxonomy_item:' . (int) $args['taxonomy_id'];
-								}
-								return self::unique_tags( $tags );
-
-							case 'taxonomy.get_status_counts':
-								return array( 'taxonomy', 'dashboard_counts' );
-
-							case 'taxonomy.search':
-								return array( 'taxonomy' );
-
-			default:
-				return array();
+		$static_map = self::read_tag_static_map();
+		if (isset( $static_map[ $operation_id ] )) {
+			return $static_map[ $operation_id ];
 		}
+
+		$handler_map = self::read_tag_handler_map();
+		if (isset( $handler_map[ $operation_id ] )) {
+			$handler = $handler_map[ $operation_id ];
+			if (method_exists( self::class, $handler )) {
+				return self::$handler( $args );
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * Resolve static read-tag mappings.
+	 *
+	 * @return array<string, array<int, string>>
+	 */
+	private static function read_tag_static_map(): array {
+		return array(
+			'authors.get_all'                             => array( 'authors' ),
+			'author_topics.get_global_status_counts'      => array( 'author_topics', 'dashboard_counts' ),
+			'author_topics.get_counts_grouped_by_author'  => array( 'author_topics', 'dashboard_counts' ),
+			'author_topics.get_daily_topic_counts'        => array( 'author_topics', 'dashboard_counts' ),
+			'author_topics.get_all_approved_for_queue'    => array( 'author_topics', 'dashboard_counts' ),
+			'voices.get_all'                              => array( 'voices' ),
+			'voices.search'                               => array( 'voices' ),
+			'article_structures.get_all'                  => array( 'article_structures' ),
+			'article_structures.count_by_status'          => array( 'article_structures', 'dashboard_counts' ),
+			'article_structures.name_exists'              => array( 'article_structures' ),
+			'prompt_sections.get_all'                     => array( 'prompt_sections' ),
+			'prompt_sections.count_by_status'             => array( 'prompt_sections', 'dashboard_counts' ),
+			'prompt_sections.key_exists'                  => array( 'prompt_sections' ),
+			'templates.get_all'                           => array( 'templates' ),
+			'templates.search'                            => array( 'templates' ),
+			'templates.name_exists'                       => array( 'templates' ),
+			'templates.count_by_status'                   => array( 'templates', 'dashboard_counts' ),
+			'schedules.get_all'                           => array( 'schedules', 'templates', 'unified_schedule' ),
+			'schedules.get_due'                           => array( 'schedules', 'templates', 'unified_schedule' ),
+			'schedules.get_upcoming'                      => array( 'schedules', 'templates', 'unified_schedule' ),
+			'schedules.get_campaign_owned_ids'            => array( 'schedules', 'unified_schedule' ),
+			'schedules.get_active'                        => array( 'schedules', 'unified_schedule' ),
+			'schedules.count_by_status'                   => array( 'schedules', 'dashboard_counts', 'unified_schedule' ),
+			'schedules.get_post_count_for_schedules'      => array( 'schedules', 'templates', 'unified_schedule' ),
+			'sources.get_all'                             => array( 'sources' ),
+			'sources.get_active_urls'                     => array( 'sources' ),
+			'sources.url_exists'                          => array( 'sources' ),
+			'internal_links.get_paginated'                => array( 'internal_links', 'dashboard_counts' ),
+			'internal_links.get_paginated_count'          => array( 'internal_links', 'dashboard_counts' ),
+			'internal_links.get_status_counts'            => array( 'internal_links', 'dashboard_counts' ),
+			'taxonomy.get_status_counts'                  => array( 'taxonomy', 'dashboard_counts' ),
+			'taxonomy.search'                             => array( 'taxonomy' ),
+			'post_slices.get_all'                         => array( 'post_slices' ),
+			'post_slices.name_exists'                     => array( 'post_slices' ),
+			'post_slices.get_counts'                      => array( 'post_slices', 'dashboard_counts' ),
+			'history.get_stats'                           => array( 'history', 'dashboard_counts' ),
+			'history.get_daily_success_failure_trend'     => array( 'history', 'dashboard_counts' ),
+			'history.get_average_duration_by_flow'        => array( 'history', 'dashboard_counts' ),
+			'history.get_retry_counts_by_service'         => array( 'history', 'dashboard_counts' ),
+			'history.get_top_failure_reasons'             => array( 'history', 'dashboard_counts' ),
+			'history.get_daily_generation_counts'         => array( 'history', 'dashboard_counts' ),
+			'history.get_all_template_stats'              => array( 'history', 'templates', 'dashboard_counts' ),
+			'telemetry.get_page'                          => array( 'telemetry', 'dashboard_counts' ),
+			'telemetry.get_filtered_page'                 => array( 'telemetry', 'dashboard_counts' ),
+			'telemetry.count'                             => array( 'telemetry', 'dashboard_counts' ),
+			'telemetry.count_filtered'                    => array( 'telemetry', 'dashboard_counts' ),
+			'telemetry.get_daily_rollup'                  => array( 'telemetry', 'dashboard_counts' ),
+		);
+	}
+
+	/**
+	 * Resolve read-tag handler mappings for argument-sensitive operations.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function read_tag_handler_map(): array {
+		return array(
+			'authors.get_by_id'                             => 'read_tags_authors_get_by_id',
+			'author_topics.get_by_author'                   => 'read_tags_author_topics_by_author',
+			'author_topics.get_by_id'                       => 'read_tags_author_topics_by_id',
+			'author_topics.get_approved_summary'            => 'read_tags_author_topics_approved_summary',
+			'author_topics.get_rejected_summary'            => 'read_tags_author_topics_by_author',
+			'author_topics.get_status_counts'               => 'read_tags_author_topics_by_author',
+			'author_topics.get_approved_for_generation'     => 'read_tags_author_topics_approved_for_generation',
+			'voices.get_by_id'                              => 'read_tags_voices_get_by_id',
+			'article_structures.get_by_id'                  => 'read_tags_article_structures_get_by_id',
+			'prompt_sections.get_by_id'                     => 'read_tags_prompt_sections_get_by_id',
+			'prompt_sections.get_by_key'                    => 'read_tags_prompt_sections_get_by_key',
+			'prompt_sections.get_by_keys'                   => 'read_tags_prompt_sections_get_by_keys',
+			'templates.get_by_id'                           => 'read_tags_templates_get_by_id',
+			'templates.count_by_campaign'                   => 'read_tags_templates_count_by_campaign',
+			'schedules.get_by_id'                           => 'read_tags_schedules_get_by_id',
+			'schedules.get_by_template'                     => 'read_tags_schedules_get_by_template',
+			'schedules.get_active_by_template'              => 'read_tags_schedules_get_by_template',
+			'schedules.count_by_campaign'                   => 'read_tags_schedules_count_by_campaign',
+			'sources.get_by_id'                             => 'read_tags_sources_get_by_id',
+			'sources.get_source_term_ids'                   => 'read_tags_sources_get_by_id',
+			'sources.get_term_ids_for_sources'              => 'read_tags_sources_get_term_ids_for_sources',
+			'sources.get_urls_by_group_term_ids'            => 'read_tags_sources_by_group_term_ids',
+			'sources.get_by_group_term_ids'                 => 'read_tags_sources_by_group_term_ids',
+			'sources_data.get_by_source_id'                 => 'read_tags_sources_data_get_by_source_id',
+			'sources_data.get_latest_success_by_source_id'  => 'read_tags_sources_data_get_by_source_id',
+			'sources_data.get_count_by_source_id'           => 'read_tags_sources_data_get_by_source_id',
+			'sources_data.get_by_source_ids'                => 'read_tags_sources_data_by_source_ids',
+			'sources_data.get_extracted_texts_by_source_ids' => 'read_tags_sources_data_by_source_ids',
+			'sources_data.pick_next_for_prompt_bulk'        => 'read_tags_sources_data_by_source_ids',
+			'sources_data.get_counts_by_source_ids'         => 'read_tags_sources_data_by_source_ids',
+			'internal_links.get_by_id'                      => 'read_tags_internal_links_get_by_id',
+			'internal_links.get_by_source_post'             => 'read_tags_internal_links_by_source_post',
+			'internal_links.exists'                         => 'read_tags_internal_links_exists',
+			'taxonomy.get_by_type'                          => 'read_tags_taxonomy_get_by_type',
+			'taxonomy.get_by_status_and_type'               => 'read_tags_taxonomy_get_by_status_and_type',
+			'taxonomy.get_by_id'                            => 'read_tags_taxonomy_get_by_id',
+			'post_slices.get_by_id'                         => 'read_tags_post_slices_get_by_id',
+			'history.count_completed_for_schedule'          => 'read_tags_history_count_completed_for_schedule',
+			'history.get_template_stats'                    => 'read_tags_history_get_template_stats',
+			'history.post_has_history_and_completed'        => 'read_tags_history_get_by_post_id',
+			'history.get_by_post_id'                        => 'read_tags_history_get_by_post_id',
+			'telemetry.get_row'                             => 'read_tags_telemetry_get_row',
+			'telemetry.get_payload'                         => 'read_tags_telemetry_get_row',
+			'bulk_batch_jobs.get_status_counts'             => 'read_tags_bulk_batch_jobs_get_status_counts',
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_authors_get_by_id( array $args ): array {
+		$tags = array( 'authors' );
+		if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
+			$tags[] = 'author:' . (int) $args['author_id'];
+		}
+
+		return $tags;
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_author_topics_by_author( array $args ): array {
+		return self::author_topic_read_tags( $args );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_author_topics_by_id( array $args ): array {
+		$tags = array( 'author_topics' );
+		if (isset( $args['author_id'] ) && is_numeric( $args['author_id'] )) {
+			$tags[] = 'author_topics:author:' . (int) $args['author_id'];
+		}
+		if (isset( $args['topic_id'] ) && is_numeric( $args['topic_id'] )) {
+			$tags[] = 'author_topic:' . (int) $args['topic_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_author_topics_approved_summary( array $args ): array {
+		return self::unique_tags(
+			array_merge(
+				self::author_topic_read_tags( $args ),
+				self::author_id_tag( 'author_generation_summary', $args )
+			)
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_author_topics_approved_for_generation( array $args ): array {
+		return self::unique_tags(
+			array_merge(
+				self::author_topic_read_tags( $args ),
+				self::author_id_tag( 'author_post_queue', $args )
+			)
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_voices_get_by_id( array $args ): array {
+		$tags = array( 'voices' );
+		if (isset( $args['voice_id'] ) && is_numeric( $args['voice_id'] )) {
+			$tags[] = 'voice:' . (int) $args['voice_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_article_structures_get_by_id( array $args ): array {
+		$tags = array( 'article_structures' );
+		if (isset( $args['structure_id'] ) && is_numeric( $args['structure_id'] )) {
+			$tags[] = 'article_structure:' . (int) $args['structure_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_prompt_sections_get_by_id( array $args ): array {
+		$tags = array( 'prompt_sections' );
+		if (isset( $args['section_id'] ) && is_numeric( $args['section_id'] )) {
+			$tags[] = 'prompt_section:' . (int) $args['section_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_prompt_sections_get_by_key( array $args ): array {
+		$tags = array( 'prompt_sections' );
+		if (isset( $args['section_key'] ) && is_scalar( $args['section_key'] )) {
+			$tags[] = 'prompt_section:key:' . sanitize_key( (string) $args['section_key'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_prompt_sections_get_by_keys( array $args ): array {
+		return self::prompt_section_key_tags( $args );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_templates_get_by_id( array $args ): array {
+		$tags = array( 'templates' );
+		if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+			$tags[] = 'template:' . (int) $args['template_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_templates_count_by_campaign( array $args ): array {
+		return self::unique_tags(
+			array_merge(
+				array( 'templates' ),
+				self::campaign_id_tag( 'campaign', $args )
+			)
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_schedules_get_by_id( array $args ): array {
+		$tags = array( 'schedules', 'unified_schedule' );
+		if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
+			$tags[] = 'schedule:' . (int) $args['schedule_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_schedules_get_by_template( array $args ): array {
+		return self::unique_tags(
+			array_merge(
+				array( 'schedules', 'templates', 'unified_schedule' ),
+				self::template_id_tag( 'template', $args )
+			)
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_schedules_count_by_campaign( array $args ): array {
+		return self::unique_tags(
+			array_merge(
+				array( 'schedules', 'unified_schedule' ),
+				self::campaign_id_tag( 'campaign', $args )
+			)
+		);
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_sources_get_by_id( array $args ): array {
+		$tags = array( 'sources' );
+		if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
+			$tags[] = 'source:' . (int) $args['source_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_sources_get_term_ids_for_sources( array $args ): array {
+		return self::source_ids_tags( $args );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_sources_by_group_term_ids( array $args ): array {
+		return self::source_group_term_tags( $args );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_sources_data_get_by_source_id( array $args ): array {
+		$tags = array( 'sources_data', 'sources' );
+		if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
+			$source_id = (int) $args['source_id'];
+			$tags[]    = 'source_data:source:' . $source_id;
+			$tags[]    = 'source:' . $source_id;
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_sources_data_by_source_ids( array $args ): array {
+		return self::source_data_source_ids_tags( $args );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_internal_links_get_by_id( array $args ): array {
+		$tags = array( 'internal_links' );
+		if (isset( $args['internal_link_id'] ) && is_numeric( $args['internal_link_id'] )) {
+			$tags[] = 'internal_link:' . (int) $args['internal_link_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_internal_links_by_source_post( array $args ): array {
+		$tags = array( 'internal_links' );
+		if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
+			$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
+			$tags[] = 'post:' . (int) $args['source_post_id'];
+		}
+		if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
+			$tags[] = 'internal_links:status:' . sanitize_key( (string) $args['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_internal_links_exists( array $args ): array {
+		$tags = array( 'internal_links' );
+		if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
+			$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
+		}
+		if (isset( $args['target_post_id'] ) && is_numeric( $args['target_post_id'] )) {
+			$tags[] = 'internal_links:target:' . (int) $args['target_post_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_taxonomy_get_by_type( array $args ): array {
+		$tags = array( 'taxonomy' );
+		if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
+			$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_taxonomy_get_by_status_and_type( array $args ): array {
+		$tags = array( 'taxonomy' );
+		if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
+			$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
+		}
+		if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
+			$tags[] = 'taxonomy_status:' . sanitize_key( (string) $args['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_taxonomy_get_by_id( array $args ): array {
+		$tags = array( 'taxonomy' );
+		if (isset( $args['taxonomy_id'] ) && is_numeric( $args['taxonomy_id'] )) {
+			$tags[] = 'taxonomy_item:' . (int) $args['taxonomy_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_post_slices_get_by_id( array $args ): array {
+		$tags = array( 'post_slices' );
+		if (isset( $args['slice_id'] ) && is_numeric( $args['slice_id'] )) {
+			$tags[] = 'post_slice:' . (int) $args['slice_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_history_count_completed_for_schedule( array $args ): array {
+		$tags = array( 'history', 'schedules', 'dashboard_counts' );
+		if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
+			$tags[] = 'schedule:' . (int) $args['schedule_id'];
+		}
+		if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+			$tags[] = 'template:' . (int) $args['template_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_history_get_template_stats( array $args ): array {
+		$tags = array( 'history', 'templates', 'dashboard_counts' );
+		if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+			$tags[] = 'template:' . (int) $args['template_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_history_get_by_post_id( array $args ): array {
+		$tags = array( 'history', 'dashboard_counts' );
+		if (isset( $args['post_id'] ) && is_numeric( $args['post_id'] )) {
+			$tags[] = 'post:' . (int) $args['post_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_telemetry_get_row( array $args ): array {
+		$tags = array( 'telemetry', 'dashboard_counts' );
+		if (isset( $args['telemetry_id'] ) && is_numeric( $args['telemetry_id'] )) {
+			$tags[] = 'telemetry_item:' . (int) $args['telemetry_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function read_tags_bulk_batch_jobs_get_status_counts( array $args ): array {
+		$tags = array( 'bulk_batch_jobs', 'dashboard_counts' );
+		if (!empty( $args['statuses'] ) && is_array( $args['statuses'] )) {
+			foreach ( $args['statuses'] as $status ) {
+				if (is_scalar( $status )) {
+					$tags[] = 'bulk_batch_job:status:' . sanitize_key( (string) $status );
+				}
+			}
+		}
+
+		return self::unique_tags( $tags );
 	}
 
 	/**
@@ -345,6 +611,21 @@ class AIPS_Repository_Cache_Dependencies {
 
 							case 'taxonomy':
 								return self::tags_for_taxonomy_invalidation( $context );
+
+							case 'post_slice':
+								return self::tags_for_post_slice_invalidation( $context );
+
+							case 'history':
+								return self::tags_for_history_invalidation( $context );
+
+							case 'history_schedule_count':
+								return self::tags_for_history_schedule_count_invalidation( $context );
+
+							case 'telemetry':
+								return self::tags_for_telemetry_invalidation( $context );
+
+							case 'bulk_batch_job':
+								return self::tags_for_bulk_batch_job_invalidation( $context );
 
 			default:
 				$domain = sanitize_key( $domain );
@@ -425,6 +706,10 @@ class AIPS_Repository_Cache_Dependencies {
 
 		if (isset( $context['post_id'] ) && is_numeric( $context['post_id'] )) {
 			$tags[] = 'post:' . (int) $context['post_id'];
+		}
+
+		if (isset( $context['template_id'] ) && is_numeric( $context['template_id'] )) {
+			$tags[] = 'template:' . (int) $context['template_id'];
 		}
 
 		return self::unique_tags( $tags );
@@ -576,6 +861,98 @@ class AIPS_Repository_Cache_Dependencies {
 
 		if (!empty( $context['status'] ) && is_scalar( $context['status'] )) {
 			$tags[] = 'taxonomy_status:' . sanitize_key( (string) $context['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve post-slice-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_post_slice_invalidation( array $context ): array {
+		$tags = array( 'post_slices', 'dashboard_counts' );
+
+		if (isset( $context['slice_id'] ) && is_numeric( $context['slice_id'] )) {
+			$tags[] = 'post_slice:' . (int) $context['slice_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve history-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_history_invalidation( array $context ): array {
+		$tags = array( 'history', 'dashboard_counts' );
+
+		if (isset( $context['history_id'] ) && is_numeric( $context['history_id'] )) {
+			$tags[] = 'history_item:' . (int) $context['history_id'];
+		}
+
+		if (isset( $context['post_id'] ) && is_numeric( $context['post_id'] )) {
+			$tags[] = 'post:' . (int) $context['post_id'];
+		}
+
+		if (!empty( $context['status'] ) && is_scalar( $context['status'] )) {
+			$tags[] = 'history_status:' . sanitize_key( (string) $context['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve schedule-completed-count invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_history_schedule_count_invalidation( array $context ): array {
+		$tags = array( 'history', 'schedules', 'dashboard_counts' );
+
+		if (isset( $context['schedule_id'] ) && is_numeric( $context['schedule_id'] )) {
+			$tags[] = 'schedule:' . (int) $context['schedule_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve telemetry-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_telemetry_invalidation( array $context ): array {
+		$tags = array( 'telemetry', 'dashboard_counts' );
+
+		if (isset( $context['telemetry_id'] ) && is_numeric( $context['telemetry_id'] )) {
+			$tags[] = 'telemetry_item:' . (int) $context['telemetry_id'];
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve bulk-batch-job-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_bulk_batch_job_invalidation( array $context ): array {
+		$tags = array( 'bulk_batch_jobs', 'dashboard_counts' );
+
+		if (!empty( $context['job_id'] ) && is_scalar( $context['job_id'] )) {
+			$tags[] = 'bulk_batch_job:' . sanitize_text_field( (string) $context['job_id'] );
+		}
+
+		if (!empty( $context['status'] ) && is_scalar( $context['status'] )) {
+			$tags[] = 'bulk_batch_job:status:' . sanitize_key( (string) $context['status'] );
 		}
 
 		return self::unique_tags( $tags );

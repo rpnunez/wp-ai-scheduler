@@ -31,6 +31,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Bulk_Batch_Job_Store
  *
@@ -38,6 +42,7 @@ if (!defined('ABSPATH')) {
  * All SQL lives here; no SQL in callers.
  */
 class AIPS_Bulk_Batch_Job_Store {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * Job status constants.
@@ -135,6 +140,8 @@ class AIPS_Bulk_Batch_Job_Store {
 			);
 		}
 
+		$this->invalidate_bulk_batch_job_cache( $job_id, self::STATUS_PENDING, 'bulk_batch_job_created' );
+
 		return $job_id;
 	}
 
@@ -179,27 +186,36 @@ class AIPS_Bulk_Batch_Job_Store {
 				array_map( 'sanitize_key', $statuses )
 			)
 		);
+		sort( $statuses );
 
 		if ( empty( $statuses ) ) {
 			return array();
 		}
 
-		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
-		$sql          = "SELECT status, COUNT(*) AS count FROM {$this->table()} WHERE status IN ({$placeholders}) GROUP BY status"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$prepared_sql = $wpdb->prepare( $sql, $statuses );
-		$rows         = $wpdb->get_results( $prepared_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $this->cache_read(
+			'bulk_batch_jobs.get_status_counts',
+			array(
+				'statuses' => $statuses,
+			),
+			function() use ( $wpdb, $statuses ) {
+				$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+				$sql          = "SELECT status, COUNT(*) AS count FROM {$this->table()} WHERE status IN ({$placeholders}) GROUP BY status"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$prepared_sql = $wpdb->prepare( $sql, $statuses );
+				$rows         = $wpdb->get_results( $prepared_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
-		$counts = array_fill_keys( $statuses, 0 );
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				$status = isset( $row['status'] ) ? sanitize_key( (string) $row['status'] ) : '';
-				if ( isset( $counts[ $status ] ) ) {
-					$counts[ $status ] = isset( $row['count'] ) ? (int) $row['count'] : 0;
+				$counts = array_fill_keys( $statuses, 0 );
+				if ( is_array( $rows ) ) {
+					foreach ( $rows as $row ) {
+						$status = isset( $row['status'] ) ? sanitize_key( (string) $row['status'] ) : '';
+						if ( isset( $counts[ $status ] ) ) {
+							$counts[ $status ] = isset( $row['count'] ) ? (int) $row['count'] : 0;
+						}
+					}
 				}
-			}
-		}
 
-		return $counts;
+				return $counts;
+			}
+		);
 	}
 
 	/**
@@ -237,6 +253,10 @@ class AIPS_Bulk_Batch_Job_Store {
 			)
 		);
 
+		if ( $result !== false && $result > 0 ) {
+			$this->invalidate_bulk_batch_job_cache( $job_id, self::STATUS_COMPLETED, 'bulk_batch_job_completed' );
+		}
+
 		return $result !== false && $result > 0;
 	}
 
@@ -261,6 +281,10 @@ class AIPS_Bulk_Batch_Job_Store {
 				self::STATUS_PENDING
 			)
 		);
+
+		if ( $result !== false ) {
+			$this->invalidate_bulk_batch_job_cache( $job_id, self::STATUS_PROCESSING, 'bulk_batch_job_started' );
+		}
 
 		return $result !== false;
 	}
@@ -295,6 +319,10 @@ class AIPS_Bulk_Batch_Job_Store {
 			array( '%s' )
 		);
 
+		if ( $result !== false ) {
+			$this->invalidate_bulk_batch_job_cache( $job_id, $status, 'bulk_batch_job_status_updated' );
+		}
+
 		return $result !== false;
 	}
 
@@ -319,6 +347,10 @@ class AIPS_Bulk_Batch_Job_Store {
 				$job_id
 			)
 		);
+
+		if ( $result !== false ) {
+			$this->invalidate_bulk_batch_job_cache( $job_id, '', 'bulk_batch_job_progress_incremented' );
+		}
 
 		return $result !== false;
 	}
@@ -346,7 +378,56 @@ class AIPS_Bulk_Batch_Job_Store {
 			)
 		);
 
+		if ( $deleted > 0 ) {
+			$this->invalidate_bulk_batch_job_cache( '', '', 'bulk_batch_jobs_cleaned_up' );
+		}
+
 		return (int) $deleted;
+	}
+
+	/**
+	 * Return the repository cache group for bulk-batch job reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_bulk_batch_jobs';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'bulk_batch_jobs.get_status_counts' => array(
+				'tier'        => 'short',
+				'description' => 'Cache async bulk-batch status summary counts for admin/system-status reads.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate bulk-batch-job-domain cache tags.
+	 *
+	 * @param string $job_id Job UUID.
+	 * @param string $status Job status.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_bulk_batch_job_cache( string $job_id, string $status, string $reason ): void {
+		$context = array();
+
+		if ( '' !== $job_id ) {
+			$context['job_id'] = sanitize_text_field( $job_id );
+		}
+
+		if ( '' !== $status ) {
+			$context['status'] = sanitize_key( $status );
+		}
+
+		$this->invalidate_cache_domain( 'bulk_batch_job', $context, $reason );
 	}
 
 	// -----------------------------------------------------------------------

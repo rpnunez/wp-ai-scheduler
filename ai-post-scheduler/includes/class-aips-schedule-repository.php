@@ -125,10 +125,8 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     /**
      * Get schedules that are due to run.
      *
-     * Results are cached for the duration of the request. The cache is
-     * invalidated whenever any schedule is mutated, so re-running the
-     * scheduler within the same request correctly picks up the updated
-     * next_run timestamps.
+     * This query is queue-sensitive and intentionally uncached to avoid stale
+     * due-rows during claim-first locking and retry dispatch flows.
      *
      * @param int  $current_time Optional. UTC Unix timestamp. Default current time.
      * @param int  $limit        Optional. Maximum number of schedules to retrieve. Default 5.
@@ -158,7 +156,10 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
                 LIMIT %d
               ", $current_time, $limit )
             );
-          }
+          },
+          array(
+            'queue_sensitive' => true,
+          )
         );
     }
 
@@ -1013,8 +1014,9 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             'description' => 'Cache single-schedule reads by ID.',
           ),
           'schedules.get_due' => array(
-            'tier'        => 'medium',
-            'description' => 'Cache due-schedule reads for repeated execution lookups within a request.',
+            'tier'         => 'none',
+            'bypass_cron'  => true,
+            'description'  => 'Leave due-schedule reads uncached for claim-first locking and retry safety.',
           ),
           'schedules.get_upcoming' => array(
             'tier'        => 'short',

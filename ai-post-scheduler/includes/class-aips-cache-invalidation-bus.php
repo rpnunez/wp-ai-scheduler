@@ -5,6 +5,16 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Cache_Invalidation_Bus {
 
+	/**
+	 * Legacy cache invalidation bridge kept for compatibility.
+	 *
+	 * @deprecated 2.8.4 Repository cache invalidation should use AIPS_Cacheable_Repository domain/tag invalidation.
+	 *
+	 * @param string $subsystem Legacy cache subsystem.
+	 * @param string $operation Legacy invalidation operation.
+	 * @param array  $context Optional operation context.
+	 * @return array<int, string>
+	 */
 	public static function invalidate($subsystem, $operation, $context = array()) {
 		$targets = AIPS_Cache_Policy::invalidation_targets($subsystem, $operation);
 		foreach ($targets as $cache_name) {
@@ -16,6 +26,14 @@ class AIPS_Cache_Invalidation_Bus {
 		return $targets;
 	}
 
+	/**
+	 * Rebuild legacy cache subsystems.
+	 *
+	 * @deprecated 2.8.4 Repository cache rebuild should rely on repository domain/tag invalidation.
+	 *
+	 * @param string $subsystem Optional subsystem. Use 'all' for every subsystem.
+	 * @return array<int, string>
+	 */
 	public static function rebuild($subsystem = 'all') {
 		if ('all' !== $subsystem && !AIPS_Cache_Policy::is_valid_subsystem($subsystem)) {
 			$subsystem = 'all';
