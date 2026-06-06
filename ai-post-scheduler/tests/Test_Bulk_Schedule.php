@@ -149,17 +149,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 
 	/**
 	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
-	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * stagger each topic's next_run by 10 minutes (600 seconds) starting from the user-specified start_date.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_staggers_next_run() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
+		$base_time = strtotime($start_date);
 
 		$this->set_valid_post(array(
 			'topics'      => array('Topic A', 'Topic B', 'Topic C', 'Topic D', 'Topic E'),
@@ -176,25 +172,31 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$stagger_interval = 600; // 10 minutes
+
+		// Check that each topic's next_run is staggered correctly.
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * $stagger_interval));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
+
+			// Database frequency should remain 'once'
+			$this->assertEquals('once', $schedule['frequency']);
 		}
 	}
 
 	/**
-	 * The same invariant holds for repeating frequencies: scheduling multiple
-	 * topics as 'daily' from the same start_date must result in all entries
-	 * receiving that start_date as next_run, not start_date + (index * 86400).
+	 * Scheduling multiple topics as 'daily' must stagger them by a full day (86400 seconds)
+	 * starting from the start_date, but the individual schedule item frequency should remain 'once'.
 	 */
-	public function test_ajax_bulk_schedule_daily_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_daily_staggers_next_run() {
 		$this->set_admin_user();
 
 		$start_date = '2030-08-01 09:00:00';
+		$base_time = strtotime($start_date);
 
 		$this->set_valid_post(array(
 			'topics'      => array('Daily A', 'Daily B', 'Daily C'),
@@ -210,12 +212,18 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		$stagger_interval = 86400; // 1 day
+
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * $stagger_interval));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
+
+			// Database frequency should remain 'once'
+			$this->assertEquals('once', $schedule['frequency']);
 		}
 	}
 
