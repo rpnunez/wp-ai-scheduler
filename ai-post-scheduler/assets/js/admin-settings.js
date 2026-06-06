@@ -1,9 +1,8 @@
 /**
- * Settings Page — Tab persistence.
+ * Settings page AJAX save behavior.
  *
- * Keeps the URL hash in sync with the active settings tab so tabs are
- * bookmarkable, and restores the active tab after WordPress redirects back
- * to the settings page following a successful save.
+ * Keeps the active tab in the URL hash, saves only the active tab's settings
+ * over AJAX, and shows toast feedback without reloading the page.
  *
  * @package AI_Post_Scheduler
  */
@@ -16,48 +15,29 @@
 	Object.assign(AIPS, {
 
 		/**
-		 * Session-storage key used to remember the active settings tab
-		 * across the WordPress options-save redirect.
-		 *
-		 * @type {string}
-		 */
-		settingsTabKey: 'aips_settings_active_tab',
-
-		/**
-		 * Initialise settings-page behaviour.
-		 *
-		 * Restores the previously active tab after a settings-saved redirect
-		 * and wires up form-submit and tab-switch handlers.
+		 * Initialize settings-page behavior.
 		 *
 		 * @return {void}
 		 */
 		initSettingsPage: function() {
-			this.restoreSettingsTab();
+			this.activateSettingsTabFromHash();
 			this.bindSettingsEvents();
 		},
 
 		/**
-		 * Restore the active settings tab from sessionStorage after a redirect.
-		 *
-		 * WordPress redirects back to the settings page with `settings-updated`
-		 * in the query string after a successful save. We use sessionStorage to
-		 * remember which tab was active at the time of submission.
+		 * Activate a settings tab from the current URL hash if one exists.
 		 *
 		 * @return {void}
 		 */
-		restoreSettingsTab: function() {
-			if (!window.location.search.includes('settings-updated')) {
+		activateSettingsTabFromHash: function() {
+			var hash = window.location.hash ? window.location.hash.replace(/^#/, '') : '';
+			if (!hash) {
 				return;
 			}
 
-			var savedTab = sessionStorage.getItem(AIPS.settingsTabKey);
-			if (!savedTab) {
-				return;
-			}
-
-			sessionStorage.removeItem(AIPS.settingsTabKey);
-
-			var $link = $('#aips-settings-tab-nav .aips-tab-link[data-tab="' + savedTab + '"]');
+			var $link = $('#aips-settings-tab-nav .aips-tab-link').filter(function() {
+				return $(this).attr('data-tab') === hash;
+			});
 			if ($link.length) {
 				$link.trigger('click');
 			}
@@ -69,31 +49,139 @@
 		 * @return {void}
 		 */
 		bindSettingsEvents: function() {
-			// Persist the active tab in sessionStorage before the form is submitted
-			// so it can be restored after WordPress redirects back to the page.
 			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
-
-			// Update the URL hash whenever a settings tab is activated so the
-			// tab is reflected in the address bar and can be bookmarked.
 			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
 		},
 
 		/**
-		 * Store the currently active tab in sessionStorage on form submit.
+		 * Save the active settings tab via AJAX.
 		 *
+		 * @param {Event} e Form submit event.
 		 * @return {void}
 		 */
-		onSettingsFormSubmit: function() {
-			var activeTab = $('#aips-settings-tab-nav .aips-tab-link.active').data('tab');
-			if (activeTab) {
-				sessionStorage.setItem(AIPS.settingsTabKey, activeTab);
+		onSettingsFormSubmit: function(e) {
+			e.preventDefault();
+
+			var $form = $(this);
+			var $activeTab = $form.find('.aips-tab-content:visible').first();
+			var $submit = $activeTab.find('input[type="submit"], button[type="submit"]');
+			if (!$submit.length) {
+				$submit = $form.find('input[type="submit"], button[type="submit"]');
 			}
+			$submit = $submit.first();
+			var defaultLabel = $submit.is('input') ? $submit.val() : $submit.text();
+			var savingLabel = (window.aipsSettingsL10n && aipsSettingsL10n.saving) ? aipsSettingsL10n.saving : 'Saving...';
+			var settings = AIPS.collectSettingsPayload($activeTab);
+
+			if ($.isEmptyObject(settings)) {
+				AIPS.Utilities.showToast(
+					(window.aipsSettingsL10n && aipsSettingsL10n.payloadError) ? aipsSettingsL10n.payloadError : 'No settings were found to save.',
+					'warning'
+				);
+				return;
+			}
+
+			$submit.prop('disabled', true);
+			if ($submit.is('input')) {
+				$submit.val(savingLabel);
+			} else {
+				$submit.text(savingLabel);
+			}
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_save_settings',
+					nonce: aipsAjax.nonce,
+					settings: settings
+				}
+			}).done(function(response) {
+				if (response && response.success) {
+					AIPS.Utilities.showToast(
+						(response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveSuccess) ? aipsSettingsL10n.saveSuccess : 'Settings saved successfully.'),
+						'success'
+					);
+					return;
+				}
+
+				AIPS.Utilities.showToast(
+					(response && response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.'),
+					'error'
+				);
+			}).fail(function(xhr) {
+				var message = (window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.';
+				if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+					message = xhr.responseJSON.data.message;
+				}
+				AIPS.Utilities.showToast(message, 'error');
+			}).always(function() {
+				$submit.prop('disabled', false);
+				if ($submit.is('input')) {
+					$submit.val(defaultLabel);
+				} else {
+					$submit.text(defaultLabel);
+				}
+			});
+		},
+
+		/**
+		 * Collect setting fields from the currently active tab.
+		 *
+		 * @param {jQuery} $scope Active settings tab panel.
+		 * @return {Object}
+		 */
+		collectSettingsPayload: function($scope) {
+			var payload = {};
+
+			$scope.find(':input[name]').serializeArray().forEach(function(field) {
+				if (!field.name || field.name === 'action' || field.name === 'option_page' || field.name === '_wpnonce' || field.name === '_wp_http_referer') {
+					return;
+				}
+
+				AIPS.assignNestedSetting(payload, field.name, field.value);
+			});
+
+			return payload;
+		},
+
+		/**
+		 * Assign a serialized form field into a nested settings object.
+		 *
+		 * Supports names like `aips_notification_preferences[email]`.
+		 *
+		 * @param {Object} payload Settings payload being built.
+		 * @param {string} name    Serialized field name.
+		 * @param {string} value   Serialized field value.
+		 * @return {void}
+		 */
+		assignNestedSetting: function(payload, name, value) {
+			var keys = name.match(/([^[\]]+)/g);
+			var cursor = payload;
+
+			if (!keys || !keys.length) {
+				return;
+			}
+
+			keys.forEach(function(key, index) {
+				var isLast = index === keys.length - 1;
+
+				if (isLast) {
+					cursor[key] = value;
+					return;
+				}
+
+				if (!cursor[key] || typeof cursor[key] !== 'object') {
+					cursor[key] = {};
+				}
+
+				cursor = cursor[key];
+			});
 		},
 
 		/**
 		 * Update the URL hash to reflect the newly active settings tab.
-		 *
-		 * Only runs when the settings tab nav is present on the page.
 		 *
 		 * @param {Event}  e     Custom jQuery event.
 		 * @param {string} tabId The ID of the tab that was just activated.
@@ -103,19 +191,12 @@
 			if ($('#aips-settings-tab-nav').length && history.replaceState) {
 				history.replaceState(null, '', '#' + tabId);
 			}
-		},
+		}
 
 	});
 
-	// -----------------------------------------------------------------------
-	// Cache settings — show/hide enable/disable and driver-specific rows
-	// -----------------------------------------------------------------------
-
 	/**
 	 * Toggle visibility of cache-system-specific setting rows.
-	 *
-	 * Rows containing .aips-cache-system-fields are only shown when the cache
-	 * system is enabled (i.e. the "Yes" radio is selected).
 	 *
 	 * @return {void}
 	 */
@@ -126,11 +207,9 @@
 			$(this).closest('tr').toggle(enabled);
 		});
 
-		// When the cache system is enabled also apply the driver-specific toggle.
 		if (enabled) {
 			updateCacheDriverFields();
 		} else {
-			// Hide all driver-specific rows when the whole system is off.
 			$('.aips-cache-db-fields').each(function() {
 				$(this).closest('tr').hide();
 			});
@@ -140,16 +219,11 @@
 	/**
 	 * Toggle visibility of driver-specific cache setting rows.
 	 *
-	 * Rows containing .aips-cache-db-fields are only shown when the db
-	 * driver is selected.
-	 *
 	 * @return {void}
 	 */
 	function updateCacheDriverFields() {
 		var driver = $('#aips_cache_driver').val();
 
-		// Each driver-specific field wraps its content in a div with a
-		// driver-scoped class. Walk up to the <tr> to show/hide the whole row.
 		$('.aips-cache-db-fields').each(function() {
 			$(this).closest('tr').toggle(driver === 'db');
 		});
@@ -160,13 +234,11 @@
 			AIPS.initSettingsPage();
 		}
 
-		// Cache system enable/disable radio may be present on the settings page.
 		if ($('input[name="aips_enable_cache_system"]').length) {
 			updateCacheSystemFields();
 			$(document).on('change', 'input[name="aips_enable_cache_system"]', updateCacheSystemFields);
 		}
 
-		// Cache driver field may be present on the settings page.
 		if ($('#aips_cache_driver').length) {
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
 		}

@@ -387,7 +387,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-history',
             AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );
@@ -1197,6 +1197,7 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
             ));
     }
 
@@ -1427,6 +1428,13 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+			wp_localize_script('aips-admin-settings', 'aipsSettingsL10n', array(
+				'saving'        => __('Saving…', 'ai-post-scheduler'),
+				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
+				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
+				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+			));
     }
 
     /**
