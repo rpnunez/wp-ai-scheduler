@@ -38,11 +38,12 @@ class AIPS_Telemetry_Controller {
 	 *
 	 * @return void
 	 */
-	public function render_page() {
+	public function render_page($embedded = false) {
 		if (!AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			wp_die(esc_html__('Telemetry is currently disabled.', 'ai-post-scheduler'));
 		}
 
+		$embedded = (bool) $embedded;
 		$end_date   = AIPS_DateTime::now()->toDisplay('Y-m-d');
 		$start_date = AIPS_DateTime::now()->advance('-29 days')->toDisplay('Y-m-d');
 		$per_page   = 25;

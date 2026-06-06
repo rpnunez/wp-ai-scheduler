@@ -48,9 +48,147 @@
 		 */
 		bindEvents: function() {
 			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
+			$(document).on('click', '.aips-status-data-panel', this.toggleStatusSectionFromPanel.bind(this));
+			$(document).on('click', '.aips-panel-collapse-toggle', this.toggleStatusSection.bind(this));
+			$(document).on('click', '.aips-status-sections-toggle', this.toggleAllStatusSections.bind(this));
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
 			$(document).on('click', '.aips-rebuild-cache-btn', this.rebuildCaches.bind(this));
+		},
+
+		/**
+		 * Toggle a data section when clicking anywhere on its panel.
+		 *
+		 * Clicks on interactive controls inside the panel are ignored so those
+		 * controls keep their native behaviour.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleStatusSectionFromPanel: function(e) {
+			var $target = $(e.target);
+			var isInteractive = $target.closest('a, button, input, select, textarea, label').length > 0;
+
+			if (isInteractive) {
+				return;
+			}
+
+			var $panel = $(e.currentTarget);
+			var $button = $panel.find('.aips-panel-collapse-toggle').first();
+
+			if ($button.length) {
+				$button.trigger('click');
+			}
+		},
+
+		/**
+		 * Synchronize the "Expand all / Collapse all" control state based on
+		 * current data section visibility.
+		 *
+		 * @return {void}
+		 */
+		syncStatusSectionsToggleState: function() {
+			var $toggle = $('.aips-status-sections-toggle').first();
+			if (!$toggle.length) {
+				return;
+			}
+
+			var $bodies = $('.aips-status-data-panel-body');
+			if (!$bodies.length) {
+				$toggle.hide();
+				return;
+			}
+
+			var hiddenCount = $bodies.filter(function() {
+				return !$(this).is(':visible');
+			}).length;
+
+			if (hiddenCount === 0) {
+				$toggle.attr('data-mode', 'collapse').text('Collapse all');
+			} else {
+				$toggle.attr('data-mode', 'expand').text('Expand all');
+			}
+		},
+
+		/**
+		 * Toggle a System Status data section panel body.
+		 *
+		 * Only applies to table/info sections that include a collapse button.
+		 * Action sections do not include this control and remain always expanded.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleStatusSection: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $button = $(e.currentTarget);
+			var targetId = $button.data('target');
+			var $panelBody = $('#' + targetId);
+
+			if (!$panelBody.length) {
+				return;
+			}
+
+			var isExpanded = $button.attr('aria-expanded') === 'true';
+			var nextExpanded = !isExpanded;
+			var $icon = $button.find('.dashicons');
+			var $label = $button.find('.aips-panel-collapse-label');
+
+			$button.attr('aria-expanded', nextExpanded ? 'true' : 'false');
+			$icon
+				.toggleClass('dashicons-arrow-up-alt2', nextExpanded)
+				.toggleClass('dashicons-arrow-down-alt2', !nextExpanded);
+			$icon.addClass('aips-chevron-pop');
+			window.setTimeout(function() {
+				$icon.removeClass('aips-chevron-pop');
+			}, 180);
+			$label.text(nextExpanded ? 'Collapse' : 'Expand');
+
+			$panelBody
+				.attr('aria-hidden', nextExpanded ? 'false' : 'true')
+				.slideToggle(140);
+
+			this.syncStatusSectionsToggleState();
+		},
+
+		/**
+		 * Expand or collapse all System Status data sections.
+		 *
+		 * This only affects data table/info sections and intentionally excludes
+		 * action sections.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleAllStatusSections: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var mode = $button.attr('data-mode') || 'expand';
+			var shouldExpand = mode === 'expand';
+			var $panelBodies = $('.aips-status-data-panel-body');
+			var $sectionButtons = $('.aips-panel-collapse-toggle');
+
+			if (shouldExpand) {
+				$panelBodies.stop(true, true).slideDown(140).attr('aria-hidden', 'false');
+				$sectionButtons.attr('aria-expanded', 'true');
+				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
+				$sectionButtons.find('.aips-panel-collapse-label').text('Collapse');
+			} else {
+				$panelBodies.stop(true, true).slideUp(140).attr('aria-hidden', 'true');
+				$sectionButtons.attr('aria-expanded', 'false');
+				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
+				$sectionButtons.find('.aips-panel-collapse-label').text('Expand');
+			}
+
+			$sectionButtons.find('.dashicons').addClass('aips-chevron-pop');
+			window.setTimeout(function() {
+				$sectionButtons.find('.dashicons').removeClass('aips-chevron-pop');
+			}, 180);
+
+			this.syncStatusSectionsToggleState();
 		},
 
 		/**
@@ -188,6 +326,7 @@
 
 	$(document).ready(function() {
 		AIPS.SystemStatus.init();
+		AIPS.SystemStatus.syncStatusSectionsToggleState();
 	});
 
 })(jQuery);
