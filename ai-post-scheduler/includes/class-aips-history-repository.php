@@ -763,7 +763,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                  FROM {$this->table_name}
                  WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
                    AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
-                $auxiliary_methods
+                ...$auxiliary_methods
             )
         );
 
@@ -818,7 +818,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                    AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
                  GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
-                $query_args
+                ...$query_args
             )
         );
 

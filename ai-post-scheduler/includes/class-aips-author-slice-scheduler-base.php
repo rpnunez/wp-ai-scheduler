@@ -207,10 +207,10 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 					'creation_method' => $history_type,
 				)
 			);
-			$failure_message = sprintf( 'Failed to schedule retry for %d failed author slices', count( $failed_authors ) );
 			if ( ! $history ) {
 				return;
 			}
+			$failure_message = sprintf( 'Failed to schedule retry for %d failed author slices', count( $failed_authors ) );
 			$history->record(
 				'retry_schedule_failed',
 				$failure_message,
