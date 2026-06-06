@@ -18,40 +18,44 @@ class Test_AIPS_Repository_Boundary_Check extends WP_UnitTestCase {
 	}
 
 	public function test_repository_legacy_cache_scan_flags_unapproved_repository_usage() {
-		$root = dirname(__DIR__);
+		$root          = dirname(__DIR__);
+		$temp_file     = $root . '/includes/class-aips-temp-legacy-repository.php';
+		$temp_relative = 'includes/class-aips-temp-legacy-repository.php';
 
-		$result = aips_scan_repository_legacy_cache_usage(
-			$root,
-			array(
-				'includes/class-aips-article-structure-repository.php' => true,
-				'includes/class-aips-prompt-section-repository.php'    => true,
-				'includes/class-aips-schedule-repository.php'          => true,
-			)
-		);
+		file_put_contents( $temp_file, "<?php\nclass AIPS_Temp_Legacy_Repository { public function legacy() { AIPS_Cache_Policy::key( 'x', 'y' ); } }\n" );
 
-		$this->assertSame(
-			array( 'includes/class-aips-post-slices-repository.php' ),
-			$result['violations']
-		);
+		try {
+			$result = aips_scan_repository_legacy_cache_usage( $root, array() );
+			$this->assertSame( array( $temp_relative ), $result['violations'] );
+		} finally {
+			@unlink( $temp_file );
+		}
 	}
 
 	public function test_repository_legacy_cache_scan_flags_stale_baseline_entries() {
-		$root = dirname(__DIR__);
+		$root            = dirname(__DIR__);
+		$legacy_file     = $root . '/includes/class-aips-temp-legacy-repository.php';
+		$legacy_relative = 'includes/class-aips-temp-legacy-repository.php';
+		$clean_file      = $root . '/includes/class-aips-temp-clean-repository.php';
+		$clean_relative  = 'includes/class-aips-temp-clean-repository.php';
 
-		$result = aips_scan_repository_legacy_cache_usage(
-			$root,
-			array(
-				'includes/class-aips-article-structure-repository.php' => true,
-				'includes/class-aips-post-slices-repository.php'       => true,
-				'includes/class-aips-prompt-section-repository.php'    => true,
-				'includes/class-aips-schedule-repository.php'          => true,
-				'includes/class-aips-template-repository.php'          => true,
-			)
-		);
+		file_put_contents( $legacy_file, "<?php\nclass AIPS_Temp_Legacy_Repository { public function legacy() { AIPS_Cache_Policy::key( 'x', 'y' ); } }\n" );
+		file_put_contents( $clean_file, "<?php\nclass AIPS_Temp_Clean_Repository { public function ok() { return true; } }\n" );
 
-		$this->assertSame(
-			array( 'includes/class-aips-template-repository.php' ),
-			$result['stale_entries']
-		);
+		try {
+			$result = aips_scan_repository_legacy_cache_usage(
+				$root,
+				array(
+					$legacy_relative => true,
+					$clean_relative  => true,
+				)
+			);
+
+			$this->assertSame( array(), $result['violations'] );
+			$this->assertSame( array( $clean_relative ), $result['stale_entries'] );
+		} finally {
+			@unlink( $legacy_file );
+			@unlink( $clean_file );
+		}
 	}
 }
