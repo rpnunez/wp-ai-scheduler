@@ -698,10 +698,11 @@ class AIPS_Settings_UI {
     public function generation_instructions_enabled_field_callback() {
         $enabled = (bool) AIPS_Config::get_instance()->get_option('aips_generation_instructions_enabled');
         ?>
-        <label>
-            <input type="checkbox" name="aips_generation_instructions_enabled" value="1" <?php checked($enabled); ?> />
-            <?php esc_html_e('Enable custom generation instructions', 'ai-post-scheduler'); ?>
-        </label>
+		<label>
+			<input type="hidden" name="aips_generation_instructions_enabled" value="0" />
+			<input type="checkbox" name="aips_generation_instructions_enabled" value="1" <?php checked($enabled); ?> />
+			<?php esc_html_e('Enable custom generation instructions', 'ai-post-scheduler'); ?>
+		</label>
         <p class="description"><?php esc_html_e('When enabled, the instructions below are prepended to every AI generation prompt (content, title, and excerpt).', 'ai-post-scheduler'); ?></p>
         <?php
     }
