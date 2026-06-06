@@ -226,6 +226,7 @@ class AIPS_Ajax_Registry {
 		'aips_search_posts'               => 'AIPS_Taxonomy_Controller',
 
 		// Settings Ajax
+		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
 		'aips_notifications_data_hygiene' => 'AIPS_Settings_Ajax',
 

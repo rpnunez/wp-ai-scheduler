@@ -3,6 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
+<?php if (empty($embedded)) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -14,6 +15,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+<?php endif; ?>
 
         <!-- Content Panel -->
         <div class="aips-content-panel">
@@ -81,5 +83,7 @@ if (!defined('ABSPATH')) {
                 <div id="aips-dev-scaffold-log" style="background: #f0f0f1; padding: 15px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.6;"></div>
             </div>
         </div>
+<?php if (empty($embedded)) : ?>
     </div>
 </div>
+<?php endif; ?>
