@@ -24,9 +24,10 @@
  * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
  *
  * Usage:
- *   Run this from WordPress admin via wp-admin/admin.php?page=aips-dev-tools
- *   OR from CLI: wp eval-file scripts/setup-devstacktips-content.php
- *   To rollback: wp eval-file scripts/setup-devstacktips-content.php rollback
+ *   CLI (recommended): wp eval-file scripts/setup-devstacktips-content.php
+ *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
+ *
+ * Note: This script is not automatically runnable from the Dev Tools admin page unless you wire it in explicitly.
  *
  * @package AI_Post_Scheduler
  */
@@ -281,7 +282,8 @@ class AIPS_DevStackTips_Setup {
 					echo "✗ Failed: {$cat_data['name']}\n";
 				}
 			} else {
-				$this->created_items['categories'][] = array('id' => $existing['term_id'], 'name' => $cat_data['name']);
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$this->created_items['categories'][] = array('id' => $term_id, 'name' => $cat_data['name']);
 				echo "• Category exists: {$cat_data['name']}\n";
 			}
 		}
@@ -742,8 +744,11 @@ Critical areas to address:
 
 			if ($structure_id) {
 				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
 				echo "✓ Created structure: {$structure_data['name']}\n";
-			} else {
+			}
 				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
 				echo "✗ Failed: {$structure_data['name']}\n";
 			}
@@ -917,10 +922,7 @@ Critical areas to address:
 				'preferred_content_length' => $author_data['preferred_content_length'],
 				'language' => 'en',
 				'post_status' => 'draft',
-				'post_category' => $category_id,
-				'post_tags' => '',
-				'post_author' => get_current_user_id(),
-				'generate_featured_image' => 0,
+				'post_author' => (get_current_user_id() > 0) ? get_current_user_id() : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author'),
 				'featured_image_source' => 'ai_prompt',
 				'topic_generation_frequency' => $author_data['topic_generation_frequency'],
 				'topic_generation_quantity' => $author_data['topic_generation_quantity'],
@@ -1053,8 +1055,9 @@ Critical areas to address:
 					echo "✓ Created source group: {$group_data['name']}\n";
 				}
 			} else {
-				$group_ids[$group_data['slug']] = $existing['term_id'];
-				$this->created_items['source_groups'][] = array('id' => $existing['term_id'], 'name' => $group_data['name']);
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$group_ids[$group_data['slug']] = $term_id;
+				$this->created_items['source_groups'][] = array('id' => $term_id, 'name' => $group_data['name']);
 				echo "• Source group exists: {$group_data['name']}\n";
 			}
 		}
@@ -1112,13 +1115,20 @@ Critical areas to address:
 				continue;
 			}
 
+			if ($sources_repo->url_exists($source_data['url'])) {
+				echo "  • Source exists (URL): {$source_data['name']}\n";
+				continue;
+			}
+
 			$source_id = $sources_repo->create(array(
-				'name' => $source_data['name'],
 				'url' => $source_data['url'],
-				'source_type' => $source_data['source_type'],
-				'source_group_id' => $group_ids[$source_data['group_slug']],
+				'label' => $source_data['name'],
 				'is_active' => $source_data['is_active'],
 			));
+
+			if ($source_id) {
+				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
+			}
 
 			if ($source_id) {
 				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
@@ -1755,7 +1765,7 @@ Critical areas to address:
 		foreach ($source_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_sources',
-				array('name' => $name),
+				array('label' => $name),
 				array('%s')
 			);
 			if ($count > 0) {
@@ -1770,8 +1780,8 @@ Critical areas to address:
 		foreach ($source_group_slugs as $slug) {
 			$term = term_exists($slug, 'aips_source_group');
 			if ($term) {
-				$result = wp_delete_term($term['term_id'], 'aips_source_group');
-				if (!is_wp_error($result)) {
+			$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+			$result = wp_delete_term($term_id, 'aips_source_group');
 					$deleted['source_groups']++;
 					echo "✓ Deleted source group: {$slug}\n";
 				}
@@ -1920,8 +1930,8 @@ Critical areas to address:
 		foreach ($category_slugs as $slug) {
 			$term = term_exists($slug, 'category');
 			if ($term) {
-				$result = wp_delete_term($term['term_id'], 'category');
-				if (!is_wp_error($result)) {
+			$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+			$result = wp_delete_term($term_id, 'category');
 					$deleted['categories']++;
 					echo "✓ Deleted category: {$slug}\n";
 				}
