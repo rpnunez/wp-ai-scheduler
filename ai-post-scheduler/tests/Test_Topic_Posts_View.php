@@ -258,7 +258,6 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 		));
 
 		$this->logs_repository->log_post_generation($topic_id, $post_id);
-		sleep(1);
 		$this->logs_repository->log_post_generation($topic_id, $post_id);
 
 		$stats = $this->logs_repository->get_generated_post_stats_by_topic_ids(array($topic_id));

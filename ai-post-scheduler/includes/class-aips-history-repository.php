@@ -615,9 +615,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             INNER JOIN {$posts_table} p ON h.post_id = p.ID
             LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
             LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
-            WHERE h.status = 'completed'
-                AND h.post_id IS NOT NULL
-                AND (pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')"
+            WHERE (pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')"
         );
 
         return (int) $total;

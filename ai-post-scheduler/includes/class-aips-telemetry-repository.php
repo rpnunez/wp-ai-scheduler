@@ -20,6 +20,10 @@ if (!defined('ABSPATH')) {
  * aips_telemetry table.
  */
 class AIPS_Telemetry_Repository {
+	/**
+	 * @var int Row batch size for chart rollup hydration.
+	 */
+	const ROLLUP_BATCH_SIZE = 1000;
 
 	/**
 	 * @var AIPS_Telemetry_Repository|null Singleton instance.
@@ -234,12 +238,14 @@ class AIPS_Telemetry_Repository {
 		$buckets = array();
 
 		// Fetch in bounded batches to avoid hydrating all rows for wide ranges.
-		$batch_size = 1000;
+		$batch_size = self::ROLLUP_BATCH_SIZE;
 		$cursor_inserted_at = $start_timestamp;
 		$cursor_id = 0;
 
 		do {
 			$batch_where = $where;
+			// Use (inserted_at, id) keyset pagination so rows with identical
+			// inserted_at timestamps are paged deterministically without skips.
 			$batch_where[] = '(inserted_at > %d OR (inserted_at = %d AND id > %d))';
 			$batch_params = array_merge(
 				$params,
@@ -283,12 +289,13 @@ class AIPS_Telemetry_Repository {
 				$buckets[$date_key]['_elapsed_sum'] += (float) $row['elapsed_ms'];
 			}
 
-			if (!empty($rows)) {
+			$row_count = count($rows);
+			if ($row_count > 0) {
 				$last_row = $rows[count($rows) - 1];
 				$cursor_inserted_at = (int) $last_row['inserted_at'];
 				$cursor_id = (int) $last_row['id'];
 			}
-		} while (count($rows) === $batch_size);
+		} while ($row_count === $batch_size);
 
 		if (empty($buckets)) {
 			return array();
