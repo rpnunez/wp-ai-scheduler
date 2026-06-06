@@ -204,6 +204,9 @@ class AIPS_History_Container {
 			array(
 				'uuid' => $this->uuid,
 				'correlation_id' => $this->correlation_id,
+				'creation_method' => isset($this->metadata['creation_method']) && $this->metadata['creation_method']
+					? $this->metadata['creation_method']
+					: $this->type,
 				'status' => 'processing',
 			),
 			$this->metadata
