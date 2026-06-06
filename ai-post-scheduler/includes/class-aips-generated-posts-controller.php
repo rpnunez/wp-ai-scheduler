@@ -90,6 +90,22 @@ class AIPS_Generated_Posts_Controller {
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
+		// Hoist date format to prevent redundant DB calls inside loops
+		$datetime_format = get_option('date_format') . ' ' . get_option('time_format');
+
+		// Pre-fetch post caches to prevent N+1 queries in loops below
+		if (function_exists('_prime_post_caches')) {
+			$post_ids_to_prime = array();
+			foreach ($history['items'] as $item) {
+				if (!empty($item->post_id)) {
+					$post_ids_to_prime[] = $item->post_id;
+				}
+			}
+			if (!empty($post_ids_to_prime)) {
+				_prime_post_caches(array_unique($post_ids_to_prime), false, true);
+			}
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -120,9 +136,9 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
+				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, $datetime_format),
+				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
@@ -138,7 +154,7 @@ class AIPS_Generated_Posts_Controller {
 		// Pre-format dates for draft posts
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
-				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format'));
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
 			}
 		}
 
@@ -149,6 +165,19 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		// Pre-fetch post caches for partial generations to prevent N+1 queries
+		if (function_exists('_prime_post_caches')) {
+			$partial_post_ids_to_prime = array();
+			foreach ($partial_generations['items'] as $item) {
+				if (!empty($item->post_id)) {
+					$partial_post_ids_to_prime[] = $item->post_id;
+				}
+			}
+			if (!empty($partial_post_ids_to_prime)) {
+				_prime_post_caches(array_unique($partial_post_ids_to_prime), false, true);
+			}
+		}
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
@@ -165,8 +194,8 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, get_option('date_format') . ' ' . get_option('time_format')),
+			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
+			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
