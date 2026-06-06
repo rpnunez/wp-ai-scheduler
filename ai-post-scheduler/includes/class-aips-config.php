@@ -187,6 +187,16 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Cache Monitor
+            'aips_cache_monitor_enabled'               => true,
+            'aips_cache_monitor_index_enabled'         => true,
+            'aips_cache_monitor_metrics_enabled'       => true,
+            'aips_cache_monitor_event_retention_days'  => 30,
+            'aips_cache_monitor_max_index_entries'     => 10000,
+            'aips_cache_monitor_preview_length'        => 500,
+            'aips_cache_monitor_full_value_debug_only' => true,
+            'aips_cache_monitor_live_refresh_enabled'  => false,
+            'aips_cache_monitor_live_refresh_interval' => 30,
         );
     }
     
