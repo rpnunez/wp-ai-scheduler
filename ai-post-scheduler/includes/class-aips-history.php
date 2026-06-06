@@ -10,6 +10,11 @@ if (!defined('ABSPATH')) {
  * retrieval, export, stats, and admin page rendering.
  */
 class AIPS_History {
+
+    /**
+     * Maximum number of items shown in timeline sidebar.
+     */
+    private const TIMELINE_MAX_ITEMS = 30;
     
     /**
      * @var AIPS_History_Repository Repository for database operations
@@ -1209,9 +1214,14 @@ class AIPS_History {
         $this->render_pagination_html($history, $status_filter, $search_query);
         $pagination_html = ob_get_clean();
 
+        ob_start();
+        $this->render_timeline_html($history['items']);
+        $timeline_html = ob_get_clean();
+
         AIPS_Ajax_Response::success(array(
             'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
+            'timeline_html'   => $timeline_html,
             'paged'           => $paged,
             'stats'           => $this->get_stats(),
         ));
@@ -1382,6 +1392,61 @@ class AIPS_History {
         $history_handler = $this;
 
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
+    }
+
+    /**
+     * Build and render timeline HTML for the History page sidebar.
+     *
+     * @param array $items Prepared history items for the current view.
+     * @return void
+     */
+    public function render_timeline_html(array $items) {
+        $timeline_items = array_slice($items, 0, self::TIMELINE_MAX_ITEMS);
+        $now_timestamp = current_time('timestamp', true);
+        $history_handler = $this;
+
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-timeline.php';
+    }
+
+    /**
+     * Get the grouped date label used in timeline cards.
+     *
+     * @param int $timestamp Unix timestamp.
+     * @param int|null $now_timestamp Optional reference timestamp.
+     * @return string
+     */
+    public function get_timeline_group_label($timestamp, $now_timestamp = null) {
+        $timestamp = (int) $timestamp;
+        if ($timestamp <= 0) {
+            return __('Older', 'ai-post-scheduler');
+        }
+
+        if ($now_timestamp === null) {
+            $now_timestamp = current_time('timestamp', true);
+        }
+
+        $site_timezone = wp_timezone();
+        $today = wp_date('Y-m-d', $now_timestamp, $site_timezone);
+        $yesterday = wp_date('Y-m-d', $now_timestamp - DAY_IN_SECONDS, $site_timezone);
+        $item_date = wp_date('Y-m-d', $timestamp, $site_timezone);
+
+        if ($item_date === $today) {
+            return __('Today', 'ai-post-scheduler');
+        }
+
+        if ($item_date === $yesterday) {
+            return __('Yesterday', 'ai-post-scheduler');
+        }
+
+        if ($timestamp >= ($now_timestamp - WEEK_IN_SECONDS)) {
+            return __('In the last week', 'ai-post-scheduler');
+        }
+
+        if ($timestamp >= ($now_timestamp - (30 * DAY_IN_SECONDS))) {
+            return __('In the last month', 'ai-post-scheduler');
+        }
+
+        return __('Older', 'ai-post-scheduler');
     }
 
     /**
