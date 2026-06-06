@@ -233,4 +233,38 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 		
 		$this->assertEquals(3, $post_count);
 	}
+
+	/**
+	 * Test that generated post stats can be fetched in a single batch query.
+	 */
+	public function test_get_generated_post_stats_by_topic_ids_returns_counts_and_latest_timestamp() {
+		$authors_repo = new AIPS_Authors_Repository();
+		$author_id = $authors_repo->create(array(
+			'name' => 'Batch Stats Author',
+			'field_niche' => 'Engineering',
+			'is_active' => 1,
+		));
+
+		$topic_id = $this->topics_repository->create(array(
+			'author_id' => $author_id,
+			'topic_title' => 'Batch Topic',
+			'topic_prompt' => 'Batch prompt',
+			'status' => 'approved',
+		));
+
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Batch Post',
+			'post_status' => 'publish',
+		));
+
+		$this->logs_repository->log_post_generation($topic_id, $post_id);
+		sleep(1);
+		$this->logs_repository->log_post_generation($topic_id, $post_id);
+
+		$stats = $this->logs_repository->get_generated_post_stats_by_topic_ids(array($topic_id));
+
+		$this->assertArrayHasKey($topic_id, $stats);
+		$this->assertSame(2, $stats[$topic_id]['post_count']);
+		$this->assertNotEmpty($stats[$topic_id]['post_generated_at']);
+	}
 }

@@ -231,40 +231,67 @@ class AIPS_Telemetry_Repository {
 
 		$this->apply_filter_clauses($filters, $where, $params);
 
-		// Fetch raw rows and aggregate in PHP so that metric_date labels are
-		// derived in the site timezone (via AIPS_DateTime::fromTimestamp()
-		// ->toDisplay()), matching the date-window bounds produced by
-		// resolve_date_range_timestamps().  This avoids the DATE(FROM_UNIXTIME())
-		// drift that occurs when the MySQL server timezone differs from the WP
-		// site timezone.
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT inserted_at, num_queries, peak_memory_bytes, elapsed_ms FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY inserted_at ASC",
-				...$params
-			),
-			ARRAY_A
-		);
-
 		$buckets = array();
-		foreach ($rows as $row) {
-			$date_key = AIPS_DateTime::fromTimestamp((int) $row['inserted_at'])->toDisplay('Y-m-d');
-			if (!isset($buckets[$date_key])) {
-				$buckets[$date_key] = array(
-					'metric_date'           => $date_key,
-					'request_count'         => 0,
-					'total_queries'         => 0,
-					'peak_memory_bytes_max' => 0,
-					'_elapsed_sum'          => 0.0,
-				);
-			}
-			$buckets[$date_key]['request_count']++;
-			$buckets[$date_key]['total_queries']        += (int) $row['num_queries'];
-			$buckets[$date_key]['peak_memory_bytes_max'] = max(
-				$buckets[$date_key]['peak_memory_bytes_max'],
-				(int) $row['peak_memory_bytes']
+
+		// Fetch in bounded batches to avoid hydrating all rows for wide ranges.
+		$batch_size = 1000;
+		$cursor_inserted_at = $start_timestamp;
+		$cursor_id = 0;
+
+		do {
+			$batch_where = $where;
+			$batch_where[] = '(inserted_at > %d OR (inserted_at = %d AND id > %d))';
+			$batch_params = array_merge(
+				$params,
+				array(
+					$cursor_inserted_at,
+					$cursor_inserted_at,
+					$cursor_id,
+					$batch_size,
+				)
 			);
-			$buckets[$date_key]['_elapsed_sum'] += (float) $row['elapsed_ms'];
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT id, inserted_at, num_queries, peak_memory_bytes, elapsed_ms FROM {$this->table}
+					WHERE " . implode(' AND ', $batch_where) . "
+					ORDER BY inserted_at ASC, id ASC
+					LIMIT %d",
+					...$batch_params
+				),
+				ARRAY_A
+			);
+
+			foreach ($rows as $row) {
+				$date_key = AIPS_DateTime::fromTimestamp((int) $row['inserted_at'])->toDisplay('Y-m-d');
+				if (!isset($buckets[$date_key])) {
+					$buckets[$date_key] = array(
+						'metric_date'           => $date_key,
+						'request_count'         => 0,
+						'total_queries'         => 0,
+						'peak_memory_bytes_max' => 0,
+						'_elapsed_sum'          => 0.0,
+					);
+				}
+				$buckets[$date_key]['request_count']++;
+				$buckets[$date_key]['total_queries']        += (int) $row['num_queries'];
+				$buckets[$date_key]['peak_memory_bytes_max'] = max(
+					$buckets[$date_key]['peak_memory_bytes_max'],
+					(int) $row['peak_memory_bytes']
+				);
+				$buckets[$date_key]['_elapsed_sum'] += (float) $row['elapsed_ms'];
+			}
+
+			if (!empty($rows)) {
+				$last_row = $rows[count($rows) - 1];
+				$cursor_inserted_at = (int) $last_row['inserted_at'];
+				$cursor_id = (int) $last_row['id'];
+			}
+		} while (count($rows) === $batch_size);
+
+		if (empty($buckets)) {
+			return array();
 		}
 
 		ksort($buckets); // ensure ASC order by date key

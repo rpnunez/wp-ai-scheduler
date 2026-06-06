@@ -161,4 +161,33 @@ class AIPS_History_Repository_Performance_Test extends WP_UnitTestCase {
         $this->assertSame(1, $result['pages']);
         $this->assertSame(1, $result['current_page']);
     }
+
+    /**
+     * Test that dashboard count path uses a single COUNT query.
+     */
+    public function test_count_partial_generations_uses_single_count_query() {
+        $wpdb_mock = $this->getMockBuilder('stdClass')
+            ->addMethods(array('get_var'))
+            ->getMock();
+
+        $wpdb_mock->prefix = 'wp_';
+        $wpdb_mock->posts = 'wp_posts';
+        $wpdb_mock->postmeta = 'wp_postmeta';
+
+        $wpdb_mock->expects($this->once())
+            ->method('get_var')
+            ->with($this->callback(function($query) {
+                return strpos($query, 'SELECT COUNT(*)') !== false
+                    && strpos($query, 'aips_post_generation_incomplete') !== false
+                    && strpos($query, 'aips_post_generation_had_partial') !== false
+                    && strpos($query, 'ORDER BY') === false
+                    && strpos($query, 'LIMIT') === false;
+            }))
+            ->willReturn(7);
+
+        $GLOBALS['wpdb'] = $wpdb_mock;
+
+        $repo = new AIPS_History_Repository();
+        $this->assertSame(7, $repo->count_partial_generations());
+    }
 }

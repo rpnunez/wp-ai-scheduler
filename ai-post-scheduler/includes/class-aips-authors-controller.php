@@ -280,22 +280,14 @@ class AIPS_Authors_Controller {
 		foreach ($topics as $topic) {
 			$topic_ids[] = (int) $topic->id;
 		}
+		$topic_post_stats = $this->logs_repository->get_generated_post_stats_by_topic_ids($topic_ids);
 		$latest_feedback_by_topic = $this->feedback_repository->get_latest_by_topics($topic_ids);
 		
 		// Add post count and latest feedback summary to each topic.
 		foreach ($topics as &$topic) {
-			$logs = $this->logs_repository->get_by_topic($topic->id);
-			$post_count = 0;
-			$topic->post_generated_at = null;
-			foreach ($logs as $log) {
-				if ($log->action === 'post_generated' && $log->post_id) {
-					$post_count++;
-					if (null === $topic->post_generated_at && isset($log->created_at)) {
-						$topic->post_generated_at = absint($log->created_at);
-					}
-				}
-			}
-			$topic->post_count = $post_count;
+			$stats = isset($topic_post_stats[(int) $topic->id]) ? $topic_post_stats[(int) $topic->id] : null;
+			$topic->post_count = isset($stats['post_count']) ? (int) $stats['post_count'] : 0;
+			$topic->post_generated_at = isset($stats['post_generated_at']) ? (int) $stats['post_generated_at'] : null;
 			
 			$topic->last_feedback = null;
 			if (isset($latest_feedback_by_topic[(int) $topic->id])) {

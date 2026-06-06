@@ -28,6 +28,21 @@ class AIPS_Calendar_Controller {
 	 * @var AIPS_Template_Repository Template repository instance
 	 */
 	private $template_repo;
+
+	/**
+	 * @var array<int, object|null> Per-request template cache keyed by ID.
+	 */
+	private $template_cache = array();
+
+	/**
+	 * @var array<int, string> Per-request category name cache keyed by term ID.
+	 */
+	private $category_name_cache = array();
+
+	/**
+	 * @var array<int, string> Per-request author display-name cache keyed by user ID.
+	 */
+	private $author_name_cache = array();
 	
 	/**
 	 * Initialize the controller.
@@ -48,6 +63,9 @@ class AIPS_Calendar_Controller {
 	 */
 	public function get_month_events($year, $month) {
 		$month_range = $this->get_month_range($year, $month);
+		$this->template_cache = array();
+		$this->category_name_cache = array();
+		$this->author_name_cache = array();
 		
 		// Use repository to get active schedules
 		$schedules = $this->schedule_repo->get_all(true);
@@ -207,11 +225,16 @@ class AIPS_Calendar_Controller {
 	private function get_schedule_category($schedule) {
 		// Get category from linked template if available
 		if (!empty($schedule->template_id)) {
-			$template = $this->template_repo->get_by_id($schedule->template_id);
+			$template = $this->get_cached_template((int) $schedule->template_id);
 			if ($template && !empty($template->post_category)) {
-				$category = get_category($template->post_category);
+				$category_id = (int) $template->post_category;
+				if (isset($this->category_name_cache[$category_id])) {
+					return $this->category_name_cache[$category_id];
+				}
+				$category = get_category($category_id);
 				if ($category && !is_wp_error($category) && isset($category->name)) {
-					return $category->name;
+					$this->category_name_cache[$category_id] = $category->name;
+					return $this->category_name_cache[$category_id];
 				}
 			}
 		}
@@ -229,17 +252,40 @@ class AIPS_Calendar_Controller {
 	private function get_schedule_author($schedule) {
 		// Get author from linked template if available
 		if (!empty($schedule->template_id)) {
-			$template = $this->template_repo->get_by_id($schedule->template_id);
+			$template = $this->get_cached_template((int) $schedule->template_id);
 			if ($template && !empty($template->post_author)) {
-				$user = get_userdata($template->post_author);
+				$user_id = (int) $template->post_author;
+				if (isset($this->author_name_cache[$user_id])) {
+					return $this->author_name_cache[$user_id];
+				}
+				$user = get_userdata($user_id);
 				if ($user && isset($user->display_name)) {
-					return $user->display_name;
+					$this->author_name_cache[$user_id] = $user->display_name;
+					return $this->author_name_cache[$user_id];
 				}
 			}
 		}
 		
 		// Fallback to generic author
 		return __('AI Generated', 'ai-post-scheduler');
+	}
+
+	/**
+	 * Return a template from the per-request cache (or load and cache it).
+	 *
+	 * @param int $template_id Template ID.
+	 * @return object|null
+	 */
+	private function get_cached_template($template_id) {
+		if ($template_id <= 0) {
+			return null;
+		}
+
+		if (!array_key_exists($template_id, $this->template_cache)) {
+			$this->template_cache[$template_id] = $this->template_repo->get_by_id($template_id);
+		}
+
+		return $this->template_cache[$template_id];
 	}
 	
 	/**

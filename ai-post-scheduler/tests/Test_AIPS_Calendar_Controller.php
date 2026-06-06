@@ -367,7 +367,35 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$this->assertEquals('Test Category', $first_event['category']);
 	}
 
-	private function set_controller_dependencies(array $schedules) {
+	/**
+	 * Test that template metadata is request-cached across schedule occurrences.
+	 */
+	public function test_get_month_events_caches_template_lookup_per_template_id() {
+		$template_repo = new class() {
+			public $lookup_calls = 0;
+
+			public function get_by_id($template_id) {
+				$this->lookup_calls++;
+				return (object) array(
+					'id' => (int) $template_id,
+					'post_author' => 0,
+					'post_category' => 0,
+				);
+			}
+		};
+
+		$this->set_controller_dependencies(
+			array(
+				$this->build_schedule('2026-02-01 10:00:00'),
+			),
+			$template_repo
+		);
+
+		$this->controller->get_month_events(2026, 2);
+		$this->assertSame(1, $template_repo->lookup_calls, 'Template should be loaded once per template_id within a request.');
+	}
+
+	private function set_controller_dependencies(array $schedules, $template_repo = null) {
 		$schedule_repo = new class($schedules) {
 			private $schedules;
 
@@ -380,11 +408,13 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 			}
 		};
 
-		$template_repo = new class() {
-			public function get_by_id($template_id) {
-				return null;
-			}
-		};
+		if ($template_repo === null) {
+			$template_repo = new class() {
+				public function get_by_id($template_id) {
+					return null;
+				}
+			};
+		}
 
 		$this->set_private_property($this->controller, 'schedule_repo', $schedule_repo);
 		$this->set_private_property($this->controller, 'template_repo', $template_repo);
