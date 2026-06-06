@@ -110,11 +110,12 @@
 					(response && response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.'),
 					'error'
 				);
-			}).fail(function() {
-				AIPS.Utilities.showToast(
-					(window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.',
-					'error'
-				);
+			}).fail(function(xhr) {
+				var message = (window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.';
+				if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+					message = xhr.responseJSON.data.message;
+				}
+				AIPS.Utilities.showToast(message, 'error');
 			}).always(function() {
 				$submit.prop('disabled', false);
 				if ($submit.is('input')) {
