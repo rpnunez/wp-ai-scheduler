@@ -200,6 +200,7 @@ class AIPS_DevStackTips_Setup {
 		echo "<h3>Cache Configuration</h3>\n";
 		update_option('aips_enable_cache_system', true);
 		update_option('aips_cache_driver', 'db');
+		update_option('aips_cache_db_prefix', '');
 		update_option('aips_cache_default_ttl', 3600);
 		echo "✓ Enabled cache system (DB driver, 1 hour TTL)\n";
 
@@ -469,7 +470,22 @@ Critical areas to address:
 			),
 		);
 
+		$existing_voices = array();
+		foreach ($voices_repo->get_all() as $existing_voice) {
+			if (!empty($existing_voice->name) && !empty($existing_voice->id)) {
+				$existing_voices[(string) $existing_voice->name] = (int) $existing_voice->id;
+			}
+		}
+
 		foreach ($voices as $voice_data) {
+			if (isset($existing_voices[$voice_data['name']])) {
+				$voice_id = $existing_voices[$voice_data['name']];
+				$voices_repo->update($voice_id, $voice_data);
+				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
+				echo "• Voice exists, updated: {$voice_data['name']}\n";
+				continue;
+			}
+
 			$voice_id = $voices_repo->create($voice_data);
 			if ($voice_id) {
 				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
@@ -729,18 +745,38 @@ Critical areas to address:
 			),
 		);
 
+		$existing_structures = array();
+		foreach ($structure_repo->get_all() as $existing_structure) {
+			if (!empty($existing_structure->name) && !empty($existing_structure->id)) {
+				$existing_structures[(string) $existing_structure->name] = (int) $existing_structure->id;
+			}
+		}
+
 		foreach ($structures as $structure_data) {
 			$structure_json = wp_json_encode(array(
 				'sections' => $structure_data['sections'],
 				'prompt_template' => '', // Structures handle this automatically
 			));
 
-			$structure_id = $structure_repo->create(array(
+			$structure_payload = array(
 				'name' => $structure_data['name'],
 				'description' => $structure_data['description'],
 				'structure_data' => $structure_json,
 				'is_active' => 1,
-			));
+			);
+
+			if (isset($existing_structures[$structure_data['name']])) {
+				$structure_id = $existing_structures[$structure_data['name']];
+				$structure_repo->update($structure_id, $structure_payload);
+				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
+				echo "• Structure exists, updated: {$structure_data['name']}\n";
+				continue;
+			}
+
+			$structure_id = $structure_repo->create($structure_payload);
 
 			if ($structure_id) {
 				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
@@ -748,7 +784,7 @@ Critical areas to address:
 					update_option('aips_default_article_structure_id', (int) $structure_id);
 				}
 				echo "✓ Created structure: {$structure_data['name']}\n";
-			}
+			} else {
 				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
 				echo "✗ Failed: {$structure_data['name']}\n";
 			}
@@ -962,39 +998,25 @@ Critical areas to address:
 		$slices = array(
 			array(
 				'name' => 'Developer Resources Footer',
-				'description' => 'Standard footer with additional resources and next steps',
-				'content' => '<h2>Additional Resources</h2>
-<ul>
-<li>Official documentation for the topics covered</li>
-<li>Community forums and discussion groups</li>
-<li>Related tutorials and deep-dives</li>
-</ul>
-
-<h2>Next Steps</h2>
-<p>Now that you understand the basics, consider exploring related topics to deepen your knowledge. Practice is essential - try implementing what you\'ve learned in a small project.</p>',
+				'description' => 'Add an additional resources list and next-steps guidance for readers who want to keep learning and apply the topic in a small project.',
 				'sort_order' => 10,
 				'is_active' => 1,
 			),
 			array(
 				'name' => 'Security Disclaimer',
-				'description' => 'Security best practices reminder',
-				'content' => '<div class="security-note">
-<p><strong>Security Note:</strong> Always validate and sanitize user input. Never trust data from external sources. Keep dependencies updated and follow the principle of least privilege.</p>
-</div>',
+				'description' => 'Insert a short security reminder that emphasizes validating and sanitizing input, distrust of external data, and least-privilege practices.',
 				'sort_order' => 20,
 				'is_active' => 1,
 			),
 			array(
 				'name' => 'Code Example Standards',
-				'description' => 'Introduction for code-heavy tutorials',
-				'content' => '<p><strong>About the Code Examples:</strong> All code examples in this tutorial are tested and functional. However, always review and adapt code to your specific use case. Consider error handling, edge cases, and your application\'s requirements.</p>',
+				'description' => 'Prepend a note that code samples should be reviewed and adapted for error handling, edge cases, and project-specific constraints.',
 				'sort_order' => 30,
 				'is_active' => 1,
 			),
 			array(
 				'name' => 'Version Note',
-				'description' => 'Software version disclaimer',
-				'content' => '<p><em>Note: Software versions and APIs change over time. While the concepts remain relevant, always check the latest documentation for your specific version.</em></p>',
+				'description' => 'Append a version disclaimer reminding readers to check current upstream documentation because APIs and tooling evolve over time.',
 				'sort_order' => 40,
 				'is_active' => 1,
 			),
@@ -1004,7 +1026,6 @@ Critical areas to address:
 			$slice_id = $slices_repo->create(array(
 				'name' => $slice_data['name'],
 				'description' => $slice_data['description'],
-				'content' => $slice_data['content'],
 				'sort_order' => $slice_data['sort_order'],
 				'is_active' => $slice_data['is_active'],
 				'created_at' => $now,
@@ -1158,7 +1179,7 @@ Critical areas to address:
 				'voice_name' => 'Hands-On Tutorial Coach',
 				'structure_name' => 'Evergreen How-To Guide',
 				'categories' => array('Backend Development', 'PHP Development'),
-				'post_quantity' => 3,
+				'post_quantity' => 1,
 				'prompt_template' => 'Write a comprehensive beginner-friendly tutorial about {{topic}}. Focus on helping developers learn by doing.',
 				'generate_featured_image' => 0,
 			),
@@ -1168,7 +1189,7 @@ Critical areas to address:
 				'voice_name' => 'DevStackTips Default',
 				'structure_name' => 'Advanced Technical Tutorial',
 				'categories' => array('Backend Development', 'Database'),
-				'post_quantity' => 4,
+				'post_quantity' => 3,
 				'prompt_template' => 'Write an intermediate-level backend development tutorial about {{topic}}. Assume familiarity with programming fundamentals.',
 				'generate_featured_image' => 1,
 				'featured_image_source' => 'ai_prompt',
@@ -1180,7 +1201,7 @@ Critical areas to address:
 				'voice_name' => 'Senior Backend Mentor',
 				'structure_name' => 'Security Best Practices',
 				'categories' => array('Security', 'Backend Development'),
-				'post_quantity' => 3,
+				'post_quantity' => 2,
 				'prompt_template' => 'Write a security-focused guide about {{topic}}. Help developers build secure applications by explaining vulnerabilities and secure patterns.',
 				'generate_featured_image' => 1,
 				'featured_image_source' => 'ai_prompt',
@@ -1202,7 +1223,7 @@ Critical areas to address:
 				'voice_name' => 'Hands-On Tutorial Coach',
 				'structure_name' => 'Tool / Workflow Explainer',
 				'categories' => array('DevOps & Tools'),
-				'post_quantity' => 3,
+				'post_quantity' => 2,
 				'prompt_template' => 'Write a practical guide for {{topic}}. Show developers how to use this tool effectively in their daily workflow.',
 				'generate_featured_image' => 1,
 				'featured_image_source' => 'unsplash',
@@ -1214,7 +1235,7 @@ Critical areas to address:
 				'voice_name' => 'AI Engineering Editor',
 				'structure_name' => 'AI-for-Devs Article',
 				'categories' => array('AI for Developers'),
-				'post_quantity' => 2,
+				'post_quantity' => 1,
 				'prompt_template' => 'Write practical guidance about {{topic}}. Focus on real developer use cases and address both benefits and limitations honestly.',
 				'generate_featured_image' => 0,
 			),
@@ -1238,13 +1259,20 @@ Critical areas to address:
 				'voice_name' => 'DevStackTips Default',
 				'structure_name' => 'Advanced Technical Tutorial',
 				'categories' => array('PHP Development', 'Framework Guides'),
-				'post_quantity' => 2,
+				'post_quantity' => 1,
 				'source_group' => 'PHP Ecosystem',
 				'include_sources' => 1,
 				'prompt_template' => 'Write a detailed tutorial about {{topic}}. Incorporate current best practices from the PHP community.',
 				'generate_featured_image' => 0,
 			),
 		);
+
+		$existing_templates = array();
+		foreach ($template_repo->get_all() as $existing_template) {
+			if (!empty($existing_template->name) && !empty($existing_template->id)) {
+				$existing_templates[(string) $existing_template->name] = (int) $existing_template->id;
+			}
+		}
 
 		foreach ($templates as $template_data) {
 			$voice_id = isset($voices[$template_data['voice_name']]) ? $voices[$template_data['voice_name']] : null;
@@ -1266,7 +1294,7 @@ Critical areas to address:
 				$source_group_ids[] = $source_groups[$template_data['source_group']];
 			}
 
-			$template_id = $template_repo->create(array(
+			$template_payload = array(
 				'name' => $template_data['name'],
 				'description' => isset($template_data['description']) ? $template_data['description'] : '',
 				'prompt_template' => $template_data['prompt_template'],
@@ -1282,7 +1310,17 @@ Critical areas to address:
 				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
 				'source_group_ids' => wp_json_encode($source_group_ids),
 				'is_active' => 1,
-			));
+			);
+
+			if (isset($existing_templates[$template_data['name']])) {
+				$template_id = $existing_templates[$template_data['name']];
+				$template_repo->update($template_id, $template_payload);
+				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
+				echo "• Template exists, updated: {$template_data['name']}\n";
+				continue;
+			}
+
+			$template_id = $template_repo->create($template_payload);
 
 			if ($template_id) {
 				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
@@ -1366,8 +1404,8 @@ Critical areas to address:
 		$templates = $this->get_created_templates_by_name();
 		$interval_calc = AIPS_Interval_Calculator::instance();
 
-		// Schedule configuration for 20 posts/week total
-		// Distribution: Spread across weekdays with varying frequencies
+		// Schedule configuration targeting 20 posts/week total
+		// Distribution: 1 daily track (7 posts/week) + weekly batches (13 posts/week)
 		$schedules = array(
 			array(
 				'template_name' => 'Beginner How-To',
@@ -1378,42 +1416,42 @@ Critical areas to address:
 			),
 			array(
 				'template_name' => 'Intermediate Backend',
-				'title' => 'Backend Development - Twice Daily',
-				'frequency' => 'every_12_hours',
+				'title' => 'Backend Development - Weekly Batch',
+				'frequency' => 'weekly',
 				'start_time' => '10:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Security Guide',
-				'title' => 'Security Content - Daily',
-				'frequency' => 'daily',
+				'title' => 'Security Content - Weekly',
+				'frequency' => 'weekly',
 				'start_time' => '11:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Framework Comparison',
-				'title' => 'Framework Comparisons - Twice Weekly',
+				'title' => 'Framework Comparisons - Weekly',
 				'frequency' => 'weekly',
 				'start_time' => '14:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Developer Tooling',
-				'title' => 'Developer Tools - Daily',
-				'frequency' => 'daily',
+				'title' => 'Developer Tools - Weekly',
+				'frequency' => 'weekly',
 				'start_time' => '15:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'AI for Developers',
-				'title' => 'AI Content - Twice Weekly',
+				'title' => 'AI Content - Weekly',
 				'frequency' => 'weekly',
 				'start_time' => '16:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Security News',
-				'title' => 'Security News Digest - Twice Weekly',
+				'title' => 'Security News Digest - Weekly',
 				'frequency' => 'weekly',
 				'start_time' => '13:00',
 				'is_active' => 1,
@@ -1524,6 +1562,42 @@ Critical areas to address:
 		return $map;
 	}
 
+	private function get_configured_setting_keys() {
+		return array(
+			'aips_site_niche',
+			'aips_site_target_audience',
+			'aips_site_content_goals',
+			'aips_site_brand_voice',
+			'aips_site_content_language',
+			'aips_site_content_guidelines',
+			'aips_site_excluded_topics',
+			'aips_enable_retry',
+			'aips_retry_max_attempts',
+			'aips_retry_initial_delay',
+			'aips_enable_rate_limiting',
+			'aips_rate_limit_requests',
+			'aips_rate_limit_period',
+			'aips_enable_circuit_breaker',
+			'aips_circuit_breaker_threshold',
+			'aips_circuit_breaker_timeout',
+			'aips_default_article_structure_id',
+			'aips_review_notifications_email',
+			'aips_notification_preferences',
+			'aips_research_niches',
+			'aips_topic_similarity_threshold',
+			'aips_unsplash_access_key',
+			'aips_enable_telemetry',
+			'aips_enable_cache_system',
+			'aips_cache_driver',
+			'aips_cache_db_prefix',
+			'aips_cache_default_ttl',
+			'aips_log_retention_days',
+			'aips_default_post_status',
+			'aips_default_category',
+			'aips_default_post_author',
+		);
+	}
+
 	private function print_summary() {
 		echo "\n<h2>Setup Complete!</h2>\n";
 		
@@ -1620,65 +1694,14 @@ Critical areas to address:
 
 		// Reset settings to defaults first
 		echo "<h2>Resetting Plugin Settings</h2>\n";
-		
-		// Reset Content Strategy settings
-		$content_strategy_defaults = array(
-			'aips_site_niche' => '',
-			'aips_site_target_audience' => '',
-			'aips_site_content_goals' => '',
-			'aips_site_brand_voice' => '',
-			'aips_site_content_language' => 'en',
-			'aips_site_content_guidelines' => '',
-			'aips_site_excluded_topics' => '',
-		);
-		
-		foreach ($content_strategy_defaults as $key => $default) {
-			update_option($key, $default);
-			$deleted['settings']++;
-		}
-		echo "✓ Reset Content Strategy settings to defaults\n";
-		
-		// Reset Resilience & Limits settings
-		$resilience_defaults = array(
-			'aips_enable_retry' => 0,
-			'aips_retry_max_attempts' => 3,
-			'aips_retry_initial_delay' => 1,
-			'aips_enable_rate_limiting' => 0,
-			'aips_rate_limit_requests' => 10,
-			'aips_rate_limit_period' => 60,
-			'aips_enable_circuit_breaker' => 0,
-			'aips_circuit_breaker_threshold' => 5,
-			'aips_circuit_breaker_timeout' => 300,
-		);
-		
-		foreach ($resilience_defaults as $key => $default) {
-			update_option($key, $default);
-			$deleted['settings']++;
-		}
-		echo "✓ Reset Resilience & Limits settings to defaults\n";
 
-		// Reset Production settings
-		$production_defaults = array(
-			'aips_default_article_structure_id' => '',
-			'aips_review_notifications_email' => '',
-			'aips_notification_preferences' => array(),
-			'aips_research_niches' => array(),
-			'aips_topic_similarity_threshold' => 0.85,
-			'aips_unsplash_access_key' => '',
-			'aips_enable_telemetry' => false,
-			'aips_enable_cache_system' => false,
-			'aips_cache_driver' => 'array',
-			'aips_cache_default_ttl' => 3600,
-			'aips_log_retention_days' => 30,
-			'aips_default_post_status' => 'draft',
-			'aips_default_category' => '',
-			'aips_default_post_author' => 1,
-		);
-		foreach ($production_defaults as $key => $value) {
-			update_option($key, $value);
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		foreach ($this->get_configured_setting_keys() as $key) {
+			$default_value = array_key_exists($key, $defaults) ? $defaults[$key] : null;
+			update_option($key, $default_value);
 			$deleted['settings']++;
 		}
-		echo "✓ Reset Production settings to defaults\n";
+		echo "✓ Reset configured settings to plugin defaults\n";
 
 		// Delete in reverse order of creation to maintain referential integrity
 
@@ -1686,12 +1709,12 @@ Critical areas to address:
 		echo "<h2>Deleting Schedules</h2>\n";
 		$schedule_titles = array(
 			'Daily Beginner Tutorials',
-			'Backend Development - Twice Daily',
-			'Security Content - Daily',
-			'Framework Comparisons - Twice Weekly',
-			'Developer Tools - Daily',
-			'AI Content - Twice Weekly',
-			'Security News Digest - Twice Weekly',
+			'Backend Development - Weekly Batch',
+			'Security Content - Weekly',
+			'Framework Comparisons - Weekly',
+			'Developer Tools - Weekly',
+			'AI Content - Weekly',
+			'Security News Digest - Weekly',
 			'PHP Ecosystem Updates - Weekly',
 		);
 		foreach ($schedule_titles as $title) {
@@ -1762,7 +1785,18 @@ Critical areas to address:
 			'Laravel News',
 			'Symfony Blog',
 		);
+		$sources_repo = new AIPS_Sources_Repository();
 		foreach ($source_names as $name) {
+			$source_ids = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT id FROM {$wpdb->prefix}aips_sources WHERE label = %s",
+					$name
+				)
+			);
+			foreach ($source_ids as $source_id) {
+				$sources_repo->delete_source_terms((int) $source_id);
+			}
+
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_sources',
 				array('label' => $name),
@@ -1780,8 +1814,9 @@ Critical areas to address:
 		foreach ($source_group_slugs as $slug) {
 			$term = term_exists($slug, 'aips_source_group');
 			if ($term) {
-			$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
-			$result = wp_delete_term($term_id, 'aips_source_group');
+				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+				$result = wp_delete_term($term_id, 'aips_source_group');
+				if (!is_wp_error($result)) {
 					$deleted['source_groups']++;
 					echo "✓ Deleted source group: {$slug}\n";
 				}
@@ -1930,8 +1965,9 @@ Critical areas to address:
 		foreach ($category_slugs as $slug) {
 			$term = term_exists($slug, 'category');
 			if ($term) {
-			$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
-			$result = wp_delete_term($term_id, 'category');
+				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+				$result = wp_delete_term($term_id, 'category');
+				if (!is_wp_error($result)) {
 					$deleted['categories']++;
 					echo "✓ Deleted category: {$slug}\n";
 				}
