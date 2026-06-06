@@ -16,7 +16,7 @@ $items = isset($existing_posts_data['items']) ? $existing_posts_data['items'] : 
 
 <div class="aips-existing-posts-toolbar">
 <div class="aips-existing-posts-toolbar-left">
-<input type="search" id="aips-existing-posts-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search suggestions…', 'ai-post-scheduler'); ?>" value="<?php echo isset($_GET['existing_s']) ? esc_attr(sanitize_text_field(wp_unslash($_GET['existing_s']))) : ''; ?>" />
+<input type="search" id="aips-existing-posts-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search suggestions…', 'ai-post-scheduler'); ?>" value="<?php echo isset($existing_search_query) ? esc_attr($existing_search_query) : ''; ?>" />
 <button type="button" id="aips-existing-posts-search-btn" class="aips-btn aips-btn-secondary aips-btn-sm"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
 </div>
 <div class="aips-existing-posts-toolbar-right">

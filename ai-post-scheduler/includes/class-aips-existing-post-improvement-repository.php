@@ -386,7 +386,27 @@ if (empty($item_ids)) {
 return array();
 }
 $placeholders = implode(',', array_fill(0, count($item_ids), '%d'));
-return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_items} WHERE id IN ($placeholders)", $item_ids)); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$query = "SELECT * FROM {$this->table_items} WHERE id IN ($placeholders)";
+return $this->wpdb->get_results($this->wpdb->prepare($query, ...$item_ids));
+}
+
+public function get_plugin_generated_post_ids($post_ids) {
+$post_ids = array_values(array_filter(array_map('absint', (array) $post_ids)));
+if (empty($post_ids)) {
+return array();
+}
+$placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
+$history_query = "SELECT DISTINCT post_id FROM {$this->table_history} WHERE post_id IN ($placeholders)";
+$history_ids = $this->wpdb->get_col($this->wpdb->prepare($history_query, ...$post_ids));
+
+$postmeta_table = $this->wpdb->postmeta;
+$meta_keys = array('aips_post_generation_component_statuses', 'aips_post_generation_had_partial', '_aips_trending_topic_id');
+$meta_placeholders = implode(',', array_fill(0, count($meta_keys), '%s'));
+$meta_query = "SELECT DISTINCT post_id FROM {$postmeta_table} WHERE post_id IN ($placeholders) AND meta_key IN ($meta_placeholders)";
+$args = array_merge($post_ids, $meta_keys);
+$meta_ids = $this->wpdb->get_col($this->wpdb->prepare($meta_query, ...$args));
+
+return array_values(array_unique(array_map('intval', array_merge((array) $history_ids, (array) $meta_ids))));
 }
 
 public function recalculate_suggestion_status($suggestion_id) {

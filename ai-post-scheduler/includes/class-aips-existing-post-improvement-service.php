@@ -101,12 +101,9 @@ $metrics['suggestions_created']++;
 }
 }
 
-$next_run = wp_next_scheduled('aips_process_existing_post_scans');
-if (!$next_run) {
 $interval = wp_get_schedules();
 $freq = isset($interval[$schedule->frequency]['interval']) ? (int) $interval[$schedule->frequency]['interval'] : DAY_IN_SECONDS;
 $next_run = time() + max(HOUR_IN_SECONDS, $freq);
-}
 
 $this->repository->update_run($run_id, array_merge($metrics, array(
 'status' => 'completed',
@@ -226,46 +223,43 @@ $args = array(
 'orderby' => 'ID',
 'order' => 'ASC',
 'fields' => 'all',
-'post__not_in' => array(),
 );
-
-if (!empty($cursor)) {
-$args['date_query'] = array();
-$args['post__not_in'] = array();
-$args['post_parent__not_in'] = array();
-$args['post__in'] = get_posts(array(
-'post_type' => 'post',
-'post_status' => 'publish',
-'posts_per_page' => max(1, absint($limit * 2)),
-'orderby' => 'ID',
-'order' => 'ASC',
-'fields' => 'ids',
-'post__not_in' => array(),
-'suppress_filters' => false,
-'no_found_rows' => true,
-'paged' => 1,
-'offset' => 0,
-));
-}
 
 if (!empty($category_filters)) {
 $args['category__in'] = array_values(array_filter(array_map('absint', (array) $category_filters)));
 }
 
+$where_filter = null;
+if (!empty($cursor)) {
+$cursor = absint($cursor);
+$where_filter = static function($where) use ($cursor) {
+return $where . ' AND ID > ' . (int) $cursor;
+};
+add_filter('posts_where', $where_filter);
+}
+
+try {
 $query = new WP_Query($args);
-$posts = array();
-if ($query->have_posts()) {
-foreach ($query->posts as $post) {
-if (!$include_generated_posts && $this->repository->is_plugin_generated_post($post->ID)) {
-continue;
-}
-if (!empty($cursor) && (int) $post->ID <= (int) $cursor) {
-continue;
-}
-$posts[] = $post;
+} finally {
+if ($where_filter) {
+remove_filter('posts_where', $where_filter);
 }
 }
+
+$posts = $query->have_posts() ? $query->posts : array();
+if ($include_generated_posts || empty($posts)) {
 return $posts;
+}
+
+$post_ids = wp_list_pluck($posts, 'ID');
+$generated_ids = $this->repository->get_plugin_generated_post_ids($post_ids);
+if (empty($generated_ids)) {
+return $posts;
+}
+$generated_lookup = array_fill_keys(array_map('intval', $generated_ids), true);
+return array_values(array_filter($posts, static function($post) use ($generated_lookup) {
+return !isset($generated_lookup[(int) $post->ID]);
+}));
 }
 
 private function compute_post_fingerprint($post) {

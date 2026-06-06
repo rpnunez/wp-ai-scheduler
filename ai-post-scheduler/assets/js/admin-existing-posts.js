@@ -81,7 +81,7 @@ grouped[item.component] = [];
 grouped[item.component].push(item);
 });
 
-var html = '<div class="aips-existing-review-header"><h3>' + this.escapeHtml((data.suggestion && data.suggestion.post_title) || '') + '</h3></div>';
+var html = '<div class="aips-existing-review-header"><h3>' + AIPS.Utilities.escapeHtml((data.suggestion && data.suggestion.post_title) || '') + '</h3></div>';
 Object.keys(grouped).forEach(function(component) {
 html += '<section class="aips-existing-review-component">';
 html += '<h4>' + component + '</h4>';
@@ -164,12 +164,6 @@ e.preventDefault();
 $('#aips-existing-post-review-modal').fadeOut(150);
 $('#aips-existing-review-content').empty();
 this.currentSuggestionId = 0;
-},
-
-escapeHtml: function(value) {
-return String(value || '').replace(/[&<>"']/g, function(match) {
-return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[match];
-});
 }
 };
 
