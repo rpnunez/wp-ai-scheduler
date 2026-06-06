@@ -492,8 +492,14 @@
          * @param {Event} e - Click event from a `.nav-tab` element.
          */
         switchTab: function(e) {
-            e.preventDefault();
             var tabId = $(this).data('tab');
+
+            // If no data-tab attribute, the tab is a server-side navigation link — let the browser handle it.
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
 
             // Update the URL hash instead of query parameter
             window.location.hash = '#' + tabId;
@@ -1415,6 +1421,7 @@
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
+            var blueprintPresetId = $row.data('blueprint-preset-id');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
             var nextRun = $row.data('next-run');
@@ -1427,6 +1434,7 @@
                 $('#schedule_id').val(scheduleId);
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_blueprint_preset').val(blueprintPresetId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
@@ -1449,6 +1457,7 @@
             $('#sw_schedule_id').val(scheduleId);
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_blueprint_preset').val(blueprintPresetId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic || '');
             $('#sw_article_structure_id').val(articleStructureId || '');
@@ -1488,6 +1497,7 @@
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
+            var blueprintPresetId = $row.data('blueprint-preset-id');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
 
@@ -1498,6 +1508,7 @@
                 $('#schedule_id').val('');
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_blueprint_preset').val(blueprintPresetId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
@@ -1515,6 +1526,7 @@
             // Populate wizard form
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_blueprint_preset').val(blueprintPresetId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic);
             $('#sw_article_structure_id').val(articleStructureId);
@@ -1557,6 +1569,7 @@
                     schedule_id: $('#schedule_id').val(),
                     schedule_title: $('#schedule_title').val(),
                     template_id: $('#schedule_template').val(),
+                    blueprint_preset_id: $('#schedule_blueprint_preset').val(),
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
                     topic: $('#schedule_topic').val(),
@@ -1621,6 +1634,7 @@
                     schedule_id: $('#sw_schedule_id').val(),
                     schedule_title: $('#sw_schedule_title').val(),
                     template_id: $('#sw_schedule_template').val(),
+                    blueprint_preset_id: $('#sw_schedule_blueprint_preset').val(),
                     frequency: $('#sw_schedule_frequency').val(),
                     start_time: $('#sw_schedule_start_time').val(),
                     topic: $('#sw_schedule_topic').val(),

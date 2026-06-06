@@ -57,6 +57,13 @@ class AIPS_Schedule_Entry {
 	public readonly ?string $title;
 
 	/**
+	 * Optional FK to `aips_blueprint_presets`.
+	 *
+	 * @var int|null
+	 */
+	public readonly ?int $blueprint_preset_id;
+
+	/**
 	 * Optional FK to `aips_article_structures`.
 	 *
 	 * @var int|null
@@ -177,6 +184,7 @@ class AIPS_Schedule_Entry {
 	 * @param int         $id                   Schedule primary key.
 	 * @param int         $template_id          FK to templates table.
 	 * @param string|null $title                Optional label.
+	 * @param int|null    $blueprint_preset_id   FK to blueprint presets table.
 	 * @param int|null    $article_structure_id FK to article structures table.
 	 * @param string|null $rotation_pattern     Multi-topic rotation strategy.
 	 * @param string      $frequency            Frequency identifier.
@@ -197,6 +205,7 @@ class AIPS_Schedule_Entry {
 		int $id,
 		int $template_id,
 		?string $title,
+		?int $blueprint_preset_id,
 		?int $article_structure_id,
 		?string $rotation_pattern,
 		string $frequency,
@@ -216,6 +225,7 @@ class AIPS_Schedule_Entry {
 		$this->id                   = $id;
 		$this->template_id          = $template_id;
 		$this->title                = $title;
+		$this->blueprint_preset_id  = $blueprint_preset_id;
 		$this->article_structure_id = $article_structure_id;
 		$this->rotation_pattern     = $rotation_pattern;
 		$this->frequency            = $frequency;
@@ -251,6 +261,7 @@ class AIPS_Schedule_Entry {
 			(int) $row->id,
 			(int) $row->template_id,
 			isset( $row->title ) && $row->title !== '' ? (string) $row->title : null,
+			isset( $row->blueprint_preset_id ) && $row->blueprint_preset_id !== null ? (int) $row->blueprint_preset_id : null,
 			isset( $row->article_structure_id ) && $row->article_structure_id !== null ? (int) $row->article_structure_id : null,
 			isset( $row->rotation_pattern ) && $row->rotation_pattern !== '' ? (string) $row->rotation_pattern : null,
 			(string) ( $row->frequency ?? 'daily' ),

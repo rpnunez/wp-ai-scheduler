@@ -71,6 +71,21 @@ class AIPS_Schedule_Processor {
     private $batch_queue_service;
 
     /**
+     * @var AIPS_Voices_Repository
+     */
+    private $voices_repository;
+
+    /**
+     * @var AIPS_Blueprint_Presets_Repository
+     */
+    private $blueprint_presets_repository;
+
+    /**
+     * @var AIPS_Post_Slices_Repository
+     */
+    private $post_slices_repository;
+
+    /**
      * Constructor.
      *
      * @param AIPS_Schedule_Repository_Interface|null $repository
@@ -103,6 +118,9 @@ class AIPS_Schedule_Processor {
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
         $this->result_handler = $result_handler ?: new AIPS_Schedule_Result_Handler($this->repository, $this->history_service, $this->history_repository, $this->logger);
+        $this->voices_repository = new AIPS_Voices_Repository();
+        $this->blueprint_presets_repository = AIPS_Blueprint_Presets_Repository::instance();
+        $this->post_slices_repository = AIPS_Post_Slices_Repository::instance();
     }
 
     /**
@@ -143,6 +161,141 @@ class AIPS_Schedule_Processor {
             $this->batch_queue_service = new AIPS_Batch_Queue_Service();
         }
         return $this->batch_queue_service;
+    }
+
+    /**
+     * Resolve an active blueprint preset for the schedule.
+     *
+     * @param object $schedule Schedule row.
+     * @return object|null
+     */
+    private function get_active_blueprint_preset($schedule) {
+        if (empty($schedule->blueprint_preset_id)) {
+            return null;
+        }
+
+        $preset = $this->blueprint_presets_repository->get_by_id(absint($schedule->blueprint_preset_id));
+        if (!$preset) {
+            return null;
+        }
+
+        if (isset($preset->is_active) && !(bool) $preset->is_active) {
+            return null;
+        }
+
+        return $preset;
+    }
+
+    /**
+     * Build the schedule object used for article-structure selection.
+     *
+     * Schedule-specific structure and rotation settings take precedence over the
+     * preset structure fallback.
+     *
+     * @param object      $schedule Schedule object merged with template data.
+     * @param object|null $preset   Blueprint preset.
+     * @return object
+     */
+    private function build_structure_selection_subject($schedule, $preset = null) {
+        $selection_subject = clone $schedule;
+
+        if (
+            $preset
+            && empty($selection_subject->article_structure_id)
+            && empty($selection_subject->rotation_pattern)
+            && !empty($preset->structure_id)
+        ) {
+            $selection_subject->article_structure_id = (int) $preset->structure_id;
+        }
+
+        return $selection_subject;
+    }
+
+    /**
+     * Resolve the voice object that should be applied for this run.
+     *
+     * Preset voice overrides template voice when present.
+     *
+     * @param object      $template_model Template row.
+     * @param object|null $preset         Blueprint preset.
+     * @return object|null
+     */
+    private function resolve_context_voice($template_model, $preset = null) {
+        $voice_id = null;
+
+        if ($preset && !empty($preset->voice_id)) {
+            $voice_id = absint($preset->voice_id);
+        } elseif (!empty($template_model->voice_id)) {
+            $voice_id = absint($template_model->voice_id);
+        }
+
+        if (!$voice_id) {
+            return null;
+        }
+
+        $voice = $this->voices_repository->get_by_id($voice_id);
+        if (!$voice) {
+            return null;
+        }
+
+        if (isset($voice->is_active) && !(bool) $voice->is_active) {
+            return null;
+        }
+
+        return $voice;
+    }
+
+    /**
+     * Resolve preset slice names to apply for this run.
+     *
+     * @param object|null $preset Blueprint preset.
+     * @return array
+     */
+    private function resolve_preset_slice_names($preset = null) {
+        if (!$preset || empty($preset->slice_ids)) {
+            return array();
+        }
+
+        $slice_ids = json_decode((string) $preset->slice_ids, true);
+        if (!is_array($slice_ids)) {
+            return array();
+        }
+
+        return $this->post_slices_repository->get_names_by_ids($slice_ids);
+    }
+
+    /**
+     * Build a template-generation context with preset-aware runtime overrides.
+     *
+     * @param object   $schedule              Schedule object merged with template data.
+     * @param object   $template_model        Template row.
+     * @param int      $post_quantity         Runtime quantity.
+     * @param int|null $article_structure_id  Runtime structure selection.
+     * @param string   $creation_method       Context creation method.
+     * @return AIPS_Template_Context
+     */
+    private function build_template_context($schedule, $template_model, $post_quantity, $article_structure_id, $creation_method) {
+        $preset = $this->get_active_blueprint_preset($schedule);
+        $voice = $this->resolve_context_voice($template_model, $preset);
+        $post_slice_names = $this->resolve_preset_slice_names($preset);
+
+        $template = AIPS_Template_Entry::from_template_and_overrides(
+            (int) $schedule->template_id,
+            $template_model,
+            (int) $post_quantity,
+            $article_structure_id
+        );
+
+        $topic = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
+
+        return new AIPS_Template_Context(
+            $template,
+            $voice,
+            $topic,
+            $creation_method,
+            $post_slice_names,
+            $preset ? (int) $preset->id : null
+        );
     }
 
     /**
@@ -232,23 +385,18 @@ class AIPS_Schedule_Processor {
             return;
         }
 
-        // Select article structure (honours rotation_pattern set on the schedule).
+        $preset = $this->get_active_blueprint_preset($schedule);
+
+        // Select article structure (honours schedule-level rotation settings and
+        // falls back to the preset structure when the schedule does not specify one).
         $schedule_obj = (object) array_merge((array) $actual_template_model, (array) $schedule);
         $schedule_obj->schedule_id = $schedule->id;
         $schedule_obj->name        = $actual_template_model->name;
 
-        $article_structure_id = $this->template_type_selector->select_structure($schedule_obj);
-
-        // Build the typed generator-facing template entry for this batch slice.
-        $template = AIPS_Template_Entry::from_template_and_overrides(
-            (int) $schedule->template_id,
-            $actual_template_model,
-            $total_quantity,
-            $article_structure_id
+        $article_structure_id = $this->template_type_selector->select_structure(
+            $this->build_structure_selection_subject($schedule_obj, $preset)
         );
-
-        $topic   = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
-        $context = new AIPS_Template_Context($template, null, $topic, 'scheduled');
+        $context = $this->build_template_context($schedule, $actual_template_model, $total_quantity, $article_structure_id, 'scheduled');
 
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
@@ -691,8 +839,12 @@ class AIPS_Schedule_Processor {
         $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
         $post_quantity = max(1, absint($raw_quantity));
 
-        // Select article structure for this execution
-        $article_structure_id = $this->template_type_selector->select_structure($schedule);
+        $preset = $this->get_active_blueprint_preset($schedule);
+
+        // Select article structure for this execution.
+        $article_structure_id = $this->template_type_selector->select_structure(
+            $this->build_structure_selection_subject($schedule, $preset)
+        );
 
         // Prepare context for logging
         $event_type = $is_manual ? 'manual_schedule_started' : 'schedule_executed';
@@ -864,19 +1016,8 @@ class AIPS_Schedule_Processor {
         }
         // ── End large-batch check ─────────────────────────────────────────────
 
-        // Build the typed generator-facing template entry for this execution.
-        $template = AIPS_Template_Entry::from_template_and_overrides(
-            (int) $schedule->template_id,
-            $schedule,
-            $post_quantity,
-            $article_structure_id
-        );
-
-        $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
-        
-        // Create context with creation_method
-        $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+        $context = $this->build_template_context($schedule, $actual_template_model ?: $schedule, $post_quantity, $article_structure_id, $creation_method);
 
         $successful_post_ids = array();
         $errors = array();

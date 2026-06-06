@@ -164,6 +164,34 @@ class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 		$this->assertStringContainsString('editorial lens', $block);
 	}
 
+	public function test_build_post_slice_block_prefers_context_slice_overrides() {
+		$history_repository = new class {
+			public function get_history($args = array()) {
+				return array(
+					'items' => array(),
+					'total' => 0,
+				);
+			}
+		};
+		$post_slices_repository = new class {
+			public function get_active_names() {
+				return array('global fallback');
+			}
+		};
+		$injector = new AIPS_Prompt_Builder_Diversity_Injector($history_repository, null, $post_slices_repository);
+		$template = (object) array(
+			'id'              => 11,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'AI', 'scheduled', array('preset slice one', 'preset slice two'), 5);
+
+		$block = $injector->build_post_slice_block($context);
+
+		$this->assertStringContainsString('- preset slice one', $block);
+		$this->assertStringNotContainsString('global fallback', $block);
+	}
+
 	public function test_build_uniqueness_seed_line_block_returns_seed_guidance() {
 		$history_repository = new class {
 			public function get_history($args = array()) {

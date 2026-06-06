@@ -67,6 +67,16 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Blueprints', 'ai-post-scheduler'),
+            __('Blueprints', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-blueprints',
+            array($this, 'render_blueprints_page')
+        );
+
+        // Legacy pages kept as hidden for backward-compatible URL access.
+        add_submenu_page(
+            null,
             __('Voices', 'ai-post-scheduler'),
             __('Voices', 'ai-post-scheduler'),
             'manage_options',
@@ -75,12 +85,21 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
+            null,
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
             'manage_options',
             'aips-structures',
             array($this, 'render_structures_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Post Slices', 'ai-post-scheduler'),
+            __('Post Slices', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-slices',
+            array($this, 'render_post_slices_page')
         );
 
         add_submenu_page(
@@ -90,15 +109,6 @@ class AIPS_Admin_Menu {
             'manage_options',
             'aips-authors',
             array($this, 'render_authors_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Post Slices', 'ai-post-scheduler'),
-            __('Post Slices', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-slices',
-            array($this, 'render_post_slices_page')
         );
 
         // Author Topics page - hidden from menu navigation, accessible via URL.
@@ -292,6 +302,10 @@ class AIPS_Admin_Menu {
         if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
             return 'ai-post-scheduler';
         }
+        // Legacy blueprint sub-pages (hidden) should highlight the parent menu.
+        if (in_array($page, array('aips-voices', 'aips-structures', 'aips-post-slices'), true)) {
+            return 'ai-post-scheduler';
+        }
         return $parent_file;
     }
 
@@ -311,6 +325,10 @@ class AIPS_Admin_Menu {
         }
         if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) {
             return 'aips-campaigns';
+        }
+        // Legacy blueprint sub-pages highlight the unified Blueprints menu item.
+        if (in_array($page, array('aips-voices', 'aips-structures', 'aips-post-slices'), true)) {
+            return 'aips-blueprints';
         }
         return $submenu_file;
     }
@@ -436,6 +454,36 @@ class AIPS_Admin_Menu {
         $post_slice_counts  = $post_slices_repo->get_counts();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
+    }
+
+    /**
+     * Render the unified Blueprints page.
+     *
+     * Loads data required by all tabs and includes the tabbed template.
+     *
+     * @return void
+     * @since 2.9.0
+     */
+    public function render_blueprints_page() {
+        $structure_repo    = new AIPS_Article_Structure_Repository();
+        $section_repo      = new AIPS_Prompt_Section_Repository();
+        $post_slices_repo  = AIPS_Post_Slices_Repository::instance();
+        $voices_handler    = new AIPS_Voices();
+
+        $structures       = $structure_repo->get_all(false);
+        $sections         = $section_repo->get_all(false);
+        $post_slices      = $post_slices_repo->get_all(false);
+        $post_slice_counts = $post_slices_repo->get_counts();
+        $voices           = $voices_handler->get_all();
+
+        // Blueprint presets (Phase 2 — empty array until repository is available).
+        $blueprint_presets = array();
+        if (class_exists('AIPS_Blueprint_Presets_Repository')) {
+            $presets_repo      = AIPS_Blueprint_Presets_Repository::instance();
+            $blueprint_presets = $presets_repo->get_all(false);
+        }
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/blueprints.php';
     }
 
     /**

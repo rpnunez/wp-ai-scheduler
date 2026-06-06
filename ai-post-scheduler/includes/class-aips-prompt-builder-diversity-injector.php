@@ -449,6 +449,31 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	 * @return array
 	 */
 	private function get_post_slices($subject) {
+		if (is_object($subject) && method_exists($subject, 'get_post_slice_names')) {
+			$context_slices = $subject->get_post_slice_names();
+			if (is_array($context_slices) && !empty($context_slices)) {
+				$slices = $context_slices;
+				$slices = apply_filters('aips_diversity_post_slices', $slices, $subject);
+
+				if (!is_array($slices)) {
+					return array();
+				}
+
+				return array_values(
+					array_unique(
+						array_filter(
+							array_map(
+								function($slice) {
+									return trim((string) $slice);
+								},
+								$slices
+							)
+						)
+					)
+				);
+			}
+		}
+
 		if ($this->post_slices_repository === null && class_exists('AIPS_Post_Slices_Repository')) {
 			$this->post_slices_repository = AIPS_Post_Slices_Repository::instance();
 		}

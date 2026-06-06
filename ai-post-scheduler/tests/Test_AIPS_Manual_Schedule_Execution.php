@@ -152,4 +152,130 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
          $this->assertWPError($result);
          $this->assertEquals('schedule_not_found', $result->get_error_code());
     }
+
+    public function test_run_schedule_now_applies_blueprint_preset_voice_structure_and_slices() {
+       global $wpdb;
+
+       $template_table = $wpdb->prefix . 'aips_templates';
+       $schedule_table = $wpdb->prefix . 'aips_schedule';
+       $voice_table = $wpdb->prefix . 'aips_voices';
+       $structure_table = $wpdb->prefix . 'aips_article_structures';
+       $slice_table = $wpdb->prefix . 'aips_post_slices';
+       $preset_table = $wpdb->prefix . 'aips_blueprint_presets';
+
+       $wpdb->insert($voice_table, array(
+           'name' => 'Preset Voice',
+           'title_prompt' => 'Preset title prompt',
+           'content_instructions' => 'Preset content instructions',
+           'excerpt_instructions' => 'Preset excerpt instructions',
+           'is_active' => 1,
+           'created_at' => time(),
+       ));
+       $voice_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($structure_table, array(
+           'name' => 'Preset Structure',
+           'description' => 'Preset structure description',
+           'structure_data' => wp_json_encode(array(
+               'sections' => array(),
+               'prompt_template' => 'Structured prompt',
+           )),
+           'is_active' => 1,
+           'created_at' => time(),
+           'updated_at' => time(),
+       ));
+       $structure_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($slice_table, array(
+           'name' => 'Preset Slice One',
+           'description' => 'Slice one',
+           'sort_order' => 1,
+           'is_active' => 1,
+           'created_at' => time(),
+           'updated_at' => time(),
+       ));
+       $slice_one_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($slice_table, array(
+           'name' => 'Preset Slice Two',
+           'description' => 'Slice two',
+           'sort_order' => 2,
+           'is_active' => 1,
+           'created_at' => time(),
+           'updated_at' => time(),
+       ));
+       $slice_two_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($preset_table, array(
+           'name' => 'Runtime Preset',
+           'description' => 'Preset used by test',
+           'structure_id' => $structure_id,
+           'voice_id' => $voice_id,
+           'slice_ids' => wp_json_encode(array($slice_one_id, $slice_two_id)),
+           'section_overrides' => null,
+           'is_active' => 1,
+           'is_default' => 0,
+           'created_at' => time(),
+           'updated_at' => time(),
+       ));
+       $preset_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($template_table, array(
+           'name' => 'Preset Template',
+           'prompt_template' => 'Write about {{topic}}',
+           'title_prompt' => 'Template title',
+           'post_quantity' => 1,
+           'post_status' => 'draft',
+           'post_type' => 'post',
+           'post_category' => 1,
+           'post_tags' => 'preset',
+           'post_author' => 1,
+           'is_active' => 1,
+           'created_at' => time(),
+           'updated_at' => time(),
+       ));
+       $template_id = (int) $wpdb->insert_id;
+
+       $wpdb->insert($schedule_table, array(
+           'template_id' => $template_id,
+           'title' => 'Preset Schedule',
+           'blueprint_preset_id' => $preset_id,
+           'frequency' => 'daily',
+           'topic' => 'Preset Topic',
+           'next_run' => time(),
+           'is_active' => 1,
+           'created_at' => time(),
+       ));
+       $schedule_id = (int) $wpdb->insert_id;
+
+       $mock_generator = $this->getMockBuilder('AIPS_Generator')
+           ->disableOriginalConstructor()
+           ->onlyMethods(array('generate_post'))
+           ->getMock();
+
+       $mock_generator->expects($this->once())
+           ->method('generate_post')
+           ->with($this->callback(function($context) use ($voice_id, $structure_id) {
+               return $context instanceof AIPS_Template_Context
+                   && $context->get_voice_id() === $voice_id
+                   && $context->get_article_structure_id() === $structure_id
+                   && $context->get_post_slice_names() === array('Preset Slice One', 'Preset Slice Two')
+                   && $context->get_blueprint_preset_id() !== null;
+           }))
+           ->willReturn(321);
+
+       $this->scheduler->set_generator($mock_generator);
+
+       $result = $this->scheduler->run_schedule_now($schedule_id);
+
+       $this->assertSame(array(321), $result);
+
+       $wpdb->delete($schedule_table, array('id' => $schedule_id), array('%d'));
+       $wpdb->delete($template_table, array('id' => $template_id), array('%d'));
+       $wpdb->delete($preset_table, array('id' => $preset_id), array('%d'));
+       $wpdb->delete($slice_table, array('id' => $slice_one_id), array('%d'));
+       $wpdb->delete($slice_table, array('id' => $slice_two_id), array('%d'));
+       $wpdb->delete($structure_table, array('id' => $structure_id), array('%d'));
+       $wpdb->delete($voice_table, array('id' => $voice_id), array('%d'));
+    }
 }

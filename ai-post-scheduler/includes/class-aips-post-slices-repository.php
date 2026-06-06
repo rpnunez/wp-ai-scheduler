@@ -380,4 +380,35 @@ class AIPS_Post_Slices_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Return active slice labels for a specific ID list in display order.
+	 *
+	 * @param array $ids Slice IDs.
+	 * @return array
+	 */
+	public function get_names_by_ids(array $ids) {
+		if (empty($ids)) {
+			return array();
+		}
+
+		$ids = array_values(array_filter(array_map('absint', $ids)));
+		if (empty($ids)) {
+			return array();
+		}
+
+		$rows = $this->get_all(true);
+		$names = array();
+
+		foreach ($ids as $id) {
+			foreach ($rows as $row) {
+				if (is_object($row) && (int) $row->id === $id && !empty($row->name)) {
+					$names[] = (string) $row->name;
+					break;
+				}
+			}
+		}
+
+		return array_values(array_unique($names));
+	}
 }

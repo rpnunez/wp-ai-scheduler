@@ -316,6 +316,7 @@ class AIPS_Unified_Schedule_Service {
 				'cron_hook'            => 'aips_generate_scheduled_posts',
 				'frequency'            => $schedule->frequency,
 				'topic'                => isset($schedule->topic) ? $schedule->topic : '',
+				'blueprint_preset_id'  => isset($schedule->blueprint_preset_id) ? $schedule->blueprint_preset_id : '',
 				'article_structure_id' => isset($schedule->article_structure_id) ? $schedule->article_structure_id : '',
 				'rotation_pattern'     => isset($schedule->rotation_pattern) ? $schedule->rotation_pattern : '',
 				'last_run'             => $schedule->last_run,

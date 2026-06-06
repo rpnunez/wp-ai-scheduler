@@ -43,6 +43,7 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 						return isset( $data['is_active'] )
 							&& 0 === $data['is_active']
 							&& 15 === $data['template_id']
+							&& 88 === $data['blueprint_preset_id']
 							&& 'daily' === $data['frequency'];
 					}
 				)
@@ -55,6 +56,7 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 				'frequency'   => 'daily',
 				'start_time'  => '2026-03-20 09:00:00',
 				'is_active'   => 0,
+				'blueprint_preset_id' => 88,
 				'topic'       => 'Inactive schedule',
 			)
 		);
@@ -77,6 +79,7 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 						return isset( $data['is_active'] )
 							&& 0 === $data['is_active']
 							&& 15 === $data['template_id']
+							&& 44 === $data['blueprint_preset_id']
 							&& 'daily' === $data['frequency'];
 					}
 				)
@@ -90,6 +93,7 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 				'frequency'   => 'daily',
 				'start_time'  => '2026-03-20 10:00:00',
 				'is_active'   => 0,
+				'blueprint_preset_id' => 44,
 				'topic'       => 'Now inactive schedule',
 			)
 		);

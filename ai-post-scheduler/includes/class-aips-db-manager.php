@@ -31,6 +31,7 @@ class AIPS_DB_Manager {
         'aips_telemetry',
         'aips_ai_assistance',
         'aips_bulk_batch_jobs',
+        'aips_blueprint_presets',
         'aips_cache_index',
         'aips_cache_events',
     );
@@ -92,6 +93,7 @@ class AIPS_DB_Manager {
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_blueprint_presets    = $tables['aips_blueprint_presets'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
 
@@ -189,6 +191,7 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) NOT NULL,
             title varchar(255) DEFAULT NULL,
+            blueprint_preset_id bigint(20) DEFAULT NULL,
             article_structure_id bigint(20) DEFAULT NULL,
             rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
@@ -216,6 +219,7 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
+            KEY blueprint_preset_id (blueprint_preset_id),
             KEY article_structure_id (article_structure_id),
             KEY author_id (author_id),
             KEY campaign_id (campaign_id),
@@ -591,6 +595,25 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_updated (status, updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_blueprint_presets (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            structure_id bigint(20) DEFAULT NULL,
+            voice_id bigint(20) DEFAULT NULL,
+            slice_ids text DEFAULT NULL,
+            section_overrides text DEFAULT NULL,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            is_default tinyint(1) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY is_default (is_default),
+            KEY structure_id (structure_id),
+            KEY voice_id (voice_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache_index (

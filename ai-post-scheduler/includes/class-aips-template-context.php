@@ -35,18 +35,32 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array Optional runtime slice-name overrides.
+	 */
+	private $post_slice_names;
+
+	/**
+	 * @var int|null Optional blueprint preset ID used for this run.
+	 */
+	private $blueprint_preset_id;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object      $template Template object.
 	 * @param object|null $voice    Optional voice object.
 	 * @param string|null $topic    Optional topic string.
 	 * @param string|null $creation_method Optional creation method.
+	 * @param array       $post_slice_names Optional runtime slice-name overrides.
+	 * @param int|null    $blueprint_preset_id Optional blueprint preset ID.
 	 */
-	public function __construct($template, $voice = null, $topic = null, $creation_method = null) {
+	public function __construct($template, $voice = null, $topic = null, $creation_method = null, array $post_slice_names = array(), $blueprint_preset_id = null) {
 		$this->template = $template;
 		$this->voice = $voice;
 		$this->topic = $topic;
 		$this->creation_method = $creation_method;
+		$this->post_slice_names = $post_slice_names;
+		$this->blueprint_preset_id = $blueprint_preset_id ? absint($blueprint_preset_id) : null;
 	}
 
 	/**
@@ -242,6 +256,24 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get runtime post-slice overrides applied to this context.
+	 *
+	 * @return array
+	 */
+	public function get_post_slice_names() {
+		return $this->post_slice_names;
+	}
+
+	/**
+	 * Get the blueprint preset ID applied to this context, if any.
+	 *
+	 * @return int|null
+	 */
+	public function get_blueprint_preset_id() {
+		return $this->blueprint_preset_id;
+	}
+
+	/**
 	 * Check whether sources should be injected into the content prompt.
 	 *
 	 * @return bool True if the template has include_sources enabled.
@@ -294,6 +326,14 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 
 		if ($this->get_article_structure_id()) {
 			$data['article_structure_id'] = $this->get_article_structure_id();
+		}
+
+		if ($this->get_blueprint_preset_id()) {
+			$data['blueprint_preset_id'] = $this->get_blueprint_preset_id();
+		}
+
+		if (!empty($this->post_slice_names)) {
+			$data['post_slice_names'] = $this->post_slice_names;
 		}
 
 		return $data;

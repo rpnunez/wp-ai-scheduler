@@ -257,4 +257,31 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that template context exposes runtime blueprint preset metadata.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_exposes_runtime_blueprint_metadata() {
+		$template = (object) array(
+			'id' => 123,
+			'name' => 'Test Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'post_status' => 'draft',
+			'post_type' => 'post',
+			'post_category' => 1,
+			'post_tags' => 'test',
+			'post_author' => 1,
+		);
+
+		$context = new AIPS_Template_Context($template, null, 'Test Topic', 'scheduled', array('failure modes', 'observability'), 19);
+
+		$this->assertSame(array('failure modes', 'observability'), $context->get_post_slice_names());
+		$this->assertSame(19, $context->get_blueprint_preset_id());
+
+		$array = $context->to_array();
+		$this->assertSame(19, $array['blueprint_preset_id']);
+		$this->assertSame(array('failure modes', 'observability'), $array['post_slice_names']);
+	}
 }

@@ -65,6 +65,7 @@ class Test_AIPS_Schedule_Controller_Save extends WP_UnitTestCase {
 			'template_id' => 42,
 			'frequency'   => 'daily',
 			'is_active'   => '0',
+			'blueprint_preset_id' => '31',
 			'topic'       => 'Inactive topic',
 		);
 		$_REQUEST = $_POST;
@@ -77,6 +78,7 @@ class Test_AIPS_Schedule_Controller_Save extends WP_UnitTestCase {
 						return isset( $data['is_active'] )
 							&& 0 === $data['is_active']
 							&& 42 === $data['template_id']
+							&& 31 === $data['blueprint_preset_id']
 							&& 'daily' === $data['frequency'];
 					}
 				)

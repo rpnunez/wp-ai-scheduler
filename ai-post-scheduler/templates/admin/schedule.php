@@ -13,6 +13,7 @@ $templates_handler  = new AIPS_Templates();
 $templates          = $templates_handler->get_all(true);
 $structure_manager  = new AIPS_Article_Structure_Manager();
 $article_structures = $structure_manager->get_active_structures();
+$blueprint_presets  = AIPS_Blueprint_Presets_Repository::instance()->get_all(true);
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns  = $template_type_selector->get_rotation_patterns();
 $campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
@@ -306,6 +307,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
 						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
 						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+						data-blueprint-preset-id="<?php echo esc_attr($sched['blueprint_preset_id'] ?? ''); ?>"
 						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
 						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
 						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
@@ -533,6 +535,16 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<option value="<?php echo esc_attr($template->id); ?>"><?php echo esc_html($template->name); ?></option>
 						<?php endforeach; ?>
 					</select>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_blueprint_preset"><?php esc_html_e('Blueprint Preset (Optional)', 'ai-post-scheduler'); ?></label>
+					<select id="schedule_blueprint_preset" name="blueprint_preset_id">
+						<option value=""><?php esc_html_e('Use Template Defaults', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($blueprint_presets as $preset): ?>
+						<option value="<?php echo esc_attr($preset->id); ?>"><?php echo esc_html($preset->name); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php esc_html_e('Applies preset voice and slice overrides. Schedule-specific structure and rotation settings still take precedence.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-form-row">
 					<label for="schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
