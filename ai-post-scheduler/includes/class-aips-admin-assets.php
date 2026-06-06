@@ -387,7 +387,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-history',
             AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );
@@ -1106,6 +1106,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the history page.
      */
     private function enqueue_history_assets() {
+            wp_enqueue_script('heartbeat');
+
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',

@@ -768,6 +768,115 @@
 	font-size: var(--aips-text-sm);
 }
 
+.aips-history-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 4fr) minmax(280px, 1fr);
+	gap: var(--aips-space-5);
+	align-items: flex-start;
+}
+
+.aips-history-main-column,
+.aips-history-sidebar-column {
+	min-width: 0;
+}
+
+.aips-history-timeline-panel {
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	background: var(--aips-gray-50);
+	padding: var(--aips-space-4);
+	position: sticky;
+	top: calc(32px + var(--aips-space-4));
+}
+
+.aips-history-timeline-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-history-timeline-header h3 {
+	margin: 0;
+}
+
+.aips-history-auto-refresh {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-auto-refresh .aips-checkbox-label {
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-700);
+}
+
+.aips-form-select-sm {
+	max-width: 170px;
+}
+
+.aips-history-timeline-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	max-height: 70vh;
+	overflow-y: auto;
+	padding-right: var(--aips-space-1);
+}
+
+.aips-history-timeline-item {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-left: 3px solid var(--aips-info);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-3);
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-timeline-item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-timeline-item-title {
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-normal);
+	color: var(--aips-gray-900);
+}
+
+.aips-history-timeline-group {
+	flex-shrink: 0;
+}
+
+.aips-history-timeline-item-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+}
+
+.aips-history-timeline-item-error {
+	margin: 0;
+	color: var(--aips-error-dark);
+	font-size: var(--aips-text-xs);
+}
+
+@media (max-width: 1200px) {
+	.aips-history-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-history-timeline-panel {
+		position: static;
+	}
+}
+
 /* History logs modal: keep the body scrollable for long log lists */
 #aips-history-logs-modal .aips-modal-content {
     width: min(96vw, 1480px);

@@ -414,6 +414,10 @@
 		correlationId: '',
 		dateFrom: '',
 		dateTo: '',
+		autoRefreshEnabled: false,
+		heartbeatIntervalSeconds: 5,
+		defaultHeartbeatInterval: null,
+		isAutoRefreshing: false,
 
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
@@ -436,6 +440,7 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.initHeartbeatAutoRefresh();
 			this.maybeOpenFromQuery();
 		},
 
@@ -498,6 +503,12 @@
 
 			// Export CSV.
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+
+			// Auto refresh controls.
+			$(document).on('change', '#aips-history-auto-refresh', this.toggleAutoRefresh.bind(this));
+			$(document).on('change', '#aips-history-heartbeat-interval', this.changeHeartbeatInterval.bind(this));
+			$(document).on('heartbeat-tick.aipsHistory', this.onHeartbeatTick.bind(this));
+			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.disableAutoRefresh.bind(this));
 		},
 
 
@@ -627,6 +638,109 @@
 			return $('#aips-history-logs-modal').length > 0
 				|| $('#aips-history-search-input').length > 0
 				|| $('#aips-history-tbody').length > 0;
+		},
+
+		/**
+		 * Initialize heartbeat auto refresh controls and defaults.
+		 */
+		initHeartbeatAutoRefresh: function () {
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				$('#aips-history-auto-refresh').prop('disabled', true);
+				$('#aips-history-heartbeat-interval').prop('disabled', true);
+				return;
+			}
+
+			this.defaultHeartbeatInterval = wp.heartbeat.interval();
+			this.heartbeatIntervalSeconds = parseInt($('#aips-history-heartbeat-interval').val() || '5', 10);
+		},
+
+		/**
+		 * Enable/disable auto refresh polling on heartbeat.
+		 */
+		toggleAutoRefresh: function (e) {
+			var enabled = $(e.currentTarget).is(':checked');
+			var $intervalSelect = $('#aips-history-heartbeat-interval');
+
+			this.autoRefreshEnabled = enabled;
+			$intervalSelect.prop('disabled', !enabled);
+
+			if (!enabled) {
+				this.disableAutoRefresh();
+				return;
+			}
+
+			this.heartbeatIntervalSeconds = parseInt($intervalSelect.val() || '5', 10);
+			this.applyHeartbeatInterval();
+
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
+		},
+
+		/**
+		 * Update heartbeat interval selection while auto refresh is enabled.
+		 */
+		changeHeartbeatInterval: function (e) {
+			this.heartbeatIntervalSeconds = parseInt($(e.currentTarget).val() || '5', 10);
+
+			if (!this.autoRefreshEnabled) {
+				return;
+			}
+
+			this.applyHeartbeatInterval();
+
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
+		},
+
+		/**
+		 * Apply current heartbeat interval to WP Heartbeat API.
+		 */
+		applyHeartbeatInterval: function () {
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				return;
+			}
+
+			var interval = Math.max(5, parseInt(this.heartbeatIntervalSeconds, 10) || 5);
+			wp.heartbeat.interval(interval);
+		},
+
+		/**
+		 * Restore the page heartbeat interval and disable auto refresh state.
+		 */
+		disableAutoRefresh: function () {
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.interval === 'function' && this.defaultHeartbeatInterval) {
+				wp.heartbeat.interval(this.defaultHeartbeatInterval);
+			}
+
+			this.autoRefreshEnabled = false;
+			this.isAutoRefreshing = false;
+			$('#aips-history-auto-refresh').prop('checked', false);
+			$('#aips-history-heartbeat-interval').prop('disabled', true);
+		},
+
+		/**
+		 * Handle heartbeat tick updates for background polling.
+		 */
+		onHeartbeatTick: function () {
+			if (!this.autoRefreshEnabled || this.isAutoRefreshing) {
+				return;
+			}
+
+			this.isAutoRefreshing = true;
+			this.reload(this.getCurrentPage(), { fromHeartbeat: true });
+		},
+
+		/**
+		 * Resolve current page from URL query params.
+		 *
+		 * @returns {number}
+		 */
+		getCurrentPage: function () {
+			var params = new URLSearchParams(window.location.search || '');
+			var paged = parseInt(params.get('paged') || '1', 10);
+			return !isNaN(paged) && paged > 0 ? paged : 1;
 		},
 
 		/**
@@ -954,12 +1068,16 @@
 		 *
 		 * @param {number} [paged=1] 1-based page number to load.
 		 */
-		reload: function (paged) {
+		reload: function (paged, options) {
 			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+			options = $.extend({
+				fromHeartbeat: false
+			}, options || {});
 
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
-			var $pagCell   = $('.aips-history-pagination-cell');
+			var $pagWrap   = $('#aips-history-pagination-wrap');
+			var $timeline  = $('#aips-history-timeline-content');
 			var $reloadBtn = $('#aips-reload-history-btn');
 			var origHtml   = $reloadBtn.html();
 
@@ -969,10 +1087,12 @@
 					text: aipsHistoryL10n.loading || 'Loading\u2026'
 				}));
 			}
-			$reloadBtn.prop('disabled', true).html(
-				'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
-				+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
-			);
+			if (!options.fromHeartbeat) {
+				$reloadBtn.prop('disabled', true).html(
+					'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
+					+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+				);
+			}
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -992,12 +1112,14 @@
 				},
 				success: function (response) {
 					if (!response.success) {
-						AIPS.Utilities.showToast(
-							response.data && response.data.message
-								? response.data.message
-								: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
-							'error'
-						);
+						if (!options.fromHeartbeat) {
+							AIPS.Utilities.showToast(
+								response.data && response.data.message
+									? response.data.message
+									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+								'error'
+							);
+						}
 						return;
 					}
 
@@ -1015,8 +1137,12 @@
 						}
 					}
 
-					if ($pagCell.length && response.data.pagination_html !== undefined) {
-						$pagCell.html(response.data.pagination_html);
+					if ($pagWrap.length && response.data.pagination_html !== undefined) {
+						$pagWrap.html(response.data.pagination_html);
+					}
+
+					if ($timeline.length && response.data.timeline_html !== undefined) {
+						$timeline.html(response.data.timeline_html);
 					}
 
 					// Refresh stat cards.
@@ -1042,10 +1168,15 @@
 					self.updateDeleteButton();
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					if (!options.fromHeartbeat) {
+						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					}
 				},
 				complete: function () {
-					$reloadBtn.prop('disabled', false).html(origHtml);
+					if (!options.fromHeartbeat) {
+						$reloadBtn.prop('disabled', false).html(origHtml);
+					}
+					self.isAutoRefreshing = false;
 				}
 			});
 		},
