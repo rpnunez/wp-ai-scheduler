@@ -12,12 +12,17 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Internal_Links_Repository
  *
  * Manages CRUD operations for the aips_internal_links table.
  */
 class AIPS_Internal_Links_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var wpdb WordPress database object.
@@ -52,17 +57,27 @@ class AIPS_Internal_Links_Repository {
 	 * @return object|null Row object with source/target post titles, or null if not found.
 	 */
 	public function get_by_id($id) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT il.*,
-					sp.post_title AS source_post_title,
-					tp.post_title AS target_post_title
-				FROM {$this->table} il
-				LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
-				LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
-				WHERE il.id = %d",
-				absint($id)
-			)
+		$id = absint( $id );
+
+		return $this->cache_read(
+			'internal_links.get_by_id',
+			array(
+				'internal_link_id' => $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT il.*,
+							sp.post_title AS source_post_title,
+							tp.post_title AS target_post_title
+						FROM {$this->table} il
+						LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
+						LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
+						WHERE il.id = %d",
+						$id
+					)
+				);
+			}
 		);
 	}
 
@@ -74,17 +89,29 @@ class AIPS_Internal_Links_Repository {
 	 * @return object[] Array of row objects.
 	 */
 	public function get_by_source_post($source_post_id, $status = '') {
-		$where = $this->wpdb->prepare(
-			'WHERE source_post_id = %d',
-			absint($source_post_id)
-		);
+		$source_post_id = absint( $source_post_id );
+		$status         = in_array( $status, self::VALID_STATUSES, true ) ? $status : '';
 
-		if ($status && in_array($status, self::VALID_STATUSES, true)) {
-			$where .= $this->wpdb->prepare( ' AND status = %s', $status );
-		}
+		return $this->cache_read(
+			'internal_links.get_by_source_post',
+			array(
+				'source_post_id' => $source_post_id,
+				'status'         => $status,
+			),
+			function() use ( $source_post_id, $status ) {
+				$where = $this->wpdb->prepare(
+					'WHERE source_post_id = %d',
+					$source_post_id
+				);
 
-		return $this->wpdb->get_results(
-			"SELECT * FROM {$this->table} {$where} ORDER BY similarity_score DESC"
+				if ( $status ) {
+					$where .= $this->wpdb->prepare( ' AND status = %s', $status );
+				}
+
+				return $this->wpdb->get_results(
+					"SELECT * FROM {$this->table} {$where} ORDER BY similarity_score DESC"
+				);
+			}
 		);
 	}
 
@@ -100,41 +127,54 @@ class AIPS_Internal_Links_Repository {
 	public function get_paginated($per_page = 20, $page = 1, $status = '', $search = '') {
 		$per_page = max(1, absint($per_page));
 		$offset   = ($page - 1) * $per_page;
+		$status   = in_array( $status, self::VALID_STATUSES, true ) ? $status : '';
+		$search   = sanitize_text_field( $search );
 
-		$where_clauses = array('1=1');
-		$params        = array();
+		return $this->cache_read(
+			'internal_links.get_paginated',
+			array(
+				'per_page' => $per_page,
+				'page'     => absint( $page ),
+				'status'   => $status,
+				'search'   => $search,
+			),
+			function() use ( $per_page, $offset, $status, $search ) {
+				$where_clauses = array('1=1');
+				$params        = array();
 
-		if ($status && in_array($status, self::VALID_STATUSES, true)) {
-			$where_clauses[] = 'il.status = %s';
-			$params[]        = $status;
-		}
+				if ( $status ) {
+					$where_clauses[] = 'il.status = %s';
+					$params[]        = $status;
+				}
 
-		if (!empty($search)) {
-			$like              = '%' . $this->wpdb->esc_like($search) . '%';
-			$where_clauses[]   = '(sp.post_title LIKE %s OR tp.post_title LIKE %s)';
-			$params[]          = $like;
-			$params[]          = $like;
-		}
+				if ( ! empty( $search ) ) {
+					$like              = '%' . $this->wpdb->esc_like($search) . '%';
+					$where_clauses[]   = '(sp.post_title LIKE %s OR tp.post_title LIKE %s)';
+					$params[]          = $like;
+					$params[]          = $like;
+				}
 
-		$where    = 'WHERE ' . implode(' AND ', $where_clauses);
-		$params[] = $per_page;
-		$params[] = $offset;
+				$where    = 'WHERE ' . implode(' AND ', $where_clauses);
+				$params[] = $per_page;
+				$params[] = $offset;
 
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT il.*,
-					sp.post_title AS source_post_title,
-					tp.post_title AS target_post_title,
-					sp.post_status AS source_post_status,
-					tp.post_status AS target_post_status
-				FROM {$this->table} il
-				LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
-				LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
-				{$where}
-				ORDER BY il.created_at DESC
-				LIMIT %d OFFSET %d",
-				...$params
-			)
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT il.*,
+							sp.post_title AS source_post_title,
+							tp.post_title AS target_post_title,
+							sp.post_status AS source_post_status,
+							tp.post_status AS target_post_status
+						FROM {$this->table} il
+						LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
+						LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
+						{$where}
+						ORDER BY il.created_at DESC
+						LIMIT %d OFFSET %d",
+						...$params
+					)
+				);
+			}
 		);
 	}
 
@@ -146,42 +186,54 @@ class AIPS_Internal_Links_Repository {
 	 * @return int Total count.
 	 */
 	public function get_paginated_count($status = '', $search = '') {
-		$where_clauses = array('1=1');
-		$params        = array();
+		$status = in_array( $status, self::VALID_STATUSES, true ) ? $status : '';
+		$search = sanitize_text_field( $search );
 
-		if ($status && in_array($status, self::VALID_STATUSES, true)) {
-			$where_clauses[] = 'il.status = %s';
-			$params[]        = $status;
-		}
+		return $this->cache_read(
+			'internal_links.get_paginated_count',
+			array(
+				'status' => $status,
+				'search' => $search,
+			),
+			function() use ( $status, $search ) {
+				$where_clauses = array('1=1');
+				$params        = array();
 
-		if (!empty($search)) {
-			$like            = '%' . $this->wpdb->esc_like($search) . '%';
-			$where_clauses[] = '(sp.post_title LIKE %s OR tp.post_title LIKE %s)';
-			$params[]        = $like;
-			$params[]        = $like;
-		}
+				if ( $status ) {
+					$where_clauses[] = 'il.status = %s';
+					$params[]        = $status;
+				}
 
-		$where = 'WHERE ' . implode(' AND ', $where_clauses);
+				if ( ! empty( $search ) ) {
+					$like            = '%' . $this->wpdb->esc_like($search) . '%';
+					$where_clauses[] = '(sp.post_title LIKE %s OR tp.post_title LIKE %s)';
+					$params[]        = $like;
+					$params[]        = $like;
+				}
 
-		if (!empty($params)) {
-			return (int) $this->wpdb->get_var(
-				$this->wpdb->prepare(
+				$where = 'WHERE ' . implode(' AND ', $where_clauses);
+
+				if (!empty($params)) {
+					return (int) $this->wpdb->get_var(
+						$this->wpdb->prepare(
+							"SELECT COUNT(*)
+							FROM {$this->table} il
+							LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
+							LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
+							{$where}",
+							...$params
+						)
+					);
+				}
+
+				return (int) $this->wpdb->get_var(
 					"SELECT COUNT(*)
 					FROM {$this->table} il
 					LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
 					LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
-					{$where}",
-					...$params
-				)
-			);
-		}
-
-		return (int) $this->wpdb->get_var(
-			"SELECT COUNT(*)
-			FROM {$this->table} il
-			LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
-			LEFT JOIN {$this->wpdb->posts} tp ON il.target_post_id = tp.ID
-			{$where}"
+					{$where}"
+				);
+			}
 		);
 	}
 
@@ -193,15 +245,27 @@ class AIPS_Internal_Links_Repository {
 	 * @return bool
 	 */
 	public function exists($source_post_id, $target_post_id) {
-		$count = $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table} WHERE source_post_id = %d AND target_post_id = %d",
-				absint($source_post_id),
-				absint($target_post_id)
-			)
-		);
+		$source_post_id = absint( $source_post_id );
+		$target_post_id = absint( $target_post_id );
 
-		return (int) $count > 0;
+		return $this->cache_read(
+			'internal_links.exists',
+			array(
+				'source_post_id' => $source_post_id,
+				'target_post_id' => $target_post_id,
+			),
+			function() use ( $source_post_id, $target_post_id ) {
+				$count = $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table} WHERE source_post_id = %d AND target_post_id = %d",
+						$source_post_id,
+						$target_post_id
+					)
+				);
+
+				return (int) $count > 0;
+			}
+		);
 	}
 
 	/**
@@ -230,6 +294,17 @@ class AIPS_Internal_Links_Repository {
 			array('%d', '%d', '%f', '%s', '%s', '%d', '%d')
 		);
 
+		if ( $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'internal_link_id' => $this->wpdb->insert_id,
+					'source_post_id'   => absint( $source_post_id ),
+					'target_post_id'   => absint( $target_post_id ),
+				),
+				'internal_link_inserted'
+			);
+		}
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
 
@@ -245,7 +320,9 @@ class AIPS_Internal_Links_Repository {
 			return false;
 		}
 
-		return $this->wpdb->update(
+		$row = $this->get_by_id( $id );
+
+		$result = $this->wpdb->update(
 			$this->table,
 			array(
 				'status'     => $status,
@@ -255,6 +332,19 @@ class AIPS_Internal_Links_Repository {
 			array('%s', '%d'),
 			array('%d')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'internal_link_id' => absint( $id ),
+					'source_post_id'   => $row ? absint( $row->source_post_id ) : 0,
+					'target_post_id'   => $row ? absint( $row->target_post_id ) : 0,
+				),
+				'internal_link_status_updated'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -265,7 +355,9 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of updated rows or false on failure.
 	 */
 	public function update_anchor_text($id, $anchor_text) {
-		return $this->wpdb->update(
+		$row = $this->get_by_id( $id );
+
+		$result = $this->wpdb->update(
 			$this->table,
 			array(
 				'anchor_text' => sanitize_text_field($anchor_text),
@@ -275,6 +367,19 @@ class AIPS_Internal_Links_Repository {
 			array('%s', '%d'),
 			array('%d')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'internal_link_id' => absint( $id ),
+					'source_post_id'   => $row ? absint( $row->source_post_id ) : 0,
+					'target_post_id'   => $row ? absint( $row->target_post_id ) : 0,
+				),
+				'internal_link_anchor_updated'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -284,11 +389,25 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete($id) {
-		return $this->wpdb->delete(
+		$row    = $this->get_by_id( $id );
+		$result = $this->wpdb->delete(
 			$this->table,
 			array('id' => absint($id)),
 			array('%d')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'internal_link_id' => absint( $id ),
+					'source_post_id'   => $row ? absint( $row->source_post_id ) : 0,
+					'target_post_id'   => $row ? absint( $row->target_post_id ) : 0,
+				),
+				'internal_link_deleted'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -298,11 +417,23 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_by_source_post($source_post_id) {
-		return $this->wpdb->delete(
+		$source_post_id = absint( $source_post_id );
+		$result         = $this->wpdb->delete(
 			$this->table,
-			array('source_post_id' => absint($source_post_id)),
+			array('source_post_id' => $source_post_id),
 			array('%d')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'source_post_id' => $source_post_id,
+				),
+				'internal_links_deleted_by_source'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -315,14 +446,26 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_pending_by_source_post($source_post_id) {
-		return $this->wpdb->delete(
+		$source_post_id = absint( $source_post_id );
+		$result         = $this->wpdb->delete(
 			$this->table,
 			array(
-				'source_post_id' => absint($source_post_id),
+				'source_post_id' => $source_post_id,
 				'status'         => 'pending',
 			),
 			array('%d', '%s')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'source_post_id' => $source_post_id,
+				),
+				'internal_links_pending_deleted_by_source'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -332,11 +475,23 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_by_target_post($target_post_id) {
-		return $this->wpdb->delete(
+		$target_post_id = absint( $target_post_id );
+		$result         = $this->wpdb->delete(
 			$this->table,
-			array('target_post_id' => absint($target_post_id)),
+			array('target_post_id' => $target_post_id),
 			array('%d')
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_internal_links_cache(
+				array(
+					'target_post_id' => $target_post_id,
+				),
+				'internal_links_deleted_by_target'
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -350,6 +505,14 @@ class AIPS_Internal_Links_Repository {
 		$a       = (int) $this->wpdb->delete( $this->table, array('source_post_id' => $post_id), array('%d') );
 		$b       = (int) $this->wpdb->delete( $this->table, array('target_post_id' => $post_id), array('%d') );
 
+		$this->invalidate_internal_links_cache(
+			array(
+				'source_post_id' => $post_id,
+				'target_post_id' => $post_id,
+			),
+			'internal_links_deleted_for_post'
+		);
+
 		return $a + $b;
 	}
 
@@ -359,16 +522,22 @@ class AIPS_Internal_Links_Repository {
 	 * @return array Associative array of status => count.
 	 */
 	public function get_status_counts() {
-		$rows = $this->wpdb->get_results(
-			"SELECT status, COUNT(*) AS cnt FROM {$this->table} GROUP BY status"
+		return $this->cache_read(
+			'internal_links.get_status_counts',
+			array(),
+			function() {
+				$rows = $this->wpdb->get_results(
+					"SELECT status, COUNT(*) AS cnt FROM {$this->table} GROUP BY status"
+				);
+
+				$counts = array_fill_keys(self::VALID_STATUSES, 0);
+				foreach ($rows as $row) {
+					$counts[$row->status] = (int) $row->cnt;
+				}
+
+				return $counts;
+			}
 		);
-
-		$counts = array_fill_keys(self::VALID_STATUSES, 0);
-		foreach ($rows as $row) {
-			$counts[$row->status] = (int) $row->cnt;
-		}
-
-		return $counts;
 	}
 
 	/**
@@ -377,6 +546,65 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of rows deleted or false on failure.
 	 */
 	public function delete_all() {
-		return $this->wpdb->query( "DELETE FROM {$this->table}" );
+		$result = $this->wpdb->query( "DELETE FROM {$this->table}" );
+		if ( false !== $result ) {
+			$this->invalidate_cache_domain( 'internal_link', array(), 'internal_links_deleted_all' );
+		}
+		return $result;
+	}
+
+	/**
+	 * Return the repository cache group for internal-links reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_internal_links';
+	}
+
+	/**
+	 * Declare repository cache policies.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'internal_links.get_by_id' => array(
+				'tier'        => 'medium',
+				'cache_null'  => false,
+				'description' => 'Cache enriched single-row internal link lookups.',
+			),
+			'internal_links.get_by_source_post' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache source-post scoped internal link lists.',
+			),
+			'internal_links.get_paginated' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache paginated internal-link admin list queries.',
+			),
+			'internal_links.get_paginated_count' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache internal-link pagination count queries.',
+			),
+			'internal_links.exists' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache source-target existence checks.',
+			),
+			'internal_links.get_status_counts' => array(
+				'tier'        => 'medium',
+				'description' => 'Cache per-status internal-link summary counts.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate internal-link-domain cache tags.
+	 *
+	 * @param array  $context Invalidation context.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_internal_links_cache( array $context, $reason ) {
+		$this->invalidate_cache_domain( 'internal_link', $context, $reason );
 	}
 }

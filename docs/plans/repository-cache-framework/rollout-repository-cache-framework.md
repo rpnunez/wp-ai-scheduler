@@ -81,10 +81,10 @@ For each repository migrated:
 ### Medium risk
 
 - [x] `AIPS_Schedule_Repository`
-- [ ] `AIPS_Sources_Repository`
-- [ ] `AIPS_Sources_Data_Repository`
-- [ ] `AIPS_Internal_Links_Repository`
-- [ ] `AIPS_Taxonomy_Repository`
+- [x] `AIPS_Sources_Repository`
+- [x] `AIPS_Sources_Data_Repository`
+- [x] `AIPS_Internal_Links_Repository`
+- [x] `AIPS_Taxonomy_Repository`
 
 ### High risk
 

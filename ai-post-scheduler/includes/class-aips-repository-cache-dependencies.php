@@ -187,6 +187,106 @@ class AIPS_Repository_Cache_Dependencies {
 				case 'schedules.get_post_count_for_schedules':
 					return array( 'schedules', 'templates', 'unified_schedule' );
 
+							case 'sources.get_all':
+							case 'sources.get_active_urls':
+							case 'sources.url_exists':
+								return array( 'sources' );
+
+							case 'sources.get_by_id':
+							case 'sources.get_source_term_ids':
+								$tags = array( 'sources' );
+								if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
+									$tags[] = 'source:' . (int) $args['source_id'];
+								}
+								return self::unique_tags( $tags );
+
+							case 'sources.get_term_ids_for_sources':
+								return self::source_ids_tags( $args );
+
+							case 'sources.get_urls_by_group_term_ids':
+							case 'sources.get_by_group_term_ids':
+								return self::source_group_term_tags( $args );
+
+							case 'sources_data.get_by_source_id':
+							case 'sources_data.get_latest_success_by_source_id':
+							case 'sources_data.get_count_by_source_id':
+								$tags = array( 'sources_data', 'sources' );
+								if (isset( $args['source_id'] ) && is_numeric( $args['source_id'] )) {
+									$source_id = (int) $args['source_id'];
+									$tags[] = 'source_data:source:' . $source_id;
+									$tags[] = 'source:' . $source_id;
+								}
+								return self::unique_tags( $tags );
+
+							case 'sources_data.get_by_source_ids':
+							case 'sources_data.get_extracted_texts_by_source_ids':
+							case 'sources_data.pick_next_for_prompt_bulk':
+							case 'sources_data.get_counts_by_source_ids':
+								return self::source_data_source_ids_tags( $args );
+
+							case 'internal_links.get_by_id':
+								$tags = array( 'internal_links' );
+								if (isset( $args['internal_link_id'] ) && is_numeric( $args['internal_link_id'] )) {
+									$tags[] = 'internal_link:' . (int) $args['internal_link_id'];
+								}
+								return self::unique_tags( $tags );
+
+							case 'internal_links.get_by_source_post':
+								$tags = array( 'internal_links' );
+								if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
+									$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
+									$tags[] = 'post:' . (int) $args['source_post_id'];
+								}
+								if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
+									$tags[] = 'internal_links:status:' . sanitize_key( (string) $args['status'] );
+								}
+								return self::unique_tags( $tags );
+
+							case 'internal_links.get_paginated':
+							case 'internal_links.get_paginated_count':
+							case 'internal_links.get_status_counts':
+								return array( 'internal_links', 'dashboard_counts' );
+
+							case 'internal_links.exists':
+								$tags = array( 'internal_links' );
+								if (isset( $args['source_post_id'] ) && is_numeric( $args['source_post_id'] )) {
+									$tags[] = 'internal_links:source:' . (int) $args['source_post_id'];
+								}
+								if (isset( $args['target_post_id'] ) && is_numeric( $args['target_post_id'] )) {
+									$tags[] = 'internal_links:target:' . (int) $args['target_post_id'];
+								}
+								return self::unique_tags( $tags );
+
+							case 'taxonomy.get_by_type':
+								$tags = array( 'taxonomy' );
+								if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
+									$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
+								}
+								return self::unique_tags( $tags );
+
+							case 'taxonomy.get_by_status_and_type':
+								$tags = array( 'taxonomy' );
+								if (!empty( $args['taxonomy_type'] ) && is_scalar( $args['taxonomy_type'] )) {
+									$tags[] = 'taxonomy_type:' . sanitize_key( (string) $args['taxonomy_type'] );
+								}
+								if (!empty( $args['status'] ) && is_scalar( $args['status'] )) {
+									$tags[] = 'taxonomy_status:' . sanitize_key( (string) $args['status'] );
+								}
+								return self::unique_tags( $tags );
+
+							case 'taxonomy.get_by_id':
+								$tags = array( 'taxonomy' );
+								if (isset( $args['taxonomy_id'] ) && is_numeric( $args['taxonomy_id'] )) {
+									$tags[] = 'taxonomy_item:' . (int) $args['taxonomy_id'];
+								}
+								return self::unique_tags( $tags );
+
+							case 'taxonomy.get_status_counts':
+								return array( 'taxonomy', 'dashboard_counts' );
+
+							case 'taxonomy.search':
+								return array( 'taxonomy' );
+
 			default:
 				return array();
 		}
@@ -233,6 +333,18 @@ class AIPS_Repository_Cache_Dependencies {
 
 				case 'schedule':
 					return self::tags_for_schedule_invalidation( $context );
+
+							case 'source':
+								return self::tags_for_source_invalidation( $context );
+
+							case 'source_data':
+								return self::tags_for_source_data_invalidation( $context );
+
+							case 'internal_link':
+								return self::tags_for_internal_link_invalidation( $context );
+
+							case 'taxonomy':
+								return self::tags_for_taxonomy_invalidation( $context );
 
 			default:
 				$domain = sanitize_key( $domain );
@@ -371,6 +483,105 @@ class AIPS_Repository_Cache_Dependencies {
 	}
 
 	/**
+	 * Resolve source-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_source_invalidation( array $context ): array {
+		$tags = array( 'sources' );
+
+		if (isset( $context['source_id'] ) && is_numeric( $context['source_id'] )) {
+			$tags[] = 'source:' . (int) $context['source_id'];
+			$tags[] = 'source_data:source:' . (int) $context['source_id'];
+		}
+
+		if (!empty( $context['term_ids'] ) && is_array( $context['term_ids'] )) {
+			foreach ( $context['term_ids'] as $term_id ) {
+				if (is_numeric( $term_id )) {
+					$tags[] = 'source_group_term:' . (int) $term_id;
+				}
+			}
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve source-data-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_source_data_invalidation( array $context ): array {
+		$tags = array( 'sources_data', 'sources' );
+
+		if (isset( $context['source_id'] ) && is_numeric( $context['source_id'] )) {
+			$source_id = (int) $context['source_id'];
+			$tags[]    = 'source_data:source:' . $source_id;
+			$tags[]    = 'source:' . $source_id;
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve internal-link-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_internal_link_invalidation( array $context ): array {
+		$tags = array( 'internal_links', 'dashboard_counts' );
+
+		if (isset( $context['internal_link_id'] ) && is_numeric( $context['internal_link_id'] )) {
+			$tags[] = 'internal_link:' . (int) $context['internal_link_id'];
+		}
+
+		if (isset( $context['source_post_id'] ) && is_numeric( $context['source_post_id'] )) {
+			$post_id = (int) $context['source_post_id'];
+			$tags[]  = 'internal_links:source:' . $post_id;
+			$tags[]  = 'post:' . $post_id;
+		}
+
+		if (isset( $context['target_post_id'] ) && is_numeric( $context['target_post_id'] )) {
+			$post_id = (int) $context['target_post_id'];
+			$tags[]  = 'internal_links:target:' . $post_id;
+			$tags[]  = 'post:' . $post_id;
+		}
+
+		if (!empty( $context['status'] ) && is_scalar( $context['status'] )) {
+			$tags[] = 'internal_links:status:' . sanitize_key( (string) $context['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve taxonomy-domain invalidation tags.
+	 *
+	 * @param array $context Domain context.
+	 * @return array<int, string>
+	 */
+	private static function tags_for_taxonomy_invalidation( array $context ): array {
+		$tags = array( 'taxonomy', 'dashboard_counts' );
+
+		if (isset( $context['taxonomy_id'] ) && is_numeric( $context['taxonomy_id'] )) {
+			$tags[] = 'taxonomy_item:' . (int) $context['taxonomy_id'];
+		}
+
+		if (!empty( $context['taxonomy_type'] ) && is_scalar( $context['taxonomy_type'] )) {
+			$tags[] = 'taxonomy_type:' . sanitize_key( (string) $context['taxonomy_type'] );
+		}
+
+		if (!empty( $context['status'] ) && is_scalar( $context['status'] )) {
+			$tags[] = 'taxonomy_status:' . sanitize_key( (string) $context['status'] );
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
 	 * Resolve voice-domain invalidation tags.
 	 *
 	 * @param array $context Domain context.
@@ -438,6 +649,74 @@ class AIPS_Repository_Cache_Dependencies {
 		foreach ( $args['section_keys'] as $section_key ) {
 			if (is_scalar( $section_key )) {
 				$tags[] = 'prompt_section:key:' . sanitize_key( (string) $section_key );
+			}
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve source tags for a list of source IDs.
+	 *
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function source_ids_tags( array $args ): array {
+		$tags = array( 'sources' );
+
+		if (empty( $args['source_ids'] ) || !is_array( $args['source_ids'] )) {
+			return $tags;
+		}
+
+		foreach ( $args['source_ids'] as $source_id ) {
+			if (is_numeric( $source_id )) {
+				$tags[] = 'source:' . (int) $source_id;
+			}
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve source-data tags for a list of source IDs.
+	 *
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function source_data_source_ids_tags( array $args ): array {
+		$tags = array( 'sources_data', 'sources' );
+
+		if (empty( $args['source_ids'] ) || !is_array( $args['source_ids'] )) {
+			return $tags;
+		}
+
+		foreach ( $args['source_ids'] as $source_id ) {
+			if (is_numeric( $source_id )) {
+				$source_id = (int) $source_id;
+				$tags[]    = 'source_data:source:' . $source_id;
+				$tags[]    = 'source:' . $source_id;
+			}
+		}
+
+		return self::unique_tags( $tags );
+	}
+
+	/**
+	 * Resolve source-group-term tags for a list of term IDs.
+	 *
+	 * @param array $args Operation arguments.
+	 * @return array<int, string>
+	 */
+	private static function source_group_term_tags( array $args ): array {
+		$tags = array( 'sources' );
+
+		if (empty( $args['term_ids'] ) || !is_array( $args['term_ids'] )) {
+			return $tags;
+		}
+
+		foreach ( $args['term_ids'] as $term_id ) {
+			if (is_numeric( $term_id )) {
+				$tags[] = 'source_group_term:' . (int) $term_id;
 			}
 		}
 

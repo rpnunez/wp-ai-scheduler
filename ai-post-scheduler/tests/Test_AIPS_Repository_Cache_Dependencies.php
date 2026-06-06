@@ -117,6 +117,56 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_tags_for_read_returns_expected_tags_for_sources_get_by_id() {
+		$this->assertSame(
+			array( 'sources', 'source:44' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'sources.get_by_id',
+				array(
+					'source_id' => 44,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_sources_data_get_counts_by_source_ids() {
+		$this->assertSame(
+			array( 'sources_data', 'sources', 'source_data:source:3', 'source:3', 'source_data:source:7', 'source:7' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'sources_data.get_counts_by_source_ids',
+				array(
+					'source_ids' => array( 3, 7 ),
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_internal_links_get_by_source_post() {
+		$this->assertSame(
+			array( 'internal_links', 'internal_links:source:99', 'post:99', 'internal_links:status:pending' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'internal_links.get_by_source_post',
+				array(
+					'source_post_id' => 99,
+					'status'         => 'pending',
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_read_returns_expected_tags_for_taxonomy_get_by_status_and_type() {
+		$this->assertSame(
+			array( 'taxonomy', 'taxonomy_type:category', 'taxonomy_status:approved' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_read(
+				'taxonomy.get_by_status_and_type',
+				array(
+					'status'        => 'approved',
+					'taxonomy_type' => 'category',
+				)
+			)
+		);
+	}
+
 	public function test_tags_for_invalidation_returns_author_domain_tags() {
 		$this->assertSame(
 			array(
@@ -250,6 +300,69 @@ class Test_AIPS_Repository_Cache_Dependencies extends WP_UnitTestCase {
 				array(
 					'section_id'  => 88,
 					'section_key' => 'intro',
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_source_domain_tags() {
+		$this->assertSame(
+			array( 'sources', 'source:12', 'source_data:source:12', 'source_group_term:3', 'source_group_term:7' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'source',
+				array(
+					'source_id' => 12,
+					'term_ids'  => array( 3, 7 ),
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_source_data_domain_tags() {
+		$this->assertSame(
+			array( 'sources_data', 'sources', 'source_data:source:12', 'source:12' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'source_data',
+				array(
+					'source_id' => 12,
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_internal_link_domain_tags() {
+		$this->assertSame(
+			array(
+				'internal_links',
+				'dashboard_counts',
+				'internal_link:22',
+				'internal_links:source:99',
+				'post:99',
+				'internal_links:target:105',
+				'post:105',
+				'internal_links:status:accepted',
+			),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'internal_link',
+				array(
+					'internal_link_id' => 22,
+					'source_post_id'   => 99,
+					'target_post_id'   => 105,
+					'status'           => 'accepted',
+				)
+			)
+		);
+	}
+
+	public function test_tags_for_invalidation_returns_taxonomy_domain_tags() {
+		$this->assertSame(
+			array( 'taxonomy', 'dashboard_counts', 'taxonomy_item:31', 'taxonomy_type:post_tag', 'taxonomy_status:pending' ),
+			AIPS_Repository_Cache_Dependencies::tags_for_invalidation(
+				'taxonomy',
+				array(
+					'taxonomy_id'   => 31,
+					'taxonomy_type' => 'post_tag',
+					'status'        => 'pending',
 				)
 			)
 		);
