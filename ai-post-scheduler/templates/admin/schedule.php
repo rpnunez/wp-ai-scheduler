@@ -619,3 +619,30 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
+
+<script type="text/html" id="aips-tmpl-schedule-status-card">
+	<div class="aips-schedule-status-card aips-schedule-status-card-{{tone}}">
+		<div class="aips-schedule-status-card-header">
+			<div class="aips-schedule-status-card-label">{{label}}</div>
+			{{iconHtml}}
+		</div>
+		<div class="aips-schedule-status-card-value">{{value}}</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-overdue-banner">
+	<div class="aips-overdue-banner">
+		<div class="aips-overdue-banner-left">
+			<span class="dashicons dashicons-warning aips-overdue-icon" aria-hidden="true"></span>
+			<div class="aips-overdue-text">
+				<h4 class="aips-overdue-title">{{title}}</h4>
+				<p class="aips-overdue-desc">{{desc}}</p>
+			</div>
+		</div>
+		<div class="aips-overdue-banner-right">
+			<button type="button" class="aips-btn aips-btn-warning aips-renew-schedules-btn">
+				<span class="dashicons dashicons-update" aria-hidden="true"></span> {{btnLabel}}
+			</button>
+		</div>
+	</div>
+</script>

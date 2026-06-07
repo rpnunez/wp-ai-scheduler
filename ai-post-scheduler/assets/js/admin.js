@@ -89,7 +89,10 @@
 
                 var d = resp.data;
                 var escapeHtml = function(value) {
-                    return String(value || '')
+                    if (value === undefined || value === null) {
+                        value = '';
+                    }
+                    return String(value)
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;')
@@ -113,30 +116,43 @@
                     {
                         label: aipsScheduleL10n.activeSchedulesLabel,
                         value: parseInt(counts.active || 0, 10),
-                        tone: 'neutral'
+                        tone: 'info',
+                        icon: 'dashicons-calendar-alt'
                     },
                     {
                         label: aipsScheduleL10n.upcomingSchedulesLabel,
                         value: parseInt(counts.upcoming_24h || 0, 10),
-                        tone: 'success'
+                        tone: 'success',
+                        icon: 'dashicons-clock'
+                    },
+                    {
+                        label: aipsScheduleL10n.successRateLabel || 'Success Rate',
+                        value: (counts.success_rate !== undefined ? counts.success_rate : 0) + '%',
+                        tone: (counts.success_rate || 0) >= 90 ? 'success' : ((counts.success_rate || 0) >= 70 ? 'warning' : 'error'),
+                        icon: 'dashicons-chart-bar'
                     },
                     {
                         label: aipsScheduleL10n.queueDepthLabel,
                         value: queueTotal,
-                        tone: 'info'
+                        tone: queueTotal > 0 ? 'warning' : 'neutral',
+                        icon: 'dashicons-list-view'
                     },
                     {
                         label: aipsScheduleL10n.bulkFailedLabel,
                         value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral',
+                        icon: 'dashicons-warning'
                     }
                 ];
 
                 var cardsHtml = cards.map(function(card) {
-                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
-                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
-                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
-                    '</div>';
+                    var iconHtml = card.icon ? '<span class="dashicons ' + AIPS.Templates.escape(card.icon) + ' aips-schedule-status-card-icon"></span>' : '';
+                    return AIPS.Templates.renderRaw('aips-tmpl-schedule-status-card', {
+                        tone: AIPS.Templates.escape(card.tone),
+                        label: AIPS.Templates.escape(card.label),
+                        iconHtml: iconHtml,
+                        value: AIPS.Templates.escape(card.value)
+                    });
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
@@ -183,7 +199,17 @@
                     warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
                 }
                 if (parseInt((counts.overdue || 0), 10) > 0) {
-                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
+                    var title = aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue);
+                    var desc = aipsScheduleL10n.overdueSchedulesDesc || 'Schedules might be stalled due to server cron issues. Click Renew to artificially bring them up to date.';
+                    var btnLabel = aipsScheduleL10n.renewSchedulesLabel || 'Renew Schedules';
+
+                    warnings.push(
+                        AIPS.Templates.render('aips-tmpl-schedule-overdue-banner', {
+                            title: title,
+                            desc: desc,
+                            btnLabel: btnLabel
+                        })
+                    );
                 }
                 $('#aips-schedule-status-warnings').html(warnings.join(''));
             });
@@ -290,6 +316,7 @@
             $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
             $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
             $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
+            $(document).on('click', '.aips-renew-schedules-btn', this.renewSchedules);
             $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
@@ -2850,6 +2877,35 @@
                     $loading.hide();
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     $modal.hide();
+                }
+            });
+        },
+
+        renewSchedules: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span> Renewing...', { isHtml: true });
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_renew_overdue_schedules',
+                    nonce: aipsAjax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var count = response.data.renewed_count || 0;
+                        AIPS.Utilities.showToast(response.data.message || (count + ' schedules renewed successfully.'), 'success');
+                        location.reload();
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to renew schedules.', 'error');
+                        AIPS.Utilities.resetButton($btn);
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },

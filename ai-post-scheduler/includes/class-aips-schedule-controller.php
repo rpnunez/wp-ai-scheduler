@@ -47,6 +47,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+        add_action('wp_ajax_aips_renew_overdue_schedules', array($this, 'ajax_renew_overdue_schedules'));
     }
 
     public function ajax_get_schedule_status_read_model() {
@@ -174,6 +175,7 @@ class AIPS_Schedule_Controller {
                 'active' => $active_schedules,
                 'upcoming_24h' => count($timeline),
                 'overdue' => $overdue_schedules,
+                'success_rate' => $this->history_repository->get_stats()['success_rate'],
             ),
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
@@ -188,6 +190,59 @@ class AIPS_Schedule_Controller {
 
         $cache->set($cache_key, $payload, 60);
         AIPS_Ajax_Response::success($payload);
+    }
+
+    public function ajax_renew_overdue_schedules() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::error(__('Unauthorized.', 'ai-post-scheduler'));
+        }
+
+        $unified_service = new AIPS_Unified_Schedule_Service();
+        $all_schedules = $unified_service->get_all('', false);
+        $now = time();
+        $renewed_count = 0;
+
+        $interval_calculator = new AIPS_Interval_Calculator();
+        $authors_repo = new AIPS_Authors_Repository();
+
+        foreach ($all_schedules as $schedule) {
+            $is_active = !empty($schedule['is_active']);
+            $next_run = isset($schedule['next_run']) ? (int) $schedule['next_run'] : 0;
+            if (!$is_active || $next_run <= 0 || $next_run >= $now) {
+                continue;
+            }
+
+            $frequency = $schedule['frequency'];
+            $id = $schedule['id'];
+            $type = $schedule['type'];
+
+            $new_next_run = $interval_calculator->calculate_next_run($frequency, $now);
+
+            if ($type === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+                $this->schedule_repository->update_next_run($id, $new_next_run);
+                $renewed_count++;
+            } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
+                $authors_repo->update_topic_generation_schedule($id, $new_next_run);
+                $renewed_count++;
+            } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+                $authors_repo->update_post_generation_schedule($id, $new_next_run);
+                $renewed_count++;
+            }
+        }
+
+        $cache = AIPS_Cache_Factory::make();
+        $cache->delete('aips_schedule_status_strip_v2');
+
+        AIPS_Ajax_Response::success(array(
+            'renewed_count' => $renewed_count,
+            'message' => sprintf(
+                _n('%d schedule renewed successfully.', '%d schedules renewed successfully.', $renewed_count, 'ai-post-scheduler'),
+                $renewed_count
+            ),
+        ));
     }
 
     /**

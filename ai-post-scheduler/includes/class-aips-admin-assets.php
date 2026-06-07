@@ -932,6 +932,9 @@ class AIPS_Admin_Assets {
                 'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
                 /* translators: %d: number of overdue schedules */
                 'overdueSchedulesWarning'        => __('%d schedule(s) are overdue.', 'ai-post-scheduler'),
+                'overdueSchedulesDesc'           => __('Schedules might be stalled due to server cron issues. Click Renew to artificially bring them up to date.', 'ai-post-scheduler'),
+                'renewSchedulesLabel'            => __('Renew Schedules', 'ai-post-scheduler'),
+                'successRateLabel'               => __('Success Rate', 'ai-post-scheduler'),
                 'viewHistory'                    => __('View history', 'ai-post-scheduler'),
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
