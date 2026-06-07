@@ -21,22 +21,22 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_PostScore_Controller
  *
- * Thin AJAX controller; delegates all business logic to AIPS_PostScore_Scorer.
+ * Thin AJAX controller; delegates all business logic to AIPS_PostScore_Service.
  */
 class AIPS_PostScore_Controller {
 
 	/**
-	 * @var AIPS_PostScore_Scorer
+	 * @var AIPS_PostScore_Service
 	 */
-	private $scorer;
+	private $service;
 
 	/**
 	 * Constructor — wires dependencies and registers AJAX hooks.
 	 *
-	 * @param AIPS_PostScore_Scorer|null $scorer Optional scorer override (for testing).
+	 * @param AIPS_PostScore_Service|null $service Optional post-score service override (for testing).
 	 */
-	public function __construct( ?AIPS_PostScore_Scorer $scorer = null ) {
-		$this->scorer = $scorer ?: new AIPS_PostScore_Scorer();
+	public function __construct( ?AIPS_PostScore_Service $service = null ) {
+		$this->service = $service ?: new AIPS_PostScore_Service();
 
 		add_action( 'wp_ajax_aips_post_score_score',        array( $this, 'ajax_score_post' ) );
 		add_action( 'wp_ajax_aips_post_score_run_revision', array( $this, 'ajax_run_revision' ) );
@@ -76,7 +76,7 @@ class AIPS_PostScore_Controller {
 			return;
 		}
 
-		$result = $this->scorer->score_post( $post_id );
+		$result = $this->service->score_post( $post_id );
 
 		if ( is_wp_error( $result ) ) {
 			AIPS_Ajax_Response::error( $result->get_error_message() );
@@ -116,7 +116,7 @@ class AIPS_PostScore_Controller {
 			return;
 		}
 
-		$result = $this->scorer->score_and_revise_post( $post_id );
+		$result = $this->service->score_and_revise_post( $post_id );
 
 		if ( is_wp_error( $result ) ) {
 			AIPS_Ajax_Response::error( $result->get_error_message() );
@@ -155,7 +155,7 @@ class AIPS_PostScore_Controller {
 			return;
 		}
 
-		$result = $this->scorer->get_score_from_post( $post_id );
+		$result = $this->service->get_score_from_post( $post_id );
 
 		if ( ! $result ) {
 			AIPS_Ajax_Response::error( __( 'No score result found for this post.', 'ai-post-scheduler' ), 'not_found', 404 );

@@ -1,13 +1,13 @@
 <?php
 /**
- * Post Score Scorer
+ * Post Score Service
  *
  * Orchestrates quality scoring and optional targeted revision for a generated
  * post. Calls the AI service with a scoring prompt assembled by
  * AIPS_Prompt_Builder_Post_Score, parses the structured JSON response, and
  * produces an AIPS_PostScore_Result value object.
  *
- * When the overall score falls below the configured threshold the scorer can
+ * When the overall score falls below the configured threshold the service can
  * optionally generate a revised version of the post content using the
  * AI-provided guidance, and update the WordPress post.
  *
@@ -20,17 +20,17 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class AIPS_PostScore_Scorer
+ * Class AIPS_PostScore_Service
  *
  * Usage:
- *   $scorer  = new AIPS_PostScore_Scorer();
- *   $result  = $scorer->score( $context, $content, $title );
+ *   $service = new AIPS_PostScore_Service();
+ *   $result  = $service->score( $context, $content, $title );
  *
  *   if ( ! $result->passed() ) {
- *       $revised = $scorer->run_revision( $context, $content, $title, $result );
+ *       $revised = $service->run_revision( $context, $content, $title, $result );
  *   }
  */
-class AIPS_PostScore_Scorer {
+class AIPS_PostScore_Service {
 
 	/**
 	 * Default pass/fail threshold (out of 100).
@@ -41,6 +41,11 @@ class AIPS_PostScore_Scorer {
 	 * WordPress post meta key used to persist a score result.
 	 */
 	const SCORE_META_KEY = '_aips_post_score';
+
+	/**
+	 * WordPress post meta key used to persist revision count from generation.
+	 */
+	const REVISION_COUNT_META_KEY = '_aips_post_score_revision_count';
 
 	/**
 	 * Maximum number of revision iterations to prevent infinite loops.
@@ -168,11 +173,111 @@ class AIPS_PostScore_Scorer {
 	}
 
 	/**
+	 * Run the full scoring-and-revision loop for in-memory post content.
+	 *
+	 * Scores the draft; if it fails, attempts up to MAX_REVISIONS targeted
+	 * revision passes. The returned array contains the final content, final
+	 * score result, and revision metadata. This method does not persist changes.
+	 *
+	 * @param AIPS_Generation_Context|object $context Generation context.
+	 * @param string                          $content Draft post body.
+	 * @param string                          $title   Draft post title.
+	 * @return array|WP_Error Array with content/result/revision_count/revised, or error.
+	 */
+	public function score_and_revise_content( $context, string $content, string $title = '' ) {
+		$result         = null;
+		$revision_count = 0;
+
+		for ( $iteration = 0; $iteration <= self::MAX_REVISIONS; $iteration++ ) {
+			$result = $this->score( $context, $content, $title );
+
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			if ( $result->passed() || $iteration === self::MAX_REVISIONS ) {
+				break;
+			}
+
+			$revised = $this->run_revision( $context, $content, $title, $result );
+
+			if ( is_wp_error( $revised ) || empty( trim( $revised ) ) ) {
+				break;
+			}
+
+			$content = (string) $revised;
+			$revision_count++;
+		}
+
+		return array(
+			'content'        => $content,
+			'result'         => $result,
+			'revision_count' => $revision_count,
+			'revised'        => $revision_count > 0,
+		);
+	}
+
+	/**
+	 * Score and optionally revise generated draft content for a generation flow.
+	 *
+	 * This reusable orchestration wrapper is intentionally non-fatal for
+	 * generation: scoring failures are logged and returned in the payload while
+	 * the original content is preserved. Consumers can pass the active history
+	 * container and generation logger so this service owns post-score observability
+	 * instead of duplicating it in individual generators.
+	 *
+	 * @param AIPS_Generation_Context|object $context           Generation context.
+	 * @param string                          $content           Draft post body.
+	 * @param string                          $title             Draft post title.
+	 * @param object|null                     $history           Optional history container with record().
+	 * @param object|null                     $generation_logger Optional generation logger with warning().
+	 * @return array{content:string,result:?AIPS_PostScore_Result,revision_count:int,revised:bool,error:?WP_Error,enabled:bool}
+	 */
+	public function process_generated_draft( $context, string $content, string $title = '', $history = null, $generation_logger = null ): array {
+		$payload = $this->build_generation_payload( $content );
+		$payload['enabled'] = (bool) apply_filters( 'aips_post_score_auto_enabled', true, $context, $content, $title );
+
+		if ( ! $payload['enabled'] || '' === trim( wp_strip_all_tags( (string) $content ) ) ) {
+			return $payload;
+		}
+
+		$revision = $this->score_and_revise_content( $context, $content, $title );
+
+		if ( is_wp_error( $revision ) ) {
+			$payload['error'] = $revision;
+			$this->log_generation_warning( $generation_logger, $context, $revision );
+			return $payload;
+		}
+
+		$payload = array_merge( $payload, $revision );
+
+		if ( isset( $payload['result'] ) && $payload['result'] instanceof AIPS_PostScore_Result ) {
+			$this->record_generation_history( $history, $payload['result'], (int) $payload['revision_count'] );
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * Persist score metadata from a generated-draft processing payload.
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param array $payload Payload returned by process_generated_draft().
+	 * @return void
+	 */
+	public function save_generation_score_to_post( int $post_id, array $payload ): void {
+		if ( isset( $payload['result'] ) && $payload['result'] instanceof AIPS_PostScore_Result ) {
+			$this->save_score_to_post( $post_id, $payload['result'] );
+			update_post_meta( $post_id, self::REVISION_COUNT_META_KEY, (int) ( $payload['revision_count'] ?? 0 ) );
+		}
+	}
+
+	/**
 	 * Run the full scoring-and-revision loop for a WordPress post.
 	 *
 	 * Scores the post; if it fails, attempts up to MAX_REVISIONS revision passes,
-	 * updating the post in the database after each successful revision. The final
-	 * score result (from the last scoring pass) is saved to post meta.
+	 * updating the post in the database after successful revisions. The final
+	 * score result is saved to post meta.
 	 *
 	 * @param int                                 $post_id WordPress post ID.
 	 * @param AIPS_Generation_Context|object|null $context Optional generation context.
@@ -189,42 +294,22 @@ class AIPS_PostScore_Scorer {
 			$context = $this->make_minimal_context( $post );
 		}
 
-		$content = $post->post_content;
-		$title   = $post->post_title;
-		$result  = null;
+		$revision = $this->score_and_revise_content( $context, $post->post_content, $post->post_title );
 
-		for ( $iteration = 0; $iteration <= self::MAX_REVISIONS; $iteration++ ) {
-			$result = $this->score( $context, $content, $title );
+		if ( is_wp_error( $revision ) ) {
+			return $revision;
+		}
 
-			if ( is_wp_error( $result ) ) {
-				return $result;
-			}
-
-			if ( $result->passed() || $iteration === self::MAX_REVISIONS ) {
-				break;
-			}
-
-			// Score failed — run a revision pass
-			$revised = $this->run_revision( $context, $content, $title, $result );
-
-			if ( is_wp_error( $revised ) || empty( trim( $revised ) ) ) {
-				// Revision failed; keep current content and stop looping
-				break;
-			}
-
-			// Update content for next iteration (and persist to DB)
-			$content = $revised;
+		if ( ! empty( $revision['revised'] ) ) {
 			wp_update_post( array(
 				'ID'           => $post_id,
-				'post_content' => $content,
+				'post_content' => $revision['content'],
 			) );
 		}
 
-		if ( $result && ! is_wp_error( $result ) ) {
-			$this->save_score_to_post( $post_id, $result );
-		}
+		$this->save_generation_score_to_post( $post_id, $revision );
 
-		return $result;
+		return $revision['result'];
 	}
 
 	/**
@@ -279,6 +364,79 @@ class AIPS_PostScore_Scorer {
 	// ------------------------------------------------------------------
 
 	/**
+	 * Build the default generation payload shape.
+	 *
+	 * @param string $content Draft content.
+	 * @return array
+	 */
+	private function build_generation_payload( string $content ): array {
+		return array(
+			'content'        => $content,
+			'result'         => null,
+			'revision_count' => 0,
+			'revised'        => false,
+			'error'          => null,
+			'enabled'        => false,
+		);
+	}
+
+	/**
+	 * Record post-score outcome on the active history container, when supplied.
+	 *
+	 * @param object|null           $history        History container with record().
+	 * @param AIPS_PostScore_Result $result         Final score result.
+	 * @param int                   $revision_count Revision count.
+	 * @return void
+	 */
+	private function record_generation_history( $history, AIPS_PostScore_Result $result, int $revision_count ): void {
+		if ( ! $history || ! method_exists( $history, 'record' ) ) {
+			return;
+		}
+
+		$history->record(
+			$result->passed() ? 'post_score_passed' : 'post_score_failed',
+			$result->passed() ? 'Post quality score met the threshold' : 'Post quality score remained below the threshold',
+			array(
+				'overall_score'  => $result->get_overall_score(),
+				'threshold'      => $result->get_threshold(),
+				'revision_count' => $revision_count,
+				'guidance'       => $result->get_guidance(),
+			),
+			null,
+			array( 'component' => 'post_score' )
+		);
+	}
+
+	/**
+	 * Log a non-fatal generation scoring warning, when a logger is supplied.
+	 *
+	 * @param object|null $generation_logger Generation logger with warning() or log().
+	 * @param object      $context           Generation context.
+	 * @param WP_Error    $error             Scoring error.
+	 * @return void
+	 */
+	private function log_generation_warning( $generation_logger, $context, WP_Error $error ): void {
+		if ( ! $generation_logger ) {
+			return;
+		}
+
+		$context_data = array(
+			'context_type' => is_object( $context ) && method_exists( $context, 'get_type' ) ? $context->get_type() : '',
+			'context_id'   => is_object( $context ) && method_exists( $context, 'get_id' ) ? $context->get_id() : 0,
+			'error'        => $error->get_error_message(),
+		);
+
+		if ( method_exists( $generation_logger, 'warning' ) ) {
+			$generation_logger->warning( 'Post scoring failed; continuing with original generated content.', $context_data );
+			return;
+		}
+
+		if ( method_exists( $generation_logger, 'log' ) ) {
+			$generation_logger->log( 'Post scoring failed; continuing with original generated content.', 'warning', array(), $context_data );
+		}
+	}
+
+	/**
 	 * Parse the raw AI JSON response into an AIPS_PostScore_Result.
 	 *
 	 * Tolerates minor JSON hygiene issues (leading/trailing whitespace, code
@@ -311,8 +469,13 @@ class AIPS_PostScore_Scorer {
 		$dimension_scores = $this->normalise_dimension_scores( $raw_scores );
 		$overall          = $this->calculate_overall_score( $dimension_scores );
 		$guidance         = isset( $data['guidance'] ) && is_array( $data['guidance'] )
-			? array_map( 'sanitize_text_field', $data['guidance'] )
+			? array_filter( array_map( 'sanitize_text_field', $data['guidance'] ) )
 			: array();
+
+		if ( $overall < $threshold && empty( $guidance ) ) {
+			$guidance = $this->build_default_guidance( $dimension_scores );
+		}
+
 		$summary          = isset( $data['summary'] ) ? sanitize_textarea_field( (string) $data['summary'] ) : '';
 
 		return new AIPS_PostScore_Result(
@@ -323,6 +486,46 @@ class AIPS_PostScore_Scorer {
 			$summary,
 			$raw_response
 		);
+	}
+
+	/**
+	 * Build deterministic targeted guidance when the AI omits guidance.
+	 *
+	 * @param array<string, int> $dimension_scores Normalised per-dimension scores.
+	 * @return array<string> Targeted revision instructions.
+	 */
+	private function build_default_guidance( array $dimension_scores ): array {
+		$guidance_map = array(
+			'coherence'              => __( 'Tighten the structure so each section follows logically from the previous one.', 'ai-post-scheduler' ),
+			'specificity'            => __( 'Add concrete examples, named scenarios, and implementation details for the main claims.', 'ai-post-scheduler' ),
+			'originality'            => __( 'Add a fresher angle, counterpoints, or field-tested observations that reduce generic advice.', 'ai-post-scheduler' ),
+			'citations_completeness' => __( 'Add citations or source attributions for statistics, factual claims, and external assertions.', 'ai-post-scheduler' ),
+			'reading_grade'          => __( 'Adjust sentence length and vocabulary so the reading level matches the intended audience.', 'ai-post-scheduler' ),
+			'fluff'                  => __( 'Reduce repetition, filler phrases, and broad introductory padding.', 'ai-post-scheduler' ),
+			'hallucination_risk'     => __( 'Remove unverifiable claims or qualify them with clear evidence and sourcing.', 'ai-post-scheduler' ),
+			'alignment'              => __( 'Refocus the draft on the requested topic, voice, structure, and prompt intent.', 'ai-post-scheduler' ),
+		);
+
+		$guidance = array();
+
+		foreach ( AIPS_PostScore_Result::DIMENSIONS as $dimension ) {
+			if ( ! isset( $dimension_scores[ $dimension ] ) || ! isset( $guidance_map[ $dimension ] ) ) {
+				continue;
+			}
+
+			$is_penalty_dimension = in_array( $dimension, AIPS_PostScore_Result::PENALTY_DIMENSIONS, true );
+			$needs_revision       = $is_penalty_dimension ? $dimension_scores[ $dimension ] > 3 : $dimension_scores[ $dimension ] < 7;
+
+			if ( $needs_revision ) {
+				$guidance[] = $guidance_map[ $dimension ];
+			}
+		}
+
+		if ( empty( $guidance ) ) {
+			$guidance[] = __( 'Add concrete examples, tighten the introduction, reduce repetition, and qualify unsupported claims.', 'ai-post-scheduler' );
+		}
+
+		return $guidance;
 	}
 
 	/**

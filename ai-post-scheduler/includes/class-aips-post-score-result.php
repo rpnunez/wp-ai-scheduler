@@ -4,7 +4,7 @@
  *
  * Value object representing the quality-scoring result for a generated post.
  * Holds per-dimension scores, an overall score, pass/fail status, and any
- * targeted revision guidance returned by the AI scorer.
+ * targeted revision guidance returned by the post-score service.
  *
  * @package AI_Post_Scheduler
  * @since 2.6.0
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_PostScore_Result
  *
- * Immutable value object produced by AIPS_PostScore_Scorer after the AI
+ * Immutable value object produced by AIPS_PostScore_Service after the AI
  * evaluates a generated post against its generation configuration.
  *
  * Dimensions scored 0-10 (higher = better), except:
@@ -203,7 +203,7 @@ class AIPS_PostScore_Result {
 		return new self(
 			(array) ( $data['dimension_scores'] ?? array() ),
 			(float)  ( $data['overall_score']    ?? 0.0 ),
-			(int)    ( $data['threshold']         ?? AIPS_PostScore_Scorer::DEFAULT_THRESHOLD ),
+			(int)    ( $data['threshold']         ?? AIPS_PostScore_Service::DEFAULT_THRESHOLD ),
 			(array)  ( $data['guidance']          ?? array() ),
 			(string) ( $data['summary']           ?? '' )
 		);
