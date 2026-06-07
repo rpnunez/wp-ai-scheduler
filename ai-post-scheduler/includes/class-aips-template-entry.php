@@ -107,11 +107,13 @@ class AIPS_Template_Entry {
 	public readonly string $post_status;
 
 	/**
-	 * Optional default category ID for generated posts.
+	 * Category IDs for generated posts (array of WP term IDs).
 	 *
-	 * @var int|null
+	 * An empty array means "no specific category" (WP default applies).
+	 *
+	 * @var array
 	 */
-	public readonly ?int $post_category;
+	public readonly array $post_category;
 
 	/**
 	 * Comma-separated default tags for generated posts.
@@ -180,7 +182,7 @@ class AIPS_Template_Entry {
 	 * @param string|null $featured_image_unsplash_keywords Unsplash keywords.
 	 * @param string|null $featured_image_media_ids         Media library IDs.
 	 * @param string      $post_status                      WP post status.
-	 * @param int|null    $post_category                    Default category ID.
+	 * @param array         $post_category                    Default category IDs.
 	 * @param string|null $post_tags                        Default tags.
 	 * @param int|null    $post_author                      Default author ID.
 	 * @param int|null    $campaign_id                      Owning campaign ID.
@@ -200,7 +202,7 @@ class AIPS_Template_Entry {
 		?string $featured_image_unsplash_keywords,
 		?string $featured_image_media_ids,
 		string $post_status,
-		?int $post_category,
+		array $post_category,
 		?string $post_tags,
 		?int $post_author,
 		?int $campaign_id,
@@ -267,7 +269,7 @@ class AIPS_Template_Entry {
 			isset($source->featured_image_unsplash_keywords) && $source->featured_image_unsplash_keywords !== '' ? (string) $source->featured_image_unsplash_keywords : null,
 			isset($source->featured_image_media_ids) && $source->featured_image_media_ids !== '' ? (string) $source->featured_image_media_ids : null,
 			(string) ($source->post_status ?? 'draft'),
-			isset($source->post_category) && null !== $source->post_category && '' !== $source->post_category ? (int) $source->post_category : null,
+			self::parse_post_categories( $source->post_category ?? null ),
 			isset($source->post_tags) && $source->post_tags !== '' ? (string) $source->post_tags : null,
 			isset($source->post_author) && null !== $source->post_author && '' !== $source->post_author ? (int) $source->post_author : null,
 			isset($source->campaign_id) && null !== $source->campaign_id && '' !== $source->campaign_id ? (int) $source->campaign_id : null,
@@ -276,5 +278,17 @@ class AIPS_Template_Entry {
 			1 === (int) ($source->include_sources ?? 0),
 			isset($source->source_group_ids) && $source->source_group_ids !== '' ? (string) $source->source_group_ids : null
 		);
+	}
+
+	/**
+	 * Normalise a raw post_category value to an array of integer term IDs.
+	 *
+	 * Delegates to AIPS_Template_Data::parse_post_categories() as the canonical implementation.
+	 *
+	 * @param mixed $value Raw value (int, string, JSON array string, PHP array, or null).
+	 * @return array<int>
+	 */
+	public static function parse_post_categories( $value ): array {
+		return AIPS_Template_Data::parse_post_categories( $value );
 	}
 }
