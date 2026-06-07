@@ -3219,17 +3219,58 @@ Critical areas to address:
 
 	private function print_summary() {
 		echo "\n<h2>Setup Complete!</h2>\n";
-		
-		echo "<h3>Configured Settings (16 total):</h3>\n";
+
+		$settings = $this->object_data['settings'];
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$configured_settings = array(
+			'aips_site_niche' => $settings['content_strategy']['aips_site_niche'],
+			'aips_site_target_audience' => $settings['content_strategy']['aips_site_target_audience'],
+			'aips_site_content_goals' => $settings['content_strategy']['aips_site_content_goals'],
+			'aips_site_brand_voice' => $settings['content_strategy']['aips_site_brand_voice'],
+			'aips_site_content_language' => $settings['content_strategy']['aips_site_content_language'],
+			'aips_site_content_guidelines' => $settings['content_strategy']['aips_site_content_guidelines'],
+			'aips_site_excluded_topics' => $settings['content_strategy']['aips_site_excluded_topics'],
+			'aips_enable_retry' => $settings['resilience_settings']['aips_enable_retry'],
+			'aips_retry_max_attempts' => $settings['resilience_settings']['aips_retry_max_attempts'],
+			'aips_retry_initial_delay' => $settings['resilience_settings']['aips_retry_initial_delay'],
+			'aips_enable_rate_limiting' => $settings['resilience_settings']['aips_enable_rate_limiting'],
+			'aips_rate_limit_requests' => $settings['resilience_settings']['aips_rate_limit_requests'],
+			'aips_rate_limit_period' => $settings['resilience_settings']['aips_rate_limit_period'],
+			'aips_enable_circuit_breaker' => $settings['resilience_settings']['aips_enable_circuit_breaker'],
+			'aips_circuit_breaker_threshold' => $settings['resilience_settings']['aips_circuit_breaker_threshold'],
+			'aips_circuit_breaker_timeout' => $settings['resilience_settings']['aips_circuit_breaker_timeout'],
+			'aips_default_article_structure_id' => isset($structures['Evergreen How-To Guide']) ? $structures['Evergreen How-To Guide'] : '',
+			'aips_review_notifications_email' => '',
+			'aips_notification_preferences' => $settings['notification_preferences'],
+			'aips_research_niches' => $settings['research_niches'],
+			'aips_topic_similarity_threshold' => $settings['topic_similarity_threshold'],
+			'aips_unsplash_access_key' => $settings['unsplash_access_key'],
+			'aips_enable_telemetry' => $settings['enable_telemetry'],
+			'aips_enable_cache_system' => $settings['enable_cache_system'],
+			'aips_log_retention_days' => $settings['log_retention_days'],
+			'aips_default_post_status' => $settings['default_post_status'],
+			'aips_default_category' => isset($categories[$settings['default_category_name']]) ? $categories[$settings['default_category_name']] : '',
+			'aips_default_post_author' => $settings['default_post_author'],
+		);
+
+		echo "<h3>Configured Settings (" . count($configured_settings) . " total):</h3>\n";
 		echo "<ul>\n";
-		echo "<li><strong>Content Strategy:</strong> Site niche, target audience, content goals, brand voice, guidelines, excluded topics</li>\n";
-		echo "<li><strong>Resilience & Limits:</strong> Retry (3 attempts), Rate limiting (20 req/min), Circuit breaker (enabled)</li>\n";
-		echo "<li><strong>Default Article Structure:</strong> Evergreen How-To Guide</li>\n";
-		echo "<li><strong>Notifications:</strong> Email for critical alerts, DB for routine events, digest rollups enabled</li>\n";
-		echo "<li><strong>Research & Discovery:</strong> 8 DevStackTips topics, similarity threshold 0.75</li>\n";
-		echo "<li><strong>Performance:</strong> Telemetry enabled, Cache system (DB driver), 60-day log retention</li>\n";
-		echo "<li><strong>Default Post Settings:</strong> Draft status, Backend Development category, admin author</li>\n";
-		echo "<li><strong>[WARN] Manual Configuration Required:</strong> Notification email address, Unsplash Access Key</li>\n";
+		foreach ($configured_settings as $key => $value) {
+			if (is_bool($value)) {
+				$display_value = $value ? 'true' : 'false';
+			} elseif (is_array($value)) {
+				$display_value = wp_json_encode($value);
+			} else {
+				$display_value = (string) $value;
+			}
+
+			if ($display_value === '') {
+				$display_value = '(empty)';
+			}
+
+			echo "<li><strong>" . esc_html($key) . ":</strong> <code>" . esc_html($display_value) . "</code></li>\n";
+		}
 		echo "</ul>\n";
 		
 		echo "<h3>Created Items:</h3>\n";
