@@ -1,6 +1,8 @@
-# Codex Skills for wp-ai-scheduler
+# Repository Skills
 
-This directory contains repository-specific Codex skills for common contribution patterns:
+## Available skills
+
+This directory contains repository-specific skills for common contribution patterns:
 
 - `db-changes`: safe schema/migration workflows.
 - `admin-ui-changes`: WordPress admin page/template/asset changes.
@@ -8,5 +10,6 @@ This directory contains repository-specific Codex skills for common contribution
 - `generation-changes`: generation/regeneration and prompt architecture changes.
 - `pr-triage`: overlap detection and review-risk triage.
 - `feature-slicing`: planning work into mergeable slices.
+- `testing-workflow`: Standard testing workflow for AI Post Scheduler plugin PHPUnit coverage and pre-PR checks.
 
 Each skill is documented in a `SKILL.md` file within its folder.
