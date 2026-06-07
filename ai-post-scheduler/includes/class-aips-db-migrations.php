@@ -150,6 +150,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_8_3();
 		}
 
+		if ( version_compare( $from_version, '2.9.1', '<' ) ) {
+			$this->migrate_to_2_9_1();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -724,6 +728,66 @@ class AIPS_DB_Migrations {
 	 */
 	private function normalize_timestamp_value( $value ) {
 		return is_numeric( $value ) ? max( 0, (int) $value ) : 0;
+	}
+
+	/**
+	 * Migration for version 2.9.1.
+	 *
+	 * Converts the `post_category` column in `aips_templates` from a single
+	 * BIGINT category ID to a TEXT column storing a JSON-encoded array of
+	 * category IDs, enabling templates to be assigned to multiple categories.
+	 *
+	 * Steps:
+	 *   1. Check the column still has a BIGINT-like type (no-op on fresh installs
+	 *      where dbDelta has already created it as TEXT).
+	 *   2. Migrate existing non-null, non-zero values to single-element JSON arrays
+	 *      (e.g. 5 → [5]).
+	 *   3. NULL and 0 values are set to NULL to preserve the "no category" state.
+	 *   4. ALTER COLUMN to TEXT.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_9_1() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_templates';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		// Check the current column type. If it is already TEXT/LONGTEXT the
+		// migration has been applied (e.g. fresh install via dbDelta).
+		$col_info = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'post_category'
+		) );
+
+		if ( ! $col_info ) {
+			return; // Column doesn't exist at all — nothing to do.
+		}
+
+		// If the Type is already a text-family type the data migration is done.
+		$col_type = strtolower( (string) ( $col_info->Type ?? '' ) );
+		if ( strpos( $col_type, 'text' ) !== false || strpos( $col_type, 'varchar' ) !== false ) {
+			return;
+		}
+
+		// Step 1: Wrap existing non-zero integer values as JSON arrays.
+		$wpdb->query(
+			"UPDATE `{$table}` SET post_category = CONCAT('[', post_category, ']') WHERE post_category IS NOT NULL AND post_category != '0'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		// Step 2: Normalise zero values to NULL (zero means "no category").
+		$wpdb->query(
+			"UPDATE `{$table}` SET post_category = NULL WHERE post_category = '0'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		// Step 3: Change the column type from BIGINT to TEXT.
+		$wpdb->query(
+			"ALTER TABLE `{$table}` MODIFY COLUMN post_category text DEFAULT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
 	}
 
 	/**

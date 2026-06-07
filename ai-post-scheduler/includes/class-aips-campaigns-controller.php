@@ -91,8 +91,10 @@ class AIPS_Campaigns_Controller {
 
 	/**
 	 * Render campaigns index page.
+	 *
+	 * @param bool $embedded Whether the page is being rendered inside another admin page.
 	 */
-	public function render_page() {
+	public function render_page($embedded = false) {
 		if (!current_user_can('manage_options')) {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}

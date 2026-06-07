@@ -123,6 +123,9 @@
 	--aips-z-modal: 1000;
 	--aips-z-popover: 1100;
 	--aips-z-tooltip: 1200;
+
+	/* Layout offsets */
+	--aips-admin-bar-height: 32px;
 }
 
 /* ==========================================================================
@@ -768,6 +771,120 @@
 	font-size: var(--aips-text-sm);
 }
 
+.aips-history-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 4fr) minmax(280px, 1fr);
+	gap: var(--aips-space-5);
+	align-items: flex-start;
+}
+
+.aips-history-main-column,
+.aips-history-sidebar-column {
+	min-width: 0;
+}
+
+.aips-history-timeline-panel {
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	background: var(--aips-gray-50);
+	padding: var(--aips-space-4);
+	position: sticky;
+	top: calc(var(--aips-admin-bar-height) + var(--aips-space-4));
+}
+
+.aips-history-timeline-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-history-timeline-header h3 {
+	margin: 0;
+}
+
+.aips-history-auto-refresh {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-auto-refresh .aips-checkbox-label {
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-700);
+}
+
+.aips-history-auto-refresh-interval-label {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+}
+
+.aips-form-select-sm {
+	max-width: 170px;
+}
+
+.aips-history-timeline-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	max-height: 70vh;
+	overflow-y: auto;
+	padding-right: var(--aips-space-1);
+}
+
+.aips-history-timeline-item {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-left: 3px solid var(--aips-info);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-3);
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-timeline-item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-timeline-item-title {
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-normal);
+	color: var(--aips-gray-900);
+}
+
+.aips-history-timeline-group {
+	flex-shrink: 0;
+}
+
+.aips-history-timeline-item-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+}
+
+.aips-history-timeline-item-error {
+	margin: 0;
+	color: var(--aips-error-dark);
+	font-size: var(--aips-text-xs);
+}
+
+@media (max-width: 1200px) {
+	.aips-history-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-history-timeline-panel {
+		position: static;
+	}
+}
+
 /* History logs modal: keep the body scrollable for long log lists */
 #aips-history-logs-modal .aips-modal-content {
     width: min(96vw, 1480px);
@@ -1185,6 +1302,10 @@
    ========================================================================== */
 
 @media (max-width: 782px) {
+	:root {
+		--aips-admin-bar-height: 46px;
+	}
+
 	.aips-page-container {
 		margin: var(--aips-space-4) auto;
 		padding: 0 var(--aips-space-3);
@@ -3620,6 +3741,13 @@
     font-weight: 600;
 }
 
+.aips-tab-nav a.aips-tab-link-special,
+.aips-tab-nav button.aips-tab-link-special {
+    color: #5a4f9b;
+    background: rgba(90, 79, 155, 0.08);
+    border-radius: 6px 6px 0 0;
+}
+
 .aips-tab-content {
     padding: 20px 0;
 }
@@ -4209,6 +4337,95 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 /* Space between panels on the status page */
 .aips-status-page .aips-content-panel {
 margin-bottom: 20px;
+}
+
+/* Diagnostics: keep tab content within same horizontal rhythm as tab nav/header */
+.aips-diagnostics-wrap .aips-diagnostics-tab-content {
+    margin-top: 16px;
+    max-width: 100%;
+}
+
+/* Ensure status content can be reordered cleanly in Diagnostics embed mode */
+.aips-status-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.aips-status-data-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+
+/* Show pointer affordance for clickable status panels */
+.aips-status-page .aips-status-data-panel {
+	cursor: pointer;
+}
+
+/* Move action sections above long system info tables */
+.aips-status-actions-sections {
+    order: -1;
+}
+
+/* Collapsible table/info section headers */
+.aips-status-data-panel .aips-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.aips-status-data-panel .aips-panel-header h2 {
+    margin: 0;
+}
+
+.aips-panel-collapse-toggle .dashicons {
+    font-size: 16px;
+    line-height: 1;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+}
+
+/* Make collapse controls more visible against white panel headers */
+.aips-panel-collapse-toggle {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(55, 48, 163, 0.14);
+}
+
+.aips-panel-collapse-toggle:hover,
+.aips-panel-collapse-toggle:focus {
+    background: #e0e7ff;
+    border-color: #a5b4fc;
+    color: #312e81;
+}
+
+.aips-panel-collapse-toggle .dashicons {
+    color: #3730a3;
+    transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.aips-panel-collapse-label {
+    letter-spacing: 0.01em;
+}
+
+@keyframes aips-chevron-pop {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.18);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.aips-panel-collapse-toggle .dashicons.aips-chevron-pop {
+    animation: aips-chevron-pop 0.18s ease-out;
 }
 
 /* Tool rows: 2 panels per row (6/6 style) */

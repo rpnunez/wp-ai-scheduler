@@ -127,11 +127,13 @@ class AIPS_Template_Data {
 	public readonly string $post_status;
 
 	/**
-	 * Optional default category ID for generated posts.
+	 * Category IDs for generated posts (array of WP term IDs).
 	 *
-	 * @var int|null
+	 * An empty array means "no specific category" (WP default applies).
+	 *
+	 * @var array
 	 */
-	public readonly ?int $post_category;
+	public readonly array $post_category;
 
 	/**
 	 * Comma-separated default tags for generated posts.
@@ -202,7 +204,7 @@ class AIPS_Template_Data {
 	 * @param string|null $featured_image_unsplash_keywords Unsplash keywords.
 	 * @param string|null $featured_image_media_ids         Media library IDs.
 	 * @param string      $post_status                      WP post status.
-	 * @param int|null    $post_category                    Default category ID.
+	 * @param array         $post_category                    Default category IDs.
 	 * @param string|null $post_tags                        Default tags.
 	 * @param int|null    $post_author                      Default author ID.
 	 * @param bool        $include_sources                  Append citations flag.
@@ -225,7 +227,7 @@ class AIPS_Template_Data {
 		?string $featured_image_unsplash_keywords,
 		?string $featured_image_media_ids,
 		string $post_status,
-		?int $post_category,
+		array $post_category,
 		?string $post_tags,
 		?int $post_author,
 		bool $include_sources,
@@ -285,7 +287,7 @@ class AIPS_Template_Data {
 			isset( $row->featured_image_unsplash_keywords ) && $row->featured_image_unsplash_keywords !== '' ? (string) $row->featured_image_unsplash_keywords : null,
 			isset( $row->featured_image_media_ids ) && $row->featured_image_media_ids !== '' ? (string) $row->featured_image_media_ids : null,
 			(string) ( $row->post_status ?? 'draft' ),
-			isset( $row->post_category ) && $row->post_category !== null ? (int) $row->post_category : null,
+			self::parse_post_categories( $row->post_category ?? null ),
 			isset( $row->post_tags ) && $row->post_tags !== '' ? (string) $row->post_tags : null,
 			isset( $row->post_author ) && $row->post_author !== null ? (int) $row->post_author : null,
 			1 === (int) ( $row->include_sources ?? 0 ),
@@ -299,6 +301,49 @@ class AIPS_Template_Data {
 	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Normalise a raw post_category DB value to an array of integer term IDs.
+	 *
+	 * Handles:
+	 *   - null / '' / 0 / '0'  → []
+	 *   - JSON array string     → decoded and filtered (e.g. "[1,2]" → [1,2])
+	 *   - plain integer string  → single-element array (e.g. "5" → [5])
+	 *   - int                   → single-element array (e.g. 5 → [5])
+	 *   - PHP array             → filtered array of ints
+	 *
+	 * @param mixed $value Raw DB value.
+	 * @return array<int>
+	 */
+	public static function parse_post_categories( $value ): array {
+		if ( is_null( $value ) || $value === '' || $value === 0 || $value === '0' ) {
+			return array();
+		}
+
+		if ( is_array( $value ) ) {
+			return array_values( array_filter( array_map( 'intval', $value ), static function ( $id ) {
+				return $id > 0;
+			} ) );
+		}
+
+		if ( is_int( $value ) ) {
+			return $value > 0 ? array( $value ) : array();
+		}
+
+		if ( is_string( $value ) ) {
+			$decoded = json_decode( $value, true );
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
+				return array_values( array_filter( array_map( 'intval', $decoded ), static function ( $id ) {
+					return $id > 0;
+				} ) );
+			}
+			// Not valid JSON — treat as a legacy plain integer string.
+			$int_val = (int) $value;
+			return $int_val > 0 ? array( $int_val ) : array();
+		}
+
+		return array();
+	}
 
 	/**
 	 * Whether this template has a title prompt configured.
