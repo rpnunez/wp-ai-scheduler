@@ -4739,3 +4739,85 @@ gap: 8px;
 margin-top: 16px;
 flex-wrap: wrap;
 }
+
+/* Schedule Page - Tab Navigation for Traffic Control */
+.aips-tabs {
+	display: flex;
+	gap: 0;
+	margin: 20px 0;
+	border-bottom: 1px solid #ccd0d4;
+	background: #fff;
+	padding: 0;
+}
+
+.aips-tab {
+	display: inline-block;
+	padding: 12px 20px;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 500;
+	color: #50575e;
+	border-bottom: 2px solid transparent;
+	background: none;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+}
+
+.aips-tab:hover {
+	color: #2271b1;
+	background: #f6f7f7;
+}
+
+.aips-tab-active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+}
+
+/* Health Indicator Badges */
+.aips-badge.aips-badge-success .dashicons-yes {
+	color: #00a32a;
+}
+
+.aips-badge.aips-badge-warning .dashicons-warning {
+	color: #dba617;
+}
+
+.aips-badge.aips-badge-error .dashicons-dismiss {
+	color: #d63638;
+}
+
+/* Action Button Styling for Circuit/Batch Controls */
+.aips-btn.aips-btn-warning {
+	background: #dba617;
+	border-color: #c08508;
+	color: #fff;
+}
+
+.aips-btn.aips-btn-warning:hover {
+	background: #c08508;
+	border-color: #a67106;
+}
+
+.aips-btn.aips-btn-info {
+	background: #2271b1;
+	border-color: #135e96;
+	color: #fff;
+}
+
+.aips-btn.aips-btn-info:hover {
+	background: #135e96;
+	border-color: #0a4b78;
+}
+
+/* Schedule Status Column Layout */
+.aips-schedule-status-wrapper {
+	min-width: 140px;
+}
+
+.column-status {
+	min-width: 160px;
+}

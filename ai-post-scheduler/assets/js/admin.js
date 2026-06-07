@@ -294,6 +294,9 @@
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
             $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
+            $(document).on('click', '.aips-tab', this.switchScheduleTab);
+            $(document).on('click', '.aips-reset-circuit', this.resetScheduleCircuit);
+            $(document).on('click', '.aips-resume-batch', this.resumeScheduleBatch);
 
 
 
@@ -2293,6 +2296,134 @@
             $('.aips-unified-row').show();
             $('#aips-unified-search-clear').hide();
             $('#aips-unified-search-no-results').hide();
+        },
+
+        /**
+         * Switch between schedule tabs (All/Content/Author).
+         *
+         * @param {Event} e - Click event on .aips-tab
+         */
+        switchScheduleTab: function(e) {
+            e.preventDefault();
+
+            var $tab = $(this);
+            var tabCategory = $tab.data('tab');
+
+            // Update active tab
+            $('.aips-tab').removeClass('aips-tab-active');
+            $tab.addClass('aips-tab-active');
+
+            // Filter rows by tab category
+            if (tabCategory === 'all') {
+                $('.aips-unified-row').show();
+            } else {
+                $('.aips-unified-row').each(function() {
+                    var rowCategory = $(this).data('tab-category');
+                    if (rowCategory === tabCategory) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            // Update bulk action state
+            AIPS.updateUnifiedBulkActions();
+        },
+
+        /**
+         * Reset circuit breaker for a specific schedule.
+         *
+         * @param {Event} e - Click event on .aips-reset-circuit
+         */
+        resetScheduleCircuit: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var type = $btn.data('type');
+
+            if (!confirm('Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+
+            $.post(ajaxurl, {
+                action: 'aips_reset_schedule_circuit',
+                nonce: aipsData.nonce,
+                id: id,
+                type: type
+            })
+            .done(function(response) {
+                if (response.success) {
+                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+
+                    // Update the row's circuit state
+                    var $row = $btn.closest('.aips-unified-row');
+                    $row.attr('data-circuit-state', 'closed');
+
+                    // Update health indicator badge
+                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
+                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
+                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
+                    );
+
+                    // Remove the reset button
+                    $btn.remove();
+                } else {
+                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                }
+            })
+            .fail(function() {
+                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+            });
+        },
+
+        /**
+         * Resume an incomplete batch for a specific schedule.
+         *
+         * @param {Event} e - Click event on .aips-resume-batch
+         */
+        resumeScheduleBatch: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var type = $btn.data('type');
+
+            if (!confirm('Resume the incomplete batch for this schedule? This will continue generation from where it left off.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+
+            $.post(ajaxurl, {
+                action: 'aips_resume_schedule_batch',
+                nonce: aipsData.nonce,
+                id: id,
+                type: type
+            })
+            .done(function(response) {
+                if (response.success) {
+                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+
+                    // Optionally reload the page or update the UI
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                }
+            })
+            .fail(function() {
+                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+            });
         },
 
         /**
