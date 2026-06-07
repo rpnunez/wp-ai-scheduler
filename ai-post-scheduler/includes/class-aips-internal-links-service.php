@@ -92,33 +92,7 @@ class AIPS_Internal_Links_Service {
 	 * @return true|WP_Error True on success or WP_Error on failure.
 	 */
 	public function index_post($post_id) {
-		$post_id = absint($post_id);
-		$post    = get_post($post_id);
-
-		if (!$post) {
-			return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
-		}
-
-		$text = $this->get_post_text($post);
-
-		if (empty($text)) {
-			return new WP_Error('empty_content', __('Post has no indexable content.', 'ai-post-scheduler'));
-		}
-
-		$embedding = $this->embeddings_service->generate_embedding($text);
-
-		if (is_wp_error($embedding)) {
-			return $embedding;
-		}
-
-		$this->embeddings_repo->upsert($post_id, $embedding);
-
-		$this->logger->log(
-			sprintf('Indexed post %d for internal links.', $post_id),
-			'debug'
-		);
-
-		return true;
+		return $this->embeddings_service->index_post($post_id);
 	}
 
 	/**
@@ -136,44 +110,11 @@ class AIPS_Internal_Links_Service {
 		$post_type = 'post',
 		$post_status = 'publish'
 	) {
-		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
+		return $this->embeddings_service->process_post_indexing_batch(
 			$batch_size,
 			$last_post_id,
 			$post_type,
 			$post_status
-		);
-
-		$success        = 0;
-		$failed         = 0;
-		$new_last_id    = $last_post_id;
-
-		foreach ($post_ids as $post_id) {
-			$result = $this->index_post($post_id);
-
-			if (is_wp_error($result)) {
-				$this->logger->log(
-					sprintf(
-						'Failed to index post %d: %s',
-						$post_id,
-						$result->get_error_message()
-					),
-					'error'
-				);
-				$failed++;
-			} else {
-				$success++;
-			}
-
-			$new_last_id = max($new_last_id, $post_id);
-		}
-
-		$done = count($post_ids) < $batch_size;
-
-		return array(
-			'success'      => $success,
-			'failed'       => $failed,
-			'last_post_id' => $new_last_id,
-			'done'         => $done,
 		);
 	}
 
@@ -356,23 +297,4 @@ class AIPS_Internal_Links_Service {
 		);
 	}
 
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Build the text content to embed for a post (title + excerpt + content).
-	 *
-	 * @param WP_Post $post Post object.
-	 * @return string Plain-text representation.
-	 */
-	private function get_post_text($post) {
-		$parts = array(
-			$post->post_title,
-			$post->post_excerpt,
-			wp_strip_all_tags($post->post_content),
-		);
-
-		return trim(implode(' ', array_filter($parts)));
-	}
 }

@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.9.1
+ * Version: 2.9.2
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '2.9.1');
+    define('AIPS_VERSION', '2.9.2');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -414,6 +414,14 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register AIPS_Embeddings_Service
+        $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
+            return new AIPS_Embeddings_Service(
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
     }
 
     /**
@@ -493,6 +501,12 @@ final class AI_Post_Scheduler {
 
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
+
+        // Index generated posts immediately
+        add_action('aips_post_generated', function($post_id) {
+            $embeddings_service = AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class);
+            $embeddings_service->index_post($post_id);
+        }, 10, 1);
 
         // Boot request-level telemetry if the option is enabled.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
@@ -857,6 +871,9 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        // Related Posts Frontend Display
+        add_filter('the_content', array(AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class), 'append_related_posts_to_content'));
     }
 }
 

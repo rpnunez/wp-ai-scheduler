@@ -552,6 +552,30 @@ $is_embedded_templates_view = !empty($embedded);
                             </select>
                         </div>
                         
+                        <!-- Related Posts Options -->
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="enable_related_posts" name="enable_related_posts" value="1">
+                                <?php esc_html_e('Enable Related Posts?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('If enabled, related posts suggestions based on semantic similarity will be displayed at the bottom of generated posts.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        
+                        <div id="aips-related-posts-fields" style="display: none; padding-left: 20px; border-left: 2px solid #ddd; margin-bottom: 15px;">
+                            <div class="aips-form-columns" style="display: flex; gap: 20px;">
+                                <div class="aips-form-row" style="flex: 1;">
+                                    <label for="related_posts_limit"><?php esc_html_e('Number of Related Posts', 'ai-post-scheduler'); ?></label>
+                                    <input type="number" id="related_posts_limit" name="related_posts_limit" min="1" max="20" value="3" class="small-text">
+                                    <p class="description"><?php esc_html_e('Max number of related posts to display.', 'ai-post-scheduler'); ?></p>
+                                </div>
+                                <div class="aips-form-row" style="flex: 1;">
+                                    <label for="related_posts_threshold"><?php esc_html_e('Similarity Threshold', 'ai-post-scheduler'); ?></label>
+                                    <input type="number" id="related_posts_threshold" name="related_posts_threshold" min="0" max="1" step="0.05" value="0.70" class="small-text">
+                                    <p class="description"><?php esc_html_e('Min similarity score (0.0 to 1.0) required to include a post.', 'ai-post-scheduler'); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="aips-form-row">
                             <label class="aips-checkbox-label">
                                 <input type="checkbox" id="is_active" name="is_active" value="1" checked>

@@ -122,6 +122,9 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'enable_related_posts' => isset($_POST['enable_related_posts']) ? 1 : 0,
+            'related_posts_limit' => isset($_POST['related_posts_limit']) ? absint($_POST['related_posts_limit']) : 3,
+            'related_posts_threshold' => isset($_POST['related_posts_threshold']) ? (float) $_POST['related_posts_threshold'] : 0.70,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -257,6 +260,9 @@ class AIPS_Templates_Controller {
             'post_author' => $template->post_author,
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'enable_related_posts' => isset($template->enable_related_posts) ? $template->enable_related_posts : 0,
+            'related_posts_limit' => isset($template->related_posts_limit) ? $template->related_posts_limit : 3,
+            'related_posts_threshold' => isset($template->related_posts_threshold) ? $template->related_posts_threshold : 0.70,
             'is_active' => $template->is_active,
         );
 
@@ -309,6 +315,9 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'enable_related_posts' => isset($_POST['enable_related_posts']) ? 1 : 0,
+            'related_posts_limit' => isset($_POST['related_posts_limit']) ? absint($_POST['related_posts_limit']) : 3,
+            'related_posts_threshold' => isset($_POST['related_posts_threshold']) ? (float) $_POST['related_posts_threshold'] : 0.70,
         );
 
         if (empty(trim($data['prompt_template']))) {

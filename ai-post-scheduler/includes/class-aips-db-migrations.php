@@ -154,6 +154,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_9_1();
 		}
 
+		if ( version_compare( $from_version, '2.9.2', '<' ) ) {
+			$this->migrate_to_2_9_2();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -812,5 +816,42 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 2.9.2.
+	 *
+	 * Adds the new related posts configuration columns to the templates table:
+	 *   - enable_related_posts   tinyint(1) DEFAULT 0
+	 *   - related_posts_limit     int DEFAULT 3
+	 *   - related_posts_threshold float DEFAULT 0.70
+	 *
+	 * Each addition is guarded with a SHOW COLUMNS check.
+	 */
+	private function migrate_to_2_9_2() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_templates';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$columns = array(
+			'enable_related_posts'    => 'ADD COLUMN enable_related_posts tinyint(1) DEFAULT 0 AFTER campaign_id',
+			'related_posts_limit'     => 'ADD COLUMN related_posts_limit int DEFAULT 3 AFTER enable_related_posts',
+			'related_posts_threshold' => 'ADD COLUMN related_posts_threshold float DEFAULT 0.70 AFTER related_posts_limit',
+		);
+
+		foreach ( $columns as $col_name => $add_clause ) {
+			$exists = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table}` WHERE Field = %s",
+				$col_name
+			) );
+
+			if ( ! $exists ) {
+				$wpdb->query( "ALTER TABLE `{$table}` {$add_clause}" );
+			}
+		}
 	}
 }
