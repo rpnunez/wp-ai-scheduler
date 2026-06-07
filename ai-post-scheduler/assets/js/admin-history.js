@@ -602,6 +602,12 @@
 			// Clear history (failed / all)
 			$(document).on('click', '.aips-clear-history', this.clearHistory.bind(this));
 
+			// Overflow dropdown toggle
+			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
+			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
+			$(document).on('click', this.onDocumentClick.bind(this));
+			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
+
 			/* --- Reload & Pagination Events --- */
 			// Reload button
 			$(document).on('click', '#aips-reload-history-btn', this.onReloadClick.bind(this));
@@ -1567,6 +1573,78 @@
 			$('body').append(form);
 			form.submit();
 			form.remove();
+		},
+
+		/**
+		 * Toggle a compact row overflow menu.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onRowActionOverflowToggle: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $toggle = $(e.currentTarget);
+			var menuId = $toggle.attr('aria-controls');
+			var $menu = menuId ? $('#' + menuId) : $();
+
+			if (!$menu.length) {
+				return;
+			}
+
+			var isExpanded = $toggle.attr('aria-expanded') === 'true';
+			this.closeAllRowActionMenus();
+
+			if (!isExpanded) {
+				$toggle.attr('aria-expanded', 'true');
+				$menu.prop('hidden', false);
+			}
+		},
+
+		/**
+		 * Close overflow menus after a menu action is selected.
+		 *
+		 * @return {void}
+		 */
+		onRowActionItemClick: function () {
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close menus when clicking outside of row action controls.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onDocumentClick: function (e) {
+			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+				return;
+			}
+
+			this.closeAllRowActionMenus();
+		},
+
+		/**
+		 * Close overflow menus when pressing Escape.
+		 *
+		 * @param {KeyboardEvent} e Keyboard event.
+		 * @return {void}
+		 */
+		onDocumentKeyDown: function (e) {
+			if (e.key === 'Escape') {
+				this.closeAllRowActionMenus();
+			}
+		},
+
+		/**
+		 * Hide all compact row action overflow menus.
+		 *
+		 * @return {void}
+		 */
+		closeAllRowActionMenus: function () {
+			$('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+			$('.aips-row-action-menu').prop('hidden', true);
 		},
 
 	};

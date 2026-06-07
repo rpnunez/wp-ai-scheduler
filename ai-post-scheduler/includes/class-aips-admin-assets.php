@@ -1161,6 +1161,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the history page.
      */
     private function enqueue_history_assets() {
+            wp_enqueue_style(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/css/admin-post-review.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
