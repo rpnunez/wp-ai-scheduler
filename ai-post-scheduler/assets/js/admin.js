@@ -109,6 +109,7 @@
                 });
 
                 var counts = d.schedule_counts || {};
+                var rateLimiter = d.rate_limiter || { enabled: false, remaining: 0, max_requests: 0 };
                 var cards = [
                     {
                         label: aipsScheduleL10n.activeSchedulesLabel,
@@ -124,6 +125,11 @@
                         label: aipsScheduleL10n.queueDepthLabel,
                         value: queueTotal,
                         tone: 'info'
+                    },
+                    {
+                        label: rateLimiter.enabled ? 'Rate Limit Remaining' : 'Rate Limiting',
+                        value: rateLimiter.enabled ? (rateLimiter.remaining + ' / ' + rateLimiter.max_requests) : 'Disabled',
+                        tone: rateLimiter.enabled && rateLimiter.remaining === 0 ? 'error' : (rateLimiter.enabled ? 'success' : 'neutral')
                     },
                     {
                         label: aipsScheduleL10n.bulkFailedLabel,

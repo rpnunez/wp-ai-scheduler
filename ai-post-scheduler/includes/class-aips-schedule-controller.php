@@ -166,6 +166,19 @@ class AIPS_Schedule_Controller {
             $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
         }
 
+        // Get rate limiter status
+        $rate_limiter_status = array(
+            'enabled' => false,
+            'remaining' => 0,
+            'max_requests' => 0,
+        );
+        if (class_exists('AIPS_Resilience_Service')) {
+            $resilience_service = new AIPS_Resilience_Service();
+            if (method_exists($resilience_service, 'get_rate_limiter_status')) {
+                $rate_limiter_status = $resilience_service->get_rate_limiter_status();
+            }
+        }
+
         $payload = array(
             'next_runs' => $next_runs,
             'timeline' => $timeline,
@@ -180,6 +193,7 @@ class AIPS_Schedule_Controller {
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,
+            'rate_limiter' => $rate_limiter_status,
             'quick_links' => array(
                 'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
                 'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
