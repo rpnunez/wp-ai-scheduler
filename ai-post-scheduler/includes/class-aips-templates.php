@@ -236,7 +236,7 @@ class AIPS_Templates {
         return $date_time ? $date_time->timestamp() : 0;
     }
     
-    public function render_page() {
+    public function render_page($embedded = false) {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));

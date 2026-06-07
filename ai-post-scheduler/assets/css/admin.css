@@ -3741,6 +3741,13 @@
     font-weight: 600;
 }
 
+.aips-tab-nav a.aips-tab-link-special,
+.aips-tab-nav button.aips-tab-link-special {
+    color: #5a4f9b;
+    background: rgba(90, 79, 155, 0.08);
+    border-radius: 6px 6px 0 0;
+}
+
 .aips-tab-content {
     padding: 20px 0;
 }
