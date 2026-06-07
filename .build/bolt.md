@@ -26,3 +26,9 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+## 2026-06-06 - [Generated Posts list optimization]
+**Area:** class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Optimize Generated Posts page load by hoisting options and pre-fetching post caches
+**Learning:** Hoisting repetitive `get_option` calls out of loops and bulk-priming post caches with `_prime_post_caches` significantly reduces redundant database queries and function overhead on list views.
+**Action:** Always identify loops making single item queries and apply hoisting and bulk-fetching where applicable.
