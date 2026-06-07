@@ -1240,6 +1240,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Data_Management_JSON' => __DIR__ . '/../..' . '/tests/Test_AIPS_Data_Management_JSON.php',
         'Test_AIPS_Data_Management_JSON_Repository_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Data_Management_JSON.php',
         'Test_AIPS_Date_Time_DB_Repair' => __DIR__ . '/../..' . '/tests/Test_AIPS_Date_Time_DB_Repair.php',
+        'Test_AIPS_Diagnostics_Embedded_Templates' => __DIR__ . '/../..' . '/tests/Test_AIPS_Diagnostics_Embedded_Templates.php',
         'Test_AIPS_Generate_Now_Timing' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generate_Now_Timing.php',
         'Test_AIPS_Generation_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Context.php',
         'Test_AIPS_Generation_Logger' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Logger.php',

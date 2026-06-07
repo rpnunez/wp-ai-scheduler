@@ -26,7 +26,9 @@ $count_pending  = isset($link_counts['pending'])  ? (int) $link_counts['pending'
 $count_accepted = isset($link_counts['accepted']) ? (int) $link_counts['accepted'] : 0;
 $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected'] : 0;
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
+$is_embedded_internal_links_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_internal_links_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 
@@ -48,6 +50,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					</button>
 				</div>
 			</div>
+<?php endif; ?>
 		</div>
 
 		<!-- Status Cards -->
@@ -197,8 +200,10 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 			</div>
 		</div><!-- /#generate-tab -->
 
+<?php if (!$is_embedded_internal_links_view) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->
+<?php endif; ?>
 
 <!-- Insert Link Modal -->
 <div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">

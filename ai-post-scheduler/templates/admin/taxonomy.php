@@ -17,7 +17,9 @@ $repository = new AIPS_Taxonomy_Repository();
 $status_counts = $repository->get_status_counts();
 $total_items = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] +
 	$status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
+$is_embedded_taxonomy_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_taxonomy_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
@@ -37,6 +39,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Taxonomy Stats -->
 		<div class="aips-author-topics-stats">
@@ -122,8 +125,10 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				?>
 			</span>
 		</div>
+<?php if (!$is_embedded_taxonomy_view) : ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">

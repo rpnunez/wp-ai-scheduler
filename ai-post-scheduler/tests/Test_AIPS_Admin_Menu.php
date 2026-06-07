@@ -56,6 +56,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('ai-post-scheduler', $result);
 
+		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
+		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
+		$this->assertEquals('ai-post-scheduler', $result);
+
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('some-other-file', $result);
@@ -69,11 +73,15 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_fix_author_topics_submenu_file() {
 		$_GET['page'] = 'aips-author-topics';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-authors', $result);
+		$this->assertEquals('aips-automations', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-campaigns', $result);
+		$this->assertEquals('aips-automations', $result);
+
+		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
+		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
+		$this->assertEquals('aips-automations', $result);
 
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
@@ -147,6 +155,47 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_diagnostics_controller_and_template_exist() {
 		$this->assertTrue(class_exists('AIPS_Diagnostics_Controller'));
 		$this->assertFileExists(AIPS_PLUGIN_DIR . 'templates/admin/diagnostics.php');
+	}
+
+	/**
+	 * Automations consolidates core automation pages into one visible submenu.
+	 */
+	public function test_automations_submenu_replaces_visible_automation_tools() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+
+		$this->assertContains(
+			'aips-automations',
+			$submenu_pages,
+			'Automations should be visible in the primary submenu.'
+		);
+
+		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
+			$this->assertNotContains(
+				$hidden_page,
+				$submenu_pages,
+				$hidden_page . ' should be hidden from the primary submenu.'
+			);
+			$this->assertArrayHasKey(
+				'admin_page_' . $hidden_page,
+				$_registered_pages,
+				$hidden_page . ' should remain registered for direct admin.php?page= access.'
+			);
+		}
+	}
+
+	/**
+	 * Automations rendering is delegated to a controller and template.
+	 */
+	public function test_automations_controller_and_template_exist() {
+		$this->assertTrue(class_exists('AIPS_Automations_Controller'));
+		$this->assertFileExists(AIPS_PLUGIN_DIR . 'templates/admin/automations.php');
 	}
 
 }
