@@ -201,6 +201,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             null,
+            __('View Source Data', 'ai-post-scheduler'),
+            __('View Source Data', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-source-data',
+            array($this, 'render_source_data_page')
+        );
+
+        add_submenu_page(
+            null,
             __('Taxonomy', 'ai-post-scheduler'),
             __('Taxonomy', 'ai-post-scheduler'),
             'manage_options',
@@ -636,6 +645,36 @@ class AIPS_Admin_Menu {
         $source_content_count_map = $data_repo->get_counts_by_source_ids( $all_source_ids );
 
         include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+    }
+
+    /**
+     * Render the Source Data page.
+     *
+     * @return void
+     */
+    public function render_source_data_page() {
+        $source_id = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+        $paged     = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
+        $search    = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+        $per_page  = 20;
+
+        $repo      = new AIPS_Sources_Repository();
+        $data_repo = new AIPS_Sources_Data_Repository();
+        $source    = $source_id ? $repo->get_by_id($source_id) : null;
+
+        if (!$source) {
+            $source_data = array(
+                'items'        => array(),
+                'total'        => 0,
+                'pages'        => 0,
+                'current_page' => 1,
+                'per_page'     => $per_page,
+            );
+        } else {
+            $source_data = $data_repo->get_paginated_by_source_id($source_id, $search, $per_page, $paged);
+        }
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/source-data.php';
     }
 
     /**
