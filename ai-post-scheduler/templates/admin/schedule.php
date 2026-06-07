@@ -200,6 +200,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			</div>
 		</div>
 
+		<!-- Tabbed Navigation -->
+		<div class="aips-tabs">
+			<a href="#" class="aips-tab aips-tab-active" data-tab="all"><?php esc_html_e('All Schedules', 'ai-post-scheduler'); ?></a>
+			<a href="#" class="aips-tab" data-tab="content"><?php esc_html_e('Content Pipelines', 'ai-post-scheduler'); ?></a>
+			<a href="#" class="aips-tab" data-tab="author"><?php esc_html_e('Author Workflows', 'ai-post-scheduler'); ?></a>
+		</div>
+
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
 
@@ -276,8 +283,28 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						$last_run_ts = $last_run_dt ? $last_run_dt->timestamp() : 0;
 						$is_active   = $sched['is_active'];
 						$status      = $sched['status'];
+						$circuit_state = isset($sched['circuit_state']) ? $sched['circuit_state'] : 'closed';
+						$has_incomplete_batch = !empty($sched['has_incomplete_batch']);
 
-						// Status badge
+						// Health indicator based on circuit_state
+						switch ($circuit_state) {
+							case 'open':
+								$health_badge_cls = 'aips-badge-error';
+								$health_icon_cls  = 'dashicons-dismiss';
+								$health_label     = __('Circuit Open', 'ai-post-scheduler');
+								break;
+							case 'half_open':
+								$health_badge_cls = 'aips-badge-warning';
+								$health_icon_cls  = 'dashicons-warning';
+								$health_label     = __('Recovering', 'ai-post-scheduler');
+								break;
+							default:
+								$health_badge_cls = 'aips-badge-success';
+								$health_icon_cls  = 'dashicons-yes';
+								$health_label     = __('Healthy', 'ai-post-scheduler');
+						}
+
+						// Status badge (active/paused/failed)
 						switch ($status) {
 							case 'failed':
 								$badge_cls = 'aips-badge-error';
@@ -290,20 +317,31 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								$status_lbl = __('Paused', 'ai-post-scheduler');
 								break;
 							default:
-								$badge_cls = 'aips-badge-success';
+								$badge_cls = 'aips-badge-info';
 								$icon_cls  = 'dashicons-yes-alt';
 								$status_lbl = __('Active', 'ai-post-scheduler');
 						}
 
 						// Composite row ID for JS (e.g. "template_schedule:5")
 						$row_key = esc_attr($sched['type'] . ':' . $sched['id']);
+
+						// Tab category for filtering
+						$tab_category = 'all';
+						if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+							$tab_category = 'content';
+						} elseif ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC || $sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+							$tab_category = 'author';
+						}
 					?>
 					<tr class="aips-unified-row"
 						data-id="<?php echo esc_attr($sched['id']); ?>"
 						data-type="<?php echo esc_attr($sched['type']); ?>"
 						data-row-key="<?php echo $row_key; ?>"
+						data-tab-category="<?php echo esc_attr($tab_category); ?>"
 						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
+						data-circuit-state="<?php echo esc_attr($circuit_state); ?>"
+						data-has-incomplete-batch="<?php echo esc_attr($has_incomplete_batch ? '1' : '0'); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
@@ -386,20 +424,30 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php endif; ?>
 						</td>
 						<td class="column-status">
-							<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;">
-								<span class="aips-badge <?php echo esc_attr($badge_cls); ?>">
-									<span class="dashicons <?php echo esc_attr($icon_cls); ?>"></span>
-									<?php echo esc_html($status_lbl); ?>
-								</span>
-								<label class="aips-toggle">
-									<input type="checkbox"
-										class="aips-unified-toggle-schedule"
-										data-id="<?php echo esc_attr($sched['id']); ?>"
-										data-type="<?php echo esc_attr($sched['type']); ?>"
-										aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
-										<?php checked($is_active, 1); ?>>
-									<span class="aips-toggle-slider"></span>
-								</label>
+							<div class="aips-schedule-status-wrapper" style="display:flex;flex-direction:column;gap:6px;">
+								<!-- Health Indicator -->
+								<div style="display:flex;align-items:center;gap:8px;">
+									<span class="aips-badge <?php echo esc_attr($health_badge_cls); ?>" title="<?php esc_attr_e('Circuit Breaker Status', 'ai-post-scheduler'); ?>">
+										<span class="dashicons <?php echo esc_attr($health_icon_cls); ?>"></span>
+										<?php echo esc_html($health_label); ?>
+									</span>
+								</div>
+								<!-- Status Badge + Toggle -->
+								<div style="display:flex;align-items:center;gap:8px;">
+									<span class="aips-badge <?php echo esc_attr($badge_cls); ?>">
+										<span class="dashicons <?php echo esc_attr($icon_cls); ?>"></span>
+										<?php echo esc_html($status_lbl); ?>
+									</span>
+									<label class="aips-toggle">
+										<input type="checkbox"
+											class="aips-unified-toggle-schedule"
+											data-id="<?php echo esc_attr($sched['id']); ?>"
+											data-type="<?php echo esc_attr($sched['type']); ?>"
+											aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
+											<?php checked($is_active, 1); ?>>
+										<span class="aips-toggle-slider"></span>
+									</label>
+								</div>
 							</div>
 						</td>
 						<td class="column-actions">
@@ -430,6 +478,28 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-controls-play"></span>
 								</button>
+
+								<!-- Reset Circuit (template schedules only, when circuit is open) -->
+								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $circuit_state === 'open'): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-warning aips-reset-circuit"
+									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
+									aria-label="<?php esc_attr_e('Reset circuit breaker', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('Reset Circuit & Retry', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-update"></span>
+								</button>
+								<?php endif; ?>
+
+								<!-- Resume Batch (template schedules only, when batch is incomplete) -->
+								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $has_incomplete_batch): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-info aips-resume-batch"
+									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
+									aria-label="<?php esc_attr_e('Resume incomplete batch', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('Resume Batch', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-controls-forward"></span>
+								</button>
+								<?php endif; ?>
 
 								<!-- Delete (template schedules only) -->
 								<?php if ($sched['can_delete']): ?>

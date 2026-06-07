@@ -47,6 +47,8 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+        add_action('wp_ajax_aips_reset_schedule_circuit', array($this, 'ajax_reset_schedule_circuit'));
+        add_action('wp_ajax_aips_resume_schedule_batch', array($this, 'ajax_resume_schedule_batch'));
     }
 
     public function ajax_get_schedule_status_read_model() {
@@ -1110,5 +1112,118 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * AJAX: Reset circuit breaker for a specific schedule.
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_reset_schedule_circuit() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        // Only template schedules have per-schedule circuit state
+        if ($type !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+            AIPS_Ajax_Response::error(__('Circuit reset is only available for template schedules.', 'ai-post-scheduler'));
+        }
+
+        // Reset the circuit state to 'closed' for this schedule
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'aips_schedule';
+
+        $result = $wpdb->update(
+            $table_name,
+            array('circuit_state' => 'closed'),
+            array('id' => $id),
+            array('%s'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            AIPS_Ajax_Response::success(array(
+                'message' => __('Circuit breaker reset successfully. The schedule will attempt to run on its next trigger.', 'ai-post-scheduler'),
+                'circuit_state' => 'closed',
+            ));
+        } else {
+            AIPS_Ajax_Response::error(__('Failed to reset circuit breaker.', 'ai-post-scheduler'));
+        }
+    }
+
+    /**
+     * AJAX: Resume an incomplete batch for a specific schedule.
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_resume_schedule_batch() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        // Only template schedules have batch progress
+        if ($type !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+            AIPS_Ajax_Response::error(__('Batch resume is only available for template schedules.', 'ai-post-scheduler'));
+        }
+
+        // Get the schedule
+        $schedule = $this->schedule_repository->get_by_id($id);
+        if (!$schedule) {
+            AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
+        }
+
+        // Check if there's an incomplete batch
+        if (empty($schedule->batch_progress)) {
+            AIPS_Ajax_Response::error(__('No incomplete batch found for this schedule.', 'ai-post-scheduler'));
+        }
+
+        $batch_progress = json_decode($schedule->batch_progress, true);
+        if (!is_array($batch_progress) || !isset($batch_progress['completed'], $batch_progress['total'])) {
+            AIPS_Ajax_Response::error(__('Invalid batch progress data.', 'ai-post-scheduler'));
+        }
+
+        if ($batch_progress['completed'] >= $batch_progress['total']) {
+            AIPS_Ajax_Response::error(__('Batch is already complete.', 'ai-post-scheduler'));
+        }
+
+        // Run the schedule now to resume the batch
+        $result = $this->scheduler->run_schedule_now($id);
+
+        if (is_wp_error($result)) {
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+        }
+
+        $post_ids = is_array($result) ? $result : array($result);
+        $msg = sprintf(
+            _n('Batch resumed — %d post generated successfully!', 'Batch resumed — %d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+            count($post_ids)
+        );
+
+        AIPS_Ajax_Response::success(array(
+            'message' => $msg,
+            'post_ids' => $post_ids,
+        ));
     }
 }
