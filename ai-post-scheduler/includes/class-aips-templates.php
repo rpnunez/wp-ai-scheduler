@@ -64,7 +64,7 @@ class AIPS_Templates {
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => $media_ids,
             'post_status' => sanitize_text_field($data['post_status']),
-            'post_category' => absint($data['post_category']),
+            'post_category' => isset($data['post_category']) ? $data['post_category'] : array(),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
@@ -236,7 +236,7 @@ class AIPS_Templates {
         return $date_time ? $date_time->timestamp() : 0;
     }
     
-    public function render_page() {
+    public function render_page($embedded = false) {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));

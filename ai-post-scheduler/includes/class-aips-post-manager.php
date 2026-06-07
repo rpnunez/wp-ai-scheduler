@@ -60,13 +60,13 @@ class AIPS_Post_Manager {
             $post_status = $context->get_post_status();
             $post_type = $context->get_post_type();
             $post_author = $context->get_post_author();
-            $post_category = $context->get_post_category();
+            $raw_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();
         } elseif ($template) {
             $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
             $post_type = !empty($template->post_type) ? sanitize_key($template->post_type) : 'post';
             $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
-            $post_category = !empty($template->post_category) ? $template->post_category : null;
+            $raw_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
         } else {
             return new WP_Error(
@@ -74,6 +74,9 @@ class AIPS_Post_Manager {
                 __('Either a template object or generation context is required for post creation.', 'ai-post-scheduler')
             );
         }
+
+        // Normalise post_category to an array of int IDs regardless of source format.
+        $post_category = $this->normalise_post_categories( $raw_category );
 
         $post_data = array(
             'post_title' => $title,
@@ -85,9 +88,9 @@ class AIPS_Post_Manager {
         );
 
         if (!empty($post_category)) {
-            $post_data['post_category'] = array($post_category);
+            $post_data['post_category'] = $post_category;
         } elseif ($default_cat = AIPS_Config::get_instance()->get_option('aips_default_category')) {
-            $post_data['post_category'] = array($default_cat);
+            $post_data['post_category'] = array((int) $default_cat);
         }
 
         $post_id = wp_insert_post($post_data, true);
@@ -284,6 +287,19 @@ class AIPS_Post_Manager {
      */
     private function is_yoast_active() {
         return defined('WPSEO_VERSION') || class_exists('WPSEO_Meta');
+    }
+
+    /**
+     * Normalise a raw post_category value (from any source) to an array of
+     * positive integer WP term IDs ready for wp_insert_post / wp_set_post_categories.
+     *
+     * Delegates to AIPS_Template_Data::parse_post_categories() as the canonical implementation.
+     *
+     * @param mixed $value Raw category value.
+     * @return array<int>
+     */
+    private function normalise_post_categories( $value ): array {
+        return AIPS_Template_Data::parse_post_categories( $value );
     }
 
     /**

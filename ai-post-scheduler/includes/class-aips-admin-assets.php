@@ -44,6 +44,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
 	private const PAGE_ONBOARDING = 'aips-onboarding';
+	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
+	private const PAGE_AUTOMATIONS = 'aips-automations';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
@@ -51,6 +53,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 
     /**
      * Initialize the class.
@@ -83,7 +86,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -91,7 +94,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
 			$this->enqueue_templates_assets();
 		}
 
@@ -103,7 +106,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_structures_assets();
 		}
 
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -112,6 +115,7 @@ class AIPS_Admin_Assets {
             || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
             || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
             || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+            || $this->is_automations_tab($page, 'campaigns')
         ) {
 			$this->enqueue_campaigns_assets();
 		}
@@ -139,20 +143,20 @@ class AIPS_Admin_Assets {
 			$this->enqueue_onboarding_assets();
 		}
 
-        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy')) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->is_automations_tab($page, 'sources')) {
 			$this->enqueue_sources_assets();
 		}
 
@@ -160,14 +164,48 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
 			$this->enqueue_internal_links_assets();
 		}
 
+        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
+			$this->enqueue_cache_monitor_assets();
+		}
+
+	}
+
+	/**
+	 * Determine whether the Diagnostics page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_diagnostics_tab($page, $tab) {
+		if (self::PAGE_DIAGNOSTICS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
+	}
+
+	/**
+	 * Determine whether the Automations page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_automations_tab($page, $tab) {
+		if (self::PAGE_AUTOMATIONS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Automations_Controller::get_active_tab_key();
 	}
 
     /**
@@ -225,6 +263,21 @@ class AIPS_Admin_Assets {
 
         return sanitize_key(wp_unslash($page));
     }
+
+	/**
+	 * Get the current sanitized tab key from the request.
+	 *
+	 * @return string
+	 */
+	private function get_current_tab_key() {
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_SPECIAL_CHARS);
+
+		if (!is_string($tab) || '' === $tab) {
+			return '';
+		}
+
+		return sanitize_key(wp_unslash($tab));
+	}
 
 	/**
 	 * Check whether the current admin hook includes a page slug.
@@ -380,29 +433,30 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_script() {
         wp_enqueue_script(
-            'aips-history-modal-opener',
-            AIPS_PLUGIN_URL . 'assets/js/admin-history-modal-opener.js',
-            array('jquery', 'aips-utilities-script'),
+            'aips-admin-history',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
+            array('jquery', 'aips-utilities-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalAjax', array(
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('aips_ajax_nonce'),
         ));
 
-        wp_localize_script('aips-history-modal-opener', 'aipsHistoryModalOpenerL10n', array(
-            'historyDetails'  => __('History Details', 'ai-post-scheduler'),
-            'closeModal'      => __('Close modal', 'ai-post-scheduler'),
-            'loading'         => __('Loading…', 'ai-post-scheduler'),
-            'showDetails'     => __('Show details', 'ai-post-scheduler'),
-            'hideDetails'     => __('Hide details', 'ai-post-scheduler'),
-            'copy'            => __('Copy', 'ai-post-scheduler'),
-            'copied'          => __('Copied!', 'ai-post-scheduler'),
-            'invalidHistoryId' => __('Invalid history ID.', 'ai-post-scheduler'),
-            'loadingFailed'   => __('Failed to load history modal.', 'ai-post-scheduler'),
-            'loadingError'    => __('Error loading history modal.', 'ai-post-scheduler'),
+        wp_localize_script('aips-admin-history', 'aipsHistoryModalL10n', array(
+            'historyDetailsTitle' => __('History Details', 'ai-post-scheduler'),
+            'closeModal'          => __('Close modal', 'ai-post-scheduler'),
+            'loading'             => __('Loading…', 'ai-post-scheduler'),
+            'loadingLogs'         => __('Loading logs…', 'ai-post-scheduler'),
+            'showDetails'         => __('Show details', 'ai-post-scheduler'),
+            'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
+            'copyDetails'         => __('Copy', 'ai-post-scheduler'),
+            'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
+            'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
+            'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
+            'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
         ));
 
         static $scaffold_registered = false;
@@ -427,8 +481,14 @@ class AIPS_Admin_Assets {
         <div id="aips-history-modal" class="aips-modal" style="display: none;" aria-hidden="true">
             <div class="aips-modal-content aips-modal-large">
                 <div class="aips-modal-header">
-                    <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-                    <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    <div class="aips-history-modal-header-main">
+                        <h3 id="aips-history-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                        <div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>
+                    </div>
+                    <div class="aips-history-modal-header-side">
+                        <div id="aips-history-modal-status"></div>
+                        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                    </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content"></div>
             </div>
@@ -441,6 +501,13 @@ class AIPS_Admin_Assets {
      * @param string $hook The current admin page hook.
      */
     private function enqueue_authors_assets($hook) {
+		  $current_page = $this->get_current_page_slug();
+		  $current_tab  = $this->get_current_tab_key();
+		  $is_author_topics_context = self::PAGE_AUTHOR_TOPICS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && AIPS_Automations_Controller::TAB_AUTHOR_TOPICS === $current_tab);
+		  $is_authors_listing_context = self::PAGE_AUTHORS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
+
           wp_enqueue_style(
             'aips-authors-style',
             AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -464,7 +531,7 @@ class AIPS_Admin_Assets {
           );
 
           // Localize script with translations and nonce
-          $page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
+          $page_author_id = $is_author_topics_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
 
           wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
@@ -651,7 +718,7 @@ class AIPS_Admin_Assets {
 
           // Pass page-context data (not i18n) in a separate object so it stays
           // semantically distinct from the translation strings above.
-          $deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
+          $deep_link_author_id = $is_authors_listing_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
           wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,
@@ -1185,6 +1252,7 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
             ));
     }
 
@@ -1415,6 +1483,13 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+			wp_localize_script('aips-admin-settings', 'aipsSettingsL10n', array(
+				'saving'        => __('Saving…', 'ai-post-scheduler'),
+				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
+				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
+				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+			));
     }
 
     /**
@@ -1650,6 +1725,44 @@ class AIPS_Admin_Assets {
                 'pendingCountSingle'       => __('%d pending insertion', 'ai-post-scheduler'),
                 'pendingCountPlural'       => __('%d pending insertions', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the Cache Monitor page.
+     *
+     * @return void
+     */
+    private function enqueue_cache_monitor_assets() {
+        wp_enqueue_script(
+            'aips-cache-monitor',
+            AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+        wp_localize_script('aips-cache-monitor', 'aipsCacheMonitor', array(
+            'nonce'       => wp_create_nonce('aips_cache_monitor'),
+            'actionNonce' => wp_create_nonce('aips_cache_monitor_action'),
+            'i18n'        => array(
+                'loading'          => __('Loading…', 'ai-post-scheduler'),
+                'never'            => __('Never', 'ai-post-scheduler'),
+                'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
+                'noOps'            => __('No operations found.', 'ai-post-scheduler'),
+                'noEvents'         => __('No events found.', 'ai-post-scheduler'),
+                'noneSelected'     => __('No entries selected.', 'ai-post-scheduler'),
+                'requestFailed'    => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                'inspect'          => __('Inspect', 'ai-post-scheduler'),
+                'delete'           => __('Delete', 'ai-post-scheduler'),
+                'preview'          => __('Preview', 'ai-post-scheduler'),
+                'prev'             => __('Prev', 'ai-post-scheduler'),
+                'next'             => __('Next', 'ai-post-scheduler'),
+                'confirmFlushAll'  => __('This will flush ALL plugin-owned cache. Are you absolutely sure?', 'ai-post-scheduler'),
+                'flushAllTitle'    => __('Flush All Plugin Cache', 'ai-post-scheduler'),
+                'confirmBtn'       => __('Confirm Flush', 'ai-post-scheduler'),
+                'flushGroupTitle'  => __('Flush Cache Group', 'ai-post-scheduler'),
+                'flushGroupBtn'    => __('Flush Group', 'ai-post-scheduler'),
+            ),
+        ));
     }
 
 }

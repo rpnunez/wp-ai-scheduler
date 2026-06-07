@@ -516,9 +516,16 @@
          * @param {Event} e - Click event from an `.aips-tab-link` element.
          */
         switchAipsTab: function(e) {
-            e.preventDefault();
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
+
+            // Links without data-tab (for example Diagnostics top-level tabs)
+            // are regular navigation links and should not be intercepted.
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
             var $tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
 
             if (!$tabNav.length) {
@@ -635,6 +642,26 @@
                 success: function(response) {
                     if (response.success) {
                         var t = response.data.template;
+                        var selectedCategories = [];
+                        if (Array.isArray(t.post_category)) {
+                            selectedCategories = t.post_category.map(String);
+                        } else if (typeof t.post_category === 'string' && t.post_category.length) {
+                            try {
+                                var parsedPostCategory = JSON.parse(t.post_category);
+                                if (Array.isArray(parsedPostCategory)) {
+                                    selectedCategories = parsedPostCategory.map(String);
+                                } else if (Number.isInteger(parsedPostCategory) && parsedPostCategory > 0) {
+                                    selectedCategories = [String(parsedPostCategory)];
+                                }
+                            } catch (err) {
+                                var parsedCategory = parseInt(t.post_category, 10);
+                                if (!isNaN(parsedCategory) && parsedCategory > 0) {
+                                    selectedCategories = [String(parsedCategory)];
+                                }
+                            }
+                        } else if (Number.isInteger(t.post_category) && t.post_category > 0) {
+                            selectedCategories = [String(t.post_category)];
+                        }
                         $('#template_id').val(t.id);
                         $('#template_name').val(t.name);
                         $('#template_description').val(t.description || '');
@@ -647,7 +674,7 @@
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
                         $('#post_status').val(t.post_status);
-                        $('#post_category').val(t.post_category);
+                        $('#post_category').val(selectedCategories);
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);

@@ -301,10 +301,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $where_clauses = array("1=1");
         $where_args = array();
 
-        // Exclude schedule lifecycle containers: new ones tagged with creation_method = 'schedule_lifecycle',
-        // and legacy orphaned containers that have no template, topic, post, author, or creation_method set.
-        // Use COALESCE to handle NULL creation_method safely (NULL = 'schedule_lifecycle' evaluates to NULL, not FALSE).
-        $where_clauses[] = "COALESCE(h.creation_method, '') <> 'schedule_lifecycle'";
+        $auxiliary_methods = $this->get_auxiliary_creation_methods();
+        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+        $where_clauses[] = "COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})";
+        $where_args = array_merge($where_args, $auxiliary_methods);
+        // Keep excluding legacy orphaned containers that have no contextual linkage.
         $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
         
         if (!empty($args['status'])) {
@@ -749,17 +750,22 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return $cached_stats;
         }
 
-        $results = $this->wpdb->get_row("
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
-            FROM {$this->table_name}
-            WHERE COALESCE(creation_method, '') <> 'schedule_lifecycle'
-                AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-        ");
+        $auxiliary_methods = $this->get_auxiliary_creation_methods();
+        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+        $results = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                    SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                    SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
+                 FROM {$this->table_name}
+                 WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
+                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
+                ...$auxiliary_methods
+            )
+        );
 
         $stats = array(
             'total' => isset($results->total) ? (int) $results->total : 0,
@@ -786,7 +792,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * Days with no records are omitted; callers should fill gaps as needed.
      *
      * Applies the same row-exclusion filters as get_stats() so that
-     * schedule-lifecycle rows and empty-shell records are not counted.
+     * auxiliary lifecycle rows and empty-shell records are not counted.
      *
      * @param int $days Number of calendar days to look back (inclusive today). Default 14.
      * @return array<string, array{completed: int, failed: int, total: int}>
@@ -796,6 +802,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
         $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
+        $auxiliary_methods = $this->get_auxiliary_creation_methods();
+        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+        $query_args = array_merge(array($start), $auxiliary_methods);
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
@@ -805,11 +814,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     COUNT(*) AS total
                  FROM {$this->table_name}
                  WHERE created_at >= %d
-                   AND COALESCE(creation_method, '') <> 'schedule_lifecycle'
+                   AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
                    AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
                  GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
-                $start
+                ...$query_args
             )
         );
 
@@ -836,6 +845,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status = 'completed'",
             $template_id
         ));
+    }
+
+    /**
+     * Return creation_method values used for internal lifecycle containers.
+     *
+     * @return string[]
+     */
+    private function get_auxiliary_creation_methods() {
+        return array(
+            'schedule_lifecycle',
+            'template_lifecycle',
+            'campaign_lifecycle',
+        );
     }
 
     /**

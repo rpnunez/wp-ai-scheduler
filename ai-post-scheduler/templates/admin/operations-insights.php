@@ -3,9 +3,11 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
+<?php if (empty($embedded)) : ?>
 <div class="wrap aips-admin-wrap">
 	<h1><?php esc_html_e('Operations Insights', 'ai-post-scheduler'); ?></h1>
 	<p><?php echo esc_html(sprintf(__('Last %d days of generation operations data.', 'ai-post-scheduler'), $days)); ?></p>
+<?php endif; ?>
 
 	<?php if (!$telemetry_enabled) : ?>
 		<div class="notice notice-warning"><p><?php esc_html_e('Telemetry is disabled. Retry insights are limited to history log data only.', 'ai-post-scheduler'); ?></p></div>
@@ -53,4 +55,6 @@ if (!defined('ABSPATH')) {
 		<button class="button" name="format" value="csv"><?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?></button>
 		<button class="button button-primary" name="format" value="json"><?php esc_html_e('Export JSON', 'ai-post-scheduler'); ?></button>
 	</form>
+<?php if (empty($embedded)) : ?>
 </div>
+<?php endif; ?>

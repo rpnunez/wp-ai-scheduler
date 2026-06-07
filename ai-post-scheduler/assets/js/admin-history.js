@@ -1,9 +1,12 @@
 /**
  * History Page JavaScript
  *
- * Manages the History admin page: search/filter, pagination, row selection,
- * bulk delete, retry, and the logs modal that renders all aips_history_log
- * entries for a selected history container.
+ * Manages the History admin page with two main modules:
+ * - AIPS.HistoryModalShared: Shared utilities for modal header management, log filtering,
+ *   JSON viewer toggling, detail toggling, copy-to-clipboard, and standalone modal operations.
+ * - AIPS.History: Main History page module handling search/filter, pagination, row selection,
+ *   bulk/individual delete, retry, and the logs modal that renders all aips_history_log
+ *   entries for a selected history container.
  *
  * @package AI_Post_Scheduler
  * @since 2.1.0
@@ -15,38 +18,534 @@
 	window.AIPS = window.AIPS || {};
 
 	/**
-	 * AIPS.History — self-contained module for the History admin page.
+	 * Shared utilities for managing history modals.
 	 *
-	 * Follows the same init() / bindEvents() naming convention used throughout
-	 * this plugin (e.g. authors.js / GenerationQueueModule) so the page can
-	 * be bootstrapped with a single AIPS.History.init() call, without
-	 * polluting the global AIPS namespace with page-specific handlers.
+	 * Provides methods for updating and resetting modal headers with title, actions, and status information.
+	 *
+	 * @namespace AIPS.HistoryModalShared
+	 * @type {Object}
+	 */
+	AIPS.HistoryModalShared = {
+		/**
+		 * Update modal header with container-specific title, actions, and status badge.
+		 *
+		 * @param {jQuery} $modal     Modal element.
+		 * @param {Object} container  History container object with header_title, header_actions, status, status_class.
+		 * @param {Object} options    Configuration with titleSelector, actionsSelector, statusSelector, defaultTitle.
+		 */
+		updateModalHeader: function ($modal, container, options) {
+			var settings = $.extend({
+				titleSelector: '',
+				actionsSelector: '',
+				statusSelector: '',
+				defaultTitle: 'History Details'
+			}, options || {});
+			var title = container && container.header_title
+				? container.header_title
+				: settings.defaultTitle;
+			var actions = container && Array.isArray(container.header_actions)
+				? container.header_actions
+				: [];
+			var $title = settings.titleSelector ? $modal.find(settings.titleSelector) : $();
+			var $actions = settings.actionsSelector ? $modal.find(settings.actionsSelector) : $();
+			var $status = settings.statusSelector ? $modal.find(settings.statusSelector) : $();
+			var statusHtml = '';
+			var actionsHtml = '';
+
+			$title.text(title);
+
+			actions.forEach(function (action) {
+				if (!action || !action.url || !action.label) {
+					return;
+				}
+
+				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" target="_blank" rel="noopener noreferrer">'
+					+ $('<div>').text(String(action.label)).html()
+					+ '</a>';
+			});
+
+			if (container && container.status && container.status_class) {
+				statusHtml = '<span class="aips-badge '
+					+ $('<div>').text(String(container.status_class)).html()
+					+ '">'
+					+ $('<div>').text(String(container.status)).html()
+					+ '</span>';
+			}
+
+			$actions.html(actionsHtml);
+			$status.html(statusHtml);
+		},
+
+		/**
+		 * Reset modal header to default empty state.
+		 *
+		 * @param {jQuery} $modal  Modal element.
+		 * @param {Object} options Configuration with titleSelector, actionsSelector, statusSelector, defaultTitle.
+		 */
+		resetModalHeader: function ($modal, options) {
+			var settings = $.extend({
+				titleSelector: '',
+				actionsSelector: '',
+				statusSelector: '',
+				defaultTitle: 'History Details'
+			}, options || {});
+
+			if (settings.titleSelector) {
+				$modal.find(settings.titleSelector).text(settings.defaultTitle);
+			}
+			if (settings.actionsSelector) {
+				$modal.find(settings.actionsSelector).empty();
+			}
+			if (settings.statusSelector) {
+				$modal.find(settings.statusSelector).empty();
+			}
+		},
+
+		/**
+		 * Extract log type IDs from a log row element.
+		 *
+		 * @param {jQuery} $row Log row element with data-type-ids or data-type-id attribute.
+		 * @return {Array} Array of trimmed type ID strings.
+		 */
+		getRowTypes: function ($row) {
+			return String($row.attr('data-type-ids') || $row.data('type-id') || '')
+				.split(',')
+				.map(function (value) {
+					return $.trim(String(value));
+				})
+				.filter(Boolean);
+		},
+
+		/**
+		 * Check if a row matches a specific type filter.
+		 *
+		 * @param {Array}  rowTypes Array of type IDs from the row.
+		 * @param {string} typeId   Type ID to match.
+		 * @return {boolean} True if row matches the type, false otherwise.
+		 */
+		rowMatchesType: function (rowTypes, typeId) {
+			var normalizedTypeId = String(typeId || '');
+
+			if (!normalizedTypeId || normalizedTypeId === 'all') {
+				return true;
+			}
+
+			if (normalizedTypeId === 'ai_request_response') {
+				return rowTypes.indexOf('5') !== -1 || rowTypes.indexOf('6') !== -1;
+			}
+
+			return rowTypes.indexOf(normalizedTypeId) !== -1;
+		},
+
+		/**
+		 * Apply type filter to log rows in the modal.
+		 *
+		 * @param {jQuery} $modal  Modal element containing log rows.
+		 * @param {jQuery} $button Filter button that was clicked.
+		 */
+		applyTypeFilter: function ($modal, $button) {
+			var typeId = $button.data('type-id');
+			var self = this;
+
+			$modal.find('.aips-log-type-filter-btn')
+				.removeClass('aips-btn-primary')
+				.addClass('aips-btn-ghost');
+			$button.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
+
+			$modal.find('.aips-history-logs-table tbody tr').each(function () {
+				var $row = $(this);
+				$row.toggle(self.rowMatchesType(self.getRowTypes($row), typeId));
+			});
+		},
+
+		/**
+		 * Toggle collapsible log detail section.
+		 *
+		 * @param {jQuery} $scope  Scope element containing the detail section.
+		 * @param {jQuery} $button Toggle button element.
+		 * @param {Object} labels  Label strings for expand/collapse states.
+		 */
+		toggleLogDetail: function ($scope, $button, labels) {
+			var targetSelector = $button.data('target');
+			var $target = $scope.find(targetSelector);
+			var showLabel = labels && labels.show ? labels.show : 'Show details';
+			var hideLabel = labels && labels.hide ? labels.hide : 'Hide details';
+
+			if (!$target.length) {
+				return;
+			}
+
+			$target.slideToggle(150, function () {
+				$button.text($target.is(':visible') ? hideLabel : showLabel);
+			});
+		},
+
+		/**
+		 * Toggle JSON viewer mode between raw and formatted display.
+		 *
+		 * @param {jQuery} $toggle Checkbox toggle element.
+		 */
+		toggleJsonViewerMode: function ($toggle) {
+			var $renderer = $toggle.closest('.aips-history-log-renderer');
+
+			if (!$renderer.length) {
+				return;
+			}
+
+			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+		},
+
+		/**
+		 * Fallback copy method using textarea for older browsers.
+		 *
+		 * @param {jQuery} $target Element containing text to copy.
+		 * @return {boolean} True if copy succeeded, false otherwise.
+		 */
+		copyDetailFallback: function ($target) {
+			var $pre = $target.find('pre').first();
+			var range;
+			var selection;
+
+			if (!$pre.length) {
+				return false;
+			}
+
+			try {
+				$target.show();
+				range = document.createRange();
+				range.selectNodeContents($pre[0]);
+				selection = window.getSelection();
+
+				if (!selection) {
+					return false;
+				}
+
+				selection.removeAllRanges();
+				selection.addRange(range);
+
+				if (!document.execCommand('copy')) {
+					selection.removeAllRanges();
+					return false;
+				}
+
+				selection.removeAllRanges();
+				return true;
+			} catch (error) {
+				if (selection) {
+					selection.removeAllRanges();
+				}
+
+				return false;
+			}
+		},
+
+		/**
+		 * Show copy success feedback to user.
+		 *
+		 * @param {jQuery} $button Button element to update.
+		 * @param {Object} labels  Label strings for copy/copied states.
+		 * @param {Object} options Configuration with disable and duration properties.
+		 */
+		showCopySuccess: function ($button, labels, options) {
+			var settings = $.extend({
+				disable: false,
+				duration: 1500
+			}, options || {});
+			var copyLabel = labels && labels.copy ? labels.copy : 'Copy';
+			var copiedLabel = labels && labels.copied ? labels.copied : 'Copied!';
+
+			$button.text(copiedLabel);
+			if (settings.disable) {
+				$button.prop('disabled', true);
+			}
+
+			setTimeout(function () {
+				$button.text(copyLabel);
+				if (settings.disable) {
+					$button.prop('disabled', false);
+				}
+			}, settings.duration);
+		},
+
+		/**
+		 * Copy log detail text to clipboard.
+		 *
+		 * Uses modern Clipboard API with fallback to execCommand for older browsers.
+		 *
+		 * @param {jQuery} $scope  Scope element containing the target.
+		 * @param {jQuery} $button Copy button element.
+		 * @param {Object} labels  Label strings for copy/copied states.
+		 * @param {Object} options Configuration for success feedback.
+		 */
+		copyLogDetail: function ($scope, $button, labels, options) {
+			var targetSelector = $button.data('copy-target');
+			var $target = $scope.find(targetSelector);
+			var text = $target.find('pre').text();
+			var self = this;
+
+			if (!text) {
+				return;
+			}
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text)
+					.then(function () {
+						self.showCopySuccess($button, labels, options);
+					})
+					.catch(function () {
+						if (self.copyDetailFallback($target)) {
+							self.showCopySuccess($button, labels, options);
+						}
+					});
+				return;
+			}
+
+			if (self.copyDetailFallback($target)) {
+				self.showCopySuccess($button, labels, options);
+			}
+		},
+
+		/**
+		 * Initialize standalone history modal opener for use outside History page.
+		 */
+		initStandaloneOpener: function () {
+			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+		},
+
+		/**
+		 * Get localized strings for history modal.
+		 *
+		 * @return {Object} Localization object.
+		 */
+		getModalL10n: function () {
+			return window.aipsHistoryModalL10n || window.aipsHistoryL10n || {};
+		},
+
+		/**
+		 * Handle click on standalone history modal opener button.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onStandaloneOpenClick: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			this.openStandaloneHistoryModal($(e.currentTarget));
+		},
+
+		getStandaloneAjaxConfig: function () {
+			if (window.aipsAjax && window.aipsAjax.ajaxUrl && window.aipsAjax.nonce) {
+				return window.aipsAjax;
+			}
+
+			if (window.aipsHistoryModalAjax && window.aipsHistoryModalAjax.ajaxUrl && window.aipsHistoryModalAjax.nonce) {
+				return window.aipsHistoryModalAjax;
+			}
+
+			return null;
+		},
+
+		openStandaloneHistoryModal: function ($button) {
+			var historyId = parseInt($button.data('history-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+			var $modal = $('#aips-history-modal');
+			var l10n = this.getModalL10n();
+			var self = this;
+
+			if (!historyId) {
+				AIPS.Utilities.showToast(l10n.invalidHistoryId || 'Invalid history ID.', 'error');
+				return;
+			}
+
+			if (!ajaxConfig) {
+				AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+				return;
+			}
+
+			if (!$modal.length) {
+				return;
+			}
+
+			self.showStandaloneModalLoading($modal);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_history_modal_html',
+					nonce: ajaxConfig.nonce,
+					history_id: historyId
+				},
+				success: function (response) {
+					if (!response || !response.success || !response.data) {
+						var message = response && response.data && response.data.message
+							? response.data.message
+							: (l10n.loadingFailed || 'Failed to load history modal.');
+						AIPS.Utilities.showToast(message, 'error');
+						$modal.fadeOut(200);
+						return;
+					}
+
+					self.updateModalHeader($modal, response.data.container || {}, {
+						titleSelector: '#aips-history-modal-title',
+						actionsSelector: '#aips-history-modal-actions',
+						statusSelector: '#aips-history-modal-status',
+						defaultTitle: l10n.historyDetailsTitle || 'History Details'
+					});
+					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
+					self.bindStandaloneModalEvents($modal);
+					$modal.fadeIn(200);
+				},
+				error: function () {
+					AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+					$modal.fadeOut(200);
+				}
+			});
+		},
+
+		/**
+		 * Show loading indicator in standalone modal.
+		 *
+		 * @param {jQuery} $modal Modal element.
+		 */
+		showStandaloneModalLoading: function ($modal) {
+			var l10n = this.getModalL10n();
+			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> '
+				+ (l10n.loading || 'Loading…')
+				+ '</div>';
+
+			this.resetModalHeader($modal, {
+				titleSelector: '#aips-history-modal-title',
+				actionsSelector: '#aips-history-modal-actions',
+				statusSelector: '#aips-history-modal-status',
+				defaultTitle: l10n.historyDetailsTitle || 'History Details'
+			});
+			$modal.find('#aips-history-modal-content').html(loadingHtml);
+			$modal.fadeIn(200);
+		},
+
+		/**
+		 * Bind event listeners for standalone modal interactions.
+		 *
+		 * @param {jQuery} $modal Modal element.
+		 */
+		bindStandaloneModalEvents: function ($modal) {
+			var self = this;
+			var l10n = this.getModalL10n();
+
+			$modal.find('.aips-modal-close').off('click').on('click', function (e) {
+				e.preventDefault();
+				$modal.fadeOut(200);
+			});
+
+			$modal.off('click.historyModal').on('click.historyModal', function (e) {
+				if ($(e.target).is('#aips-history-modal')) {
+					$modal.fadeOut(200);
+				}
+			});
+
+			$modal.find('.aips-log-type-filter-btn').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.applyTypeFilter($modal, $(this));
+			});
+
+			$modal.find('.aips-log-toggle').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.toggleLogDetail($modal, $(this), {
+					show: l10n.showDetails || 'Show details',
+					hide: l10n.hideDetails || 'Hide details'
+				});
+			});
+
+			$modal.find('.aips-json-viewer-toggle').off('change').on('change', function () {
+				self.toggleJsonViewerMode($(this));
+			});
+
+			$modal.find('[data-copy-target]').off('click').on('click', function (e) {
+				e.preventDefault();
+				self.copyLogDetail($modal, $(this), {
+					copy: l10n.copyDetails || 'Copy',
+					copied: l10n.copiedDetails || 'Copied!'
+				}, {
+					disable: true,
+					duration: 1500
+				});
+			});
+
+			$(document).off('keydown.historyModal').on('keydown.historyModal', function (e) {
+				if (e.keyCode === 27 && $modal.is(':visible')) {
+					$modal.fadeOut(200);
+				}
+			});
+		}
+	};
+
+	/**
+	 * Main History page module for managing search, filter, pagination, and bulk operations.
+	 *
+	 * Handles search/filter, pagination, row selection, bulk/individual delete, retry, and the logs modal
+	 * that renders all aips_history_log entries for a selected history container.
+	 *
+	 * @namespace AIPS.History
+	 * @type {Object}
 	 */
 	AIPS.History = {
 
-		/* ------------------------------------------------------------------ */
-		/* State                                                                */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * State Properties
+		 * ======================================================================== */
 
-		/** @type {string} Current status filter value */
+		/** @type {string} Current status filter value (e.g., 'failed', 'success', 'pending') */
 		statusFilter: '',
 
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
+
+		/** @type {number} Minimum allowed heartbeat interval in seconds */
+		MIN_HEARTBEAT_INTERVAL: 5,
+
+		/** @type {string} Domain filter value (template, author-topic, author-post, etc.) */
 		domainFilter: '',
+
+		/** @type {string} Actor filter value (cron, manual, etc.) */
 		actorFilter: '',
+
+		/** @type {string} Correlation ID filter for request tracing */
 		correlationId: '',
+
+		/** @type {string} Date range filter start (YYYY-MM-DD format) */
 		dateFrom: '',
+
+		/** @type {string} Date range filter end (YYYY-MM-DD format) */
 		dateTo: '',
 
-		/* ------------------------------------------------------------------ */
-		/* Init / events                                                        */
-		/* ------------------------------------------------------------------ */
+		/** @type {boolean} Whether auto-refresh via heartbeat is currently enabled */
+		autoRefreshEnabled: false,
+
+		/** @type {number} Current heartbeat polling interval in seconds */
+		heartbeatIntervalSeconds: 5,
+
+		/** @type {number|null} Default WordPress heartbeat interval to restore on disable */
+		defaultHeartbeatInterval: null,
+
+		/** @type {boolean} Flag to prevent concurrent auto-refresh AJAX requests */
+		isAutoRefreshing: false,
+
+		/* ========================================================================
+		 * Initialization & Event Binding
+		 * ======================================================================== */
 
 		/**
-		 * Initialise the History module.
+		 * Initialize the History module.
+		 *
+		 * Reads initial filter/search state from DOM, binds event listeners,
+		 * initializes heartbeat auto-refresh controls, and opens a specific history
+		 * container if query params are present.
 		 */
 		init: function () {
+			if (!this.isHistoryPage()) {
+				return;
+			}
+
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
@@ -56,79 +555,106 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.initHeartbeatAutoRefresh();
 			this.maybeOpenFromQuery();
 		},
 
 		/**
 		 * Register all event listeners for the History admin page.
+		 *
+		 * Uses delegated event handlers for dynamic content and namespaced
+		 * events for heartbeat and page exit cleanup.
 		 */
 		bindEvents: function () {
-			// Open logs modal.
+			/* --- Modal Events --- */
+			// Open logs modal
 			$(document).on('click', '.aips-view-history-logs', this.openLogsModal.bind(this));
 
-			// Collapsible log-detail sections inside the modal.
+			// Collapsible log-detail sections inside the modal
 			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
 
-			// Copy log detail to clipboard.
+			// Copy log detail to clipboard
 			$(document).on('click', '.aips-log-copy', this.copyLogDetail.bind(this));
 
-			// Log type filter tabs inside the modal.
+			// Log type filter tabs inside the modal
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
+			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
 
-			// Close modal via close button or backdrop click.
+			// Close modal via close button or backdrop click
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
 			$(document).on('click', '#aips-history-logs-modal', this.closeLogsModalOnOverlay.bind(this));
 
-			// Select-all and individual row checkboxes.
+			/* --- Bulk Selection Events --- */
+			// Select-all and individual row checkboxes
 			$(document).on('change', '#aips-cb-select-all', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 
-			// Bulk delete.
+			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
 
-			// Individual row delete.
+			/* --- Row Action Events --- */
+			// Individual row delete
 			$(document).on('click', '.aips-delete-history', this.deleteSingleItem.bind(this));
 
-			// Retry failed generation.
+			// Retry failed generation
 			$(document).on('click', '.aips-retry-generation', this.retryGeneration.bind(this));
 
-			// Clear history (failed / all).
+			// Clear history (failed / all)
 			$(document).on('click', '.aips-clear-history', this.clearHistory.bind(this));
 
-			// Reload button.
+			/* --- Reload & Pagination Events --- */
+			// Reload button
 			$(document).on('click', '#aips-reload-history-btn', this.onReloadClick.bind(this));
 
-			// Pagination links.
+			// Pagination links
 			$(document).on(
 				'click',
 				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next',
 				this.loadPage.bind(this)
 			);
 
-			// Filter button and status dropdown.
+			/* --- Filter & Search Events --- */
+			// Filter button and status dropdown
 			$(document).on('click', '#aips-filter-btn', this.applyFilter.bind(this));
 			$(document).on('change', '#aips-filter-status', this.applyFilter.bind(this));
 
-			// Search: live client-side row filter + server reload on Enter.
+			// Search: live client-side row filter + server reload on Enter
 			$(document).on('input', '#aips-history-search-input', this.onSearchInput.bind(this));
 			$(document).on('keydown', '#aips-history-search-input', this.onSearchKeydown.bind(this));
 			$(document).on('click', '#aips-history-search-clear', this.clearSearch.bind(this));
 			$(document).on('click', '.aips-clear-history-search-btn', this.clearSearch.bind(this));
 
-			// Export CSV.
+			/* --- Export Event --- */
+			// Export CSV
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
+
+			/* --- Auto Refresh / Heartbeat Events --- */
+			// Auto refresh controls
+			$(document).on('change', '#aips-history-auto-refresh', this.toggleAutoRefresh.bind(this));
+			$(document).on('change', '#aips-history-heartbeat-interval', this.changeHeartbeatInterval.bind(this));
+
+			// Heartbeat tick (namespaced for cleanup)
+			$(document).on('heartbeat-tick.aipsHistory', this.onHeartbeatTick.bind(this));
+
+			// Page exit cleanup (namespaced)
+			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.onPageExit.bind(this));
 		},
 
 
 
 		/**
 		 * Auto-open a specific history container from query args when available.
+		 *
+		 * Supports two query parameters:
+		 * - `history_id`: Opens the logs modal for a specific history container ID
+		 * - `post_id`: Pre-fills the search box with the post ID and filters the table
 		 */
 		maybeOpenFromQuery: function () {
 			var params = new URLSearchParams(window.location.search || '');
 			var historyId = parseInt(params.get('history_id') || 0, 10);
 			var postId = parseInt(params.get('post_id') || 0, 10);
 
+			// Pre-fill search with post_id if provided
 			if (postId > 0 && !this.searchQuery) {
 				this.searchQuery = String(postId);
 				$('#aips-history-search-input').val(String(postId));
@@ -136,15 +662,18 @@
 				$('#aips-history-search-input').trigger('input');
 			}
 
+			// Auto-open modal for specific history_id
 			if (historyId > 0) {
 				this.openLogsModalFromId(historyId);
 			}
 		},
 
 		/**
-		 * Open history logs modal for a known history id.
+		 * Open history logs modal for a known history ID.
 		 *
-		 * @param {number} historyId History container id.
+		 * Creates a synthetic trigger element and calls openLogsModal with a mock event.
+		 *
+		 * @param {number} historyId History container ID.
 		 */
 		openLogsModalFromId: function (historyId) {
 			var $trigger = $('<button type="button" class="aips-view-history-logs" data-id="' + historyId + '"></button>');
@@ -155,9 +684,9 @@
 			});
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Logs modal                                                           */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Logs Modal - View History Details
+		 * ======================================================================== */
 
 		/**
 		 * Fetch and display all history_log entries for the clicked container.
@@ -173,13 +702,16 @@
 				return;
 			}
 
-			var self     = this;
 			var $modal   = $('#aips-history-logs-modal');
 			var $content = $('#aips-history-logs-content');
-			var $title   = $('#aips-history-logs-modal-title');
 			var T        = AIPS.Templates;
 
-			$title.text(aipsHistoryL10n.historyDetailsTitle || 'History Details');
+			AIPS.HistoryModalShared.resetModalHeader($modal, {
+				titleSelector: '#aips-history-logs-modal-title',
+				actionsSelector: '#aips-history-logs-modal-actions',
+				statusSelector: '#aips-history-logs-modal-status',
+				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+			});
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
 				text: aipsHistoryL10n.loadingLogs || 'Loading logs\u2026'
 			}));
@@ -189,7 +721,7 @@
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
-					action: 'aips_get_history_logs',
+					action: 'aips_get_history_modal_html',
 					nonce: aipsAjax.nonce,
 					history_id: historyId
 				},
@@ -204,19 +736,15 @@
 					}
 
 					var container = response.data.container;
-					var logs      = response.data.logs;
+					var modalHtml = response.data.modal_html || '';
 
-					// Set modal title to the generated post title when available.
-					if (container.generated_title) {
-						$title.text(container.generated_title);
-					} else {
-						$title.text(
-							(aipsHistoryL10n.historyDetailsTitle || 'History Details')
-							+ ' #' + container.id
-						);
-					}
-
-					$content.html(self.renderLogsModalContent(container, logs));
+					AIPS.HistoryModalShared.updateModalHeader($modal, container, {
+						titleSelector: '#aips-history-logs-modal-title',
+						actionsSelector: '#aips-history-logs-modal-actions',
+						statusSelector: '#aips-history-logs-modal-status',
+						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+					});
+					$content.html(modalHtml);
 				},
 				error: function () {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
@@ -233,77 +761,220 @@
 		 */
 		toggleLogDetail: function (e) {
 			e.preventDefault();
-			var $button = $(e.currentTarget);
-			var targetSelector = $button.data('target');
-			var $target = $(targetSelector);
-			if ($target.length) {
-				var showLabel = aipsHistoryL10n.showDetails || 'Show details';
-				var hideLabel = aipsHistoryL10n.hideDetails || 'Hide details';
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
+			}
+			AIPS.HistoryModalShared.toggleLogDetail($scope, $(e.currentTarget), {
+				show: aipsHistoryL10n.showDetails || 'Show details',
+				hide: aipsHistoryL10n.hideDetails || 'Hide details'
+			});
+		},
 
-				$target.slideToggle(150, function () {
-					$button.text($target.is(':visible') ? hideLabel : showLabel);
-				});
+		/**
+		 * Check if current page is the History admin page.
+		 *
+		 * @return {boolean} True if on History page, false otherwise.
+		 */
+		isHistoryPage: function () {
+			return $('#aips-history-logs-modal').length > 0
+				|| $('#aips-history-search-input').length > 0
+				|| $('#aips-history-tbody').length > 0;
+		},
+
+		/* ========================================================================
+		 * Auto Refresh & Heartbeat
+		 * ======================================================================== */
+
+		/**
+		 * Initialize heartbeat auto-refresh controls and defaults.
+		 *
+		 * Checks for WordPress Heartbeat API availability and configures UI accordingly.
+		 * Disables controls if Heartbeat is unavailable.
+		 */
+		initHeartbeatAutoRefresh: function () {
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				// Disable auto-refresh controls and show unavailability message
+				$('#aips-history-auto-refresh')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-heartbeat-interval')
+					.prop('disabled', true)
+					.attr('title', heartbeatUnavailableText);
+				$('#aips-history-auto-refresh-help').text(heartbeatUnavailableText);
+				return;
+			}
+
+			// Store default heartbeat interval for restoration on disable
+			this.defaultHeartbeatInterval = wp.heartbeat.interval();
+
+			// Clear help text (no errors)
+			$('#aips-history-auto-refresh-help').empty();
+
+			// Read initial interval from DOM
+			this.heartbeatIntervalSeconds = parseInt(
+				$('#aips-history-heartbeat-interval').val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+		},
+
+		/**
+		 * Enable or disable auto-refresh polling on heartbeat.
+		 *
+		 * @param {Event} e Change event from #aips-history-auto-refresh checkbox.
+		 */
+		toggleAutoRefresh: function (e) {
+			var enabled = $(e.currentTarget).is(':checked');
+			var $intervalSelect = $('#aips-history-heartbeat-interval');
+
+			// Update state
+			this.autoRefreshEnabled = enabled;
+			$intervalSelect.prop('disabled', !enabled);
+
+			// If disabling, restore defaults and exit
+			if (!enabled) {
+				this.disableAutoRefresh();
+				return;
+			}
+
+			// Read current interval selection
+			this.heartbeatIntervalSeconds = parseInt(
+				$intervalSelect.val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+
+			// Apply interval to WordPress Heartbeat API
+			this.applyHeartbeatInterval();
+
+			// Trigger immediate heartbeat connection
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
 			}
 		},
 
 		/**
-		 * Show temporary copied-state feedback on a copy button.
+		 * Update heartbeat interval selection while auto-refresh is enabled.
 		 *
-		 * @param {jQuery} $button    Copy button element.
-		 * @param {string} copyLabel   Default button label.
-		 * @param {string} copiedLabel Success button label.
+		 * @param {Event} e Change event from #aips-history-heartbeat-interval select.
 		 */
-		showCopySuccess: function ($button, copyLabel, copiedLabel) {
-			$button.text(copiedLabel);
-			setTimeout(function () {
-				$button.text(copyLabel);
-			}, 2000);
+		changeHeartbeatInterval: function (e) {
+			// Update interval state
+			this.heartbeatIntervalSeconds = parseInt(
+				$(e.currentTarget).val() || String(this.MIN_HEARTBEAT_INTERVAL),
+				10
+			);
+
+			// Only apply if auto-refresh is currently enabled
+			if (!this.autoRefreshEnabled) {
+				return;
+			}
+
+			// Apply new interval to WordPress Heartbeat API
+			this.applyHeartbeatInterval();
+
+			// Trigger immediate reconnection with new interval
+			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
 		},
 
 		/**
-		 * Copy log detail text using the legacy execCommand fallback.
+		 * Apply current heartbeat interval to WordPress Heartbeat API.
 		 *
-		 * @param {jQuery} $target Detail container.
-		 * @return {boolean} True when the fallback copy succeeded.
+		 * Enforces minimum interval of MIN_HEARTBEAT_INTERVAL seconds.
 		 */
-		copyLogDetailFallback: function ($target) {
-			var $pre = $target.find('pre');
-			var range;
-			var sel;
-
-			if (!$pre.length || !$pre[0]) {
-				return false;
+		applyHeartbeatInterval: function () {
+			// Ensure Heartbeat API is available
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				return;
 			}
 
-			try {
-				// Fallback: expose the detail block, select text, copy.
-				$target.show();
-				range = document.createRange();
-				range.selectNodeContents($pre[0]);
-				sel = window.getSelection();
-
-				if (!sel) {
-					return false;
-				}
-
-				sel.removeAllRanges();
-				sel.addRange(range);
-
-				if (!document.execCommand('copy')) {
-					sel.removeAllRanges();
-					return false;
-				}
-
-				sel.removeAllRanges();
-
-				return true;
-			} catch (error) {
-				if (sel) {
-					sel.removeAllRanges();
-				}
-
-				return false;
+			// Parse and validate interval
+			var parsedInterval = parseInt(this.heartbeatIntervalSeconds, 10);
+			if (isNaN(parsedInterval)) {
+				parsedInterval = this.MIN_HEARTBEAT_INTERVAL;
 			}
+
+			// Enforce minimum interval (5 seconds for quick refresh)
+			var interval = Math.max(
+				this.MIN_HEARTBEAT_INTERVAL,
+				parsedInterval
+			);
+
+			// Apply to WordPress Heartbeat API
+			wp.heartbeat.interval(interval);
+		},
+
+		/**
+		 * Restore the default heartbeat interval and disable auto-refresh state.
+		 *
+		 * Resets heartbeat to WordPress default and clears auto-refresh flags.
+		 */
+		disableAutoRefresh: function () {
+			// Restore default heartbeat interval if available
+			var defaultInterval = parseInt(this.defaultHeartbeatInterval, 10);
+			if (
+				window.wp
+				&& wp.heartbeat
+				&& typeof wp.heartbeat.interval === 'function'
+				&& this.defaultHeartbeatInterval !== null
+				&& this.defaultHeartbeatInterval !== undefined
+				&& !isNaN(defaultInterval)
+			) {
+				wp.heartbeat.interval(defaultInterval);
+			}
+
+			// Reset state flags
+			this.autoRefreshEnabled = false;
+			this.isAutoRefreshing = false;
+
+			// Update UI
+			$('#aips-history-auto-refresh').prop('checked', false);
+			$('#aips-history-heartbeat-interval').prop('disabled', true);
+		},
+
+		/**
+		 * Cleanup heartbeat state and namespaced listeners when leaving page.
+		 *
+		 * Prevents heartbeat interval changes from persisting across page loads.
+		 */
+		onPageExit: function () {
+			// Restore default heartbeat and clear state
+			this.disableAutoRefresh();
+
+			// Remove namespaced event listeners
+			$(document).off('heartbeat-tick.aipsHistory');
+			$(window).off('.aipsHistory');
+		},
+
+		/**
+		 * Handle heartbeat tick updates for background polling.
+		 *
+		 * Triggered by WordPress Heartbeat API at configured interval.
+		 * Reloads history table in the background without user interaction.
+		 */
+		onHeartbeatTick: function () {
+			// Skip if auto-refresh is disabled or already in progress
+			if (!this.autoRefreshEnabled || this.isAutoRefreshing) {
+				return;
+			}
+
+			// Set flag to prevent concurrent refresh requests
+			this.isAutoRefreshing = true;
+
+			// Reload current page via AJAX
+			this.reload(this.getCurrentPage(), { fromHeartbeat: true });
+		},
+
+		/**
+		 * Resolve current page number from URL query params.
+		 *
+		 * @return {number} Current page number (1-based), defaults to 1.
+		 */
+		getCurrentPage: function () {
+			var params = new URLSearchParams(window.location.search || '');
+			var paged = parseInt(params.get('paged') || '1', 10);
+			return !isNaN(paged) && paged > 0 ? paged : 1;
 		},
 
 		/**
@@ -313,32 +984,17 @@
 		 */
 		copyLogDetail: function (e) {
 			e.preventDefault();
-
-			var self           = this;
-			var $button        = $(e.currentTarget);
-			var targetSelector = $button.data('target');
-			var $target        = $(targetSelector);
-			var text           = $target.find('pre').text();
-			var copyLabel      = aipsHistoryL10n.copyDetails || 'Copy';
-			var copiedLabel    = aipsHistoryL10n.copiedDetails || 'Copied!';
-
-			if (!text) {
-				return;
+			var $scope = $(e.currentTarget).closest('.aips-modal');
+			if (!$scope.length) {
+				$scope = $(document);
 			}
-
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text)
-					.then(function () {
-						self.showCopySuccess($button, copyLabel, copiedLabel);
-					})
-					.catch(function () {
-						if (self.copyLogDetailFallback($target)) {
-							self.showCopySuccess($button, copyLabel, copiedLabel);
-						}
-					});
-			} else if (self.copyLogDetailFallback($target)) {
-				self.showCopySuccess($button, copyLabel, copiedLabel);
-			}
+			AIPS.HistoryModalShared.copyLogDetail($scope, $(e.currentTarget), {
+				copy: aipsHistoryL10n.copyDetails || 'Copy',
+				copied: aipsHistoryL10n.copiedDetails || 'Copied!'
+			}, {
+				disable: false,
+				duration: 2000
+			});
 		},
 
 		/**
@@ -348,411 +1004,16 @@
 		 */
 		filterLogsByType: function (e) {
 			e.preventDefault();
-			var $btn    = $(e.currentTarget);
-			var typeId  = $btn.data('type-id');
-			var $modal  = $('#aips-history-logs-modal');
-
-			$modal.find('.aips-log-type-filter-btn')
-				.removeClass('aips-btn-primary')
-				.addClass('aips-btn-ghost');
-			$btn.removeClass('aips-btn-ghost').addClass('aips-btn-primary');
-
-			var $rows = $modal.find('.aips-history-logs-table tbody tr');
-			if (!typeId || typeId === 'all') {
-				$rows.show();
-			} else {
-				$rows.each(function () {
-					var rowType = $(this).data('type-id');
-					$(this).toggle(String(rowType) === String(typeId));
-				});
-			}
+			AIPS.HistoryModalShared.applyTypeFilter($('#aips-history-logs-modal'), $(e.currentTarget));
 		},
 
 		/**
-		 * Build the HTML for the logs modal body using AIPS.Templates.
+		 * Toggle JSON tree view vs. raw JSON for the current modal content.
 		 *
-		 * @param {Object}   container History container summary fields.
-		 * @param {Object[]} logs      Array of log entry objects.
-		 * @return {string} HTML string.
+		 * @param {Event} e Change event.
 		 */
-		renderLogsModalContent: function (container, logs) {
-			var self = this;
-			var T    = AIPS.Templates;
-			var html = '';
-			var inferredAction = self.inferWhatHappened(container, logs);
-			var inferredOutcome = self.humanizeOutcome(container.status);
-			var changedHighlights = self.detectWhatChanged(logs, container);
-
-			// ---- Container summary ----
-			var rows = '';
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelContainerId || 'Container ID',
-				value: container.id ? String(container.id) : ''
-			});
-
-			if (container.generated_title) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelTitle || 'Title',
-					value: container.generated_title
-				});
-			}
-			if (container.template_name) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelTemplate || 'Template',
-					value: container.template_name
-				});
-			}
-
-			if (container.creation_method) {
-				var methodLabel = container.creation_method.replace(/_/g, ' ');
-				methodLabel = methodLabel.charAt(0).toUpperCase() + methodLabel.slice(1);
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCreationMethod || 'Method',
-					value: methodLabel
-				});
-			}
-
-			var statusClass = container.status === 'completed' ? 'aips-badge-success'
-				: (container.status === 'failed' ? 'aips-badge-error' : 'aips-badge-neutral');
-			rows += T.renderRaw('aips-tmpl-history-summary-status-row', {
-				label:       T.escape(aipsHistoryL10n.labelStatus || 'Status'),
-				statusClass: T.escape(statusClass),
-				status:      T.escape(container.status)
-			});
-
-			if (container.created_at) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCreated || 'Created',
-					value: container.created_at
-				});
-			}
-			if (container.completed_at) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelCompleted || 'Completed',
-					value: container.completed_at
-				});
-			}
-
-			// Duration row.
-			if (container.duration_seconds !== null && container.duration_seconds !== undefined) {
-				rows += T.render('aips-tmpl-history-summary-duration-row', {
-					label: aipsHistoryL10n.labelDuration || 'Duration',
-					value: AIPS.DateTime.formatDuration(container.duration_seconds)
-				});
-			}
-
-			if (container.error_message) {
-				rows += T.render('aips-tmpl-history-summary-error-row', {
-					label:   aipsHistoryL10n.labelError || 'Error',
-					message: container.error_message
-				});
-			}
-
-			// Post link row.
-			if (container.post_id && container.post_url && container.post_edit_url) {
-				rows += T.renderRaw('aips-tmpl-history-summary-post-row', {
-					label:     T.escape(aipsHistoryL10n.labelPostId || 'Post'),
-					url:       T.escape(container.post_url),
-					postId:    T.escape(String(container.post_id)),
-					editUrl:   T.escape(container.post_edit_url || ''),
-					editLabel: T.escape(aipsHistoryL10n.editPostLabel || 'Edit')
-				});
-			} else if (container.post_id) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelPostId || 'Post ID',
-					value: String(container.post_id)
-				});
-			}
-
-			rows = T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelWhatHappened || 'What happened',
-				value: inferredAction
-			}) + rows;
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelOutcome || 'Outcome',
-				value: inferredOutcome
-			});
-
-			var relatedEntities = self.collectRelatedEntities(container, logs);
-			if (relatedEntities) {
-				rows += T.render('aips-tmpl-history-summary-row', {
-					label: aipsHistoryL10n.labelRelatedEntities || 'Related entities',
-					value: relatedEntities
-				});
-			}
-
-			rows += T.render('aips-tmpl-history-summary-row', {
-				label: aipsHistoryL10n.labelWhatChanged || 'What changed',
-				value: changedHighlights
-			});
-
-			html += '<h4 style="margin:0 0 8px;">' + T.escape(aipsHistoryL10n.summaryHeading || 'Summary') + '</h4>';
-			html += T.renderRaw('aips-tmpl-history-modal-summary', { rows: rows });
-
-			// ---- Log type filter toolbar ----
-			var typeCounts = { all: logs.length };
-			$.each(logs, function (i, log) {
-				var tid = String(log.history_type_id);
-				typeCounts[tid] = (typeCounts[tid] || 0) + 1;
-			});
-
-			if (logs.length > 0) {
-				var filterButtons = '';
-
-				// "All" button.
-				filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
-					typeId:      T.escape('all'),
-					activeClass: T.escape('aips-btn-primary'),
-					label:       T.escape(aipsHistoryL10n.filterAll || 'All'),
-					count:       T.escape(String(typeCounts.all))
-				});
-
-				// Per-type buttons (only types that appear in the log set).
-				var typeOrder = [2, 3, 4, 5, 6, 8, 1, 7, 9, 10];
-				$.each(typeOrder, function (i, tid) {
-					if (!typeCounts[String(tid)]) {
-						return;
-					}
-					var typeLabel = (aipsHistoryL10n.typeLabels && aipsHistoryL10n.typeLabels[tid])
-						|| self.typeLabelFallback(tid);
-					filterButtons += T.renderRaw('aips-tmpl-history-log-type-btn', {
-						typeId:      T.escape(String(tid)),
-						activeClass: T.escape('aips-btn-ghost'),
-						label:       T.escape(typeLabel),
-						count:       T.escape(String(typeCounts[String(tid)]))
-					});
-				});
-
-				html += T.renderRaw('aips-tmpl-history-log-type-filter', {
-					filterLabel: T.escape(aipsHistoryL10n.filterByType || 'Filter:'),
-					buttons:     filterButtons
-				});
-			}
-
-			// ---- Log entries heading ----
-			html += '<details class="aips-history-advanced-details" style="margin-top:16px;">';
-			html += '<summary style="cursor:pointer;font-weight:600;">' + T.escape(aipsHistoryL10n.labelAdvancedDetails || 'Advanced details') + '</summary>';
-			html += T.renderRaw('aips-tmpl-history-logs-heading', {
-				heading: T.escape(aipsHistoryL10n.logsHeading || 'Log Entries'),
-				count:   logs.length
-			});
-
-			if (logs.length === 0) {
-				html += T.render('aips-tmpl-history-no-logs', {
-					message: aipsHistoryL10n.noLogsFound || 'No log entries found for this container.'
-				});
-				html += '</details>';
-				return html;
-			}
-
-			var rowsHtml = '';
-			$.each(logs, function (i, log) {
-				var typeClass   = self.typeClass(log.history_type_id);
-				var message     = (log.details && log.details.message) ? log.details.message : '';
-				var detailsHtml = '';
-
-				if (message) {
-					detailsHtml += T.render('aips-tmpl-history-log-message', { message: message });
-				}
-
-				// Render extra details (input/output/context) as a collapsible block.
-				var extra = {};
-				$.each(log.details, function (key, val) {
-					if (key !== 'message' && key !== 'timestamp') {
-						extra[key] = val;
-					}
-				});
-
-				if (Object.keys(extra).length > 0) {
-					detailsHtml += T.render('aips-tmpl-history-log-detail-block', {
-						rowId:     'aips-log-detail-' + i,
-						showLabel: aipsHistoryL10n.showDetails || 'Show details',
-						copyLabel: aipsHistoryL10n.copyDetails  || 'Copy',
-						details:   JSON.stringify(extra, null, 2)
-					});
-				}
-
-				rowsHtml += T.renderRaw('aips-tmpl-history-log-row', {
-					timestamp:   T.escape(log.timestamp),
-					typeClass:   T.escape(typeClass),
-					typeLabel:   T.escape(log.type_label),
-					logType:     T.escape(log.log_type),
-					detailsHtml: detailsHtml,
-					typeId:      T.escape(String(log.history_type_id))
-				});
-			});
-
-			html += T.renderRaw('aips-tmpl-history-logs-table', {
-				colTimestamp: T.escape(aipsHistoryL10n.colTimestamp || 'Timestamp'),
-				colType:      T.escape(aipsHistoryL10n.colType || 'Type'),
-				colLogType:   T.escape(aipsHistoryL10n.colLogType || 'Log Type'),
-				colDetails:   T.escape(aipsHistoryL10n.colDetails || 'Details'),
-				rows:         rowsHtml
-			});
-
-			html += '</details>';
-
-			return html;
-		},
-
-		inferWhatHappened: function (container, logs) {
-			var text = ((container.creation_method || '') + ' ' + (container.template_name || '')).toLowerCase();
-			if (text.indexOf('research') !== -1) { return aipsHistoryL10n.summaryActionResearchRun || 'Research run'; }
-			if (text.indexOf('embedding') !== -1) { return aipsHistoryL10n.summaryActionEmbeddings || 'Embeddings processing'; }
-			if (text.indexOf('author') !== -1 && text.indexOf('topic') !== -1) { return aipsHistoryL10n.summaryActionAuthorTopics || 'Author topic generation'; }
-			if (text.indexOf('schedule') !== -1) { return aipsHistoryL10n.summaryActionScheduledPosts || 'Scheduled post generation'; }
-
-			var sawAI = false;
-			$.each(logs || [], function (i, log) {
-				if (String(log.history_type_id) === '5' || String(log.history_type_id) === '6') {
-					sawAI = true;
-				}
-			});
-			return sawAI
-				? (aipsHistoryL10n.summaryActionPostGeneration || 'Post generation')
-				: (aipsHistoryL10n.summaryActionAutomationTask || 'Automation task');
-		},
-
-		humanizeOutcome: function (status) {
-			if (status === 'completed') { return aipsHistoryL10n.summaryOutcomeSuccess || 'Success'; }
-			if (status === 'failed') { return aipsHistoryL10n.summaryOutcomeFailed || 'Failed'; }
-			return aipsHistoryL10n.summaryOutcomeInProgress || 'In progress';
-		},
-
-		collectRelatedEntities: function (container, logs) {
-			var entities = [];
-			var seen = {};
-			var addEntity = function (label, value) {
-				if (!value) {
-					return;
-				}
-				var text = String(value);
-				var key = label + '|' + text;
-				if (seen[key]) {
-					return;
-				}
-				seen[key] = true;
-				entities.push(label + ': ' + text);
-			};
-			addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', container.generated_title);
-			addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', container.template_name);
-			addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', container.post_id);
-			addEntity(
-				aipsHistoryL10n.summaryEntityMethod || 'Method',
-				container.creation_method ? container.creation_method.replace(/_/g, ' ') : ''
-			);
-
-			$.each(logs || [], function (i, log) {
-				var details = log && log.details ? log.details : null;
-				if (!details) {
-					return;
-				}
-				if (!container.generated_title) {
-					addEntity(aipsHistoryL10n.summaryEntityPost || 'Post', details.generated_title || details.title);
-				}
-				if (!container.template_name) {
-					addEntity(aipsHistoryL10n.summaryEntityTemplate || 'Template', details.template_name);
-				}
-				if (!container.post_id) {
-					addEntity(aipsHistoryL10n.summaryEntityPostId || 'Post ID', details.post_id);
-				}
-			});
-
-			return entities.length ? entities.join(' | ') : (aipsHistoryL10n.summaryNoRelatedEntities || 'No related entities detected');
-		},
-
-		detectWhatChanged: function (logs, container) {
-			var details = [];
-			var sawTitleChange = false;
-			var sawContentChange = false;
-			var sawImageChange = false;
-			var sawPublishedResult = false;
-			var sawDraftResult = false;
-			var scanTextForKeywords = function (value) {
-				if (typeof value !== 'string' || value === '') {
-					return;
-				}
-				var normalized = value.toLowerCase();
-				if (normalized.indexOf('title') !== -1) { sawTitleChange = true; }
-				if (normalized.indexOf('content') !== -1 || normalized.indexOf('body') !== -1) { sawContentChange = true; }
-				if (normalized.indexOf('featured image') !== -1 || normalized.indexOf('image') !== -1) { sawImageChange = true; }
-				if (normalized.indexOf('publish') !== -1) { sawPublishedResult = true; }
-				if (normalized.indexOf('draft') !== -1) { sawDraftResult = true; }
-			};
-
-			$.each(logs || [], function (i, log) {
-				if (!log || !log.details) {
-					return;
-				}
-				$.each(log.details, function (key, val) {
-					if (typeof val === 'string') {
-						scanTextForKeywords(val);
-						return;
-					}
-					if (val && typeof val === 'object') {
-						$.each(val, function (nestedKey, nestedVal) {
-							if (typeof nestedVal === 'string') {
-								scanTextForKeywords(nestedVal);
-							}
-						});
-					}
-				});
-			});
-
-			if (sawTitleChange) { details.push(aipsHistoryL10n.summaryChangedTitle || 'Title updated'); }
-			if (sawContentChange) { details.push(aipsHistoryL10n.summaryChangedContent || 'Content updated'); }
-			if (sawImageChange) { details.push(aipsHistoryL10n.summaryChangedImage || 'Image generated/updated'); }
-			if (sawPublishedResult) { details.push(aipsHistoryL10n.summaryChangedPublished || 'Published result'); }
-			else if (sawDraftResult) { details.push(aipsHistoryL10n.summaryChangedDraft || 'Draft result'); }
-			if (container.status === 'failed') { details.push(aipsHistoryL10n.summaryChangedError || 'Run ended with an error'); }
-			return details.length ? details.join('; ') : (aipsHistoryL10n.summaryChangedNone || 'No major content changes detected');
-		},
-
-		/**
-		 * Return a fallback human-readable label for a history type ID.
-		 *
-		 * Used when the server-side l10n map is not available for a given type.
-		 *
-		 * @param {number} typeId
-		 * @return {string}
-		 */
-		typeLabelFallback: function (typeId) {
-			var map = {
-				1:  'Log',
-				2:  'Error',
-				3:  'Warning',
-				4:  'Info',
-				5:  'AI Request',
-				6:  'AI Response',
-				7:  'Debug',
-				8:  'Activity',
-				9:  'Session',
-				10: 'Metric'
-			};
-			return map[typeId] || 'Unknown';
-		},
-
-		/**
-		 * Return a badge CSS class for a history_type_id constant.
-		 *
-		 * @param {number} typeId
-		 * @return {string}
-		 */
-		typeClass: function (typeId) {
-			var map = {
-				1: 'aips-badge-neutral',   // LOG
-				2: 'aips-badge-error',     // ERROR
-				3: 'aips-badge-warning',   // WARNING
-				4: 'aips-badge-info',      // INFO
-				5: 'aips-badge-ai',        // AI_REQUEST
-				6: 'aips-badge-ai',        // AI_RESPONSE
-				7: 'aips-badge-neutral',   // DEBUG
-				8: 'aips-badge-success',   // ACTIVITY
-				9: 'aips-badge-neutral'    // SESSION_METADATA
-			};
-			return map[typeId] || 'aips-badge-neutral';
+		toggleJsonViewerMode: function (e) {
+			AIPS.HistoryModalShared.toggleJsonViewerMode($(e.currentTarget));
 		},
 
 		/**
@@ -776,9 +1037,9 @@
 			}
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Selection / bulk delete                                             */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Row Selection & Bulk Delete
+		 * ======================================================================== */
 
 		/**
 		 * Toggle all row checkboxes to match the select-all checkbox state.
@@ -918,9 +1179,9 @@
 			]);
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Retry generation                                                     */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Retry Generation
+		 * ======================================================================== */
 
 		/**
 		 * Retry a failed history entry via the `aips_retry_generation` AJAX action.
@@ -966,9 +1227,9 @@
 			});
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Clear history                                                        */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Clear History
+		 * ======================================================================== */
 
 		/**
 		 * Clear history by status (or all) after an accessible confirmation dialog.
@@ -1022,9 +1283,9 @@
 			]);
 		},
 
-		/* ------------------------------------------------------------------ */
-		/* Reload / pagination / filter / search                               */
-		/* ------------------------------------------------------------------ */
+		/* ========================================================================
+		 * Reload, Pagination, Filters & Search
+		 * ======================================================================== */
 
 		/**
 		 * Handle a click on the Reload button.
@@ -1039,14 +1300,21 @@
 		/**
 		 * Reload the history table via AJAX applying the current filter and search.
 		 *
-		 * @param {number} [paged=1] 1-based page number to load.
+		 * @param {number} [paged=current URL page] 1-based page number to load.
+		 *                                          Defaults to current `paged` URL query param.
 		 */
-		reload: function (paged) {
-			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+		reload: function (paged, options) {
+			paged = (paged === undefined || paged === null)
+				? this.getCurrentPage()
+				: Math.max(1, parseInt(paged, 10));
+			options = $.extend({
+				fromHeartbeat: false
+			}, options || {});
 
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
-			var $pagCell   = $('.aips-history-pagination-cell');
+			var $pagWrap   = $('#aips-history-pagination-wrap');
+			var $timeline  = $('#aips-history-timeline-content');
 			var $reloadBtn = $('#aips-reload-history-btn');
 			var origHtml   = $reloadBtn.html();
 
@@ -1056,10 +1324,12 @@
 					text: aipsHistoryL10n.loading || 'Loading\u2026'
 				}));
 			}
-			$reloadBtn.prop('disabled', true).html(
-				'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
-				+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
-			);
+			if (!options.fromHeartbeat) {
+				$reloadBtn.prop('disabled', true).html(
+					'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
+					+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+				);
+			}
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -1079,12 +1349,14 @@
 				},
 				success: function (response) {
 					if (!response.success) {
-						AIPS.Utilities.showToast(
-							response.data && response.data.message
-								? response.data.message
-								: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
-							'error'
-						);
+						if (!options.fromHeartbeat) {
+							AIPS.Utilities.showToast(
+								response.data && response.data.message
+									? response.data.message
+									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+								'error'
+							);
+						}
 						return;
 					}
 
@@ -1102,8 +1374,12 @@
 						}
 					}
 
-					if ($pagCell.length && response.data.pagination_html !== undefined) {
-						$pagCell.html(response.data.pagination_html);
+					if ($pagWrap.length && response.data.pagination_html !== undefined) {
+						$pagWrap.html(response.data.pagination_html);
+					}
+
+					if ($timeline.length && response.data.timeline_html !== undefined) {
+						$timeline.html(response.data.timeline_html);
 					}
 
 					// Refresh stat cards.
@@ -1129,10 +1405,15 @@
 					self.updateDeleteButton();
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					if (!options.fromHeartbeat) {
+						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+					}
 				},
 				complete: function () {
-					$reloadBtn.prop('disabled', false).html(origHtml);
+					if (!options.fromHeartbeat) {
+						$reloadBtn.prop('disabled', false).html(origHtml);
+					}
+					self.isAutoRefreshing = false;
 				}
 			});
 		},
@@ -1295,6 +1576,7 @@
 	/* ---------------------------------------------------------------------- */
 	$(document).ready(function () {
 		AIPS.History.init();
+		AIPS.HistoryModalShared.initStandaloneOpener();
 	});
 
 })(jQuery);
