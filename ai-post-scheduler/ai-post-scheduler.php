@@ -845,6 +845,14 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // admin-post.php export requests do not render admin pages, so instantiate
+        // this controller early so its admin_post_* hook is always registered.
+        global $pagenow;
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
+        if ($pagenow === 'admin-post.php' && $action === 'aips_operations_insights_export') {
+            new AIPS_Operations_Insights_Controller();
+        }
     }
 
     /**
