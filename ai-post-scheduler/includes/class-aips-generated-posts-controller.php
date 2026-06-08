@@ -92,6 +92,9 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Get schedule data for each post
 		$posts_data = array();
+
+		$format = get_option('date_format') . ' ' . get_option('time_format');
+
 		foreach ($history['items'] as $item) {
 			if (!$item->post_id) {
 				continue;
@@ -120,9 +123,9 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $format),
+				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, $format),
+				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
@@ -138,7 +141,7 @@ class AIPS_Generated_Posts_Controller {
 		// Pre-format dates for draft posts
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
-				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format'));
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $format);
 			}
 		}
 
@@ -165,8 +168,8 @@ class AIPS_Generated_Posts_Controller {
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
-			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $format),
+				'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, $format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
