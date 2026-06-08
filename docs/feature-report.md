@@ -35,11 +35,11 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **175 core classes** and **10 interfaces** organized into **18 functional categories**.
+This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **183 core classes** and **11 interfaces** organized into **18 functional categories**.
 
-- **Total Lines of Code**: 64,949
-- **Total Classes**: 175
-- **Total Interfaces**: 10
+- **Total Lines of Code**: 71,157
+- **Total Classes**: 183
+- **Total Interfaces**: 11
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, AI Integration, Infrastructure & DI, Caching, Telemetry & Observability, Notifications, Sources & Research, Internal Links & Embeddings, Resilience & Reliability, User Interface & Admin, Data Management, Database & Repositories, Diagnostics, Configuration & Settings, Onboarding, Utilities
 
 ## Architecture Diagram
@@ -99,9 +99,9 @@ flowchart TB
 
     subgraph Repositories
         AIAssistanceRepository
+        CacheMonitorRepository
         CampaignsRepository
         DBManager
-        HistoryRepository
     end
 
     subgraph Infrastructure
@@ -371,8 +371,10 @@ flowchart TD
     Authors_Controller --> Author_Topics_Repository
     Authors_Controller --> Authors_Repository
     Authors_Controller --> Feedback_Repository
+    Calendar_Controller --> Template_Data
     Calendar_Controller --> Template_Repository
     Planner --> Templates
+    Post_Manager --> Template_Data
     Post_Review --> Post_Review_Repository
     Post_Review --> Template_Repository
     Prompt_Sections_Controller --> Prompt_Section_Repository
@@ -380,7 +382,9 @@ flowchart TD
     Seeder_Service --> Templates
     Seeder_Service --> Voices
     Template_Data --> Template_Data
+    Template_Entry --> Template_Data
     Template_Entry --> Template_Entry
+    Template_Repository --> Template_Data
     Template_Type_Selector --> Article_Structure_Repository
     Templates_Controller --> Article_Structure_Manager
     Templates_Controller --> Templates
@@ -452,13 +456,11 @@ flowchart TD
 
 ### Caching
 
-This category contains 7 classes:
+This category contains 5 classes:
 
 - **Cache Array Driver** (`AIPS_Cache_Array_Driver`): Class AIPS_Cache_Array_Driver
 - **Cache Db Driver** (`AIPS_Cache_Db_Driver`): Class AIPS_Cache_Db_Driver
 - **Cache Factory** (`AIPS_Cache_Factory`): Class AIPS_Cache_Factory
-- **Cache Redis Driver** (`AIPS_Cache_Redis_Driver`): Class AIPS_Cache_Redis_Driver
-- **Cache Session Driver** (`AIPS_Cache_Session_Driver`): Class AIPS_Cache_Session_Driver
 - **Cache Wp Object Cache Driver** (`AIPS_Cache_Wp_Object_Cache_Driver`): Class AIPS_Cache_Wp_Object_Cache_Driver
 - **Cache** (`AIPS_Cache`): Class AIPS_Cache
 
@@ -471,8 +473,6 @@ flowchart TD
     Cache_Array_Driver["Cache Array Driver"]
     Cache_Db_Driver["Cache Db Driver"]
     Cache_Factory["Cache Factory"]
-    Cache_Redis_Driver["Cache Redis Driver"]
-    Cache_Session_Driver["Cache Session Driver"]
     Cache_Wp_Object_Cache_Driver["Cache Wp Object Cache Driver"]
     Cache["Cache"]
 
@@ -480,8 +480,6 @@ flowchart TD
     Cache_Factory --> Cache_Array_Driver
     Cache_Factory --> Cache_Db_Driver
     Cache_Factory --> Cache_Factory
-    Cache_Factory --> Cache_Redis_Driver
-    Cache_Factory --> Cache_Session_Driver
     Cache_Factory --> Cache_Wp_Object_Cache_Driver
     Cache --> Cache_Factory
 
@@ -687,7 +685,7 @@ flowchart TD
 
 ### User Interface & Admin
 
-This category contains 17 classes:
+This category contains 20 classes:
 
 - **Admin Assets** (`AIPS_Admin_Assets`): Class AIPS_Admin_Assets
 - **Admin Bar** (`AIPS_Admin_Bar`): Class AIPS_Admin_Bar
@@ -696,9 +694,12 @@ This category contains 17 classes:
 - **Admin Menu** (`AIPS_Admin_Menu`): Class AIPS_Admin_Menu
 - **Ai Assistance Controller** (`AIPS_AI_Assistance_Controller`): AI Assistance Controller
 - **Ai Edit Controller** (`AIPS_AI_Edit_Controller`): AI Edit Controller
+- **Automations Controller** (`AIPS_Automations_Controller`): Class AIPS_Automations_Controller
+- **Cache Monitor Controller** (`AIPS_Cache_Monitor_Controller`): Class AIPS_Cache_Monitor_Controller
 - **Campaigns Controller** (`AIPS_Campaigns_Controller`): No description available
 - **Dashboard Controller** (`AIPS_Dashboard_Controller`): AIPS_Dashboard_Controller
 - **Dev Tools** (`AIPS_Dev_Tools`): Class AIPS_Dev_Tools
+- **Diagnostics Controller** (`AIPS_Diagnostics_Controller`): Class AIPS_Diagnostics_Controller
 - **Generated Posts Controller** (`AIPS_Generated_Posts_Controller`): Generated Posts Controller
 - **Operations Insights Controller** (`AIPS_Operations_Insights_Controller`): No description available
 - **Post Slices Controller** (`AIPS_Post_Slices_Controller`): Post Slices Controller
@@ -720,9 +721,12 @@ flowchart TD
     Admin_Menu["Admin Menu"]
     AI_Assistance_Controller["Ai Assistance Controller"]
     AI_Edit_Controller["Ai Edit Controller"]
+    Automations_Controller["Automations Controller"]
+    Cache_Monitor_Controller["Cache Monitor Controller"]
     Campaigns_Controller["Campaigns Controller"]
     Dashboard_Controller["Dashboard Controller"]
     Dev_Tools["Dev Tools"]
+    Diagnostics_Controller["Diagnostics Controller"]
     Generated_Posts_Controller["Generated Posts Controller"]
     Operations_Insights_Controller["Operations Insights Controller"]
     Post_Slices_Controller["Post Slices Controller"]
@@ -732,21 +736,30 @@ flowchart TD
     Taxonomy_Controller["Taxonomy Controller"]
 
     Admin_Assets --> Admin_Menu_Helper
+    Admin_Assets --> Automations_Controller
     Admin_Assets --> Campaigns_Controller
+    Admin_Assets --> Diagnostics_Controller
     Admin_Bar --> Admin_Menu_Helper
     Admin_Flow_Controller --> Campaigns_Controller
+    Admin_Menu --> Automations_Controller
+    Admin_Menu --> Cache_Monitor_Controller
     Admin_Menu --> Campaigns_Controller
     Admin_Menu --> Dashboard_Controller
     Admin_Menu --> Dev_Tools
+    Admin_Menu --> Diagnostics_Controller
     Admin_Menu --> Generated_Posts_Controller
     Admin_Menu --> Operations_Insights_Controller
+    Automations_Controller --> Campaigns_Controller
     Campaigns_Controller --> Admin_Menu_Helper
+    Diagnostics_Controller --> Cache_Monitor_Controller
+    Diagnostics_Controller --> Dev_Tools
+    Diagnostics_Controller --> Operations_Insights_Controller
     Schedule_Controller --> Admin_Menu_Helper
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef controller fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    class Admin_Flow_Controller,AI_Assistance_Controller,AI_Edit_Controller,Campaigns_Controller,Dashboard_Controller,Generated_Posts_Controller,Operations_Insights_Controller,Post_Slices_Controller,Schedule_Controller,Structures_Controller,System_Status_Controller,Taxonomy_Controller controller
+    class Admin_Flow_Controller,AI_Assistance_Controller,AI_Edit_Controller,Automations_Controller,Cache_Monitor_Controller,Campaigns_Controller,Dashboard_Controller,Diagnostics_Controller,Generated_Posts_Controller,Operations_Insights_Controller,Post_Slices_Controller,Schedule_Controller,Structures_Controller,System_Status_Controller,Taxonomy_Controller controller
 ```
 
 ### Data Management
@@ -790,15 +803,19 @@ flowchart TD
 
 ### Database & Repositories
 
-This category contains 9 classes:
+This category contains 13 classes:
 
 - **Ai Assistance Repository** (`AIPS_AI_Assistance_Repository`): AI Assistance Repository
+- **Cache Monitor Repository** (`AIPS_Cache_Monitor_Repository`): Class AIPS_Cache_Monitor_Repository
 - **Campaigns Repository** (`AIPS_Campaigns_Repository`): No description available
 - **Db Manager** (`AIPS_DB_Manager`): No description available
 - **History Repository** (`AIPS_History_Repository`): History Repository
 - **History Type** (`AIPS_History_Type`): History Type Constants
 - **Metrics Repository** (`AIPS_Metrics_Repository`): Metrics Repository
 - **Post Slices Repository** (`AIPS_Post_Slices_Repository`): Post Slices Repository
+- **Repository Cache Dependencies** (`AIPS_Repository_Cache_Dependencies`): Central repository cache dependency map.
+- **Repository Cache Key Builder** (`AIPS_Repository_Cache_Key_Builder`): Builds stable cache keys for repository read operations.
+- **Repository Cache Observer** (`AIPS_Repository_Cache_Observer`): Repository cache observability helper.
 - **Schedule Repository** (`AIPS_Schedule_Repository`): Schedule Repository
 - **Taxonomy Repository** (`AIPS_Taxonomy_Repository`): Taxonomy Repository
 
@@ -809,12 +826,16 @@ flowchart TD
     %% Database & Repositories Architecture
 
     AI_Assistance_Repository[("Ai Assistance Repository")]
+    Cache_Monitor_Repository[("Cache Monitor Repository")]
     Campaigns_Repository[("Campaigns Repository")]
     DB_Manager["Db Manager"]
     History_Repository[("History Repository")]
     History_Type["History Type"]
     Metrics_Repository[("Metrics Repository")]
     Post_Slices_Repository[("Post Slices Repository")]
+    Repository_Cache_Dependencies[("Repository Cache Dependencies")]
+    Repository_Cache_Key_Builder[("Repository Cache Key Builder")]
+    Repository_Cache_Observer[("Repository Cache Observer")]
     Schedule_Repository[("Schedule Repository")]
     Taxonomy_Repository[("Taxonomy Repository")]
 
@@ -824,7 +845,7 @@ flowchart TD
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef controller fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    class AI_Assistance_Repository,Campaigns_Repository,History_Repository,Metrics_Repository,Post_Slices_Repository,Schedule_Repository,Taxonomy_Repository repository
+    class AI_Assistance_Repository,Cache_Monitor_Repository,Campaigns_Repository,History_Repository,Metrics_Repository,Post_Slices_Repository,Repository_Cache_Dependencies,Repository_Cache_Key_Builder,Repository_Cache_Observer,Schedule_Repository,Taxonomy_Repository repository
 ```
 
 ### Diagnostics
@@ -865,9 +886,10 @@ flowchart TD
 
 ### Configuration & Settings
 
-This category contains 6 classes:
+This category contains 7 classes:
 
 - **Config** (`AIPS_Config`): Configuration Manager
+- **Repository Cache Config** (`AIPS_Repository_Cache_Config`): Repository cache tier configuration and cache-instance resolution.
 - **Settings Ajax** (`AIPS_Settings_AJAX`): Class AIPS_Settings_AJAX
 - **Settings Ui** (`AIPS_Settings_UI`): Class AIPS_Settings_UI
 - **Settings** (`AIPS_Settings`): Class AIPS_Settings
@@ -881,6 +903,7 @@ flowchart TD
     %% Configuration & Settings Architecture
 
     Config["Config"]
+    Repository_Cache_Config[("Repository Cache Config")]
     Settings_AJAX["Settings Ajax"]
     Settings_UI["Settings Ui"]
     Settings["Settings"]
@@ -889,6 +912,8 @@ flowchart TD
 
     Config --> Settings
     Settings_AJAX --> Config
+    Settings_AJAX --> Settings
+    Settings_AJAX --> Settings_UI
     Settings_UI --> Config
     Settings --> Config
     Settings --> Settings_AJAX
@@ -900,6 +925,7 @@ flowchart TD
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef controller fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class Repository_Cache_Config repository
 ```
 
 ### Onboarding
@@ -924,13 +950,15 @@ flowchart TD
 
 ### Utilities
 
-This category contains 20 classes:
+This category contains 22 classes:
 
 - **Ai Assistance Service** (`AIPS_AI_Assistance_Service`): AI Assistance Service
 - **Batch Queue Service** (`AIPS_Batch_Queue_Service`): Batch Queue Service
 - **Bulk Batch Job Store** (`AIPS_Bulk_Batch_Job_Store`): Bulk Batch Job Store
 - **Bulk Batch Processor** (`AIPS_Bulk_Batch_Processor`): Bulk Batch Processor
+- **Cache Index** (`AIPS_Cache_Index`): Class AIPS_Cache_Index
 - **Cache Invalidation Bus** (`AIPS_Cache_Invalidation_Bus`): No description available
+- **Cache Monitor Service** (`AIPS_Cache_Monitor_Service`): Class AIPS_Cache_Monitor_Service
 - **Cache Policy** (`AIPS_Cache_Policy`): No description available
 - **Date Time Db Repair** (`AIPS_Date_Time_DB_Repair`): No description available
 - **Datetime** (`AIPS_DateTime`): No description available
@@ -957,7 +985,9 @@ flowchart TD
     Batch_Queue_Service{"Batch Queue Service"}
     Bulk_Batch_Job_Store["Bulk Batch Job Store"]
     Bulk_Batch_Processor["Bulk Batch Processor"]
+    Cache_Index["Cache Index"]
     Cache_Invalidation_Bus["Cache Invalidation Bus"]
+    Cache_Monitor_Service{"Cache Monitor Service"}
     Cache_Policy["Cache Policy"]
     Date_Time_DB_Repair["Date Time Db Repair"]
     DateTime["Datetime"]
@@ -978,7 +1008,9 @@ flowchart TD
     Bulk_Batch_Processor --> Bulk_Batch_Job_Store
     Bulk_Batch_Processor --> Bulk_Batch_Processor
     Bulk_Batch_Processor --> History_Service
+    Cache_Index --> DateTime
     Cache_Invalidation_Bus --> Cache_Policy
+    Cache_Monitor_Service --> DateTime
     Date_Time_DB_Repair --> DateTime
     DateTime --> DateTime
     DB_Migrations --> DateTime
@@ -986,23 +1018,25 @@ flowchart TD
     History --> DateTime
     Schedule_Result_Handler --> DateTime
     Session_To_JSON --> DateTime
+    Job_Dispatcher --> DateTime
     Job_Dispatcher --> Dispatch_Summary
     Job_Dispatcher --> History_Service
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef controller fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    class AI_Assistance_Service,Batch_Queue_Service,History_Service service
+    class AI_Assistance_Service,Batch_Queue_Service,Cache_Monitor_Service,History_Service service
 ```
 
 ## Interface Contracts
 
-The plugin defines **10 interfaces** as formal contracts:
+The plugin defines **11 interfaces** as formal contracts:
 
 | Interface | File | Methods | Summary |
 |-----------|------|---------|---------|
 | `AIPS_AI_Service_Interface` | `interface-aips-ai-service-interface.php` | 5 | No description available |
 | `AIPS_Cache_Driver` | `interface-aips-cache-driver.php` | 5 | No description available |
+| `AIPS_Cache_Monitorable_Driver` | `interface-aips-cache-monitorable-driver.php` | 8 | No description available |
 | `AIPS_Cron_Generation_Handler` | `interface-aips-cron-generation-handler.php` | 1 | No description available |
 | `AIPS_Generation_Context` | `interface-aips-generation-context.php` | 23 | No description available |
 | `AIPS_History_Repository_Interface` | `interface-aips-history-repository-interface.php` | 13 | No description available |
@@ -1015,7 +1049,8 @@ The plugin defines **10 interfaces** as formal contracts:
 ### Interface Implementations
 
 - **`AIPS_AI_Service_Interface`**: `AIPS_AI_Service`
-- **`AIPS_Cache_Driver`**: `AIPS_Cache_Array_Driver`, `AIPS_Cache_Db_Driver`, `AIPS_Cache_Redis_Driver`, `AIPS_Cache_Session_Driver`, `AIPS_Cache_Wp_Object_Cache_Driver`
+- **`AIPS_Cache_Driver`**: `AIPS_Cache_Array_Driver`, `AIPS_Cache_Db_Driver`, `AIPS_Cache_Wp_Object_Cache_Driver`
+- **`AIPS_Cache_Monitorable_Driver`**: `AIPS_Cache_Array_Driver`, `AIPS_Cache_Db_Driver`, `AIPS_Cache_Wp_Object_Cache_Driver`
 - **`AIPS_Cron_Generation_Handler`**: `AIPS_Author_Post_Generator`, `AIPS_Scheduler`
 - **`AIPS_Generation_Context`**: `AIPS_Template_Context`, `AIPS_Topic_Context`
 - **`AIPS_History_Repository_Interface`**: `AIPS_History_Repository`
@@ -1181,12 +1216,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 1655
+**Lines of Code**: 1769
 
 **Technical Details**:
 
 - **Public Methods** (3): `__construct()`, `enqueue_admin_assets()`, `render_history_modal_scaffold()`
-- **Dependencies** (4): `AIPS_Admin_Menu_Helper`, `AIPS_Campaigns_Controller`, `AIPS_Config`, `AIPS_History_Type`
+- **Dependencies** (6): `AIPS_Admin_Menu_Helper`, `AIPS_Automations_Controller`, `AIPS_Campaigns_Controller`, `AIPS_Config`, `AIPS_Diagnostics_Controller`, `AIPS_History_Type`
 - **Action Hooks** (2): `admin_enqueue_scripts`, `admin_footer`
 - **Filter Hooks** (2): `aips_chartjs_src`
 - **WordPress APIs Used**: Options
@@ -1196,7 +1231,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1655 lines (may violate SRP)
+1. Consider refactoring — class has 1769 lines (may violate SRP)
 2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -1262,12 +1297,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Menu`
 
-**Lines of Code**: 638
+**Lines of Code**: 740
 
 **Technical Details**:
 
-- **Public Methods** (29): `__construct()`, `add_menu_pages()`, `fix_author_topics_parent_file()`, `fix_author_topics_submenu_file()`, `render_dashboard_page()`, `render_voices_page()`, `render_templates_page()`, `render_schedule_page()`, `render_campaigns_page()`, `render_campaign_wizard_page()`, ... and 19 more
-- **Dependencies** (16): `AIPS_Article_Structure_Repository`, `AIPS_Campaigns_Controller`, `AIPS_Config`, `AIPS_Dashboard_Controller`, `AIPS_Dev_Tools`, `AIPS_Generated_Posts_Controller`, `AIPS_History`, `AIPS_Operations_Insights_Controller`, `AIPS_Post_Slices_Repository`, `AIPS_Prompt_Section_Repository`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Repository`, `AIPS_System_Status`, `AIPS_Telemetry_Controller`, `AIPS_Templates`, `AIPS_Voices`
+- **Public Methods** (32): `__construct()`, `add_menu_pages()`, `fix_author_topics_parent_file()`, `fix_author_topics_submenu_file()`, `render_dashboard_page()`, `render_automations_page()`, `render_voices_page()`, `render_templates_page()`, `render_schedule_page()`, `render_campaigns_page()`, ... and 22 more
+- **Dependencies** (20): `AIPS_Article_Structure_Repository`, `AIPS_Automations_Controller`, `AIPS_Cache_Monitor_Controller`, `AIPS_Campaigns_Controller`, `AIPS_Config`, `AIPS_Dashboard_Controller`, `AIPS_Dev_Tools`, `AIPS_Diagnostics_Controller`, `AIPS_Generated_Posts_Controller`, `AIPS_History`, `AIPS_Operations_Insights_Controller`, `AIPS_Post_Slices_Repository`, `AIPS_Prompt_Section_Repository`, `AIPS_Seeder_Admin`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Repository`, `AIPS_System_Status`, `AIPS_Telemetry_Controller`, `AIPS_Templates`, `AIPS_Voices`
 - **Action Hooks** (1): `admin_menu`
 - **Filter Hooks** (2): `parent_file`, `submenu_file`
 - **Database Operations**: Has Repository
@@ -1278,9 +1313,9 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 638 lines (may violate SRP)
-2. High method count (29+ methods) — consider splitting responsibilities
-3. High coupling — depends on 16 classes
+1. Consider refactoring — class has 740 lines (may violate SRP)
+2. High method count (32+ methods) — consider splitting responsibilities
+3. High coupling — depends on 20 classes
 
 ---
 
@@ -1292,7 +1327,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Menu_Helper`
 
-**Lines of Code**: 81
+**Lines of Code**: 136
 
 **Technical Details**:
 
@@ -1310,7 +1345,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Ajax_Registry`
 
-**Lines of Code**: 313
+**Lines of Code**: 330
 
 **Technical Details**:
 
@@ -1434,7 +1469,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Slice_Scheduler_Base`
 
-**Lines of Code**: 281
+**Lines of Code**: 299
 
 **Technical Details**:
 
@@ -1572,7 +1607,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Topics_Repository`
 
-**Lines of Code**: 495
+**Lines of Code**: 737
 
 **Technical Details**:
 
@@ -1583,6 +1618,10 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Missing Functionality**:
 
 - Does not implement an interface — consider adding a contract
+
+**Recommended Improvements**:
+
+1. Consider refactoring — class has 737 lines (may violate SRP)
 
 ---
 
@@ -1655,14 +1694,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Authors_Repository`
 
-**Lines of Code**: 319
+**Lines of Code**: 409
 
 **Technical Details**:
 
 - **Public Methods** (13): `instance()`, `__construct()`, `get_all()`, `get_by_id()`, `create()`, `update()`, `delete()`, `get_due_for_topic_generation()`, `get_due_for_post_generation()`, `update_topic_generation_active()`, ... and 3 more
-- **Dependencies** (2): `AIPS_Cache_Factory`, `AIPS_DateTime`
+- **Dependencies** (1): `AIPS_DateTime`
 - **Database Operations**: Uses Wpdb, Has Repository
-- **Infrastructure**: Cache
 
 **Missing Functionality**:
 
@@ -1689,6 +1727,33 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. Add comprehensive class-level PHPDoc documentation
+
+---
+
+### Automations Controller
+
+**Summary**: Class AIPS_Automations_Controller
+
+**File**: `ai-post-scheduler/includes/class-aips-automations-controller.php`
+
+**Class**: `AIPS_Automations_Controller`
+
+**Lines of Code**: 320
+
+**Technical Details**:
+
+- **Public Methods** (6): `render_page()`, `get_tabs()`, `get_active_tab_key()`, `is_tab_available()`, `get_tab_url()`, `render_tab_content()`
+- **Dependencies** (4): `AIPS_Campaigns_Controller`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Repository`, `AIPS_Templates`
+- **Database Operations**: Has Repository
+
+**Missing Functionality**:
+
+- No AJAX handlers or action hooks registered
+- No input validation methods visible
+
+**Recommended Improvements**:
+
+1. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
 
@@ -1828,12 +1893,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Cache`
 
-**Lines of Code**: 371
+**Lines of Code**: 672
 
 **Technical Details**:
 
-- **Public Methods** (11): `__construct()`, `reset_system_enabled_flag()`, `get()`, `set()`, `delete()`, `has()`, `flush()`, `remember()`, `increment()`, `decrement()`, ... and 1 more
-- **Dependencies** (3): `AIPS_Cache_Driver`, `AIPS_Cache_Factory`, `AIPS_Telemetry`
+- **Public Methods** (16): `__construct()`, `with_context()`, `reset_system_enabled_flag()`, `get()`, `set()`, `delete()`, `has()`, `flush()`, `remember()`, `increment()`, ... and 6 more
+- **Dependencies** (5): `AIPS_Cache_Driver`, `AIPS_Cache_Factory`, `AIPS_Cache_Index`, `AIPS_Repository_Cache_Observer`, `AIPS_Telemetry`
+- **Database Operations**: Has Repository
 - **WordPress APIs Used**: Options
 - **Infrastructure**: Config, Cache, Telemetry
 
@@ -1841,7 +1907,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. [INFO] Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option()
+1. [INFO] Uses raw get_option() for plugin keys 2 time(s) — prefer AIPS_Config::get_instance()->get_option()
+2. Consider refactoring — class has 672 lines (may violate SRP)
 
 ---
 
@@ -1853,13 +1920,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Cache_Array_Driver`
 
-**Lines of Code**: 103
+**Lines of Code**: 283
 
-**Implements**: `AIPS_Cache_Driver`
+**Implements**: `AIPS_Cache_Driver`, `AIPS_Cache_Monitorable_Driver`
 
 **Technical Details**:
 
-- **Public Methods** (5): `get()`, `set()`, `delete()`, `flush()`, `has()`
+- **Public Methods** (13): `get()`, `set()`, `delete()`, `flush()`, `has()`, `get_monitor_capabilities()`, `list_entries()`, `count_entries()`, `get_entry_metadata()`, `delete_entry()`, ... and 3 more
 
 **Missing Functionality**: None identified
 
@@ -1873,13 +1940,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Cache_Db_Driver`
 
-**Lines of Code**: 217
+**Lines of Code**: 475
 
-**Implements**: `AIPS_Cache_Driver`
+**Implements**: `AIPS_Cache_Driver`, `AIPS_Cache_Monitorable_Driver`
 
 **Technical Details**:
 
-- **Public Methods** (7): `__construct()`, `get()`, `set()`, `delete()`, `flush()`, `has()`, `purge_expired()`
+- **Public Methods** (15): `__construct()`, `get()`, `set()`, `delete()`, `flush()`, `has()`, `purge_expired()`, `get_monitor_capabilities()`, `list_entries()`, `count_entries()`, ... and 5 more
 - **Dependencies** (1): `AIPS_DateTime`
 - **Database Operations**: Uses Wpdb
 
@@ -1900,17 +1967,45 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Cache_Factory`
 
-**Lines of Code**: 263
+**Lines of Code**: 244
 
 **Technical Details**:
 
 - **Public Methods** (6): `instance()`, `make()`, `make_driver()`, `reset()`, `named()`, `register()`
-- **Dependencies** (8): `AIPS_Cache`, `AIPS_Cache_Array_Driver`, `AIPS_Cache_Db_Driver`, `AIPS_Cache_Factory`, `AIPS_Cache_Redis_Driver`, `AIPS_Cache_Session_Driver`, `AIPS_Cache_Wp_Object_Cache_Driver`, `AIPS_Config`
+- **Dependencies** (6): `AIPS_Cache`, `AIPS_Cache_Array_Driver`, `AIPS_Cache_Db_Driver`, `AIPS_Cache_Factory`, `AIPS_Cache_Wp_Object_Cache_Driver`, `AIPS_Config`
 - **Action Hooks** (1): `admin_notices`
 - **WordPress APIs Used**: Options
 - **Infrastructure**: Config, Cache
 
 **Missing Functionality**: None identified
+
+---
+
+### Cache Index
+
+**Summary**: Class AIPS_Cache_Index
+
+**File**: `ai-post-scheduler/includes/class-aips-cache-index.php`
+
+**Class**: `AIPS_Cache_Index`
+
+**Lines of Code**: 455
+
+**Technical Details**:
+
+- **Public Methods** (8): `__construct()`, `record_set()`, `record_delete()`, `record_flush()`, `record_access()`, `prune_expired()`, `prune_orphans()`, `rebuild_from_db()`
+- **Dependencies** (3): `AIPS_Cache`, `AIPS_Config`, `AIPS_DateTime`
+- **Database Operations**: Uses Wpdb
+- **WordPress APIs Used**: Options
+- **Infrastructure**: Config, Cache
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. [INFO] Uses raw get_option() for plugin keys 6 time(s) — prefer AIPS_Config::get_instance()->get_option()
+2. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
+3. Consider using Repository pattern for database access instead of direct $wpdb
 
 ---
 
@@ -1940,6 +2035,86 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
+### Cache Monitor Controller
+
+**Summary**: Class AIPS_Cache_Monitor_Controller
+
+**File**: `ai-post-scheduler/includes/class-aips-cache-monitor-controller.php`
+
+**Class**: `AIPS_Cache_Monitor_Controller`
+
+**Lines of Code**: 433
+
+**Technical Details**:
+
+- **Public Methods** (15): `__construct()`, `render_page()`, `ajax_summary()`, `ajax_entries()`, `ajax_inspect()`, `ajax_operations()`, `ajax_events()`, `ajax_delete_entry()`, `ajax_delete_bulk()`, `ajax_flush_group()`, ... and 5 more
+- **Dependencies** (5): `AIPS_Ajax_Response`, `AIPS_Cache_Index`, `AIPS_Cache_Monitor_Repository`, `AIPS_Cache_Monitor_Service`, `AIPS_Config`
+- **Action Hooks** (13): `wp_ajax_aips_cache_monitor_delete_bulk`, `wp_ajax_aips_cache_monitor_delete_entry`, `wp_ajax_aips_cache_monitor_entries`, `wp_ajax_aips_cache_monitor_inspect`, `wp_ajax_aips_cache_monitor_summary`, ... and 8 more
+- **AJAX Handlers**: `wp_ajax_aips_cache_monitor_summary`, `wp_ajax_aips_cache_monitor_entries`, `wp_ajax_aips_cache_monitor_inspect`, `wp_ajax_aips_cache_monitor_delete_entry`, `wp_ajax_aips_cache_monitor_delete_bulk`, `wp_ajax_aips_cache_monitor_flush_group`, `wp_ajax_aips_cache_monitor_flush_expired`, `wp_ajax_aips_cache_monitor_flush_all`, `wp_ajax_aips_cache_monitor_invalidate_tag`, `wp_ajax_aips_cache_monitor_invalidate_domain`, `wp_ajax_aips_cache_monitor_operations`, `wp_ajax_aips_cache_monitor_events`, `wp_ajax_aips_cache_monitor_maintenance`
+- **Database Operations**: Has Repository
+- **WordPress APIs Used**: Options
+- **Infrastructure**: Config, Ajax Response
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. [WARNING] Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_cache_monitor_summary, aips_cache_monitor_entries, aips_cache_monitor_inspect, aips_cache_monitor_delete_entry, aips_cache_monitor_delete_bulk
+2. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+
+---
+
+### Cache Monitor Repository
+
+**Summary**: Class AIPS_Cache_Monitor_Repository
+
+**File**: `ai-post-scheduler/includes/class-aips-cache-monitor-repository.php`
+
+**Class**: `AIPS_Cache_Monitor_Repository`
+
+**Lines of Code**: 500
+
+**Technical Details**:
+
+- **Public Methods** (13): `get_index_entries()`, `count_index_entries()`, `get_index_summary()`, `get_index_entry_by_hash()`, `delete_index_entry()`, `delete_index_entries_bulk()`, `delete_index_group()`, `list_tags()`, `list_operations()`, `insert_event()`, ... and 3 more
+- **Dependencies** (1): `AIPS_DateTime`
+- **Database Operations**: Uses Wpdb, Has Repository
+
+**Missing Functionality**:
+
+- Does not implement an interface — consider adding a contract
+
+---
+
+### Cache Monitor Service
+
+**Summary**: Class AIPS_Cache_Monitor_Service
+
+**File**: `ai-post-scheduler/includes/class-aips-cache-monitor-service.php`
+
+**Class**: `AIPS_Cache_Monitor_Service`
+
+**Lines of Code**: 791
+
+**Technical Details**:
+
+- **Public Methods** (22): `__construct()`, `get_summary()`, `get_entries()`, `inspect_entry()`, `list_tags()`, `get_tag_details()`, `list_domains()`, `get_domain_details()`, `get_operations()`, `get_events()`, ... and 12 more
+- **Dependencies** (7): `AIPS_Cache`, `AIPS_Cache_Factory`, `AIPS_Cache_Monitor_Repository`, `AIPS_Config`, `AIPS_DateTime`, `AIPS_Logger`, `AIPS_Repository_Cache_Dependencies`
+- **Database Operations**: Has Repository
+- **WordPress APIs Used**: Options
+- **Infrastructure**: Config, Cache, Logger
+
+**Missing Functionality**:
+
+- Does not implement an interface — consider adding a contract
+
+**Recommended Improvements**:
+
+1. Consider refactoring — class has 791 lines (may violate SRP)
+2. High method count (22+ methods) — consider splitting responsibilities
+
+---
+
 ### Cache Policy
 
 **Summary**: No description available
@@ -1963,48 +2138,6 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
-### Cache Redis Driver
-
-**Summary**: Class AIPS_Cache_Redis_Driver
-
-**File**: `ai-post-scheduler/includes/class-aips-cache-redis-driver.php`
-
-**Class**: `AIPS_Cache_Redis_Driver`
-
-**Lines of Code**: 258
-
-**Implements**: `AIPS_Cache_Driver`
-
-**Technical Details**:
-
-- **Public Methods** (8): `__construct()`, `is_connected()`, `get_last_error()`, `get()`, `set()`, `delete()`, `flush()`, `has()`
-- **Dependencies** (1): `AIPS_Logger`
-- **Infrastructure**: Logger
-
-**Missing Functionality**: None identified
-
----
-
-### Cache Session Driver
-
-**Summary**: Class AIPS_Cache_Session_Driver
-
-**File**: `ai-post-scheduler/includes/class-aips-cache-session-driver.php`
-
-**Class**: `AIPS_Cache_Session_Driver`
-
-**Lines of Code**: 219
-
-**Implements**: `AIPS_Cache_Driver`
-
-**Technical Details**:
-
-- **Public Methods** (7): `__construct()`, `get()`, `set()`, `delete()`, `flush()`, `has()`, `is_session_available()`
-
-**Missing Functionality**: None identified
-
----
-
 ### Cache Wp Object Cache Driver
 
 **Summary**: Class AIPS_Cache_Wp_Object_Cache_Driver
@@ -2013,13 +2146,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Cache_Wp_Object_Cache_Driver`
 
-**Lines of Code**: 148
+**Lines of Code**: 227
 
-**Implements**: `AIPS_Cache_Driver`
+**Implements**: `AIPS_Cache_Driver`, `AIPS_Cache_Monitorable_Driver`
 
 **Technical Details**:
 
-- **Public Methods** (6): `__construct()`, `get()`, `set()`, `delete()`, `flush()`, `has()`
+- **Public Methods** (14): `__construct()`, `get()`, `set()`, `delete()`, `flush()`, `has()`, `get_monitor_capabilities()`, `list_entries()`, `count_entries()`, `get_entry_metadata()`, ... and 4 more
 
 **Missing Functionality**: None identified
 
@@ -2033,12 +2166,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Calendar_Controller`
 
-**Lines of Code**: 278
+**Lines of Code**: 284
 
 **Technical Details**:
 
 - **Public Methods** (3): `__construct()`, `get_month_events()`, `ajax_get_calendar_events()`
-- **Dependencies** (5): `AIPS_Ajax_Response`, `AIPS_DateTime`, `AIPS_Interval_Calculator`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`
+- **Dependencies** (6): `AIPS_Ajax_Response`, `AIPS_DateTime`, `AIPS_Interval_Calculator`, `AIPS_Schedule_Repository`, `AIPS_Template_Data`, `AIPS_Template_Repository`
 - **Action Hooks** (1): `wp_ajax_aips_get_calendar_events`
 - **AJAX Handlers**: `wp_ajax_aips_get_calendar_events`
 - **Database Operations**: Has Repository
@@ -2063,7 +2196,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Campaigns_Controller`
 
-**Lines of Code**: 1116
+**Lines of Code**: 1250
 
 **Technical Details**:
 
@@ -2080,7 +2213,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 11 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_campaigns, aips_get_campaign_metrics, aips_toggle_campaign, aips_duplicate_campaign, aips_archive_campaign
-2. Consider refactoring — class has 1116 lines (may violate SRP)
+2. Consider refactoring — class has 1250 lines (may violate SRP)
 3. High coupling — depends on 15 classes
 4. Add comprehensive class-level PHPDoc documentation
 
@@ -2094,11 +2227,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Campaigns_Repository`
 
-**Lines of Code**: 925
+**Lines of Code**: 1184
 
 **Technical Details**:
 
-- **Public Methods** (20): `instance()`, `__construct()`, `get_campaigns()`, `get_campaign_by_id()`, `get_summary_stats()`, `get_campaign_metrics()`, `get_campaign_filter_options()`, `create_campaign_bundle()`, `duplicate_campaign()`, `set_active()`, ... and 10 more
+- **Public Methods** (23): `instance()`, `__construct()`, `get_campaigns()`, `get_campaign_by_id()`, `get_summary_stats()`, `get_campaign_metrics()`, `get_campaign_health()`, `get_recent_activity()`, `get_recent_generated_posts()`, `get_campaign_filter_options()`, ... and 13 more
 - **Dependencies** (6): `AIPS_Cache_Factory`, `AIPS_DateTime`, `AIPS_Logger`, `AIPS_Schedule_Repository`, `AIPS_Scheduler`, `AIPS_Template_Repository`
 - **Database Operations**: Uses Wpdb, Has Repository
 - **Infrastructure**: Cache, Logger
@@ -2109,8 +2242,9 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 925 lines (may violate SRP)
-2. Add comprehensive class-level PHPDoc documentation
+1. Consider refactoring — class has 1184 lines (may violate SRP)
+2. High method count (23+ methods) — consider splitting responsibilities
+3. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -2154,7 +2288,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Config`
 
-**Lines of Code**: 718
+**Lines of Code**: 710
 
 **Technical Details**:
 
@@ -2168,7 +2302,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 718 lines (may violate SRP)
+1. Consider refactoring — class has 710 lines (may violate SRP)
 2. High method count (33+ methods) — consider splitting responsibilities
 
 ---
@@ -2242,7 +2376,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_DB_Manager`
 
-**Lines of Code**: 1248
+**Lines of Code**: 1299
 
 **Technical Details**:
 
@@ -2259,7 +2393,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_fix_datetime_values, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events
-2. Consider refactoring — class has 1248 lines (may violate SRP)
+2. Consider refactoring — class has 1299 lines (may violate SRP)
 3. Add comprehensive class-level PHPDoc documentation
 
 ---
@@ -2272,7 +2406,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_DB_Migrations`
 
-**Lines of Code**: 753
+**Lines of Code**: 817
 
 **Technical Details**:
 
@@ -2288,7 +2422,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 1. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
 2. [WARNING] Uses $wpdb directly — SQL should be in a Repository class
-3. Consider refactoring — class has 753 lines (may violate SRP)
+3. Consider refactoring — class has 817 lines (may violate SRP)
 4. Consider using Repository pattern for database access instead of direct $wpdb
 5. Add comprehensive class-level PHPDoc documentation
 
@@ -2561,7 +2695,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Dev_Tools`
 
-**Lines of Code**: 210
+**Lines of Code**: 212
 
 **Technical Details**:
 
@@ -2578,6 +2712,34 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 1. [WARNING] Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_generate_scaffold
 2. [INFO] Directly instantiates AIPS_AI_Service without using AIPS_Container — consider resolving from the container
+
+---
+
+### Diagnostics Controller
+
+**Summary**: Class AIPS_Diagnostics_Controller
+
+**File**: `ai-post-scheduler/includes/class-aips-diagnostics-controller.php`
+
+**Class**: `AIPS_Diagnostics_Controller`
+
+**Lines of Code**: 233
+
+**Technical Details**:
+
+- **Public Methods** (6): `render_page()`, `get_tabs()`, `get_active_tab_key()`, `is_tab_available()`, `get_tab_url()`, `render_tab_content()`
+- **Dependencies** (7): `AIPS_Cache_Monitor_Controller`, `AIPS_Config`, `AIPS_Dev_Tools`, `AIPS_Operations_Insights_Controller`, `AIPS_Seeder_Admin`, `AIPS_System_Status`, `AIPS_Telemetry_Controller`
+- **WordPress APIs Used**: Options
+- **Infrastructure**: Config, Telemetry
+
+**Missing Functionality**:
+
+- No AJAX handlers or action hooks registered
+- No input validation methods visible
+
+**Recommended Improvements**:
+
+1. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
 
@@ -2608,7 +2770,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Embeddings_Cron`
 
-**Lines of Code**: 301
+**Lines of Code**: 311
 
 **Technical Details**:
 
@@ -2757,12 +2919,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generation_Execution_Runner`
 
-**Lines of Code**: 138
+**Lines of Code**: 152
 
 **Technical Details**:
 
 - **Public Methods** (2): `__construct()`, `run()`
-- **Dependencies** (6): `AIPS_Container`, `AIPS_Correlation_ID`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Logger`, `AIPS_Logger_Interface`
+- **Dependencies** (7): `AIPS_Container`, `AIPS_Correlation_ID`, `AIPS_DateTime`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Logger`, `AIPS_Logger_Interface`
 - **Infrastructure**: Container, Logger, Correlation Id, History Service
 
 **Missing Functionality**: None identified
@@ -2871,11 +3033,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History`
 
-**Lines of Code**: 679
+**Lines of Code**: 1481
 
 **Technical Details**:
 
-- **Public Methods** (16): `__construct()`, `ajax_bulk_delete_history()`, `ajax_clear_history()`, `ajax_export_history()`, `ajax_get_history_details()`, `ajax_get_history_logs()`, `ajax_get_history_modal_html()`, `ajax_reload_history()`, `ajax_retry_generation()`, `get_history()`, ... and 6 more
+- **Public Methods** (18): `__construct()`, `ajax_bulk_delete_history()`, `ajax_clear_history()`, `ajax_export_history()`, `ajax_get_history_details()`, `ajax_get_history_logs()`, `ajax_get_history_modal_html()`, `ajax_reload_history()`, `ajax_retry_generation()`, `get_history()`, ... and 8 more
 - **Dependencies** (7): `AIPS_Ajax_Response`, `AIPS_Config`, `AIPS_DateTime`, `AIPS_Generator`, `AIPS_History_Repository`, `AIPS_History_Type`, `AIPS_Templates`
 - **Action Hooks** (8): `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, ... and 3 more
 - **AJAX Handlers**: `wp_ajax_aips_bulk_delete_history`, `wp_ajax_aips_clear_history`, `wp_ajax_aips_export_history`, `wp_ajax_aips_get_history_details`, `wp_ajax_aips_get_history_logs`, `wp_ajax_aips_get_history_modal_html`, `wp_ajax_aips_reload_history`, `wp_ajax_aips_retry_generation`
@@ -2888,7 +3050,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_bulk_delete_history, aips_clear_history, aips_export_history, aips_get_history_details, aips_get_history_logs
-2. Consider refactoring — class has 679 lines (may violate SRP)
+2. Consider refactoring — class has 1481 lines (may violate SRP)
 
 ---
 
@@ -2900,7 +3062,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Container`
 
-**Lines of Code**: 478
+**Lines of Code**: 481
 
 **Technical Details**:
 
@@ -2921,13 +3083,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Repository`
 
-**Lines of Code**: 1397
+**Lines of Code**: 1454
 
 **Implements**: `AIPS_History_Repository_Interface`
 
 **Technical Details**:
 
-- **Public Methods** (31): `instance()`, `__construct()`, `count_completed_for_schedule()`, `invalidate_schedule_completed_count_cache()`, `get_daily_success_failure_trend()`, `get_average_duration_by_flow()`, `get_retry_counts_by_service()`, `get_top_failure_reasons()`, `get_history()`, `get_partial_generations()`, ... and 21 more
+- **Public Methods** (32): `instance()`, `__construct()`, `count_completed_for_schedule()`, `invalidate_schedule_completed_count_cache()`, `repair_missing_campaign_ids()`, `get_daily_success_failure_trend()`, `get_average_duration_by_flow()`, `get_retry_counts_by_service()`, `get_top_failure_reasons()`, `get_history()`, ... and 22 more
 - **Dependencies** (2): `AIPS_DateTime`, `AIPS_History_Type`
 - **Database Operations**: Uses Wpdb, Has Repository
 - **WordPress APIs Used**: Transients
@@ -2936,8 +3098,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1397 lines (may violate SRP)
-2. High method count (31+ methods) — consider splitting responsibilities
+1. Consider refactoring — class has 1454 lines (may violate SRP)
+2. High method count (32+ methods) — consider splitting responsibilities
 
 ---
 
@@ -3053,7 +3215,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Internal_Links_Controller`
 
-**Lines of Code**: 751
+**Lines of Code**: 752
 
 **Technical Details**:
 
@@ -3072,7 +3234,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 1. [WARNING] Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_internal_links_get_suggestions, aips_internal_links_generate_suggestions, aips_internal_links_update_status, aips_internal_links_update_anchor, aips_internal_links_delete
 2. [INFO] Directly instantiates AIPS_Logger without using AIPS_Container — consider resolving from the container
-3. Consider refactoring — class has 751 lines (may violate SRP)
+3. Consider refactoring — class has 752 lines (may violate SRP)
 4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
 ---
@@ -3174,12 +3336,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Job_Dispatcher`
 
-**Lines of Code**: 277
+**Lines of Code**: 289
 
 **Technical Details**:
 
 - **Public Methods** (4): `__construct()`, `dispatch()`, `dispatch_batch()`, `is_scheduled()`
-- **Dependencies** (7): `AIPS_Container`, `AIPS_Dispatch_Summary`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Logger`, `AIPS_Logger_Interface`, `AIPS_Resilience_Service`
+- **Dependencies** (8): `AIPS_Container`, `AIPS_DateTime`, `AIPS_Dispatch_Summary`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Logger`, `AIPS_Logger_Interface`, `AIPS_Resilience_Service`
 - **WordPress APIs Used**: Cron
 - **Infrastructure**: Container, Logger, History Service, Resilience
 
@@ -3512,7 +3674,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Operations_Insights_Controller`
 
-**Lines of Code**: 106
+**Lines of Code**: 107
 
 **Technical Details**:
 
@@ -3659,12 +3821,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Post_Manager`
 
-**Lines of Code**: 423
+**Lines of Code**: 439
 
 **Technical Details**:
 
 - **Public Methods** (4): `create_post()`, `set_featured_image()`, `update_generation_status_meta()`, `reconcile_generation_status_meta_from_post()`
-- **Dependencies** (2): `AIPS_Config`, `AIPS_DateTime`
+- **Dependencies** (3): `AIPS_Config`, `AIPS_DateTime`, `AIPS_Template_Data`
 - **Filter Hooks** (1): `aips_post_seo_metadata`
 - **Database Operations**: Uses Wpdb
 - **WordPress APIs Used**: Options, Post Meta
@@ -4067,6 +4229,107 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
+### Repository Cache Config
+
+**Summary**: Repository cache tier configuration and cache-instance resolution.
+
+**File**: `ai-post-scheduler/includes/class-aips-repository-cache-config.php`
+
+**Class**: `AIPS_Repository_Cache_Config`
+
+**Lines of Code**: 189
+
+**Technical Details**:
+
+- **Public Methods** (3): `get_tier_config()`, `resolve_ttl()`, `resolve_cache_instance()`
+- **Dependencies** (1): `AIPS_Cache_Factory`
+- **Database Operations**: Has Repository
+- **WordPress APIs Used**: Options
+- **Infrastructure**: Cache
+
+**Missing Functionality**:
+
+- Missing save/update methods for data persistence
+- Does not implement an interface — consider adding a contract
+
+**Recommended Improvements**:
+
+1. [INFO] Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option()
+2. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+
+---
+
+### Repository Cache Dependencies
+
+**Summary**: Central repository cache dependency map.
+
+**File**: `ai-post-scheduler/includes/class-aips-repository-cache-dependencies.php`
+
+**Class**: `AIPS_Repository_Cache_Dependencies`
+
+**Lines of Code**: 243
+
+**Technical Details**:
+
+- **Public Methods** (2): `tags_for_read()`, `tags_for_invalidation()`
+- **Database Operations**: Has Repository
+
+**Missing Functionality**:
+
+- Missing getter methods for data retrieval
+- Missing save/update methods for data persistence
+- Does not implement an interface — consider adding a contract
+
+---
+
+### Repository Cache Key Builder
+
+**Summary**: Builds stable cache keys for repository read operations.
+
+**File**: `ai-post-scheduler/includes/class-aips-repository-cache-key-builder.php`
+
+**Class**: `AIPS_Repository_Cache_Key_Builder`
+
+**Lines of Code**: 255
+
+**Technical Details**:
+
+- **Public Methods** (3): `build_key()`, `normalize_args()`, `hash_args()`
+- **Database Operations**: Has Repository
+
+**Missing Functionality**:
+
+- Missing getter methods for data retrieval
+- Missing save/update methods for data persistence
+- Does not implement an interface — consider adding a contract
+
+---
+
+### Repository Cache Observer
+
+**Summary**: Repository cache observability helper.
+
+**File**: `ai-post-scheduler/includes/class-aips-repository-cache-observer.php`
+
+**Class**: `AIPS_Repository_Cache_Observer`
+
+**Lines of Code**: 334
+
+**Technical Details**:
+
+- **Public Methods** (6): `__construct()`, `record_read()`, `record_write()`, `record_invalidation()`, `record_bypass()`, `record_warning()`
+- **Dependencies** (5): `AIPS_Container`, `AIPS_Correlation_ID`, `AIPS_Logger`, `AIPS_Logger_Interface`, `AIPS_Telemetry`
+- **Database Operations**: Has Repository
+- **Infrastructure**: Container, Logger, Telemetry, Correlation Id
+
+**Missing Functionality**:
+
+- Missing getter methods for data retrieval
+- Missing save/update methods for data persistence
+- Does not implement an interface — consider adding a contract
+
+---
+
 ### Research Controller
 
 **Summary**: Research Controller
@@ -4339,11 +4602,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Seeder_Admin`
 
-**Lines of Code**: 69
+**Lines of Code**: 80
 
 **Technical Details**:
 
-- **Public Methods** (3): `__construct()`, `enqueue_assets()`, `ajax_process_seeder()`
+- **Public Methods** (4): `__construct()`, `enqueue_assets()`, `render_page()`, `ajax_process_seeder()`
 - **Dependencies** (2): `AIPS_Ajax_Response`, `AIPS_Seeder_Service`
 - **Action Hooks** (3): `admin_enqueue_scripts`, `aips_seeder_completed`, `wp_ajax_aips_process_seeder`
 - **AJAX Handlers**: `wp_ajax_aips_process_seeder`
@@ -4425,13 +4688,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings`
 
-**Lines of Code**: 701
+**Lines of Code**: 675
 
 **Technical Details**:
 
-- **Public Methods** (3): `__construct()`, `register_settings()`, `get_content_strategy_options()`
+- **Public Methods** (6): `__construct()`, `register_runtime_hooks()`, `get_registered_settings_args()`, `register_setting_schema()`, `register_settings()`, `get_content_strategy_options()`
 - **Dependencies** (7): `AIPS_Cache`, `AIPS_Config`, `AIPS_Notifications`, `AIPS_Prompt_Builder`, `AIPS_Settings_AJAX`, `AIPS_Settings_UI`, `AIPS_Site_Context`
-- **Action Hooks** (2): `admin_init`, `update_option_aips_enable_cache_system`
+- **Action Hooks** (3): `add_option_aips_enable_cache_system`, `admin_init`, `update_option_aips_enable_cache_system`
 - **WordPress APIs Used**: Options
 - **Infrastructure**: Config, Cache
 
@@ -4439,7 +4702,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 701 lines (may violate SRP)
+1. Consider refactoring — class has 675 lines (may violate SRP)
 
 ---
 
@@ -4451,14 +4714,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings_AJAX`
 
-**Lines of Code**: 222
+**Lines of Code**: 267
 
 **Technical Details**:
 
-- **Public Methods** (3): `__construct()`, `ajax_test_connection()`, `ajax_notifications_data_hygiene()`
-- **Dependencies** (9): `AIPS_AI_Service`, `AIPS_AI_Service_Interface`, `AIPS_Ajax_Response`, `AIPS_Config`, `AIPS_Container`, `AIPS_DateTime`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Notifications`
-- **Action Hooks** (2): `wp_ajax_aips_notifications_data_hygiene`, `wp_ajax_aips_test_connection`
-- **AJAX Handlers**: `wp_ajax_aips_test_connection`, `wp_ajax_aips_notifications_data_hygiene`
+- **Public Methods** (4): `__construct()`, `ajax_save_settings()`, `ajax_test_connection()`, `ajax_notifications_data_hygiene()`
+- **Dependencies** (11): `AIPS_AI_Service`, `AIPS_AI_Service_Interface`, `AIPS_Ajax_Response`, `AIPS_Config`, `AIPS_Container`, `AIPS_DateTime`, `AIPS_History_Service`, `AIPS_History_Service_Interface`, `AIPS_Notifications`, `AIPS_Settings`, `AIPS_Settings_UI`
+- **Action Hooks** (3): `wp_ajax_aips_notifications_data_hygiene`, `wp_ajax_aips_save_settings`, `wp_ajax_aips_test_connection`
+- **AJAX Handlers**: `wp_ajax_aips_save_settings`, `wp_ajax_aips_test_connection`, `wp_ajax_aips_notifications_data_hygiene`
 - **WordPress APIs Used**: Cron, Options
 - **Infrastructure**: Container, Config, Ajax Response, History Service
 
@@ -4466,8 +4729,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. [WARNING] Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_test_connection, aips_notifications_data_hygiene
-2. High coupling — depends on 9 classes
+1. [WARNING] Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_settings, aips_test_connection, aips_notifications_data_hygiene
+2. High coupling — depends on 11 classes
 
 ---
 
@@ -4479,11 +4742,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings_UI`
 
-**Lines of Code**: 904
+**Lines of Code**: 818
 
 **Technical Details**:
 
-- **Public Methods** (57): `general_section_callback()`, `ai_section_callback()`, `feedback_section_callback()`, `api_keys_section_callback()`, `developers_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, `ai_env_id_field_callback()`, `max_tokens_limit_field_callback()`, ... and 47 more
+- **Public Methods** (51): `general_section_callback()`, `ai_section_callback()`, `feedback_section_callback()`, `api_keys_section_callback()`, `developers_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, `ai_env_id_field_callback()`, `max_tokens_limit_field_callback()`, ... and 41 more
 - **Dependencies** (3): `AIPS_Article_Structure_Repository`, `AIPS_Config`, `AIPS_Notifications`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Options
@@ -4493,8 +4756,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 904 lines (may violate SRP)
-2. High method count (57+ methods) — consider splitting responsibilities
+1. Consider refactoring — class has 818 lines (may violate SRP)
+2. High method count (51+ methods) — consider splitting responsibilities
 
 ---
 
@@ -4846,7 +5109,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_System_Status`
 
-**Lines of Code**: 58
+**Lines of Code**: 59
 
 **Technical Details**:
 
@@ -4869,14 +5132,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_System_Status_Controller`
 
-**Lines of Code**: 197
+**Lines of Code**: 214
 
 **Technical Details**:
 
-- **Public Methods** (7): `__construct()`, `ajax_reset_circuit_breaker()`, `ajax_reschedule_missed_cron()`, `ajax_retry_failed_slices()`, `ajax_clear_partial_generations()`, `ajax_cleanup_stale_jobs_cache()`, `ajax_rebuild_caches()`
+- **Public Methods** (8): `__construct()`, `ajax_reset_circuit_breaker()`, `ajax_reschedule_missed_cron()`, `ajax_retry_failed_slices()`, `ajax_repair_campaign_data()`, `ajax_clear_partial_generations()`, `ajax_cleanup_stale_jobs_cache()`, `ajax_rebuild_caches()`
 - **Dependencies** (10): `AIPS_Ajax_Response`, `AIPS_Bulk_Batch_Job_Store`, `AIPS_Cache_Factory`, `AIPS_Cache_Invalidation_Bus`, `AIPS_Cache_Policy`, `AIPS_Container`, `AIPS_DateTime`, `AIPS_History_Repository`, `AIPS_Logger`, `AIPS_Resilience_Service`
-- **Action Hooks** (7): `aips_post_components_updated`, `wp_ajax_aips_reset_circuit_breaker`, `wp_ajax_aips_status_clear_partial_generations`, `wp_ajax_aips_status_reschedule_missed_cron`, `wp_ajax_aips_status_retry_failed_slices`, ... and 2 more
-- **AJAX Handlers**: `wp_ajax_aips_reset_circuit_breaker`, `wp_ajax_aips_status_reschedule_missed_cron`, `wp_ajax_aips_status_retry_failed_slices`, `wp_ajax_aips_status_clear_partial_generations`, `wp_ajax_aips_status_cleanup_stale_jobs_cache`, `wp_ajax_aips_rebuild_caches`
+- **Action Hooks** (8): `aips_post_components_updated`, `wp_ajax_aips_reset_circuit_breaker`, `wp_ajax_aips_status_repair_campaign_data`, `wp_ajax_aips_status_reschedule_missed_cron`, `wp_ajax_aips_status_retry_failed_slices`, ... and 3 more
+- **AJAX Handlers**: `wp_ajax_aips_reset_circuit_breaker`, `wp_ajax_aips_status_reschedule_missed_cron`, `wp_ajax_aips_status_retry_failed_slices`, `wp_ajax_aips_status_repair_campaign_data`, `wp_ajax_aips_status_clear_partial_generations`, `wp_ajax_aips_status_cleanup_stale_jobs_cache`, `wp_ajax_aips_rebuild_caches`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Cron
 - **Infrastructure**: Container, Cache, Ajax Response, Logger, Resilience
@@ -4887,7 +5150,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. [WARNING] Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_clear_partial_generations, aips_status_cleanup_stale_jobs_cache
+1. [WARNING] Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_repair_campaign_data, aips_status_clear_partial_generations
 2. High coupling — depends on 10 classes
 3. Document custom hooks in HOOKS.md for third-party developers
 
@@ -4984,7 +5247,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Telemetry_Controller`
 
-**Lines of Code**: 284
+**Lines of Code**: 285
 
 **Technical Details**:
 
@@ -5061,11 +5324,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Template_Data`
 
-**Lines of Code**: 330
+**Lines of Code**: 375
 
 **Technical Details**:
 
-- **Public Methods** (4): `from_row()`, `has_title_prompt()`, `has_image_prompt()`, `has_voice()`
+- **Public Methods** (5): `from_row()`, `parse_post_categories()`, `has_title_prompt()`, `has_image_prompt()`, `has_voice()`
 - **Dependencies** (1): `AIPS_Template_Data`
 - **Database Operations**: Uses Wpdb
 
@@ -5086,12 +5349,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Template_Entry`
 
-**Lines of Code**: 270
+**Lines of Code**: 295
 
 **Technical Details**:
 
-- **Public Methods** (1): `from_template_and_overrides()`
-- **Dependencies** (2): `AIPS_Template_Context`, `AIPS_Template_Entry`
+- **Public Methods** (2): `from_template_and_overrides()`, `parse_post_categories()`
+- **Dependencies** (3): `AIPS_Template_Context`, `AIPS_Template_Data`, `AIPS_Template_Entry`
 
 **Missing Functionality**: None identified
 
@@ -5154,12 +5417,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Template_Repository`
 
-**Lines of Code**: 403
+**Lines of Code**: 422
 
 **Technical Details**:
 
 - **Public Methods** (12): `instance()`, `__construct()`, `get_all()`, `get_by_id()`, `search()`, `create()`, `update()`, `delete()`, `count_by_campaign()`, `set_active()`, ... and 2 more
-- **Dependencies** (2): `AIPS_Cache_Factory`, `AIPS_DateTime`
+- **Dependencies** (3): `AIPS_Cache_Factory`, `AIPS_DateTime`, `AIPS_Template_Data`
 - **Database Operations**: Uses Wpdb, Has Repository
 - **Infrastructure**: Cache
 
@@ -5224,7 +5487,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Templates_Controller`
 
-**Lines of Code**: 458
+**Lines of Code**: 477
 
 **Technical Details**:
 
@@ -5484,7 +5747,7 @@ This section reports on adherence to the project's architectural standards.
 
 **Standard**: All AJAX hooks should be registered through AIPS_Ajax_Registry, not directly in class constructors.
 
-**Status**: ⚠️ 28 finding(s)
+**Status**: ⚠️ 29 finding(s)
 
 | Class | Severity | Details |
 |-------|----------|---------|
@@ -5493,6 +5756,7 @@ This section reports on adherence to the project's architectural standards.
 | `AIPS_AI_Edit_Controller` | warning | Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_components, aips_regenerate_component, aips_regenerate_all_components, aips_save_post_components, aips_get_component_revisions |
 | `AIPS_Author_Topics_Controller` | warning | Registers 20 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_approve_topic, aips_reject_topic, aips_edit_topic, aips_delete_topic, aips_generate_post_from_topic |
 | `AIPS_Authors_Controller` | warning | Registers 9 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_author, aips_delete_author, aips_get_author, aips_get_author_topics, aips_get_author_posts |
+| `AIPS_Cache_Monitor_Controller` | warning | Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_cache_monitor_summary, aips_cache_monitor_entries, aips_cache_monitor_inspect, aips_cache_monitor_delete_entry, aips_cache_monitor_delete_bulk |
 | `AIPS_Calendar_Controller` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_calendar_events |
 | `AIPS_Campaigns_Controller` | warning | Registers 11 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_campaigns, aips_get_campaign_metrics, aips_toggle_campaign, aips_duplicate_campaign, aips_archive_campaign |
 | `AIPS_Data_Management` | warning | Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_export_data, aips_import_data |
@@ -5508,10 +5772,10 @@ This section reports on adherence to the project's architectural standards.
 | `AIPS_Prompt_Sections_Controller` | warning | Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_prompt_sections, aips_get_prompt_section, aips_save_prompt_section, aips_delete_prompt_section, aips_toggle_prompt_section_active |
 | `AIPS_Schedule_Controller` | warning | Registers 16 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_schedule, aips_delete_schedule, aips_toggle_schedule, aips_run_now, aips_bulk_delete_schedules |
 | `AIPS_Seeder_Admin` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_process_seeder |
-| `AIPS_Settings_AJAX` | warning | Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_test_connection, aips_notifications_data_hygiene |
+| `AIPS_Settings_AJAX` | warning | Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_settings, aips_test_connection, aips_notifications_data_hygiene |
 | `AIPS_Sources_Controller` | warning | Registers 8 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_sources, aips_save_source, aips_delete_source, aips_toggle_source_active, aips_fetch_source_now |
 | `AIPS_Structures_Controller` | warning | Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_structures, aips_get_structure, aips_save_structure, aips_delete_structure, aips_toggle_structure_active |
-| `AIPS_System_Status_Controller` | warning | Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_clear_partial_generations, aips_status_cleanup_stale_jobs_cache |
+| `AIPS_System_Status_Controller` | warning | Registers 7 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_reset_circuit_breaker, aips_status_reschedule_missed_cron, aips_status_retry_failed_slices, aips_status_repair_campaign_data, aips_status_clear_partial_generations |
 | `AIPS_Taxonomy_Controller` | warning | Registers 11 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_taxonomy_items, aips_generate_taxonomy, aips_approve_taxonomy, aips_reject_taxonomy, aips_delete_taxonomy |
 | `AIPS_Telemetry_Controller` | warning | Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_telemetry, aips_get_telemetry_details |
 | `AIPS_Templates_Controller` | warning | Registers 6 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_save_template, aips_delete_template, aips_get_template, aips_test_template, aips_clone_template |
@@ -5521,12 +5785,14 @@ This section reports on adherence to the project's architectural standards.
 
 **Standard**: Plugin settings should be read through AIPS_Config::get_instance()->get_option() instead of raw get_option() calls.
 
-**Status**: ⚠️ 3 finding(s)
+**Status**: ⚠️ 5 finding(s)
 
 | Class | Severity | Details |
 |-------|----------|---------|
-| `AIPS_Cache` | info | Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option() |
+| `AIPS_Cache_Index` | info | Uses raw get_option() for plugin keys 6 time(s) — prefer AIPS_Config::get_instance()->get_option() |
+| `AIPS_Cache` | info | Uses raw get_option() for plugin keys 2 time(s) — prefer AIPS_Config::get_instance()->get_option() |
 | `AIPS_Prompt_Builder` | info | Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option() |
+| `AIPS_Repository_Cache_Config` | info | Uses raw get_option() for plugin keys 1 time(s) — prefer AIPS_Config::get_instance()->get_option() |
 | `AIPS_Sources_Fetcher` | info | Uses raw get_option() for plugin keys 2 time(s) — prefer AIPS_Config::get_instance()->get_option() |
 
 ### Responses via AIPS_Ajax_Response
@@ -5578,12 +5844,13 @@ This section reports on adherence to the project's architectural standards.
 
 **Standard**: $wpdb queries should only appear in Repository or DB_Manager classes.
 
-**Status**: ⚠️ 12 finding(s)
+**Status**: ⚠️ 13 finding(s)
 
 | Class | Severity | Details |
 |-------|----------|---------|
 | `AIPS_Bulk_Batch_Job_Store` | warning | Uses $wpdb directly — SQL should be in a Repository class |
 | `AIPS_Cache_Db_Driver` | warning | Uses $wpdb directly — SQL should be in a Repository class |
+| `AIPS_Cache_Index` | warning | Uses $wpdb directly — SQL should be in a Repository class |
 | `AIPS_Data_Management_Import_MySQL` | warning | Uses $wpdb directly — SQL should be in a Repository class |
 | `AIPS_Date_Time_DB_Repair` | warning | Uses $wpdb directly — SQL should be in a Repository class |
 | `AIPS_DB_Migrations` | warning | Uses $wpdb directly — SQL should be in a Repository class |
@@ -5601,22 +5868,22 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 
 | Infrastructure Component | Classes Using It | Adoption % |
 |--------------------------|------------------|------------|
-| AIPS_Container (DI) | 32 | 18% |
-| AIPS_Config | 32 | 18% |
-| AIPS_Cache | 16 | 9% |
-| AIPS_Ajax_Response | 30 | 17% |
-| AIPS_Logger | 39 | 22% |
-| AIPS_Telemetry | 8 | 5% |
-| AIPS_Correlation_ID | 11 | 6% |
+| AIPS_Container (DI) | 33 | 18% |
+| AIPS_Config | 36 | 20% |
+| AIPS_Cache | 18 | 10% |
+| AIPS_Ajax_Response | 31 | 17% |
+| AIPS_Logger | 40 | 22% |
+| AIPS_Telemetry | 10 | 5% |
+| AIPS_Correlation_ID | 12 | 7% |
 | AIPS_Error_Handler | 1 | 1% |
-| AIPS_History_Service | 24 | 14% |
+| AIPS_History_Service | 24 | 13% |
 | AIPS_Resilience_Service | 6 | 3% |
 
 ### Anti-Pattern Prevalence
 
 | Pattern | Classes With It | Notes |
 |---------|-----------------|-------|
-| Raw get_option() | 35 | Should use AIPS_Config |
+| Raw get_option() | 40 | Should use AIPS_Config |
 | Raw error_log() | 2 | Should use AIPS_Logger |
 | Raw wp_send_json*() | 1 | Should use AIPS_Ajax_Response |
 
@@ -5631,34 +5898,34 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 | Content Management | 27 | Article_Structure_Manager, Article_Structure_Repository, Author_Suggestions_Service, ... (24 more) |
 | AI Integration | 1 | AI_Service |
 | Infrastructure & DI | 7 | Ajax_Registry, Ajax_Response, Autoloader, ... (4 more) |
-| Caching | 7 | Cache_Array_Driver, Cache_Db_Driver, Cache_Factory, ... (4 more) |
+| Caching | 5 | Cache_Array_Driver, Cache_Db_Driver, Cache_Factory, ... (2 more) |
 | Telemetry & Observability | 5 | Generation_Logger, Logger, Telemetry_Controller, ... (2 more) |
 | Notifications | 8 | Notification_Registry, Notification_Senders, Notification_Template, ... (5 more) |
 | Sources & Research | 8 | Research_Controller, Research_Service, Sources_Controller, ... (5 more) |
 | Internal Links & Embeddings | 7 | Embeddings_Cron, Embeddings_Service, Internal_Link_Inserter_Service, ... (4 more) |
 | Resilience & Reliability | 2 | Resilience_Service, Token_Budget |
-| User Interface & Admin | 17 | Admin_Assets, Admin_Bar, Admin_Flow_Controller, ... (14 more) |
+| User Interface & Admin | 20 | Admin_Assets, Admin_Bar, Admin_Flow_Controller, ... (17 more) |
 | Data Management | 8 | Data_Management_Export_JSON, Data_Management_Export_MySQL, Data_Management_Export, ... (5 more) |
-| Database & Repositories | 9 | AI_Assistance_Repository, Campaigns_Repository, DB_Manager, ... (6 more) |
+| Database & Repositories | 13 | AI_Assistance_Repository, Cache_Monitor_Repository, Campaigns_Repository, ... (10 more) |
 | Diagnostics | 6 | System_Diagnostics_Service, System_Status, System_Diagnostics_Environment_Provider, ... (3 more) |
-| Configuration & Settings | 6 | Config, Settings_AJAX, Settings_UI, ... (3 more) |
+| Configuration & Settings | 7 | Config, Repository_Cache_Config, Settings_AJAX, ... (4 more) |
 | Onboarding | 1 | Onboarding_Wizard |
-| Utilities | 20 | AI_Assistance_Service, Batch_Queue_Service, Bulk_Batch_Job_Store, ... (17 more) |
+| Utilities | 22 | AI_Assistance_Service, Batch_Queue_Service, Bulk_Batch_Job_Store, ... (19 more) |
 
 ### Largest Classes (by Lines of Code)
 
 | Class | Lines | File |
 |-------|-------|------|
-| Admin Assets | 1655 | `class-aips-admin-assets.php` |
-| History Repository | 1397 | `class-aips-history-repository.php` |
-| Db Manager | 1248 | `class-aips-db-manager.php` |
+| Admin Assets | 1769 | `class-aips-admin-assets.php` |
+| History | 1481 | `class-aips-history.php` |
+| History Repository | 1454 | `class-aips-history-repository.php` |
+| Db Manager | 1299 | `class-aips-db-manager.php` |
+| Campaigns Controller | 1250 | `class-aips-campaigns-controller.php` |
 | Generator | 1198 | `class-aips-generator.php` |
+| Campaigns Repository | 1184 | `class-aips-campaigns-repository.php` |
 | Author Topics Controller | 1125 | `class-aips-author-topics-controller.php` |
-| Campaigns Controller | 1116 | `class-aips-campaigns-controller.php` |
 | Schedule Controller | 1115 | `class-aips-schedule-controller.php` |
 | Schedule Processor | 1080 | `class-aips-schedule-processor.php` |
-| Ai Service | 1042 | `class-aips-ai-service.php` |
-| Post Review | 949 | `class-aips-post-review.php` |
 
 ### Most Connected Classes (by Dependencies)
 
@@ -5666,8 +5933,8 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 |-------|--------------|------------|
 | Generator | 21 | AI_Service, AI_Service_Interface, Admin_Menu_Helper, ... (18 more) |
 | Schedule Processor | 21 | Admin_Menu_Helper, Batch_Queue_Service, Container, ... (18 more) |
+| Admin Menu | 20 | Article_Structure_Repository, Automations_Controller, Cache_Monitor_Controller, ... (17 more) |
 | Schedule Controller | 19 | Admin_Menu_Helper, Ajax_Response, Author_Post_Generator, ... (16 more) |
-| Admin Menu | 16 | Article_Structure_Repository, Campaigns_Controller, Config, ... (13 more) |
 | Author Post Generator | 15 | Admin_Menu_Helper, Author_Topic_Logs_Repository, Author_Topics_Repository, ... (12 more) |
 | Author Topics Controller | 15 | Ajax_Response, Author_Post_Generator, Author_Topic_Logs_Repository, ... (12 more) |
 | Campaigns Controller | 15 | AI_Service, AI_Service_Interface, Admin_Menu_Helper, ... (12 more) |
