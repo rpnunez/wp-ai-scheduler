@@ -65,7 +65,7 @@ WordPress plugin for scheduling and generating AI-written posts through Meow App
 - There is no standalone migrations directory.
 - Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
 
-## Cron hooks
+- Recurring: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_notification_rollups, aips_cleanup_export_files, aips_fetch_sources, aips_cleanup_bulk_batch_jobs, aips_cache_monitor_maintenance.
 - Recurring: `aips_generate_scheduled_posts`, `aips_generate_author_topics`, `aips_generate_author_posts`, `aips_scheduled_research`, `aips_notification_rollups`, `aips_cleanup_export_files`, `aips_fetch_sources`, `aips_cleanup_bulk_batch_jobs`.
 - Single events: `aips_process_schedule_batch`, `aips_process_author_topics_slice`, `aips_retry_failed_author_slices_topics`, `aips_process_author_post_slice`, `aips_retry_failed_author_slices_posts`, `aips_process_bulk_batch`, `aips_process_author_embeddings`, `aips_index_posts_batch`.
 
