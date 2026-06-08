@@ -93,13 +93,32 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             'is_active' => 1
         );
 
+        // Also add post_quantity to the mocked schedule since we no longer refetch the template.
+        $schedule->post_quantity = 5;
+
         $this->build_scheduler_with_mocks($schedule, $template, 123, 5);
+
+        // Since post_quantity = 5 is now correctly used (whereas before it incorrectly fell back to 1 if mocked wrong),
+        // large batch dispatch might be triggering if the threshold is low, which returns null from execute_schedule_logic
+        // for manual runs. Let's mock the batch queue service threshold so it doesn't dispatch to queue for 5 posts.
+        // Let's use reflection to inject the batch queue service mock.
+        $mock_batch_service = $this->getMockBuilder('AIPS_Batch_Queue_Service')
+            ->onlyMethods(array('needs_batch_queue'))
+            ->getMock();
+        $mock_batch_service->method('needs_batch_queue')->willReturn(false);
+
+        $ref_scheduler = new ReflectionClass($this->scheduler);
+        $prop = $ref_scheduler->getProperty('processor');
+        $prop->setAccessible(true);
+        $processor = $prop->getValue($this->scheduler);
+        $processor->set_batch_queue_service($mock_batch_service);
 
         $result = $this->scheduler->run_schedule_now(123);
 
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
+
         $this->assertEquals(array(123, 123, 123, 123, 123), $result);
     }
 
@@ -122,8 +141,20 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             'post_quantity' => 5, // Template says 5; override should win
             'is_active' => 1
         );
+        $schedule->post_quantity = 5;
 
         $this->build_scheduler_with_mocks($schedule, $template, 123, 3);
+
+        $mock_batch_service = $this->getMockBuilder('AIPS_Batch_Queue_Service')
+            ->onlyMethods(array('needs_batch_queue'))
+            ->getMock();
+        $mock_batch_service->method('needs_batch_queue')->willReturn(false);
+
+        $ref_scheduler = new ReflectionClass($this->scheduler);
+        $prop = $ref_scheduler->getProperty('processor');
+        $prop->setAccessible(true);
+        $processor = $prop->getValue($this->scheduler);
+        $processor->set_batch_queue_service($mock_batch_service);
 
         // Pass an explicit override of 3
         $result = $this->scheduler->run_schedule_now(123, 3);
