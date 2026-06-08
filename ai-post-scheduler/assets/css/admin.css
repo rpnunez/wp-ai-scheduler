@@ -3854,11 +3854,11 @@
 
 .aips-tab-nav {
     display: flex;
-    gap: 10px;
-    margin: 20px 0 0;
+    gap: var(--aips-space-1);
+    margin: var(--aips-space-5) 0 0;
     padding: 0;
     list-style: none;
-    border-bottom: 1px solid #ccd0d4;
+    border-bottom: 1px solid var(--aips-gray-200);
 }
 
 .aips-tab-nav li {
@@ -3868,36 +3868,106 @@
 .aips-tab-nav a,
 .aips-tab-nav button {
     display: block;
-    padding: 12px 20px;
+    padding: 10px 20px;
     text-decoration: none;
-    font-size: 14px;
-    color: #50575e;
-    border-bottom: 2px solid transparent;
+    font-size: var(--aips-text-sm);
+    font-weight: var(--aips-font-medium);
+    color: var(--aips-gray-600);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: var(--aips-radius-md) var(--aips-radius-md) 0 0;
+    margin-bottom: -1px;
     background: none;
     border-top: none;
     border-left: none;
     border-right: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--aips-transition-base);
 }
 
 .aips-tab-nav a:hover,
 .aips-tab-nav button:hover {
-    color: #2271b1;
+    color: var(--aips-primary);
+    background: var(--aips-gray-50);
 }
 
 .aips-tab-nav a.active,
 .aips-tab-nav button.active {
-    color: #2271b1;
-    border-bottom-color: #2271b1;
+    color: var(--aips-primary);
+    background: var(--aips-white);
+    border: 1px solid var(--aips-gray-200) !important;
+    border-bottom-color: var(--aips-white) !important;
     font-weight: 600;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.02);
 }
 
 .aips-tab-nav a.aips-tab-link-special,
 .aips-tab-nav button.aips-tab-link-special {
     color: #5a4f9b;
     background: rgba(90, 79, 155, 0.08);
-    border-radius: 6px 6px 0 0;
+    border-radius: var(--aips-radius-md) var(--aips-radius-md) 0 0;
+}
+
+/* Page Tab Panel Container */
+.aips-page-tab-panel {
+    background: var(--aips-white);
+    border: 1px solid var(--aips-gray-200);
+    border-radius: 0 var(--aips-radius-lg) var(--aips-radius-lg) var(--aips-radius-lg);
+    box-shadow: var(--aips-shadow-sm);
+    padding: var(--aips-space-5);
+    margin-top: -1px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Strip inner panel decorations when nested inside the Page Tab Panel */
+.aips-page-tab-panel .aips-content-panel {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: var(--aips-space-5) !important;
+}
+
+.aips-page-tab-panel .aips-content-panel:last-child {
+    margin-bottom: 0 !important;
+}
+
+.aips-page-tab-panel .aips-content-panel .aips-panel-body {
+    padding: 0 !important;
+}
+
+/* Add a very clean border to the table filter bar when inside the panel */
+.aips-page-tab-panel .aips-content-panel .aips-filter-bar {
+    border: 1px solid var(--aips-gray-200) !important;
+    border-radius: var(--aips-radius-md) var(--aips-radius-md) 0 0 !important;
+}
+
+.aips-page-tab-panel .aips-content-panel .aips-panel-toolbar {
+    border-left: 1px solid var(--aips-gray-200) !important;
+    border-right: 1px solid var(--aips-gray-200) !important;
+    border-bottom: 1px solid var(--aips-gray-200) !important;
+}
+
+.aips-page-tab-panel .aips-content-panel .aips-table {
+    border-left: 1px solid var(--aips-gray-200) !important;
+    border-right: 1px solid var(--aips-gray-200) !important;
+}
+
+.aips-page-tab-panel .aips-content-panel .tablenav {
+    border: 1px solid var(--aips-gray-200) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--aips-radius-md) var(--aips-radius-md) !important;
+    background: var(--aips-gray-50) !important;
+}
+
+/* For empty states inside nested panels */
+.aips-page-tab-panel .aips-content-panel .aips-empty-state {
+    border: 1px solid var(--aips-gray-200) !important;
+    border-radius: 0 0 var(--aips-radius-md) var(--aips-radius-md) !important;
+    background: var(--aips-white) !important;
 }
 
 .aips-tab-content {

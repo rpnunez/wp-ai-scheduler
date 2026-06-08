@@ -34,7 +34,7 @@ if (!defined('ABSPATH')) {
 			<?php endforeach; ?>
 		</div>
 
-		<div class="aips-automations-tab-content">
+		<div class="aips-automations-tab-content aips-page-tab-panel">
 			<?php $automations_controller->render_tab_content($active_tab); ?>
 		</div>
 	</div>

@@ -156,40 +156,42 @@
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
-                });
+                var formatTimestamp = function(timestamp, fallback) {
+                    if (!timestamp) {
+                        return fallback || '—';
+                    }
+                    var dt = new Date(timestamp * 1000);
+                    return dt.toLocaleString();
+                };
 
-                $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
+                var lastSuccessItems = [
+                    { label: aipsScheduleL10n.typeTemplateLabel, time: formatTimestamp(d.last_success.template_schedule, 'Never') },
+                    { label: aipsScheduleL10n.typeAuthorTopicLabel, time: formatTimestamp(d.last_success.author_topic_gen, 'Never') },
+                    { label: aipsScheduleL10n.typeAuthorPostLabel, time: formatTimestamp(d.last_success.author_post_gen, 'Never') }
+                ];
 
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
+                var nextRunItems = [
+                    { label: aipsScheduleL10n.typeTemplateLabel, time: formatTimestamp(d.next_runs.template_schedule, 'Not scheduled') },
+                    { label: aipsScheduleL10n.typeAuthorTopicLabel, time: formatTimestamp(d.next_runs.author_topic_gen, 'Not scheduled') },
+                    { label: aipsScheduleL10n.typeAuthorPostLabel, time: formatTimestamp(d.next_runs.author_post_gen, 'Not scheduled') }
+                ];
 
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
-                );
+                var lastSuccessHtml = lastSuccessItems.map(function(item) {
+                    return AIPS.Templates.render('aips-tmpl-schedule-status-row', {
+                        label: item.label,
+                        time: item.time
+                    });
+                }).join('');
+
+                var nextRunHtml = nextRunItems.map(function(item) {
+                    return AIPS.Templates.render('aips-tmpl-schedule-status-row', {
+                        label: item.label,
+                        time: item.time
+                    });
+                }).join('');
+
+                $('#aips-schedule-status-timeline').html(lastSuccessHtml);
+                $('#aips-schedule-status-queue-timeline').html(nextRunHtml);
 
                 var warnings = [];
                 if (d.last_error) {
