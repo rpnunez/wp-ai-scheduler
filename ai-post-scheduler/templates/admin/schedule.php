@@ -307,6 +307,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-title="<?php echo esc_attr($sched['title']); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-campaign-id="<?php echo esc_attr($sched['campaign_id'] ?? ''); ?>"
 						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
 						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
 						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
@@ -411,6 +412,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
 									data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+									data-campaign-id="<?php echo esc_attr($sched['campaign_id'] ?? ''); ?>"
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
 									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
@@ -578,6 +580,15 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<option value=""><?php esc_html_e('No Rotation', 'ai-post-scheduler'); ?></option>
 						<?php foreach ($rotation_patterns as $key => $label): ?>
 						<option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_campaign_id"><?php esc_html_e('Campaign (Optional)', 'ai-post-scheduler'); ?></label>
+					<select id="schedule_campaign_id" name="campaign_id">
+						<option value=""><?php esc_html_e('None (No Campaign)', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($campaign_options as $campaign_opt): ?>
+						<option value="<?php echo esc_attr($campaign_opt->id); ?>"><?php echo esc_html($campaign_opt->name); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</div>

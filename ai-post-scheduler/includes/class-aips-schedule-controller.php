@@ -361,6 +361,7 @@ class AIPS_Schedule_Controller {
             'topic' => isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
             'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field(wp_unslash($_POST['rotation_pattern'])) : null,
+            'campaign_id' => !empty($_POST['campaign_id']) ? absint($_POST['campaign_id']) : null,
         );
 
         if (empty($data['template_id'])) {

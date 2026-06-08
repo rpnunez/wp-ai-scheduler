@@ -70,6 +70,8 @@ class AIPS_Ajax_Registry {
 		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
 		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
 		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_link_existing_template'        => 'AIPS_Campaigns_Controller',
+		'aips_unlink_template_from_campaign' => 'AIPS_Campaigns_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',

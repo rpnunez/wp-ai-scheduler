@@ -199,6 +199,18 @@ class AIPS_Template_Repository {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
         if ( $result ) {
+            $template_id = $this->wpdb->insert_id;
+            if ( !empty($data['campaign_id']) ) {
+                $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+                $this->wpdb->insert(
+                    $table_campaign_templates,
+                    array(
+                        'campaign_id' => absint($data['campaign_id']),
+                        'template_id' => $template_id,
+                    ),
+                    array('%d', '%d')
+                );
+            }
             $this->cache->flush();
         }
 
@@ -329,6 +341,27 @@ class AIPS_Template_Repository {
         ) !== false;
 
         if ( $result ) {
+            if ( isset($data['campaign_id']) ) {
+                $campaign_id = !empty($data['campaign_id']) ? absint($data['campaign_id']) : 0;
+                $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+                if ($campaign_id > 0) {
+                    $exists = $this->wpdb->get_var($this->wpdb->prepare(
+                        "SELECT COUNT(*) FROM {$table_campaign_templates} WHERE campaign_id = %d AND template_id = %d",
+                        $campaign_id,
+                        $id
+                    ));
+                    if (!$exists) {
+                        $this->wpdb->insert(
+                            $table_campaign_templates,
+                            array(
+                                'campaign_id' => $campaign_id,
+                                'template_id' => $id,
+                            ),
+                            array('%d', '%d')
+                        );
+                    }
+                }
+            }
             $this->cache->flush();
         }
 
@@ -342,6 +375,8 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+        $this->wpdb->delete($table_campaign_templates, array('template_id' => $id), array('%d'));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
         if ( $result ) {
             $this->cache->flush();
@@ -356,8 +391,12 @@ class AIPS_Template_Repository {
      * @return int
      */
     public function count_by_campaign($campaign_id) {
+        $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
         return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE campaign_id = %d",
+            "SELECT COUNT(*) 
+            FROM {$this->table_name} t
+            INNER JOIN {$table_campaign_templates} ct ON t.id = ct.template_id
+            WHERE ct.campaign_id = %d",
             absint($campaign_id)
         ));
     }

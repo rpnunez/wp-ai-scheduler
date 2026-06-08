@@ -536,6 +536,19 @@ $is_embedded_templates_view = !empty($embedded);
                         </div>
                         
                         <div class="aips-form-row">
+                            <label for="template_campaign_id"><?php esc_html_e('Campaign (Optional)', 'ai-post-scheduler'); ?></label>
+                            <select id="template_campaign_id" name="campaign_id">
+                                <option value=""><?php esc_html_e('None (No Campaign)', 'ai-post-scheduler'); ?></option>
+                                <?php foreach ($campaign_options as $campaign_opt): ?>
+                                <option value="<?php echo esc_attr($campaign_opt->id); ?>">
+                                    <?php echo esc_html($campaign_opt->name); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description"><?php esc_html_e('Associate this template with a Campaign.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        
+                        <div class="aips-form-row">
                             <label for="post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label>
                             <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>

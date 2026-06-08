@@ -644,6 +644,7 @@
             e.preventDefault();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            $('#template_campaign_id').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -722,6 +723,7 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#template_campaign_id').val(t.campaign_id || '');
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
 
@@ -928,7 +930,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
-                    is_active: $('#is_active').is(':checked') ? 1 : 0
+                    is_active: $('#is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#template_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1004,7 +1007,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
-                    is_active: 0 // Save as inactive draft
+                    is_active: 0, // Save as inactive draft
+                    campaign_id: $('#template_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1445,12 +1449,14 @@
                 // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
+                $('#schedule_campaign_id').val('');
                 $('#aips-schedule-modal-title').text('Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
             $('#aips-schedule-wizard-form')[0].reset();
             $('#sw_schedule_id').val('');
+            $('#sw_schedule_campaign_id').val('');
             $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
@@ -1468,6 +1474,7 @@
             var $row = $(this).closest('tr');
             var scheduleId = $row.data('schedule-id');
             var templateId = $row.data('template-id');
+            var campaignId = $row.data('campaign-id');
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
@@ -1483,6 +1490,7 @@
                 $('#schedule_id').val(scheduleId);
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_campaign_id').val(campaignId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
@@ -1505,6 +1513,7 @@
             $('#sw_schedule_id').val(scheduleId);
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_campaign_id').val(campaignId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic || '');
             $('#sw_article_structure_id').val(articleStructureId || '');
@@ -1541,6 +1550,7 @@
             // Get data from the row
             var $row = $(this).closest('tr');
             var templateId = $row.data('template-id');
+            var campaignId = $row.data('campaign-id');
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
@@ -1554,6 +1564,7 @@
                 $('#schedule_id').val('');
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_campaign_id').val(campaignId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
@@ -1571,6 +1582,7 @@
             // Populate wizard form
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_campaign_id').val(campaignId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic);
             $('#sw_article_structure_id').val(articleStructureId);
@@ -1618,7 +1630,8 @@
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
                     rotation_pattern: $('#rotation_pattern').val(),
-                    is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
+                    is_active: $('#schedule_is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#schedule_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1682,7 +1695,8 @@
                     topic: $('#sw_schedule_topic').val(),
                     article_structure_id: $('#sw_article_structure_id').val(),
                     rotation_pattern: $('#sw_rotation_pattern').val(),
-                    is_active: $('#sw_schedule_is_active').is(':checked') ? 1 : 0
+                    is_active: $('#sw_schedule_is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#sw_schedule_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {

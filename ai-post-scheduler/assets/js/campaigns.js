@@ -33,6 +33,8 @@
 			$(document).on('click', '.aips-restore-campaign', this.handleRestoreCampaign.bind(this));
 			$(document).on('click', '.aips-delete-campaign', this.handleDeleteCampaign.bind(this));
 			$(document).on('click', '.aips-campaign-run-now', this.handleRunNow.bind(this));
+			$(document).on('click', '.aips-link-existing-template-btn', this.handleLinkExistingTemplate.bind(this));
+			$(document).on('click', '.aips-unlink-template-btn', this.handleUnlinkTemplate.bind(this));
 		},
 
 		/**
@@ -260,6 +262,95 @@
 				}
 			}).fail(function() {
 				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+			});
+		},
+
+		/**
+		 * Handle linking an existing template to a campaign.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleLinkExistingTemplate: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+			var templateId = $('#aips-add-existing-template-select').val();
+
+			if (!templateId) {
+				alert(aipsCampaignsL10n.selectTemplate || 'Please select a template first.');
+				return;
+			}
+
+			$button.prop('disabled', true);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_link_existing_template',
+					nonce: aipsAjax.nonce,
+					campaign_id: campaignId,
+					template_id: templateId
+				},
+				success: function(response) {
+					if (response.success) {
+						location.reload();
+					} else {
+						AIPS.Utilities.showNotice(response.data.message || 'Failed to link template.', 'error');
+						$button.prop('disabled', false);
+					}
+				},
+				error: function() {
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					$button.prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * Handle unlinking a template from a campaign.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		handleUnlinkTemplate: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var campaignId = $button.data('campaign-id');
+			var templateId = $button.data('template-id');
+			var templateName = $button.data('template-name');
+
+			var confirmMessage = aipsCampaignsL10n.confirmUnlink || 'Are you sure you want to remove this template from this campaign?';
+			confirmMessage = confirmMessage.replace('%s', templateName);
+
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			$button.prop('disabled', true);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_unlink_template_from_campaign',
+					nonce: aipsAjax.nonce,
+					campaign_id: campaignId,
+					template_id: templateId
+				},
+				success: function(response) {
+					if (response.success) {
+						location.reload();
+					} else {
+						AIPS.Utilities.showNotice(response.data.message || 'Failed to remove template.', 'error');
+						$button.prop('disabled', false);
+					}
+				},
+				error: function() {
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					$button.prop('disabled', false);
+				}
 			});
 		}
 	};
