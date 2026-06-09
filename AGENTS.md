@@ -1,290 +1,93 @@
 # AGENTS.md — wp-ai-scheduler
 
-## Project goal
-Build and maintain a WordPress plugin that schedules and generates AI-written posts using the Meow Apps AI Engine plugin as the AI backend. The plugin is admin-driven and supports template scheduling, author/topic workflows, research, review flows, regeneration, sources, internal linking, embeddings, telemetry, and reliable WordPress cron automation.
+## Project
+WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine. The plugin is admin-driven and supports template/author-topic scheduling, research, review/regeneration flows, sources, internal links, embeddings, telemetry, campaigns, post slices, notifications, and WP-Cron automation.
 
-## Where to work
-- The plugin lives in `ai-post-scheduler/`; treat that directory as the app root.
-- Run Composer and PHPUnit from `ai-post-scheduler/`, not the repository root.
+## Work area
+- Plugin app root: `ai-post-scheduler/`.
+- Bootstrap reference: `ai-post-scheduler/ai-post-scheduler.php`.
+- Business logic: `ai-post-scheduler/includes/`.
+- Admin templates: `ai-post-scheduler/templates/admin/`.
+- Composer/PHPUnit commands must run from `ai-post-scheduler/`.
 - Target PHP 8.2+ and WordPress 5.8+.
-- Use `ai-post-scheduler/ai-post-scheduler.php` as the bootstrap reference.
 - Current plugin version: **2.8.3** (`AIPS_VERSION`).
 
-## Critical Constraints (Anti-Duplication) 
-1. **Check Existing PRs:** Before making any file modifications, you MUST use the GitHub CLI (`gh pr list`) or check the repository's open pull requests.
-2. **De-duplication:** When determining what to work on (unless given specific instructions), the agent MUST pull the current open PR list before making a decision and choose work that is not already addressed by an open PR to avoid wasted time and resources. If a PR already exists that addresses the same feature, ABORT the task immediately, UNLESS the text "@ignore-existing-prs" (without quotes) is present anywhere in the prompt.
-
-## Current runtime shape
-
-`AI_Post_Scheduler::init()` dispatches to one of four context-specific boot methods. Only subsystems needed for that request type are instantiated.
-
-### `boot_common()` — every request
-- Loads text domain, registers DI container bindings, optionally boots `AIPS_Telemetry`, and registers the `aips_source_group` taxonomy.
-
-### `boot_cron()` — WP-Cron requests only
-- Registers lazy-resolving closures for all cron hooks (schedulers, batch processors, embeddings, sources fetch, notifications, reconciler, export cleanup).
-- Key services involved: `AIPS_Scheduler`, `AIPS_Author_Topics_Scheduler`, `AIPS_Author_Post_Generator`, `AIPS_Bulk_Batch_Processor`, `AIPS_Embeddings_Cron`, `AIPS_Sources_Cron`, `AIPS_Research_Controller`, `AIPS_Notifications`, `AIPS_Partial_Generation_State_Reconciler`.
-
-### `boot_ajax()` — admin AJAX requests only
-- Looks up the action in `AIPS_Ajax_Registry`; if found, instantiates exactly one controller.
-- Falls back to lazy `wp_ajax_*` hook registration for plugin-owned actions not yet in the registry.
-
-### `boot_admin()` — admin page views only
-- `AIPS_Admin_Menu`, `AIPS_Admin_Assets`, `AIPS_Settings`, `AIPS_Onboarding_Wizard`, `AIPS_Admin_Bar`, `AIPS_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Post_History_UI`, `AIPS_Internal_Links_Controller` (stored in global `$aips_internal_links_controller`).
-
-### `boot_frontend()` — non-admin page loads
-- `AIPS_Admin_Bar` only (toolbar visible to users with `manage_options`).
-
-## Core conventions
+## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.
-- File names mirror class names: `class-aips-my-class.php` for `AIPS_My_Class`.
-- Plugin loads `vendor/autoload.php` (Composer classmap) as the primary autoloader; `AIPS_Autoloader` is registered as a fallback shim.
-- Keep admin rendering in `ai-post-scheduler/templates/admin/`.
-- Keep business logic in `ai-post-scheduler/includes/`.
-- Use tabs and `array()` syntax in PHP to match the codebase and WordPress style.
-- Add `if (!defined('ABSPATH')) { exit; }` to all plugin PHP files.
+- Mirror class names in filenames: `class-aips-my-class.php` for `AIPS_My_Class`.
+- Use Composer `vendor/autoload.php` as the primary autoloader; `AIPS_Autoloader` is fallback only.
+- Use tabs and `array()` syntax for PHP.
+- Add `if (!defined('ABSPATH')) { exit; }` to plugin PHP files.
 - Centralize default option values in `AIPS_Config::get_instance()->get_default_options()`.
+- Use `AIPS_DateTime` for timestamp handling.
 
-## Architecture patterns
+## Boot/runtime shape
+`AI_Post_Scheduler::init()` boots only the request context needed:
+- `boot_common()`: text domain, DI bindings, optional telemetry, `aips_source_group` taxonomy.
+- `boot_cron()`: lazy WP-Cron closures for schedulers, batch processors, embeddings, sources, notifications, reconciler, and cleanup.
+- `boot_ajax()`: resolves `AIPS_Ajax_Registry` and instantiates one mapped controller; legacy lazy hooks may remain for unmapped plugin actions.
+- `boot_admin()`: admin menu/assets/settings/onboarding/admin bar/notifications/reconciler/history/internal links.
+- `boot_frontend()`: admin bar only for users with `manage_options`.
 
-### DI Container
-- `AIPS_Container` is a lightweight singleton container used for core service bindings.
-- Key singletons registered: `AIPS_Config`, `AIPS_History_Repository`, `AIPS_History_Service`, `AIPS_Notifications_Repository`, `AIPS_Logger`, `AIPS_AI_Service`, `AIPS_Schedule_Repository`, `AIPS_Telemetry_Repository`, `AIPS_Template_Repository`.
-- Interface aliases are registered for testability (e.g. `AIPS_History_Service_Interface`, `AIPS_AI_Service_Interface`, `AIPS_Logger_Interface`, `AIPS_Schedule_Repository_Interface`).
-- Use `AIPS_Container::get_instance()->make(ClassName::class)` to resolve registered singletons.
+## Architecture rules
+- Use `AIPS_Container::get_instance()->make(ClassName::class)` for registered singletons and interface aliases.
+- Register every AJAX action in `AIPS_Ajax_Registry::$map` with its controller.
+- Controllers register `wp_ajax_*` hooks in constructors and own nonce checks, capability checks, sanitization, and JSON responses.
+- Keep SQL/persistence in repositories; avoid direct `$wpdb` in controllers or services when a repository exists.
+- Prefer generation context abstractions: `AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context_Factory`.
+- Use shared/specialized prompt builders rather than ad hoc prompt assembly.
+- Use `AIPS_History_Service`, `AIPS_History_Container`, `AIPS_Generation_Logger`, `AIPS_Logger`, and `AIPS_Correlation_Id` for lifecycle logging and tracing.
+- Site-wide content strategy settings live in `AIPS_Settings::get_content_strategy_options()`.
+- Localization uses `AIPS_Language_Store` and `AIPS_Admin_L10n`.
 
-### AJAX Registry
-- `AIPS_Ajax_Registry` is a static map of AJAX action names → controller class names.
-- `boot_ajax()` uses this registry to instantiate exactly one controller per AJAX request.
-- When adding a new AJAX action, add it to `AIPS_Ajax_Registry::$map` alongside the responsible controller.
+## Key subsystems
+- Scheduling: `AIPS_Unified_Schedule_Service`, `AIPS_Scheduler`, `AIPS_Author_Topics_Scheduler`, `AIPS_Author_Post_Generator`.
+- Batch/bulk jobs: `AIPS_Batch_Queue_Service`, `AIPS_Bulk_Batch_Processor`, `AIPS_Bulk_Batch_Job_Store`, `AIPS_Bulk_Generator_Service`, and `includes/job/`.
+- Resilience: `AIPS_Resilience_Service::retry_with_backoff()`.
+- Cache: `AIPS_Cache`, `AIPS_Cache_Factory`, `AIPS_Cache_Invalidation_Bus`, repository cache traits/config.
+- Partial generation recovery: `AIPS_Partial_Generation_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Component_Regeneration_Service`, `AIPS_Session_To_JSON`.
+- Sources: `AIPS_Sources_*` classes and `aips_source_group` taxonomy.
+- Embeddings: `AIPS_Embeddings_Service`, `AIPS_Embeddings_Cron`, `AIPS_Post_Embeddings_Repository`.
+- Internal links: `AIPS_Internal_Links_Controller`, services/repository, `aips_index_posts_batch` cron.
+- Notifications: registry/senders/templates/event handler plus `AIPS_Notifications_Repository`.
+- Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers/repositories/services.
 
-### Repositories
-- Put persistence and SQL in repository classes.
-- Prefer repository methods over direct `$wpdb` usage in feature code.
-- Current repositories: `AIPS_History_Repository`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`, `AIPS_Authors_Repository`, `AIPS_Author_Topics_Repository`, `AIPS_Author_Topic_Logs_Repository`, `AIPS_Voices_Repository`, `AIPS_Article_Structure_Repository`, `AIPS_Prompt_Section_Repository`, `AIPS_Trending_Topics_Repository`, `AIPS_Post_Review_Repository`, `AIPS_Feedback_Repository`, `AIPS_Notifications_Repository`, `AIPS_Sources_Repository`, `AIPS_Sources_Data_Repository`, `AIPS_Taxonomy_Repository`, `AIPS_Post_Embeddings_Repository`, `AIPS_Internal_Links_Repository`, `AIPS_Metrics_Repository`, `AIPS_Telemetry_Repository`, `AIPS_Data_Management_Repository`, `AIPS_Campaigns_Repository`, `AIPS_Post_Slices_Repository`, `AIPS_AI_Assistance_Repository`.
-
-### Controllers
-- Register `wp_ajax_*` hooks in controller constructors.
-- Keep nonce checks, capability checks, sanitization, and JSON response formatting in controllers.
-- Do not put SQL in controllers.
-- All controllers must be registered in `AIPS_Ajax_Registry`; instantiate via `boot_ajax()`.
-- Do not re-instantiate controllers at render time — this is legacy behavior, not a pattern to copy.
-
-### Generation context
-- Prefer the context-based generation architecture for new generation or regeneration work.
-- Key types: `AIPS_Generation_Context` (interface), `AIPS_Template_Context`, `AIPS_Topic_Context`, `AIPS_Generation_Context_Factory`.
-- Use this abstraction instead of building new flows around raw template objects.
-
-### Prompt assembly
-- `AIPS_Prompt_Builder` is the shared/base prompt builder.
-- `AIPS_Prompt_Builder_Topic` handles author-topic prompt composition.
-- `AIPS_Prompt_Builder_Authors` handles author-suggestion prompts.
-- Specialized builders exist for individual post components: `AIPS_Prompt_Builder_Post_Title`, `AIPS_Prompt_Builder_Post_Content`, `AIPS_Prompt_Builder_Post_Excerpt`, `AIPS_Prompt_Builder_Post_Featured_Image`, `AIPS_Prompt_Builder_Taxonomy`, `AIPS_Prompt_Builder_Article_Structure_Section`.
-- `AIPS_Prompt_Builder_Diversity_Injector` injects diversity constraints into topic/content prompts to avoid repetitive outputs.
-- `AIPS_Template_Processor` supports built-in variables and AI variables.
-
-### History and observability
-- Use `AIPS_History_Service` and `AIPS_History_Container` for meaningful operations.
-- `AIPS_Generation_Logger` records per-component generation events into a container.
-- Prefer structured lifecycle events for AI requests, retries, failures, automation runs, and user actions.
-- `AIPS_Logger` / `AIPS_Logger_Interface` is the general-purpose logger (singleton via container).
-- `AIPS_Correlation_Id` provides request/run correlation identifiers for tracing across log entries.
-
-### Site context
-- `AIPS_Config` is the centralized options registry (`get_option`, `get_default_options`, `has_option`).
-- Site-wide content strategy settings are defined in `AIPS_Settings::get_content_strategy_options()`.
-- `AIPS_Site_Context` reads that registry dynamically.
-- If you add a site-wide content strategy setting, update the registry there.
-
-### Partial generation recovery
-- Use the existing recovery flow for incomplete generations:
-  - `AIPS_Partial_Generation_Notifications`
-  - `AIPS_Partial_Generation_State_Reconciler`
-  - `AIPS_Component_Regeneration_Service`
-  - `AIPS_Session_To_JSON`
-
-### Unified scheduling
-- `AIPS_Unified_Schedule_Service` aggregates template, author-topic, and author-post schedule types.
-- The schedule UI and "Run Now" flows go through this service.
-
-### Batch queue and bulk generation
-- `AIPS_Batch_Queue_Service` splits large schedule runs into per-item WP-Cron single events.
-- `AIPS_Bulk_Batch_Processor` handles async multi-item bulk jobs via `aips_bulk_batch_jobs` table.
-- `AIPS_Bulk_Batch_Job_Store` persists bulk-batch job state.
-- `AIPS_Bulk_Generator_Service` orchestrates seeder/planner bulk generation flows.
-- Batch strategies (`author_topic_post`, `planner_post`, `trending_topic_post`) are registered in `boot_cron()`.
-- Job infrastructure lives in `includes/job/`: `AIPS_Job_Scheduler`, `AIPS_Job_Dispatcher`, `AIPS_Batch_Slicer`, `AIPS_Job_Definition`, `AIPS_Slice_Configuration`, `AIPS_Job_Progress_Tracker`, `AIPS_Dispatch_Summary`.
-
-### Resilience
-- `AIPS_Resilience_Service::retry_with_backoff()` is the centralized retry method.
-- Both `AIPS_Author_Topics_Scheduler` and `AIPS_Author_Post_Generator` inject and use it for exponential backoff (3 attempts: 1 s, 2 s, 4 s).
-
-### Caching
-- `AIPS_Cache` / `AIPS_Cache_Factory` provide a driver-swappable cache layer.
-- Drivers: array (in-memory), DB (`aips_cache` table), Redis, WP Object Cache, session.
-- Prefer `AIPS_Cache` over raw transients for plugin-internal caching.
-- `AIPS_Cache_Invalidation_Bus` centralizes cache invalidation events across repositories; `AIPS_Cache_Policy` defines per-repository TTL and invalidation rules.
-- Repository-level caching opt-in uses `trait-aips-cacheable-repository.php` together with `AIPS_Repository_Cache_Config`, `AIPS_Repository_Cache_Key_Builder`, `AIPS_Repository_Cache_Dependencies`, and `AIPS_Repository_Cache_Observer`.
-
-### Language / localization
-- Admin UI strings are centralized in `AIPS_Language_Store` (language-specific string arrays).
-- `AIPS_Admin_L10n::get($key)` reads `aips_language` option and delegates to the store.
-- English (`en`) is the default language. Add new languages by implementing `get_{language}($key)`.
-- `AIPS_Settings::sanitize_language_option()` is the registered sanitize callback for `aips_language`.
-
-### DateTime
-- Use `AIPS_DateTime` for all timestamp handling; do not scatter `strtotime()` calls.
-- `AIPS_DateTime::now()`, `::fromMysql()`, `->advance()`, `->timestamp()` are the primary API.
-- `AIPS_Date_Time_DB_Repair` handles one-time datetime value repair migrations.
-
-### Telemetry
-- `AIPS_Telemetry` boots per-request when `aips_enable_telemetry` is enabled.
-- Slow queries and slow requests are captured via constants: `AIPS_TELEMETRY_SLOW_QUERY_MS` (100 ms), `AIPS_TELEMETRY_SLOW_REQUEST_MS` (1500 ms), `AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT` (10 queries max stored per request).
-- `AIPS_AI_DEBUG_LOG_PROMPTS` — defined in the plugin header; defaults to `WP_DEBUG`. When `true`, generated prompts are written to the debug log. Override in `wp-config.php` to enable/disable independently of `WP_DEBUG`.
-- `AIPS_Telemetry_Repository` and `AIPS_Telemetry_Controller` manage storage and AJAX access.
-
-### Sources
-- `AIPS_Sources_Repository`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Fetcher`, `AIPS_Sources_Cron`, `AIPS_Sources_Controller` form the sources subsystem.
-- Sources use the `aips_source_group` custom taxonomy (registered in `boot_common()`).
-- `aips_fetch_sources` cron hook fires daily.
-
-### Embeddings
-- `AIPS_Embeddings_Service`, `AIPS_Embeddings_Cron`, `AIPS_Post_Embeddings_Repository`.
-- Embeddings are processed via `aips_process_author_embeddings` single-event cron.
-
-### Internal Links
-- `AIPS_Internal_Links_Controller`, `AIPS_Internal_Links_Service`, `AIPS_Internal_Links_Repository`, `AIPS_Internal_Link_Inserter_Service`.
-- Post indexing uses `aips_index_posts_batch` single-event cron.
-- Controller is instantiated in `boot_admin()` and stored in global `$aips_internal_links_controller`.
-
-### Taxonomy
-- `AIPS_Taxonomy_Controller` and `AIPS_Taxonomy_Repository` manage plugin-level taxonomy assignments for generated posts.
-
-### Notifications (enhanced)
-- `AIPS_Notifications` is the event handler class (not just a repository wrapper).
-- `AIPS_Notification_Registry`, `AIPS_Notification_Senders`, `AIPS_Notification_Template`, `AIPS_Notification_Templates`, `AIPS_Notifications_Event_Handler` form the notification pipeline.
-- `AIPS_Notifications_Repository` / `AIPS_Notifications_Repository_Interface` handle persistence.
-
-### Onboarding
-- `AIPS_Onboarding_Wizard` handles first-install wizard flow via `aips_onboarding_redirect` transient.
-
-### Campaigns
-- `AIPS_Campaigns_Controller`, `AIPS_Campaigns_Repository` manage content campaigns and the campaign wizard flow.
-- `aips-campaigns` is a visible submenu page; `aips-campaign-wizard` and `aips-campaign-detail` are hidden pages (accessible via URL, highlighted under Campaigns in the sidebar).
-- Campaign draft state is stored in the `aips_campaign_wizard_draft` WordPress option while the wizard is in progress.
-
-### AI Assistance
-- `AIPS_AI_Assistance_Controller`, `AIPS_AI_Assistance_Service`, `AIPS_AI_Assistance_Repository` form the AI field-suggestion subsystem.
-- Used to generate AI-powered field suggestions (titles, descriptions, etc.) for admin forms.
-- Suggestions are persisted in the `aips_ai_assistance` table.
-
-### Operations Insights
-- `AIPS_Operations_Insights_Controller` renders the `aips-operations-insights` admin page.
-- Reads generation trend data from `AIPS_History_Repository::get_daily_success_failure_trend()`.
-- Supports CSV export via `admin_post_aips_operations_insights_export`.
-
-### Post Slices
-- `AIPS_Post_Slices_Controller`, `AIPS_Post_Slices_Repository` manage post slices (reusable content fragments).
-- `aips-post-slices` is a visible submenu page. Stored in the `aips_post_slices` table.
-
-### System Diagnostics Providers
-- Diagnostic data for the System Status page is provided by plug-in classes in `includes/diagnostics/`.
-- All providers implement `AIPS_System_Diagnostic_Provider_Interface`.
-- Built-in providers: `AIPS_System_Diagnostics_Environment_Provider`, `AIPS_System_Diagnostics_Logs_Provider`, `AIPS_System_Diagnostics_Queue_Provider`, `AIPS_System_Diagnostics_Scheduler_Provider`.
-
-## Admin/UI notes
-- Admin menu registration lives in `AIPS_Admin_Menu::add_menu_pages()` (not `AIPS_Settings`).
-- Key active pages: dashboard, templates, voices, structures, authors, post-slices, research, schedule, campaigns, schedule-calendar, content (generated posts), history, operations-insights, sources, taxonomy, internal-links, settings, system-status, seeder, telemetry (conditional), dev-tools (conditional).
-- Hidden pages accessible by URL: `aips-author-topics` (linked from Authors), `aips-campaign-wizard` and `aips-campaign-detail` (linked from Campaigns).
-- Some templates exist without current submenu registration: sections (prompt sections), planner, post-review-specific UI.
-- Settings management is split: `AIPS_Settings` (options registration/sanitize), `AIPS_Settings_UI` (render), `AIPS_Settings_Ajax` (AJAX callbacks).
-- System status is handled by `AIPS_System_Status_Controller` and `AIPS_System_Diagnostics_Service`; diagnostic data comes from provider classes in `includes/diagnostics/`.
+## Admin/UI
+- Admin menu registration lives in `AIPS_Admin_Menu::add_menu_pages()`.
+- Settings are split across `AIPS_Settings`, `AIPS_Settings_UI`, and `AIPS_Settings_Ajax`.
 - Dashboard is rendered by `AIPS_Dashboard_Controller`.
+- System status uses `AIPS_System_Status_Controller`, `AIPS_System_Diagnostics_Service`, and providers in `includes/diagnostics/`.
+- Hidden pages include `aips-author-topics`, `aips-campaign-wizard`, and `aips-campaign-detail`.
 
-## Data access and upgrades
-- Schema changes go through `AIPS_DB_Manager::get_schema()` and `dbDelta` via `AIPS_DB_Manager::install_tables()`.
-- `AIPS_Upgrades` was renamed to `AIPS_DB_Migrations` (`class-aips-db-migrations.php`); `class-aips-upgrades.php` is a `class_alias` shim. All call sites use `AIPS_DB_Migrations::check_and_run()`.
+## Data and schema
+- Schema changes go through `AIPS_DB_Manager::get_schema()` and `AIPS_DB_Manager::install_tables()` using `dbDelta`.
+- `AIPS_DB_Migrations::check_and_run()` is the migration entry point; `class-aips-upgrades.php` is a compatibility alias.
 - There is no standalone migrations directory.
-- Current plugin tables:
+- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
 
-| Table | Purpose |
-|-------|---------|
-| `aips_history` | Generation history records |
-| `aips_history_log` | Structured history log entries |
-| `aips_campaigns` | Content campaign definitions and state |
-| `aips_templates` | Prompt templates |
-| `aips_schedule` | Template schedule records |
-| `aips_voices` | Voice definitions |
-| `aips_article_structures` | Article structures |
-| `aips_prompt_sections` | Reusable prompt sections |
-| `aips_trending_topics` | Research/trending topic results |
-| `aips_authors` | Author personas and generation settings |
-| `aips_post_slices` | Reusable content fragment (post slice) definitions |
-| `aips_author_topics` | Generated author topics and approval workflow |
-| `aips_author_topic_logs` | Topic-level history and post linkage |
-| `aips_topic_feedback` | Approval/rejection feedback metadata |
-| `aips_notifications` | Admin toolbar/system notifications |
-| `aips_sources` | Content sources |
-| `aips_source_group_terms` | Source group taxonomy term mappings |
-| `aips_sources_data` | Fetched source content |
-| `aips_taxonomy` | Plugin taxonomy assignments for posts |
-| `aips_post_embeddings` | Post embedding vectors |
-| `aips_internal_links` | Internal link index |
-| `aips_cache` | DB-backed cache storage |
-| `aips_telemetry` | Request/query telemetry records |
-| `aips_ai_assistance` | Persisted AI field suggestions |
-| `aips_bulk_batch_jobs` | Async bulk-batch job state |
-
-## Cron events
-
-| Hook | Schedule | Purpose |
-|------|----------|---------|
-| `aips_generate_scheduled_posts` | hourly | Run due template schedules |
-| `aips_generate_author_topics` | hourly | Generate topics for due authors |
-| `aips_generate_author_posts` | hourly | Generate posts from approved author topics |
-| `aips_scheduled_research` | daily | Automated research/trending topic collection |
-| `aips_notification_rollups` | daily | Send notification digest rollups |
-| `aips_cleanup_export_files` | daily | Delete old session JSON export files |
-| `aips_fetch_sources` | daily | Fetch content for configured sources |
-| `aips_cleanup_bulk_batch_jobs` | daily | Delete old completed/failed bulk-batch job rows |
-| `aips_process_schedule_batch` | single event | Process one slice of a large template schedule run |
-| `aips_process_author_topics_slice` | single event | Process one author's topic generation |
-| `aips_retry_failed_author_slices_topics` | single event | Retry failed author-topic-generation slices |
-| `aips_process_author_post_slice` | single event | Process one author's post generation |
-| `aips_retry_failed_author_slices_posts` | single event | Retry failed author-post-generation slices |
-| `aips_process_bulk_batch` | single event | Process one slice of a stored bulk-batch job |
-| `aips_process_author_embeddings` | single event | Process author embedding vectors |
-| `aips_index_posts_batch` | single event | Index a batch of posts for internal linking |
+- Recurring: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_notification_rollups, aips_cleanup_export_files, aips_fetch_sources, aips_cleanup_bulk_batch_jobs, aips_cache_monitor_maintenance.
+- Recurring: `aips_generate_scheduled_posts`, `aips_generate_author_topics`, `aips_generate_author_posts`, `aips_scheduled_research`, `aips_notification_rollups`, `aips_cleanup_export_files`, `aips_fetch_sources`, `aips_cleanup_bulk_batch_jobs`.
+- Single events: `aips_process_schedule_batch`, `aips_process_author_topics_slice`, `aips_retry_failed_author_slices_topics`, `aips_process_author_post_slice`, `aips_retry_failed_author_slices_posts`, `aips_process_bulk_batch`, `aips_process_author_embeddings`, `aips_index_posts_batch`.
 
 ## Security and WordPress hygiene
-- Escape output appropriately with `esc_html()`, `esc_attr()`, `esc_url()`, and `wp_kses_post()`.
-- Sanitize all request data with WordPress helpers.
+- Escape output with `esc_html()`, `esc_attr()`, `esc_url()`, or `wp_kses_post()` as appropriate.
 - Verify nonces for state-changing actions.
 - Check `current_user_can('manage_options')` for admin/AJAX actions.
-- Use `AIPS_Ajax_Response` for consistent, escaped JSON responses.
-- Handle missing AI Engine dependency gracefully (dependency check fires on `admin_init`).
+- Sanitize request data with WordPress helpers.
+- Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
+- Handle missing AI Engine dependency gracefully.
 
 ## Testing
-- Tests live in `ai-post-scheduler/tests/`; run with `composer test` from `ai-post-scheduler/`.
-- `composer test`, `composer test:verbose`, and `composer test:coverage` run an automatic setup step first (`composer test:setup`) to prepare WordPress test paths and dependencies when missing.
-- `composer test:setup` prefers `svn` when available, but agent sessions do not require it; when `svn` is missing, the installer falls back to the packaged `ai-post-scheduler/vendor/wp-phpunit/wp-phpunit` test library.
-- In agent sessions, prefer this sequence when setup is uncertain:
-  1. `cd ai-post-scheduler`
-  2. `composer test:setup`
-  3. `composer test`
-- The suite always runs in full WordPress test-library mode; `tests/bootstrap.php` requires a valid `WP_TESTS_DIR` and `WP_CORE_DIR`.
-- If the runtime cannot create test databases, set `AIPS_WP_TEST_SKIP_DB_CREATE=true` before running `composer test`.
-- Docker-backed execution via `bash scripts/run-wp-tests-docker.sh` is the supported local workflow.
-- Prefer one test file per feature/class. Test both success and failure paths.
+```bash
+cd ai-post-scheduler
+composer test:setup
+composer test
+```
+- Tests live in `ai-post-scheduler/tests/` and run in full WordPress test-library mode.
+- Use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if the runtime cannot create test databases.
+- Docker-backed local workflow: `bash scripts/run-wp-tests-docker.sh`.
+- Prefer one test file per feature/class and cover success and failure paths.
 
-## Repository skills
-- Repository-specific task playbooks live under `.codex/skills/`.
-- Start with `.codex/skills/README.md` to discover available skills.
-- Each skill is defined in `.codex/skills/<skill>/SKILL.md`.
-
-## Useful docs
-- `.github/copilot-instructions.md` for the fuller repository guide.
-- `README.md` and `docs/` for feature and setup documentation.
-- `ai-post-scheduler/CHANGELOG.md` for plugin release history.
-- `docs/DEVELOPMENT_GUIDELINES.md` for project-specific coding and architectural guidelines that all developers and AI agents must follow.
-  
+## Repository references
+- Repository skills: `.codex/skills/README.md`.
+- Fuller guides: `.github/copilot-instructions.md`, `README.md`, `docs/`, `docs/DEVELOPMENT_GUIDELINES.md`, `ai-post-scheduler/CHANGELOG.md`.
