@@ -153,6 +153,17 @@ docker compose up -d db
 bash scripts/run-wp-tests-docker.sh
 ```
 
+## Client-Side Assets Validation
+
+Before submitting a pull request, verify that the client-side JavaScript and CSS bundle compiles successfully without syntax or build errors:
+
+```bash
+cd ai-post-scheduler
+npm run build
+```
+
+This runs Vite/ESBuild and PostCSS processing on the client assets. Any syntax errors in the CSS or JS files (such as unbalanced braces or unresolved imports) will fail the build process.
+
 ## Notes
 
 - The test database is disposable and recreated for each Docker-backed run.

@@ -1,0 +1,18 @@
+/* ==========================================================================
+   Page-specific Legacy Styles (Imported for Bundling)
+   ========================================================================== */
+
+@import "../../css/admin-ai-edit.css";
+@import "../../css/admin-bar.css";
+@import "../../css/admin-post-review.css";
+@import "../../css/ai-assistance.css";
+@import "../../css/authors.css";
+@import "../../css/calendar.css";
+@import "../../css/campaigns.css";
+@import "../../css/planner.css";
+@import "../../css/post-slices.css";
+@import "../../css/research.css";
+@import "../../css/telemetry.css";
+
+/* Extra admin layout overrides that were in the original admin.css */
+@import "../../css/admin.css";
