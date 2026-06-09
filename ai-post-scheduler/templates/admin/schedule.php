@@ -188,11 +188,11 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
 				<div class="aips-schedule-status-columns">
 					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Last Successful Runs', 'ai-post-scheduler'); ?></h3>
 						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
 					</div>
 					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Next Scheduled Cycles', 'ai-post-scheduler'); ?></h3>
 						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
 					</div>
 				</div>
@@ -307,6 +307,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-title="<?php echo esc_attr($sched['title']); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-campaign-id="<?php echo esc_attr($sched['campaign_id'] ?? ''); ?>"
 						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
 						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
 						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
@@ -411,6 +412,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
 									data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+									data-campaign-id="<?php echo esc_attr($sched['campaign_id'] ?? ''); ?>"
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
 									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
@@ -582,6 +584,15 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					</select>
 				</div>
 				<div class="aips-form-row">
+					<label for="schedule_campaign_id"><?php esc_html_e('Campaign (Optional)', 'ai-post-scheduler'); ?></label>
+					<select id="schedule_campaign_id" name="campaign_id">
+						<option value=""><?php esc_html_e('None (No Campaign)', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($campaign_options as $campaign_opt): ?>
+						<option value="<?php echo esc_attr($campaign_opt->id); ?>"><?php echo esc_html($campaign_opt->name); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<div class="aips-form-row">
 					<label class="aips-checkbox-label">
 						<input type="checkbox" id="schedule_is_active" name="is_active" value="1" checked>
 						<?php esc_html_e('Schedule is active', 'ai-post-scheduler'); ?>
@@ -619,3 +630,39 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</div>
 	</div>
 </div>
+
+<script type="text/html" id="aips-tmpl-schedule-status-card">
+	<div class="aips-schedule-status-card aips-schedule-status-card-{{tone}}">
+		<div class="aips-schedule-status-card-header">
+			<div class="aips-schedule-status-card-label">{{label}}</div>
+			{{iconHtml}}
+		</div>
+		<div class="aips-schedule-status-card-value">{{value}}</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-overdue-banner">
+	<div class="aips-overdue-banner">
+		<div class="aips-overdue-banner-left">
+			<span class="dashicons dashicons-warning aips-overdue-icon" aria-hidden="true"></span>
+			<div class="aips-overdue-text">
+				<h4 class="aips-overdue-title">{{title}}</h4>
+				<p class="aips-overdue-desc">{{desc}}</p>
+			</div>
+		</div>
+		<div class="aips-overdue-banner-right">
+			<button type="button" class="aips-btn aips-btn-warning aips-renew-schedules-btn">
+				<span class="dashicons dashicons-update" aria-hidden="true"></span> {{btnLabel}}
+			</button>
+		</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-status-row">
+	<div class="aips-schedule-status-event">
+		<div class="aips-schedule-status-event-top">
+			<span class="aips-badge aips-badge-neutral">{{label}}</span>
+			<span class="aips-schedule-status-event-time">{{time}}</span>
+		</div>
+	</div>
+</script>

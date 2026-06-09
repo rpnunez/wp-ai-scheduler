@@ -89,7 +89,10 @@
 
                 var d = resp.data;
                 var escapeHtml = function(value) {
-                    return String(value || '')
+                    if (value === undefined || value === null) {
+                        value = '';
+                    }
+                    return String(value)
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;')
@@ -113,67 +116,82 @@
                     {
                         label: aipsScheduleL10n.activeSchedulesLabel,
                         value: parseInt(counts.active || 0, 10),
-                        tone: 'neutral'
+                        tone: 'info',
+                        icon: 'dashicons-calendar-alt'
                     },
                     {
                         label: aipsScheduleL10n.upcomingSchedulesLabel,
                         value: parseInt(counts.upcoming_24h || 0, 10),
-                        tone: 'success'
+                        tone: 'success',
+                        icon: 'dashicons-clock'
+                    },
+                    {
+                        label: aipsScheduleL10n.successRateLabel || 'Success Rate',
+                        value: (counts.success_rate != null ? counts.success_rate : 0) + '%',
+                        tone: (counts.success_rate || 0) >= 90 ? 'success' : ((counts.success_rate || 0) >= 70 ? 'warning' : 'error'),
+                        icon: 'dashicons-chart-bar'
                     },
                     {
                         label: aipsScheduleL10n.queueDepthLabel,
                         value: queueTotal,
-                        tone: 'info'
+                        tone: queueTotal > 0 ? 'warning' : 'neutral',
+                        icon: 'dashicons-list-view'
                     },
                     {
                         label: aipsScheduleL10n.bulkFailedLabel,
                         value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral',
+                        icon: 'dashicons-warning'
                     }
                 ];
 
                 var cardsHtml = cards.map(function(card) {
-                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
-                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
-                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
-                    '</div>';
+                    var iconHtml = card.icon ? '<span class="dashicons ' + AIPS.Templates.escape(card.icon) + ' aips-schedule-status-card-icon"></span>' : '';
+                    return AIPS.Templates.renderRaw('aips-tmpl-schedule-status-card', {
+                        tone: AIPS.Templates.escape(card.tone),
+                        label: AIPS.Templates.escape(card.label),
+                        iconHtml: iconHtml,
+                        value: AIPS.Templates.escape(card.value)
+                    });
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
-                });
+                var formatTimestamp = function(timestamp, fallback) {
+                    if (!timestamp) {
+                        return fallback || '—';
+                    }
+                    var dt = new Date(timestamp * 1000);
+                    return dt.toLocaleString();
+                };
 
-                $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
+                var lastSuccessItems = [
+                    { label: aipsScheduleL10n.typeTemplateLabel, time: formatTimestamp(d.last_success.template_schedule, 'Never') },
+                    { label: aipsScheduleL10n.typeAuthorTopicLabel, time: formatTimestamp(d.last_success.author_topic_gen, 'Never') },
+                    { label: aipsScheduleL10n.typeAuthorPostLabel, time: formatTimestamp(d.last_success.author_post_gen, 'Never') }
+                ];
 
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
+                var nextRunItems = [
+                    { label: aipsScheduleL10n.typeTemplateLabel, time: formatTimestamp(d.next_runs.template_schedule, 'Not scheduled') },
+                    { label: aipsScheduleL10n.typeAuthorTopicLabel, time: formatTimestamp(d.next_runs.author_topic_gen, 'Not scheduled') },
+                    { label: aipsScheduleL10n.typeAuthorPostLabel, time: formatTimestamp(d.next_runs.author_post_gen, 'Not scheduled') }
+                ];
 
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
-                );
+                var lastSuccessHtml = lastSuccessItems.map(function(item) {
+                    return AIPS.Templates.render('aips-tmpl-schedule-status-row', {
+                        label: item.label,
+                        time: item.time
+                    });
+                }).join('');
+
+                var nextRunHtml = nextRunItems.map(function(item) {
+                    return AIPS.Templates.render('aips-tmpl-schedule-status-row', {
+                        label: item.label,
+                        time: item.time
+                    });
+                }).join('');
+
+                $('#aips-schedule-status-timeline').html(lastSuccessHtml);
+                $('#aips-schedule-status-queue-timeline').html(nextRunHtml);
 
                 var warnings = [];
                 if (d.last_error) {
@@ -183,7 +201,17 @@
                     warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
                 }
                 if (parseInt((counts.overdue || 0), 10) > 0) {
-                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
+                    var title = aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue);
+                    var desc = aipsScheduleL10n.overdueSchedulesDesc || 'Schedules might be stalled due to server cron issues. Click Renew to artificially bring them up to date.';
+                    var btnLabel = aipsScheduleL10n.renewSchedulesLabel || 'Renew Schedules';
+
+                    warnings.push(
+                        AIPS.Templates.render('aips-tmpl-schedule-overdue-banner', {
+                            title: title,
+                            desc: desc,
+                            btnLabel: btnLabel
+                        })
+                    );
                 }
                 $('#aips-schedule-status-warnings').html(warnings.join(''));
             });
@@ -290,6 +318,7 @@
             $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
             $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
             $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
+            $(document).on('click', '.aips-renew-schedules-btn', this.renewSchedules);
             $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
@@ -615,6 +644,7 @@
             e.preventDefault();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            $('#template_campaign_id').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -693,6 +723,7 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#template_campaign_id').val(t.campaign_id || '');
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
 
@@ -899,7 +930,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
-                    is_active: $('#is_active').is(':checked') ? 1 : 0
+                    is_active: $('#is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#template_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -975,7 +1007,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
-                    is_active: 0 // Save as inactive draft
+                    is_active: 0, // Save as inactive draft
+                    campaign_id: $('#template_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1416,12 +1449,14 @@
                 // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
+                $('#schedule_campaign_id').val('');
                 $('#aips-schedule-modal-title').text('Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
             $('#aips-schedule-wizard-form')[0].reset();
             $('#sw_schedule_id').val('');
+            $('#sw_schedule_campaign_id').val('');
             $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
@@ -1439,6 +1474,7 @@
             var $row = $(this).closest('tr');
             var scheduleId = $row.data('schedule-id');
             var templateId = $row.data('template-id');
+            var campaignId = $row.data('campaign-id');
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
@@ -1454,6 +1490,7 @@
                 $('#schedule_id').val(scheduleId);
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_campaign_id').val(campaignId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
@@ -1476,6 +1513,7 @@
             $('#sw_schedule_id').val(scheduleId);
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_campaign_id').val(campaignId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic || '');
             $('#sw_article_structure_id').val(articleStructureId || '');
@@ -1512,6 +1550,7 @@
             // Get data from the row
             var $row = $(this).closest('tr');
             var templateId = $row.data('template-id');
+            var campaignId = $row.data('campaign-id');
             var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
@@ -1525,6 +1564,7 @@
                 $('#schedule_id').val('');
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
+                $('#schedule_campaign_id').val(campaignId || '');
                 $('#schedule_frequency').val(frequency);
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
@@ -1542,6 +1582,7 @@
             // Populate wizard form
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
+            $('#sw_schedule_campaign_id').val(campaignId || '');
             $('#sw_schedule_frequency').val(frequency);
             $('#sw_schedule_topic').val(topic);
             $('#sw_article_structure_id').val(articleStructureId);
@@ -1589,7 +1630,8 @@
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
                     rotation_pattern: $('#rotation_pattern').val(),
-                    is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
+                    is_active: $('#schedule_is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#schedule_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1653,7 +1695,8 @@
                     topic: $('#sw_schedule_topic').val(),
                     article_structure_id: $('#sw_article_structure_id').val(),
                     rotation_pattern: $('#sw_rotation_pattern').val(),
-                    is_active: $('#sw_schedule_is_active').is(':checked') ? 1 : 0
+                    is_active: $('#sw_schedule_is_active').is(':checked') ? 1 : 0,
+                    campaign_id: $('#sw_schedule_campaign_id').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -2850,6 +2893,37 @@
                     $loading.hide();
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     $modal.hide();
+                }
+            });
+        },
+
+        renewSchedules: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span> Renewing...', { isHtml: true });
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_renew_overdue_schedules',
+                    nonce: aipsAjax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var count = response.data.renewed_count || 0;
+                        AIPS.Utilities.showToast(response.data.message || (count + ' schedules renewed successfully.'), 'success');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to renew schedules.', 'error');
+                        AIPS.Utilities.resetButton($btn);
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },

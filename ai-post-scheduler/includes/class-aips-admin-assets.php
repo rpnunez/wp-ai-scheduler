@@ -932,6 +932,9 @@ class AIPS_Admin_Assets {
                 'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
                 /* translators: %d: number of overdue schedules */
                 'overdueSchedulesWarning'        => __('%d schedule(s) are overdue.', 'ai-post-scheduler'),
+                'overdueSchedulesDesc'           => __('Schedules might be stalled due to server cron issues. Click Renew to artificially bring them up to date.', 'ai-post-scheduler'),
+                'renewSchedulesLabel'            => __('Renew Schedules', 'ai-post-scheduler'),
+                'successRateLabel'               => __('Success Rate', 'ai-post-scheduler'),
                 'viewHistory'                    => __('View history', 'ai-post-scheduler'),
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
@@ -1370,6 +1373,8 @@ class AIPS_Admin_Assets {
                 'confirmDuplicate' => __('Duplicate this campaign? The copy will be created in a paused state.', 'ai-post-scheduler'),
                 'confirmArchive'   => __('Archive this campaign? It will be hidden from the active campaigns list.', 'ai-post-scheduler'),
                 'confirmDelete'    => __('Delete this campaign? This removes the campaign and its owned template/schedule rows.', 'ai-post-scheduler'),
+                'confirmUnlink'    => __('Are you sure you want to remove the template "%s" from this campaign?', 'ai-post-scheduler'),
+                'selectTemplate'   => __('Please select a template first.', 'ai-post-scheduler'),
                 'errorToggle'      => __('Failed to update campaign.', 'ai-post-scheduler'),
                 'errorDuplicate'   => __('Failed to duplicate campaign.', 'ai-post-scheduler'),
                 'errorArchive'     => __('Failed to archive campaign.', 'ai-post-scheduler'),

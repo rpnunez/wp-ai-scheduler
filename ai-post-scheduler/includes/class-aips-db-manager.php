@@ -33,6 +33,7 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
+        'aips_campaign_templates',
     );
 
     public function __construct() {
@@ -94,6 +95,7 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
+        $table_campaign_templates   = $tables['aips_campaign_templates'];
 
         $sql = array();
 
@@ -155,6 +157,16 @@ class AIPS_DB_Manager {
             KEY is_archived (is_archived),
             KEY campaign_mode (campaign_mode),
             KEY active_archived (is_active, is_archived)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_campaign_templates (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            campaign_id bigint(20) NOT NULL,
+            template_id bigint(20) NOT NULL,
+            PRIMARY KEY  (id),
+            KEY campaign_id (campaign_id),
+            KEY template_id (template_id),
+            UNIQUE KEY campaign_template (campaign_id, template_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (

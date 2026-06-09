@@ -277,8 +277,12 @@ class AIPS_Campaigns_Repository {
 			$campaign_id
 		));
 
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
 		$empty_prompt_count = (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->templates_table} WHERE campaign_id = %d AND TRIM(COALESCE(prompt_template, '')) = ''",
+			"SELECT COUNT(*) 
+			FROM {$this->templates_table} t
+			INNER JOIN {$table_campaign_templates} ct ON t.id = ct.template_id
+			WHERE ct.campaign_id = %d AND TRIM(COALESCE(t.prompt_template, '')) = ''",
 			$campaign_id
 		));
 
@@ -696,14 +700,37 @@ class AIPS_Campaigns_Repository {
 			}
 		}
 
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
 		foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
-			if (!$this->template_repository->delete((int) $template->id)) {
-				return $this->rollback_with_error(
-					$started_transaction,
-					$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
+			$linked_campaigns_count = (int) $this->wpdb->get_var($this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$table_campaign_templates} WHERE template_id = %d",
+				(int) $template->id
+			));
+
+			if ($linked_campaigns_count <= 1) {
+				if (!$this->template_repository->delete((int) $template->id)) {
+					return $this->rollback_with_error(
+						$started_transaction,
+						$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
+					);
+				}
+			} else {
+				$this->wpdb->delete(
+					$table_campaign_templates,
+					array(
+						'campaign_id' => $campaign_id,
+						'template_id' => (int) $template->id,
+					),
+					array('%d', '%d')
 				);
 			}
 		}
+
+		$this->wpdb->delete(
+			$table_campaign_templates,
+			array('campaign_id' => $campaign_id),
+			array('%d')
+		);
 
 		$deleted = $this->wpdb->delete(
 			$this->campaigns_table,
@@ -883,10 +910,154 @@ class AIPS_Campaigns_Repository {
 	 * @return array
 	 */
 	public function get_templates_by_campaign($campaign_id) {
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
 		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->templates_table} WHERE campaign_id = %d ORDER BY id ASC",
+			"SELECT t.* 
+			FROM {$this->templates_table} t
+			INNER JOIN {$table_campaign_templates} ct ON t.id = ct.template_id
+			WHERE ct.campaign_id = %d 
+			ORDER BY t.id ASC",
 			absint($campaign_id)
 		));
+	}
+
+	/**
+	 * Get all templates that are not currently associated with the specified campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @return array Array of template objects.
+	 */
+	public function get_templates_not_in_campaign($campaign_id) {
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT t.* 
+			FROM {$this->templates_table} t
+			WHERE t.id NOT IN (
+				SELECT template_id 
+				FROM {$table_campaign_templates} 
+				WHERE campaign_id = %d
+			)
+			ORDER BY t.name ASC",
+			absint($campaign_id)
+		));
+	}
+
+	/**
+	 * Link an existing template to a campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $template_id Template ID.
+	 * @return bool|WP_Error
+	 */
+	public function link_template_to_campaign($campaign_id, $template_id) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+
+		if (!$campaign_id || !$template_id) {
+			return $this->build_campaign_error('invalid_ids', __('Invalid Campaign or Template ID.', 'ai-post-scheduler'));
+		}
+
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+
+		// Check if already linked
+		$exists = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_campaign_templates} WHERE campaign_id = %d AND template_id = %d",
+			$campaign_id,
+			$template_id
+		));
+
+		if ($exists) {
+			return true;
+		}
+
+		$inserted = $this->wpdb->insert(
+			$table_campaign_templates,
+			array(
+				'campaign_id' => $campaign_id,
+				'template_id' => $template_id,
+			),
+			array('%d', '%d')
+		);
+
+		if ($inserted === false) {
+			return $this->build_campaign_error('link_failed', __('Failed to link template to campaign.', 'ai-post-scheduler'));
+		}
+
+		// Also update the campaign_id in aips_templates if it is currently NULL, to preserve backward compatibility.
+		$current_campaign_id = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT campaign_id FROM {$this->templates_table} WHERE id = %d",
+			$template_id
+		));
+		if (empty($current_campaign_id)) {
+			$this->wpdb->update(
+				$this->templates_table,
+				array('campaign_id' => $campaign_id),
+				array('id' => $template_id),
+				array('%d'),
+				array('%d')
+			);
+		}
+
+		$this->flush_campaign_cache($campaign_id);
+		AIPS_Template_Repository::instance()->cache->flush();
+
+		return true;
+	}
+
+	/**
+	 * Unlink a template from a campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $template_id Template ID.
+	 * @return bool|WP_Error
+	 */
+	public function unlink_template_from_campaign($campaign_id, $template_id) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+
+		if (!$campaign_id || !$template_id) {
+			return $this->build_campaign_error('invalid_ids', __('Invalid Campaign or Template ID.', 'ai-post-scheduler'));
+		}
+
+		$table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+
+		$deleted = $this->wpdb->delete(
+			$table_campaign_templates,
+			array(
+				'campaign_id' => $campaign_id,
+				'template_id' => $template_id,
+			),
+			array('%d', '%d')
+		);
+
+		if ($deleted === false) {
+			return $this->build_campaign_error('unlink_failed', __('Failed to unlink template from campaign.', 'ai-post-scheduler'));
+		}
+
+		// Also check if the template's campaign_id column matches this campaign. If so, update it to the next campaign ID in the join table, or NULL.
+		$current_campaign_id = (int) $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT campaign_id FROM {$this->templates_table} WHERE id = %d",
+			$template_id
+		));
+
+		if ($current_campaign_id === $campaign_id) {
+			$next_campaign_id = $this->wpdb->get_var($this->wpdb->prepare(
+				"SELECT campaign_id FROM {$table_campaign_templates} WHERE template_id = %d LIMIT 1",
+				$template_id
+			));
+			$this->wpdb->update(
+				$this->templates_table,
+				array('campaign_id' => !empty($next_campaign_id) ? absint($next_campaign_id) : null),
+				array('id' => $template_id),
+				array('%d'),
+				array('%d')
+			);
+		}
+
+		$this->flush_campaign_cache($campaign_id);
+		AIPS_Template_Repository::instance()->cache->flush();
+
+		return true;
 	}
 
 	/**
@@ -897,7 +1068,10 @@ class AIPS_Campaigns_Repository {
 	 */
 	public function get_schedules_by_campaign($campaign_id) {
 		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->schedule_table} WHERE campaign_id = %d ORDER BY id ASC",
+			"SELECT s.*, t.name AS template_name 
+			FROM {$this->schedule_table} s 
+			LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+			WHERE s.campaign_id = %d ORDER BY s.id ASC",
 			absint($campaign_id)
 		));
 	}
@@ -1035,9 +1209,8 @@ class AIPS_Campaigns_Repository {
 				s.primary_schedule_id AS primary_schedule_id
 			FROM {$this->campaigns_table} c
 			LEFT JOIN (
-				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(id) AS primary_template_id
-				FROM {$this->templates_table}
-				WHERE campaign_id IS NOT NULL
+				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(template_id) AS primary_template_id
+				FROM {$this->wpdb->prefix}aips_campaign_templates
 				GROUP BY campaign_id
 			) t ON t.campaign_id = c.id
 			LEFT JOIN (

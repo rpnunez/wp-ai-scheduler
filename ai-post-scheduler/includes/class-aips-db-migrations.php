@@ -154,6 +154,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_9_1();
 		}
 
+		if ( version_compare( $from_version, '2.9.2', '<' ) ) {
+			$this->migrate_to_2_9_2();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -812,5 +816,56 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 2.9.2.
+	 *
+	 * Backfills the `aips_campaign_templates` join table by copying existing
+	 * `campaign_id` associations from the `aips_templates` table.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_9_2() {
+		global $wpdb;
+
+		$table_campaign_templates = $wpdb->prefix . 'aips_campaign_templates';
+		$table_templates = $wpdb->prefix . 'aips_templates';
+
+		// Guard check: make sure the join table exists
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_campaign_templates ) );
+		if ( $table_exists !== $table_campaign_templates ) {
+			return;
+		}
+
+		$templates = $wpdb->get_results(
+			"SELECT id, campaign_id FROM `{$table_templates}` WHERE campaign_id IS NOT NULL AND campaign_id > 0",
+			ARRAY_A
+		);
+
+		if ( ! empty( $templates ) ) {
+			foreach ( $templates as $template ) {
+				$template_id = absint( $template['id'] );
+				$campaign_id = absint( $template['campaign_id'] );
+
+				// Check if this mapping already exists
+				$exists = $wpdb->get_var( $wpdb->prepare(
+					"SELECT COUNT(*) FROM `{$table_campaign_templates}` WHERE campaign_id = %d AND template_id = %d",
+					$campaign_id,
+					$template_id
+				) );
+
+				if ( ! $exists ) {
+					$wpdb->insert(
+						$table_campaign_templates,
+						array(
+							'campaign_id' => $campaign_id,
+							'template_id' => $template_id,
+						),
+						array( '%d', '%d' )
+					);
+				}
+			}
+		}
 	}
 }
