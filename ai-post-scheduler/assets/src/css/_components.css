@@ -331,6 +331,7 @@
 #aips-toast-container {
 	position: fixed;
 	top: 100px;
+	left: 50%;
 	transform: translateX(-50%);
 	z-index: 99999;
 	display: flex;
