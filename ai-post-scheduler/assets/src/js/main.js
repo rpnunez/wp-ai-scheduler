@@ -52,19 +52,16 @@ window.AIPS = window.AIPS || {};
 const AIPS = window.AIPS;
 
 // Configure Underscore templates to support the existing {{ placeholder }} syntax
-_.templateSettings = {
-	interpolate: /\{\{([\s\S]+?)\}\}/g
-};
-
 // Re-expose Underscore template rendering under AIPS.Templates for backward compatibility
-AIPS.Templates = {
+AIPS.Templates = { 
 	render(id, data) {
 		const $el = $('#' + id);
 		if (!$el.length) return '';
 		try {
-			const compiled = _.template($el.html());
+			const compiled = _.template($el.html(), {
+				interpolate: /\{\{([\s\S]+?)\}\}/g
+			});
 			return compiled(data || {});
-		} catch (e) {
 			console.error('Template render error for ID: ' + id, e);
 			return '';
 		}
