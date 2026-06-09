@@ -88,7 +88,7 @@ class Test_AIPS_Schedule_Controller_Renew extends WP_Ajax_UnitTestCase {
 
 		$output = ob_get_clean();
 
-		return json_decode( strtok( trim( $output ), "\r\n" ), true );
+		return json_decode( trim( $output ), true );
 	}
 
 	public function test_ajax_renew_overdue_schedules_unauthorized_for_non_admins() {

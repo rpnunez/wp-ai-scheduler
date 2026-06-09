@@ -175,7 +175,7 @@ class AIPS_Schedule_Controller {
                 'active' => $active_schedules,
                 'upcoming_24h' => count($timeline),
                 'overdue' => $overdue_schedules,
-                'success_rate' => $this->history_repository->get_stats()['success_rate'],
+                'success_rate' => isset($this->history_repository->get_stats()['success_rate']) ? $this->history_repository->get_stats()['success_rate'] : 0,
             ),
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
@@ -222,14 +222,17 @@ class AIPS_Schedule_Controller {
             $new_next_run = $interval_calculator->calculate_next_run($frequency, $now);
 
             if ($type === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
-                $this->schedule_repository->update_next_run($id, $new_next_run);
-                $renewed_count++;
+                if ($this->schedule_repository->update_next_run($id, $new_next_run) !== false) {
+                    $renewed_count++;
+                }
             } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
-                $authors_repo->update_topic_generation_schedule($id, $new_next_run);
-                $renewed_count++;
+                if ($authors_repo->update_topic_generation_schedule($id, $new_next_run) !== false) {
+                    $renewed_count++;
+                }
             } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
-                $authors_repo->update_post_generation_schedule($id, $new_next_run);
-                $renewed_count++;
+                if ($authors_repo->update_post_generation_schedule($id, $new_next_run) !== false) {
+                    $renewed_count++;
+                }
             }
         }
 

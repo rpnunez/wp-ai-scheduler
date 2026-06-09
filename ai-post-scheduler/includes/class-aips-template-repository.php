@@ -329,6 +329,12 @@ class AIPS_Template_Repository {
             return false;
         }
 
+        $old_campaign_id = 0;
+        if ( isset($data['campaign_id']) ) {
+            $current_template = $this->get_by_id($id);
+            $old_campaign_id = $current_template ? (int) $current_template->campaign_id : 0;
+        }
+
         $update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
         $format[] = '%d';
         
@@ -342,19 +348,19 @@ class AIPS_Template_Repository {
 
         if ( $result ) {
             if ( isset($data['campaign_id']) ) {
-                $campaign_id = !empty($data['campaign_id']) ? absint($data['campaign_id']) : 0;
-                $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
-                if ($campaign_id > 0) {
-                    $exists = $this->wpdb->get_var($this->wpdb->prepare(
-                        "SELECT COUNT(*) FROM {$table_campaign_templates} WHERE campaign_id = %d AND template_id = %d",
-                        $campaign_id,
-                        $id
-                    ));
-                    if (!$exists) {
+                $new_campaign_id = !empty($data['campaign_id']) ? absint($data['campaign_id']) : 0;
+                if ($new_campaign_id !== $old_campaign_id) {
+                    $table_campaign_templates = $this->wpdb->prefix . 'aips_campaign_templates';
+                    $this->wpdb->delete(
+                        $table_campaign_templates,
+                        array('template_id' => $id),
+                        array('%d')
+                    );
+                    if ($new_campaign_id > 0) {
                         $this->wpdb->insert(
                             $table_campaign_templates,
                             array(
-                                'campaign_id' => $campaign_id,
+                                'campaign_id' => $new_campaign_id,
                                 'template_id' => $id,
                             ),
                             array('%d', '%d')

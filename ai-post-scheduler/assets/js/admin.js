@@ -127,7 +127,7 @@
                     },
                     {
                         label: aipsScheduleL10n.successRateLabel || 'Success Rate',
-                        value: (counts.success_rate !== undefined ? counts.success_rate : 0) + '%',
+                        value: (counts.success_rate != null ? counts.success_rate : 0) + '%',
                         tone: (counts.success_rate || 0) >= 90 ? 'success' : ((counts.success_rate || 0) >= 70 ? 'warning' : 'error'),
                         icon: 'dashicons-chart-bar'
                     },
@@ -2913,7 +2913,9 @@
                     if (response.success) {
                         var count = response.data.renewed_count || 0;
                         AIPS.Utilities.showToast(response.data.message || (count + ' schedules renewed successfully.'), 'success');
-                        location.reload();
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
                     } else {
                         AIPS.Utilities.showToast(response.data.message || 'Failed to renew schedules.', 'error');
                         AIPS.Utilities.resetButton($btn);
