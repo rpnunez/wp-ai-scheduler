@@ -39,6 +39,13 @@ import '../../js/authors.js';
 import { TemplatesView } from './views/templates';
 import { SchedulesView } from './views/schedules';
 import { AuthorsView } from './views/authors';
+import { HistoryView } from './views/history';
+import { ViewSessionModalView } from './views/session-modal';
+import { PlannerView } from './views/planner';
+import { CalendarView } from './views/calendar';
+import { ResearchView } from './views/research';
+import { InternalLinksView } from './views/internal-links';
+import { SourcesView } from './views/sources';
 
 // Initialize global namespace
 window.AIPS = window.AIPS || {};
@@ -77,6 +84,13 @@ AIPS.mediator = mediator;
 AIPS.TemplatesViewClass = TemplatesView;
 AIPS.SchedulesViewClass = SchedulesView;
 AIPS.AuthorsViewClass = AuthorsView;
+AIPS.HistoryViewClass = HistoryView;
+AIPS.ViewSessionModalViewClass = ViewSessionModalView;
+AIPS.PlannerViewClass = PlannerView;
+AIPS.CalendarViewClass = CalendarView;
+AIPS.ResearchViewClass = ResearchView;
+AIPS.InternalLinksViewClass = InternalLinksView;
+AIPS.SourcesViewClass = SourcesView;
 
 // Bootstrap application on document ready
 $(document).ready(() => {
@@ -84,6 +98,39 @@ $(document).ready(() => {
 	AIPS.templatesView = new TemplatesView();
 	AIPS.schedulesView = new SchedulesView();
 	AIPS.authorsView = new AuthorsView();
+
+	// Unconditionally instantiate session modal view (attaches global listeners)
+	AIPS.sessionModalView = new ViewSessionModalView();
+
+	// Conditionally instantiate history view based on element presence
+	if ($('#aips-history-search-input').length || $('#aips-history-logs-modal').length) {
+		AIPS.historyView = new HistoryView();
+	}
+
+	// Conditionally instantiate Planner view
+	if ($('#planner-niche').length || $('#topics-list').length) {
+		AIPS.plannerView = new PlannerView();
+	}
+
+	// Conditionally instantiate Calendar view
+	if ($('.aips-calendar-container').length) {
+		AIPS.calendarView = new CalendarView();
+	}
+
+	// Conditionally instantiate Research view
+	if ($('#aips-research-form').length || $('#topics-container').length) {
+		AIPS.researchView = new ResearchView();
+	}
+
+	// Conditionally instantiate Internal Links view
+	if ($('#aips-suggestions-tbody').length) {
+		AIPS.internalLinksView = new InternalLinksView();
+	}
+
+	// Conditionally instantiate Sources view
+	if ($('#aips-sources-table').length) {
+		AIPS.sourcesView = new SourcesView();
+	}
 
 	// Call any legacy bootstrap hooks
 	if (typeof AIPS.init === 'function') {
