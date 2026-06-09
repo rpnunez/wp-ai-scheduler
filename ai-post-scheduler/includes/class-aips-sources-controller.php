@@ -447,7 +447,7 @@ class AIPS_Sources_Controller {
 			'page_title'       => isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : '',
 			'meta_description' => isset($_POST['meta_description']) ? sanitize_textarea_field(wp_unslash($_POST['meta_description'])) : '',
 			'extracted_text'   => isset($_POST['extracted_text']) ? sanitize_textarea_field(wp_unslash($_POST['extracted_text'])) : '',
-			'raw_html'         => isset($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : '',
+			'raw_html'         => isset($_POST['raw_html']) ? wp_unslash( $_POST['raw_html'] ) : '',
 			'fetch_status'     => $fetch_status,
 			'http_status'      => isset($_POST['http_status']) ? absint($_POST['http_status']) : 0,
 			'error_message'    => isset($_POST['error_message']) ? sanitize_textarea_field(wp_unslash($_POST['error_message'])) : '',
