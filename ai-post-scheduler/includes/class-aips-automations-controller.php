@@ -108,7 +108,7 @@ class AIPS_Automations_Controller {
 				return array(
 					array(
 						'type'  => 'link',
-						'url'   => admin_url('admin.php?page=' . AIPS_Campaigns_Controller::PAGE_SLUG),
+						'url'   => AIPS_Admin_Menu_Helper::get_page_url('campaign_wizard'),
 						'class' => 'aips-btn aips-btn-primary',
 						'icon'  => 'dashicons-plus-alt',
 						'label' => __('Add New Campaign', 'ai-post-scheduler'),
@@ -237,7 +237,7 @@ class AIPS_Automations_Controller {
 		return array(
 			array(
 				'type'  => 'link',
-				'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors'),
+				'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors', array('author_id' => $author_id)),
 				'class' => 'aips-btn aips-btn-secondary',
 				'icon'  => 'dashicons-edit',
 				'label' => __('Edit Author', 'ai-post-scheduler'),
@@ -253,11 +253,11 @@ class AIPS_Automations_Controller {
 			),
 			array(
 				'type'  => 'link',
-				'url'   => add_query_arg(array('page' => 'aips-generated-posts', 'author_id' => $author_id), admin_url('admin.php')),
+				'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('author_id' => $author_id)),
 				'class' => 'aips-btn aips-btn-secondary',
 				'icon'  => 'dashicons-admin-post',
 				'label' => __('View Generated Posts', 'ai-post-scheduler'),
-			),
+			)
 		);
 	}
 
