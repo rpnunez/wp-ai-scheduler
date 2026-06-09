@@ -189,12 +189,15 @@ class AIPS_Template_Repository {
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'enable_related_posts' => isset($data['enable_related_posts']) ? (filter_var($data['enable_related_posts'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0) : 0,
+            'related_posts_limit' => isset($data['related_posts_limit']) ? absint($data['related_posts_limit']) : 3,
+            'related_posts_threshold' => isset($data['related_posts_threshold']) ? (float) $data['related_posts_threshold'] : 0.70,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%f', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -306,6 +309,21 @@ class AIPS_Template_Repository {
         if (array_key_exists('campaign_id', $data)) {
             $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
             $format[] = '%d';
+        }
+
+        if (isset($data['enable_related_posts'])) {
+            $update_data['enable_related_posts'] = $data['enable_related_posts'] ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if (isset($data['related_posts_limit'])) {
+            $update_data['related_posts_limit'] = absint($data['related_posts_limit']);
+            $format[] = '%d';
+        }
+
+        if (isset($data['related_posts_threshold'])) {
+            $update_data['related_posts_threshold'] = (float) $data['related_posts_threshold'];
+            $format[] = '%f';
         }
         
         if (isset($data['is_active'])) {
