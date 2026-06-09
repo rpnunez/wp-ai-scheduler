@@ -246,6 +246,7 @@
          * Each handler is a named method on the AIPS object.
          */
         bindEvents: function() {
+            /* Handled by Backbone.js TemplatesView
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
@@ -276,6 +277,7 @@
                 $('#aips-template-modal').hide();
                 AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
             });
+            */
 
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
@@ -292,6 +294,7 @@
             $(document).on('click', '.aips-delete-voice', this.deleteVoice);
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
+            /* Handled by Backbone.js SchedulesView
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-edit-schedule', this.editSchedule);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
@@ -323,13 +326,16 @@
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
             $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
+            */
 
 
 
+            /* Handled by Backbone.js TemplatesView
             // Template Search
             $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
+            */
 
             // Schedule Search
             $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);

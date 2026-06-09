@@ -480,7 +480,7 @@
 @keyframes spin {
 	to { transform: rotate(360deg); }
 }
-	
+@media screen and (max-width: 782px) {
 	.aips-modal-footer {
 		flex-direction: column;
 		gap: 10px;

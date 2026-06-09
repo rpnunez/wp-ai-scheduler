@@ -264,6 +264,14 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 - Use `AIPS_Ajax_Response` for consistent, escaped JSON responses.
 - Handle missing AI Engine dependency gracefully (dependency check fires on `admin_init`).
 
+## Client-Side Conventions (Backbone & Vite)
+- Client-side code lives in `assets/src/` and compiles via Vite to `assets/dist/js/aips-admin.min.js` and `assets/dist/css/aips-admin.min.css`.
+- Do not enqueue new page-specific files in PHP; bundle them by importing them in `assets/src/js/main.js` and `assets/src/css/main.css`.
+- Attach all translation/configuration localizations (`wp_localize_script()`) to the unified `'aips-admin-script'` handle.
+- Use Backbone.js Models, Collections, and Views for client state and UI.
+- Use `AIPS.Templates.render(id, data)` (Underscore templates) with mustache-style `{{ placeholder }}` syntax to render HTML.
+- Follow **BEM CSS with Design Tokens** utilizing variables in `assets/src/css/_variables.css` for consistent design aesthetics.
+
 ## Testing
 - Tests live in `ai-post-scheduler/tests/`; run with `composer test` from `ai-post-scheduler/`.
 - `composer test`, `composer test:verbose`, and `composer test:coverage` run an automatic setup step first (`composer test:setup`) to prepare WordPress test paths and dependencies when missing.
@@ -286,5 +294,6 @@ Build and maintain a WordPress plugin that schedules and generates AI-written po
 - `.github/copilot-instructions.md` for the fuller repository guide.
 - `README.md` and `docs/` for feature and setup documentation.
 - `ai-post-scheduler/CHANGELOG.md` for plugin release history.
+- `docs/core-client-side.md` for client-side compilation and MVC architecture guidelines.
 - `docs/DEVELOPMENT_GUIDELINES.md` for project-specific coding and architectural guidelines that all developers and AI agents must follow.
   

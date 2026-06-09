@@ -27,6 +27,7 @@
 		 * operations.
 		 */
 		bindEvents: function () {
+			/* Handled by Backbone.js AuthorsView
 			// Add Author Button
 			$('.aips-add-author-btn').on('click', this.openAddModal.bind(this));
 
@@ -96,6 +97,7 @@
 			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
 			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
 			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
+			*/
 		},
 
 		/**
@@ -2527,6 +2529,7 @@
 		 * execution.
 		 */
 		bindEvents: function () {
+			/* Handled by Backbone.js AuthorsView
 			// React to shared tab switching events for top-level Authors tabs.
 			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
 			
@@ -2539,6 +2542,7 @@
 			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
 			$(document).on('click', '#aips-queue-reload-btn', this.loadQueueTopics.bind(this));
 			$(document).on('click', '.aips-queue-page-link', this.goToQueuePage.bind(this));
+			*/
 		},
 
 		/**
@@ -2908,6 +2912,11 @@
 			]);
 		}
 	};
+
+	// Expose modules globally under AIPS namespace
+	window.AIPS = window.AIPS || {};
+	window.AIPS.AuthorsModule = AuthorsModule;
+	window.AIPS.GenerationQueueModule = GenerationQueueModule;
   
 	// Initialize when document is ready
 	$(document).ready(function () {

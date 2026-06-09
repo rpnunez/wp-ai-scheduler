@@ -31,6 +31,7 @@ Runtime dependencies:
 Development dependencies:
 - Composer.
 - PHPUnit.
+- Node.js (v18+) & npm (for compiling client assets).
 - Docker (recommended for local development).
 
 ## Requirements
@@ -87,6 +88,19 @@ make shell
 # Stop services
 make down
 ```
+
+### Client-Side Assets Build
+
+The client-side assets (JavaScript and CSS) must be built using Node.js and Vite:
+
+```bash
+cd ai-post-scheduler
+npm install      # Install Node dependencies
+npm run dev      # Start development watcher (auto-recompiles on save)
+npm run build    # Create minified production build
+```
+
+For IDE setup (VS Code/PHPStorm) and MVC architecture details, see [docs/core-client-side.md](docs/core-client-side.md).
 
 ### Manual/Non-Docker Setup
 
@@ -151,6 +165,7 @@ Performance benchmarks run automatically in CI on pull requests and fail PRs whe
 
 - [docs/FEATURES.MD](docs/FEATURES.MD) — complete feature reference
 - [docs/DEV.md](docs/DEV.md) — developer setup and environment guide
+- [docs/core-client-side.md](docs/core-client-side.md) — client-side MVC/Backbone & Vite build guide
 - [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) — quick-reference cheat sheet
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
