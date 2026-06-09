@@ -187,7 +187,8 @@ Create `AIPS.Api` as the only approved route for plugin AJAX calls.
 
 ### Migration Rule
 
-After `AIPS.Api` is introduced, no migrated page should call `$.ajax()`, `$.post()`, or `fetch()` directly for plugin admin operations.
+1. After `AIPS.Api` is introduced, no migrated page should call `$.ajax()`, `$.post()`, or `fetch()` directly for plugin admin operations.
+2. Before registering a new AJAX action or implementing a duplicate handler, check if the action is already registered in the central AJAX registry (e.g., `AIPS_Ajax_Registry`) or handled by another controller to avoid duplicate implementations.
 
 ## Proposed Template Architecture
 
