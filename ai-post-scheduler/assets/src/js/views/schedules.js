@@ -1,42 +1,59 @@
 import Backbone from 'backbone';
 import $ from 'jquery';
+import _ from 'underscore';
+import { BaseListView } from './base-list';
+import { BaseModalView } from './base-modal';
 import { ScheduleModel } from '../models/schedule';
 
 /**
  * Schedules View Controller
  */
-export const SchedulesView = Backbone.View.extend({
+export const SchedulesView = BaseListView.extend({
 	el: 'body',
 
-	events: {
+	listSelector: '.aips-unified-schedule-table',
+	rowSelector: '.aips-unified-row',
+	searchSelector: '#aips-unified-search',
+	selectAllSelector: '#cb-select-all-unified',
+	checkboxSelector: '.aips-unified-checkbox',
+	bulkActionSelector: '#aips-unified-bulk-action',
+	bulkApplySelector: '#aips-unified-bulk-apply',
+
+	events: _.extend({}, BaseListView.prototype.events, {
 		// CRUD Operations
 		'click .aips-add-schedule-btn': 'openScheduleModal',
 		'click .aips-edit-schedule': 'editSchedule',
 		'click .aips-clone-schedule': 'cloneSchedule',
 		'click .aips-save-schedule': 'saveSchedule',
-		'click .aips-save-schedule-wizard': 'saveScheduleWizard',
 		'click .aips-delete-schedule': 'deleteSchedule',
 		'change .aips-toggle-schedule': 'toggleSchedule',
 		'click .aips-run-now-schedule': 'runNowSchedule',
 		'click .aips-view-schedule-history': 'viewScheduleHistory',
+		'click .aips-view-unified-history': 'viewScheduleHistory',
 
 		// Unified scheduling events
 		'change .aips-unified-toggle-schedule': 'toggleUnifiedSchedule',
 		'click .aips-unified-run-now': 'runNowUnified',
 		'change #aips-unified-type-filter': 'filterUnifiedByType',
-		'keyup #aips-unified-search': 'filterUnifiedSchedules',
-		'search #aips-unified-search': 'filterUnifiedSchedules',
-		'click #aips-unified-search-clear': 'clearUnifiedSearch',
-		'click .aips-clear-unified-search-btn': 'clearUnifiedSearch',
+		'keyup #aips-unified-search': 'onSearchKeyup',
+		'search #aips-unified-search': 'onSearchClear',
+		'click #aips-unified-search-clear': 'clearSearch',
+		'click .aips-clear-unified-search-btn': 'clearSearch',
 		'click .aips-renew-schedules-btn': 'renewSchedules',
 
-		// Bulk Actions
-		'change #cb-select-all-unified': 'toggleAllUnified',
-		'change .aips-unified-checkbox': 'toggleUnifiedSelection',
-		'click #aips-unified-bulk-apply': 'applyUnifiedBulkAction'
-	},
+		// Bulk Actions override
+		'change #cb-select-all-unified': 'toggleSelectAll',
+		'change .aips-unified-checkbox': 'onSelectionChange',
+		'click #aips-unified-bulk-apply': 'onBulkApply'
+	}),
 
 	initialize() {
+		BaseListView.prototype.initialize.apply(this, arguments);
+
+		// Initialize Modals
+		this.scheduleModal = new BaseModalView({ el: '#aips-schedule-modal' });
+		this.historyModal = new BaseModalView({ el: '#aips-schedule-history-modal' });
+
 		// Auto-initialize status strip if present
 		if ($('#aips-schedule-status-strip').length) {
 			this.initScheduleStatusStrip();
@@ -45,16 +62,15 @@ export const SchedulesView = Backbone.View.extend({
 
 	openScheduleModal(e) {
 		if (e) e.preventDefault();
-		// Form reset and modal opening
 		$('#aips-schedule-form')[0].reset();
 		$('#schedule_id').val('');
 		$('#aips-schedule-modal-title').text('Add New Schedule');
-		$('#aips-schedule-modal').show();
+		this.scheduleModal.open();
 	},
 
 	editSchedule(e) {
 		if (e) e.preventDefault();
-		const id = $(e.currentTarget).data('id');
+		const id = $(e.currentTarget).data('schedule-id');
 		const $btn = $(e.currentTarget);
 		$btn.prop('disabled', true);
 
@@ -63,15 +79,18 @@ export const SchedulesView = Backbone.View.extend({
 			success: (model) => {
 				const s = model.toJSON();
 				$('#schedule_id').val(s.id);
-				$('#schedule_template_id').val(s.template_id);
-				$('#schedule_type').val(s.schedule_type);
-				$('#schedule_interval_value').val(s.interval_value);
-				$('#schedule_interval_unit').val(s.interval_unit);
-				$('#schedule_start_time').val(s.start_time);
+				$('#schedule_title').val(s.title || '');
+				$('#schedule_template').val(s.template_id);
+				$('#schedule_frequency').val(s.frequency || 'daily');
+				$('#schedule_start_time').val(s.start_time || '');
+				$('#schedule_topic').val(s.topic || '');
+				$('#article_structure_id').val(s.article_structure_id || '');
+				$('#rotation_pattern').val(s.rotation_pattern || '');
+				$('#schedule_campaign_id').val(s.campaign_id || '');
 				$('#schedule_is_active').prop('checked', s.is_active == 1);
 				
 				$('#aips-schedule-modal-title').text('Edit Schedule');
-				$('#aips-schedule-modal').show();
+				this.scheduleModal.open();
 				$btn.prop('disabled', false);
 			},
 			error: () => {
@@ -85,32 +104,66 @@ export const SchedulesView = Backbone.View.extend({
 
 	cloneSchedule(e) {
 		if (e) e.preventDefault();
-		// Clone action
+		const $btn = $(e.currentTarget);
+		const $row = $btn.closest('tr');
+		
+		const title = $row.data('title');
+		const templateId = $row.data('template-id');
+		const campaignId = $row.data('campaign-id');
+		const frequency = $row.data('frequency');
+		const topic = $row.data('topic');
+		const articleStructureId = $row.data('article-structure-id');
+		const rotationPattern = $row.data('rotation-pattern');
+
+		$('#aips-schedule-form')[0].reset();
+		$('#schedule_id').val(''); // Clear ID for new schedule
+		$('#schedule_title').val(title ? title + ' (Copy)' : '');
+		$('#schedule_template').val(templateId || '');
+		$('#schedule_campaign_id').val(campaignId || '');
+		$('#schedule_frequency').val(frequency || 'daily');
+		$('#schedule_topic').val(topic || '');
+		$('#article_structure_id').val(articleStructureId || '');
+		$('#rotation_pattern').val(rotationPattern || '');
+		$('#schedule_start_time').val('');
+		$('#schedule_is_active').prop('checked', true);
+
+		$('#aips-schedule-modal-title').text('Clone Schedule');
+		this.scheduleModal.open();
 	},
 
 	saveSchedule(e) {
 		if (e) e.preventDefault();
 		const $btn = $(e.currentTarget);
+		
+		const $form = $('#aips-schedule-form');
+		if (!$form[0].checkValidity()) {
+			$form[0].reportValidity();
+			return;
+		}
+
 		if (window.AIPS && window.AIPS.Utilities) {
 			window.AIPS.Utilities.setButtonLoading($btn, 'Saving...');
 		}
 
 		const data = {
 			id: $('#schedule_id').val(),
-			template_id: $('#schedule_template_id').val(),
-			schedule_type: $('#schedule_type').val(),
-			interval_value: $('#schedule_interval_value').val(),
-			interval_unit: $('#schedule_interval_unit').val(),
+			schedule_title: $('#schedule_title').val(),
+			template_id: $('#schedule_template').val(),
+			frequency: $('#schedule_frequency').val(),
 			start_time: $('#schedule_start_time').val(),
+			topic: $('#schedule_topic').val(),
+			article_structure_id: $('#article_structure_id').val(),
+			rotation_pattern: $('#rotation_pattern').val(),
+			campaign_id: $('#schedule_campaign_id').val(),
 			is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
 		};
 
 		const schedule = new ScheduleModel(data);
 		schedule.save(null, {
 			success: () => {
-				$('#aips-schedule-modal').hide();
+				this.scheduleModal.close();
 				if (window.AIPS && typeof window.AIPS.refreshContentPanel === 'function') {
-					window.AIPS.refreshContentPanel('.aips-schedules-list');
+					window.AIPS.refreshContentPanel('.aips-unified-schedule-table');
 				} else {
 					window.location.reload();
 				}
@@ -125,20 +178,19 @@ export const SchedulesView = Backbone.View.extend({
 		});
 	},
 
-	saveScheduleWizard(e) {
-		if (e) e.preventDefault();
-		// Save schedule from wizard view
-	},
-
 	deleteSchedule(e) {
 		if (e) e.preventDefault();
 		const $btn = $(e.currentTarget);
 		const id = $btn.data('id');
 
+		const confirmMsg = (window.aipsScheduleL10n && window.aipsScheduleL10n.deleteScheduleConfirm) || 'Are you sure you want to delete this schedule?';
+		const cancelLabel = (window.aipsAdminL10n && window.aipsAdminL10n.confirmCancelButton) || 'Cancel';
+		const deleteLabel = (window.aipsAdminL10n && window.aipsAdminL10n.confirmDeleteButton) || 'Yes, delete';
+
 		if (window.AIPS && window.AIPS.Utilities) {
-			window.AIPS.Utilities.confirm('Are you sure you want to delete this schedule?', 'Confirm Delete', [
-				{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: () => this._executeDelete($btn, id) }
+			window.AIPS.Utilities.confirm(confirmMsg, 'Notice', [
+				{ label: cancelLabel, className: 'aips-btn aips-btn-primary' },
+				{ label: deleteLabel, className: 'aips-btn aips-btn-danger-solid', action: () => this._executeDelete($btn, id) }
 			]);
 		}
 	},
@@ -148,7 +200,7 @@ export const SchedulesView = Backbone.View.extend({
 		schedule.destroy({
 			success: () => {
 				if (window.AIPS && typeof window.AIPS.refreshContentPanel === 'function') {
-					window.AIPS.refreshContentPanel('.aips-schedules-list');
+					window.AIPS.refreshContentPanel('.aips-unified-schedule-table');
 				} else {
 					window.location.reload();
 				}
@@ -187,12 +239,142 @@ export const SchedulesView = Backbone.View.extend({
 
 	runNowSchedule(e) {
 		if (e) e.preventDefault();
-		// Run single schedule immediately
+		const $btn = $(e.currentTarget);
+		const id = $btn.data('id');
+
+		if (window.AIPS && window.AIPS.Utilities) {
+			window.AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+		}
+
+		$.ajax({
+			url: (window.aipsAjax && window.aipsAjax.ajaxUrl) || window.ajaxurl,
+			type: 'POST',
+			data: {
+				action: 'aips_run_now',
+				nonce: (window.aipsAjax && window.aipsAjax.nonce) || '',
+				schedule_id: id
+			},
+			success: (response) => {
+				if (response.success) {
+					let msg = _.escape(response.data.message || 'Post generated successfully!');
+					if (response.data.edit_url) {
+						msg += ' <a href="' + _.escape(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+					}
+					if (window.AIPS && window.AIPS.Utilities) {
+						window.AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+					}
+					this.initScheduleStatusStrip();
+				} else {
+					if (window.AIPS && window.AIPS.Utilities) {
+						window.AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
+					}
+				}
+				if (window.AIPS && window.AIPS.Utilities) {
+					window.AIPS.Utilities.resetButton($btn);
+				}
+			},
+			error: () => {
+				if (window.AIPS && window.AIPS.Utilities) {
+					window.AIPS.Utilities.showToast('Network error during execution.', 'error');
+					window.AIPS.Utilities.resetButton($btn);
+				}
+			}
+		});
 	},
 
 	viewScheduleHistory(e) {
 		if (e) e.preventDefault();
-		// Load schedule history modal
+		const $btn = $(e.currentTarget);
+		const scheduleId = $btn.data('id');
+		const scheduleName = $btn.data('name') || scheduleId;
+
+		if (!scheduleId) return;
+
+		const $modal = $('#aips-schedule-history-modal');
+		const $title = $modal.find('#aips-schedule-history-modal-title');
+		const $loading = $modal.find('#aips-schedule-history-loading');
+		const $empty = $modal.find('#aips-schedule-history-empty');
+		const $list = $modal.find('#aips-schedule-history-list');
+
+		$title.text('Schedule History: ' + scheduleName);
+		$loading.show();
+		$empty.hide();
+		$list.hide().empty();
+		this.historyModal.open();
+
+		$.ajax({
+			url: (window.aipsAjax && window.aipsAjax.ajaxUrl) || window.ajaxurl,
+			type: 'POST',
+			data: {
+				action: 'aips_get_schedule_history',
+				nonce: (window.aipsAjax && window.aipsAjax.nonce) || '',
+				schedule_id: scheduleId
+			},
+			success: (response) => {
+				$loading.hide();
+
+				if (!response.success) {
+					const l10n = window.aipsScheduleL10n || {};
+					if (window.AIPS && window.AIPS.Utilities) {
+						window.AIPS.Utilities.showToast(response.data.message || l10n.failedToLoadHistory || 'Failed to load history', 'error');
+					}
+					this.historyModal.close();
+					return;
+				}
+
+				const entries = response.data.entries;
+
+				if (!entries || entries.length === 0) {
+					$empty.show();
+					return;
+				}
+
+				const iconMap = {
+					'schedule_created':  { icon: 'dashicons-plus-alt',        cls: 'aips-timeline-created'  },
+					'schedule_updated':  { icon: 'dashicons-edit',             cls: 'aips-timeline-updated'  },
+					'schedule_enabled':  { icon: 'dashicons-yes-alt',          cls: 'aips-timeline-enabled'  },
+					'schedule_disabled': { icon: 'dashicons-minus',            cls: 'aips-timeline-disabled' },
+					'schedule_executed': { icon: 'dashicons-controls-play',    cls: 'aips-timeline-executed' },
+					'manual_schedule_started':   { icon: 'dashicons-controls-play', cls: 'aips-timeline-executed' },
+					'manual_schedule_completed': { icon: 'dashicons-yes',           cls: 'aips-timeline-success'  },
+					'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
+					'schedule_failed':   { icon: 'dashicons-warning',          cls: 'aips-timeline-error'    },
+					'post_published':    { icon: 'dashicons-media-document',   cls: 'aips-timeline-success'  },
+					'post_draft':        { icon: 'dashicons-media-document',   cls: 'aips-timeline-draft'    },
+					'post_generated':    { icon: 'dashicons-media-document',   cls: 'aips-timeline-draft'    },
+				};
+				const defaultIcon = { icon: 'dashicons-info', cls: '' };
+
+				entries.forEach(entry => {
+					let info = iconMap[entry.event_type] || defaultIcon;
+					const isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
+					if (isError && !info.cls) {
+						info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
+					}
+
+					const $item = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
+					const $icon = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
+						.append($('<span>', { 'class': 'dashicons ' + info.icon }));
+					const $content = $('<div>', { 'class': 'aips-timeline-content' });
+					const $msg = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
+					const $time = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
+						.text(entry.timestamp);
+
+					$content.append($msg).append($time);
+					$item.append($icon).append($content);
+					$list.append($item);
+				});
+
+				$list.show();
+			},
+			error: () => {
+				$loading.hide();
+				if (window.AIPS && window.AIPS.Utilities) {
+					window.AIPS.Utilities.showToast('Failed to load schedule history.', 'error');
+				}
+				this.historyModal.close();
+			}
+		});
 	},
 
 	toggleUnifiedSchedule(e) {
@@ -329,18 +511,47 @@ export const SchedulesView = Backbone.View.extend({
 		this.filterUnifiedSchedules();
 	},
 
-	toggleAllUnified(e) {
-		const checked = $(e.currentTarget).is(':checked');
-		$('.aips-unified-checkbox').prop('checked', checked);
-	},
+	executeBulkAction(action, ids) {
+		const $btn = this.$(this.bulkApplySelector);
+		if (window.AIPS && window.AIPS.Utilities) {
+			window.AIPS.Utilities.setButtonLoading($btn, 'Applying...');
+		}
 
-	toggleUnifiedSelection() {
-		// Selection stats
-	},
-
-	applyUnifiedBulkAction(e) {
-		if (e) e.preventDefault();
-		// Bulk action implementation
+		$.ajax({
+			url: (window.aipsAjax && window.aipsAjax.ajaxUrl) || window.ajaxurl,
+			type: 'POST',
+			data: {
+				action: 'aips_unified_bulk_action',
+				nonce: (window.aipsAjax && window.aipsAjax.nonce) || '',
+				bulk_action: action,
+				items: ids
+			},
+			success: (resp) => {
+				if (resp.success) {
+					if (window.AIPS && window.AIPS.Utilities) {
+						window.AIPS.Utilities.showToast(resp.data.message || 'Bulk action applied.', 'success');
+					}
+					if (window.AIPS && typeof window.AIPS.refreshContentPanel === 'function') {
+						window.AIPS.refreshContentPanel('.aips-unified-schedule-table');
+					} else {
+						window.location.reload();
+					}
+				} else {
+					if (window.AIPS && window.AIPS.Utilities) {
+						window.AIPS.Utilities.showToast(resp.data.message || 'Action failed.', 'error');
+					}
+				}
+				if (window.AIPS && window.AIPS.Utilities) {
+					window.AIPS.Utilities.resetButton($btn);
+				}
+			},
+			error: () => {
+				if (window.AIPS && window.AIPS.Utilities) {
+					window.AIPS.Utilities.showToast('Network error during bulk action.', 'error');
+					window.AIPS.Utilities.resetButton($btn);
+				}
+			}
+		});
 	},
 
 	initScheduleStatusStrip() {
