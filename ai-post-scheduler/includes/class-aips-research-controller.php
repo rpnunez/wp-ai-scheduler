@@ -865,7 +865,7 @@ class AIPS_Research_Controller {
         }
 
         $term_ids = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
-            ? array_map('absint', $_POST['term_ids'])
+            ? array_map('absint', wp_unslash($_POST['term_ids']))
             : array();
         $niche    = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count    = isset($_POST['count']) ? absint($_POST['count']) : 10;

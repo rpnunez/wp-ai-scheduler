@@ -110,7 +110,7 @@ class AIPS_Taxonomy_Controller {
 
 		$taxonomy_type     = isset($_POST['taxonomy_type']) ? sanitize_key(wp_unslash($_POST['taxonomy_type'])) : '';
 		$generation_prompt = isset($_POST['generation_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['generation_prompt'])) : '';
-		$base_post_ids     = isset($_POST['base_post_ids']) && is_array($_POST['base_post_ids']) ? array_map('absint', $_POST['base_post_ids']) : array();
+		$base_post_ids     = isset($_POST['base_post_ids']) && is_array($_POST['base_post_ids']) ? array_map('absint', wp_unslash($_POST['base_post_ids'])) : array();
 
 		$allowed_taxonomies = array('category', 'post_tag');
 
@@ -452,7 +452,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
+		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', wp_unslash($_POST['item_ids'])) : array();
 
 		if (empty($item_ids)) {
 			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
@@ -493,7 +493,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
+		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', wp_unslash($_POST['item_ids'])) : array();
 
 		if (empty($item_ids)) {
 			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
@@ -534,7 +534,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
+		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', wp_unslash($_POST['item_ids'])) : array();
 
 		if (empty($item_ids)) {
 			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
@@ -576,7 +576,7 @@ class AIPS_Taxonomy_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', $_POST['item_ids']) : array();
+		$item_ids = isset($_POST['item_ids']) && is_array($_POST['item_ids']) ? array_map('absint', wp_unslash($_POST['item_ids'])) : array();
 
 		if (empty($item_ids)) {
 			AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));

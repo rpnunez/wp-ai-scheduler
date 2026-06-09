@@ -445,7 +445,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', wp_unslash($_POST['topic_ids'])) : array();
 
 		if (empty($topic_ids)) {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
@@ -487,7 +487,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', wp_unslash($_POST['topic_ids'])) : array();
 
 		if (empty($topic_ids)) {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
@@ -529,7 +529,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', wp_unslash($_POST['topic_ids'])) : array();
 
 		if (empty($topic_ids)) {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
@@ -883,7 +883,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', wp_unslash($_POST['topic_ids'])) : array();
 
 		if (empty($topic_ids)) {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
@@ -924,7 +924,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', wp_unslash($_POST['topic_ids'])) : array();
 
 		if (empty($topic_ids)) {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
@@ -1039,7 +1039,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$feedback_ids = isset($_POST['feedback_ids']) && is_array($_POST['feedback_ids']) ? array_map('absint', $_POST['feedback_ids']) : array();
+		$feedback_ids = isset($_POST['feedback_ids']) && is_array($_POST['feedback_ids']) ? array_map('absint', wp_unslash($_POST['feedback_ids'])) : array();
 
 		if (empty($feedback_ids)) {
 			AIPS_Ajax_Response::error(__('No feedback items selected.', 'ai-post-scheduler'));
