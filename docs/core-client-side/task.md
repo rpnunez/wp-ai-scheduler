@@ -1,0 +1,28 @@
+# Client-Side Refactoring Tasks
+
+- `[x]` 1. Initialize Node/npm environment and setup Vite compiler
+    - `[x]` Create `ai-post-scheduler/package.json` with dependencies
+    - `[x]` Create `ai-post-scheduler/vite.config.js`
+    - `[x]` Run `npm install` to install dependencies
+- `[x]` 2. Build the CSS Architecture foundation
+    - `[x]` Create `assets/src/css/_variables.css` (Design Tokens)
+    - `[x]` Create `assets/src/css/_components.css` (BEM Buttons, Modals, etc.)
+    - `[x]` Create `assets/src/css/_pages.css` (Page-specific overrides)
+    - `[x]` Create `assets/src/css/main.css` (Entry CSS file)
+- `[x]` 3. Establish JS Backbone Architecture
+    - `[x]` Create `assets/src/js/utils/mediator.js` (Event Bus)
+    - `[x]` Create Models & Collections structures (`assets/src/js/models/`)
+    - `[x]` Create Views structures (`assets/src/js/views/`)
+    - `[x]` Create entry script `assets/src/js/main.js`
+- `[x]` 4. Migrate Utilities & Templates
+    - `[x]` Port core helpers (clipboard, loading status, dialogs) into Backbone Views or ES modules
+    - `[x]` Refactor calls from custom `AIPS.Templates` to Underscore `_.template`
+- `[x]` 5. Consolidate specific features
+    - `[x]` Port dashboard UI logic
+    - `[x]` Port authors & topics UI logic
+    - `[x]` Port templates, schedules & structures UI logic
+- `[x]` 6. Update PHP asset enqueuing
+    - `[x]` Update `AIPS_Admin_Assets` to load consolidated files and single translation store
+- `[x]` 7. Verification & Production Build
+    - `[x]` Run `npm run build` and ensure compilation is correct
+    - `[x]` Run `composer test` to confirm PHP tests remain green (unrelated environment errors resolved)
