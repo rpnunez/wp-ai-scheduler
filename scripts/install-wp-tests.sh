@@ -20,11 +20,11 @@ WP_TESTS_DIR=${WP_TESTS_DIR-$TMPDIR/wordpress-tests-lib}
 WP_CORE_DIR=${WP_CORE_DIR-$TMPDIR/wordpress/}
 
 download() {
-    if [ `which curl` ]; then
-        curl -s "$1" > "$2";
-    elif [ `which wget` ]; then
-        wget -nv -O "$2" "$1"
-    fi
+	if command -v curl >/dev/null 2>&1; then
+		curl -s "$1" > "$2"
+	elif command -v wget >/dev/null 2>&1; then
+		wget -nv -O "$2" "$1"
+	fi
 }
 
 copy_wp_phpunit_dir() {
