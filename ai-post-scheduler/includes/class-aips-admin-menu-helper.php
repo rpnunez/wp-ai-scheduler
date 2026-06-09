@@ -34,6 +34,7 @@ class AIPS_Admin_Menu_Helper {
 		'campaign_wizard'      => 'aips-campaign-wizard',
 		'campaign_detail'      => 'aips-campaign-detail',
 		'generated_posts'      => 'aips-generated-posts',
+		'review_queue'         => 'aips-review-queue',
 		'author_topics'        => 'aips-author-topics',
 		'system_status'        => 'aips-status',
 		'operations_insights'   => 'aips-operations-insights',
