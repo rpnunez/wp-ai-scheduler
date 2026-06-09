@@ -20,6 +20,7 @@ if (!isset($source_data) || !is_array($source_data)) {
 	);
 }
 
+$source       = isset($source) ? $source : null;
 $source_id    = isset($source_id) ? absint($source_id) : 0;
 $search       = isset($search) ? (string) $search : '';
 $source_label = ($source && !empty($source->label)) ? $source->label : (($source && !empty($source->url)) ? $source->url : __('Unknown Source', 'ai-post-scheduler'));
@@ -29,11 +30,15 @@ $pages        = isset($source_data['pages']) ? (int) $source_data['pages'] : 0;
 $current      = isset($source_data['current_page']) ? max(1, (int) $source_data['current_page']) : 1;
 $base_url     = AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', array('source_id' => $source_id));
 $back_url     = AIPS_Admin_Menu_Helper::get_page_url('sources');
+
 $build_page_url = static function($page_number) use ($base_url, $search) {
-	return add_query_arg(array_filter(array(
+	$args = array(
 		'source_data_paged' => absint($page_number),
-		's'                 => $search ? $search : false,
-	)), $base_url);
+	);
+	if ('' !== $search) {
+		$args['s'] = $search;
+	}
+	return add_query_arg($args, $base_url);
 };
 ?>
 <div class="wrap aips-wrap">
