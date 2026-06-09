@@ -92,6 +92,10 @@ class AIPS_PostScore_Service {
 	 * @return AIPS_PostScore_Result|WP_Error Score result or error on AI/parse failure.
 	 */
 	public function score( $context, string $content, string $title = '' ) {
+		if ( '' === trim( wp_strip_all_tags( $content ) ) ) {
+			return new WP_Error( 'post_score_empty_content', __( 'Cannot score empty content.', 'ai-post-scheduler' ) );
+		}
+
 		$prompt    = $this->prompt_builder->build( $context, $content, $title );
 		$threshold = $this->get_threshold();
 
@@ -598,7 +602,7 @@ class AIPS_PostScore_Service {
 		$normalised = array();
 
 		foreach ( AIPS_PostScore_Result::DIMENSIONS as $dim ) {
-			$value = isset( $raw_scores[ $dim ] ) ? (int) round( (float) $raw_scores[ $dim ] ) : 5;
+			$value = isset( $raw_scores[ $dim ] ) && is_numeric( $raw_scores[ $dim ] ) ? (int) round( (float) $raw_scores[ $dim ] ) : 5;
 			$normalised[ $dim ] = max( 0, min( 10, $value ) );
 		}
 
