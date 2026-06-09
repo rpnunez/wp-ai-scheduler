@@ -4778,7 +4778,7 @@ flex-wrap: wrap;
 	border: 1px solid var(--aips-gray-200);
 	border-radius: var(--aips-radius-lg);
 	box-shadow: var(--aips-shadow-lg);
-	z-index: 1000;
+	z-index: var(--aips-z-popover);
 	width: 280px;
 	padding: var(--aips-space-4);
 	animation: aipsFadeInDown var(--aips-transition-fast);
