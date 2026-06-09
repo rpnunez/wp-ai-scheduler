@@ -176,13 +176,22 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// Topics must be staggered by 10 minutes (600 seconds) because frequency is 'once'.
+		// The individual schedule frequency must still be 'once'.
+		$expected_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_date = date('Y-m-d H:i:s', $expected_time);
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
+			$this->assertEquals(
+				'once',
+				$schedule['frequency'],
+				'Individual schedule frequency must remain "once".'
+			);
+			$expected_time += 600;
 		}
 	}
 
@@ -210,12 +219,22 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(3, $schedules, '3 schedule entries must be created.');
 
+		// Topics must be staggered by 1 day (86400 seconds) because frequency is 'daily'.
+		// However, the individual schedule frequency must be 'once' to prevent infinite loops.
+		$expected_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_date = date('Y-m-d H:i:s', $expected_time);
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
+			$this->assertEquals(
+				'once',
+				$schedule['frequency'],
+				'Individual schedule frequency must remain "once" even when staggering by "daily".'
+			);
+			$expected_time += 86400; // daily stagger
 		}
 	}
 
