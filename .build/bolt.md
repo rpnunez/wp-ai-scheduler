@@ -26,3 +26,6 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+## 2026-06-01 - Optimize N+1 queries using _prime_post_caches
+**Learning:** In loops fetching multiple posts in WordPress via `get_post()`, a common bottleneck is executing an individual query for every item (N+1 query problem).
+**Action:** Extract all `post_id`s before the loop, uniquely filter them, and bulk load them into WordPress's object cache using `_prime_post_caches(array_unique($post_ids), false, true)`. This turns N queries into 1 batch query, drastically speeding up admin rendering flows.
