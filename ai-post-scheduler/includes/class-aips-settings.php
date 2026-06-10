@@ -123,6 +123,14 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_circuit_breaker_timeout'],
 			),
+			'aips_post_score_auto_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_post_score_auto_enabled'],
+			),
+			'aips_post_score_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_score_threshold'),
+				'default'           => $defaults['aips_post_score_threshold'],
+			),
 			'aips_ai_model' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
@@ -479,6 +487,29 @@ class AIPS_Settings {
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
             'aips_resilience_section'
+        );
+
+        add_settings_section(
+            'aips_post_score_section',
+            __('Post Quality Scoring', 'ai-post-scheduler'),
+            array($this->ui, 'post_score_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_post_score_auto_enabled',
+            __('Auto-score Generated Drafts', 'ai-post-scheduler'),
+            array($this->ui, 'post_score_auto_enabled_field_callback'),
+            'aips-settings',
+            'aips_post_score_section'
+        );
+
+        add_settings_field(
+            'aips_post_score_threshold',
+            __('Post Score Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'post_score_threshold_field_callback'),
+            'aips-settings',
+            'aips_post_score_section'
         );
 
         // -----------------------------------------------------------------------

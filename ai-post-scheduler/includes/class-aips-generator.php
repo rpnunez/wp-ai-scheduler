@@ -48,6 +48,11 @@ class AIPS_Generator {
     private $post_featured_image_prompt_builder;
 
     /**
+     * @var AIPS_PostScore_Service Post quality scoring and revision service.
+     */
+    private $post_score_service;
+
+    /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
     private $markdown_parser;
@@ -67,6 +72,7 @@ class AIPS_Generator {
     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
+     * @param AIPS_PostScore_Service|null $post_score_service
      */
     public function __construct(
         ?AIPS_Logger_Interface $logger = null,
@@ -77,7 +83,8 @@ class AIPS_Generator {
         $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
-        $markdown_parser = null
+        $markdown_parser = null,
+        ?AIPS_PostScore_Service $post_score_service = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -93,6 +100,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_score_service = $post_score_service ?: new AIPS_PostScore_Service($this->ai_service);
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -816,6 +824,15 @@ class AIPS_Generator {
 
         $content = $this->strip_leading_title_block_from_content($content);
 
+        $post_score_payload = $this->post_score_service->process_generated_draft(
+            $context,
+            (string) $content,
+            (string) $title,
+            $this->current_history,
+            $this->generation_logger
+        );
+        $content = $post_score_payload['content'];
+
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
@@ -842,6 +859,10 @@ class AIPS_Generator {
         do_action('aips_post_generation_before_post_create', $post_creation_data);
 
         $post_id = $this->post_manager->create_post($post_creation_data);
+
+        if (!is_wp_error($post_id)) {
+            $this->post_score_service->save_generation_score_to_post($post_id, $post_score_payload);
+        }
 
         if (is_wp_error($post_id)) {
             // Use new history API to complete with failure
@@ -966,6 +987,7 @@ class AIPS_Generator {
 
         return $post_id;
     }
+
 
     /**
      * Emit a generation failure notification for non-scheduled runs.
