@@ -15,6 +15,7 @@ For a quick-reference card, see [DEV_HANDBOOK.md](DEV_HANDBOOK.md).
 - [Daily Workflow](#daily-workflow)
 - [Xdebug / VS Code Debugging](#xdebug--vs-code-debugging)
 - [PHPUnit Testing](#phpunit-testing)
+- [Client-Side Assets Build](#client-side-assets-build)
 - [WordPress Management](#wordpress-management)
 - [Database Operations](#database-operations)
 - [PHP Settings](#php-settings)
@@ -27,6 +28,7 @@ For a quick-reference card, see [DEV_HANDBOOK.md](DEV_HANDBOOK.md).
 - **Docker Desktop** (or Docker Engine + Docker Compose) — [Windows](https://docs.docker.com/desktop/install/windows-install/) | [Mac](https://docs.docker.com/desktop/install/mac-install/) | [Linux](https://docs.docker.com/desktop/install/linux-install/)
 - **Git**
 - **Bash** (Git Bash on Windows, Terminal on Mac/Linux, or WSL2)
+- **Node.js (v18+) & npm** (for compiling client assets)
 - **VS Code** with the [PHP Debug extension](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) (for Xdebug)
 
 ---
@@ -117,6 +119,31 @@ docker compose up -d --build          # Rebuild and restart
 docker compose build --no-cache       # Force clean rebuild
 docker compose up -d
 ```
+
+---
+
+## Client-Side Assets Build
+
+The plugin uses a Node.js build system with Vite and ESBuild to compile modular client scripts and styles into unified minified bundles (`aips-admin.min.js` and `aips-admin.min.css`).
+
+### Setup
+From the `ai-post-scheduler` folder:
+```bash
+cd ai-post-scheduler
+npm install
+```
+
+### Commands
+- **Watcher (Development):** Runs a hot-reload compilation on every save.
+  ```bash
+  npm run dev
+  ```
+- **Production Build:** Performs full tree-shaking, minification, and PostCSS vendor prefixing.
+  ```bash
+  npm run build
+  ```
+
+For details on BEM naming conventions, Backbone view guidelines, and IDE integrations (tasks/file watchers), see [core-client-side.md](core-client-side.md).
 
 ---
 

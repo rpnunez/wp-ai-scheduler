@@ -54,6 +54,7 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
+		'aips_renew_overdue_schedules' => 'AIPS_Schedule_Controller',
 
 		// Admin Campaign Wizard
 		'aips_campaign_wizard_save_draft'    => 'AIPS_Campaigns_Controller',
@@ -69,6 +70,8 @@ class AIPS_Ajax_Registry {
 		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
 		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
 		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_link_existing_template'        => 'AIPS_Campaigns_Controller',
+		'aips_unlink_template_from_campaign' => 'AIPS_Campaigns_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',

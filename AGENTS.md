@@ -59,6 +59,14 @@ WordPress plugin for scheduling and generating AI-written posts through Meow App
 - System status uses `AIPS_System_Status_Controller`, `AIPS_System_Diagnostics_Service`, and providers in `includes/diagnostics/`.
 - Hidden pages include `aips-author-topics`, `aips-campaign-wizard`, and `aips-campaign-detail`.
 
+## Client-Side Conventions (Backbone & Vite)
+- Client-side code lives in `assets/src/` and compiles via Vite to `assets/dist/js/aips-admin.min.js` and `assets/dist/css/aips-admin.min.css`.
+- Do not enqueue new page-specific files in PHP; bundle them by importing them in `assets/src/js/main.js` and `assets/src/css/main.css`.
+- Attach all translation/configuration localizations (`wp_localize_script()`) to the unified `'aips-admin-script'` handle.
+- Use Backbone.js Models, Collections, and Views for client state and UI.
+- Use `AIPS.Templates.render(id, data)` (Underscore templates) with mustache-style `{{ placeholder }}` syntax to render HTML.
+- Follow **BEM CSS with Design Tokens** utilizing variables in `assets/src/css/_variables.css` for consistent design aesthetics.
+
 ## Data and schema
 - Schema changes go through `AIPS_DB_Manager::get_schema()` and `AIPS_DB_Manager::install_tables()` using `dbDelta`.
 - `AIPS_DB_Migrations::check_and_run()` is the migration entry point; `class-aips-upgrades.php` is a compatibility alias.
@@ -90,4 +98,4 @@ composer test
 
 ## Repository references
 - Repository skills: `.codex/skills/README.md`.
-- Fuller guides: `.github/copilot-instructions.md`, `README.md`, `docs/`, `docs/DEVELOPMENT_GUIDELINES.md`, `ai-post-scheduler/CHANGELOG.md`.
+- Fuller guides: `.github/copilot-instructions.md`, `README.md`, `docs/core-client-side.md`,`docs/DEVELOPMENT_GUIDELINES.md`.

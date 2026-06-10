@@ -123,6 +123,7 @@ class AIPS_Templates_Controller {
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'campaign_id' => isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0,
         );
 
         if (empty(trim($data['name'])) || empty(trim($data['prompt_template']))) {
@@ -176,7 +177,18 @@ class AIPS_Templates_Controller {
 
         $template = $this->templates->get($id);
 
-        if ($template && !empty($template->campaign_id)) {
+        global $wpdb;
+        $table_campaign_templates = $wpdb->prefix . 'aips_campaign_templates';
+        $linked_campaigns = 0;
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_campaign_templates));
+        if ($table_exists === $table_campaign_templates) {
+            $linked_campaigns = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table_campaign_templates} WHERE template_id = %d",
+                $id
+            ));
+        }
+
+        if ($linked_campaigns > 0 || ($template && !empty($template->campaign_id))) {
             AIPS_Ajax_Response::error(__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'));
         }
 
@@ -309,6 +321,7 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'campaign_id' => isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0,
         );
 
         if (empty(trim($data['prompt_template']))) {

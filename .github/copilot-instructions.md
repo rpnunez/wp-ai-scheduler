@@ -138,6 +138,14 @@ Single-event hooks:
 - Sanitize request data with WordPress helpers.
 - Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
 
+## Client-Side Compilation & MVC Conventions
+
+- **Bundler**: Vite & ESBuild configured in `ai-post-scheduler/vite.config.js`. Watcher is `npm run dev` and production builder is `npm run build`.
+- **Libraries**: Backbone.js (Models/Collections/Views), Underscore.js (`_.template`), jQuery.
+- **Templates**: Render templates via `AIPS.Templates.render(id, data)` using `{{ placeholder }}` syntax.
+- **Style Standard**: BEM CSS with Design Tokens configured in `assets/src/css/_variables.css`.
+- **WordPress Assets**: All localizations must be registered against the global `'aips-admin-script'` handle.
+
 ## Development and Testing
 
 ```bash
@@ -161,5 +169,6 @@ composer test:coverage
 - `docs/HOOKS.md`
 - `docs/MIGRATIONS.md`
 - `docs/SETUP.md`
+- `docs/core-client-side.md`
 - `docs/DEVELOPMENT_GUIDELINES.md`
 - `ai-post-scheduler/CHANGELOG.md`

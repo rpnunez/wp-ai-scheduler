@@ -83,6 +83,8 @@ class AIPS_Campaigns_Controller {
 		add_action('wp_ajax_aips_archive_campaign', array($this, 'ajax_archive_campaign'));
 		add_action('wp_ajax_aips_restore_campaign', array($this, 'ajax_restore_campaign'));
 		add_action('wp_ajax_aips_delete_campaign', array($this, 'ajax_delete_campaign'));
+		add_action('wp_ajax_aips_link_existing_template', array($this, 'ajax_link_existing_template'));
+		add_action('wp_ajax_aips_unlink_template_from_campaign', array($this, 'ajax_unlink_template_from_campaign'));
 		add_action('wp_ajax_aips_campaign_wizard_save_draft', array($this, 'ajax_save_draft'));
 		add_action('wp_ajax_aips_campaign_wizard_validate_step', array($this, 'ajax_validate_step'));
 		add_action('wp_ajax_aips_campaign_wizard_finalize', array($this, 'ajax_finalize_campaign'));
@@ -220,6 +222,7 @@ class AIPS_Campaigns_Controller {
 
 		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
 		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
+		$available_templates = $this->campaigns_repository->get_templates_not_in_campaign($campaign_id);
 		$campaign_health = $this->campaigns_repository->get_campaign_health($campaign_id);
 		$recent_activity = $this->campaigns_repository->get_recent_activity($campaign_id, 10);
 		$recent_generated_posts = $this->campaigns_repository->get_recent_generated_posts($campaign_id, 10);
@@ -481,6 +484,80 @@ class AIPS_Campaigns_Controller {
 		}
 
 		AIPS_Ajax_Response::error(__('Failed to delete campaign.', 'ai-post-scheduler'), 'delete_failed', 500);
+	}
+
+	/**
+	 * AJAX: link an existing template to a campaign.
+	 */
+	public function ajax_link_existing_template() {
+		$this->ajax_guard();
+
+		$campaign_id = isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0;
+		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+		if (!$campaign_id || !$template_id) {
+			AIPS_Ajax_Response::error(__('Invalid Campaign or Template ID.', 'ai-post-scheduler'), 'invalid_ids', 400);
+		}
+
+		$result = $this->campaigns_repository->link_template_to_campaign($campaign_id, $template_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 500);
+		}
+
+		if ($result) {
+			$template = $this->template_repository->get_by_id($template_id);
+			$template_name = $template ? $template->name : __('Template', 'ai-post-scheduler');
+			$this->record_campaign_lifecycle_activity(
+				$campaign_id,
+				'template_linked',
+				sprintf(
+					/* translators: %s: template name */
+					__('linked template "%s"', 'ai-post-scheduler'),
+					$template_name
+				)
+			);
+
+			AIPS_Ajax_Response::success(array(), __('Template linked successfully.', 'ai-post-scheduler'));
+		}
+
+		AIPS_Ajax_Response::error(__('Failed to link template.', 'ai-post-scheduler'), 'link_failed', 500);
+	}
+
+	/**
+	 * AJAX: unlink a template from a campaign.
+	 */
+	public function ajax_unlink_template_from_campaign() {
+		$this->ajax_guard();
+
+		$campaign_id = isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0;
+		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+		if (!$campaign_id || !$template_id) {
+			AIPS_Ajax_Response::error(__('Invalid Campaign or Template ID.', 'ai-post-scheduler'), 'invalid_ids', 400);
+		}
+
+		$result = $this->campaigns_repository->unlink_template_from_campaign($campaign_id, $template_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 500);
+		}
+
+		if ($result) {
+			$template = $this->template_repository->get_by_id($template_id);
+			$template_name = $template ? $template->name : __('Template', 'ai-post-scheduler');
+			$this->record_campaign_lifecycle_activity(
+				$campaign_id,
+				'template_unlinked',
+				sprintf(
+					/* translators: %s: template name */
+					__('unlinked template "%s"', 'ai-post-scheduler'),
+					$template_name
+				)
+			);
+
+			AIPS_Ajax_Response::success(array(), __('Template unlinked successfully.', 'ai-post-scheduler'));
+		}
+
+		AIPS_Ajax_Response::error(__('Failed to unlink template.', 'ai-post-scheduler'), 'unlink_failed', 500);
 	}
 
 	/**
