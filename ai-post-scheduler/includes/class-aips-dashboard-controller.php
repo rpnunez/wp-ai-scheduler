@@ -35,6 +35,7 @@ class AIPS_Dashboard_Controller {
         $schedule_counts  = $schedule_repo->count_by_status();
         $template_counts  = $template_repo->count_by_status();
         $topic_counts     = $author_topics_repo->get_global_status_counts();
+        $token_stats      = $history_repo->get_token_usage_stats(30);
 
         $total_generated    = $history_stats['completed'];
         $pending_scheduled  = $schedule_counts['active'];

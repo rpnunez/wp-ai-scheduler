@@ -295,6 +295,21 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the model override for the given tier ('standard' or 'light').
+	 *
+	 * @param string $tier The tier name.
+	 * @return string|null The model identifier or null if no override is set.
+	 */
+	public function get_model_override_for_tier($tier) {
+		if ($tier === 'standard') {
+			return !empty($this->author->post_standard_model) ? $this->author->post_standard_model : null;
+		} elseif ($tier === 'light') {
+			return !empty($this->author->post_light_model) ? $this->author->post_light_model : null;
+		}
+		return null;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.

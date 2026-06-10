@@ -269,6 +269,63 @@ $schedule_type_labels = array(
                 </div>
             </div>
 
+            <!-- Token Efficiency & Savings -->
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2 class="aips-panel-title"><?php esc_html_e('Token Efficiency &amp; Savings (30 days)', 'ai-post-scheduler'); ?></h2>
+                </div>
+                <div class="aips-panel-body" style="padding: 20px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                        <div>
+                            <span class="aips-badge aips-badge-success" style="font-size: 1.4em; padding: 8px 16px; border-radius: 8px; font-weight: bold; background-color: #e2f9ec; color: #107c41; border: 1px solid #107c41;">
+                                $<?php echo esc_html(number_format($token_stats['savings'], 2)); ?> <?php esc_html_e('Saved', 'ai-post-scheduler'); ?>
+                            </span>
+                            <p style="margin: 8px 0 0 0; font-size: 0.9em; color: #666;"><?php esc_html_e('Saved by routing cheap tasks to Light model', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.6em; font-weight: bold; color: var(--aips-primary, #2271b1);">$<?php echo esc_html(number_format($token_stats['total_cost'], 2)); ?></div>
+                            <p style="margin: 0; font-size: 0.9em; color: #666;"><?php esc_html_e('Total AI Cost', 'ai-post-scheduler'); ?></p>
+                        </div>
+                    </div>
+
+                    <?php
+                    $std_total = $token_stats['standard_input'] + $token_stats['standard_output'];
+                    $light_total = $token_stats['light_input'] + $token_stats['light_output'];
+                    $grand_total = $std_total + $light_total;
+                    $std_pct = $grand_total > 0 ? ($std_total / $grand_total) * 100 : 0;
+                    $light_pct = $grand_total > 0 ? ($light_total / $grand_total) * 100 : 0;
+
+                    $std_total_formatted = ($std_total >= 1000) ? round($std_total / 1000) . 'K' : $std_total;
+                    $light_total_formatted = ($light_total >= 1000) ? round($light_total / 1000) . 'K' : $light_total;
+                    ?>
+
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 5px; font-weight: 500;">
+                            <span><?php esc_html_e('Standard Model (Premium)', 'ai-post-scheduler'); ?></span>
+                            <span><?php esc_html_e('Light Model (Cost-Optimized)', 'ai-post-scheduler'); ?></span>
+                        </div>
+                        <!-- Progress bar representation -->
+                        <div style="height: 16px; background-color: #f0f0f0; border-radius: 8px; overflow: hidden; display: flex;">
+                            <div style="width: <?php echo esc_attr($std_pct); ?>%; background-color: var(--aips-primary, #2271b1);" title="<?php echo esc_attr(sprintf(__('Standard: %s%%', 'ai-post-scheduler'), round($std_pct))); ?>"></div>
+                            <div style="width: <?php echo esc_attr($light_pct); ?>%; background-color: #2ec4b6;" title="<?php echo esc_attr(sprintf(__('Light: %s%%', 'ai-post-scheduler'), round($light_pct))); ?>"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #666;">
+                        <div>
+                            <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--aips-primary, #2271b1); border-radius: 50%; margin-right: 5px;"></span>
+                            <strong><?php echo esc_html($std_total_formatted); ?></strong> <?php esc_html_e('tokens', 'ai-post-scheduler'); ?>
+                            <span style="color: #999;">($<?php echo esc_html(number_format($token_stats['cost_standard'], 2)); ?>)</span>
+                        </div>
+                        <div>
+                            <span style="display: inline-block; width: 8px; height: 8px; background-color: #2ec4b6; border-radius: 50%; margin-right: 5px;"></span>
+                            <strong><?php echo esc_html($light_total_formatted); ?></strong> <?php esc_html_e('tokens', 'ai-post-scheduler'); ?>
+                            <span style="color: #999;">($<?php echo esc_html(number_format($token_stats['cost_light'], 2)); ?>)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="aips-content-panel aips-dashboard-overview-panel">
                 <div class="aips-panel-header">
                     <h2 class="aips-panel-title"><?php esc_html_e('Generation Overview (14 days)', 'ai-post-scheduler'); ?></h2>

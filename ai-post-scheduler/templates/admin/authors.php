@@ -614,6 +614,30 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
 
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <h3><?php esc_html_e('AI Model Routing Overrides', 'ai-post-scheduler'); ?></h3>
+            <p class="description"><?php esc_html_e('Override the models used for topic generation and post writing for this author. Leave empty to use global defaults.', 'ai-post-scheduler'); ?></p>
+
+            <div class="form-group">
+                <label for="topic_standard_model"><?php esc_html_e('Topic Generation Standard Model', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="topic_standard_model" name="topic_standard_model" placeholder="<?php esc_attr_e('e.g., gpt-4o, claude-3-5-sonnet', 'ai-post-scheduler'); ?>">
+            </div>
+
+            <div class="form-group">
+                <label for="topic_light_model"><?php esc_html_e('Topic Generation Light Model', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="topic_light_model" name="topic_light_model" placeholder="<?php esc_attr_e('e.g., gpt-4o-mini, claude-3-haiku', 'ai-post-scheduler'); ?>">
+            </div>
+
+            <div class="form-group">
+                <label for="post_standard_model"><?php esc_html_e('Post Generation Standard Model', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="post_standard_model" name="post_standard_model" placeholder="<?php esc_attr_e('e.g., gpt-4o, claude-3-5-sonnet', 'ai-post-scheduler'); ?>">
+            </div>
+
+            <div class="form-group">
+                <label for="post_light_model"><?php esc_html_e('Post Generation Light Model', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="post_light_model" name="post_light_model" placeholder="<?php esc_attr_e('e.g., gpt-4o-mini, claude-3-haiku', 'ai-post-scheduler'); ?>">
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="button button-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
                 <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>

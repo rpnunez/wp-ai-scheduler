@@ -127,6 +127,26 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
 			),
+			'aips_ai_model_light' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_model_light'],
+			),
+			'aips_cpm_standard_input' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_cpm_standard_input'],
+			),
+			'aips_cpm_standard_output' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_cpm_standard_output'],
+			),
+			'aips_cpm_light_input' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_cpm_light_input'],
+			),
+			'aips_cpm_light_output' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_cpm_light_output'],
+			),
 			'aips_ai_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
@@ -261,6 +281,14 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_model_light',
+            __('Light/Cheap AI Model', 'ai-post-scheduler'),
+            array($this->ui, 'ai_model_light_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
             'aips_ai_env_id',
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
@@ -298,6 +326,48 @@ class AIPS_Settings {
             array($this->ui, 'max_tokens_content_field_callback'),
             'aips-settings',
             'aips_ai_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Token & Cost section: CPM rates
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_token_cost_section',
+            __('Token & Cost Management', 'ai-post-scheduler'),
+            array($this->ui, 'token_cost_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_cpm_standard_input',
+            __('Standard Model CPM Input ($)', 'ai-post-scheduler'),
+            array($this->ui, 'cpm_standard_input_field_callback'),
+            'aips-settings',
+            'aips_token_cost_section'
+        );
+
+        add_settings_field(
+            'aips_cpm_standard_output',
+            __('Standard Model CPM Output ($)', 'ai-post-scheduler'),
+            array($this->ui, 'cpm_standard_output_field_callback'),
+            'aips-settings',
+            'aips_token_cost_section'
+        );
+
+        add_settings_field(
+            'aips_cpm_light_input',
+            __('Light Model CPM Input ($)', 'ai-post-scheduler'),
+            array($this->ui, 'cpm_light_input_field_callback'),
+            'aips-settings',
+            'aips_token_cost_section'
+        );
+
+        add_settings_field(
+            'aips_cpm_light_output',
+            __('Light Model CPM Output ($)', 'ai-post-scheduler'),
+            array($this->ui, 'cpm_light_output_field_callback'),
+            'aips-settings',
+            'aips_token_cost_section'
         );
 
         // -----------------------------------------------------------------------

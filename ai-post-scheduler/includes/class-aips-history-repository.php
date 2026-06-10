@@ -1450,4 +1450,72 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         return $revisions;
     }
+
+    /**
+     * Get token usage stats and savings metrics.
+     *
+     * @param int $days Number of days to look back.
+     * @return array
+     */
+    public function get_token_usage_stats($days = 30) {
+        $days = max(1, absint($days));
+        $cache_key = 'aips_dashboard_token_stats_' . $days;
+        $cached_stats = get_transient($cache_key);
+
+        if ($cached_stats !== false) {
+            return $cached_stats;
+        }
+
+        $timestamp_cutoff = AIPS_DateTime::now()->timestamp() - ($days * DAY_IN_SECONDS);
+
+        $results = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT details FROM {$this->table_name_log}
+             WHERE log_type = %s AND timestamp >= %d",
+            'metric_generation_result',
+            $timestamp_cutoff
+        ), ARRAY_A);
+
+        $standard_input = 0;
+        $standard_output = 0;
+        $light_input = 0;
+        $light_output = 0;
+
+        foreach ($results as $row) {
+            $details = !empty($row['details']) ? json_decode($row['details'], true) : null;
+            if (is_array($details) && isset($details['tokens']) && is_array($details['tokens'])) {
+                $tokens = $details['tokens'];
+                $standard_input += isset($tokens['standard_input']) ? (int) $tokens['standard_input'] : 0;
+                $standard_output += isset($tokens['standard_output']) ? (int) $tokens['standard_output'] : 0;
+                $light_input += isset($tokens['light_input']) ? (int) $tokens['light_input'] : 0;
+                $light_output += isset($tokens['light_output']) ? (int) $tokens['light_output'] : 0;
+            }
+        }
+
+        $config = AIPS_Config::get_instance();
+        $cpm_standard_in = (float) $config->get_option('aips_cpm_standard_input');
+        $cpm_standard_out = (float) $config->get_option('aips_cpm_standard_output');
+        $cpm_light_in = (float) $config->get_option('aips_cpm_light_input');
+        $cpm_light_out = (float) $config->get_option('aips_cpm_light_output');
+
+        $cost_standard = (($standard_input * $cpm_standard_in) + ($standard_output * $cpm_standard_out)) / 1000000;
+        $cost_light = (($light_input * $cpm_light_in) + ($light_output * $cpm_light_out)) / 1000000;
+        $total_cost = $cost_standard + $cost_light;
+
+        $savings = (($light_input * ($cpm_standard_in - $cpm_light_in)) + ($light_output * ($cpm_standard_out - $cpm_light_out))) / 1000000;
+
+        $stats = array(
+            'standard_input' => $standard_input,
+            'standard_output' => $standard_output,
+            'light_input' => $light_input,
+            'light_output' => $light_output,
+            'cost_standard' => $cost_standard,
+            'cost_light' => $cost_light,
+            'total_cost' => $total_cost,
+            'savings' => $savings,
+        );
+
+        set_transient($cache_key, $stats, HOUR_IN_SECONDS);
+
+        return $stats;
+    }
 }

@@ -148,21 +148,26 @@ class AIPS_History {
         fputcsv($output, array(
             'ID',
             'Date',
-            'Title',
+            'Container',
+            'Domain',
+            'Actor',
+            'Type',
             'Status',
-            'Template',
             'Post ID',
             'Error Message'
         ));
 
         if (!empty($history['items'])) {
+            $this->prepare_items_for_display($history['items']);
             foreach ($history['items'] as $item) {
                 fputcsv($output, array(
                     $item->id,
                     $item->created_at,
-                    $this->sanitize_csv_cell($item->generated_title),
+                    $this->sanitize_csv_cell($item->container_label),
+                    $item->domain_label,
+                    $item->actor_label,
+                    $item->container_type_label,
                     $item->status,
-                    $this->sanitize_csv_cell($item->template_name),
                     $item->post_id,
                     $this->sanitize_csv_cell($item->error_message)
                 ));
@@ -342,7 +347,10 @@ class AIPS_History {
      */
     private function build_history_modal_header_title($container) {
         $id = isset($container['id']) ? (int) $container['id'] : 0;
-        $title = isset($container['generated_title']) ? trim((string) $container['generated_title']) : '';
+        $title = isset($container['container_label']) ? trim((string) $container['container_label']) : '';
+        if ($title === '') {
+            $title = isset($container['generated_title']) ? trim((string) $container['generated_title']) : '';
+        }
 
         if ($title !== '') {
             return $title . ' #' . $id;
@@ -587,11 +595,14 @@ class AIPS_History {
             $created_at = !empty($created_at) ? AIPS_DateTime::formatRelativeOrAbsolute($created_at) : '';
         }
 
+        $container_data = $this->resolve_container_display_data($history_item);
+
         return array(
             'id' => (int) $history_item->id,
             'status' => isset($history_item->status) ? (string) $history_item->status : '',
             'status_class' => $this->get_history_status_class(isset($history_item->status) ? (string) $history_item->status : ''),
             'generated_title' => isset($history_item->generated_title) ? $history_item->generated_title : '',
+            'container_label' => $container_data['label'],
             'template_name' => isset($history_item->template_name) ? $history_item->template_name : '',
             'created_at' => $created_at,
             'error_message' => isset($history_item->error_message) ? $history_item->error_message : '',
@@ -1475,6 +1486,153 @@ class AIPS_History {
             }
 
             $item->formatted_date = $date_time->toDisplay( $format );
+
+            // Resolve container details
+            $container_data = $this->resolve_container_display_data($item);
+            $item->container_label = $container_data['label'];
+            $item->container_link  = $container_data['link'];
+
+            // Resolve domain label
+            $domain_map = array(
+                'post_generation' => __('Post Generation', 'ai-post-scheduler'),
+                'author_topics'   => __('Author Topics', 'ai-post-scheduler'),
+                'research'        => __('Research', 'ai-post-scheduler'),
+                'sources'         => __('Sources', 'ai-post-scheduler'),
+                'embeddings'      => __('Embeddings', 'ai-post-scheduler'),
+                'internal_links'  => __('Internal Links', 'ai-post-scheduler'),
+                'batch_jobs'      => __('Batch Jobs', 'ai-post-scheduler'),
+            );
+            $event_domain = isset($item->event_domain) ? $item->event_domain : '';
+            if (empty($event_domain)) {
+                $item->event_domain = $this->infer_event_domain($item);
+            }
+            $item->domain_label = isset($domain_map[$item->event_domain]) ? $domain_map[$item->event_domain] : ucfirst(str_replace('_', ' ', $item->event_domain));
+
+            // Resolve actor label
+            $actor_type = isset($item->actor_type) ? $item->actor_type : '';
+            if (empty($actor_type)) {
+                $creation_method = isset($item->creation_method) ? $item->creation_method : '';
+                $actor_type = (strpos($creation_method, 'manual') !== false || strpos($creation_method, 'admin') !== false) ? 'admin' : 'system';
+            }
+            $item->actor_label = $actor_type === 'admin' ? __('Admin', 'ai-post-scheduler') : __('System', 'ai-post-scheduler');
+
+            // Resolve type label
+            $type_map = array(
+                'manual'            => __('Manual Post', 'ai-post-scheduler'),
+                'scheduled'         => __('Scheduled Post', 'ai-post-scheduler'),
+                'author_topics'     => __('Topic Generation', 'ai-post-scheduler'),
+                'research'          => __('Research Run', 'ai-post-scheduler'),
+                'source_fetch'      => __('Source Fetch', 'ai-post-scheduler'),
+                'sources'           => __('Source Fetch', 'ai-post-scheduler'),
+                'author_embeddings' => __('Embeddings Sync', 'ai-post-scheduler'),
+                'embeddings'        => __('Embeddings Sync', 'ai-post-scheduler'),
+                'internal_links'    => __('Internal Links indexing', 'ai-post-scheduler'),
+                'batch_jobs'        => __('Batch processing', 'ai-post-scheduler'),
+            );
+            $item->container_type_label = isset($type_map[$item->creation_method]) ? $type_map[$item->creation_method] : ucfirst(str_replace(array('_', '-'), ' ', $item->creation_method ?: ''));
         }
+    }
+
+    /**
+     * Infer event domain from creation method if it was not retrieved in SQL.
+     *
+     * @param object $item History container db row.
+     * @return string Event domain slug.
+     */
+    private function infer_event_domain($item) {
+        $creation_method = isset($item->creation_method) ? $item->creation_method : '';
+        if (strpos($creation_method, 'author_topic') === 0) {
+            return 'author_topics';
+        } elseif (strpos($creation_method, 'research') !== false) {
+            return 'research';
+        } elseif (strpos($creation_method, 'source') !== false) {
+            return 'sources';
+        } elseif (strpos($creation_method, 'embedding') !== false) {
+            return 'embeddings';
+        } elseif (strpos($creation_method, 'internal_link') !== false) {
+            return 'internal_links';
+        } elseif (strpos($creation_method, 'batch') !== false) {
+            return 'batch_jobs';
+        }
+        return 'post_generation';
+    }
+
+    /**
+     * Resolve the associated object display details for a history container.
+     *
+     * @param object $item History container database row.
+     * @return array{label: string, link: string|null} Display label and URL.
+     */
+    private function resolve_container_display_data($item) {
+        $label = '';
+        $link = null;
+
+        $event_domain = isset($item->event_domain) ? $item->event_domain : '';
+        if (empty($event_domain)) {
+            $event_domain = $this->infer_event_domain($item);
+        }
+
+        switch ($event_domain) {
+            case 'post_generation':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Untitled Post', 'ai-post-scheduler');
+                if (!empty($item->post_id)) {
+                    $link = get_edit_post_link((int) $item->post_id);
+                }
+                break;
+
+            case 'author_topics':
+                $author_name = '';
+                if (!empty($item->author_id)) {
+                    $author = AIPS_Authors_Repository::instance()->get_by_id((int) $item->author_id);
+                    if ($author && !empty($author->name)) {
+                        $author_name = $author->name;
+                    }
+                }
+                if (empty($author_name)) {
+                    $author_name = !empty($item->author_id) ? sprintf(__('Author #%d', 'ai-post-scheduler'), $item->author_id) : __('Unknown Author', 'ai-post-scheduler');
+                }
+                $label = sprintf(__('%s generated Titles', 'ai-post-scheduler'), $author_name);
+                if (!empty($item->author_id)) {
+                    $link = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => $item->author_id));
+                }
+                break;
+
+            case 'research':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Trending Topics Research', 'ai-post-scheduler');
+                $link = AIPS_Admin_Menu_Helper::get_page_url('research');
+                break;
+
+            case 'sources':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Content Source Fetch', 'ai-post-scheduler');
+                $link = AIPS_Admin_Menu_Helper::get_page_url('sources');
+                break;
+
+            case 'embeddings':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Embeddings Sync', 'ai-post-scheduler');
+                break;
+
+            case 'internal_links':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Internal Links Indexing', 'ai-post-scheduler');
+                if (class_exists('AIPS_Admin_Menu_Helper')) {
+                    $link = AIPS_Admin_Menu_Helper::get_page_url('internal-links');
+                }
+                break;
+
+            case 'batch_jobs':
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Bulk Batch Job processing', 'ai-post-scheduler');
+                if (class_exists('AIPS_Admin_Menu_Helper')) {
+                    $link = AIPS_Admin_Menu_Helper::get_page_url('system-status');
+                }
+                break;
+
+            default:
+                $label = !empty($item->generated_title) ? $item->generated_title : __('Automation Event', 'ai-post-scheduler');
+                break;
+        }
+
+        return array(
+            'label' => $label,
+            'link'  => $link,
+        );
     }
 }

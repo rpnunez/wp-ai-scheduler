@@ -325,6 +325,10 @@
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
+						$('#topic_standard_model').val(author.topic_standard_model || '');
+						$('#topic_light_model').val(author.topic_light_model || '');
+						$('#post_standard_model').val(author.post_standard_model || '');
+						$('#post_light_model').val(author.post_light_model || '');
 
 						// Restore source group settings.
 						var includeSources = author.include_sources == 1;

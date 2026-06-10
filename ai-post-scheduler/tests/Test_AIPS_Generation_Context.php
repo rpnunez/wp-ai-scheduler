@@ -257,4 +257,66 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that Template Context overrides standard and light models.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_model_overrides() {
+		$template = (object) array(
+			'id' => 123,
+			'name' => 'Test Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'title_prompt' => 'Template title prompt',
+			'post_status' => 'draft',
+			'post_type' => 'page',
+			'post_category' => 1,
+			'post_tags' => 'test',
+			'post_author' => 1,
+			'ai_model_standard' => 'gpt-4-override-standard',
+			'ai_model_light' => 'gpt-4-override-light',
+		);
+		
+		$context = new AIPS_Template_Context($template, null, 'Test Topic');
+		
+		$this->assertEquals('gpt-4-override-standard', $context->get_model_override_for_tier('standard'));
+		$this->assertEquals('gpt-4-override-light', $context->get_model_override_for_tier('light'));
+		$this->assertNull($context->get_model_override_for_tier('unknown'));
+	}
+
+	/**
+	 * Test that Topic Context overrides standard and light models.
+	 *
+	 * @return void
+	 */
+	public function test_topic_context_model_overrides() {
+		$author = (object) array(
+			'id' => 456,
+			'name' => 'Test Author',
+			'field_niche' => 'Software Development',
+			'generate_featured_image' => 1,
+			'featured_image_source' => 'ai_prompt',
+			'post_status' => 'publish',
+			'post_type' => 'page',
+			'post_category' => 2,
+			'post_tags' => 'coding,dev',
+			'post_author' => 2,
+			'article_structure_id' => 5,
+			'post_standard_model' => 'gpt-4-author-override-standard',
+			'post_light_model' => 'gpt-4-author-override-light',
+		);
+		
+		$topic = (object) array(
+			'id' => 789,
+			'topic_title' => 'Best Practices for Clean Code',
+			'author_id' => 456,
+		);
+		
+		$context = new AIPS_Topic_Context($author, $topic);
+		
+		$this->assertEquals('gpt-4-author-override-standard', $context->get_model_override_for_tier('standard'));
+		$this->assertEquals('gpt-4-author-override-light', $context->get_model_override_for_tier('light'));
+		$this->assertNull($context->get_model_override_for_tier('unknown'));
+	}
 }

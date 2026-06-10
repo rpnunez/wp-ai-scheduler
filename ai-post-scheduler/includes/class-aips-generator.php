@@ -18,6 +18,21 @@ class AIPS_Generator {
     private $logger;
 
     /**
+     * @var AIPS_Generation_Context|null Current context being generated
+     */
+    private $current_context = null;
+
+    /**
+     * @var array Accumulated token counts during the current generation run.
+     */
+    private $accumulated_tokens = array(
+        'standard_input'  => 0,
+        'standard_output' => 0,
+        'light_input'     => 0,
+        'light_output'    => 0,
+    );
+
+    /**
      * @var AIPS_History_Service_Interface History service for unified logging
      */
     private $history_service;
@@ -104,6 +119,28 @@ class AIPS_Generator {
 
         // Initialize logger wrapper
         $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
+
+        // Listen to AI calls to accumulate token usage
+        add_action('aips_ai_call_completed', array($this, 'accumulate_tokens'));
+    }
+
+    /**
+     * Accumulate tokens during generation.
+     *
+     * @param array $data AI call data.
+     */
+    public function accumulate_tokens($data) {
+        $tier = isset($data['tier']) ? $data['tier'] : 'standard';
+        $prompt_tokens = isset($data['prompt_tokens']) ? (int) $data['prompt_tokens'] : 0;
+        $completion_tokens = isset($data['completion_tokens']) ? (int) $data['completion_tokens'] : 0;
+
+        if ($tier === 'light') {
+            $this->accumulated_tokens['light_input'] += $prompt_tokens;
+            $this->accumulated_tokens['light_output'] += $completion_tokens;
+        } else {
+            $this->accumulated_tokens['standard_input'] += $prompt_tokens;
+            $this->accumulated_tokens['standard_output'] += $completion_tokens;
+        }
     }
 
     /**
@@ -145,6 +182,19 @@ class AIPS_Generator {
         // Only set it when the caller has not already provided an explicit token override.
         if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
             $options['request_type'] = $log_type;
+        }
+
+        // Apply tier and context model overrides
+        $is_light = in_array($log_type, array('title', 'excerpt', 'ai_variables', 'taxonomy', 'research', 'topics'), true) || strpos($log_type, 'ai_variables') !== false;
+        $tier = $is_light ? 'light' : 'standard';
+        if (!isset($options['tier'])) {
+            $options['tier'] = $tier;
+        }
+        if ($this->current_context instanceof AIPS_Generation_Context) {
+            $override_model = $this->current_context->get_model_override_for_tier($tier);
+            if (!empty($override_model)) {
+                $options['model'] = $override_model;
+            }
         }
 
         $result = $this->ai_service->generate_text($prompt, $options);
@@ -576,6 +626,7 @@ class AIPS_Generator {
      * @return array|WP_Error Array with title, content, excerpt, and image prompt, or WP_Error.
      */
     public function generate_preview($context) {
+        $this->current_context = $context;
         // Build the full content prompt from context
         $content_prompt = $this->post_content_prompt_builder->build($context);
 
@@ -591,6 +642,7 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content_preview');
 
         if (is_wp_error($content)) {
+            $this->current_context = null;
             return $content;
         }
 
@@ -633,6 +685,7 @@ class AIPS_Generator {
             }
         }
 
+        $this->current_context = null;
         return $result;
     }
 
@@ -686,6 +739,14 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+        $this->current_context = $context;
+        $this->accumulated_tokens = array(
+            'standard_input'  => 0,
+            'standard_output' => 0,
+            'light_input'     => 0,
+            'light_output'    => 0,
+        );
+
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
@@ -861,9 +922,11 @@ class AIPS_Generator {
                     'duration_seconds' => (int) round( microtime(true) - $generation_start ),
                     'image_attempted'  => false,
                     'image_success'    => null,
+                    'tokens'           => $this->accumulated_tokens,
                 )
             );
 
+            $this->current_context = null;
             return $post_id;
         }
 
@@ -907,6 +970,7 @@ class AIPS_Generator {
                 'duration_seconds' => (int) round( microtime(true) - $generation_start ),
                 'image_attempted'  => $image_was_attempted,
                 'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
+                'tokens'           => $this->accumulated_tokens,
             )
         );
 
@@ -963,6 +1027,7 @@ class AIPS_Generator {
         }
 
         $this->generation_logger->set_history_id(null);
+        $this->current_context = null;
 
         return $post_id;
     }

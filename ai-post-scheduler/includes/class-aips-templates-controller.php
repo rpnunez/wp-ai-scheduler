@@ -122,6 +122,8 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'ai_model_standard' => isset($_POST['ai_model_standard']) ? sanitize_text_field(wp_unslash($_POST['ai_model_standard'])) : '',
+            'ai_model_light' => isset($_POST['ai_model_light']) ? sanitize_text_field(wp_unslash($_POST['ai_model_light'])) : '',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -257,6 +259,8 @@ class AIPS_Templates_Controller {
             'post_author' => $template->post_author,
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'ai_model_standard' => isset($template->ai_model_standard) ? $template->ai_model_standard : '',
+            'ai_model_light' => isset($template->ai_model_light) ? $template->ai_model_light : '',
             'is_active' => $template->is_active,
         );
 
@@ -309,6 +313,8 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'ai_model_standard' => isset($_POST['ai_model_standard']) ? sanitize_text_field(wp_unslash($_POST['ai_model_standard'])) : '',
+            'ai_model_light' => isset($_POST['ai_model_light']) ? sanitize_text_field(wp_unslash($_POST['ai_model_light'])) : '',
         );
 
         if (empty(trim($data['prompt_template']))) {

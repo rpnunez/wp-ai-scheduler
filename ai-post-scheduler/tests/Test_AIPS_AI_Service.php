@@ -185,7 +185,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             
             $log = $this->service->get_call_log();
             $this->assertArrayHasKey('timestamp', $log[0]);
-            $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $log[0]['timestamp']);
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/', $log[0]['timestamp']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
@@ -747,6 +747,44 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             // Restore original state
             $mwai = $original_mwai;
             $mwai_core = $original_core;
+        }
+    }
+
+    /**
+     * Test that request_type 'topics' (or other light tasks) routes to light model.
+     */
+    public function test_routing_light_vs_standard() {
+        global $mwai;
+        $original_mwai = $mwai;
+
+        $capture = new stdClass();
+        $capture->params = null;
+        $mwai = $this->make_text_query_mock($capture);
+
+        // Set up global models in config/options
+        update_option('aips_ai_model', 'gpt-4-standard');
+        update_option('aips_ai_model_light', 'gpt-4-light');
+
+        try {
+            $service = new AIPS_AI_Service();
+
+            // 1. Content query should use standard model
+            $service->generate_text('Prompt standard', array('request_type' => 'content'));
+            $this->assertSame('gpt-4-standard', $capture->params['model']);
+
+            // 2. Light query should use light model
+            $service->generate_text('Prompt light', array('request_type' => 'topics'));
+            $this->assertSame('gpt-4-light', $capture->params['model']);
+
+            // 3. Fallback: if light model is not set, light query should use standard model
+            update_option('aips_ai_model_light', '');
+            $service->generate_text('Prompt light fallback', array('request_type' => 'topics'));
+            $this->assertSame('gpt-4-standard', $capture->params['model']);
+
+        } finally {
+            $mwai = $original_mwai;
+            delete_option('aips_ai_model');
+            delete_option('aips_ai_model_light');
         }
     }
 }

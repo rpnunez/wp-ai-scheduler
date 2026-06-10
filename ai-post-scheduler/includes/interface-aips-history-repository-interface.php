@@ -127,4 +127,12 @@ interface AIPS_History_Repository_Interface {
 	 * @return bool
 	 */
 	public function post_has_history_and_completed($post_id);
+
+	/**
+	 * Get token usage stats and savings metrics.
+	 *
+	 * @param int $days Number of days to look back.
+	 * @return array
+	 */
+	public function get_token_usage_stats($days = 30);
 }
