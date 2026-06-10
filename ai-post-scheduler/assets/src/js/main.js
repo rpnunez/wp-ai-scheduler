@@ -2,39 +2,25 @@ import _ from 'underscore';
 import $ from 'jquery';
 import Backbone from 'backbone';
 import mediator from './utils/mediator';
+import { DateTime } from './utils/datetime';
+import { Utilities } from './utils/ui-helpers';
 import '../css/main.css';
 
-// Import all legacy scripts to bundle them
-import '../../js/datetime.js';
-import '../../js/utilities.js';
-import '../../js/templates.js';
-import '../../js/admin-bar.js';
-import '../../js/admin-dashboard.js';
-import '../../js/admin-db.js';
-import '../../js/admin-dev-tools.js';
-import '../../js/admin-embeddings.js';
-import '../../js/admin-generated-posts.js';
-import '../../js/admin-history.js';
-import '../../js/admin-internal-links.js';
-import '../../js/admin-planner.js';
-import '../../js/admin-post-review.js';
-import '../../js/admin-post-slices.js';
-import '../../js/admin-research.js';
-import '../../js/admin-seeder.js';
-import '../../js/admin-settings.js';
-import '../../js/admin-sources.js';
-import '../../js/admin-system-status.js';
-import '../../js/admin-view-session.js';
-import '../../js/ai-assistance.js';
-import '../../js/cache-monitor.js';
-import '../../js/calendar.js';
-import '../../js/campaign-wizard.js';
-import '../../js/campaigns.js';
-import '../../js/onboarding.js';
-import '../../js/taxonomy.js';
-import '../../js/telemetry.js';
-import '../../js/admin.js';
-import '../../js/authors.js';
+// Bind new utilities globally for backward compatibility
+window.AIPS = window.AIPS || {};
+window.AIPS.DateTime = DateTime;
+window.AIPS.Utilities = Utilities;
+
+// Global shims for backward compatibility
+window.AIPS.showToast = function(message, type, opts) {
+	Utilities.showToast(message, type, opts);
+};
+window.AIPS.escapeHtml = function(text) {
+	return Utilities.escapeHtml(text);
+};
+window.AIPS.escapeAttribute = function(text) {
+	return Utilities.escapeAttribute(text);
+};
 
 import { TemplatesView } from './views/templates';
 import { SchedulesView } from './views/schedules';
