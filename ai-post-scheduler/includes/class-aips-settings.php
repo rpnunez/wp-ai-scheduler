@@ -559,6 +559,22 @@ class AIPS_Settings {
             'aips_content_strategy_section'
         );
 
+        add_settings_field(
+            'aips_generation_instructions_enabled',
+            __('Generation Instructions', 'ai-post-scheduler'),
+            array($this->ui, 'generation_instructions_enabled_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_generation_instructions',
+            __('Generation Instructions Text', 'ai-post-scheduler'),
+            array($this->ui, 'generation_instructions_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
         // -----------------------------------------------------------------------
         // Cache section: Driver selection + per-driver configuration.
         // -----------------------------------------------------------------------
@@ -667,6 +683,16 @@ class AIPS_Settings {
                 'key'               => 'excluded_topics',
                 'sanitize_callback' => 'sanitize_textarea_field',
                 'default'           => $config_defaults['aips_site_excluded_topics'],
+            ),
+            'aips_generation_instructions' => array(
+                'key'               => 'generation_instructions',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => $config_defaults['aips_generation_instructions'],
+            ),
+            'aips_generation_instructions_enabled' => array(
+                'key'               => 'generation_instructions_enabled',
+                'sanitize_callback' => 'absint',
+                'default'           => $config_defaults['aips_generation_instructions_enabled'],
             ),
         );
     }
