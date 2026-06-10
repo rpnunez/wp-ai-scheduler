@@ -134,13 +134,23 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     public function generate_text($prompt, $options = array()) {
         $ai = $this->get_ai_engine();
         
+        $container = isset($options['history_container']) ? $options['history_container'] : null;
+        $request_type = isset($options['request_type']) ? $options['request_type'] : 'text';
+
+        // Fire generic call started action
+        do_action('aips_ai_call_started', $prompt, $options, $request_type, $container);
+        
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
             $this->emit_integration_error_notification('text', $error, $options);
+            
+            // Fire generic call failed action
+            do_action('aips_ai_call_failed', $error, $prompt, $options, $request_type, $container);
+            
             return $error;
         }
-      
+        
         $params = $this->prepare_options($options, $prompt);
 
         $log_context = array(
@@ -206,10 +216,16 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('text', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('text', $result, $options);
             }
+            
+            // Fire generic call failed action
+            do_action('aips_ai_call_failed', $result, $prompt, $options, $request_type, $container);
+        } else {
+            // Fire generic call completed action
+            do_action('aips_ai_call_completed', $result, $prompt, $options, $request_type, $container);
         }
 
         return $result;
-    }
+    } }
     
     /**
      * Generate structured JSON data using AI.
@@ -225,6 +241,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     public function generate_json($prompt, $options = array()) {
         // Check if AI Engine is available using consistent availability check
         $ai = $this->get_ai_engine();
+        
+        $container = isset($options['history_container']) ? $options['history_container'] : null;
+        $request_type = isset($options['request_type']) ? $options['request_type'] : 'json';
+
+        // Fire generic call started action
+        do_action('aips_ai_call_started', $prompt, $options, $request_type, $container);
 
         $this->logger->log(
             sprintf(
@@ -245,6 +267,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
+
+            // Fire generic call failed action
+            do_action('aips_ai_call_failed', $error, $prompt, $options, $request_type, $container);
 
             return $error;
         }
@@ -354,6 +379,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('json', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('json', $result, $options);
             }
+
+            // Only fire failed hook if it's not a temporary sentinel that redirects to fallback
+            if ($code !== 'json_query_unavailable') {
+                do_action('aips_ai_call_failed', $result, $prompt, $options, $request_type, $container);
+            }
+        } else {
+            do_action('aips_ai_call_completed', wp_json_encode($result), $prompt, $options, $request_type, $container);
         }
 
         return $result;
@@ -387,11 +419,19 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     public function generate_json_from_text($prompt, $options = array()) {
         $ai = $this->get_ai_engine();
+        
+        $container = isset($options['history_container']) ? $options['history_container'] : null;
+        $request_type = isset($options['request_type']) ? $options['request_type'] : 'json';
+
+        // Fire generic call started action
+        do_action('aips_ai_call_started', $prompt, $options, $request_type, $container);
 
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
+            
+            do_action('aips_ai_call_failed', $error, $prompt, $options, $request_type, $container);
             return $error;
         }
 
@@ -482,6 +522,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('json', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('json', $result, $options);
             }
+            
+            do_action('aips_ai_call_failed', $result, $prompt, $options, $request_type, $container);
+        } else {
+            do_action('aips_ai_call_completed', wp_json_encode($result), $prompt, $options, $request_type, $container);
         }
 
         return $result;
@@ -603,12 +647,19 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     public function generate_image($prompt, $options = array()) {
         $ai = $this->get_ai_engine();
         
+        $container = isset($options['history_container']) ? $options['history_container'] : null;
+        $request_type = 'image';
+
+        // Fire generic call started action
+        do_action('aips_ai_call_started', $prompt, $options, $request_type, $container);
+
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('image', $prompt, $options, $error);
             $this->emit_integration_error_notification('image', $error, $options);
 
+            do_action('aips_ai_call_failed', $error, $prompt, $options, $request_type, $container);
             return $error;
         }
 
@@ -670,6 +721,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('image', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('image', $result, $options);
             }
+            
+            do_action('aips_ai_call_failed', $result, $prompt, $options, $request_type, $container);
+        } else {
+            do_action('aips_ai_call_completed', $result, $prompt, $options, $request_type, $container);
         }
 
         return $result;

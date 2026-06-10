@@ -414,6 +414,11 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register AIPS_Action_Handler
+        $container->singleton(AIPS_Action_Handler::class, function( $container ) {
+            return AIPS_Action_Handler::instance();
+        });
     }
 
     /**
@@ -493,6 +498,10 @@ final class AI_Post_Scheduler {
 
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
+
+        // Instantiate Action Handler to hook up generic listeners.
+        $container = AIPS_Container::get_instance();
+        $container->make(AIPS_Action_Handler::class);
 
         // Boot request-level telemetry if the option is enabled.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {

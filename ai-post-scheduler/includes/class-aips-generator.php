@@ -127,24 +127,15 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
-        // Log AI request before making the call
-        if ($this->current_history) {
-            $this->current_history->record(
-                'ai_request',
-                "Requesting AI generation for {$log_type}",
-                array(
-                    'prompt' => $prompt,
-                    'options' => $options,
-                ),
-                null,
-                array('component' => $log_type)
-            );
-        }
-
         // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
         // Only set it when the caller has not already provided an explicit token override.
         if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
             $options['request_type'] = $log_type;
+        }
+
+        // Forward active history container to AIPS_AI_Service so it can fire hooks with it.
+        if ($this->current_history && !isset($options['history_container'])) {
+            $options['history_container'] = $this->current_history;
         }
 
         $result = $this->ai_service->generate_text($prompt, $options);
@@ -154,36 +145,11 @@ class AIPS_Generator {
         $result_for_length  = is_string($result) ? $result : '';
 
         if (is_wp_error($result)) {
-            // Log the error
-            if ($this->current_history) {
-                $this->current_history->record(
-                    'error',
-                    "AI generation failed for {$log_type}: " . $result->get_error_message(),
-                    array(
-                        'prompt' => $prompt,
-                        'options' => $options,
-                    ),
-                    null,
-                    array('component' => $log_type, 'error' => $result->get_error_message())
-                );
-            }
-
             $this->logger->log($result->get_error_message(), 'error', array(
                 'component'      => $log_type,
                 'prompt_length'  => strlen($prompt_for_length),
             ));
         } else {
-            // Log successful AI response
-            if ($this->current_history) {
-                $this->current_history->record(
-                    'ai_response',
-                    "AI generation successful for {$log_type}",
-                    null,
-                    $result,
-                    array('component' => $log_type)
-                );
-            }
-
             $this->logger->log('Content generated successfully', 'info', array(
                 'component'       => $log_type,
                 'prompt_length'   => strlen($prompt_for_length),
@@ -694,11 +660,10 @@ class AIPS_Generator {
             'post_content'   => false,
         );
 
-        // Dispatch post generation started event
+        // Dispatch legacy post generation started event for backward compatibility
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
 
-        // Create new history container using new API
-        // Extract source information from context
+        // Create new history container using filters
         $history_metadata = array();
 
         if ($context instanceof AIPS_Template_Context) {
@@ -708,7 +673,6 @@ class AIPS_Generator {
                 $history_metadata['campaign_id'] = absint($template->campaign_id);
             }
         } elseif ($context instanceof AIPS_Topic_Context) {
-            // For topic context, store author_id and topic_id
             $history_metadata['topic_id'] = $context->get_id();
             $author = $context->get_author();
             if ($author && isset($author->id)) {
@@ -716,29 +680,23 @@ class AIPS_Generator {
             }
         }
 
-        // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
 
-        $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
+        // Apply filter to resolve/create history container instance
+        $this->current_history = apply_filters('aips_create_history_container', null, 'post_generation', $history_metadata, $context);
 
-        if (!$this->current_history->get_id()) {
-            // Fallback if history creation fails (though unlikely)
+        if (!$this->current_history || !$this->current_history->get_id()) {
             $this->logger->log('Failed to create history record', 'error');
         }
+
+        // Fire generic action when post generation starts
+        do_action('aips_post_generation_started', $context, $this->current_history);
 
         // Build the full content prompt from context
         $content_prompt = $this->post_content_prompt_builder->build($context);
 
-        if ($this->current_history) {
-            $this->current_history->record(
-                'log',
-                "Built content prompt",
-                array('prompt' => isset($content_prompt) ? $content_prompt : ''),
-                null,
-                array('component' => 'content')
-            );
-        }
+        do_action('aips_generation_log', 'log', 'Built content prompt', array('prompt' => isset($content_prompt) ? $content_prompt : ''), null, array('component' => 'content'), $this->current_history);
 
         // Build contextual instructions to pass through AI Engine context channel.
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -752,10 +710,7 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
         if (is_wp_error($content)) {
-            $this->current_history->record_error($content->get_error_message(), array(
-                'component' => 'content',
-                'prompt' => $content_prompt,
-            ));
+            do_action('aips_generation_log', 'error', $content->get_error_message(), array('prompt' => $content_prompt), null, array('component' => 'content'), $this->current_history);
             $content = '';
         }
 
@@ -769,15 +724,7 @@ class AIPS_Generator {
         $title = $this->generate_title_from_context($context, $content, $ai_variables);
 
         // Log post title
-        if ($this->current_history) {
-            $this->current_history->record(
-                'info',
-                "Post title generated",
-                array(),
-                null,
-                array('component' => 'title')
-            );
-        }
+        do_action('aips_generation_log', 'info', 'Post title generated', array(), null, array('component' => 'title'), $this->current_history);
 
         // Detect unresolved template placeholders in the generated title.
         $has_unresolved_placeholders = false;
@@ -844,26 +791,8 @@ class AIPS_Generator {
         $post_id = $this->post_manager->create_post($post_creation_data);
 
         if (is_wp_error($post_id)) {
-            // Use new history API to complete with failure
-            $this->current_history->complete_failure($post_id->get_error_message(), array(
-                'component' => 'post_creation',
-                'title' => $title,
-                'content_length' => strlen($content),
-            ));
-
-            // Write a metric snapshot so the metrics repository can count this failure
-            // without querying scattered tables.
-            $this->current_history->record(
-                'metric_generation_result',
-                'Generation failed — post could not be created',
-                array(
-                    'outcome'          => 'failed',
-                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                    'image_attempted'  => false,
-                    'image_success'    => null,
-                )
-            );
-
+            // Fire generic failure hook
+            do_action('aips_post_generation_failed', $post_id, $context, $this->current_history);
             return $post_id;
         }
 
@@ -879,14 +808,17 @@ class AIPS_Generator {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
         }
 
-        // Use new history API to complete with success
-        $this->current_history->complete_success(array(
-            'post_id' => $post_id,
-            'generated_title' => $title,
-            'generated_content' => $content,
-            'generation_incomplete' => $generation_incomplete,
-            'component_statuses' => $component_statuses,
-        ));
+        // Fire generic completion hook
+        do_action(
+            'aips_post_generation_completed',
+            $post_id,
+            $title,
+            $content,
+            $generation_incomplete,
+            $component_statuses,
+            $context,
+            $this->current_history
+        );
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
@@ -895,36 +827,8 @@ class AIPS_Generator {
             }
         }
 
-        // Write a structured metric snapshot to history_log.  The metrics
-        // repository reads these entries to compute image failure rates and
-        // other per-generation signals without touching post_meta.
-        $image_was_attempted = $context->should_generate_featured_image();
-        $this->current_history->record(
-            'metric_generation_result',
-            'Generation metric snapshot',
-            array(
-                'outcome'          => $generation_incomplete ? 'partial' : 'completed',
-                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                'image_attempted'  => $image_was_attempted,
-                'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
-            )
-        );
-
-        // Log activity
+        // Log to file logger for debugging compatibility
         if ($generation_incomplete) {
-            $this->current_history->record(
-                'warning',
-                sprintf('Post "%s" generated with missing components', $title),
-                null,
-                null,
-                array(
-                    'post_id' => $post_id,
-                    'context_type' => $context->get_type(),
-                    'context_id' => $context->get_id(),
-                    'component_statuses' => $component_statuses,
-                )
-            );
-
             $this->generation_logger->log('Post generated with missing components', 'warning', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
@@ -933,18 +837,6 @@ class AIPS_Generator {
                 'component_statuses' => $component_statuses,
             ));
         } else {
-            $this->current_history->record(
-                'activity',
-                sprintf('Post "%s" generated successfully', $title),
-                null,
-                null,
-                array(
-                    'post_id' => $post_id,
-                    'context_type' => $context->get_type(),
-                    'context_id' => $context->get_id(),
-                )
-            );
-
             $this->generation_logger->log('Post generated successfully', 'info', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
@@ -957,9 +849,9 @@ class AIPS_Generator {
         // For backward compatibility, extract template if it's a template context
         if ($context instanceof AIPS_Template_Context) {
             $template_obj = $context->get_template();
-            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
+            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history ? $this->current_history->get_id() : 0, $context);
         } else {
-            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
+            do_action('aips_post_generated', $post_id, $context, $this->current_history ? $this->current_history->get_id() : 0, $context);
         }
 
         $this->generation_logger->set_history_id(null);
