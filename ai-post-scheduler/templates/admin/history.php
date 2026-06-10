@@ -143,8 +143,10 @@ if (is_object($history)) {
                                         <label class="screen-reader-text" for="aips-cb-select-all"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
                                         <input id="aips-cb-select-all" type="checkbox">
                                     </td>
-                                    <th class="column-title"><?php esc_html_e('Title / Topic', 'ai-post-scheduler'); ?></th>
-                                    <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-container"><?php esc_html_e('Container', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-domain"><?php esc_html_e('Domain', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-actor"><?php esc_html_e('Actor', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
                                     <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                                     <th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
                                     <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -157,7 +159,7 @@ if (is_object($history)) {
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="6" style="text-align:center;padding:40px;">
+                                        <td colspan="8" style="text-align:center;padding:40px;">
                                             <span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
                                             <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
                                             <?php if ($has_active_filter): ?>
@@ -272,13 +274,13 @@ if (is_object($history)) {
 
 <!-- Template: tbody loading placeholder row (shown while reloading the table) -->
 <script type="text/html" id="aips-tmpl-history-tbody-loading">
-	<tr><td colspan="6" style="text-align:center;padding:20px;">{{text}}</td></tr>
+	<tr><td colspan="8" style="text-align:center;padding:20px;">{{text}}</td></tr>
 </script>
 
 <!-- Template: tbody empty-state row (no containers match current filters) -->
 <script type="text/html" id="aips-tmpl-history-tbody-empty">
 	<tr>
-		<td colspan="6" style="text-align:center;padding:40px;">
+		<td colspan="8" style="text-align:center;padding:40px;">
 			<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
 			{{message}}
 		</td>
