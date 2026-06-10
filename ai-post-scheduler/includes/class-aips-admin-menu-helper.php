@@ -44,6 +44,7 @@ class AIPS_Admin_Menu_Helper {
 		'seeder'               => 'aips-seeder',
 		'dev_tools'            => 'aips-dev-tools',
 		'diagnostics'          => 'aips-diagnostics',
+		'automations'          => 'aips-automations',
 		'research'             => 'aips-research',
 	);
 
@@ -61,6 +62,22 @@ class AIPS_Admin_Menu_Helper {
 	);
 
 	/**
+	 * Map of logical automation page names to Automations tabs.
+	 *
+	 * @var array<string, string>
+	 */
+	private static $automations_tabs = array(
+		'schedule'       => 'schedules',
+		'campaigns'      => 'campaigns',
+		'templates'      => 'templates',
+		'authors'        => 'authors',
+		'author_topics'  => 'author-topics',
+		'sources'        => 'sources',
+		'internal_links' => 'internal-links',
+		'taxonomy'       => 'taxonomy',
+	);
+
+	/**
 	 * Get the admin URL for a specific plugin page.
 	 *
 	 * @param string $page The logical name of the page (e.g., 'dashboard', 'templates', 'schedule').
@@ -71,6 +88,17 @@ class AIPS_Admin_Menu_Helper {
 		if (isset(self::$diagnostics_tabs[$page])) {
 			$args = array_merge(array('tab' => self::$diagnostics_tabs[$page]), $args);
 			$url  = admin_url('admin.php?page=aips-diagnostics');
+
+			if (!empty($args)) {
+				$url = add_query_arg($args, $url);
+			}
+
+			return $url;
+		}
+
+		if (isset(self::$automations_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$automations_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-automations');
 
 			if (!empty($args)) {
 				$url = add_query_arg($args, $url);

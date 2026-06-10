@@ -1202,6 +1202,7 @@ return array(
     'Test_AIPS_Data_Management_JSON' => $baseDir . '/tests/Test_AIPS_Data_Management_JSON.php',
     'Test_AIPS_Data_Management_JSON_Repository_Stub' => $baseDir . '/tests/Test_AIPS_Data_Management_JSON.php',
     'Test_AIPS_Date_Time_DB_Repair' => $baseDir . '/tests/Test_AIPS_Date_Time_DB_Repair.php',
+    'Test_AIPS_Diagnostics_Embedded_Templates' => $baseDir . '/tests/Test_AIPS_Diagnostics_Embedded_Templates.php',
     'Test_AIPS_Generate_Now_Timing' => $baseDir . '/tests/Test_AIPS_Generate_Now_Timing.php',
     'Test_AIPS_Generation_Context' => $baseDir . '/tests/Test_AIPS_Generation_Context.php',
     'Test_AIPS_Generation_Logger' => $baseDir . '/tests/Test_AIPS_Generation_Logger.php',

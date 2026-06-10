@@ -2,7 +2,9 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+$is_embedded_templates_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_templates_view): ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -20,7 +22,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
-        
+<?php endif; ?>
         <?php if (!empty($templates)): ?>
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
@@ -56,6 +58,10 @@ if (!defined('ABSPATH')) {
                         foreach ($campaign_options as $campaign_option) {
                             $campaign_map[(int) $campaign_option->id] = $campaign_option;
                         }
+                        $category_name_map = array();
+                        foreach ($categories as $category) {
+                            $category_name_map[(int) $category->term_id] = $category->name;
+                        }
 
                         // Pre-fetch stats to avoid N+1 queries
                         $all_generated_counts = $history_service->get_all_template_stats();
@@ -84,9 +90,19 @@ if (!defined('ABSPATH')) {
                             </td>
                             <td class="column-category">
                                 <?php 
-                                if ($template->post_category) {
-                                    $cat = get_category($template->post_category);
-                                    echo esc_html($cat ? $cat->name : '-');
+                                $cats = AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
+                                if (!empty($cats)) {
+                                    $cat_names = array();
+                                    foreach ($cats as $cat_id) {
+                                        if (isset($category_name_map[(int) $cat_id])) {
+                                            $cat_names[] = esc_html($category_name_map[(int) $cat_id]);
+                                        }
+                                    }
+                                    if (!empty($cat_names)) {
+                                        echo implode(', ', $cat_names);
+                                    } else {
+                                        echo '<span class="cell-meta">—</span>';
+                                    }
                                 } else {
                                     echo '<span class="cell-meta">—</span>';
                                 }
@@ -202,8 +218,10 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
         <?php endif; ?>
+<?php if (!$is_embedded_templates_view): ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
     <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
@@ -507,13 +525,13 @@ if (!defined('ABSPATH')) {
                             </div>
                             
                             <div class="aips-form-row">
-                                <label for="post_category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></label>
-                                <select id="post_category" name="post_category">
-                                    <option value="0"><?php esc_html_e('Select Category', 'ai-post-scheduler'); ?></option>
+                                <label for="post_category"><?php esc_html_e('Categories', 'ai-post-scheduler'); ?></label>
+                                <select id="post_category" name="post_category[]" multiple size="5" style="min-height:100px;">
                                     <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo esc_attr($cat->term_id); ?>"><?php echo esc_html($cat->name); ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <p class="description"><?php esc_html_e('Hold Ctrl / Cmd to select multiple categories.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
                         
