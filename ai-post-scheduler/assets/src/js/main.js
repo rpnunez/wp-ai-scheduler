@@ -46,6 +46,17 @@ import { CalendarView } from './views/calendar';
 import { ResearchView } from './views/research';
 import { InternalLinksView } from './views/internal-links';
 import { SourcesView } from './views/sources';
+import { TelemetryView } from './views/telemetry';
+import { CampaignsView } from './views/campaigns';
+import { SettingsView } from './views/settings';
+import { PostSlicesView } from './views/post-slices';
+import { SystemStatusView } from './views/system-status';
+import { OnboardingView } from './views/onboarding';
+import { DevToolsView } from './views/dev-tools';
+import { EmbeddingsView } from './views/embeddings';
+import { PostReviewView } from './views/post-review';
+import { AdminBarView } from './views/admin-bar';
+import { BlockEditorView } from './views/block-editor';
 
 // Initialize global namespace
 window.AIPS = window.AIPS || {};
@@ -62,6 +73,7 @@ AIPS.Templates = {
 				interpolate: /\{\{([\s\S]+?)\}\}/g
 			});
 			return compiled(data || {});
+		} catch (e) {
 			console.error('Template render error for ID: ' + id, e);
 			return '';
 		}
@@ -88,6 +100,17 @@ AIPS.CalendarViewClass = CalendarView;
 AIPS.ResearchViewClass = ResearchView;
 AIPS.InternalLinksViewClass = InternalLinksView;
 AIPS.SourcesViewClass = SourcesView;
+AIPS.TelemetryViewClass = TelemetryView;
+AIPS.CampaignsViewClass = CampaignsView;
+AIPS.SettingsViewClass = SettingsView;
+AIPS.PostSlicesViewClass = PostSlicesView;
+AIPS.SystemStatusViewClass = SystemStatusView;
+AIPS.OnboardingViewClass = OnboardingView;
+AIPS.DevToolsViewClass = DevToolsView;
+AIPS.EmbeddingsViewClass = EmbeddingsView;
+AIPS.PostReviewViewClass = PostReviewView;
+AIPS.AdminBarViewClass = AdminBarView;
+AIPS.BlockEditorViewClass = BlockEditorView;
 
 // Bootstrap application on document ready
 $(document).ready(() => {
@@ -128,6 +151,57 @@ $(document).ready(() => {
 	if ($('#aips-sources-table').length) {
 		AIPS.sourcesView = new SourcesView();
 	}
+
+	// Conditionally instantiate Telemetry view
+	if ($('#aips-telemetry-panel').length) {
+		AIPS.telemetryView = new TelemetryView();
+	}
+
+	// Conditionally instantiate Campaigns view
+	if ($('.aips-campaigns-table').length || $('.aips-admin-page').length || $('#aips-campaign-wizard-form').length) {
+		AIPS.campaignsView = new CampaignsView();
+	}
+
+	// Conditionally instantiate Settings view
+	if ($('#aips-settings-form').length) {
+		AIPS.settingsView = new SettingsView();
+	}
+
+	// Conditionally instantiate Post Slices view
+	if ($('#aips-post-slices-table').length || $('#aips-post-slice-modal').length) {
+		AIPS.postSlicesView = new PostSlicesView();
+	}
+
+	// Conditionally instantiate System Status view
+	if ($('.aips-status-data-panel').length) {
+		AIPS.systemStatusView = new SystemStatusView();
+	}
+
+	// Conditionally instantiate Onboarding view
+	if ($('#aips-onboarding-strategy-form').length || $('.aips-onboarding-container').length) {
+		AIPS.onboardingView = new OnboardingView();
+	}
+
+	// Conditionally instantiate Dev Tools / Cache Monitor view
+	if ($('#aips-dev-scaffold-form').length || $('#aips-seeder-form').length || $('#aips-cache-entries-tbody').length) {
+		AIPS.devToolsView = new DevToolsView();
+	}
+
+	// Embeddings view
+	AIPS.embeddingsView = new EmbeddingsView();
+
+	// Conditionally instantiate Post Review view
+	if ($('.aips-post-review-table').length || $('#aips-ai-edit-modal').length || $('#aips-post-preview-modal').length) {
+		AIPS.postReviewView = new PostReviewView();
+	}
+
+	// Admin Bar view
+	if ($('#wpadminbar').length) {
+		AIPS.adminBarView = new AdminBarView();
+	}
+
+	// Block Editor view
+	AIPS.blockEditorView = new BlockEditorView();
 
 	// Call any legacy bootstrap hooks
 	if (typeof AIPS.init === 'function') {
