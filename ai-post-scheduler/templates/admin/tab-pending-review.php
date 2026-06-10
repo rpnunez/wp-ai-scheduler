@@ -105,6 +105,19 @@ if (!defined('ABSPATH')) {
 										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
+										<?php if (!empty($item->post_score)): ?>
+											<?php 
+												$score = $item->post_score['overall_score'];
+												$color_class = $score >= 80 ? 'aips-score-green' : ($score >= 70 ? 'aips-score-orange' : 'aips-score-red');
+											?>
+											<div class="aips-score-badge-circle" title="<?php printf(esc_attr__('Quality Score: %s%% (Pass: %s%%)', 'ai-post-scheduler'), $score, $item->post_score['threshold']); ?>">
+												<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart <?php echo esc_attr($color_class); ?>">
+													<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+													<path class="aips-circle" stroke-dasharray="<?php echo esc_attr($score); ?>, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+													<text x="18" y="21.5" class="aips-percentage"><?php echo esc_html(round($score)); ?></text>
+												</svg>
+											</div>
+										<?php endif; ?>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
