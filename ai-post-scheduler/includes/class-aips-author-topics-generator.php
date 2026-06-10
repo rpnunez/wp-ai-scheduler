@@ -104,9 +104,20 @@ class AIPS_Author_Topics_Generator {
 		$prompt = $this->prompt_builder->build($author, $approved_topics, $rejected_topics, $feedback_guidance);
 		
 		// Use generate_json for structured topic data
-		$response = $this->ai_service->generate_json($prompt, array(
+		$options = array(
 			'temperature' => 0.7,
-		));
+			'request_type' => 'topics',
+		);
+
+		if (!empty($author->topic_light_model)) {
+			$options['model'] = $author->topic_light_model;
+			$options['tier'] = 'light';
+		} elseif (!empty($author->topic_standard_model)) {
+			$options['model'] = $author->topic_standard_model;
+			$options['tier'] = 'standard';
+		}
+
+		$response = $this->ai_service->generate_json($prompt, $options);
 		
 		if (is_wp_error($response)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $response->get_error_message(), 'error');

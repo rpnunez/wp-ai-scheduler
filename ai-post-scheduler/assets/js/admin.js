@@ -683,6 +683,8 @@
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
+                        $('#ai_model_standard').val(t.ai_model_standard || '');
+                        $('#ai_model_light').val(t.ai_model_light || '');
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
@@ -884,6 +886,8 @@
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
                     post_quantity: $('#post_quantity').val(),
+                    ai_model_standard: $('#ai_model_standard').val(),
+                    ai_model_light: $('#ai_model_light').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
                     featured_image_source: $('#featured_image_source').val(),
@@ -960,6 +964,8 @@
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
                     post_quantity: $('#post_quantity').val(),
+                    ai_model_standard: $('#ai_model_standard').val(),
+                    ai_model_light: $('#ai_model_light').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
                     featured_image_source: $('#featured_image_source').val(),
@@ -1039,6 +1045,8 @@
                 title_prompt: $('#title_prompt').val(),
                 voice_id: $('#voice_id').val(),
                 post_quantity: 1, // Force 1 for test
+                ai_model_standard: $('#ai_model_standard').val(),
+                ai_model_light: $('#ai_model_light').val(),
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                 image_prompt: $('#image_prompt').val(),
                 featured_image_source: $('#featured_image_source').val(),

@@ -379,6 +379,24 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('Generate one or more posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                         </div>
 
+                        <div class="aips-form-row">
+                            <label for="ai_model_standard">
+                                <?php esc_html_e('Standard Model Override', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Override the global Standard Model for this template.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
+                            <input type="text" id="ai_model_standard" name="ai_model_standard" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to use global standard model', 'ai-post-scheduler'); ?>">
+                            <p class="description"><?php esc_html_e('Override standard model used for the main article content generation.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-form-row">
+                            <label for="ai_model_light">
+                                <?php esc_html_e('Light Model Override', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Override the global Light Model for this template.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
+                            <input type="text" id="ai_model_light" name="ai_model_light" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to use global light model', 'ai-post-scheduler'); ?>">
+                            <p class="description"><?php esc_html_e('Override light/cheap model used for title, excerpt, etc.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
                         <?php
                         $template_source_groups = get_terms(array(
                             'taxonomy'   => 'aips_source_group',

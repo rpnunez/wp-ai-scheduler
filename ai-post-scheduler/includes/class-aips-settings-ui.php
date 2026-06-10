@@ -802,16 +802,90 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw input value.
      * @return string Sanitized driver name, or 'array' as safe fallback.
      */
-    public function sanitize_cache_driver( $value ) {
-        $allowed = array('array', 'db', 'wp_object_cache');
-        $legacy  = array('session', 'redis');
-        $value   = sanitize_text_field( (string) $value );
+	public function sanitize_cache_driver( $value ) {
+		$allowed = array('array', 'db', 'wp_object_cache');
+		$legacy  = array('session', 'redis');
+		$value   = sanitize_text_field( (string) $value );
 
-        if (in_array($value, $legacy, true)) {
-            return 'wp_object_cache';
-        }
+		if (in_array($value, $legacy, true)) {
+			return 'wp_object_cache';
+		}
 
-        return in_array($value, $allowed, true) ? $value : 'array';
-    }
+		return in_array($value, $allowed, true) ? $value : 'array';
+	}
+
+	/**
+	 * Render the light/cheap AI model setting field.
+	 *
+	 * @return void
+	 */
+	public function ai_model_light_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_ai_model_light');
+		?>
+		<input type="text" name="aips_ai_model_light" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to fallback to standard model', 'ai-post-scheduler'); ?>">
+		<p class="description"><?php esc_html_e('Light/Cheap AI model (e.g. gpt-4o-mini, claude-3-haiku) to use for title, excerpt, taxonomy, and research generation to save tokens. If left blank, falls back to the standard model.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render description for the token cost settings section.
+	 *
+	 * @return void
+	 */
+	public function token_cost_section_callback() {
+		echo '<p>' . esc_html__('Configure the CPM (Cost Per Million) rates for your models to track dollar-value savings on your dashboard.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render CPM standard input field.
+	 *
+	 * @return void
+	 */
+	public function cpm_standard_input_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_cpm_standard_input');
+		?>
+		<input type="number" name="aips_cpm_standard_input" value="<?php echo esc_attr($value); ?>" min="0" step="0.0001" class="small-text">
+		<p class="description"><?php esc_html_e('Cost per million tokens for standard model input prompt (USD). Default: 2.50.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render CPM standard output field.
+	 *
+	 * @return void
+	 */
+	public function cpm_standard_output_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_cpm_standard_output');
+		?>
+		<input type="number" name="aips_cpm_standard_output" value="<?php echo esc_attr($value); ?>" min="0" step="0.0001" class="small-text">
+		<p class="description"><?php esc_html_e('Cost per million tokens for standard model output completion (USD). Default: 10.00.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render CPM light input field.
+	 *
+	 * @return void
+	 */
+	public function cpm_light_input_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_cpm_light_input');
+		?>
+		<input type="number" name="aips_cpm_light_input" value="<?php echo esc_attr($value); ?>" min="0" step="0.0001" class="small-text">
+		<p class="description"><?php esc_html_e('Cost per million tokens for light model input prompt (USD). Default: 0.15.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render CPM light output field.
+	 *
+	 * @return void
+	 */
+	public function cpm_light_output_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_cpm_light_output');
+		?>
+		<input type="number" name="aips_cpm_light_output" value="<?php echo esc_attr($value); ?>" min="0" step="0.0001" class="small-text">
+		<p class="description"><?php esc_html_e('Cost per million tokens for light model output completion (USD). Default: 0.60.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
 
 }

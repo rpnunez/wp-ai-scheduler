@@ -26,6 +26,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-tab-nav" id="aips-settings-tab-nav">
 					<button type="button" class="aips-tab-link active" data-tab="settings-general"><?php esc_html_e('General', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-token-cost"><?php esc_html_e('Token &amp; Cost', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-resilience"><?php esc_html_e('Resilience &amp; Limits', 'ai-post-scheduler'); ?></button>
@@ -54,6 +55,17 @@ if (!defined('ABSPATH')) {
 						<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
+						</table>
+						<p class="submit">
+							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+						</p>
+					</div>
+
+					<!-- Token & Cost Tab -->
+					<div id="settings-token-cost-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Configure standard and light model options, CPM token costs, and track optimization savings.', 'ai-post-scheduler'); ?></p>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_token_cost_section'); ?>
 						</table>
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">

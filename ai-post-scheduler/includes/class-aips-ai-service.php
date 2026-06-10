@@ -206,6 +206,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('text', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('text', $result, $options);
             }
+        } else {
+            $model_used = isset($params['model']) ? $params['model'] : '';
+            $this->record_token_usage($prompt, $result, $options, $model_used);
         }
 
         return $result;
@@ -354,6 +357,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('json', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('json', $result, $options);
             }
+        } else {
+            $model_used = isset($params['model']) ? $params['model'] : '';
+            $this->record_token_usage($prompt, wp_json_encode($result), $options, $model_used);
         }
 
         return $result;
@@ -482,6 +488,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $this->log_call('json', $prompt, $options, $result);
                 $this->emit_quota_alert_notification('json', $result, $options);
             }
+        } else {
+            $model_used = isset($params['model']) ? $params['model'] : '';
+            $this->record_token_usage($prompt, wp_json_encode($result), $options, $model_used);
         }
 
         return $result;
@@ -745,8 +754,16 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     private function prepare_options($options, $prompt = '') {
         $ai_config = AIPS_Config::get_instance()->get_ai_config();
         
+        $request_type = isset($options['request_type']) ? $options['request_type'] : 'content';
+        $is_light_task = in_array($request_type, array('title', 'excerpt', 'ai_variables', 'taxonomy', 'research', 'topics'), true);
+        
+        $resolved_model = $ai_config['model'];
+        if ($is_light_task) {
+            $resolved_model = !empty($ai_config['model_light']) ? $ai_config['model_light'] : $ai_config['model'];
+        }
+
         $default_options = array(
-            'model'       => $ai_config['model'],
+            'model'       => $resolved_model,
             'envId'       => $ai_config['env_id'],
             'temperature' => $ai_config['temperature'],
         );
@@ -758,6 +775,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         $options = wp_parse_args($options, $default_options);
+        
+        if (empty($options['model'])) {
+            $options['model'] = $resolved_model;
+        }
+
         $params  = array();
 
         if (!empty($options['model'])) {
@@ -798,6 +820,35 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             }
         }
         return $params;
+    }
+
+    /**
+     * Fire the aips_ai_call_completed action after a successful AI query.
+     *
+     * @param string $prompt       The input prompt.
+     * @param string $result_text  The output result text/json.
+     * @param array  $options      The query options.
+     * @param string $model        The model used.
+     */
+    private function record_token_usage($prompt, $result_text, $options, $model) {
+        $prompt_tokens = AIPS_Token_Budget::estimate_prompt_tokens($prompt);
+        $completion_tokens = AIPS_Token_Budget::estimate_prompt_tokens($result_text);
+        
+        $request_type = isset($options['request_type']) ? $options['request_type'] : 'content';
+        
+        $tier = isset($options['tier']) ? $options['tier'] : '';
+        if (empty($tier)) {
+            $is_light_task = in_array($request_type, array('title', 'excerpt', 'ai_variables', 'taxonomy', 'research', 'topics'), true);
+            $tier = $is_light_task ? 'light' : 'standard';
+        }
+        
+        do_action('aips_ai_call_completed', array(
+            'prompt_tokens'     => $prompt_tokens,
+            'completion_tokens' => $completion_tokens,
+            'model'             => $model,
+            'tier'              => $tier,
+            'request_type'      => $request_type,
+        ));
     }
 
     /**

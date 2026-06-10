@@ -125,6 +125,11 @@ class AIPS_Config {
             'aips_log_secret' => '',
             // AI model
             'aips_ai_model' => '',
+            'aips_ai_model_light' => '',
+            'aips_cpm_standard_input' => 2.50,
+            'aips_cpm_standard_output' => 10.00,
+            'aips_cpm_light_input' => 0.15,
+            'aips_cpm_light_output' => 0.60,
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
             'aips_max_tokens_title' => 150,
@@ -379,9 +384,24 @@ class AIPS_Config {
     public function get_ai_config() {
         return array(
             'model'            => (string) $this->get_option('aips_ai_model'),
+            'model_light'      => (string) $this->get_option('aips_ai_model_light'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),
+        );
+    }
+    
+    /**
+     * Get CPM rates for cost estimations.
+     *
+     * @return array
+     */
+    public function get_token_cost_config() {
+        return array(
+            'standard_input'  => (float) $this->get_option('aips_cpm_standard_input'),
+            'standard_output' => (float) $this->get_option('aips_cpm_standard_output'),
+            'light_input'     => (float) $this->get_option('aips_cpm_light_input'),
+            'light_output'    => (float) $this->get_option('aips_cpm_light_output'),
         );
     }
     

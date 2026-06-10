@@ -165,6 +165,20 @@ class AIPS_Template_Entry {
 	 */
 	public readonly ?string $source_group_ids;
 
+	/**
+	 * Standard model override.
+	 *
+	 * @var string|null
+	 */
+	public readonly ?string $ai_model_standard;
+
+	/**
+	 * Light model override.
+	 *
+	 * @var string|null
+	 */
+	public readonly ?string $ai_model_light;
+
 	// -----------------------------------------------------------------------
 	// Constructor (private — use factory methods)
 	// -----------------------------------------------------------------------
@@ -209,7 +223,9 @@ class AIPS_Template_Entry {
 		int $post_quantity,
 		?int $article_structure_id,
 		bool $include_sources,
-		?string $source_group_ids
+		?string $source_group_ids,
+		?string $ai_model_standard = null,
+		?string $ai_model_light = null
 	) {
 		$this->id                               = $id;
 		$this->name                             = $name;
@@ -229,6 +245,8 @@ class AIPS_Template_Entry {
 		$this->article_structure_id             = $article_structure_id;
 		$this->include_sources                  = $include_sources;
 		$this->source_group_ids                 = $source_group_ids;
+		$this->ai_model_standard                = $ai_model_standard;
+		$this->ai_model_light                   = $ai_model_light;
 	}
 
 	// -----------------------------------------------------------------------
@@ -276,7 +294,9 @@ class AIPS_Template_Entry {
 			$post_quantity,
 			$article_structure_id,
 			1 === (int) ($source->include_sources ?? 0),
-			isset($source->source_group_ids) && $source->source_group_ids !== '' ? (string) $source->source_group_ids : null
+			isset($source->source_group_ids) && $source->source_group_ids !== '' ? (string) $source->source_group_ids : null,
+			isset($source->ai_model_standard) && $source->ai_model_standard !== '' ? (string) $source->ai_model_standard : null,
+			isset($source->ai_model_light) && $source->ai_model_light !== '' ? (string) $source->ai_model_light : null
 		);
 	}
 

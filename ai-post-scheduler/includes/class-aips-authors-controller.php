@@ -145,6 +145,10 @@ class AIPS_Authors_Controller {
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
+			'topic_standard_model' => isset($_POST['topic_standard_model']) ? sanitize_text_field(wp_unslash($_POST['topic_standard_model'])) : '',
+			'topic_light_model' => isset($_POST['topic_light_model']) ? sanitize_text_field(wp_unslash($_POST['topic_light_model'])) : '',
+			'post_standard_model' => isset($_POST['post_standard_model']) ? sanitize_text_field(wp_unslash($_POST['post_standard_model'])) : '',
+			'post_light_model' => isset($_POST['post_light_model']) ? sanitize_text_field(wp_unslash($_POST['post_light_model'])) : '',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
