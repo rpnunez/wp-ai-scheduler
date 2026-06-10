@@ -62,6 +62,7 @@ AIPS.Templates = {
 				interpolate: /\{\{([\s\S]+?)\}\}/g
 			});
 			return compiled(data || {});
+		} catch (e) {
 			console.error('Template render error for ID: ' + id, e);
 			return '';
 		}

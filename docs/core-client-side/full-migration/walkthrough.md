@@ -46,12 +46,12 @@ Running the build compiled all JS and CSS into minified production bundles:
 ```bash
 vite v5.4.21 building for production...
 transforming...
-✓ 42 modules transformed.
+✓ 51 modules transformed.
 rendering chunks...
 computing gzip size...
-assets/dist/css/aips-admin.min.css  136.69 kB │ gzip: 23.83 kB
-assets/dist/js/aips-admin.min.js    427.04 kB │ gzip: 90.39 kB
-✓ built in 2.94s
+assets/dist/css/aips-admin.min.css  131.01 kB │ gzip: 23.13 kB
+assets/dist/js/aips-admin.min.js    523.49 kB │ gzip: 110.45 kB
+✓ built in 19.06s
 ```
 
 ### 2. PHP Unit Tests
