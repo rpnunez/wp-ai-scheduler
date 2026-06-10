@@ -4,3 +4,9 @@
 ## 2026-05-30 - Added loading indicator when editing authors
 **Learning:** AJAX-driven edit modals within this repo can sometimes appear with empty fields while data is still loading, creating a confusing user experience. The standard pattern to solve this is to use the existing WordPress admin `.spinner` element within a loader container.
 **Action:** For future modal-based edit features, ensure a loader container is added alongside the form, and use JavaScript to hide the form and show the loader during the AJAX fetch phase. Only reveal the form when the data has successfully populated.
+## 2024-05-30 - Added missing aria-label to remove post button
+**Area:** Taxonomy Admin Template (`ai-post-scheduler/templates/admin/taxonomy.php`)
+**Status:** opened PR
+**PR:** [To be created]
+**Learning:** JS HTML templates (using `<script type="text/html">`) often contain icon-only buttons (like `&times;`) that lack `aria-label` attributes because they are dynamically populated.
+**Action:** When auditing WordPress admin pages for accessibility, check the inline JS templates for icon-only buttons that are missing `aria-label` attributes and provide them via `esc_attr_e()`.
