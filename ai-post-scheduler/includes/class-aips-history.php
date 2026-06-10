@@ -1583,8 +1583,7 @@ class AIPS_History {
             case 'author_topics':
                 $author_name = '';
                 if (!empty($item->author_id)) {
-                    $authors_repo = new AIPS_Authors_Repository();
-                    $author = $authors_repo->get_by_id((int) $item->author_id);
+                    $author = AIPS_Authors_Repository::instance()->get_by_id((int) $item->author_id);
                     if ($author && !empty($author->name)) {
                         $author_name = $author->name;
                     }
