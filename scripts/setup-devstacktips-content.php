@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * DevStackTips Content Setup Script
  *
@@ -11,7 +11,7 @@
  * - 4 Post Slices
  * - 2 Source Groups with 6 Sources
  * - 8 Templates
- * - 6 Campaigns
+ * - 8 Campaigns
  * - 8 Schedules
  *
  * Plugin Settings Configured:
@@ -27,8 +27,6 @@
  *   CLI (recommended): wp eval-file scripts/setup-devstacktips-content.php
  *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
  *
- * Note: This script is not automatically runnable from the Dev Tools admin page unless you wire it in explicitly.
- *
  * @package AI_Post_Scheduler
  */
 
@@ -36,14 +34,57 @@ if (!defined('ABSPATH')) {
 	die('Direct access not permitted.');
 }
 
+/**
+ * Class AIPS_DevStackTips_Setup
+ * 
+ */
 class AIPS_DevStackTips_Setup {
+	/**
+	 * Strategy profile name
+	 */
+	private const STRATEGY_PROFILE = 'devstacktips-production-v1';
+
+	/**
+	 * Distribution configuration defines the overall content distribution strategy, including:
+	 * - Primary distribution period (e.g. weekly)
+	 * - Target post counts for different periods (daily, weekly, monthly)
+	 * - Campaign shares (relative weights for how many posts each campaign should receive)
+	 * - Author shares (relative weights for how many posts each author should receive)
+	 */
+	private const DISTRIBUTION_CONFIG = array(
+		'distribution_period' => 'weekly',
+		'target_posts' => array(
+			'daily' => 6,
+			'weekly' => 30,
+			'monthly' => 120,
+		),
+		'campaign_shares' => array(
+			'Developer Foundations' => 4,
+			'Backend Engineering' => 4,
+			'Security First' => 4,
+			'Framework & Tool Comparisons' => 4,
+			'Developer Tooling' => 4,
+			'AI for Developers' => 3,
+			'PHP Ecosystem Radar' => 4,
+			'Security Intelligence Briefing' => 3,
+		),
+		'author_shares' => array(
+			'Backend Architecture Specialist' => 8,
+			'Security Expert' => 7,
+			'DevOps Practitioner' => 6,
+			'Framework Analyst' => 5,
+			'AI Engineering Pragmatist' => 4,
+		),
+	);
 
 	private $created_items = array();
 	private $errors = array();
+	private $object_data = array();
 	private $rollback_mode = false;
 
 	public function __construct($rollback = false) {
 		$this->rollback_mode = $rollback;
+		$this->build_seeding_object_data();
 	}
 
 	public function run() {
@@ -54,6 +95,7 @@ class AIPS_DevStackTips_Setup {
 
 		echo "<h1>DevStackTips Content Setup</h1>\n";
 		echo "<p>Creating complete content production system...</p>\n";
+		echo "<p>Applying strategy profile: <code>" . esc_html(self::STRATEGY_PROFILE) . "</code></p>\n";
 
 		// Step 1: Create Categories
 		$this->create_categories();
@@ -76,11 +118,11 @@ class AIPS_DevStackTips_Setup {
 		// Step 7: Create Source Groups and Sources
 		$this->create_source_groups();
 
-		// Step 8: Create Templates
-		$this->create_templates();
-
-		// Step 9: Create Campaigns
+		// Step 8: Create Campaigns
 		$this->create_campaigns();
+
+		// Step 9: Create Templates (campaign-bound)
+		$this->create_templates();
 
 		// Step 10: Create Schedules
 		$this->create_schedules();
@@ -89,146 +131,947 @@ class AIPS_DevStackTips_Setup {
 		$this->print_summary();
 	}
 
+	private function build_seeding_object_data() {
+		$this->object_data = array(
+			'settings' => $this->get_settings_seed_data(),
+			'categories' => $this->get_category_seed_data(),
+			'voices' => $this->get_voice_seed_data(),
+			'sections' => $this->get_section_seed_data(),
+			'structures' => $this->get_structure_seed_data(),
+			'authors' => $this->get_author_seed_data(),
+			'post_slices' => $this->get_post_slice_seed_data(),
+			'source_groups' => $this->get_source_group_seed_data(),
+			'sources' => $this->get_source_seed_data(),
+			'campaigns' => $this->get_campaign_seed_data(),
+			'templates' => $this->get_template_seed_data(),
+			'schedules' => $this->get_schedule_seed_data(),
+		);
+	}
+
+	private function get_distribution_config() {
+		return self::DISTRIBUTION_CONFIG;
+	}
+
+	private function get_target_posts_by_period() {
+		$config = $this->get_distribution_config();
+
+		return isset($config['target_posts']) ? $config['target_posts'] : array();
+	}
+
+	private function get_target_posts_for_period($period) {
+		$targets = $this->get_target_posts_by_period();
+
+		return isset($targets[$period]) ? (int) $targets[$period] : 0;
+	}
+
+	private function get_primary_distribution_period() {
+		$config = $this->get_distribution_config();
+
+		return isset($config['distribution_period']) ? (string) $config['distribution_period'] : 'weekly';
+	}
+
+	private function get_primary_target_post_count() {
+		return $this->get_target_posts_for_period($this->get_primary_distribution_period());
+	}
+
+	/**
+	 * Distributes target post counts across campaigns or authors based on defined shares.
+	 * 
+	 * @param array $weights Associative array of keys (campaign or author names) and their corresponding share weights.
+	 * @param int $target_total The total number of posts to distribute across the keys.
+	 * 
+	 * @return array Associative array of keys and the calculated number of posts to assign to each key based on their share weights.
+	 */
+	private function distribute_target_counts($weights, $target_total) {
+		$allocations = array();
+		$remainders = array();
+		$total_weight = array_sum($weights);
+		$assigned = 0;
+
+		foreach ($weights as $key => $weight) {
+			if ($total_weight <= 0) {
+				$allocations[$key] = 0;
+				$remainders[$key] = 0;
+				continue;
+			}
+
+			$raw_allocation = ($target_total * (float) $weight) / (float) $total_weight;
+			$base_allocation = (int) floor($raw_allocation);
+
+			$allocations[$key] = $base_allocation;
+			$remainders[$key] = $raw_allocation - $base_allocation;
+			$assigned += $base_allocation;
+		}
+
+		$remaining = (int) $target_total - $assigned;
+		arsort($remainders, SORT_NUMERIC);
+
+		foreach (array_keys($remainders) as $key) {
+			if ($remaining <= 0) {
+				break;
+			}
+
+			$allocations[$key]++;
+			$remaining--;
+		}
+
+		return $allocations;
+	}
+
+	/**
+	 * Calculates the target post counts for each campaign based on the defined campaign shares and the primary target post count for the distribution period. This method retrieves the campaign shares from the distribution configuration and uses the distribute_target_counts method to allocate the primary target post count across the campaigns according to their respective shares, resulting in a clear distribution of how many posts should be generated for each campaign within the content strategy for DevStackTips.
+	 * 
+	 * @return array Associative array of campaign names and the calculated number of posts to assign to each campaign based on their share weights.
+	 */
+	private function get_campaign_post_targets() {
+		$config = $this->get_distribution_config();
+		$shares = isset($config['campaign_shares']) ? $config['campaign_shares'] : array();
+
+		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
+	}
+
+	private function get_author_post_targets() {
+		$config = $this->get_distribution_config();
+		$shares = isset($config['author_shares']) ? $config['author_shares'] : array();
+
+		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
+	}
+
+	private function format_summary_value($value) {
+		if (is_bool($value)) {
+			return $value ? 'true' : 'false';
+		}
+
+		if (is_array($value)) {
+			return wp_json_encode($value);
+		}
+
+		$display_value = (string) $value;
+
+		return ($display_value === '') ? '(empty)' : $display_value;
+	}
+
+	private function values_match($expected, $actual) {
+		return maybe_serialize($expected) === maybe_serialize($actual);
+	}
+
+	private function report_status($is_ok, $message) {
+		echo ($is_ok ? '[OK] ' : '[WARN] ') . $message . "\n";
+	}
+
+	private function update_option_and_return($option_name, $value) {
+		update_option($option_name, $value);
+
+		return get_option($option_name);
+	}
+
+	private function resolve_setting_entry_value($entry, $structures = array(), $categories = array()) {
+		if (array_key_exists('value', $entry)) {
+			return $entry['value'];
+		}
+
+		if (isset($entry['structure_name'])) {
+			return isset($structures[$entry['structure_name']]) ? $structures[$entry['structure_name']] : null;
+		}
+
+		if (isset($entry['category_name'])) {
+			return isset($categories[$entry['category_name']]) ? $categories[$entry['category_name']] : null;
+		}
+
+		return null;
+	}
+
+	private function get_setting_entry_label($entry) {
+		return isset($entry['label']) ? $entry['label'] : $entry['option_name'];
+	}
+
+	private function get_flattened_setting_entries() {
+		$entries = array();
+
+		foreach ($this->object_data['settings'] as $section) {
+			if (empty($section['options']) || !is_array($section['options'])) {
+				continue;
+			}
+
+			foreach ($section['options'] as $entry) {
+				$entries[] = $entry;
+			}
+		}
+
+		return $entries;
+	}
+
+	private function get_resolved_configured_settings($structures = array(), $categories = array()) {
+		$configured_settings = array();
+
+		foreach ($this->get_flattened_setting_entries() as $entry) {
+			$value = $this->resolve_setting_entry_value($entry, $structures, $categories);
+			if ($value === null) {
+				continue;
+			}
+
+			$configured_settings[$entry['option_name']] = $value;
+		}
+
+		return $configured_settings;
+	}
+
 	private function configure_settings() {
 		echo "<h2>Step 4: Configuring Plugin Settings</h2>\n";
-
-		// Content Strategy Settings
-		echo "<h3>Content Strategy</h3>\n";
-		
-		$content_strategy = array(
-			'aips_site_niche' => 'Full-Stack Software Development, Web Architecture',
-			'aips_site_target_audience' => 'Professional Software Engineers, Web Developers (Mid to Senior Level)',
-			'aips_site_content_goals' => 'Provide authoritative technical deep-dives, establish industry credibility, drive affiliate revenue via trusted/actionable recommendations, and rank for high-value "how-to" and "best practice" keywords.',
-			'aips_site_brand_voice' => 'Authoritative yet approachable, Professional, expert-level',
-			'aips_site_content_language' => 'en',
-			'aips_site_content_guidelines' => 'Minimum 5-10 paragraphs depending on topic. Use H2/H3 hierarchy. Mandatory: brief hyperlinked a "Sources" section. Break code into small, explained chunks. Security focus. Always emphasize "real-world" patterns.',
-			'aips_site_excluded_topics' => 'Politics, religion, celebrity gossip, gambling, adult content, clickbait/listicles with no technical depth ("get rich quick" schemes, unverified rumors/hacks about hardware, non-technical software (e.g., Word/Excel), and general consumer electronics reviews.',
-		);
-
-		foreach ($content_strategy as $key => $value) {
-			update_option($key, $value);
-			echo "✓ Set {$key}\n";
-		}
-
-		// Resilience & Limits Settings
-		echo "<h3>Resilience & Limits (Production Settings)</h3>\n";
-		
-		$resilience_settings = array(
-			// Retry settings
-			'aips_enable_retry' => 1,
-			'aips_retry_max_attempts' => 3,
-			'aips_retry_initial_delay' => 2, // 2 seconds
-			
-			// Rate limiting
-			'aips_enable_rate_limiting' => 1,
-			'aips_rate_limit_requests' => 20, // 20 requests
-			'aips_rate_limit_period' => 60,   // per 60 seconds
-			
-			// Circuit breaker
-			'aips_enable_circuit_breaker' => 1,
-			'aips_circuit_breaker_threshold' => 5,  // Open after 5 failures
-			'aips_circuit_breaker_timeout' => 300,  // 5 minutes timeout
-		);
-
-		foreach ($resilience_settings as $key => $value) {
-			update_option($key, $value);
-			echo "✓ Set {$key} = {$value}\n";
-		}
-
-		// Default Article Structure
-		echo "<h3>Default Article Structure</h3>\n";
+		$settings = $this->object_data['settings'];
 		$structures = $this->get_created_structures_by_name();
-		if (isset($structures['Evergreen How-To Guide'])) {
-			update_option('aips_default_article_structure_id', $structures['Evergreen How-To Guide']);
-			echo "✓ Set default article structure: Evergreen How-To Guide (ID: {$structures['Evergreen How-To Guide']})\n";
-		}
-
-		// Notification Settings
-		echo "<h3>Notification Preferences</h3>\n";
-		update_option('aips_review_notifications_email', '');
-		echo "⚠ Email not configured - Please add notification email in Settings > Notifications\n";
-		
-		$notification_prefs = array(
-			'generation_failed' => 'email',
-			'quota_alert' => 'email',
-			'post_ready_for_review' => 'both',
-			'template_generated' => 'db',
-			'manual_generation_completed' => 'db',
-			'partial_generation_completed' => 'both',
-			'author_topics_generated' => 'db',
-			'author_topics_failed' => 'email',
-			'author_posts_generated' => 'db',
-			'author_posts_failed' => 'email',
-			'bulk_batch_completed' => 'db',
-			'errors' => 'email',
-			'daily_digest' => 'email',
-			'weekly_digest' => 'email',
-			'monthly_digest' => 'email',
-		);
-		update_option('aips_notification_preferences', $notification_prefs);
-		echo "✓ Set notification preferences (email for critical, DB for routine)\n";
-
-		// Research Niches
-		echo "<h3>Research & Discovery</h3>\n";
-		$research_niches = array(
-			'PHP and Backend Development Trends',
-			'Application Security and Vulnerability Prevention',
-			'Modern Framework Comparisons (Laravel, Symfony, etc.)',
-			'DevOps Tools and Automation',
-			'AI Tools for Developers',
-			'Database Optimization and Best Practices',
-			'Software Architecture Patterns',
-			'API Design and Integration',
-		);
-		update_option('aips_research_niches', $research_niches);
-		echo "✓ Set research niches (8 DevStackTips topics)\n";
-		
-		update_option('aips_topic_similarity_threshold', 0.75);
-		echo "✓ Set topic similarity threshold: 0.75 (allows more variety)\n";
-
-		// Unsplash Configuration
-		echo "<h3>Featured Images</h3>\n";
-		update_option('aips_unsplash_access_key', '');
-		echo "⚠ Unsplash key not configured - Please add Unsplash Access Key in Settings if using Unsplash images\n";
-
-		// Telemetry
-		echo "<h3>Performance Monitoring</h3>\n";
-		update_option('aips_enable_telemetry', true);
-		echo "✓ Enabled telemetry (slow query & request tracking)\n";
-
-		// Cache System
-		echo "<h3>Cache Configuration</h3>\n";
-		update_option('aips_enable_cache_system', true);
-		update_option('aips_cache_driver', 'db');
-		update_option('aips_cache_default_ttl', 3600);
-		echo "✓ Enabled cache system (DB driver, 1 hour TTL)\n";
-
-		// Log Retention
-		echo "<h3>Log Management</h3>\n";
-		update_option('aips_log_retention_days', 60);
-		echo "✓ Set log retention: 60 days\n";
-
-		// Default Post Settings
-		echo "<h3>Default Post Settings</h3>\n";
-		update_option('aips_default_post_status', 'draft');
-		echo "✓ Set default post status: draft\n";
-		
 		$categories = $this->get_created_categories_by_name();
-		if (isset($categories['Backend Development'])) {
-			update_option('aips_default_category', $categories['Backend Development']);
-			echo "✓ Set default category: Backend Development (ID: {$categories['Backend Development']})\n";
-		}
-		
-		update_option('aips_default_post_author', 1);
-		echo "✓ Set default post author: 1 (admin)\n";
 
-		echo "✓ All plugin settings configured for production\n";
+		foreach ($settings as $section) {
+			$title = isset($section['title']) ? $section['title'] : 'Settings';
+			echo "<h3>" . esc_html($title) . "</h3>\n";
+
+			if (empty($section['options']) || !is_array($section['options'])) {
+				continue;
+			}
+
+			foreach ($section['options'] as $entry) {
+				$expected_value = $this->resolve_setting_entry_value($entry, $structures, $categories);
+				$label = $this->get_setting_entry_label($entry);
+				$warning_message = isset($entry['warning_message']) ? $entry['warning_message'] : '';
+
+				if ($expected_value === null) {
+					$this->report_status(false, 'Skipped ' . $label . ' because the configured source value could not be resolved');
+					continue;
+				}
+
+				$current_value = $this->update_option_and_return($entry['option_name'], $expected_value);
+				$is_saved = $this->values_match($expected_value, $current_value);
+
+				$this->report_status(
+					$is_saved,
+					'Set ' . $label . ' = <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+				);
+
+				if (!$is_saved) {
+					$this->report_status(
+						false,
+						'Expected <code>' . esc_html($this->format_summary_value($expected_value)) . '</code> but found <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+					);
+				}
+
+				if ($warning_message !== '') {
+					$this->report_status(false, esc_html($warning_message));
+				}
+			}
+		}
+
+		$this->report_status(true, 'All plugin settings configured for production');
 	}
 
 	private function create_categories() {
 		echo "<h2>Step 1: Creating Categories</h2>\n";
 
-		$categories = array(
+		foreach ($this->object_data['categories'] as $cat_data) {
+			$existing = term_exists($cat_data['slug'], 'category');
+			if (!$existing) {
+				$result = wp_insert_term($cat_data['name'], 'category', array(
+					'slug' => $cat_data['slug'],
+					'description' => $cat_data['description'],
+				));
+
+				if (!is_wp_error($result)) {
+					$this->created_items['categories'][] = array('id' => $result['term_id'], 'name' => $cat_data['name']);
+					echo "[OK] Created category: {$cat_data['name']}\n";
+				} else {
+					$this->errors[] = "Failed to create category: {$cat_data['name']} - " . $result->get_error_message();
+					echo "[ERR] Failed: {$cat_data['name']}\n";
+				}
+			} else {
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$this->created_items['categories'][] = array('id' => $term_id, 'name' => $cat_data['name']);
+				echo "[INFO] Category exists: {$cat_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_voices() {
+		echo "<h2>Step 3: Creating Voices</h2>\n";
+
+		$voices_repo = new AIPS_Voices_Repository();
+		$voices = $this->object_data['voices'];
+		$existing_voices = array();
+
+		foreach ($voices_repo->get_all() as $existing_voice) {
+			if (!empty($existing_voice->name) && !empty($existing_voice->id)) {
+				$existing_voices[(string) $existing_voice->name] = (int) $existing_voice->id;
+			}
+		}
+
+		foreach ($voices as $voice_data) {
+			if (isset($existing_voices[$voice_data['name']])) {
+				$voice_id = $existing_voices[$voice_data['name']];
+				$voices_repo->update($voice_id, $voice_data);
+				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
+				echo "[INFO] Voice exists, updated: {$voice_data['name']}\n";
+				continue;
+			}
+
+			$voice_id = $voices_repo->create($voice_data);
+			if ($voice_id) {
+				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
+				echo "[OK] Created voice: {$voice_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create voice: {$voice_data['name']}";
+				echo "[ERR] Failed: {$voice_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_article_structures() {
+		echo "<h2>Step 4: Creating Article Structures</h2>\n";
+
+		$structure_repo = new AIPS_Article_Structure_Repository();
+		$section_repo = new AIPS_Prompt_Section_Repository();
+
+		foreach ($this->object_data['sections'] as $section_data) {
+			$existing = $section_repo->get_by_key($section_data['section_key']);
+			if (!$existing) {
+				$section_id = $section_repo->create($section_data);
+				if ($section_id) {
+					echo "[OK] Created section: {$section_data['name']}\n";
+				}
+			}
+		}
+
+		$existing_structures = array();
+		foreach ($structure_repo->get_all() as $existing_structure) {
+			if (!empty($existing_structure->name) && !empty($existing_structure->id)) {
+				$existing_structures[(string) $existing_structure->name] = (int) $existing_structure->id;
+			}
+		}
+
+		foreach ($this->object_data['structures'] as $structure_data) {
+			$structure_json = wp_json_encode(array(
+				'sections' => $structure_data['sections'],
+				'prompt_template' => '',
+			));
+
+			$structure_payload = array(
+				'name' => $structure_data['name'],
+				'description' => $structure_data['description'],
+				'structure_data' => $structure_json,
+				'is_active' => 1,
+			);
+
+			if (isset($existing_structures[$structure_data['name']])) {
+				$structure_id = $existing_structures[$structure_data['name']];
+				$structure_repo->update($structure_id, $structure_payload);
+				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
+				echo "[INFO] Structure exists, updated: {$structure_data['name']}\n";
+				continue;
+			}
+
+			$structure_id = $structure_repo->create($structure_payload);
+			if ($structure_id) {
+				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
+				echo "[OK] Created structure: {$structure_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
+				echo "[ERR] Failed: {$structure_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_authors() {
+		echo "<h2>Step 5: Creating Authors</h2>\n";
+
+		$authors_repo = new AIPS_Authors_Repository();
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$source_groups = $this->get_created_source_groups_by_name();
+		$interval_calc = AIPS_Interval_Calculator::instance();
+		$now = AIPS_DateTime::now()->timestamp();
+		$existing_authors = array();
+
+		foreach ($authors_repo->get_all() as $existing_author) {
+			if (!empty($existing_author->name) && !empty($existing_author->id)) {
+				$existing_authors[(string) $existing_author->name] = (int) $existing_author->id;
+			}
+		}
+
+		foreach ($this->object_data['authors'] as $author_data) {
+			$structure_id = isset($structures[$author_data['structure_name']]) ? $structures[$author_data['structure_name']] : null;
+			$post_category = isset($categories[$author_data['category_name']]) ? $categories[$author_data['category_name']] : 0;
+			$source_group_ids = array();
+			if (isset($author_data['source_group_name'], $source_groups[$author_data['source_group_name']])) {
+				$source_group_ids[] = $source_groups[$author_data['source_group_name']];
+			}
+
+			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now);
+			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now);
+
+			$author_payload = array(
+				'name' => $author_data['name'],
+				'field_niche' => $author_data['field_niche'],
+				'keywords' => $author_data['keywords'],
+				'description' => $author_data['description'],
+				'details' => $author_data['details'],
+				'article_structure_id' => $structure_id,
+				'voice_tone' => $author_data['voice_tone'],
+				'writing_style' => $author_data['writing_style'],
+				'target_audience' => $author_data['target_audience'],
+				'expertise_level' => $author_data['expertise_level'],
+				'content_goals' => $author_data['content_goals'],
+				'excluded_topics' => $author_data['excluded_topics'],
+				'preferred_content_length' => $author_data['preferred_content_length'],
+				'language' => 'en',
+				'post_status' => 'draft',
+				'post_category' => $post_category,
+				'post_author' => (get_current_user_id() > 0) ? get_current_user_id() : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author'),
+				'featured_image_source' => 'ai_prompt',
+				'topic_generation_frequency' => $author_data['topic_generation_frequency'],
+				'topic_generation_quantity' => $author_data['topic_generation_quantity'],
+				'topic_generation_next_run' => $topic_next_run,
+				'topic_generation_last_run' => 0,
+				'topic_generation_is_active' => 1,
+				'post_generation_frequency' => $author_data['post_generation_frequency'],
+				'post_generation_next_run' => $post_next_run,
+				'post_generation_last_run' => 0,
+				'post_generation_is_active' => 1,
+				'max_posts_per_topic' => $author_data['max_posts_per_topic'],
+				'manual_post_generation_quantity' => $author_data['manual_post_generation_quantity'],
+				'scheduled_post_generation_quantity' => $author_data['scheduled_post_generation_quantity'],
+				'include_sources' => isset($author_data['include_sources']) ? $author_data['include_sources'] : 0,
+				'source_group_ids' => wp_json_encode($source_group_ids),
+				'is_active' => $author_data['is_active'],
+				'created_at' => $now,
+				'updated_at' => $now,
+			);
+
+			if (isset($existing_authors[$author_data['name']])) {
+				$author_id = $existing_authors[$author_data['name']];
+				unset($author_payload['created_at']);
+				$updated = $authors_repo->update($author_id, $author_payload);
+
+				if ($updated !== false) {
+					$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
+					echo "[INFO] Author exists, updated: {$author_data['name']}\n";
+					continue;
+				}
+
+				$this->errors[] = "Failed to update author: {$author_data['name']}";
+				echo "[ERR] Failed to update author: {$author_data['name']}\n";
+				continue;
+			}
+
+			$author_id = $authors_repo->create($author_payload);
+
+			if ($author_id) {
+				$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
+				echo "[OK] Created author: {$author_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create author: {$author_data['name']}";
+				echo "[ERR] Failed: {$author_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_post_slices() {
+		echo "<h2>Step 6: Creating Post Slices</h2>\n";
+
+		$slices_repo = new AIPS_Post_Slices_Repository();
+		$now = AIPS_DateTime::now()->timestamp();
+
+		foreach ($this->object_data['post_slices'] as $slice_data) {
+			$slice_id = $slices_repo->create(array(
+				'name' => $slice_data['name'],
+				'description' => $slice_data['description'],
+				'sort_order' => $slice_data['sort_order'],
+				'is_active' => $slice_data['is_active'],
+				'created_at' => $now,
+				'updated_at' => $now,
+			));
+
+			if ($slice_id) {
+				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
+				echo "[OK] Created post slice: {$slice_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create post slice: {$slice_data['name']}";
+				echo "[ERR] Failed: {$slice_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_source_groups() {
+		echo "<h2>Step 7: Creating Source Groups and Sources</h2>\n";
+
+		$sources_repo = new AIPS_Sources_Repository();
+		$group_ids = array();
+
+		foreach ($this->object_data['source_groups'] as $group_data) {
+			$existing = term_exists($group_data['slug'], 'aips_source_group');
+			if (!$existing) {
+				$result = wp_insert_term($group_data['name'], 'aips_source_group', array(
+					'slug' => $group_data['slug'],
+					'description' => $group_data['description'],
+				));
+
+				if (!is_wp_error($result)) {
+					$group_ids[$group_data['slug']] = $result['term_id'];
+					$this->created_items['source_groups'][] = array('id' => $result['term_id'], 'name' => $group_data['name']);
+					echo "[OK] Created source group: {$group_data['name']}\n";
+				}
+			} else {
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$group_ids[$group_data['slug']] = $term_id;
+				$this->created_items['source_groups'][] = array('id' => $term_id, 'name' => $group_data['name']);
+				echo "[INFO] Source group exists: {$group_data['name']}\n";
+			}
+		}
+
+		foreach ($this->object_data['sources'] as $source_data) {
+			if (!isset($group_ids[$source_data['group_slug']])) {
+				continue;
+			}
+
+			if ($sources_repo->url_exists($source_data['url'])) {
+				echo "  [INFO] Source exists (URL): {$source_data['name']}\n";
+				continue;
+			}
+
+			$source_id = $sources_repo->create(array(
+				'url' => $source_data['url'],
+				'label' => $source_data['name'],
+				'is_active' => $source_data['is_active'],
+			));
+
+			if ($source_id) {
+				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
+				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
+				echo "[OK] Created source: {$source_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create source: {$source_data['name']}";
+				echo "[ERR] Failed: {$source_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_campaigns() {
+		echo "<h2>Step 8: Creating Campaigns</h2>\n";
+
+		$campaigns_repo = new AIPS_Campaigns_Repository();
+		$existing_campaigns = array();
+
+		foreach ($campaigns_repo->get_campaigns(null, null) as $existing_campaign) {
+			if (!empty($existing_campaign->name) && !empty($existing_campaign->id)) {
+				$existing_campaigns[(string) $existing_campaign->name] = (int) $existing_campaign->id;
+			}
+		}
+
+		foreach ($this->object_data['campaigns'] as $campaign_data) {
+			$campaign_id = 0;
+
+			if (isset($existing_campaigns[$campaign_data['name']])) {
+				$campaign_id = (int) $existing_campaigns[$campaign_data['name']];
+				$updated = $campaigns_repo->update_campaign($campaign_id, array(
+					'content_goal' => $campaign_data['content_goal'],
+					'campaign_mode' => 'template',
+					'is_active' => 1,
+					'is_archived' => 0,
+				));
+
+				if (is_wp_error($updated)) {
+					$this->errors[] = "Failed to update campaign: {$campaign_data['name']}";
+					echo "[ERR] Failed to update campaign: {$campaign_data['name']}\n";
+					continue;
+				}
+
+				echo "[INFO] Campaign exists, updated: {$campaign_data['name']}\n";
+			} else {
+				$campaign_id = $campaigns_repo->create_campaign(array(
+					'name' => $campaign_data['name'],
+					'content_goal' => $campaign_data['content_goal'],
+					'campaign_mode' => 'template',
+					'is_active' => 1,
+					'is_archived' => 0,
+				));
+			}
+
+			if ($campaign_id) {
+				$this->created_items['campaigns'][] = array('id' => $campaign_id, 'name' => $campaign_data['name']);
+				if (!isset($existing_campaigns[$campaign_data['name']])) {
+					echo "[OK] Created campaign: {$campaign_data['name']}\n";
+				}
+
+				echo "  Topics to assign:\n";
+				$topics_array = explode("\n", $campaign_data['topics']);
+				foreach (array_slice($topics_array, 0, 3) as $topic) {
+					echo "    - {$topic}\n";
+				}
+				echo "    ... and " . (count($topics_array) - 3) . " more\n";
+			} else {
+				$this->errors[] = "Failed to create campaign: {$campaign_data['name']}";
+				echo "[ERR] Failed: {$campaign_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_templates() {
+		echo "<h2>Step 9: Creating Templates</h2>\n";
+
+		$template_repo = new AIPS_Template_Repository();
+		$voices = $this->get_created_voices_by_name();
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$source_groups = $this->get_created_source_groups_by_name();
+		$campaigns = $this->get_created_campaigns_by_name();
+		$default_post_author = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author');
+		$current_user_id = (int) get_current_user_id();
+		$post_author = $current_user_id > 0 ? $current_user_id : $default_post_author;
+		$existing_templates = array();
+
+		foreach ($template_repo->get_all() as $existing_template) {
+			if (!empty($existing_template->name) && !empty($existing_template->id)) {
+				$existing_templates[(string) $existing_template->name] = (int) $existing_template->id;
+			}
+		}
+
+		foreach ($this->object_data['templates'] as $template_data) {
+			$voice_id = isset($voices[$template_data['voice_name']]) ? $voices[$template_data['voice_name']] : null;
+			$structure_id = isset($structures[$template_data['structure_name']]) ? $structures[$template_data['structure_name']] : null;
+			$campaign_id = isset($template_data['campaign_name'], $campaigns[$template_data['campaign_name']]) ? $campaigns[$template_data['campaign_name']] : 0;
+
+			if (empty($campaign_id)) {
+				$this->errors[] = "Campaign not found for template: {$template_data['name']} ({$template_data['campaign_name']})";
+				echo "[ERR] Campaign not found for template: {$template_data['name']}\n";
+				continue;
+			}
+
+			$category_ids = array();
+			if (isset($template_data['categories'])) {
+				foreach ($template_data['categories'] as $cat_name) {
+					if (isset($categories[$cat_name])) {
+						$category_ids[] = $categories[$cat_name];
+					}
+				}
+			}
+
+			$source_group_ids = array();
+			if (isset($template_data['source_group']) && isset($source_groups[$template_data['source_group']])) {
+				$source_group_ids[] = $source_groups[$template_data['source_group']];
+			}
+
+			$template_payload = array(
+				'name' => $template_data['name'],
+				'prompt_template' => $template_data['prompt_template'],
+				'title_prompt' => 'Generate a concise, specific, SEO-friendly technical post title for this topic.',
+				'voice_id' => $voice_id,
+				'article_structure_id' => $structure_id,
+				'post_quantity' => isset($template_data['post_quantity']) ? $template_data['post_quantity'] : 1,
+				'post_status' => 'draft',
+				'post_type' => 'post',
+				'post_category' => !empty($category_ids) ? $category_ids[0] : 0,
+				'post_tags' => isset($template_data['post_tags']) ? $template_data['post_tags'] : '',
+				'post_author' => $post_author,
+				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
+				'featured_image_source' => isset($template_data['featured_image_source']) ? $template_data['featured_image_source'] : 'ai_prompt',
+				'image_prompt' => isset($template_data['image_prompt']) ? $template_data['image_prompt'] : '',
+				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
+				'include_sources' => isset($template_data['include_sources']) ? (int) $template_data['include_sources'] : 0,
+				'source_group_ids' => wp_json_encode($source_group_ids),
+				'campaign_id' => $campaign_id,
+				'is_active' => 1,
+			);
+
+			if (isset($existing_templates[$template_data['name']])) {
+				$template_id = $existing_templates[$template_data['name']];
+				$template_repo->update($template_id, $template_payload);
+				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
+				echo "[INFO] Template exists, updated: {$template_data['name']}\n";
+				continue;
+			}
+
+			$template_id = $template_repo->create($template_payload);
+			if ($template_id) {
+				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
+				echo "[OK] Created template: {$template_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create template: {$template_data['name']}";
+				echo "[ERR] Failed: {$template_data['name']}\n";
+			}
+		}
+	}
+
+	private function create_schedules() {
+		echo "<h2>Step 10: Creating Schedules</h2>\n";
+
+		$schedule_repo = new AIPS_Schedule_Repository();
+		$templates = $this->get_created_templates_by_name();
+
+		foreach ($this->object_data['schedules'] as $schedule_data) {
+			if (!isset($templates[$schedule_data['template_name']])) {
+				$this->errors[] = "Template not found for schedule: {$schedule_data['title']}";
+				echo "[ERR] Template not found: {$schedule_data['template_name']}\n";
+				continue;
+			}
+
+			$template_id = $templates[$schedule_data['template_name']];
+			$next_run = $this->get_next_weekday_timestamp(
+				isset($schedule_data['weekday']) ? (int) $schedule_data['weekday'] : 1,
+				$schedule_data['start_time']
+			);
+
+			$schedule_id = $schedule_repo->create(array(
+				'template_id' => $template_id,
+				'title' => $schedule_data['title'],
+				'frequency' => $schedule_data['frequency'],
+				'next_run' => $next_run,
+				'last_run' => 0,
+				'is_active' => $schedule_data['is_active'],
+				'status' => 'active',
+				'schedule_type' => 'post_generation',
+			));
+
+			if ($schedule_id) {
+				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
+				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
+				echo "[OK] Created schedule: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
+			} else {
+				$this->errors[] = "Failed to create schedule: {$schedule_data['title']}";
+				echo "[ERR] Failed: {$schedule_data['title']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Calculate the timestamp for the next occurrence of a specific weekday and time.
+	 * 
+	 * @param int $iso_weekday 1 (Monday) to 7 (Sunday)
+	 * @param string $time_hhmm Time in "HH:MM" format (24-hour)
+	 * 
+	 * @return int Unix timestamp for the next occurrence of that weekday and time, relative to the current time in the site's timezone.
+	 */
+	private function get_next_weekday_timestamp($iso_weekday, $time_hhmm) {
+		$iso_weekday = max(1, min(7, (int) $iso_weekday));
+		$time_hhmm = preg_match('/^\d{2}:\d{2}$/', (string) $time_hhmm) ? (string) $time_hhmm : '09:00';
+
+		$site_tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone(get_option('timezone_string') ?: 'UTC');
+		$now = new DateTimeImmutable('now', $site_tz);
+
+		$days_ahead = $iso_weekday - (int) $now->format('N');
+		if ($days_ahead < 0) {
+			$days_ahead += 7;
+		}
+
+		$candidate = $now->modify('+' . $days_ahead . ' days')->setTime((int) substr($time_hhmm, 0, 2), (int) substr($time_hhmm, 3, 2));
+
+		if ($candidate->getTimestamp() <= $now->getTimestamp()) {
+			$candidate = $candidate->modify('+7 days');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	private function get_settings_seed_data() {
+		return array(
+			'content_strategy' => array(
+				'title' => 'Content Strategy',
+				'options' => array(
+					array(
+						'option_name' => 'aips_site_niche',
+						'value' => 'Full-Stack Software Development, Web Architecture',
+					),
+					array(
+						'option_name' => 'aips_site_target_audience',
+						'value' => 'Professional Software Engineers, Web Developers (Mid to Senior Level)',
+					),
+					array(
+						'option_name' => 'aips_site_content_goals',
+						'value' => 'Provide authoritative technical deep-dives, establish industry credibility, drive affiliate revenue via trusted/actionable recommendations, and rank for high-value "how-to" and "best practice" keywords.',
+					),
+					array(
+						'option_name' => 'aips_site_brand_voice',
+						'value' => 'Authoritative yet approachable, Professional, expert-level',
+					),
+					array(
+						'option_name' => 'aips_site_content_language',
+						'value' => 'en',
+					),
+					array(
+						'option_name' => 'aips_site_content_guidelines',
+						'value' => 'Minimum 5-10 paragraphs depending on topic. Use H2/H3 hierarchy. Mandatory: brief hyperlinked a "Sources" section. Break code into small, explained chunks. Security focus. Always emphasize "real-world" patterns.',
+					),
+					array(
+						'option_name' => 'aips_site_excluded_topics',
+						'value' => 'Politics, religion, celebrity gossip, gambling, adult content, clickbait/listicles with no technical depth ("get rich quick" schemes, unverified rumors/hacks about hardware, non-technical software (e.g., Word/Excel), and general consumer electronics reviews.',
+					),
+				),
+			),
+			'resilience_settings' => array(
+				'title' => 'Resilience & Limits (Production Settings)',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_retry',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_retry_max_attempts',
+						'value' => 3,
+					),
+					array(
+						'option_name' => 'aips_retry_initial_delay',
+						'value' => 2,
+					),
+					array(
+						'option_name' => 'aips_enable_rate_limiting',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_rate_limit_requests',
+						'value' => 20,
+					),
+					array(
+						'option_name' => 'aips_rate_limit_period',
+						'value' => 60,
+					),
+					array(
+						'option_name' => 'aips_enable_circuit_breaker',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_circuit_breaker_threshold',
+						'value' => 5,
+					),
+					array(
+						'option_name' => 'aips_circuit_breaker_timeout',
+						'value' => 300,
+					),
+				),
+			),
+			'default_article_structure' => array(
+				'title' => 'Default Article Structure',
+				'options' => array(
+					array(
+						'option_name' => 'aips_default_article_structure_id',
+						'structure_name' => 'Evergreen How-To Guide',
+						'label' => 'default article structure: Evergreen How-To Guide',
+					),
+				),
+			),
+			'notification_preferences' => array(
+				'title' => 'Notification Preferences',
+				'options' => array(
+					array(
+						'option_name' => 'aips_review_notifications_email',
+						'value' => '',
+						'warning_message' => 'Please add notification email in Settings > Notifications',
+					),
+					array(
+						'option_name' => 'aips_notification_preferences',
+						'value' => array(
+							'generation_failed' => 'email',
+							'quota_alert' => 'email',
+							'post_ready_for_review' => 'both',
+							'template_generated' => 'db',
+							'manual_generation_completed' => 'db',
+							'partial_generation_completed' => 'both',
+							'author_topics_generated' => 'db',
+							'author_topics_failed' => 'email',
+							'author_posts_generated' => 'db',
+							'author_posts_failed' => 'email',
+							'bulk_batch_completed' => 'db',
+							'errors' => 'email',
+							'daily_digest' => 'email',
+							'weekly_digest' => 'email',
+							'monthly_digest' => 'email',
+						),
+					),
+				),
+			),
+			'research_and_discovery' => array(
+				'title' => 'Research & Discovery',
+				'options' => array(
+					array(
+						'option_name' => 'aips_research_niches',
+						'value' => array(
+							'PHP and Backend Development Trends',
+							'Application Security and Vulnerability Prevention',
+							'Modern Framework Comparisons (Laravel, Symfony, etc.)',
+							'DevOps Tools and Automation',
+							'AI Tools for Developers',
+							'Database Optimization and Best Practices',
+							'Software Architecture Patterns',
+							'API Design and Integration',
+						),
+					),
+					array(
+						'option_name' => 'aips_topic_similarity_threshold',
+						'value' => 0.75,
+					),
+				),
+			),
+			'featured_images' => array(
+				'title' => 'Featured Images',
+				'options' => array(
+					array(
+						'option_name' => 'aips_unsplash_access_key',
+						'value' => '',
+						'warning_message' => 'Please add Unsplash Access Key in Settings if using Unsplash images',
+					),
+				),
+			),
+			'performance_monitoring' => array(
+				'title' => 'Performance Monitoring',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_telemetry',
+						'value' => true,
+					),
+				),
+			),
+			'cache_configuration' => array(
+				'title' => 'Cache Configuration',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_cache_system',
+						'value' => false,
+					),
+				),
+			),
+			'log_management' => array(
+				'title' => 'Log Management',
+				'options' => array(
+					array(
+						'option_name' => 'aips_log_retention_days',
+						'value' => 60,
+					),
+				),
+			),
+			'default_post_settings' => array(
+				'title' => 'Default Post Settings',
+				'options' => array(
+					array(
+						'option_name' => 'aips_default_post_status',
+						'value' => 'draft',
+					),
+					array(
+						'option_name' => 'aips_default_category',
+						'category_name' => 'Backend Development',
+						'label' => 'default category: Backend Development',
+					),
+					array(
+						'option_name' => 'aips_default_post_author',
+						'value' => 1,
+					),
+				),
+			),
+		);
+	}
+
+	private function get_category_seed_data() {
+		return array(
 			array(
 				'name' => 'Backend Development',
 				'slug' => 'backend-development',
@@ -265,64 +1108,37 @@ class AIPS_DevStackTips_Setup {
 				'description' => 'SQL, database design, optimization, and management',
 			),
 		);
-
-		foreach ($categories as $cat_data) {
-			$existing = term_exists($cat_data['slug'], 'category');
-			if (!$existing) {
-				$result = wp_insert_term($cat_data['name'], 'category', array(
-					'slug' => $cat_data['slug'],
-					'description' => $cat_data['description'],
-				));
-
-				if (!is_wp_error($result)) {
-					$this->created_items['categories'][] = array('id' => $result['term_id'], 'name' => $cat_data['name']);
-					echo "✓ Created category: {$cat_data['name']}\n";
-				} else {
-					$this->errors[] = "Failed to create category: {$cat_data['name']} - " . $result->get_error_message();
-					echo "✗ Failed: {$cat_data['name']}\n";
-				}
-			} else {
-				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
-				$this->created_items['categories'][] = array('id' => $term_id, 'name' => $cat_data['name']);
-				echo "• Category exists: {$cat_data['name']}\n";
-			}
-		}
 	}
 
-	private function create_voices() {
-		echo "<h2>Step 3: Creating Voices</h2>\n";
-
-		$voices_repo = new AIPS_Voices_Repository();
-
-		$voices = array(
+	private function get_voice_seed_data() {
+		return array(
 			array(
 				'name' => 'DevStackTips Default',
 				'title_prompt' => 'Create a clear, technical, and specific title for this topic. Avoid generic phrases like "ultimate guide" or "everything you need to know". Make it actionable and developer-focused.',
-				'content_instructions' => 'You are writing for software developers and technical readers on DevStackTips, a practical developer resource site.
+				'content_instructions' => ['You are writing for software developers and technical readers on DevStackTips, a practical developer resource site.',
+					'Writing style:',
+					'- Be clear and concrete',
+					'- Use short paragraphs and informative headings',
+					'- Prefer practical examples over abstract explanations',
+					'- Be technically confident but not arrogant',
+					'- Avoid hype, filler, and exaggerated claims',
+					'- Never mention being an AI',
+					'- Do not use phrases like "ultimate guide" or "game-changing"',
+					'Content approach:',
+					'- Focus on what developers need to know',
+					'- Include code examples where relevant',
+					'- Explain the "why" behind recommendations',
+					'- Be honest about tradeoffs and limitations',
+					'- Use active voice',
+					'- Keep intros brief and get to the point quickly',
 
-Writing style:
-- Be clear and concrete
-- Use short paragraphs and informative headings
-- Prefer practical examples over abstract explanations
-- Be technically confident but not arrogant
-- Avoid hype, filler, and exaggerated claims
-- Never mention being an AI
-- Do not use phrases like "ultimate guide" or "game-changing"
-
-Content approach:
-- Focus on what developers need to know
-- Include code examples where relevant
-- Explain the "why" behind recommendations
-- Be honest about tradeoffs and limitations
-- Use active voice
-- Keep intros brief and get to the point quickly
-
-Avoid:
-- Marketing language or sales pitches
-- Generic filler sentences
-- Inventing statistics or benchmarks
-- Making version-specific claims without verification
-- Overly broad generalizations',
+					'Avoid:',
+					'- Marketing language or sales pitches',
+					'- Generic filler sentences',
+					'- Inventing statistics or benchmarks',
+					'- Making version-specific claims without verification',
+					'- Overly broad generalizations',
+				],
 				'excerpt_instructions' => 'Write a concise 1-2 sentence summary that captures the core value for developers.',
 				'is_active' => 1,
 			),
@@ -331,32 +1147,32 @@ Avoid:
 				'title_prompt' => 'Create a title that emphasizes the architectural or design aspect. Use terms like "patterns", "strategies", "best practices", or "architecture".',
 				'content_instructions' => 'You are a senior backend engineer mentoring developers through DevStackTips.
 
-Writing approach:
-- Explain not just what to do, but WHY
-- Highlight tradeoffs, limitations, and common mistakes
-- Emphasize maintainability, reliability, and security
-- Share practical wisdom from real-world experience
-- Be opinionated but fair
+				Writing approach:
+				- Explain not just what to do, but WHY
+				- Highlight tradeoffs, limitations, and common mistakes
+				- Emphasize maintainability, reliability, and security
+				- Share practical wisdom from real-world experience
+				- Be opinionated but fair
 
-Content structure:
-- Start with the problem or context
-- Explain the reasoning behind solutions
-- Include "when to use" and "when NOT to use" guidance
-- Point out anti-patterns and pitfalls
-- Focus on long-term consequences of design decisions
+				Content structure:
+				- Start with the problem or context
+				- Explain the reasoning behind solutions
+				- Include "when to use" and "when NOT to use" guidance
+				- Point out anti-patterns and pitfalls
+				- Focus on long-term consequences of design decisions
 
-Technical depth:
-- Assume intermediate to advanced knowledge
-- Use precise technical terminology
-- Explain edge cases and failure scenarios
-- Discuss performance and security implications
-- Reference architectural principles when relevant
+				Technical depth:
+				- Assume intermediate to advanced knowledge
+				- Use precise technical terminology
+				- Explain edge cases and failure scenarios
+				- Discuss performance and security implications
+				- Reference architectural principles when relevant
 
-Avoid:
-- Oversimplifying complex topics
-- Presenting one approach as universally correct
-- Ignoring operational concerns
-- Theoretical-only advice without practical application',
+				Avoid:
+				- Oversimplifying complex topics
+				- Presenting one approach as universally correct
+				- Ignoring operational concerns
+				- Theoretical-only advice without practical application',
 				'excerpt_instructions' => 'Highlight the key architectural insight or tradeoff discussed.',
 				'is_active' => 1,
 			),
@@ -365,34 +1181,34 @@ Avoid:
 				'title_prompt' => 'Create a "How to..." title that clearly states what the reader will accomplish. Be specific about the outcome.',
 				'content_instructions' => 'You are a patient, practical tutorial instructor helping developers learn by doing.
 
-Teaching style:
-- Break complex tasks into clear sequential steps
-- Assume readers want to apply this immediately
-- Be encouraging without being condescending
-- Explain each step\'s purpose
-- Anticipate where learners might get stuck
+				Teaching style:
+				- Break complex tasks into clear sequential steps
+				- Assume readers want to apply this immediately
+				- Be encouraging without being condescending
+				- Explain each step\'s purpose
+				- Anticipate where learners might get stuck
 
-Content structure:
-- Start with what the reader will build/learn
-- List prerequisites clearly
-- Number steps sequentially
-- Include validation checkpoints
-- Show expected output at each stage
-- Provide troubleshooting tips
+				Content structure:
+				- Start with what the reader will build/learn
+				- List prerequisites clearly
+				- Number steps sequentially
+				- Include validation checkpoints
+				- Show expected output at each stage
+				- Provide troubleshooting tips
 
-Code and examples:
-- Include complete, working code samples
-- Explain what each code block does
-- Use comments in code where helpful
-- Show before/after comparisons
-- Provide copy-paste ready snippets
+				Code and examples:
+				- Include complete, working code samples
+				- Explain what each code block does
+				- Use comments in code where helpful
+				- Show before/after comparisons
+				- Provide copy-paste ready snippets
 
-Tone:
-- Friendly and approachable
-- Direct and action-oriented
-- Patient with beginners
-- Practical over theoretical
-- Focus on getting it working first, optimization second',
+				Tone:
+				- Friendly and approachable
+				- Direct and action-oriented
+				- Patient with beginners
+				- Practical over theoretical
+				- Focus on getting it working first, optimization second',
 				'excerpt_instructions' => 'Describe what the reader will be able to do after following this tutorial.',
 				'is_active' => 1,
 			),
@@ -401,33 +1217,33 @@ Tone:
 				'title_prompt' => 'Create a balanced comparison title using "vs" or "Comparing". Avoid suggesting one option is superior.',
 				'content_instructions' => 'You are an objective technical analyst comparing tools, frameworks, and approaches for developers.
 
-Comparison approach:
-- Present options fairly and without bias
-- Acknowledge that different contexts require different solutions
-- Use structured comparison frameworks
-- Focus on objective criteria
-- Avoid declaring universal winners
+					Comparison approach:
+					- Present options fairly and without bias
+					- Acknowledge that different contexts require different solutions
+					- Use structured comparison frameworks
+					- Focus on objective criteria
+					- Avoid declaring universal winners
 
-Content structure:
-- Start with clear comparison criteria
-- Present strengths and weaknesses of each option
-- Include comparison tables where appropriate
-- Discuss ideal use cases for each
-- Address migration/switching considerations
+					Content structure:
+					- Start with clear comparison criteria
+					- Present strengths and weaknesses of each option
+					- Include comparison tables where appropriate
+					- Discuss ideal use cases for each
+					- Address migration/switching considerations
 
-Analysis style:
-- Evidence-based over opinion-based
-- Acknowledge trade-offs explicitly
-- Consider multiple perspectives
-- Discuss real-world constraints
-- Address both technical and practical factors
+					Analysis style:
+					- Evidence-based over opinion-based
+					- Acknowledge trade-offs explicitly
+					- Consider multiple perspectives
+					- Discuss real-world constraints
+					- Address both technical and practical factors
 
-What to avoid:
-- Fanboy enthusiasm or bashing
-- Ignoring legitimate use cases
-- Outdated information presented as current
-- Oversimplifying nuanced differences
-- Personal preference disguised as objective analysis',
+					What to avoid:
+					- Fanboy enthusiasm or bashing
+					- Ignoring legitimate use cases
+					- Outdated information presented as current
+					- Oversimplifying nuanced differences
+					- Personal preference disguised as objective analysis',
 				'excerpt_instructions' => 'Summarize the key differences and when to choose each option.',
 				'is_active' => 1,
 			),
@@ -436,74 +1252,42 @@ What to avoid:
 				'title_prompt' => 'Create a title that addresses AI tools or workflows pragmatically. Include "for Developers" or "in Development" to keep focus practical.',
 				'content_instructions' => 'You are writing about AI tools and practices for developers, with both enthusiasm and appropriate caution.
 
-Content approach:
-- Avoid AI hype and exaggeration
-- Focus on practical developer use cases
-- Address accuracy, risks, and evaluation methods
-- Discuss governance and quality control
-- Balance opportunity with realistic limitations
+				Content approach:
+				- Avoid AI hype and exaggeration
+				- Focus on practical developer use cases
+				- Address accuracy, risks, and evaluation methods
+				- Discuss governance and quality control
+				- Balance opportunity with realistic limitations
 
-Technical coverage:
-- Explain how AI tools fit into developer workflows
-- Discuss prompt engineering practically
-- Cover evaluation and testing approaches
-- Address when NOT to use AI
-- Include human review checkpoints
+				Technical coverage:
+				- Explain how AI tools fit into developer workflows
+				- Discuss prompt engineering practically
+				- Cover evaluation and testing approaches
+				- Address when NOT to use AI
+				- Include human review checkpoints
 
-Tone:
-- Pragmatic and grounded
-- Current but not breathless
-- Honest about limitations
-- Security and quality conscious
-- Focus on sustainable practices
+				Tone:
+				- Pragmatic and grounded
+				- Current but not breathless
+				- Honest about limitations
+				- Security and quality conscious
+				- Focus on sustainable practices
 
-Critical areas to address:
-- Accuracy and hallucination risks
-- Code review requirements
-- Privacy and security implications
-- Cost considerations
-- When traditional approaches are better
-- Responsible AI practices',
+				Critical areas to address:
+				- Accuracy and hallucination risks
+				- Code review requirements
+				- Privacy and security implications
+				- Cost considerations
+				- When traditional approaches are better
+				- Responsible AI practices',
 				'excerpt_instructions' => 'Emphasize both the benefits and limitations of the AI approach discussed.',
 				'is_active' => 1,
 			),
 		);
-
-		$existing_voices = array();
-		foreach ($voices_repo->get_all() as $existing_voice) {
-			if (!empty($existing_voice->name) && !empty($existing_voice->id)) {
-				$existing_voices[(string) $existing_voice->name] = (int) $existing_voice->id;
-			}
-		}
-
-		foreach ($voices as $voice_data) {
-			if (isset($existing_voices[$voice_data['name']])) {
-				$voice_id = $existing_voices[$voice_data['name']];
-				$voices_repo->update($voice_id, $voice_data);
-				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
-				echo "• Voice exists, updated: {$voice_data['name']}\n";
-				continue;
-			}
-
-			$voice_id = $voices_repo->create($voice_data);
-			if ($voice_id) {
-				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
-				echo "✓ Created voice: {$voice_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create voice: {$voice_data['name']}";
-				echo "✗ Failed: {$voice_data['name']}\n";
-			}
-		}
 	}
 
-	private function create_article_structures() {
-		echo "<h2>Step 4: Creating Article Structures</h2>\n";
-
-		$structure_repo = new AIPS_Article_Structure_Repository();
-		$section_repo = new AIPS_Prompt_Section_Repository();
-
-		// Define reusable sections first
-		$sections = array(
+	private function get_section_seed_data() {
+		return array(
 			'introduction' => array(
 				'name' => 'Introduction',
 				'section_key' => 'introduction',
@@ -687,21 +1471,10 @@ Critical areas to address:
 				'is_active' => 1,
 			),
 		);
+	}
 
-		// Create sections
-		foreach ($sections as $key => $section_data) {
-			// Check if section already exists
-			$existing = $section_repo->get_by_key($section_data['section_key']);
-			if (!$existing) {
-				$section_id = $section_repo->create($section_data);
-				if ($section_id) {
-					echo "✓ Created section: {$section_data['name']}\n";
-				}
-			}
-		}
-
-		// Now create article structures
-		$structures = array(
+	private function get_structure_seed_data() {
+		return array(
 			array(
 				'name' => 'Evergreen How-To Guide',
 				'description' => 'For foundational tutorials and step-by-step guides',
@@ -743,63 +1516,9 @@ Critical areas to address:
 				'sections' => array('introduction', 'technical_context', 'use_cases', 'recommendation', 'conclusion'),
 			),
 		);
-
-		$existing_structures = array();
-		foreach ($structure_repo->get_all() as $existing_structure) {
-			if (!empty($existing_structure->name) && !empty($existing_structure->id)) {
-				$existing_structures[(string) $existing_structure->name] = (int) $existing_structure->id;
-			}
-		}
-
-		foreach ($structures as $structure_data) {
-			$structure_json = wp_json_encode(array(
-				'sections' => $structure_data['sections'],
-				'prompt_template' => '', // Structures handle this automatically
-			));
-
-			$structure_payload = array(
-				'name' => $structure_data['name'],
-				'description' => $structure_data['description'],
-				'structure_data' => $structure_json,
-				'is_active' => 1,
-			);
-
-			if (isset($existing_structures[$structure_data['name']])) {
-				$structure_id = $existing_structures[$structure_data['name']];
-				$structure_repo->update($structure_id, $structure_payload);
-				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
-				if ($structure_data['name'] === 'Evergreen How-To Guide') {
-					update_option('aips_default_article_structure_id', (int) $structure_id);
-				}
-				echo "• Structure exists, updated: {$structure_data['name']}\n";
-				continue;
-			}
-
-			$structure_id = $structure_repo->create($structure_payload);
-
-			if ($structure_id) {
-				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
-				if ($structure_data['name'] === 'Evergreen How-To Guide') {
-					update_option('aips_default_article_structure_id', (int) $structure_id);
-				}
-				echo "✓ Created structure: {$structure_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
-				echo "✗ Failed: {$structure_data['name']}\n";
-			}
-		}
 	}
 
-	private function create_authors() {
-		echo "<h2>Step 5: Creating Authors</h2>\n";
-
-		$authors_repo = new AIPS_Authors_Repository();
-		$voices = $this->get_created_voices_by_name();
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-		$source_groups = $this->get_created_source_groups_by_name();
-		$interval_calc = AIPS_Interval_Calculator::instance();
-
+	private function get_author_seed_data() {
 		$authors = array(
 			array(
 				'name' => 'Backend Architecture Specialist',
@@ -819,7 +1538,7 @@ Critical areas to address:
 				'category_name' => 'Backend Development',
 				'topic_generation_frequency' => 'weekly',
 				'topic_generation_quantity' => 5,
-				'post_generation_frequency' => 'daily',
+				'post_generation_frequency' => 'weekly',
 				'max_posts_per_topic' => 1,
 				'manual_post_generation_quantity' => 1,
 				'scheduled_post_generation_quantity' => 1,
@@ -844,7 +1563,7 @@ Critical areas to address:
 				'source_group_name' => 'Security News',
 				'topic_generation_frequency' => 'weekly',
 				'topic_generation_quantity' => 5,
-				'post_generation_frequency' => 'daily',
+				'post_generation_frequency' => 'weekly',
 				'max_posts_per_topic' => 1,
 				'manual_post_generation_quantity' => 1,
 				'scheduled_post_generation_quantity' => 1,
@@ -869,7 +1588,7 @@ Critical areas to address:
 				'category_name' => 'DevOps & Tools',
 				'topic_generation_frequency' => 'weekly',
 				'topic_generation_quantity' => 5,
-				'post_generation_frequency' => 'daily',
+				'post_generation_frequency' => 'weekly',
 				'max_posts_per_topic' => 1,
 				'manual_post_generation_quantity' => 1,
 				'scheduled_post_generation_quantity' => 1,
@@ -924,77 +1643,21 @@ Critical areas to address:
 				'is_active' => 1,
 			),
 		);
+		$post_targets = $this->get_author_post_targets();
 
-		$now = AIPS_DateTime::now()->timestamp();
-
-		foreach ($authors as $author_data) {
-			$structure_id = isset($structures[$author_data['structure_name']]) ? $structures[$author_data['structure_name']] : null;
-			$category_id = isset($author_data['category_name'], $categories[$author_data['category_name']]) ? $categories[$author_data['category_name']] : null;
-
-			// Get source group ID if specified
-			$source_group_ids = array();
-			if (isset($author_data['source_group_name'], $source_groups[$author_data['source_group_name']])) {
-				$source_group_ids[] = $source_groups[$author_data['source_group_name']];
-			}
-
-			// Calculate next run times
-			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now);
-			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now);
-
-			$author_id = $authors_repo->create(array(
-				'name' => $author_data['name'],
-				'field_niche' => $author_data['field_niche'],
-				'keywords' => $author_data['keywords'],
-				'description' => $author_data['description'],
-				'details' => $author_data['details'],
-				'article_structure_id' => $structure_id,
-				'voice_tone' => $author_data['voice_tone'],
-				'writing_style' => $author_data['writing_style'],
-				'target_audience' => $author_data['target_audience'],
-				'expertise_level' => $author_data['expertise_level'],
-				'content_goals' => $author_data['content_goals'],
-				'excluded_topics' => $author_data['excluded_topics'],
-				'preferred_content_length' => $author_data['preferred_content_length'],
-				'language' => 'en',
-				'post_status' => 'draft',
-				'post_author' => (get_current_user_id() > 0) ? get_current_user_id() : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author'),
-				'featured_image_source' => 'ai_prompt',
-				'topic_generation_frequency' => $author_data['topic_generation_frequency'],
-				'topic_generation_quantity' => $author_data['topic_generation_quantity'],
-				'topic_generation_next_run' => $topic_next_run,
-				'topic_generation_last_run' => 0,
-				'topic_generation_is_active' => 1,
-				'post_generation_frequency' => $author_data['post_generation_frequency'],
-				'post_generation_next_run' => $post_next_run,
-				'post_generation_last_run' => 0,
-				'post_generation_is_active' => 1,
-				'max_posts_per_topic' => $author_data['max_posts_per_topic'],
-				'manual_post_generation_quantity' => $author_data['manual_post_generation_quantity'],
-				'scheduled_post_generation_quantity' => $author_data['scheduled_post_generation_quantity'],
-				'include_sources' => isset($author_data['include_sources']) ? $author_data['include_sources'] : 0,
-				'source_group_ids' => wp_json_encode($source_group_ids),
-				'is_active' => $author_data['is_active'],
-				'created_at' => $now,
-				'updated_at' => $now,
-			));
-
-			if ($author_id) {
-				$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
-				echo "✓ Created author: {$author_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create author: {$author_data['name']}";
-				echo "✗ Failed: {$author_data['name']}\n";
-			}
+		foreach ($authors as &$author) {
+			$weekly_target = isset($post_targets[$author['name']]) ? (int) $post_targets[$author['name']] : 1;
+			$author['scheduled_post_generation_quantity'] = max(1, $weekly_target);
+			$author['topic_generation_quantity'] = max($author['scheduled_post_generation_quantity'], 5);
 		}
+
+		unset($author);
+
+		return $authors;
 	}
 
-	private function create_post_slices() {
-		echo "<h2>Step 6: Creating Post Slices</h2>\n";
-
-		$slices_repo = new AIPS_Post_Slices_Repository();
-		$now = AIPS_DateTime::now()->timestamp();
-
-		$slices = array(
+	private function get_post_slice_seed_data() {
+		return array(
 			array(
 				'name' => 'Developer Resources Footer',
 				'description' => 'Add an additional resources list and next-steps guidance for readers who want to keep learning and apply the topic in a small project.',
@@ -1020,34 +1683,10 @@ Critical areas to address:
 				'is_active' => 1,
 			),
 		);
-
-		foreach ($slices as $slice_data) {
-			$slice_id = $slices_repo->create(array(
-				'name' => $slice_data['name'],
-				'description' => $slice_data['description'],
-				'sort_order' => $slice_data['sort_order'],
-				'is_active' => $slice_data['is_active'],
-				'created_at' => $now,
-				'updated_at' => $now,
-			));
-
-			if ($slice_id) {
-				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
-				echo "✓ Created post slice: {$slice_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create post slice: {$slice_data['name']}";
-				echo "✗ Failed: {$slice_data['name']}\n";
-			}
-		}
 	}
 
-	private function create_source_groups() {
-		echo "<h2>Step 7: Creating Source Groups and Sources</h2>\n";
-
-		$sources_repo = new AIPS_Sources_Repository();
-
-		// Create source groups (taxonomy terms)
-		$groups = array(
+	private function get_source_group_seed_data() {
+		return array(
 			array(
 				'name' => 'Security News',
 				'slug' => 'security-news',
@@ -1059,32 +1698,10 @@ Critical areas to address:
 				'description' => 'PHP frameworks, libraries, and community updates',
 			),
 		);
+	}
 
-		$group_ids = array();
-		foreach ($groups as $group_data) {
-			$existing = term_exists($group_data['slug'], 'aips_source_group');
-			if (!$existing) {
-				$result = wp_insert_term($group_data['name'], 'aips_source_group', array(
-					'slug' => $group_data['slug'],
-					'description' => $group_data['description'],
-				));
-
-				if (!is_wp_error($result)) {
-					$group_ids[$group_data['slug']] = $result['term_id'];
-					$this->created_items['source_groups'][] = array('id' => $result['term_id'], 'name' => $group_data['name']);
-					echo "✓ Created source group: {$group_data['name']}\n";
-				}
-			} else {
-				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
-				$group_ids[$group_data['slug']] = $term_id;
-				$this->created_items['source_groups'][] = array('id' => $term_id, 'name' => $group_data['name']);
-				echo "• Source group exists: {$group_data['name']}\n";
-			}
-		}
-
-		// Create sources
-		$sources = array(
-			// Security News sources
+	private function get_source_seed_data() {
+		return array(
 			array(
 				'name' => 'OWASP Top 10',
 				'url' => 'https://owasp.org/www-project-top-ten/',
@@ -1106,7 +1723,6 @@ Critical areas to address:
 				'group_slug' => 'security-news',
 				'is_active' => 1,
 			),
-			// PHP Ecosystem sources
 			array(
 				'name' => 'PHP.Watch',
 				'url' => 'https://php.watch/feed',
@@ -1129,213 +1745,9 @@ Critical areas to address:
 				'is_active' => 1,
 			),
 		);
-
-		foreach ($sources as $source_data) {
-			if (!isset($group_ids[$source_data['group_slug']])) {
-				continue;
-			}
-
-			if ($sources_repo->url_exists($source_data['url'])) {
-				echo "  • Source exists (URL): {$source_data['name']}\n";
-				continue;
-			}
-
-			$source_id = $sources_repo->create(array(
-				'url' => $source_data['url'],
-				'label' => $source_data['name'],
-				'is_active' => $source_data['is_active'],
-			));
-
-			if ($source_id) {
-				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
-			}
-
-			if ($source_id) {
-				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
-				echo "  ✓ Created source: {$source_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create source: {$source_data['name']}";
-				echo "  ✗ Failed: {$source_data['name']}\n";
-			}
-		}
 	}
 
-	private function create_templates() {
-		echo "<h2>Step 8: Creating Templates</h2>\n";
-
-		$template_repo = new AIPS_Template_Repository();
-		
-		// Get voice IDs by name
-		$voices = $this->get_created_voices_by_name();
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-		$source_groups = $this->get_created_source_groups_by_name();
-
-		$templates = array(
-			array(
-				'name' => 'Beginner How-To',
-				'description' => 'Beginner-friendly tutorials for fundamental concepts',
-				'voice_name' => 'Hands-On Tutorial Coach',
-				'structure_name' => 'Evergreen How-To Guide',
-				'categories' => array('Backend Development', 'PHP Development'),
-				'post_quantity' => 1,
-				'prompt_template' => 'Write a comprehensive beginner-friendly tutorial about {{topic}}. Focus on helping developers learn by doing.',
-				'generate_featured_image' => 0,
-			),
-			array(
-				'name' => 'Intermediate Backend',
-				'description' => 'Intermediate backend development patterns and practices',
-				'voice_name' => 'DevStackTips Default',
-				'structure_name' => 'Advanced Technical Tutorial',
-				'categories' => array('Backend Development', 'Database'),
-				'post_quantity' => 3,
-				'prompt_template' => 'Write an intermediate-level backend development tutorial about {{topic}}. Assume familiarity with programming fundamentals.',
-				'generate_featured_image' => 1,
-				'featured_image_source' => 'ai_prompt',
-				'image_prompt' => 'A clean, modern illustration representing {{topic}} in software development. Abstract geometric shapes, blues and teals, professional developer aesthetic, minimalist design',
-			),
-			array(
-				'name' => 'Security Guide',
-				'description' => 'Security best practices and vulnerability prevention',
-				'voice_name' => 'Senior Backend Mentor',
-				'structure_name' => 'Security Best Practices',
-				'categories' => array('Security', 'Backend Development'),
-				'post_quantity' => 2,
-				'prompt_template' => 'Write a security-focused guide about {{topic}}. Help developers build secure applications by explaining vulnerabilities and secure patterns.',
-				'generate_featured_image' => 1,
-				'featured_image_source' => 'ai_prompt',
-				'image_prompt' => 'A secure lock symbol overlaid on a modern application window or code editor, cybersecurity theme, dark blues and greens, shield iconography, professional and trustworthy aesthetic',
-			),
-			array(
-				'name' => 'Framework Comparison',
-				'description' => 'Fair comparisons of frameworks, libraries, and tools',
-				'voice_name' => 'Neutral Technical Analyst',
-				'structure_name' => 'Comparison Article',
-				'categories' => array('Framework Guides'),
-				'post_quantity' => 2,
-				'prompt_template' => 'Write a balanced, objective comparison of {{topic}}. Present both options fairly without bias.',
-				'generate_featured_image' => 0,
-			),
-			array(
-				'name' => 'Developer Tooling',
-				'description' => 'Practical guides for developer tools and workflows',
-				'voice_name' => 'Hands-On Tutorial Coach',
-				'structure_name' => 'Tool / Workflow Explainer',
-				'categories' => array('DevOps & Tools'),
-				'post_quantity' => 2,
-				'prompt_template' => 'Write a practical guide for {{topic}}. Show developers how to use this tool effectively in their daily workflow.',
-				'generate_featured_image' => 1,
-				'featured_image_source' => 'unsplash',
-				'unsplash_keywords' => 'developer tools, programming, code, terminal, workflow',
-			),
-			array(
-				'name' => 'AI for Developers',
-				'description' => 'Practical AI guidance for developer workflows',
-				'voice_name' => 'AI Engineering Editor',
-				'structure_name' => 'AI-for-Devs Article',
-				'categories' => array('AI for Developers'),
-				'post_quantity' => 1,
-				'prompt_template' => 'Write practical guidance about {{topic}}. Focus on real developer use cases and address both benefits and limitations honestly.',
-				'generate_featured_image' => 0,
-			),
-			array(
-				'name' => 'Security News',
-				'description' => 'Security-focused content informed by current vulnerability reports',
-				'voice_name' => 'Senior Backend Mentor',
-				'structure_name' => 'Security Best Practices',
-				'categories' => array('Security'),
-				'post_quantity' => 2,
-				'source_group' => 'Security News',
-				'include_sources' => 1,
-				'prompt_template' => 'Write a security guide about {{topic}}. Reference current security trends and vulnerabilities where relevant.',
-				'generate_featured_image' => 1,
-				'featured_image_source' => 'ai_prompt',
-				'image_prompt' => 'Cybersecurity shield protecting code and data, modern digital security concept, dark theme with accent colors',
-			),
-			array(
-				'name' => 'PHP Framework Deep Dive',
-				'description' => 'In-depth PHP framework tutorials informed by ecosystem updates',
-				'voice_name' => 'DevStackTips Default',
-				'structure_name' => 'Advanced Technical Tutorial',
-				'categories' => array('PHP Development', 'Framework Guides'),
-				'post_quantity' => 1,
-				'source_group' => 'PHP Ecosystem',
-				'include_sources' => 1,
-				'prompt_template' => 'Write a detailed tutorial about {{topic}}. Incorporate current best practices from the PHP community.',
-				'generate_featured_image' => 0,
-			),
-		);
-
-		$existing_templates = array();
-		foreach ($template_repo->get_all() as $existing_template) {
-			if (!empty($existing_template->name) && !empty($existing_template->id)) {
-				$existing_templates[(string) $existing_template->name] = (int) $existing_template->id;
-			}
-		}
-
-		foreach ($templates as $template_data) {
-			$voice_id = isset($voices[$template_data['voice_name']]) ? $voices[$template_data['voice_name']] : null;
-			$structure_id = isset($structures[$template_data['structure_name']]) ? $structures[$template_data['structure_name']] : null;
-
-			// Get category IDs
-			$category_ids = array();
-			if (isset($template_data['categories'])) {
-				foreach ($template_data['categories'] as $cat_name) {
-					if (isset($categories[$cat_name])) {
-						$category_ids[] = $categories[$cat_name];
-					}
-				}
-			}
-
-			// Get source group ID if specified
-			$source_group_ids = array();
-			if (isset($template_data['source_group']) && isset($source_groups[$template_data['source_group']])) {
-				$source_group_ids[] = $source_groups[$template_data['source_group']];
-			}
-
-			$template_payload = array(
-				'name' => $template_data['name'],
-				'description' => isset($template_data['description']) ? $template_data['description'] : '',
-				'prompt_template' => $template_data['prompt_template'],
-				'voice_id' => $voice_id,
-				'article_structure_id' => $structure_id,
-				'post_quantity' => isset($template_data['post_quantity']) ? $template_data['post_quantity'] : 1,
-				'post_status' => 'draft', // Start with drafts for review
-				'post_type' => 'post',
-				'post_category' => !empty($category_ids) ? $category_ids[0] : 0,
-				'post_tags' => '',
-				'post_author' => get_current_user_id() ?: (get_users(array('role' => 'administrator', 'number' => 1))[0]->ID ?? 1),
-				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
-				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
-				'source_group_ids' => wp_json_encode($source_group_ids),
-				'is_active' => 1,
-			);
-
-			if (isset($existing_templates[$template_data['name']])) {
-				$template_id = $existing_templates[$template_data['name']];
-				$template_repo->update($template_id, $template_payload);
-				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
-				echo "• Template exists, updated: {$template_data['name']}\n";
-				continue;
-			}
-
-			$template_id = $template_repo->create($template_payload);
-
-			if ($template_id) {
-				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
-				echo "✓ Created template: {$template_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create template: {$template_data['name']}";
-				echo "✗ Failed: {$template_data['name']}\n";
-			}
-		}
-	}
-
-	private function create_campaigns() {
-		echo "<h2>Step 9: Creating Campaigns</h2>\n";
-
-		$campaigns_repo = new AIPS_Campaigns_Repository();
-
+	private function get_campaign_seed_data() {
 		$campaigns = array(
 			array(
 				'name' => 'Developer Foundations',
@@ -1367,148 +1779,231 @@ Critical areas to address:
 				'content_goal' => 'Practical AI guidance for developer workflows',
 				'topics' => "When AI Helps Developers Most\nRisks of AI-Generated Technical Content\nHow to Review AI-Written Code for Accuracy\nPrompt Engineering for Technical Documentation\nAI Agents for Developer Workflows\nWhat Makes AI Content Useful vs Spam\nAI-Assisted Code Review Best Practices\nUsing AI for API Documentation\nEvaluating AI-Generated Code Quality\nWhen NOT to Use AI in Development",
 			),
+			array(
+				'name' => 'PHP Ecosystem Radar',
+				'content_goal' => 'Track PHP ecosystem updates and translate them into implementation-ready guidance',
+				'topics' => "What Changed in PHP 8.4 for Backend Teams\nLaravel Release Notes: What Matters in Production\nSymfony Upgrade Guide: Breaking Changes to Watch\nComposer Dependency Strategy for Long-Lived Projects\nFramework Migration Checklists for Teams\nPHP Package Vetting for Security and Stability\nInterpreting RFCs for Engineering Planning\nHow to Adopt New PHP Features Safely\nRuntime Upgrades with Minimal Risk\nDeprecation Management in PHP Applications",
+			),
+			array(
+				'name' => 'Security Intelligence Briefing',
+				'content_goal' => 'Deliver actionable security briefings tied to current vulnerabilities and prevention patterns',
+				'topics' => "CVE Triage Workflow for Engineering Teams\nPatch Prioritization Under Time Constraints\nHow to Communicate Security Risk to Stakeholders\nDependency Vulnerability Response Playbook\nFrom Advisory to Action: Turning Alerts into Fixes\nThreat Modeling for Existing Applications\nSecure Defaults for New Services\nIncident Readiness Checklist for Web Apps\nHow to Validate Security Fixes in CI\nPost-Incident Lessons Learned Template",
+			),
 		);
+		$post_targets = $this->get_campaign_post_targets();
 
-		foreach ($campaigns as $campaign_data) {
-			$campaign_id = $campaigns_repo->create_campaign(array(
-				'name' => $campaign_data['name'],
-				'content_goal' => $campaign_data['content_goal'],
-				'campaign_mode' => 'template',
-				'is_active' => 1,
-				'is_archived' => 0,
-			));
-
-			if ($campaign_id) {
-				$this->created_items['campaigns'][] = array('id' => $campaign_id, 'name' => $campaign_data['name']);
-				echo "✓ Created campaign: {$campaign_data['name']}\n";
-				
-				// Store topics as campaign notes (you can manually assign these to templates later)
-				echo "  Topics to assign:\n";
-				$topics_array = explode("\n", $campaign_data['topics']);
-				foreach (array_slice($topics_array, 0, 3) as $topic) {
-					echo "    - {$topic}\n";
-				}
-				echo "    ... and " . (count($topics_array) - 3) . " more\n";
-			} else {
-				$this->errors[] = "Failed to create campaign: {$campaign_data['name']}";
-				echo "✗ Failed: {$campaign_data['name']}\n";
-			}
+		foreach ($campaigns as &$campaign) {
+			$campaign['target_posts_per_' . $this->get_primary_distribution_period()] = isset($post_targets[$campaign['name']]) ? (int) $post_targets[$campaign['name']] : 0;
 		}
+		unset($campaign);
+
+		return $campaigns;
 	}
 
-	private function create_schedules() {
-		echo "<h2>Step 10: Creating Schedules</h2>\n";
+	private function get_template_seed_data() {
+		$templates = array(
+			array(
+				'name' => 'Beginner How-To',
+				'description' => 'Beginner-friendly tutorials for fundamental concepts',
+				'campaign_name' => 'Developer Foundations',
+				'voice_name' => 'Hands-On Tutorial Coach',
+				'structure_name' => 'Evergreen How-To Guide',
+				'categories' => array('Backend Development', 'PHP Development'),
+				'post_tags' => 'php,backend,developer-fundamentals,tutorial',
+				'prompt_template' => 'Write a comprehensive beginner-friendly tutorial about {{topic}}. Focus on helping developers learn by doing.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Intermediate Backend',
+				'description' => 'Intermediate backend development patterns and practices',
+				'campaign_name' => 'Backend Engineering',
+				'voice_name' => 'DevStackTips Default',
+				'structure_name' => 'Advanced Technical Tutorial',
+				'categories' => array('Backend Development', 'Database'),
+				'post_tags' => 'backend,architecture,api,scalability',
+				'prompt_template' => 'Write an intermediate-level backend development tutorial about {{topic}}. Assume familiarity with programming fundamentals.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A clean, modern illustration representing {{topic}} in software development. Abstract geometric shapes, blues and teals, professional developer aesthetic, minimalist design',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Security Guide',
+				'description' => 'Security best practices and vulnerability prevention',
+				'campaign_name' => 'Security First',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Security Best Practices',
+				'categories' => array('Security', 'Backend Development'),
+				'post_tags' => 'security,owasp,secure-coding,vulnerabilities',
+				'prompt_template' => 'Write a security-focused guide about {{topic}}. Help developers build secure applications by explaining vulnerabilities and secure patterns.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A secure lock symbol overlaid on a modern application window or code editor, cybersecurity theme, dark blues and greens, shield iconography, professional and trustworthy aesthetic',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Framework Comparison',
+				'description' => 'Fair comparisons of frameworks, libraries, and tools',
+				'campaign_name' => 'Framework & Tool Comparisons',
+				'voice_name' => 'Neutral Technical Analyst',
+				'structure_name' => 'Comparison Article',
+				'categories' => array('Framework Guides'),
+				'post_tags' => 'comparison,frameworks,tradeoffs,decision-making',
+				'prompt_template' => 'Write a balanced, objective comparison of {{topic}}. Present both options fairly without bias.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Developer Tooling',
+				'description' => 'Practical guides for developer tools and workflows',
+				'campaign_name' => 'Developer Tooling',
+				'voice_name' => 'Hands-On Tutorial Coach',
+				'structure_name' => 'Tool / Workflow Explainer',
+				'categories' => array('DevOps & Tools'),
+				'post_tags' => 'devops,developer-tools,automation,workflow',
+				'prompt_template' => 'Write a practical guide for {{topic}}. Show developers how to use this tool effectively in their daily workflow.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'unsplash',
+				'unsplash_keywords' => 'developer tools, programming, code, terminal, workflow',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'AI for Developers',
+				'description' => 'Practical AI guidance for developer workflows',
+				'campaign_name' => 'AI for Developers',
+				'voice_name' => 'AI Engineering Editor',
+				'structure_name' => 'AI-for-Devs Article',
+				'categories' => array('AI for Developers'),
+				'post_tags' => 'ai,developer-productivity,prompt-engineering,quality-control',
+				'prompt_template' => 'Write practical guidance about {{topic}}. Focus on real developer use cases and address both benefits and limitations honestly.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Security News',
+				'description' => 'Security-focused content informed by current vulnerability reports',
+				'campaign_name' => 'Security Intelligence Briefing',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Security Best Practices',
+				'categories' => array('Security'),
+				'post_tags' => 'security-news,cve,incident-response,threat-intelligence',
+				'source_group' => 'Security News',
+				'include_sources' => 1,
+				'prompt_template' => 'Write a security guide about {{topic}}. Reference current security trends and vulnerabilities where relevant.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'Cybersecurity shield protecting code and data, modern digital security concept, dark theme with accent colors',
+			),
+			array(
+				'name' => 'PHP Framework Deep Dive',
+				'description' => 'In-depth PHP framework tutorials informed by ecosystem updates',
+				'campaign_name' => 'PHP Ecosystem Radar',
+				'voice_name' => 'DevStackTips Default',
+				'structure_name' => 'Advanced Technical Tutorial',
+				'categories' => array('PHP Development', 'Framework Guides'),
+				'post_tags' => 'php,laravel,symfony,ecosystem-updates',
+				'source_group' => 'PHP Ecosystem',
+				'include_sources' => 1,
+				'prompt_template' => 'Write a detailed tutorial about {{topic}}. Incorporate current best practices from the PHP community.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+			),
+		);
+		$post_targets = $this->get_campaign_post_targets();
 
-		$schedule_repo = new AIPS_Schedule_Repository();
-		$templates = $this->get_created_templates_by_name();
-		$interval_calc = AIPS_Interval_Calculator::instance();
+		foreach ($templates as &$template) {
+			$weekly_target = isset($post_targets[$template['campaign_name']]) ? (int) $post_targets[$template['campaign_name']] : 1;
+			$template['post_quantity'] = max(1, $weekly_target);
+			$template['target_posts_per_' . $this->get_primary_distribution_period()] = $template['post_quantity'];
+		}
+		unset($template);
 
-		// Schedule configuration targeting 20 posts/week total
-		// Distribution: 1 daily track (7 posts/week) + weekly batches (13 posts/week)
+		return $templates;
+	}
+
+	private function get_schedule_seed_data() {
 		$schedules = array(
 			array(
 				'template_name' => 'Beginner How-To',
-				'title' => 'Daily Beginner Tutorials',
-				'frequency' => 'daily',
+				'title' => 'Core Monday - Developer Foundations',
+				'frequency' => 'weekly',
+				'weekday' => 1,
 				'start_time' => '09:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Intermediate Backend',
-				'title' => 'Backend Development - Weekly Batch',
+				'title' => 'Core Tuesday - Backend Engineering',
 				'frequency' => 'weekly',
-				'start_time' => '10:00',
+				'weekday' => 2,
+				'start_time' => '09:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Security Guide',
-				'title' => 'Security Content - Weekly',
+				'title' => 'Core Wednesday - Security First',
 				'frequency' => 'weekly',
-				'start_time' => '11:00',
+				'weekday' => 3,
+				'start_time' => '09:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Framework Comparison',
-				'title' => 'Framework Comparisons - Weekly',
+				'title' => 'Core Thursday - Framework Comparisons',
 				'frequency' => 'weekly',
-				'start_time' => '14:00',
+				'weekday' => 4,
+				'start_time' => '09:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Developer Tooling',
-				'title' => 'Developer Tools - Weekly',
+				'title' => 'Core Friday - Developer Tooling',
 				'frequency' => 'weekly',
-				'start_time' => '15:00',
+				'weekday' => 5,
+				'start_time' => '09:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'AI for Developers',
-				'title' => 'AI Content - Weekly',
+				'title' => 'Flex Tuesday PM - AI Workflow Insights',
 				'frequency' => 'weekly',
-				'start_time' => '16:00',
+				'weekday' => 2,
+				'start_time' => '14:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'Security News',
-				'title' => 'Security News Digest - Weekly',
+				'title' => 'Flex Thursday PM - Security Intelligence Briefing',
 				'frequency' => 'weekly',
-				'start_time' => '13:00',
+				'weekday' => 4,
+				'start_time' => '14:00',
 				'is_active' => 1,
 			),
 			array(
 				'template_name' => 'PHP Framework Deep Dive',
-				'title' => 'PHP Ecosystem Updates - Weekly',
+				'title' => 'Flex Saturday - PHP Ecosystem Radar',
 				'frequency' => 'weekly',
-				'start_time' => '12:00',
+				'weekday' => 6,
+				'start_time' => '10:00',
 				'is_active' => 1,
 			),
 		);
+		$template_targets = array();
 
-		foreach ($schedules as $schedule_data) {
-			if (!isset($templates[$schedule_data['template_name']])) {
-				$this->errors[] = "Template not found for schedule: {$schedule_data['title']}";
-				echo "✗ Template not found: {$schedule_data['template_name']}\n";
-				continue;
-			}
-
-			$template_id = $templates[$schedule_data['template_name']];
-
-			// Calculate next run time using WordPress site timezone
-			$start_time = $schedule_data['start_time'];
-			
-			// Use WordPress site timezone for accurate schedule calculation
-			$site_tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone(get_option('timezone_string') ?: 'UTC');
-			$today_site = new DateTimeImmutable('today ' . $start_time, $site_tz);
-			$today_at_time_ts = $today_site->getTimestamp();
-			
-			// If that time has passed today, use tomorrow
-			if ($today_at_time_ts < AIPS_DateTime::now()->timestamp()) {
-				$today_at_time_ts = $today_site->modify('+1 day')->getTimestamp();
-			}
-
-			// Use interval calculator to get the proper next run based on frequency
-			$next_run = $interval_calc->calculate_next_run($schedule_data['frequency'], $today_at_time_ts);
-
-			$schedule_id = $schedule_repo->create(array(
-				'template_id' => $template_id,
-				'title' => $schedule_data['title'],
-				'frequency' => $schedule_data['frequency'],
-				'next_run' => $next_run,
-				'last_run' => 0,
-				'is_active' => $schedule_data['is_active'],
-				'status' => 'active',
-				'schedule_type' => 'post_generation',
-			));
-
-			if ($schedule_id) {
-				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
-				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
-				echo "✓ Created schedule: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
-			} else {
-				$this->errors[] = "Failed to create schedule: {$schedule_data['title']}";
-				echo "✗ Failed: {$schedule_data['title']}\n";
-			}
+		foreach ($this->get_template_seed_data() as $template) {
+			$template_targets[$template['name']] = isset($template['post_quantity']) ? (int) $template['post_quantity'] : 1;
 		}
+
+		foreach ($schedules as &$schedule) {
+			$schedule['target_posts_per_' . $this->get_primary_distribution_period()] = isset($template_targets[$schedule['template_name']]) ? $template_targets[$schedule['template_name']] : 1;
+		}
+		unset($schedule);
+
+		return $schedules;
 	}
 
 	private function get_created_categories_by_name() {
@@ -1561,54 +2056,90 @@ Critical areas to address:
 		return $map;
 	}
 
+	private function get_created_campaigns_by_name() {
+		$map = array();
+		if (isset($this->created_items['campaigns'])) {
+			foreach ($this->created_items['campaigns'] as $campaign) {
+				$map[$campaign['name']] = $campaign['id'];
+			}
+		}
+		return $map;
+	}
+
 	private function get_configured_setting_keys() {
-		return array(
-			'aips_site_niche',
-			'aips_site_target_audience',
-			'aips_site_content_goals',
-			'aips_site_brand_voice',
-			'aips_site_content_language',
-			'aips_site_content_guidelines',
-			'aips_site_excluded_topics',
-			'aips_enable_retry',
-			'aips_retry_max_attempts',
-			'aips_retry_initial_delay',
-			'aips_enable_rate_limiting',
-			'aips_rate_limit_requests',
-			'aips_rate_limit_period',
-			'aips_enable_circuit_breaker',
-			'aips_circuit_breaker_threshold',
-			'aips_circuit_breaker_timeout',
-			'aips_default_article_structure_id',
-			'aips_review_notifications_email',
-			'aips_notification_preferences',
-			'aips_research_niches',
-			'aips_topic_similarity_threshold',
-			'aips_unsplash_access_key',
-			'aips_enable_telemetry',
-			'aips_enable_cache_system',
-			'aips_cache_driver',
-			'aips_cache_default_ttl',
-			'aips_log_retention_days',
-			'aips_default_post_status',
-			'aips_default_category',
-			'aips_default_post_author',
-		);
+		$keys = array();
+
+		foreach ($this->get_flattened_setting_entries() as $entry) {
+			$keys[] = $entry['option_name'];
+		}
+
+		$keys[] = 'aips_cache_driver';
+		$keys[] = 'aips_cache_default_ttl';
+
+		return array_values(array_unique($keys));
 	}
 
 	private function print_summary() {
 		echo "\n<h2>Setup Complete!</h2>\n";
-		
-		echo "<h3>Configured Settings (16 total):</h3>\n";
+
+		$settings = $this->object_data['settings'];
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$primary_period = $this->get_primary_distribution_period();
+		$target_posts = $this->get_target_posts_by_period();
+		$template_targets = array();
+		$campaign_targets = array();
+		$author_targets = array();
+
+		foreach ($this->object_data['templates'] as $template) {
+			$template_targets[$template['name']] = isset($template['post_quantity']) ? (int) $template['post_quantity'] : 0;
+		}
+
+		foreach ($this->object_data['campaigns'] as $campaign) {
+			$key = 'target_posts_per_' . $primary_period;
+			$campaign_targets[$campaign['name']] = isset($campaign[$key]) ? (int) $campaign[$key] : 0;
+		}
+
+		foreach ($this->object_data['authors'] as $author) {
+			$author_targets[$author['name']] = isset($author['scheduled_post_generation_quantity']) ? (int) $author['scheduled_post_generation_quantity'] : 0;
+		}
+
+		$configured_settings = $this->get_resolved_configured_settings($structures, $categories);
+
+		echo "<h3>Configured Settings (" . count($configured_settings) . " total):</h3>\n";
 		echo "<ul>\n";
-		echo "<li><strong>Content Strategy:</strong> Site niche, target audience, content goals, brand voice, guidelines, excluded topics</li>\n";
-		echo "<li><strong>Resilience & Limits:</strong> Retry (3 attempts), Rate limiting (20 req/min), Circuit breaker (enabled)</li>\n";
-		echo "<li><strong>Default Article Structure:</strong> Evergreen How-To Guide</li>\n";
-		echo "<li><strong>Notifications:</strong> Email for critical alerts, DB for routine events, digest rollups enabled</li>\n";
-		echo "<li><strong>Research & Discovery:</strong> 8 DevStackTips topics, similarity threshold 0.75</li>\n";
-		echo "<li><strong>Performance:</strong> Telemetry enabled, Cache system (DB driver), 60-day log retention</li>\n";
-		echo "<li><strong>Default Post Settings:</strong> Draft status, Backend Development category, admin author</li>\n";
-		echo "<li><strong>⚠ Manual Configuration Required:</strong> Notification email address, Unsplash Access Key</li>\n";
+		foreach ($configured_settings as $key => $value) {
+			echo "<li><strong>" . esc_html($key) . ":</strong> <code>" . esc_html($this->format_summary_value($value)) . "</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Target Throughput:</h3>\n";
+		echo "<ul>\n";
+		foreach ($target_posts as $period => $count) {
+			echo "<li><strong>" . esc_html(ucfirst($period)) . " target:</strong> <code>" . esc_html((string) $count) . " posts</code></li>\n";
+		}
+		echo "<li><strong>Primary distribution period:</strong> <code>" . esc_html($primary_period) . "</code></li>\n";
+		echo "</ul>\n";
+
+		echo "<h3>Campaign Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($campaign_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per " . esc_html($primary_period) . "</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Template Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($template_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per run</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Author Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($author_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " scheduled posts per " . esc_html($primary_period) . "</code></li>\n";
+		}
 		echo "</ul>\n";
 		
 		echo "<h3>Created Items:</h3>\n";
@@ -1647,13 +2178,14 @@ Critical areas to address:
 
 		echo "\n<h3>Next Steps:</h3>\n";
 		echo "<ol>\n";
-		echo "<li><strong>⚠ REQUIRED:</strong> Add notification email in Settings > Notifications</li>\n";
-		echo "<li><strong>⚠ If using Unsplash:</strong> Add Unsplash Access Key in Settings > Featured Images</li>\n";
+		echo "<li><strong>[WARN] REQUIRED:</strong> Add notification email in Settings > Notifications</li>\n";
+		echo "<li><strong>[WARN] If using Unsplash:</strong> Add Unsplash Access Key in Settings > Featured Images</li>\n";
 		echo "<li>Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)</li>\n";
 		echo "<li>Review created Categories, Templates, Voices, Structures in WordPress admin</li>\n";
-		echo "<li>Verify Schedules are configured correctly (20 posts/week target)</li>\n";
+		echo "<li>Verify schedule cadence against the configured throughput targets: <code>" . esc_html(wp_json_encode($target_posts)) . "</code></li>\n";
 		echo "<li>Check Source Groups and Sources for proper RSS feed URLs</li>\n";
-		echo "<li>Start with 'Draft' post status to review content quality before auto-publishing</li>\n";
+		$default_post_status = isset($configured_settings['aips_default_post_status']) ? $configured_settings['aips_default_post_status'] : 'draft';
+		echo "<li>Start with post status <code>" . esc_html($default_post_status) . "</code> to review content quality before auto-publishing</li>\n";
 		echo "<li>Monitor History page, Operations Insights, and Telemetry for generation metrics</li>\n";
 		echo "<li>Review and approve Author Topics before they generate posts</li>\n";
 		echo "</ol>\n";
@@ -1700,22 +2232,13 @@ Critical areas to address:
 				$deleted['settings']++;
 			}
 		}
-		echo "✓ Reset configured settings to plugin defaults\n";
+		echo "[OK] Reset configured settings to plugin defaults\n";
 
 		// Delete in reverse order of creation to maintain referential integrity
 
 		// 1. Delete Schedules
 		echo "<h2>Deleting Schedules</h2>\n";
-		$schedule_titles = array(
-			'Daily Beginner Tutorials',
-			'Backend Development - Weekly Batch',
-			'Security Content - Weekly',
-			'Framework Comparisons - Weekly',
-			'Developer Tools - Weekly',
-			'AI Content - Weekly',
-			'Security News Digest - Weekly',
-			'PHP Ecosystem Updates - Weekly',
-		);
+		$schedule_titles = wp_list_pluck($this->object_data['schedules'], 'title');
 		foreach ($schedule_titles as $title) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_schedule',
@@ -1724,20 +2247,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['schedules'] += $count;
-				echo "✓ Deleted schedule: {$title}\n";
+				echo "[OK] Deleted schedule: {$title}\n";
 			}
 		}
 
 		// 2. Delete Campaigns
 		echo "<h2>Deleting Campaigns</h2>\n";
-		$campaign_names = array(
-			'Developer Foundations',
-			'Backend Engineering',
-			'Security First',
-			'Framework & Tool Comparisons',
-			'Developer Tooling',
-			'AI for Developers',
-		);
+		$campaign_names = wp_list_pluck($this->object_data['campaigns'], 'name');
 		foreach ($campaign_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_campaigns',
@@ -1746,22 +2262,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['campaigns'] += $count;
-				echo "✓ Deleted campaign: {$name}\n";
+				echo "[OK] Deleted campaign: {$name}\n";
 			}
 		}
 
 		// 3. Delete Templates
 		echo "<h2>Deleting Templates</h2>\n";
-		$template_names = array(
-			'Beginner How-To',
-			'Intermediate Backend',
-			'Security Guide',
-			'Framework Comparison',
-			'Developer Tooling',
-			'AI for Developers',
-			'Security News',
-			'PHP Framework Deep Dive',
-		);
+		$template_names = wp_list_pluck($this->object_data['templates'], 'name');
 		foreach ($template_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_templates',
@@ -1770,20 +2277,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['templates'] += $count;
-				echo "✓ Deleted template: {$name}\n";
+				echo "[OK] Deleted template: {$name}\n";
 			}
 		}
 
 		// 4. Delete Sources
 		echo "<h2>Deleting Sources</h2>\n";
-		$source_names = array(
-			'OWASP Top 10',
-			'Snyk Blog Security',
-			'Security Week',
-			'PHP.Watch',
-			'Laravel News',
-			'Symfony Blog',
-		);
+		$source_names = wp_list_pluck($this->object_data['sources'], 'name');
 		$sources_repo = new AIPS_Sources_Repository();
 		$sources_by_label = array();
 		foreach ($sources_repo->get_all() as $existing_source) {
@@ -1808,13 +2308,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['sources'] += $count;
-				echo "✓ Deleted source: {$name}\n";
+				echo "[OK] Deleted source: {$name}\n";
 			}
 		}
 
 		// 5. Delete Source Groups (taxonomy terms)
 		echo "<h2>Deleting Source Groups</h2>\n";
-		$source_group_slugs = array('security-news', 'php-ecosystem');
+		$source_group_slugs = wp_list_pluck($this->object_data['source_groups'], 'slug');
 		foreach ($source_group_slugs as $slug) {
 			$term = term_exists($slug, 'aips_source_group');
 			if ($term) {
@@ -1822,23 +2322,18 @@ Critical areas to address:
 				$result = wp_delete_term($term_id, 'aips_source_group');
 				if (!is_wp_error($result)) {
 					$deleted['source_groups']++;
-					echo "✓ Deleted source group: {$slug}\n";
+					echo "[OK] Deleted source group: {$slug}\n";
 				} else {
 					$error_message = $result->get_error_message();
 					$this->errors[] = "Failed to delete source group: {$slug} ({$error_message})";
-					echo "✗ Failed to delete source group: {$slug} ({$error_message})\n";
+					echo "[ERR] Failed to delete source group: {$slug} ({$error_message})\n";
 				}
 			}
 		}
 
 		// 6. Delete Post Slices
 		echo "<h2>Deleting Post Slices</h2>\n";
-		$slice_names = array(
-			'Developer Resources Footer',
-			'Security Disclaimer',
-			'Code Example Standards',
-			'Version Note',
-		);
+		$slice_names = wp_list_pluck($this->object_data['post_slices'], 'name');
 		foreach ($slice_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_post_slices',
@@ -1847,19 +2342,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['slices'] += $count;
-				echo "✓ Deleted post slice: {$name}\n";
+				echo "[OK] Deleted post slice: {$name}\n";
 			}
 		}
 
 		// 7. Delete Authors
 		echo "<h2>Deleting Authors</h2>\n";
-		$author_names = array(
-			'Backend Architecture Specialist',
-			'Security Expert',
-			'DevOps Practitioner',
-			'Framework Analyst',
-			'AI Engineering Pragmatist',
-		);
+		$author_names = wp_list_pluck($this->object_data['authors'], 'name');
 		foreach ($author_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_authors',
@@ -1868,22 +2357,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['authors'] += $count;
-				echo "✓ Deleted author: {$name}\n";
+				echo "[OK] Deleted author: {$name}\n";
 			}
 		}
 
 		// 8. Delete Article Structures
 		echo "<h2>Deleting Article Structures</h2>\n";
-		$structure_names = array(
-			'Evergreen How-To Guide',
-			'Advanced Technical Tutorial',
-			'Comparison Article',
-			'Architecture Deep Dive',
-			'Security Best Practices',
-			'Tool / Workflow Explainer',
-			'AI-for-Devs Article',
-			'News / Trend Analysis',
-		);
+		$structure_names = wp_list_pluck($this->object_data['structures'], 'name');
 		foreach ($structure_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_article_structures',
@@ -1892,40 +2372,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['structures'] += $count;
-				echo "✓ Deleted article structure: {$name}\n";
+				echo "[OK] Deleted article structure: {$name}\n";
 			}
 		}
 
 		// 9. Delete Prompt Sections (delete all sections created by this script)
 		echo "<h2>Deleting Prompt Sections</h2>\n";
-		$section_names = array(
-			'Introduction',
-			'What You\'ll Learn',
-			'Prerequisites',
-			'Core Concepts',
-			'Step-by-Step Instructions',
-			'Code Examples',
-			'Common Mistakes',
-			'Best Practices',
-			'When to Use / When Not to Use',
-			'Conclusion',
-			'FAQ',
-			'Problem Statement',
-			'Technical Context',
-			'Implementation Strategy',
-			'Performance Considerations',
-			'Security Considerations',
-			'Testing / Validation',
-			'Operational Tips',
-			'Overview',
-			'Quick Summary Table',
-			'What Option A Is',
-			'What Option B Is',
-			'Developer Experience',
-			'Ecosystem / Community',
-			'Best Use Cases',
-			'Final Recommendation',
-		);
+		$section_names = wp_list_pluck($this->object_data['sections'], 'name');
 		foreach ($section_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_prompt_sections',
@@ -1934,19 +2387,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['sections'] += $count;
-				echo "✓ Deleted prompt section: {$name}\n";
+				echo "[OK] Deleted prompt section: {$name}\n";
 			}
 		}
 
 		// 10. Delete Voices
 		echo "<h2>Deleting Voices</h2>\n";
-		$voice_names = array(
-			'DevStackTips Default',
-			'Senior Backend Mentor',
-			'Hands-On Tutorial Coach',
-			'Neutral Technical Analyst',
-			'AI Engineering Editor',
-		);
+		$voice_names = wp_list_pluck($this->object_data['voices'], 'name');
 		foreach ($voice_names as $name) {
 			$count = $wpdb->delete(
 				$wpdb->prefix . 'aips_voices',
@@ -1955,21 +2402,13 @@ Critical areas to address:
 			);
 			if ($count > 0) {
 				$deleted['voices'] += $count;
-				echo "✓ Deleted voice: {$name}\n";
+				echo "[OK] Deleted voice: {$name}\n";
 			}
 		}
 
 		// 11. Delete Categories (WordPress taxonomy terms)
 		echo "<h2>Deleting Categories</h2>\n";
-		$category_slugs = array(
-			'backend-development',
-			'security',
-			'devops-tools',
-			'framework-guides',
-			'ai-for-developers',
-			'php-development',
-			'database',
-		);
+		$category_slugs = wp_list_pluck($this->object_data['categories'], 'slug');
 		foreach ($category_slugs as $slug) {
 			$term = term_exists($slug, 'category');
 			if ($term) {
@@ -1977,11 +2416,11 @@ Critical areas to address:
 				$result = wp_delete_term($term_id, 'category');
 				if (!is_wp_error($result)) {
 					$deleted['categories']++;
-					echo "✓ Deleted category: {$slug}\n";
+					echo "[OK] Deleted category: {$slug}\n";
 				} else {
 					$error_message = $result->get_error_message();
 					$this->errors[] = "Failed to delete category: {$slug} ({$error_message})";
-					echo "✗ Failed to delete category: {$slug} ({$error_message})\n";
+					echo "[ERR] Failed to delete category: {$slug} ({$error_message})\n";
 				}
 			}
 		}
@@ -2018,3 +2457,5 @@ if (PHP_SAPI === 'cli') {
 // Run the setup or rollback
 $setup = new AIPS_DevStackTips_Setup($rollback_mode);
 $setup->run();
+
+
