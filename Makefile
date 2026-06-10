@@ -188,3 +188,12 @@ sync-wp-core: ## Sync /var/www/html from web container into ./.docker/wp-html fo
 	@echo "$(BLUE)Syncing WordPress files from container...$(NC)"
 	bash ./scripts/sync-wp-core.sh
 	@echo "$(GREEN)Sync complete.$(NC)"
+
+seed: ## Seed the database with a content profile (PROFILE=dev-test|devstacktips, optional FRESH=1 or ROLLBACK=1)
+	@echo "$(BLUE)Copying seeder scripts to container...$(NC)"
+	docker cp scripts/ wp-ai-scheduler-web:/tmp/scripts
+	@echo "$(GREEN)Executing content seeder in container...$(NC)"
+	docker compose exec web wp eval-file /tmp/scripts/seed-content.php --allow-root $(if $(PROFILE),profile=$(PROFILE),profile=dev-test) $(if $(filter 1,$(FRESH)),fresh,) $(if $(filter 1,$(ROLLBACK)),rollback,)
+	@echo "$(BLUE)Cleaning up container files...$(NC)"
+	docker compose exec web rm -rf /tmp/scripts
+	@echo "$(GREEN)Seeding task complete!$(NC)"
