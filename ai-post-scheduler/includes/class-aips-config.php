@@ -171,7 +171,7 @@ class AIPS_Config {
             'aips_circuit_breaker_timeout' => 300,
             // Post quality scoring (opt-in because it adds AI calls and can revise drafts).
             'aips_post_score_auto_enabled' => false,
-            'aips_post_score_threshold' => AIPS_PostScore_Service::DEFAULT_THRESHOLD,
+            'aips_post_score_threshold' => 70,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',

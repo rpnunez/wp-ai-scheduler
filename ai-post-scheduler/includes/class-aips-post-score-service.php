@@ -507,9 +507,17 @@ class AIPS_PostScore_Service {
 
 		$dimension_scores = $this->normalise_dimension_scores( $raw_scores );
 		$overall          = $this->calculate_overall_score( $dimension_scores );
-		$guidance         = isset( $data['guidance'] ) && is_array( $data['guidance'] )
-			? array_filter( array_map( 'sanitize_text_field', $data['guidance'] ) )
-			: array();
+		$guidance = array();
+		if ( isset( $data['guidance'] ) && is_array( $data['guidance'] ) ) {
+			foreach ( $data['guidance'] as $item ) {
+				if ( is_scalar( $item ) ) {
+					$sanitized = sanitize_text_field( (string) $item );
+					if ( '' !== $sanitized ) {
+						$guidance[] = $sanitized;
+					}
+				}
+			}
+		}
 
 		if ( $overall < $threshold && empty( $guidance ) ) {
 			$guidance = $this->build_default_guidance( $dimension_scores );
@@ -662,7 +670,7 @@ class AIPS_PostScore_Service {
 
 		if ( ! empty( $topic ) ) {
 			$lines[] = '';
-			$lines[] = '**Topic**: ' . esc_html( $topic );
+			$lines[] = '**Topic**: ' . $topic;
 		}
 
 		$lines[] = '';
@@ -698,8 +706,8 @@ class AIPS_PostScore_Service {
 	 * @param WP_Post $post WordPress post.
 	 * @return object Minimal context object with a get_topic() method.
 	 */
-	private function make_minimal_context( WP_Post $post ): object {
-		return new class( $post ) {
+	private function make_minimal_context( WP_Post $post ): AIPS_Generation_Context {
+		return new class( $post ) implements AIPS_Generation_Context {
 			private $post;
 			public function __construct( WP_Post $post ) { $this->post = $post; }
 			public function get_type() { return 'manual'; }

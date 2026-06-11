@@ -90,7 +90,7 @@ class AIPS_Prompt_Builder_Post_Score {
 			: ( $context->topic ?? null );
 
 		if ( !empty( $topic ) ) {
-			$lines[] = '**Topic**: ' . esc_html( $topic );
+			$lines[] = '**Topic**: ' . $topic;
 		}
 
 		// Content prompt / intent
