@@ -105,7 +105,14 @@ if (!defined('ABSPATH')) {
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
-									<?php if (!empty($post_data['post_score'])): ?>
+									<?php if ( ! empty( $post_data['score_status'] ) && 'pending' === $post_data['score_status'] ): ?>
+										<div class="aips-score-badge-circle aips-score-pending" title="<?php esc_attr_e('Quality scoring in progress...', 'ai-post-scheduler'); ?>">
+											<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart">
+												<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+												<path class="aips-circle" stroke-dasharray="25, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+											</svg>
+										</div>
+									<?php elseif (!empty($post_data['post_score'])): ?>
 										<?php 
 											$score = $post_data['post_score']['overall_score'];
 											$color_class = $score >= 80 ? 'aips-score-green' : ($score >= 70 ? 'aips-score-orange' : 'aips-score-red');

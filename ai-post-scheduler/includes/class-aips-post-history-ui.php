@@ -75,6 +75,19 @@ class AIPS_Post_History_UI {
 			return;
 		}
 
+		$score_status = get_post_meta( $post_id, '_aips_post_score_status', true );
+		if ( 'pending' === $score_status ) {
+			?>
+			<div class="aips-score-badge-circle aips-score-pending" title="<?php esc_attr_e('Quality scoring in progress...', 'ai-post-scheduler'); ?>">
+				<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart">
+					<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+					<path class="aips-circle" stroke-dasharray="25, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+				</svg>
+			</div>
+			<?php
+			return;
+		}
+
 		$score_data = get_post_meta( $post_id, '_aips_post_score', true );
 		if ( is_array( $score_data ) && isset( $score_data['overall_score'] ) ) {
 			$score = (float) $score_data['overall_score'];

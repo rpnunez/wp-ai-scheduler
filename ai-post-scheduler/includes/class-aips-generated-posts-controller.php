@@ -131,6 +131,7 @@ class AIPS_Generated_Posts_Controller {
 					'threshold'     => (int) ($score_data['threshold'] ?? 70),
 				);
 			}
+			$score_status = get_post_meta($item->post_id, '_aips_post_score_status', true);
 
 			$posts_data[] = array(
 				'history_id' => $item->id,
@@ -142,6 +143,7 @@ class AIPS_Generated_Posts_Controller {
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 				'post_score' => $post_score,
+				'score_status' => $score_status,
 			);
 		}
 		
@@ -167,6 +169,7 @@ class AIPS_Generated_Posts_Controller {
 						'threshold'     => (int) ($score_data['threshold'] ?? 70),
 					);
 				}
+				$item->score_status = get_post_meta($item->post_id, '_aips_post_score_status', true);
 			}
 		}
 

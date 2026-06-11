@@ -4780,3 +4780,16 @@ flex-wrap: wrap;
 .aips-score-red .aips-circle {
 	stroke: #ef4444;
 }
+.aips-score-pending .aips-circle {
+	stroke: #94a3b8;
+	animation: aips-spin 1.5s linear infinite;
+	transform-origin: center;
+}
+@keyframes aips-spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}

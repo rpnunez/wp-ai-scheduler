@@ -316,4 +316,124 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$this->assertSame(85.0, $response['data']['overall_score']);
 		$this->assertTrue($response['data']['passed']);
 	}
+
+	public function test_orchestrator_resolves_and_scores_post_successfully() {
+		$post_id = self::factory()->post->create(array(
+			'post_title' => 'Cron Scored Post',
+			'post_content' => 'Content to be evaluated by cron.',
+			'post_status' => 'draft',
+		));
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id = $history_repository->create(array(
+			'status' => 'completed',
+			'post_id' => $post_id,
+			'generated_title' => 'Cron Scored Post',
+		));
+
+		// Set intended status and processing flag
+		update_post_meta($post_id, '_aips_post_score_status', 'pending');
+		update_post_meta($post_id, '_aips_post_intended_status', 'publish');
+
+		$context = $this->make_context();
+		$fake_factory = new class($context) {
+			private $ctx;
+			public function __construct($ctx) { $this->ctx = $ctx; }
+			public function create_from_history_id($history_id) {
+				return array('generation_context' => $this->ctx);
+			}
+		};
+
+		$result = new AIPS_PostScore_Result(
+			$this->passing_scores(),
+			85.0,
+			70,
+			array(),
+			'Passed quality gate.'
+		);
+
+		$fake_service = new class($result) extends AIPS_PostScore_Service {
+			private $res;
+			public function __construct($res) { $this->res = $res; }
+			public function score_and_revise_post($post_id, $context) { return $this->res; }
+			public function get_score_from_post($post_id): ?AIPS_PostScore_Result { return $this->res; }
+		};
+
+		$orchestrator = new AIPS_PostScore_Cron_Orchestrator($history_repository, $fake_factory, $fake_service);
+		$orchestrator->process_post($post_id);
+
+		// Verify meta is cleaned up
+		$this->assertSame('', (string) get_post_meta($post_id, '_aips_post_score_status', true));
+		$this->assertSame('', (string) get_post_meta($post_id, '_aips_post_intended_status', true));
+
+		// Verify status transitioned to publish because it passed
+		$updated_post = get_post($post_id);
+		$this->assertSame('publish', $updated_post->post_status);
+
+		// Verify history logging
+		$history_record = $history_repository->get_by_id($history_id);
+		$this->assertCount(1, $history_record->log);
+		$this->assertSame('post_score_passed', $history_record->log[0]->log_type);
+	}
+
+	public function test_orchestrator_fails_quality_gate_keeps_draft() {
+		$post_id = self::factory()->post->create(array(
+			'post_title' => 'Failing Cron Scored Post',
+			'post_content' => 'Poor content.',
+			'post_status' => 'draft',
+		));
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id = $history_repository->create(array(
+			'status' => 'completed',
+			'post_id' => $post_id,
+			'generated_title' => 'Failing Cron Scored Post',
+		));
+
+		update_post_meta($post_id, '_aips_post_score_status', 'pending');
+		update_post_meta($post_id, '_aips_post_intended_status', 'publish');
+
+		$context = $this->make_context();
+		$fake_factory = new class($context) {
+			private $ctx;
+			public function __construct($ctx) { $this->ctx = $ctx; }
+			public function create_from_history_id($history_id) {
+				return array('generation_context' => $this->ctx);
+			}
+		};
+
+		$low_scores = $this->passing_scores();
+		$low_scores['specificity'] = 2; // overall score will drop below 70
+
+		$result = new AIPS_PostScore_Result(
+			$low_scores,
+			60.0,
+			70,
+			array('Add specific content.'),
+			'Failed quality gate.'
+		);
+
+		$fake_service = new class($result) extends AIPS_PostScore_Service {
+			private $res;
+			public function __construct($res) { $this->res = $res; }
+			public function score_and_revise_post($post_id, $context) { return $this->res; }
+			public function get_score_from_post($post_id): ?AIPS_PostScore_Result { return $this->res; }
+		};
+
+		$orchestrator = new AIPS_PostScore_Cron_Orchestrator($history_repository, $fake_factory, $fake_service);
+		$orchestrator->process_post($post_id);
+
+		// Verify status remains draft because it failed the quality gate
+		$updated_post = get_post($post_id);
+		$this->assertSame('draft', $updated_post->post_status);
+
+		// Verify meta is cleaned up
+		$this->assertSame('', (string) get_post_meta($post_id, '_aips_post_score_status', true));
+		$this->assertSame('', (string) get_post_meta($post_id, '_aips_post_intended_status', true));
+
+		// Verify history logging
+		$history_record = $history_repository->get_by_id($history_id);
+		$this->assertCount(1, $history_record->log);
+		$this->assertSame('post_score_failed', $history_record->log[0]->log_type);
+	}
 }
