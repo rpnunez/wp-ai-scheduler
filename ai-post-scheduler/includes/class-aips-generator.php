@@ -48,6 +48,11 @@ class AIPS_Generator {
     private $post_featured_image_prompt_builder;
 
     /**
+     * @var AIPS_PostScore_Service Post quality scoring and revision service.
+     */
+    private $post_score_service;
+
+    /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
     private $markdown_parser;
@@ -67,6 +72,7 @@ class AIPS_Generator {
     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
+     * @param AIPS_PostScore_Service|null $post_score_service
      */
     public function __construct(
         ?AIPS_Logger_Interface $logger = null,
@@ -77,7 +83,8 @@ class AIPS_Generator {
         $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
-        $markdown_parser = null
+        $markdown_parser = null,
+        ?AIPS_PostScore_Service $post_score_service = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -93,6 +100,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_score_service = $post_score_service ?: new AIPS_PostScore_Service($this->ai_service);
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -843,6 +851,30 @@ class AIPS_Generator {
 
         $post_id = $this->post_manager->create_post($post_creation_data);
 
+        if (!is_wp_error($post_id)) {
+            $score_enabled = AIPS_Config::get_instance()->get_option('aips_post_score_auto_enabled');
+            if ($score_enabled) {
+                // Mark post as pending scoring in the background
+                update_post_meta($post_id, '_aips_post_score_status', 'pending');
+
+                // Enforce Quality Gate: If scheduled status is 'publish', hold it as 'draft' until evaluation completes
+                $intended_status = $context instanceof AIPS_Generation_Context
+                    ? $context->get_post_status()
+                    : ( $context->post_status ?? 'draft' );
+
+                if ('publish' === $intended_status) {
+                    update_post_meta($post_id, '_aips_post_intended_status', 'publish');
+                    wp_update_post(array(
+                        'ID'          => $post_id,
+                        'post_status' => 'draft',
+                    ));
+                }
+
+                // Schedule background scoring task
+                wp_schedule_single_event(time(), 'aips_async_score_post', array($post_id));
+            }
+        }
+
         if (is_wp_error($post_id)) {
             // Use new history API to complete with failure
             $this->current_history->complete_failure($post_id->get_error_message(), array(
@@ -966,6 +998,7 @@ class AIPS_Generator {
 
         return $post_id;
     }
+
 
     /**
      * Emit a generation failure notification for non-scheduled runs.

@@ -414,6 +414,15 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register AIPS_PostScore_Cron_Orchestrator transient binding
+        $container->bind(AIPS_PostScore_Cron_Orchestrator::class, function( $container ) {
+            return new AIPS_PostScore_Cron_Orchestrator(
+                $container->make(AIPS_History_Repository::class),
+                new AIPS_Generation_Context_Factory(),
+                new AIPS_PostScore_Service()
+            );
+        });
     }
 
     /**
@@ -774,6 +783,12 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // Asynchronous quality scoring and targeted revisions.
+        add_action('aips_async_score_post', function( $post_id ) {
+            $orchestrator = AIPS_Container::get_instance()->make( AIPS_PostScore_Cron_Orchestrator::class );
+            $orchestrator->process_post( (int) $post_id );
+        });
     }
 
     /**

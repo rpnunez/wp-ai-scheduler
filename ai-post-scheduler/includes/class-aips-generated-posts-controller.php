@@ -121,6 +121,18 @@ class AIPS_Generated_Posts_Controller {
 			// Use a GMT timestamp to avoid timezone skew when formatting relative time.
 			$published_timestamp = (int) get_post_time('U', true, $post);
 			
+			// Retrieve post quality score if available
+			$score_data = get_post_meta($item->post_id, '_aips_post_score', true);
+			$post_score = null;
+			if (is_array($score_data) && isset($score_data['overall_score'])) {
+				$post_score = array(
+					'overall_score' => (float) $score_data['overall_score'],
+					'passed'        => (bool) $score_data['passed'],
+					'threshold'     => (int) ($score_data['threshold'] ?? 70),
+				);
+			}
+			$score_status = get_post_meta($item->post_id, '_aips_post_score_status', true);
+
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
@@ -130,6 +142,8 @@ class AIPS_Generated_Posts_Controller {
 				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
+				'post_score' => $post_score,
+				'score_status' => $score_status,
 			);
 		}
 		
@@ -140,10 +154,22 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 
-		// Pre-format dates for draft posts
+		// Pre-format dates for draft posts and fetch quality scores
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
 				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
+
+				// Retrieve post quality score if available
+				$score_data = get_post_meta($item->post_id, '_aips_post_score', true);
+				$item->post_score = null;
+				if (is_array($score_data) && isset($score_data['overall_score'])) {
+					$item->post_score = array(
+						'overall_score' => (float) $score_data['overall_score'],
+						'passed'        => (bool) $score_data['passed'],
+						'threshold'     => (int) ($score_data['threshold'] ?? 70),
+					);
+				}
+				$item->score_status = get_post_meta($item->post_id, '_aips_post_score_status', true);
 			}
 		}
 
