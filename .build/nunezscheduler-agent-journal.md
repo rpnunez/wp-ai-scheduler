@@ -275,3 +275,8 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Replaced hard `window.location.reload()` calls in the Sources admin UI with dynamic AJAX content panel refreshing (`AIPS.refreshContentPanel`) to preserve UI context.
 **Files Modified:** ai-post-scheduler/assets/js/admin-sources.js
 **Outcome:** Faster, smoother transitions when creating, editing, deleting, or fetching sources without losing scroll position or tab context.
+## 2026-06-11 - Planner Bulk Scheduling Optimization
+Target Feature: Planner
+Improvement: Staggered `next_run` timestamps in `AIPS_Planner::ajax_bulk_schedule()` by interval duration for recurring schedules and 600s for one-time frequencies to prevent rate-limiting and server spikes during bulk creation, while enforcing individual db entries keep 'once' frequency to avoid infinite recurrence.
+Files Modified: ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
+Outcome: Prevents spikes when large topic lists are scheduled, improving flow stability and maintaining test coverage.
