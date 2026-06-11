@@ -106,6 +106,15 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * AJAX handler to bulk schedule multiple topics.
+     *
+     * Staggers the next_run datetimes based on the interval of the selected frequency,
+     * using 10 minutes (600 seconds) for the "once" frequency, while ensuring the
+     * $schedules array's frequency field remains set to 'once'.
+     *
+     * @return void
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -134,13 +143,20 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        $calculator = new AIPS_Interval_Calculator();
+        $interval_duration = $calculator->get_interval_duration($frequency);
+
+        if ($frequency === 'once' || $interval_duration <= 0) {
+            $interval_duration = 600; // 10 minutes
+        }
+
+        foreach ($topics as $index => $topic) {
+            $staggered_time = $base_time + ($index * $interval_duration);
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
+                'frequency' => 'once', // Must remain 'once' for individual db entries
+                'next_run' => date('Y-m-d H:i:s', $staggered_time),
                 'is_active' => 1,
                 'topic' => $topic
             );
