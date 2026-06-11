@@ -237,7 +237,7 @@
 		 */
 		openAddModal: function (e) {
 			e.preventDefault();
-			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
+			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
 
@@ -278,7 +278,7 @@
 			this.currentAuthorId = authorId;
 
 			// Show loading state
-			$('#aips-author-modal-title').text(aipsAuthorsL10n.loading);
+			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.loading);
 			$('#aips-author-form').hide();
 			$('#aips-author-modal-loader').show();
 			$('#aips-author-modal').fadeIn();
@@ -301,7 +301,7 @@
 						}
 						$('#aips-author-modal-loader').hide();
 						$('#aips-author-form').show();
-						$('#aips-author-modal-title').text(aipsAuthorsL10n.editAuthor);
+						$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.editAuthor);
 						$('#author_id').val(author.id);
 						$('#author_name').val(author.name);
 						$('#author_field_niche').val(author.field_niche);
@@ -1289,7 +1289,7 @@
 			// Open feedback modal
 			$('#feedback_topic_id').val(topicId);
 			$('#feedback_action').val('approve');
-			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
+			$('#aips-feedback-modal').find('.aips-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
 			this.populateCategoryOptions('approve');
@@ -1312,7 +1312,7 @@
 			// Open feedback modal
 			$('#feedback_topic_id').val(topicId);
 			$('#feedback_action').val('reject');
-			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
+			$('#aips-feedback-modal').find('.aips-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
 			this.populateCategoryOptions('reject');
@@ -1726,7 +1726,7 @@
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
 
-			$('#aips-topic-logs-content').html('<p>' + (aipsAuthorsL10n.logViewerLoading || 'Loading logs...') + '</p>');
+			$('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + (aipsAuthorsL10n.logViewerLoading || 'Loading logs...') + '</p>');
 			$('#aips-topic-logs-modal').fadeIn();
 
 			this.loadTopicLogs(topicId);
@@ -1753,13 +1753,13 @@
 					if (response.success) {
 						this.renderTopicLogs(response.data.logs);
 					} else {
-						 $('#aips-topic-logs-content').html(
+						 $('#aips-topic-logs-modal').find('.aips-modal-content-body').html(
 							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.logViewerError) + '</p>'
 						);
 					}
 				},
 				error: () => {
-					 $('#aips-topic-logs-content').html('<p>' + aipsAuthorsL10n.logViewerError + '</p>');
+					 $('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.logViewerError + '</p>');
 				}
 			});
 		},
@@ -1775,7 +1775,7 @@
 		 */
 		renderTopicLogs: function (logs) {
 			if (!logs || logs.length === 0) {
-				$('#aips-topic-logs-content').html('<p>' + aipsAuthorsL10n.noLogsFound + '</p>');
+				$('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.noLogsFound + '</p>');
 				return;
 			}
 
@@ -1798,7 +1798,7 @@
 				rows: rowsHtml
 			});
 
-			$('#aips-topic-logs-content').html(tableHtml);
+			$('#aips-topic-logs-modal').find('.aips-modal-content-body').html(tableHtml);
 		},
 		
 		/**
@@ -1817,7 +1817,7 @@
 			const topicId = $(e.currentTarget).data('topic-id');
 			this.currentTopicPostsTopicId = topicId;
 			
-			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
+			$('#aips-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
 			
 			this.loadTopicPosts(topicId);
@@ -1845,19 +1845,19 @@
 						const topic = response.data.topic;
 						const posts = response.data.posts;
 						
-						$('#aips-topic-posts-modal-title').text(
+						$('#aips-topic-posts-modal').find('.aips-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
 						);
 						
 						this.renderTopicPosts(posts);
 					} else {
-						$('#aips-topic-posts-content').html(
+						$('#aips-topic-posts-modal').find('.aips-modal-content-body').html(
 							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingPosts) + '</p>'
 						);
 					}
 				},
 				error: () => {
-					$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
+					$('#aips-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
 				}
 			});
 		},
@@ -1872,7 +1872,7 @@
 		 */
 		renderTopicPosts: function (posts) {
 			if (!posts || posts.length === 0) {
-				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
+				$('#aips-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
 
@@ -1925,7 +1925,7 @@
 				});
 			});
 
-			$('#aips-topic-posts-content').html(AIPS.Templates.renderRaw('aips-tmpl-topic-posts-list', {
+			$('#aips-topic-posts-modal').find('.aips-modal-content-body').html(AIPS.Templates.renderRaw('aips-tmpl-topic-posts-list', {
 				items: itemsHtml
 			}));
 		},

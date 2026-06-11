@@ -15,11 +15,6 @@ The plugin lives inside the `ai-post-scheduler/` subdirectory. Treat that folder
 - **Package Manager**: Composer (run from `ai-post-scheduler/`)
 - **AI Integration**: Meow Apps AI Engine (`Meow_MWAI_Core` runtime dependency)
 
-## Critical Constraints (Anti-Duplication)
-
-1. **Check Existing PRs:** Before making any file modifications, you MUST use the GitHub CLI (`gh pr list`) or check the repository's open pull requests.
-2. **De-duplication:** When determining what to work on (unless given specific instructions), pull the current open PR list before deciding and choose work that is not already addressed by an open PR to avoid wasted time and resources. If a PR already exists that addresses the same feature, ABORT the task immediately.
-
 ## Where to Work
 
 - Work primarily inside `ai-post-scheduler/`
