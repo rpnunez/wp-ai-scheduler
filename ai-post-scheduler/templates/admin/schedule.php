@@ -23,6 +23,7 @@ foreach ($campaign_options as $campaign_option) {
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
+$is_embedded_schedule_view = !empty($embedded);
 
 $date_format = get_option('date_format') . ' ' . get_option('time_format');
 
@@ -155,6 +156,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	}
 }
 ?>
+<?php if (!$is_embedded_schedule_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 
@@ -179,6 +181,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<?php endif; ?>
 				</div>
 			</div>
+<?php endif; ?>
 		</div>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
@@ -503,8 +506,10 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<?php endif; ?>
 		</div><!-- /.aips-content-panel -->
 
+<?php if (!$is_embedded_schedule_view) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->
+<?php endif; ?>
 
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->

@@ -122,26 +122,45 @@ class AIPS_Template_Repository {
     }
     
     /**
+     * Normalise a raw post_category value to a JSON-encoded array string
+     * suitable for DB storage.
+     *
+     * Accepts:
+     *   - array of ints  → JSON-encodes after filtering
+     *   - int > 0        → single-element JSON array
+     *   - numeric string → treated as int
+     *   - null / 0 / ''  → stores as null (no category)
+     *   - JSON string    → decoded, filtered, re-encoded
+     *
+     * @param mixed $value Raw post_category value.
+     * @return string|null JSON array string or null.
+     */
+    private function sanitise_post_categories( $value ) {
+        $ids = AIPS_Template_Data::parse_post_categories( $value );
+        return empty( $ids ) ? null : wp_json_encode( $ids );
+    }
+
+    /**
      * Create a new template.
      *
      * @param array $data {
      *     Template data.
      *
-     *     @type string $name                    Template name.
-     *     @type string $prompt_template         AI prompt template.
-     *     @type string $title_prompt            Title generation prompt.
-     *     @type int    $voice_id                Voice ID.
-     *     @type int    $post_quantity           Number of posts to generate.
-     *     @type string $image_prompt            Image generation prompt.
-     *     @type int    $generate_featured_image Generate featured image flag.
-     *     @type string $featured_image_source   Source of featured image (ai_prompt|unsplash|media_library).
-     *     @type string $featured_image_unsplash_keywords Keywords for Unsplash image search.
-     *     @type string $featured_image_media_ids Comma-separated list of media library attachment IDs.
-     *     @type string $post_status             Post status (draft, publish, etc.).
-     *     @type int    $post_category           Post category ID.
-     *     @type string $post_tags               Comma-separated tags.
-     *     @type int    $post_author             Post author ID.
-     *     @type int    $is_active               Active status flag.
+     *     @type string       $name                    Template name.
+     *     @type string       $prompt_template         AI prompt template.
+     *     @type string       $title_prompt            Title generation prompt.
+     *     @type int          $voice_id                Voice ID.
+     *     @type int          $post_quantity           Number of posts to generate.
+     *     @type string       $image_prompt            Image generation prompt.
+     *     @type int          $generate_featured_image Generate featured image flag.
+     *     @type string       $featured_image_source   Source of featured image (ai_prompt|unsplash|media_library).
+     *     @type string       $featured_image_unsplash_keywords Keywords for Unsplash image search.
+     *     @type string       $featured_image_media_ids Comma-separated list of media library attachment IDs.
+     *     @type string       $post_status             Post status (draft, publish, etc.).
+     *     @type int|array    $post_category           Category ID or array of category IDs.
+     *     @type string       $post_tags               Comma-separated tags.
+     *     @type int          $post_author             Post author ID.
+     *     @type int          $is_active               Active status flag.
      * }
      * @return int|false The inserted ID on success, false on failure.
      */
@@ -164,7 +183,7 @@ class AIPS_Template_Repository {
             'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
             'post_status' => sanitize_text_field($data['post_status']),
             'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : 'post',
-            'post_category' => absint($data['post_category']),
+            'post_category' => $this->sanitise_post_categories( isset( $data['post_category'] ) ? $data['post_category'] : null ),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
@@ -175,7 +194,7 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -260,8 +279,8 @@ class AIPS_Template_Repository {
         }
         
         if (isset($data['post_category'])) {
-            $update_data['post_category'] = absint($data['post_category']);
-            $format[] = '%d';
+            $update_data['post_category'] = $this->sanitise_post_categories( $data['post_category'] );
+            $format[] = '%s';
         }
         
         if (isset($data['post_tags'])) {

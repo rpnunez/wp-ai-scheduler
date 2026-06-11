@@ -11,7 +11,10 @@ $structures_repository = null;
 $authors = array();
 $article_structures = array();
 
-if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
+$current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+$is_embedded_authors_view = !empty($embedded);
+
+if ($current_page === 'aips-authors' || $is_embedded_authors_view) {
     $authors_repository = new AIPS_Authors_Repository();
     $authors = $authors_repository->get_all();
 
@@ -32,6 +35,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 // Site-wide content settings used to pre-fill the Author Suggestions modal
 $site_ctx = AIPS_Site_Context::get();
 ?>
+<?php if (!$is_embedded_authors_view) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -52,6 +56,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </button>
                 </div>
             </div>
+<?php endif; ?>
         </div>
 
         <!-- Add tabs for Authors List and Generation Queue -->
@@ -215,7 +220,7 @@ $site_ctx = AIPS_Site_Context::get();
                                     </td>
                                     <td>
                                         <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
-                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-author-topics', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                            <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'author_topics', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php echo esc_html(sprintf(_n('%d Topic', '%d Topics', $total_topics, 'ai-post-scheduler'), $total_topics)); ?>
                                             </a>
@@ -371,8 +376,10 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
         </div>
+<?php if (!$is_embedded_authors_view) : ?>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
+<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
@@ -928,4 +935,3 @@ $site_ctx = AIPS_Site_Context::get();
 </script>
 
 	<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
-

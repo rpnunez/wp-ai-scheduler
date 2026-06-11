@@ -44,6 +44,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
 	private const PAGE_ONBOARDING = 'aips-onboarding';
+	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
+	private const PAGE_AUTOMATIONS = 'aips-automations';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
@@ -84,7 +86,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -92,7 +94,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
+        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
 			$this->enqueue_templates_assets();
 		}
 
@@ -104,7 +106,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_structures_assets();
 		}
 
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE)) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -113,6 +115,7 @@ class AIPS_Admin_Assets {
             || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
             || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
             || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+            || $this->is_automations_tab($page, 'campaigns')
         ) {
 			$this->enqueue_campaigns_assets();
 		}
@@ -140,20 +143,20 @@ class AIPS_Admin_Assets {
 			$this->enqueue_onboarding_assets();
 		}
 
-        if (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS)) {
+		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
 			$this->enqueue_dev_tools_assets();
 		}
 
-        if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS)) {
+		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY)) {
+        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy')) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES)) {
+        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->is_automations_tab($page, 'sources')) {
 			$this->enqueue_sources_assets();
 		}
 
@@ -161,18 +164,48 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-        if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY)) {
+		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)) {
+        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
 			$this->enqueue_internal_links_assets();
 		}
 
-		if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR)) {
+        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
 			$this->enqueue_cache_monitor_assets();
 		}
 
+	}
+
+	/**
+	 * Determine whether the Diagnostics page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_diagnostics_tab($page, $tab) {
+		if (self::PAGE_DIAGNOSTICS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
+	}
+
+	/**
+	 * Determine whether the Automations page is displaying a specific tab.
+	 *
+	 * @param string $page Current sanitized page slug.
+	 * @param string $tab Tab key to test.
+	 * @return bool
+	 */
+	private function is_automations_tab($page, $tab) {
+		if (self::PAGE_AUTOMATIONS !== $page) {
+			return false;
+		}
+
+		return $tab === AIPS_Automations_Controller::get_active_tab_key();
 	}
 
     /**
@@ -230,6 +263,21 @@ class AIPS_Admin_Assets {
 
         return sanitize_key(wp_unslash($page));
     }
+
+	/**
+	 * Get the current sanitized tab key from the request.
+	 *
+	 * @return string
+	 */
+	private function get_current_tab_key() {
+		$tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_SPECIAL_CHARS);
+
+		if (!is_string($tab) || '' === $tab) {
+			return '';
+		}
+
+		return sanitize_key(wp_unslash($tab));
+	}
 
 	/**
 	 * Check whether the current admin hook includes a page slug.
@@ -387,7 +435,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-history',
             AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );
@@ -453,6 +501,13 @@ class AIPS_Admin_Assets {
      * @param string $hook The current admin page hook.
      */
     private function enqueue_authors_assets($hook) {
+		  $current_page = $this->get_current_page_slug();
+		  $current_tab  = $this->get_current_tab_key();
+		  $is_author_topics_context = self::PAGE_AUTHOR_TOPICS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && AIPS_Automations_Controller::TAB_AUTHOR_TOPICS === $current_tab);
+		  $is_authors_listing_context = self::PAGE_AUTHORS === $current_page
+			  || (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
+
           wp_enqueue_style(
             'aips-authors-style',
             AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -476,7 +531,7 @@ class AIPS_Admin_Assets {
           );
 
           // Localize script with translations and nonce
-          $page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
+          $page_author_id = $is_author_topics_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
 
           wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
@@ -663,7 +718,7 @@ class AIPS_Admin_Assets {
 
           // Pass page-context data (not i18n) in a separate object so it stays
           // semantically distinct from the translation strings above.
-          $deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
+          $deep_link_author_id = $is_authors_listing_context ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
           wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,
@@ -1197,6 +1252,7 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
             ));
     }
 
@@ -1427,6 +1483,13 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+			wp_localize_script('aips-admin-settings', 'aipsSettingsL10n', array(
+				'saving'        => __('Saving…', 'ai-post-scheduler'),
+				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
+				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
+				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+			));
     }
 
     /**
