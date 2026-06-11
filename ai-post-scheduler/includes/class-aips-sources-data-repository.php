@@ -132,6 +132,172 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
+	 * Retrieve one source data row by ID.
+	 *
+	 * @param int $id Source data row ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_id( $id ) {
+		return $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE id = %d",
+				absint( $id )
+			)
+		);
+	}
+
+	/**
+	 * Retrieve a paginated set of source data rows for one source.
+	 *
+	 * @param int    $source_id Source ID.
+	 * @param string $search    Optional search term.
+	 * @param int    $per_page  Rows per page.
+	 * @param int    $page      Current page.
+	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
+	 */
+	public function get_paginated_by_source_id( $source_id, $search = '', $per_page = 20, $page = 1 ) {
+		$source_id = absint( $source_id );
+		$per_page  = max( 1, min( 100, absint( $per_page ) ) );
+		$page      = max( 1, absint( $page ) );
+		$offset    = ( $page - 1 ) * $per_page;
+		$search    = is_string( $search ) ? trim( $search ) : '';
+
+		if ( $source_id <= 0 ) {
+			return array(
+				'items'        => array(),
+				'total'        => 0,
+				'pages'        => 0,
+				'current_page' => $page,
+				'per_page'     => $per_page,
+			);
+		}
+
+		$where = 'WHERE source_id = %d';
+		$args  = array( $source_id );
+
+		if ( '' !== $search ) {
+			$like    = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$where  .= ' AND (url LIKE %s OR page_title LIKE %s OR meta_description LIKE %s OR extracted_text LIKE %s OR fetch_status LIKE %s OR error_message LIKE %s)';
+			$args[]  = $like;
+			$args[]  = $like;
+			$args[]  = $like;
+			$args[]  = $like;
+			$args[]  = $like;
+			$args[]  = $like;
+		}
+
+		$total = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$this->table_name} {$where}",
+				...$args
+			)
+		);
+
+		$query_args   = $args;
+		$query_args[] = $per_page;
+		$query_args[] = $offset;
+
+		$items = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT * FROM {$this->table_name} {$where} ORDER BY fetched_at DESC, id DESC LIMIT %d OFFSET %d",
+				...$query_args
+			)
+		);
+
+		return array(
+			'items'        => $items,
+			'total'        => $total,
+			'pages'        => (int) ceil( $total / $per_page ),
+			'current_page' => $page,
+			'per_page'     => $per_page,
+		);
+	}
+
+	/**
+	 * Update one source data row.
+	 *
+	 * @param int   $id   Source data row ID.
+	 * @param array $data Public source data fields to update.
+	 * @return bool True when the update succeeded, false otherwise.
+	 */
+	public function update( $id, array $data ) {
+		$id = absint( $id );
+		if ( $id <= 0 ) {
+			return false;
+		}
+
+		$allowed = array(
+			'url'              => '%s',
+			'page_title'       => '%s',
+			'meta_description' => '%s',
+			'extracted_text'   => '%s',
+			'raw_html'         => '%s',
+			'char_count'       => '%d',
+			'fetch_status'     => '%s',
+			'http_status'      => '%d',
+			'error_message'    => '%s',
+			'fetched_at'       => '%d',
+		);
+
+		$row    = array();
+		$format = array();
+		foreach ( $allowed as $key => $fmt ) {
+			if ( array_key_exists( $key, $data ) ) {
+				$row[ $key ] = $data[ $key ];
+				$format[]    = $fmt;
+			}
+		}
+
+		if ( empty( $row ) ) {
+			return false;
+		}
+
+		if ( array_key_exists( 'extracted_text', $row ) ) {
+			$text       = (string) $row['extracted_text'];
+			$char_count = function_exists( 'mb_strlen' ) ? mb_strlen( $text ) : strlen( $text );
+			if ( array_key_exists( 'char_count', $row ) ) {
+				$row['char_count'] = $char_count;
+			} else {
+				$row['char_count'] = $char_count;
+				$format[]          = '%d';
+			}
+			$row['content_hash'] = '' !== $text ? hash( 'sha256', $text ) : null;
+			$format[]            = '%s';
+		}
+
+		$row['updated_at'] = AIPS_DateTime::now()->timestamp();
+		$format[]          = '%d';
+
+		$result = $this->wpdb->update(
+			$this->table_name,
+			$row,
+			array( 'id' => $id ),
+			$format,
+			array( '%d' )
+		);
+
+		return false !== $result;
+	}
+
+	/**
+	 * Delete one source data row.
+	 *
+	 * @param int $id Source data row ID.
+	 * @return bool True when deleted, false otherwise.
+	 */
+	public function delete( $id ) {
+		$result = $this->wpdb->delete(
+			$this->table_name,
+			array( 'id' => absint( $id ) ),
+			array( '%d' )
+		);
+
+		return false !== $result && $result > 0;
+	}
+
+	/**
 	 * Retrieve the most recent fetch snapshot for a source.
 	 *
 	 * @param int $source_id Source ID.

@@ -112,7 +112,10 @@ $is_embedded_sources_view = !empty($embedded);
 							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
 							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
 							<td class="column-label cell-primary">
-								<?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?>
+								<span class="aips-source-label-text"><?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?></span>
+								<?php if ($fetch_interval): ?>
+									<span class="aips-badge aips-badge-neutral aips-source-frequency-chip"><?php echo esc_html($fetch_interval); ?></span>
+								<?php endif; ?>
 							</td>
 							<td class="column-url">
 								<a href="<?php echo esc_url($source->url); ?>" target="_blank" rel="noopener noreferrer">
@@ -155,11 +158,7 @@ $is_embedded_sources_view = !empty($embedded);
 										<?php echo $fetch_interval ? esc_html__('Scheduled', 'ai-post-scheduler') : '—'; ?>
 									</span>
 								<?php endif; ?>
-								<?php if ($fetch_interval): ?>
-									<div class="cell-meta" style="font-size:11px; margin-top:2px;">
-										<?php echo esc_html($fetch_interval); ?>
-									</div>
-								<?php endif; ?>
+
 							</td>
 							<td class="column-status">
 								<?php if ($source->is_active): ?>
@@ -188,6 +187,12 @@ $is_embedded_sources_view = !empty($embedded);
 										<span class="dashicons dashicons-download"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Fetch Now', 'ai-post-scheduler'); ?></span>
 									</button>
+									<a class="aips-btn aips-btn-sm aips-btn-secondary"
+										href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', array('source_id' => absint($source->id)))); ?>"
+										title="<?php esc_attr_e('Manage fetched source data', 'ai-post-scheduler'); ?>">
+										<span class="dashicons dashicons-archive"></span>
+										<span><?php esc_html_e('Manage Data', 'ai-post-scheduler'); ?></span>
+									</a>
 									<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										data-active="<?php echo esc_attr($source->is_active); ?>"

@@ -198,6 +198,86 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 	}
 
 	// ------------------------------------------------------------------
+	// source data CRUD pagination
+	// ------------------------------------------------------------------
+
+	/** @test */
+	public function test_get_by_id_returns_single_source_data_row() {
+		$this->repo->insert_if_new( 301, array(
+			'url'            => 'https://single.example.com',
+			'extracted_text' => 'Single row content.',
+			'fetch_status'   => 'success',
+			'http_status'    => 200,
+		) );
+
+		$latest = $this->repo->get_by_source_id( 301 );
+		$row    = $this->repo->get_by_id( (int) $latest->id );
+
+		$this->assertNotNull( $row );
+		$this->assertEquals( 'Single row content.', $row->extracted_text );
+	}
+
+	/** @test */
+	public function test_get_paginated_by_source_id_filters_by_search() {
+		$this->repo->insert_if_new( 302, array(
+			'url'            => 'https://one.example.com',
+			'page_title'     => 'First Page',
+			'extracted_text' => 'Alpha content.',
+			'fetch_status'   => 'success',
+		) );
+		$this->repo->insert_if_new( 302, array(
+			'url'            => 'https://two.example.com',
+			'page_title'     => 'Second Page',
+			'extracted_text' => 'Beta searchable content.',
+			'fetch_status'   => 'success',
+		) );
+
+		$result = $this->repo->get_paginated_by_source_id( 302, 'searchable', 20, 1 );
+
+		$this->assertSame( 1, $result['total'] );
+		$this->assertCount( 1, $result['items'] );
+		$this->assertEquals( 'Second Page', $result['items'][0]->page_title );
+	}
+
+	/** @test */
+	public function test_update_source_data_recalculates_content_size_fields() {
+		$this->repo->insert_if_new( 303, array(
+			'url'            => 'https://update.example.com',
+			'extracted_text' => 'Old content.',
+			'fetch_status'   => 'success',
+		) );
+
+		$row    = $this->repo->get_by_source_id( 303 );
+		$result = $this->repo->update( (int) $row->id, array(
+			'url'            => 'https://update.example.com/new',
+			'page_title'     => 'Updated Title',
+			'extracted_text' => 'Updated source data content.',
+			'fetch_status'   => 'success',
+		) );
+
+		$updated = $this->repo->get_by_id( (int) $row->id );
+
+		$this->assertTrue( $result );
+		$this->assertEquals( 'Updated Title', $updated->page_title );
+		$this->assertEquals( strlen( 'Updated source data content.' ), (int) $updated->char_count );
+		$this->assertEquals( hash( 'sha256', 'Updated source data content.' ), $updated->content_hash );
+	}
+
+	/** @test */
+	public function test_delete_removes_single_source_data_row() {
+		$this->repo->insert_if_new( 304, array(
+			'url'            => 'https://delete-one.example.com',
+			'extracted_text' => 'Delete one.',
+			'fetch_status'   => 'success',
+		) );
+
+		$row = $this->repo->get_by_source_id( 304 );
+
+		$this->assertTrue( $this->repo->delete( (int) $row->id ) );
+		$this->assertNull( $this->repo->get_by_id( (int) $row->id ) );
+	}
+
+	// ------------------------------------------------------------------
 	// delete_by_source_id()
 	// ------------------------------------------------------------------
 
