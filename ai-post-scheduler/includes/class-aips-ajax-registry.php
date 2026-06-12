@@ -125,6 +125,17 @@ class AIPS_Ajax_Registry {
 		'aips_get_session_json'           => 'AIPS_Generated_Posts_Controller',
 		'aips_download_session_json'      => 'AIPS_Generated_Posts_Controller',
 
+
+// Existing Posts Improvement Controller
+'aips_existing_posts_get_suggestions'        => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_get_suggestion_detail'  => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_apply_suggestions'      => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_dismiss_suggestions'    => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_reopen_suggestion'      => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_run_scan_now'           => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_save_schedule'          => 'AIPS_Post_Improvement_Controller',
+'aips_existing_posts_delete_schedule'        => 'AIPS_Post_Improvement_Controller',
+
 		// Calendar Controller
 		'aips_get_calendar_events'        => 'AIPS_Calendar_Controller',
 

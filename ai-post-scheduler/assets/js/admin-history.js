@@ -794,6 +794,7 @@
 		 */
 		initHeartbeatAutoRefresh: function () {
 			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
+				var heartbeatUnavailableText = aipsHistoryL10n.heartbeatUnavailable || 'Heartbeat API unavailable.';
 				// Disable auto-refresh controls and show unavailability message
 				$('#aips-history-auto-refresh')
 					.prop('disabled', true)
@@ -1302,6 +1303,8 @@
 		 *
 		 * @param {number} [paged=current URL page] 1-based page number to load.
 		 *                                          Defaults to current `paged` URL query param.
+		 * @param {Object} [options] Configuration options.
+		 * @param {boolean} [options.fromHeartbeat=false] When true, suppress reload button UI updates.
 		 */
 		reload: function (paged, options) {
 			paged = (paged === undefined || paged === null)

@@ -7,6 +7,7 @@
  * Tab 1: Generated Posts  - @see templates/admin/tab-generated-posts.php
  * Tab 2: Partial Generations - @see templates/admin/tab-partial-generations.php
  * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
+ * Tab 4: Existing Posts      - @see templates/admin/tab-existing-posts.php
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -36,6 +37,7 @@ if (!defined('ABSPATH')) {
 			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
 			<a href="#aips-partial-generations" class="aips-tab-link" data-tab="aips-partial-generations"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></a>
 			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-existing-posts" class="aips-tab-link" data-tab="aips-existing-posts"><?php esc_html_e('Existing Posts', 'ai-post-scheduler'); ?></a>
 		</div>
 
 		<!-- Tab 1: Generated Posts -->
@@ -58,6 +60,13 @@ if (!defined('ABSPATH')) {
 				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
 			</div>
 		</div>
+
+		<!-- Tab 4: Existing Posts -->
+		<div id="aips-existing-posts-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">
+				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-existing-posts.php'; ?>
+			</div>
+		</div>
 	</div>
 </div>
 
@@ -70,4 +79,7 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 
 // Include the AI Edit modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/ai-edit-modal.php';
+
+// Include Existing Post review modal partial
+include AIPS_PLUGIN_DIR . 'templates/partials/existing-post-review-modal.php';
 ?>
