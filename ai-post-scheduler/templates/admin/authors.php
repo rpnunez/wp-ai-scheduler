@@ -46,11 +46,11 @@ $site_ctx = AIPS_Site_Context::get();
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
+                    <button type="button" class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
                         <span class="dashicons dashicons-lightbulb"></span>
                         <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-primary aips-add-author-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                     </button>
@@ -240,20 +240,20 @@ $site_ctx = AIPS_Site_Context::get();
                                     <td>
                                         <div class="cell-actions">
                                             <div class="aips-author-generation-actions">
-                                                <button class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
+                                                <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
                                                     <span class="dashicons dashicons-update"></span>
                                                     <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
                                                 </button>
-                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
+                                                <button type="button" class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
                                                     <span class="dashicons dashicons-admin-post"></span>
                                                     <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
                                                 </button>
                                             </div>
-                                            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                                 <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                            <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-trash"></span>
                                                 <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                                             </button>
@@ -306,7 +306,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
-                            <button class="aips-btn aips-btn-primary aips-add-author-btn">
+                            <button type="button" class="aips-btn aips-btn-primary aips-add-author-btn">
                                 <span class="dashicons dashicons-plus-alt"></span>
                                 <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                             </button>
@@ -762,24 +762,24 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-topic-actions-pending">
 <div class="cell-actions">
-    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
 </div>
 <div class="cell-actions" style="margin-top: 6px;">
-    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
-    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-approved">
 <div class="cell-actions">
-    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
-    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-rejected">
 <div class="cell-actions">
-    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
 </div>
 </script>
 
