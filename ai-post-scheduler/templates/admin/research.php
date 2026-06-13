@@ -497,7 +497,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <td>{{researched_at}}</td>
             <td>
                 <div class="aips-topic-actions">
-                    <button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="{{id}}">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="{{id}}">
                         <span class="dashicons dashicons-trash"></span> {{delete_label}}
                     </button>
                 </div>
@@ -569,7 +569,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <p class="aips-gap-reason">{{reason}}</p>
             <p class="aips-gap-intent"><?php esc_html_e('Intent:', 'ai-post-scheduler'); ?> {{search_intent}}</p>
             <div class="aips-gap-actions">
-                <button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="{{missing_topic}}">{{generate_ideas_label}}</button>
+                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="{{missing_topic}}">{{generate_ideas_label}}</button>
             </div>
         </div>
     </script>
