@@ -106,6 +106,12 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * AJAX handler to bulk schedule multiple topics.
+     *
+     * Staggers the next_run datetime for 'once' frequency to distribute load.
+     * For repeating frequencies, all topics start at the same base time.
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -136,11 +142,16 @@ class AIPS_Planner {
         $schedules = array();
         $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        foreach ($topics as $index => $topic) {
+            if ($frequency === 'once') {
+                $staggered_time = $base_time + ($index * 600);
+            } else {
+                $staggered_time = $base_time;
+            }
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
-                'next_run' => $next_run,
+                'next_run' => date('Y-m-d H:i:s', $staggered_time),
                 'is_active' => 1,
                 'topic' => $topic
             );
