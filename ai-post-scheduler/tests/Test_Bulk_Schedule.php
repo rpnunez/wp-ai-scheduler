@@ -3,9 +3,9 @@
  * Test Bulk Schedule
  *
  * Covers both the low-level scheduler bulk-create and the Planner AJAX handler
- * that orchestrates it, focusing on the regression where each scheduled topic
- * was incorrectly offset by (index * interval) seconds instead of all sharing
- * the same user-specified next_run datetime.
+ * that orchestrates it. When frequency is 'once', topics are staggered by 10
+ * minutes. For all other frequencies, topics share the same initial user-specified
+ * next_run datetime to rely on the background queuing batcher.
  *
  * @package AI_Post_Scheduler
  */
@@ -144,19 +144,15 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Regression: all topics must share the same next_run
+	// Regression & Expected Staggering Behavior
 	// -------------------------------------------------------------------------
 
 	/**
 	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
-	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * produce N schedule entries that are staggered by 10 minutes from the
+	 * user-specified start_date.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_topics_are_staggered() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -176,12 +172,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$base_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_date = date('Y-m-d H:i:s', $base_time + ($i * 600));
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
 		}
 	}
