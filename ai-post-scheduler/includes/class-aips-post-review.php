@@ -311,6 +311,10 @@ class AIPS_Post_Review {
 		$success_count = 0;
 		$failed_count = 0;
 		
+		if (function_exists('_prime_post_caches') && !empty($post_ids)) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		foreach ($post_ids as $post_id) {
 			// Verify the post exists and is a draft
 			$post = get_post($post_id);
@@ -841,6 +845,17 @@ class AIPS_Post_Review {
 		
 		if (empty($items)) {
 			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
+		}
+
+		$post_ids_to_prime = array();
+		foreach ($items as $item) {
+			if (is_array($item) && !empty($item['post_id'])) {
+				$post_ids_to_prime[] = absint($item['post_id']);
+			}
+		}
+
+		if (function_exists('_prime_post_caches') && !empty($post_ids_to_prime)) {
+			_prime_post_caches(array_unique($post_ids_to_prime), false, true);
 		}
 		
 		// Create history container for bulk delete operation
