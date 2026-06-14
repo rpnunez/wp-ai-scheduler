@@ -74,6 +74,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Authors_Repository' => __DIR__ . '/../..' . '/includes/class-aips-authors-repository.php',
         'AIPS_Autoloader' => __DIR__ . '/../..' . '/includes/class-aips-autoloader.php',
         'AIPS_Autoloader_Test' => __DIR__ . '/../..' . '/tests/AIPS_Autoloader_Test.php',
+        'AIPS_Automations_Controller' => __DIR__ . '/../..' . '/includes/class-aips-automations-controller.php',
         'AIPS_Batch_Queue_Service' => __DIR__ . '/../..' . '/includes/class-aips-batch-queue-service.php',
         'AIPS_Batch_Queue_Service_Test' => __DIR__ . '/../..' . '/tests/AIPS_Batch_Queue_Service_Test.php',
         'AIPS_Batch_Slicer' => __DIR__ . '/../..' . '/includes/job/class-aips-batch-slicer.php',

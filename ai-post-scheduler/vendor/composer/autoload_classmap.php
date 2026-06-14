@@ -39,6 +39,7 @@ return array(
     'AIPS_Authors_Repository' => $baseDir . '/includes/class-aips-authors-repository.php',
     'AIPS_Autoloader' => $baseDir . '/includes/class-aips-autoloader.php',
     'AIPS_Autoloader_Test' => $baseDir . '/tests/AIPS_Autoloader_Test.php',
+    'AIPS_Automations_Controller' => $baseDir . '/includes/class-aips-automations-controller.php',
     'AIPS_Batch_Queue_Service' => $baseDir . '/includes/class-aips-batch-queue-service.php',
     'AIPS_Batch_Queue_Service_Test' => $baseDir . '/tests/AIPS_Batch_Queue_Service_Test.php',
     'AIPS_Batch_Slicer' => $baseDir . '/includes/job/class-aips-batch-slicer.php',

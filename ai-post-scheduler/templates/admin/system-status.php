@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
                 </div>
                 <div class="aips-btn-group">
                     <a class="aips-btn aips-btn-primary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('onboarding')); ?>">
-                        <span class="dashicons dashicons-welcome-learn-more"></span>
+                        <span class="dashicons dashicons-welcome-learn-more" aria-hidden="true"></span>
                         <?php esc_html_e('Run Onboarding Wizard', 'ai-post-scheduler'); ?>
                     </a>
                 </div>
@@ -85,7 +85,7 @@ if (!defined('ABSPATH')) {
                                             <?php if (!empty($check['cb_open'])) : ?>
                                                 <br>
                                                 <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-reset-circuit-breaker" style="margin-top: 6px;">
-                                                    <span class="dashicons dashicons-controls-repeat"></span>
+                                                    <span class="dashicons dashicons-controls-repeat" aria-hidden="true"></span>
                                                     <?php esc_html_e('Reset Circuit', 'ai-post-scheduler'); ?>
                                                 </button>
                                                 <span class="aips-reset-circuit-result" style="display:none; margin-left: 8px;"></span>
@@ -94,22 +94,22 @@ if (!defined('ABSPATH')) {
                                         <td>
                                             <?php if ($check['status'] === 'ok') : ?>
                                                 <span class="aips-badge aips-badge-success">
-                                                    <span class="dashicons dashicons-yes-alt"></span>
+                                                    <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
                                                     <?php esc_html_e('OK', 'ai-post-scheduler'); ?>
                                                 </span>
                                             <?php elseif ($check['status'] === 'warning') : ?>
                                                 <span class="aips-badge aips-badge-warning">
-                                                    <span class="dashicons dashicons-warning"></span>
+                                                    <span class="dashicons dashicons-warning" aria-hidden="true"></span>
                                                     <?php esc_html_e('Warning', 'ai-post-scheduler'); ?>
                                                 </span>
                                             <?php elseif ($check['status'] === 'error') : ?>
                                                 <span class="aips-badge aips-badge-error">
-                                                    <span class="dashicons dashicons-dismiss"></span>
+                                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                                     <?php esc_html_e('Error', 'ai-post-scheduler'); ?>
                                                 </span>
                                             <?php else : ?>
                                                 <span class="aips-badge aips-badge-info">
-                                                    <span class="dashicons dashicons-info"></span>
+                                                    <span class="dashicons dashicons-info" aria-hidden="true"></span>
                                                     <?php esc_html_e('Info', 'ai-post-scheduler'); ?>
                                                 </span>
                                             <?php endif; ?>
@@ -126,7 +126,7 @@ if (!defined('ABSPATH')) {
             <div class="aips-status-actions-sections">
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
-                    <h2><span class="dashicons dashicons-chart-area"></span> <?php esc_html_e('Unified Operations Health', 'ai-post-scheduler'); ?></h2>
+                    <h2><span class="dashicons dashicons-chart-area" aria-hidden="true"></span> <?php esc_html_e('Unified Operations Health', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <div class="aips-panel-body">
                     <p><?php esc_html_e('Single-page visibility for telemetry, cron health, queue depth, failed jobs, and dependency status. Use the one-click operations below for safe recovery workflows.', 'ai-post-scheduler'); ?></p>
@@ -158,7 +158,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2>
-                            <span class="dashicons dashicons-clock"></span>
+                            <span class="dashicons dashicons-clock" aria-hidden="true"></span>
                             <?php esc_html_e('Cron Status', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
@@ -168,7 +168,7 @@ if (!defined('ABSPATH')) {
                         if ($next_scheduled) : ?>
                             <p class="aips-status-message aips-status-success">
                                 <span class="aips-badge aips-badge-success">
-                                    <span class="dashicons dashicons-yes-alt"></span>
+                                    <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php
@@ -181,7 +181,7 @@ if (!defined('ABSPATH')) {
                         <?php else : ?>
                             <p class="aips-status-message aips-status-error">
                                 <span class="aips-badge aips-badge-warning">
-                                    <span class="dashicons dashicons-warning"></span>
+                                    <span class="dashicons dashicons-warning" aria-hidden="true"></span>
                                     <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php esc_html_e('Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler'); ?>
@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 
                         <div class="aips-btn-group aips-action-group">
                             <button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
-                                <span class="dashicons dashicons-controls-repeat"></span>
+                                <span class="dashicons dashicons-controls-repeat" aria-hidden="true"></span>
                                 <?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
                             </button>
                         </div>
@@ -205,7 +205,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2>
-                            <span class="dashicons dashicons-admin-plugins"></span>
+                            <span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
                             <?php esc_html_e('AI Engine Status', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
@@ -213,14 +213,14 @@ if (!defined('ABSPATH')) {
                         <?php if (class_exists('Meow_MWAI_Core')): ?>
                             <p class="aips-status-message aips-status-success">
                                 <span class="aips-badge aips-badge-success">
-                                    <span class="dashicons dashicons-yes-alt"></span>
+                                    <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Connected', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php esc_html_e('AI Engine is installed and active.', 'ai-post-scheduler'); ?>
                             </p>
                             <div class="aips-test-connection-wrapper">
                                 <button type="button" id="aips-test-connection" class="aips-btn aips-btn-secondary">
-                                    <span class="dashicons dashicons-update"></span>
+                                    <span class="dashicons dashicons-update" aria-hidden="true"></span>
                                     <?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?>
                                 </button>
                                 <span class="spinner aips-spinner-inline"></span>
@@ -229,14 +229,14 @@ if (!defined('ABSPATH')) {
                         <?php else: ?>
                             <p class="aips-status-message aips-status-error">
                                 <span class="aips-badge aips-badge-error">
-                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                     <?php esc_html_e('Not Found', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php esc_html_e('AI Engine is not installed or not activated. Please install and activate the AI Engine plugin.', 'ai-post-scheduler'); ?>
                             </p>
                             <p class="aips-ai-engine-download-wrap">
                                 <a href="https://wordpress.org/plugins/ai-engine/" target="_blank" rel="noopener" class="aips-btn aips-btn-primary">
-                                    <span class="dashicons dashicons-download"></span>
+                                    <span class="dashicons dashicons-download" aria-hidden="true"></span>
                                     <?php esc_html_e('Download AI Engine', 'ai-post-scheduler'); ?>
                                 </a>
                             </p>
@@ -251,7 +251,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2>
-                            <span class="dashicons dashicons-database"></span>
+                            <span class="dashicons dashicons-database" aria-hidden="true"></span>
                             <?php esc_html_e('Database Management', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
@@ -260,22 +260,22 @@ if (!defined('ABSPATH')) {
 
                         <div class="aips-btn-group aips-db-actions">
                             <button type="button" class="aips-btn aips-btn-secondary aips-repair-db">
-                                <span class="dashicons dashicons-hammer"></span>
+                                <span class="dashicons dashicons-hammer" aria-hidden="true"></span>
                                 <?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
                             </button>
 
                             <button type="button" class="aips-btn aips-btn-secondary aips-fix-datetime-db">
-                                <span class="dashicons dashicons-clock"></span>
+                                <span class="dashicons dashicons-clock" aria-hidden="true"></span>
                                 <?php esc_html_e('Fix Date/Time Values in DB', 'ai-post-scheduler'); ?>
                             </button>
 
                             <button type="button" class="aips-btn aips-btn-secondary aips-reinstall-db">
-                                <span class="dashicons dashicons-update"></span>
+                                <span class="dashicons dashicons-update" aria-hidden="true"></span>
                                 <?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?>
                             </button>
 
                             <button type="button" class="aips-btn aips-btn-danger aips-wipe-db">
-                                <span class="dashicons dashicons-trash"></span>
+                                <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                                 <?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?>
                             </button>
                         </div>
@@ -293,7 +293,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2>
-                            <span class="dashicons dashicons-migrate"></span>
+                            <span class="dashicons dashicons-migrate" aria-hidden="true"></span>
                             <?php esc_html_e('Data Management', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
@@ -312,7 +312,7 @@ if (!defined('ABSPATH')) {
                             <?php endforeach; ?>
                         </select>
                         <button type="button" class="aips-btn aips-btn-secondary aips-export-data">
-                            <span class="dashicons dashicons-download"></span>
+                            <span class="dashicons dashicons-download" aria-hidden="true"></span>
                             <?php esc_html_e('Export Data', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -336,7 +336,7 @@ if (!defined('ABSPATH')) {
                         </label>
                         <input type="file" id="aips-import-file" class="aips-file-input">
                         <button type="button" class="aips-btn aips-btn-secondary aips-import-data">
-                            <span class="dashicons dashicons-upload"></span>
+                            <span class="dashicons dashicons-upload" aria-hidden="true"></span>
                             <?php esc_html_e('Import Data', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -349,7 +349,7 @@ if (!defined('ABSPATH')) {
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
                     <h2>
-                        <span class="dashicons dashicons-bell"></span>
+                        <span class="dashicons dashicons-bell" aria-hidden="true"></span>
                         <?php esc_html_e('Notifications Maintenance', 'ai-post-scheduler'); ?>
                     </h2>
                 </div>
@@ -358,7 +358,7 @@ if (!defined('ABSPATH')) {
 
                     <div class="aips-btn-group aips-action-group">
                         <button type="button" class="aips-btn aips-btn-secondary aips-notifications-hygiene">
-                            <span class="dashicons dashicons-admin-tools"></span>
+                            <span class="dashicons dashicons-admin-tools" aria-hidden="true"></span>
                             <?php esc_html_e('Run Notifications Hygiene', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
