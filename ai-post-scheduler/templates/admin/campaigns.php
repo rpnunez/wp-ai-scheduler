@@ -16,7 +16,10 @@ $archived_campaigns = $campaigns_repo->get_campaigns(true);
 $stats = $campaigns_repo->get_summary_stats();
 $is_embedded_campaigns_view = !empty($embedded);
 
-$render_campaign_rows = static function($campaigns, $archived = false) {
+$date_format = get_option('date_format');
+$time_format = get_option('time_format');
+
+$render_campaign_rows = static function($campaigns, $archived = false) use ($date_format, $time_format) {
 	foreach ($campaigns as $campaign) :
 		$is_running = !$archived && (int) $campaign->active_schedule_count > 0;
 		$status_label = $archived ? __('Archived', 'ai-post-scheduler') : ($is_running ? __('Active', 'ai-post-scheduler') : __('Paused', 'ai-post-scheduler'));
@@ -34,8 +37,8 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 					<?php echo esc_html((int) $campaign->generated_posts_count); ?>
 				</a>
 			</td>
-			<td><?php echo !empty($campaign->last_run) ? esc_html(AIPS_DateTime::formatRelativeOrAbsolute($campaign->last_run, get_option('date_format') . ' ' . get_option('time_format'))) : esc_html__('Never', 'ai-post-scheduler'); ?></td>
-			<td><?php echo !empty($campaign->next_run) ? esc_html(AIPS_DateTime::formatRelativeOrAbsolute($campaign->next_run, get_option('date_format') . ' ' . get_option('time_format'))) : esc_html__('Not scheduled', 'ai-post-scheduler'); ?></td>
+			<td><?php echo !empty($campaign->last_run) ? esc_html(AIPS_DateTime::formatRelativeOrAbsolute($campaign->last_run, $date_format . ' ' . $time_format)) : esc_html__('Never', 'ai-post-scheduler'); ?></td>
+			<td><?php echo !empty($campaign->next_run) ? esc_html(AIPS_DateTime::formatRelativeOrAbsolute($campaign->next_run, $date_format . ' ' . $time_format)) : esc_html__('Not scheduled', 'ai-post-scheduler'); ?></td>
 			<td>
 				<span class="aips-badge aips-badge-<?php echo esc_attr($status_class); ?>">
 					<?php echo esc_html($status_label); ?>

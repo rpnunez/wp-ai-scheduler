@@ -24,12 +24,15 @@ if ((int) $campaign->is_archived === 1) {
 	$status_class = 'aips-badge-success';
 }
 
-$format_campaign_datetime = static function($timestamp, $empty_label) {
+$date_format = get_option('date_format');
+$time_format = get_option('time_format');
+
+$format_campaign_datetime = static function($timestamp, $empty_label) use ($date_format, $time_format) {
 	if (empty($timestamp)) {
 		return $empty_label;
 	}
 
-	return AIPS_DateTime::formatRelativeOrAbsolute($timestamp, get_option('date_format') . ' ' . get_option('time_format'));
+	return AIPS_DateTime::formatRelativeOrAbsolute($timestamp, $date_format . ' ' . $time_format);
 };
 
 $activity_summary = static function($details) {

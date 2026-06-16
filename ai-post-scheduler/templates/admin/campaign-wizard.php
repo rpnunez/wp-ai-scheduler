@@ -171,11 +171,13 @@ $authors = get_users(array(
 						</tr>
 						<tr>
 							<th scope="row"><label for="aips_article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label></th>
-							<td><select id="aips_article_structure_id" name="article_structure_id"><option value="0"><?php esc_html_e('Default structure', 'ai-post-scheduler'); ?></option><?php foreach ($structures as $structure) : ?><option value="<?php echo esc_attr($structure->id); ?>" <?php selected($draft['article_structure_id'] ?? $aips_config->get_option('aips_default_article_structure_id'), $structure->id); ?>><?php echo esc_html($structure->name); ?></option><?php endforeach; ?></select></td>
+							<?php $default_structure = $aips_config->get_option('aips_default_article_structure_id'); ?>
+							<td><select id="aips_article_structure_id" name="article_structure_id"><option value="0"><?php esc_html_e('Default structure', 'ai-post-scheduler'); ?></option><?php foreach ($structures as $structure) : ?><option value="<?php echo esc_attr($structure->id); ?>" <?php selected($draft['article_structure_id'] ?? $default_structure, $structure->id); ?>><?php echo esc_html($structure->name); ?></option><?php endforeach; ?></select></td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="aips_post_category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></label></th>
-							<td><select id="aips_post_category" name="post_category"><option value="0"><?php esc_html_e('Default category', 'ai-post-scheduler'); ?></option><?php foreach ($categories as $category) : ?><option value="<?php echo esc_attr($category->term_id); ?>" <?php selected($draft['post_category'] ?? $aips_config->get_option('aips_default_category'), $category->term_id); ?>><?php echo esc_html($category->name); ?></option><?php endforeach; ?></select></td>
+							<?php $default_category = $aips_config->get_option('aips_default_category'); ?>
+							<td><select id="aips_post_category" name="post_category"><option value="0"><?php esc_html_e('Default category', 'ai-post-scheduler'); ?></option><?php foreach ($categories as $category) : ?><option value="<?php echo esc_attr($category->term_id); ?>" <?php selected($draft['post_category'] ?? $default_category, $category->term_id); ?>><?php echo esc_html($category->name); ?></option><?php endforeach; ?></select></td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="aips_post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label></th>
