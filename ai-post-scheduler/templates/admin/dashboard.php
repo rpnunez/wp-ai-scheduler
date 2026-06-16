@@ -28,27 +28,27 @@ $schedule_type_labels = array(
                 </div>
                 <div class="aips-page-actions" style="flex-wrap: wrap;">
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-media-document"></span>
+                        <span class="dashicons dashicons-media-document" aria-hidden="true"></span>
                         <?php esc_html_e('Templates', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-admin-users"></span>
+                        <span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
                         <?php esc_html_e('Authors', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                         <?php esc_html_e('Schedules', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-edit"></span>
+                        <span class="dashicons dashicons-edit" aria-hidden="true"></span>
                         <?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('system_status')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-info"></span>
+                        <span class="dashicons dashicons-info" aria-hidden="true"></span>
                         <?php esc_html_e('System Status', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings')); ?>" class="aips-btn aips-btn-secondary">
-                        <span class="dashicons dashicons-admin-generic"></span>
+                        <span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
                         <?php esc_html_e('Settings', 'ai-post-scheduler'); ?>
                     </a>
                 </div>
@@ -61,26 +61,26 @@ $schedule_type_labels = array(
                 <ul class="aips-dashboard-stats-list">
 
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-edit aips-stat-icon" style="color:var(--aips-primary);"></span>
+                        <span class="dashicons dashicons-edit aips-stat-icon" style="color:var(--aips-primary);" aria-hidden="true"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($total_generated); ?></strong>
                     </a></li>
 
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-visibility aips-stat-icon"></span>
+                        <span class="dashicons dashicons-visibility aips-stat-icon" aria-hidden="true"></span>
                         <span class="aips-stat-label"><?php echo esc_html( _n( 'Pending Review', 'Pending Reviews', $pending_reviews, 'ai-post-scheduler' ) ); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($pending_reviews); ?></strong>
                     </a></li>
 
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-list-view aips-stat-icon"></span>
+                        <span class="dashicons dashicons-list-view aips-stat-icon" aria-hidden="true"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
                         <strong class="aips-stat-value"><?php echo esc_html($topics_in_queue); ?></strong>
                     </a></li>
 
                     <?php if ($partial_generations > 0): ?>
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'partial'))); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-warning aips-stat-icon" style="color:var(--aips-warning);"></span>
+                        <span class="dashicons dashicons-warning aips-stat-icon" style="color:var(--aips-warning);" aria-hidden="true"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></span>
                         <strong class="aips-stat-value" style="color:var(--aips-warning);"><?php echo esc_html($partial_generations); ?></strong>
                     </a></li>
@@ -88,7 +88,7 @@ $schedule_type_labels = array(
 
                     <?php if ($failed_count > 0): ?>
                     <li class="aips-stat-item"><a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'failed'))); ?>" class="aips-stat-link">
-                        <span class="dashicons dashicons-dismiss aips-stat-icon" style="color:var(--aips-error);"></span>
+                        <span class="dashicons dashicons-dismiss aips-stat-icon" style="color:var(--aips-error);" aria-hidden="true"></span>
                         <span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
                         <strong class="aips-stat-value" style="color:var(--aips-error);"><?php echo esc_html($failed_count); ?></strong>
                     </a></li>
@@ -147,7 +147,7 @@ $schedule_type_labels = array(
                         <p class="aips-empty-state-description"><?php esc_html_e('Get started by creating your first schedule to automate content generation.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
                             <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-primary">
-                                <span class="dashicons dashicons-plus-alt"></span>
+                                <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                                 <?php esc_html_e('Create Schedule', 'ai-post-scheduler'); ?>
                             </a>
                         </div>
@@ -215,11 +215,11 @@ $schedule_type_labels = array(
                             <p class="aips-empty-state-description"><?php esc_html_e('Start generating content by creating templates and schedules.', 'ai-post-scheduler'); ?></p>
                             <div class="aips-empty-state-actions">
                                 <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
-                                    <span class="dashicons dashicons-plus-alt"></span>
+                                    <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                                 </a>
                                 <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
                                 </a>
                             </div>

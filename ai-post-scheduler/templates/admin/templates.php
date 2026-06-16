@@ -16,7 +16,7 @@ $is_embedded_templates_view = !empty($embedded);
                 </div>
                 <div class="aips-page-actions">
                     <button class="aips-btn aips-btn-primary aips-add-template-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
+                        <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                         <?php esc_html_e('Add Template', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -128,12 +128,12 @@ $is_embedded_templates_view = !empty($embedded);
                             <td>
                                 <?php if ($template->is_active): ?>
                                 <span class="aips-badge aips-badge-success">
-                                    <span class="dashicons dashicons-yes-alt"></span>
+                                    <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php else: ?>
                                 <span class="aips-badge aips-badge-neutral">
-                                    <span class="dashicons dashicons-minus"></span>
+                                    <span class="dashicons dashicons-minus" aria-hidden="true"></span>
                                     <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                 </span>
                                 <?php endif; ?>
@@ -141,23 +141,23 @@ $is_embedded_templates_view = !empty($embedded);
                             <td>
                                 <div class="cell-actions">
                                     <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-edit"></span>
+                                        <span class="dashicons dashicons-edit" aria-hidden="true"></span>
                                         <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                     </button>
                                     <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-controls-play"></span>
+                                        <span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
                                     <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-calendar-alt"></span>
+                                        <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-admin-page"></span>
+                                        <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
                                     </button>
                                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>" <?php disabled(!empty($template->campaign_id)); ?>>
-                                        <span class="dashicons dashicons-trash"></span>
+                                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                     </button>
                                 </div>
@@ -174,7 +174,7 @@ $is_embedded_templates_view = !empty($embedded);
                     <p class="aips-empty-state-description"><?php esc_html_e('No templates match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
                         <button type="button" class="aips-btn aips-btn-primary aips-clear-search-btn">
-                            <span class="dashicons dashicons-dismiss"></span>
+                            <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                             <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -210,7 +210,7 @@ $is_embedded_templates_view = !empty($embedded);
                     <p class="aips-empty-state-description"><?php esc_html_e('Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
                         <button class="aips-btn aips-btn-primary aips-add-template-btn">
-                            <span class="dashicons dashicons-plus-alt"></span>
+                            <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -259,14 +259,14 @@ $is_embedded_templates_view = !empty($embedded);
                     <div class="aips-wizard-step-content" data-step="1">
                         <h3>
                             <?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Give your template a unique name and optional description to help organize your templates.', 'ai-post-scheduler'); ?>"></span>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Give your template a unique name and optional description to help organize your templates.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                         </h3>
                         <p class="description"><?php esc_html_e('Give your template a name and brief description to help you identify it later.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
                             <label for="template_name">
                                 <?php esc_html_e('Template Name', 'ai-post-scheduler'); ?> <span class="required">*</span>
-                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Enter a unique, descriptive name for this template. This helps you identify it when creating schedules.', 'ai-post-scheduler'); ?>"></span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Enter a unique, descriptive name for this template. This helps you identify it when creating schedules.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                             </label>
                             <input type="text" id="template_name" name="name" required class="regular-text" placeholder="<?php esc_attr_e('e.g., Tech News Blog Post', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('A descriptive name for your template', 'ai-post-scheduler'); ?></p>
@@ -275,7 +275,7 @@ $is_embedded_templates_view = !empty($embedded);
                         <div class="aips-form-row">
                             <label for="template_description">
                                 <?php esc_html_e('Template Description', 'ai-post-scheduler'); ?>
-                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional notes about what this template is used for, target audience, or any special instructions.', 'ai-post-scheduler'); ?>"></span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional notes about what this template is used for, target audience, or any special instructions.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                             </label>
                             <textarea id="template_description" name="description" rows="4" class="large-text" placeholder="<?php esc_attr_e('Optional: Describe what this template is used for...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
@@ -285,14 +285,14 @@ $is_embedded_templates_view = !empty($embedded);
 
                         <h3>
                             <?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.', 'ai-post-scheduler'); ?>"></span>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                         </h3>
                         <p class="description"><?php esc_html_e('Configure how the AI generates titles and excerpts for your posts.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
                             <label for="title_prompt">
                                 <?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?>
-                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional. Instruct the AI how to generate titles. Leave empty to auto-generate based on content. Supports AI variables like {{Framework1}}.', 'ai-post-scheduler'); ?>"></span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional. Instruct the AI how to generate titles. Leave empty to auto-generate based on content. Supports AI variables like {{Framework1}}.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                             </label>
                             <input type="text" id="title_prompt" name="title_prompt" class="regular-text aips-ai-var-input" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
                             <p class="description">
@@ -303,7 +303,7 @@ $is_embedded_templates_view = !empty($embedded);
                         <!-- AI Variables Panel -->
                         <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
                             <div class="aips-ai-variables-header">
-                                <span class="dashicons dashicons-admin-generic"></span>
+                                <span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
                                 <strong><?php esc_html_e('AI Variables Detected', 'ai-post-scheduler'); ?></strong>
                                 <span class="aips-ai-variables-hint"><?php esc_html_e('(Click to copy)', 'ai-post-scheduler'); ?></span>
                             </div>
@@ -312,7 +312,7 @@ $is_embedded_templates_view = !empty($embedded);
                             </div>
                             <div class="aips-ai-variables-info">
                                 <p class="description">
-                                    <span class="dashicons dashicons-info"></span>
+                                    <span class="dashicons dashicons-info" aria-hidden="true"></span>
                                     <?php esc_html_e('These variables will be dynamically resolved by AI based on your generated content. Each post generation may produce different values.', 'ai-post-scheduler'); ?>
                                 </p>
                             </div>
@@ -321,7 +321,7 @@ $is_embedded_templates_view = !empty($embedded);
                         <div class="aips-form-row aips-ai-variables-instructions">
                             <details class="aips-collapsible">
                                 <summary>
-                                    <span class="dashicons dashicons-editor-help"></span>
+                                    <span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
                                     <?php esc_html_e('How to use AI Variables', 'ai-post-scheduler'); ?>
                                 </summary>
                                 <div class="aips-collapsible-content">
@@ -347,14 +347,14 @@ $is_embedded_templates_view = !empty($embedded);
                     <div class="aips-wizard-step-content" data-step="2" style="display: none;">
                         <h3>
                             <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
-                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                         </h3>
                         <p class="description"><?php esc_html_e('Define the content prompt that guides AI to generate your post content.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
                             <label for="prompt_template">
                                 <?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span>
-                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.', 'ai-post-scheduler'); ?>"></span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.', 'ai-post-scheduler'); ?>" aria-hidden="true"></span>
                             </label>
                             <textarea id="prompt_template" name="prompt_template" rows="8" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description">
@@ -563,21 +563,21 @@ $is_embedded_templates_view = !empty($embedded);
                     <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
                     <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
                         <div style="text-align: center; padding: 30px 20px;">
-                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
+                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;" aria-hidden="true"></span>
                             <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
                             <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
                             
                             <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
                                 <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
                                 </a>
                                 <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
-                                    <span class="dashicons dashicons-controls-play"></span>
+                                    <span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
                                     <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                 </button>
                                 <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
-                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>
                             </div>
@@ -588,21 +588,21 @@ $is_embedded_templates_view = !empty($embedded);
             <div class="aips-modal-footer aips-wizard-footer">
                 <div class="aips-footer-left">
                     <button type="button" class="aips-btn aips-btn-secondary aips-wizard-back" style="display: none;">
-                        <span class="dashicons dashicons-arrow-left-alt2"></span>
+                        <span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
                         <?php esc_html_e('Back', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-footer-center">
                     <button type="button" class="aips-btn aips-btn-secondary aips-save-draft-template" title="<?php esc_attr_e('Save current progress as inactive template', 'ai-post-scheduler'); ?>">
-                        <span class="dashicons dashicons-cloud-saved"></span>
+                        <span class="dashicons dashicons-cloud-saved" aria-hidden="true"></span>
                         <?php esc_html_e('Save Draft', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-secondary aips-test-template" title="<?php esc_attr_e('Generate a sample post using current settings', 'ai-post-scheduler'); ?>">
-                        <span class="dashicons dashicons-controls-play"></span>
+                        <span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
                         <?php esc_html_e('Test Generation', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-secondary aips-preview-prompts" title="<?php esc_attr_e('Preview the prompts that will be sent to AI', 'ai-post-scheduler'); ?>">
-                        <span class="dashicons dashicons-visibility"></span>
+                        <span class="dashicons dashicons-visibility" aria-hidden="true"></span>
                         <?php esc_html_e('Preview Prompts', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -612,7 +612,7 @@ $is_embedded_templates_view = !empty($embedded);
                     </button>
                     <button type="button" class="aips-btn aips-btn-primary aips-wizard-next">
                         <?php esc_html_e('Next', 'ai-post-scheduler'); ?>
-                        <span class="dashicons dashicons-arrow-right-alt2"></span>
+                        <span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="aips-btn aips-btn-secondary aips-save-template aips-wizard-save-btn">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
@@ -624,7 +624,7 @@ $is_embedded_templates_view = !empty($embedded);
             <div class="aips-preview-drawer" id="aips-preview-drawer">
                 <div class="aips-preview-drawer-toggle">
                     <button type="button" class="aips-preview-drawer-handle" aria-label="<?php esc_attr_e('Toggle preview drawer', 'ai-post-scheduler'); ?>">
-                        <span class="dashicons dashicons-arrow-down-alt2"></span>
+                        <span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
                         <span class="aips-preview-drawer-label"><?php esc_html_e('Prompt Preview', 'ai-post-scheduler'); ?></span>
                     </button>
                 </div>
@@ -721,7 +721,7 @@ $is_embedded_templates_view = !empty($embedded);
             </div>
             <div class="aips-modal-body">
                 <div class="aips-post-success-summary">
-                    <span class="dashicons dashicons-yes-alt aips-post-success-icon"></span>
+                    <span class="dashicons dashicons-yes-alt aips-post-success-icon" aria-hidden="true"></span>
                     <p class="aips-post-success-message" id="aips-success-message"><?php esc_html_e('1 post has been generated.', 'ai-post-scheduler'); ?></p>
                     <p id="aips-success-note" class="description aips-post-success-note" style="display: none;"></p>
                 </div>

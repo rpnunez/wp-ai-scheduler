@@ -6,7 +6,7 @@ $default_planner_frequency = 'daily';
     <div class="aips-content-panel">
         <div class="aips-panel-header">
             <div class="aips-panel-header-content">
-                <span class="dashicons dashicons-lightbulb dashicons-icon-lg"></span>
+                <span class="dashicons dashicons-lightbulb dashicons-icon-lg" aria-hidden="true"></span>
                 <div>
                     <h3 class="aips-panel-title"><?php echo esc_html__('Topic Brainstorming', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-panel-description"><?php echo esc_html__('Generate article ideas based on a niche, or paste your own list of topics.', 'ai-post-scheduler'); ?></p>
@@ -28,7 +28,7 @@ $default_planner_frequency = 'daily';
 
             <div >
                 <button type="button" id="btn-generate-topics" class="aips-btn aips-btn-primary">
-                    <span class="dashicons dashicons-update" ></span>
+                    <span class="dashicons dashicons-update"  aria-hidden="true"></span>
                     <?php echo esc_html__('Generate Topics', 'ai-post-scheduler'); ?>
                 </button>
                 <span class="spinner"></span>
@@ -52,7 +52,7 @@ $default_planner_frequency = 'daily';
         <div class="aips-content-panel">
             <div class="aips-panel-header">
                 <div class="aips-panel-header-content">
-                    <span class="dashicons dashicons-yes-alt dashicons-icon-lg"></span>
+                    <span class="dashicons dashicons-yes-alt dashicons-icon-lg" aria-hidden="true"></span>
                     <div>
                         <h3 class="aips-panel-title"><?php echo esc_html__('Review Topics', 'ai-post-scheduler'); ?></h3>
                     </div>
@@ -86,7 +86,7 @@ $default_planner_frequency = 'daily';
         <div class="aips-content-panel aips-planner-sidebar">
             <div class="aips-panel-header">
                 <div class="aips-panel-header-content">
-                    <span class="dashicons dashicons-calendar-alt dashicons-icon-lg"></span>
+                    <span class="dashicons dashicons-calendar-alt dashicons-icon-lg" aria-hidden="true"></span>
                     <div>
                         <h3 class="aips-panel-title"><?php echo esc_html__('Schedule', 'ai-post-scheduler'); ?></h3>
                     </div>
@@ -117,11 +117,11 @@ $default_planner_frequency = 'daily';
 
                     <div class="aips-planner-actions">
                         <button type="button" id="btn-bulk-schedule" class="aips-btn aips-btn-primary aips-btn-lg">
-                            <span class="dashicons dashicons-calendar-alt" ></span>
+                            <span class="dashicons dashicons-calendar-alt"  aria-hidden="true"></span>
                             <?php echo esc_html__('Schedule Selected', 'ai-post-scheduler'); ?>
                         </button>
                         <button type="button" id="btn-bulk-generate-now" class="aips-btn aips-btn-secondary aips-btn-lg">
-                            <span class="dashicons dashicons-media-text" ></span>
+                            <span class="dashicons dashicons-media-text"  aria-hidden="true"></span>
                             <?php echo esc_html__('Generate Now', 'ai-post-scheduler'); ?>
                         </button>
                         <span class="spinner"></span>
@@ -136,7 +136,7 @@ $default_planner_frequency = 'daily';
 <div class="topic-item">
     <input type="checkbox" class="topic-checkbox" checked>
     <input type="text" class="topic-text-input" value="{{topic}}" aria-label="<?php esc_attr_e('Edit topic title', 'ai-post-scheduler'); ?>">
-    <button type="button" class="aips-remove-topic-btn" aria-label="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss"></span></button>
+    <button type="button" class="aips-remove-topic-btn" aria-label="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 </div>
 </script>
 
