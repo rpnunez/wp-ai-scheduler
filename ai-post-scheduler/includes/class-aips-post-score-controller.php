@@ -6,9 +6,9 @@
  * endpoints.  All actions are registered via AIPS_Ajax_Registry.
  *
  * Actions:
- *   aips_post_score_score         – score a specific WordPress post
- *   aips_post_score_run_revision  – run a revision pass on a post
- *   aips_post_score_get_result    – retrieve a previously stored score
+ *   aips_post_score_score / aips_score_post              – score a specific WordPress post
+ *   aips_post_score_run_revision                         – run a revision pass on a post
+ *   aips_post_score_get_result / aips_get_post_feedback  – retrieve a previously stored score
  *
  * @package AI_Post_Scheduler
  * @since 2.6.0
@@ -39,8 +39,10 @@ class AIPS_PostScore_Controller {
 		$this->service = $service ?: new AIPS_PostScore_Service();
 
 		add_action( 'wp_ajax_aips_post_score_score',        array( $this, 'ajax_score_post' ) );
+		add_action( 'wp_ajax_aips_score_post',              array( $this, 'ajax_score_post' ) );
 		add_action( 'wp_ajax_aips_post_score_run_revision', array( $this, 'ajax_run_revision' ) );
 		add_action( 'wp_ajax_aips_post_score_get_result',   array( $this, 'ajax_get_result' ) );
+		add_action( 'wp_ajax_aips_get_post_feedback',       array( $this, 'ajax_get_result' ) );
 	}
 
 	// ------------------------------------------------------------------
@@ -53,13 +55,13 @@ class AIPS_PostScore_Controller {
 	 * Scores a post by ID and saves the result to post meta.
 	 *
 	 * Expected POST fields:
-	 *   nonce   – aips_post_score_nonce
+	 *   nonce   – aips_ajax_nonce
 	 *   post_id – WordPress post ID (int)
 	 *
 	 * @return void Outputs JSON and exits.
 	 */
 	public function ajax_score_post(): void {
-		if ( ! check_ajax_referer( 'aips_post_score_nonce', 'nonce', false ) ) {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
 			AIPS_Ajax_Response::error( __( 'Security check failed.', 'ai-post-scheduler' ), 'security_check_failed', 403 );
 			return;
 		}
@@ -93,13 +95,13 @@ class AIPS_PostScore_Controller {
 	 * content in the database if revisions improve the score.
 	 *
 	 * Expected POST fields:
-	 *   nonce   – aips_post_score_nonce
+	 *   nonce   – aips_ajax_nonce
 	 *   post_id – WordPress post ID (int)
 	 *
 	 * @return void Outputs JSON and exits.
 	 */
 	public function ajax_run_revision(): void {
-		if ( ! check_ajax_referer( 'aips_post_score_nonce', 'nonce', false ) ) {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
 			AIPS_Ajax_Response::error( __( 'Security check failed.', 'ai-post-scheduler' ), 'security_check_failed', 403 );
 			return;
 		}

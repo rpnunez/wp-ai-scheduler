@@ -831,6 +831,11 @@ class AIPS_Generator {
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
+        $score_enabled         = (bool) AIPS_Config::get_instance()->get_option('aips_post_score_auto_enabled');
+        $intended_status       = $context instanceof AIPS_Generation_Context
+            ? $context->get_post_status()
+            : ( $context->post_status ?? 'draft' );
+        $hold_publish_for_score = $score_enabled && 'publish' === $intended_status;
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -846,34 +851,14 @@ class AIPS_Generator {
             'component_statuses' => $component_statuses,
         );
 
+        if ($hold_publish_for_score) {
+            $post_creation_data['post_status_override'] = 'draft';
+        }
+
         // Allow integrations to hook before the post is created.
         do_action('aips_post_generation_before_post_create', $post_creation_data);
 
         $post_id = $this->post_manager->create_post($post_creation_data);
-
-        if (!is_wp_error($post_id)) {
-            $score_enabled = AIPS_Config::get_instance()->get_option('aips_post_score_auto_enabled');
-            if ($score_enabled) {
-                // Mark post as pending scoring in the background
-                update_post_meta($post_id, '_aips_post_score_status', 'pending');
-
-                // Enforce Quality Gate: If scheduled status is 'publish', hold it as 'draft' until evaluation completes
-                $intended_status = $context instanceof AIPS_Generation_Context
-                    ? $context->get_post_status()
-                    : ( $context->post_status ?? 'draft' );
-
-                if ('publish' === $intended_status) {
-                    update_post_meta($post_id, '_aips_post_intended_status', 'publish');
-                    wp_update_post(array(
-                        'ID'          => $post_id,
-                        'post_status' => 'draft',
-                    ));
-                }
-
-                // Schedule background scoring task
-                wp_schedule_single_event(time(), 'aips_async_score_post', array($post_id));
-            }
-        }
 
         if (is_wp_error($post_id)) {
             // Use new history API to complete with failure
@@ -919,6 +904,16 @@ class AIPS_Generator {
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         ));
+
+        if ($score_enabled) {
+            update_post_meta($post_id, '_aips_post_score_status', 'pending');
+
+            if ($hold_publish_for_score) {
+                update_post_meta($post_id, '_aips_post_intended_status', 'publish');
+            }
+
+            wp_schedule_single_event(time(), 'aips_async_score_post', array($post_id));
+        }
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();

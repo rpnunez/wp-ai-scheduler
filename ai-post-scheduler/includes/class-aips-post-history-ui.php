@@ -78,7 +78,7 @@ class AIPS_Post_History_UI {
 		$score_status = get_post_meta( $post_id, '_aips_post_score_status', true );
 		if ( 'pending' === $score_status ) {
 			?>
-			<div class="aips-score-badge-circle aips-score-pending" title="<?php esc_attr_e('Quality scoring in progress...', 'ai-post-scheduler'); ?>">
+			<div class="aips-score-badge-circle aips-score-pending" title="<?php esc_attr_e('Quality scoring in progress...', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Quality scoring in progress', 'ai-post-scheduler'); ?>">
 				<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart">
 					<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
 					<path class="aips-circle" stroke-dasharray="25, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -90,15 +90,16 @@ class AIPS_Post_History_UI {
 
 		$score_data = get_post_meta( $post_id, '_aips_post_score', true );
 		if ( is_array( $score_data ) && isset( $score_data['overall_score'] ) ) {
-			$score = (float) $score_data['overall_score'];
-			$threshold = (int) ($score_data['threshold'] ?? 70);
+			$score = max( 0, min( 100, (float) $score_data['overall_score'] ) );
+			$score_display = (int) round( $score );
+			$threshold = max( 0, min( 100, (int) ( $score_data['threshold'] ?? 70 ) ) );
 			$color_class = $score >= 80 ? 'aips-score-green' : ($score >= 70 ? 'aips-score-orange' : 'aips-score-red');
 			?>
-			<div class="aips-score-badge-circle" title="<?php printf(esc_attr__('Quality Score: %s%% (Pass: %s%%)', 'ai-post-scheduler'), $score, $threshold); ?>">
+			<div class="aips-score-badge-circle" title="<?php printf(esc_attr__('Quality Score: %1$s%% (Pass: %2$s%%)', 'ai-post-scheduler'), $score_display, $threshold); ?>" aria-label="<?php printf(esc_attr__('Quality Score: %1$s%% (Pass: %2$s%%)', 'ai-post-scheduler'), $score_display, $threshold); ?>">
 				<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart <?php echo esc_attr($color_class); ?>">
 					<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
 					<path class="aips-circle" stroke-dasharray="<?php echo esc_attr($score); ?>, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-					<text x="18" y="21.5" class="aips-percentage"><?php echo esc_html(round($score)); ?></text>
+					<text x="18" y="21.5" class="aips-percentage"><?php echo esc_html($score_display); ?></text>
 				</svg>
 			</div>
 			<?php

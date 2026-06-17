@@ -292,7 +292,11 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$service->save_score_to_post($post_id, new AIPS_PostScore_Result($this->passing_scores(), 85.0, 70, array(), 'Stored result.'));
 
 		$this->assertSame(10, has_action('wp_ajax_aips_post_score_get_result', array($controller, 'ajax_get_result')));
+		$this->assertSame(10, has_action('wp_ajax_aips_get_post_feedback', array($controller, 'ajax_get_result')));
+		$this->assertSame(10, has_action('wp_ajax_aips_score_post', array($controller, 'ajax_score_post')));
 		$this->assertSame('AIPS_PostScore_Controller', AIPS_Ajax_Registry::get_controller_for('aips_post_score_get_result'));
+		$this->assertSame('AIPS_PostScore_Controller', AIPS_Ajax_Registry::get_controller_for('aips_get_post_feedback'));
+		$this->assertSame('AIPS_PostScore_Controller', AIPS_Ajax_Registry::get_controller_for('aips_score_post'));
 
 		$user_id = self::factory()->user->create(array('role' => 'administrator'));
 		wp_set_current_user($user_id);
@@ -300,6 +304,7 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 			'post_id' => $post_id,
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {
@@ -313,8 +318,53 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$response = json_decode($output, true);
 
 		$this->assertTrue($response['success']);
-		$this->assertSame(85.0, $response['data']['overall_score']);
+		$this->assertEquals(85.0, $response['data']['overall_score']);
 		$this->assertTrue($response['data']['passed']);
+	}
+
+	public function test_controller_scores_post_with_standard_ajax_nonce() {
+		$result = new AIPS_PostScore_Result(
+			$this->passing_scores(),
+			85.0,
+			70,
+			array(),
+			'Stored result.'
+		);
+		$service = new class($result) extends AIPS_PostScore_Service {
+			private $result;
+
+			public function __construct($result) {
+				$this->result = $result;
+			}
+
+			public function score_post(int $post_id, $context = null) {
+				return $this->result;
+			}
+		};
+		$controller = new AIPS_PostScore_Controller($service);
+		$post_id = self::factory()->post->create(array('post_title' => 'Nonce Scored Post'));
+
+		$user_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($user_id);
+		$_POST = array(
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+			'post_id' => $post_id,
+		);
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$controller->ajax_score_post();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected in the WordPress AJAX test environment.
+		} catch (WPAjaxDieStopException $e) {
+			// Also acceptable depending on the die handler path.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertEquals(85.0, $response['data']['overall_score']);
 	}
 
 	public function test_orchestrator_resolves_and_scores_post_successfully() {
@@ -355,7 +405,7 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$fake_service = new class($result) extends AIPS_PostScore_Service {
 			private $res;
 			public function __construct($res) { $this->res = $res; }
-			public function score_and_revise_post($post_id, $context) { return $this->res; }
+			public function score_and_revise_post(int $post_id, $context = null) { return $this->res; }
 			public function get_score_from_post($post_id): ?AIPS_PostScore_Result { return $this->res; }
 		};
 
@@ -416,7 +466,7 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$fake_service = new class($result) extends AIPS_PostScore_Service {
 			private $res;
 			public function __construct($res) { $this->res = $res; }
-			public function score_and_revise_post($post_id, $context) { return $this->res; }
+			public function score_and_revise_post(int $post_id, $context = null) { return $this->res; }
 			public function get_score_from_post($post_id): ?AIPS_PostScore_Result { return $this->res; }
 		};
 

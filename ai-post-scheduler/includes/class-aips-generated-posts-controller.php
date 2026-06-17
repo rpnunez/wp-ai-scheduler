@@ -95,6 +95,11 @@ class AIPS_Generated_Posts_Controller {
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
 
+		$generated_post_ids = array_values(array_filter(array_map('absint', wp_list_pluck($history['items'], 'post_id'))));
+		if (!empty($generated_post_ids)) {
+			update_meta_cache('post', $generated_post_ids);
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -153,6 +158,11 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'template_id' => $template_id,
 		));
+
+		$draft_post_ids = array_values(array_filter(array_map('absint', wp_list_pluck($draft_posts['items'], 'post_id'))));
+		if (!empty($draft_post_ids)) {
+			update_meta_cache('post', $draft_post_ids);
+		}
 
 		// Pre-format dates for draft posts and fetch quality scores
 		if (!empty($draft_posts['items'])) {
