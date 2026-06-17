@@ -97,6 +97,15 @@ class AIPS_Generated_Posts_Controller {
 
 		// Get schedule data for each post
 		$posts_data = array();
+
+		// Preload post caches to fix N+1 query issue
+		if (function_exists('_prime_post_caches')) {
+			$post_ids = array_filter(array_column($history['items'], 'post_id'));
+			if (!empty($post_ids)) {
+				_prime_post_caches(array_unique($post_ids), false, true);
+			}
+		}
+
 		foreach ($history['items'] as $item) {
 			if (!$item->post_id) {
 				continue;
@@ -156,6 +165,15 @@ class AIPS_Generated_Posts_Controller {
 		));
 
 		$partial_posts_data = array();
+
+		// Preload post caches to fix N+1 query issue
+		if (function_exists('_prime_post_caches')) {
+			$partial_post_ids = array_filter(array_column($partial_generations['items'], 'post_id'));
+			if (!empty($partial_post_ids)) {
+				_prime_post_caches(array_unique($partial_post_ids), false, true);
+			}
+		}
+
 		foreach ($partial_generations['items'] as $item) {
 			if (!$item->post_id) {
 				continue;
