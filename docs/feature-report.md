@@ -37,7 +37,7 @@
 
 This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **183 core classes** and **11 interfaces** organized into **18 functional categories**.
 
-- **Total Lines of Code**: 71,157
+- **Total Lines of Code**: 71,332
 - **Total Classes**: 183
 - **Total Interfaces**: 11
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, AI Integration, Infrastructure & DI, Caching, Telemetry & Observability, Notifications, Sources & Research, Internal Links & Embeddings, Resilience & Reliability, User Interface & Admin, Data Management, Database & Repositories, Diagnostics, Configuration & Settings, Onboarding, Utilities
@@ -749,6 +749,7 @@ flowchart TD
     Admin_Menu --> Diagnostics_Controller
     Admin_Menu --> Generated_Posts_Controller
     Admin_Menu --> Operations_Insights_Controller
+    Automations_Controller --> Admin_Menu_Helper
     Automations_Controller --> Campaigns_Controller
     Campaigns_Controller --> Admin_Menu_Helper
     Diagnostics_Controller --> Cache_Monitor_Controller
@@ -1738,12 +1739,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Automations_Controller`
 
-**Lines of Code**: 320
+**Lines of Code**: 490
 
 **Technical Details**:
 
-- **Public Methods** (6): `render_page()`, `get_tabs()`, `get_active_tab_key()`, `is_tab_available()`, `get_tab_url()`, `render_tab_content()`
-- **Dependencies** (4): `AIPS_Campaigns_Controller`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Repository`, `AIPS_Templates`
+- **Public Methods** (7): `render_page()`, `get_tabs()`, `get_tab_actions()`, `get_active_tab_key()`, `is_tab_available()`, `get_tab_url()`, `render_tab_content()`
+- **Dependencies** (5): `AIPS_Admin_Menu_Helper`, `AIPS_Campaigns_Controller`, `AIPS_Sources_Data_Repository`, `AIPS_Sources_Repository`, `AIPS_Templates`
 - **Database Operations**: Has Repository
 
 **Missing Functionality**:
@@ -2866,7 +2867,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generated_Posts_Controller`
 
-**Lines of Code**: 549
+**Lines of Code**: 554
 
 **Technical Details**:
 
@@ -2885,7 +2886,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Recommended Improvements**:
 
 1. [WARNING] Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_session, aips_get_session_json, aips_download_session_json
-2. Consider refactoring — class has 549 lines (may violate SRP)
+2. Consider refactoring — class has 554 lines (may violate SRP)
 3. High coupling — depends on 12 classes
 4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
