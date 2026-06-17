@@ -4,3 +4,9 @@
 ## 2026-05-30 - Added loading indicator when editing authors
 **Learning:** AJAX-driven edit modals within this repo can sometimes appear with empty fields while data is still loading, creating a confusing user experience. The standard pattern to solve this is to use the existing WordPress admin `.spinner` element within a loader container.
 **Action:** For future modal-based edit features, ensure a loader container is added alongside the form, and use JavaScript to hide the form and show the loader during the AJAX fetch phase. Only reveal the form when the data has successfully populated.
+## 2026-06-17 - Add ARIA attributes to UI elements
+**Area:** Admin Templates
+**Status:** opened PR
+**PR:** TBD
+**Learning:** Decorative icons and modal close buttons must have proper ARIA attributes for screen reader support.
+**Action:** When adding new dashicons, ensure `aria-hidden="true"` is set unless it conveys unique information. For close buttons (`&times;`), add `aria-label="Close modal"`.
