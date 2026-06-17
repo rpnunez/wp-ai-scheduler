@@ -62,6 +62,9 @@ class AIPS_Post_Manager {
             $post_author = $context->get_post_author();
             $raw_category = $context->get_post_category();
             $post_tags = $context->get_post_tags();
+            if (method_exists($context, 'get_template')) {
+                $template = $context->get_template();
+            }
         } elseif ($template) {
             $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
             $post_type = !empty($template->post_type) ? sanitize_key($template->post_type) : 'post';
@@ -97,6 +100,20 @@ class AIPS_Post_Manager {
 
         if (is_wp_error($post_id)) {
             return $post_id;
+        }
+
+        if ($template) {
+            $enable = isset($template->enable_related_posts) ? (int) $template->enable_related_posts : 0;
+            $limit = isset($template->related_posts_limit) ? (int) $template->related_posts_limit : 3;
+            $threshold = isset($template->related_posts_threshold) ? (float) $template->related_posts_threshold : 0.70;
+            $template_id = isset($template->id) ? (int) $template->id : 0;
+
+            update_post_meta($post_id, '_aips_enable_related_posts', (string) $enable);
+            update_post_meta($post_id, '_aips_related_posts_limit', (string) $limit);
+            update_post_meta($post_id, '_aips_related_posts_threshold', (string) $threshold);
+            if ($template_id > 0) {
+                update_post_meta($post_id, '_aips_template_id', (string) $template_id);
+            }
         }
 
         if (isset($data['generation_incomplete']) || isset($data['component_statuses'])) {

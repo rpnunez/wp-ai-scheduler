@@ -235,6 +235,7 @@
 
             // Toggle source groups panel when Include Sources? checkbox changes.
             $(document).on('change', '#include_sources', this.toggleSourceGroupsSelector);
+            $(document).on('change', '#enable_related_posts', this.toggleRelatedPostsFieldsSelector);
 
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
@@ -604,6 +605,16 @@
         },
 
         /**
+         * Show or hide the Related Posts fields based on the Enable Related Posts checkbox.
+         *
+         * @return {void}
+         */
+        toggleRelatedPostsFieldsSelector: function() {
+            var checked = $('#enable_related_posts').is(':checked');
+            $('#aips-related-posts-fields').toggle(checked);
+        },
+
+        /**
          * Reset and open the template modal in "Add New" mode.
          *
          * Clears the form, resets the media selection and AI variables panel,
@@ -625,6 +636,11 @@
             // Reset source groups
             $('.aips-template-source-group-cb').prop('checked', false);
             $('#template-source-groups-selector').hide();
+            // Reset related posts settings
+            $('#enable_related_posts').prop('checked', false);
+            $('#related_posts_limit').val(3);
+            $('#related_posts_threshold').val('0.70');
+            $('#aips-related-posts-fields').hide();
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
@@ -710,6 +726,13 @@
                         sgIds.forEach(function(tid) {
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
+
+                        // Restore Related Posts settings.
+                        var enableRelatedPosts = t.enable_related_posts == 1;
+                        $('#enable_related_posts').prop('checked', enableRelatedPosts);
+                        $('#related_posts_limit').val(t.related_posts_limit || 3);
+                        $('#related_posts_threshold').val(t.related_posts_threshold !== undefined && t.related_posts_threshold !== null ? t.related_posts_threshold : '0.70');
+                        $('#aips-related-posts-fields').toggle(enableRelatedPosts);
 
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
@@ -899,6 +922,9 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    enable_related_posts: $('#enable_related_posts').is(':checked') ? 1 : 0,
+                    related_posts_limit: $('#related_posts_limit').val(),
+                    related_posts_threshold: $('#related_posts_threshold').val(),
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -975,6 +1001,9 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    enable_related_posts: $('#enable_related_posts').is(':checked') ? 1 : 0,
+                    related_posts_limit: $('#related_posts_limit').val(),
+                    related_posts_threshold: $('#related_posts_threshold').val(),
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {
@@ -1048,6 +1077,9 @@
                 post_category: $('#post_category').val(),
                 post_tags: $('#post_tags').val(),
                 post_author: $('#post_author').val(),
+                enable_related_posts: $('#enable_related_posts').is(':checked') ? 1 : 0,
+                related_posts_limit: $('#related_posts_limit').val(),
+                related_posts_threshold: $('#related_posts_threshold').val(),
             };
 
             $.ajax({

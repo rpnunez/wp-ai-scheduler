@@ -31,17 +31,18 @@ class AIPS_Embeddings_Service {
 	private $logger;
 	
 	/**
-	 * @var array Cache for embeddings to avoid redundant API calls
+	 * @var AIPS_Post_Embeddings_Repository Post embeddings repository instance
 	 */
-	private $embedding_cache;
+	private $embeddings_repo;
 	
 	/**
 	 * Initialize the embeddings service.
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Post_Embeddings_Repository $embeddings_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->embeddings_repo = $embeddings_repo ?: new AIPS_Post_Embeddings_Repository();
 		$this->embedding_cache = array();
 	}
 	
@@ -221,5 +222,237 @@ class AIPS_Embeddings_Service {
 	 */
 	public function is_embeddings_supported() {
 		return class_exists('Meow_MWAI_Query_Embed') && $this->ai_service->is_available();
+	}
+
+	/**
+	 * Index a single post — generate its embedding and store it.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 * @return true|WP_Error True on success or WP_Error on failure.
+	 */
+	public function index_post($post_id) {
+		$post_id = absint($post_id);
+		$post    = get_post($post_id);
+
+		if (!$post) {
+			return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
+		}
+
+		$text = $this->get_post_text($post);
+
+		if (empty($text)) {
+			return new WP_Error('empty_content', __('Post has no indexable content.', 'ai-post-scheduler'));
+		}
+
+		$embedding = $this->generate_embedding($text);
+
+		if (is_wp_error($embedding)) {
+			return $embedding;
+		}
+
+		$this->embeddings_repo->upsert($post_id, $embedding);
+
+		$this->logger->log(
+			sprintf('Indexed post %d.', $post_id),
+			'debug'
+		);
+
+		return true;
+	}
+
+	/**
+	 * Process a batch of unindexed posts.
+	 *
+	 * @param int    $batch_size    Number of posts to process per call.
+	 * @param int    $last_post_id  Resume cursor: only posts with ID > this value.
+	 * @param string $post_type     Post type to index.
+	 * @param string $post_status   Post status to index.
+	 * @return array{success: int, failed: int, last_post_id: int, done: bool}
+	 */
+	public function process_post_indexing_batch(
+		$batch_size = 10,
+		$last_post_id = 0,
+		$post_type = 'post',
+		$post_status = 'publish'
+	) {
+		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
+			$batch_size,
+			$last_post_id,
+			$post_type,
+			$post_status
+		);
+
+		$success        = 0;
+		$failed         = 0;
+		$new_last_id    = $last_post_id;
+
+		foreach ($post_ids as $post_id) {
+			$result = $this->index_post($post_id);
+
+			if (is_wp_error($result)) {
+				$this->logger->log(
+					sprintf(
+						'Failed to index post %d: %s',
+						$post_id,
+						$result->get_error_message()
+					),
+					'error'
+				);
+				$failed++;
+			} else {
+				$success++;
+			}
+
+			$new_last_id = max($new_last_id, $post_id);
+		}
+
+		$done = count($post_ids) < $batch_size;
+
+		return array(
+			'success'      => $success,
+			'failed'       => $failed,
+			'last_post_id' => $new_last_id,
+			'done'         => $done,
+		);
+	}
+
+	/**
+	 * Find similar posts to a given post using embeddings.
+	 *
+	 * @param int   $post_id   Target post ID.
+	 * @param int   $limit     Max number of similar posts to return.
+	 * @param float $threshold Minimum similarity score.
+	 * @return array Array of matching posts with ID and similarity score.
+	 */
+	public function find_similar_posts($post_id, $limit = 3, $threshold = 0.70) {
+		$post_id = absint($post_id);
+		$post    = get_post($post_id);
+
+		if (!$post) {
+			return array();
+		}
+
+		// Ensure the post is indexed first
+		$source_row = $this->embeddings_repo->get_by_post_id($post_id);
+
+		if (!$source_row) {
+			$result = $this->index_post($post_id);
+
+			if (is_wp_error($result)) {
+				return array();
+			}
+
+			$source_row = $this->embeddings_repo->get_by_post_id($post_id);
+		}
+
+		if (!$source_row) {
+			return array();
+		}
+
+		$target_embedding = json_decode($source_row->embedding, true);
+
+		if (empty($target_embedding)) {
+			return array();
+		}
+
+		$post_type   = $post->post_type;
+		$post_status = $post->post_status;
+		$all_rows    = $this->embeddings_repo->get_all_for_similarity_by_type($post_type, $post_status);
+
+		$candidates = array();
+		foreach ($all_rows as $row) {
+			if ((int) $row->post_id === $post_id) {
+				continue;
+			}
+
+			$embedding = json_decode($row->embedding, true);
+			if (!empty($embedding)) {
+				$candidates[] = array(
+					'id'        => (int) $row->post_id,
+					'embedding' => $embedding,
+				);
+			}
+		}
+
+		if (empty($candidates)) {
+			return array();
+		}
+
+		$neighbors = $this->find_nearest_neighbors(
+			$target_embedding,
+			$candidates,
+			$limit
+		);
+
+		// Filter by similarity threshold
+		return array_values(array_filter(
+			$neighbors,
+			function ($n) use ($threshold) {
+				return isset($n['similarity']) && $n['similarity'] >= $threshold;
+			}
+		));
+	}
+
+	/**
+	 * Hook filter method: Appends related posts list to frontend content if enabled.
+	 *
+	 * @param string $content Post content.
+	 * @return string Modified content.
+	 */
+	public function append_related_posts_to_content($content) {
+		if (!is_singular('post')) {
+			return $content;
+		}
+
+		$post_id = get_the_ID();
+		$enable  = get_post_meta($post_id, '_aips_enable_related_posts', true);
+
+		if ('1' !== $enable) {
+			return $content;
+		}
+
+		$limit = get_post_meta($post_id, '_aips_related_posts_limit', true);
+		$limit = $limit ? absint($limit) : 3;
+
+		$threshold = get_post_meta($post_id, '_aips_related_posts_threshold', true);
+		$threshold = $threshold !== '' ? (float) $threshold : 0.70;
+
+		$related = $this->find_similar_posts($post_id, $limit, $threshold);
+
+		if (empty($related)) {
+			return $content;
+		}
+
+		$html = '<div class="aips-related-posts">';
+		$html .= '<h3>' . esc_html__('Related Posts', 'ai-post-scheduler') . '</h3>';
+		$html .= '<ul>';
+		foreach ($related as $item) {
+			$related_post_id = $item['id'];
+			$html .= '<li>';
+			$html .= '<a href="' . esc_url(get_permalink($related_post_id)) . '">';
+			$html .= esc_html(get_the_title($related_post_id));
+			$html .= '</a>';
+			$html .= '</li>';
+		}
+		$html .= '</ul>';
+		$html .= '</div>';
+
+		return $content . $html;
+	}
+
+	/**
+	 * Build the text content to embed for a post (title + excerpt + content).
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return string Plain-text representation.
+	 */
+	private function get_post_text($post) {
+		$parts = array(
+			$post->post_title,
+			$post->post_excerpt,
+			wp_strip_all_tags($post->post_content),
+		);
+
+		return trim(implode(' ', array_filter($parts)));
 	}
 }
