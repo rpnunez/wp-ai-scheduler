@@ -754,7 +754,7 @@
 * **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
     1. [WARNING] Registers 3 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_post_session, aips_get_session_json, aips_download_session_json
-    2. Consider refactoring — class has 549 lines (may violate SRP)
+    2. Consider refactoring — class has 554 lines (may violate SRP)
     3. High coupling — depends on 12 classes
     4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
 
