@@ -289,7 +289,7 @@ class AIPS_Post_Review {
 		
 		if (isset($_POST['post_ids']) && is_array($_POST['post_ids'])) {
 			$post_ids = array_filter(
-				array_map('absint', $_POST['post_ids']),
+				array_map('absint', wp_unslash($_POST['post_ids'])),
 				function( $post_id ) {
 					return $post_id > 0;
 				}
@@ -837,7 +837,7 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
-		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? $_POST['items'] : array();
+		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? wp_unslash($_POST['items']) : array();
 		
 		if (empty($items)) {
 			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
