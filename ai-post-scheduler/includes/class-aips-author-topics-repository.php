@@ -638,6 +638,75 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
+	 * Get topic creation status counts in the period.
+	 *
+	 * @param int $from_ts Start timestamp.
+	 * @param int $to_ts End timestamp.
+	 * @return object
+	 */
+	public function get_stats_in_period( $from_ts, $to_ts ) {
+		return $this->wpdb->get_row($this->wpdb->prepare(
+			"SELECT
+				COUNT(*) as total,
+				SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+				SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+				SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+			 FROM {$this->table_name}
+			 WHERE generated_at >= %d AND generated_at <= %d",
+			(int) $from_ts,
+			(int) $to_ts
+		));
+	}
+
+	/**
+	 * Fetch recent author topics in the period.
+	 *
+	 * @param int $from_ts Start timestamp.
+	 * @param int $to_ts End timestamp.
+	 * @param int $limit Max rows.
+	 * @return array
+	 */
+	public function get_recent_topics_in_period( $from_ts, $to_ts, $limit = 10 ) {
+		$table_authors = $this->wpdb->prefix . 'aips_authors';
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT t.*, a.name as author_name
+			 FROM {$this->table_name} t
+			 LEFT JOIN {$table_authors} a ON t.author_id = a.id
+			 WHERE t.generated_at >= %d AND t.generated_at <= %d
+			 ORDER BY t.generated_at DESC
+			 LIMIT %d",
+			(int) $from_ts,
+			(int) $to_ts,
+			(int) $limit
+		));
+	}
+
+	/**
+	 * Fetch daily topic creation aggregates in the period.
+	 *
+	 * @param int $from_ts Start timestamp.
+	 * @param int $to_ts End timestamp.
+	 * @return array
+	 */
+	public function get_daily_topic_counts_in_period( $from_ts, $to_ts ) {
+		$results = $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT DATE(FROM_UNIXTIME(generated_at)) AS day, COUNT(*) AS total
+			 FROM {$this->table_name}
+			 WHERE generated_at >= %d AND generated_at <= %d
+			 GROUP BY day
+			 ORDER BY day ASC",
+			(int) $from_ts,
+			(int) $to_ts
+		));
+
+		$data = array();
+		foreach ($results as $row) {
+			$data[$row->day] = (int) $row->total;
+		}
+		return $data;
+	}
+
+	/**
 	 * Return the repository cache group for author-topic reads.
 	 *
 	 * @return string
