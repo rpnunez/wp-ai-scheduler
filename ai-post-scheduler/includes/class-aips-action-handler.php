@@ -7,7 +7,7 @@
  * from direct history database writes.
  *
  * @package AI_Post_Scheduler
- * @since 2.9.2
+ * @since 2.9.1
  */
 
 if (!defined('ABSPATH')) {
@@ -51,8 +51,8 @@ class AIPS_Action_Handler {
 		add_action('aips_ai_call_failed', array($this, 'log_ai_call_failed'), 10, 5);
 
 		add_action('aips_post_generation_started', array($this, 'log_post_generation_started'), 10, 2);
-		add_action('aips_post_generation_completed', array($this, 'log_post_generation_completed'), 10, 7);
-		add_action('aips_post_generation_failed', array($this, 'log_post_generation_failed'), 10, 3);
+		add_action('aips_post_generation_completed', array($this, 'log_post_generation_completed'), 10, 8);
+		add_action('aips_post_generation_failed', array($this, 'log_post_generation_failed'), 10, 4);
 		add_action('aips_generation_log', array($this, 'log_generation_step'), 10, 6);
 	}
 
@@ -178,6 +178,7 @@ class AIPS_Action_Handler {
 	 * @param array                       $component_statuses   Statuses of title/content/excerpt/image.
 	 * @param AIPS_Generation_Context     $context               Generation context.
 	 * @param AIPS_History_Container|null $container             Associated container.
+	 * @param int|null                    $duration_seconds      Elapsed generation duration in seconds.
 	 * @return void
 	 */
 	public function log_post_generation_completed(
@@ -187,7 +188,8 @@ class AIPS_Action_Handler {
 		$generation_incomplete,
 		$component_statuses,
 		$context,
-		$container
+		$container,
+		$duration_seconds = null
 	) {
 		if ($container instanceof AIPS_History_Container) {
 			$container->complete_success(array(
@@ -207,23 +209,30 @@ class AIPS_Action_Handler {
 				__('Generation metric snapshot', 'ai-post-scheduler'),
 				array(
 					'outcome'          => $generation_incomplete ? 'partial' : 'completed',
-					'duration_seconds' => null, // Can be computed by caller if needed
+					'duration_seconds' => $duration_seconds,
 					'image_attempted'  => $image_was_attempted,
 					'image_success'    => $image_was_attempted ? $image_success : null,
 				)
 			);
+			if ($context instanceof AIPS_Template_Context) {
+				$template = $context->get_template();
+				if ($template && !empty($template->campaign_id)) {
+					delete_transient('aips_campaign_' . (int) $template->campaign_id . '_data');
+				}
+			}
 		}
 	}
 
 	/**
 	 * Action: log when post generation fails completely.
 	 *
-	 * @param WP_Error|string             $error     Error description.
-	 * @param AIPS_Generation_Context     $context   Generation context.
-	 * @param AIPS_History_Container|null $container Associated container.
+	 * @param WP_Error|string             $error            Error description.
+	 * @param AIPS_Generation_Context     $context          Generation context.
+	 * @param AIPS_History_Container|null $container        Associated container.
+	 * @param int|null                    $duration_seconds Elapsed generation duration in seconds.
 	 * @return void
 	 */
-	public function log_post_generation_failed($error, $context, $container) {
+	public function log_post_generation_failed($error, $context, $container, $duration_seconds = null) {
 		if ($container instanceof AIPS_History_Container) {
 			$error_message = is_wp_error($error) ? $error->get_error_message() : (string) $error;
 			$container->complete_failure($error_message, array(
@@ -234,9 +243,10 @@ class AIPS_Action_Handler {
 				'metric_generation_result',
 				__('Generation failed — post could not be created', 'ai-post-scheduler'),
 				array(
-					'outcome'         => 'failed',
-					'image_attempted' => false,
-					'image_success'   => null,
+					'outcome'          => 'failed',
+					'duration_seconds' => $duration_seconds,
+					'image_attempted'  => false,
+					'image_success'    => null,
 				)
 			);
 		}

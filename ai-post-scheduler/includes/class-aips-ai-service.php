@@ -225,7 +225,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         return $result;
-    } }
+    }
     
     /**
      * Generate structured JSON data using AI.

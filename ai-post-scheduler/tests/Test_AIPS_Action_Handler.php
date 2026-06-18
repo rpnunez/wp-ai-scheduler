@@ -63,7 +63,7 @@ class Test_AIPS_Action_Handler extends WP_UnitTestCase {
 
 		$this->assertInstanceOf(AIPS_History_Container::class, $container);
 		$this->assertNotEmpty($container->get_id());
-		$this->assertSame('post_generation', $this->history_repo->get_by_id($container->get_id())->type);
+		$this->assertSame('post_generation', $this->history_repo->get_by_id($container->get_id())->creation_method);
 	}
 
 	/**
@@ -80,7 +80,7 @@ class Test_AIPS_Action_Handler extends WP_UnitTestCase {
 
 		$logs = $this->history_repo->get_logs_by_history_id($container->get_id());
 		$this->assertCount(1, $logs);
-		$this->assertSame('ai_request', $logs[0]->type);
+		$this->assertSame('ai_request', $logs[0]->log_type);
 		
 		$details = json_decode($logs[0]->details, true);
 		$this->assertSame($prompt, $details['input']['prompt']);
@@ -103,7 +103,7 @@ class Test_AIPS_Action_Handler extends WP_UnitTestCase {
 
 		$logs = $this->history_repo->get_logs_by_history_id($container->get_id());
 		$this->assertCount(1, $logs);
-		$this->assertSame('ai_response', $logs[0]->type);
+		$this->assertSame('ai_response', $logs[0]->log_type);
 
 		$details = json_decode($logs[0]->details, true);
 		$this->assertSame($response, $details['output']);
@@ -125,7 +125,7 @@ class Test_AIPS_Action_Handler extends WP_UnitTestCase {
 
 		$logs = $this->history_repo->get_logs_by_history_id($container->get_id());
 		$this->assertCount(1, $logs);
-		$this->assertSame('error', $logs[0]->type);
+		$this->assertSame('error', $logs[0]->log_type);
 
 		$details = json_decode($logs[0]->details, true);
 		$this->assertStringContainsString('Rate limit hit', $details['message']);
@@ -170,7 +170,7 @@ class Test_AIPS_Action_Handler extends WP_UnitTestCase {
 		$logs = $this->history_repo->get_logs_by_history_id($container->get_id());
 		$metric_log = null;
 		foreach ($logs as $log) {
-			if ($log->type === 'metric_generation_result') {
+			if ($log->log_type === 'metric_generation_result') {
 				$metric_log = $log;
 				break;
 			}

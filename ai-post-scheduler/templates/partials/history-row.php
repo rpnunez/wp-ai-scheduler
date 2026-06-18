@@ -73,7 +73,7 @@ if (!defined('ABSPATH')) {
                     <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
                 </button>
                 <?php 
-                $has_secondary = !empty($item->template_id) || !empty($item->topic_id) || !empty($item->post_id) || ($item->status === 'failed' && !empty($item->template_id));
+                $has_secondary = !empty($item->template_id) || !empty($item->topic_id) || !empty($item->post_id);
                 if ($has_secondary):
                 ?>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"

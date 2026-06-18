@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * DevStackTips Content Setup Script
  *
@@ -1115,7 +1115,8 @@ class AIPS_DevStackTips_Setup {
 			array(
 				'name' => 'DevStackTips Default',
 				'title_prompt' => 'Create a clear, technical, and specific title for this topic. Avoid generic phrases like "ultimate guide" or "everything you need to know". Make it actionable and developer-focused.',
-				'content_instructions' => ['You are writing for software developers and technical readers on DevStackTips, a practical developer resource site.',
+				'content_instructions' => implode("\n", array(
+					'You are writing for software developers and technical readers on DevStackTips, a practical developer resource site.',
 					'Writing style:',
 					'- Be clear and concrete',
 					'- Use short paragraphs and informative headings',
@@ -1138,7 +1139,7 @@ class AIPS_DevStackTips_Setup {
 					'- Inventing statistics or benchmarks',
 					'- Making version-specific claims without verification',
 					'- Overly broad generalizations',
-				],
+				)),
 				'excerpt_instructions' => 'Write a concise 1-2 sentence summary that captures the core value for developers.',
 				'is_active' => 1,
 			),

@@ -1614,14 +1614,14 @@ class AIPS_History {
             case 'internal_links':
                 $label = !empty($item->generated_title) ? $item->generated_title : __('Internal Links Indexing', 'ai-post-scheduler');
                 if (class_exists('AIPS_Admin_Menu_Helper')) {
-                    $link = AIPS_Admin_Menu_Helper::get_page_url('internal-links');
+                    $link = AIPS_Admin_Menu_Helper::get_page_url('internal_links');
                 }
                 break;
 
             case 'batch_jobs':
                 $label = !empty($item->generated_title) ? $item->generated_title : __('Bulk Batch Job processing', 'ai-post-scheduler');
                 if (class_exists('AIPS_Admin_Menu_Helper')) {
-                    $link = AIPS_Admin_Menu_Helper::get_page_url('system-status');
+                    $link = AIPS_Admin_Menu_Helper::get_page_url('system_status');
                 }
                 break;
 

@@ -792,7 +792,7 @@ class AIPS_Generator {
 
         if (is_wp_error($post_id)) {
             // Fire generic failure hook
-            do_action('aips_post_generation_failed', $post_id, $context, $this->current_history);
+            do_action('aips_post_generation_failed', $post_id, $context, $this->current_history, (int) round(microtime(true) - $generation_start));
             return $post_id;
         }
 
@@ -817,7 +817,8 @@ class AIPS_Generator {
             $generation_incomplete,
             $component_statuses,
             $context,
-            $this->current_history
+            $this->current_history,
+            (int) round(microtime(true) - $generation_start)
         );
 
         if ($context instanceof AIPS_Template_Context) {
