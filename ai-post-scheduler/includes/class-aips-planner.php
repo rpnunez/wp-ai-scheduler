@@ -106,6 +106,15 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * AJAX handler to bulk schedule multiple topics.
+     *
+     * Staggers 'once' frequency topics by 10 minutes to avoid load spikes,
+     * while allowing recurring frequencies to share the same initial run time
+     * for batch processing.
+     *
+     * @return void
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -134,16 +143,21 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+        $next_run_time = $base_time;
 
         foreach ($topics as $topic) {
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
-                'is_active' => 1,
-                'topic' => $topic
+                'frequency'   => $frequency,
+                'next_run'    => date('Y-m-d H:i:s', $next_run_time),
+                'is_active'   => 1,
+                'topic'       => $topic
             );
+
+            // Stagger 'once' schedules by 10 minutes (600 seconds)
+            if ( 'once' === $frequency ) {
+                $next_run_time += 600;
+            }
         }
 
         $count = $scheduler->save_schedule_bulk($schedules);
