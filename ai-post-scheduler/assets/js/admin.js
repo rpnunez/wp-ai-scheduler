@@ -1062,7 +1062,7 @@
                         // Populate modal
                         $('#aips-test-title').text(result.title || '-');
                         $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-content').text(result.content || '-');
+                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
 
                         if (result.image_prompt) {
                             $('#aips-test-image-row').show();
@@ -1142,7 +1142,7 @@
             var templateEngine = AIPS.Templates || null;
             var rowsHtml = '';
             var tableHtml = '';
-            var $modalTitle = $('#aips-post-success-modal-title');
+            var $modalTitle = $('#aips-post-success-modal').find('.aips-modal-title');
             var $summary = $('#aips-success-message');
             var $notice = $('#aips-success-note');
             var $results = $('#aips-post-results-container');
@@ -1276,7 +1276,7 @@
             e.preventDefault();
             $('#aips-voice-form')[0].reset();
             $('#voice_id').val('');
-            $('#aips-voice-modal-title').text(aipsVoicesL10n.addNewVoice);
+            $('#aips-voice-modal').find('.aips-modal-title').text(aipsVoicesL10n.addNewVoice);
             $('#aips-voice-modal').show();
         },
 
@@ -1308,7 +1308,7 @@
                         $('#voice_content_instructions').val(v.content_instructions);
                         $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
                         $('#voice_is_active').prop('checked', v.is_active == 1);
-                        $('#aips-voice-modal-title').text(aipsVoicesL10n.editVoice);
+                        $('#aips-voice-modal').find('.aips-modal-title').text(aipsVoicesL10n.editVoice);
                         $('#aips-voice-modal').show();
                     }
                 }
@@ -1417,7 +1417,7 @@
                 // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
-                $('#aips-schedule-modal-title').text('Add New Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text('Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1468,7 +1468,7 @@
                             'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
                     }
                 }
-                $('#aips-schedule-modal-title').text('Edit Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text('Edit Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1531,7 +1531,7 @@
                 $('#article_structure_id').val(articleStructureId);
                 $('#rotation_pattern').val(rotationPattern);
                 $('#schedule_start_time').val('');
-                $('#aips-schedule-modal-title').text('Clone Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text('Clone Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -3329,7 +3329,7 @@
             e.preventDefault();
             $('#aips-structure-form')[0].reset();
             $('#structure_id').val('');
-            $('#aips-structure-modal-title').text('Add New Article Structure');
+            $('#aips-structure-modal').find('.aips-modal-title').text('Add New Article Structure');
             $('#aips-structure-modal').show();
         },
 
@@ -3431,7 +3431,7 @@
                     var sections = structureData.sections || [];
                     $('#structure_sections').val(sections);
                     $('#structure_is_active').prop('checked', s.is_active == 1);
-                    $('#aips-structure-modal-title').text('Edit Article Structure');
+                    $('#aips-structure-modal').find('.aips-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadStructureFailed, 'error');
@@ -3482,7 +3482,7 @@
             e.preventDefault();
             $('#aips-section-form')[0].reset();
             $('#section_id').val('');
-            $('#aips-section-modal-title').text('Add New Prompt Section');
+            $('#aips-section-modal').find('.aips-modal-title').text('Add New Prompt Section');
             $('#aips-section-modal').show();
         },
 
@@ -3585,7 +3585,7 @@
                     $('#section_description').val(s.description);
                     $('#section_content').val(s.content);
                     $('#section_is_active').prop('checked', s.is_active == 1);
-                    $('#aips-section-modal-title').text('Edit Prompt Section');
+                    $('#aips-section-modal').find('.aips-modal-title').text('Edit Prompt Section');
                     $('#aips-section-modal').show();
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadSectionFailed, 'error');
@@ -3809,7 +3809,7 @@
                     $('#article_structure_id').val(preselectStructureIdNum);
                 }
 
-                $('#aips-schedule-modal-title').text('Add New Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text('Add New Schedule');
                 $legacyModal.show();
             }
 

@@ -39,6 +39,7 @@ class AIPS_Automations_Controller {
 
 		$active_tab = self::get_active_tab_key();
 		$tabs = $this->get_tabs($active_tab);
+		$tab_actions = $this->get_tab_actions($active_tab);
 		$automations_controller = $this;
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/automations.php';
@@ -89,6 +90,175 @@ class AIPS_Automations_Controller {
 		}
 
 		return $tabs;
+	}
+
+
+	/**
+	 * Get header actions for the active Automations tab.
+	 *
+	 * These mirror the primary actions from the standalone pages because the
+	 * embedded tab templates intentionally suppress their own page headers.
+	 *
+	 * @param string $active_tab Active tab key.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function get_tab_actions($active_tab) {
+		switch ($active_tab) {
+			case 'campaigns':
+				return array(
+					array(
+						'type'  => 'link',
+						'url'   => AIPS_Admin_Menu_Helper::get_page_url('campaign_wizard'),
+						'class' => 'aips-btn aips-btn-primary',
+						'icon'  => 'dashicons-plus-alt',
+						'label' => __('Add New Campaign', 'ai-post-scheduler'),
+					),
+				);
+			case 'templates':
+				return array(
+					array(
+						'type'  => 'button',
+						'class' => 'aips-btn aips-btn-primary aips-add-template-btn',
+						'icon'  => 'dashicons-plus-alt',
+						'label' => __('Add Template', 'ai-post-scheduler'),
+					),
+				);
+			case 'authors':
+				return array(
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-suggest-authors-btn',
+						'class' => 'aips-btn aips-btn-secondary',
+						'icon'  => 'dashicons-lightbulb',
+						'label' => __('Suggest Authors', 'ai-post-scheduler'),
+					),
+					array(
+						'type'  => 'button',
+						'class' => 'aips-btn aips-btn-primary aips-add-author-btn',
+						'icon'  => 'dashicons-plus-alt',
+						'label' => __('Add Author', 'ai-post-scheduler'),
+					),
+				);
+			case 'sources':
+				return array(
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-manage-source-groups-btn',
+						'class' => 'aips-btn aips-btn-secondary',
+						'icon'  => 'dashicons-category',
+						'label' => __('Manage Groups', 'ai-post-scheduler'),
+					),
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-add-source-btn',
+						'class' => 'aips-btn aips-btn-primary',
+						'icon'  => 'dashicons-plus-alt2',
+						'label' => __('Add Source', 'ai-post-scheduler'),
+					),
+				);
+			case 'internal-links':
+				return array(
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-start-indexing-btn',
+						'class' => 'aips-btn aips-btn-secondary',
+						'icon'  => 'dashicons-database-import',
+						'label' => __('Index Posts', 'ai-post-scheduler'),
+					),
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-clear-index-btn',
+						'class' => 'aips-btn aips-btn-ghost aips-btn-danger',
+						'icon'  => 'dashicons-trash',
+						'label' => __('Clear Index', 'ai-post-scheduler'),
+					),
+				);
+			case 'taxonomy':
+				return array(
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-open-generate-modal',
+						'class' => 'aips-btn aips-btn-primary aips-generate-taxonomy',
+						'icon'  => 'dashicons-update',
+						'label' => __('Generate Taxonomy', 'ai-post-scheduler'),
+					),
+				);
+			case self::TAB_AUTHOR_TOPICS:
+				return $this->get_author_topics_tab_actions();
+			case 'schedules':
+			default:
+				return $this->get_schedule_tab_actions();
+		}
+	}
+
+	/**
+	 * Get header actions for the schedules tab.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_schedule_tab_actions() {
+		$templates_handler = new AIPS_Templates();
+		$templates = $templates_handler->get_all(true);
+
+		if (!empty($templates)) {
+			return array(
+				array(
+					'type'  => 'button',
+					'class' => 'aips-btn aips-btn-primary aips-add-schedule-btn',
+					'icon'  => 'dashicons-plus-alt',
+					'label' => __('Add Template Schedule', 'ai-post-scheduler'),
+				),
+			);
+		}
+
+		return array(
+			array(
+				'type'  => 'link',
+				'url'   => AIPS_Admin_Menu_Helper::get_page_url('templates'),
+				'class' => 'aips-btn aips-btn-secondary',
+				'icon'  => 'dashicons-media-document',
+				'label' => __('Create Template First', 'ai-post-scheduler'),
+			),
+		);
+	}
+
+	/**
+	 * Get header actions for the Author Topics tab.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_author_topics_tab_actions() {
+		$author_id = self::get_request_author_id();
+
+		if ($author_id <= 0) {
+			return array();
+		}
+
+		return array(
+			array(
+				'type'  => 'link',
+				'url'   => AIPS_Admin_Menu_Helper::get_page_url('authors', array('author_id' => $author_id)),
+				'class' => 'aips-btn aips-btn-secondary',
+				'icon'  => 'dashicons-edit',
+				'label' => __('Edit Author', 'ai-post-scheduler'),
+			),
+			array(
+				'type'       => 'button',
+				'class'      => 'aips-btn aips-btn-primary aips-generate-topics-now',
+				'icon'       => 'dashicons-update',
+				'label'      => __('Generate Topics', 'ai-post-scheduler'),
+				'data_attrs' => array(
+					'id' => $author_id,
+				),
+			),
+			array(
+				'type'  => 'link',
+				'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('author_id' => $author_id)),
+				'class' => 'aips-btn aips-btn-secondary',
+				'icon'  => 'dashicons-admin-post',
+				'label' => __('View Generated Posts', 'ai-post-scheduler'),
+			)
+		);
 	}
 
 	/**
