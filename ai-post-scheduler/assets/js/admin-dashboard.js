@@ -42,55 +42,123 @@
 		 * @return {void}
 		 */
 		bindEvents: function() {
-			// Date Filter Popover toggles
+			var self = this;
+
 			$(document).on('click', '#aips-date-filter-trigger', function(e) {
-				e.stopPropagation();
-				$('#aips-date-popover-panel').toggle();
+				self.toggleDatePopover(e);
 			});
 
 			$(document).on('click', '#aips-date-popover-panel', function(e) {
-				e.stopPropagation();
+				self.preventPopoverPropagation(e);
 			});
 
 			$(document).on('click', '#aips-date-popover-cancel', function(e) {
-				$('#aips-date-popover-panel').hide();
+				self.cancelDatePopover(e);
 			});
 
-			$(document).on('click', function() {
-				$('#aips-date-popover-panel').hide();
+			$(document).on('click', function(e) {
+				self.handleOutsideClick(e);
 			});
 
 			// Client-side date range validation
 			$(document).on('submit', '#aips-dashboard-date-form', function(e) {
-				var dateFromVal = $('#aips-input-date-from').val();
-				var dateToVal = $('#aips-input-date-to').val();
-
-				if (dateFromVal && dateToVal) {
-					var fromDate = new Date(dateFromVal + 'T00:00:00');
-					var toDate = new Date(dateToVal + 'T23:59:59');
-
-					if (fromDate > toDate) {
-						alert(window.aipsDashboardL10n.dateValidationError || 'Start Date cannot be after End Date.');
-						e.preventDefault();
-						return false;
-					}
-				}
+				self.validateDateRange(e);
 			});
 
 			// Detail tab switching logic
 			$(document).on('click', '.aips-tab-btn', function(e) {
-				e.preventDefault();
-				var $btn = $(this);
-				var targetId = $btn.attr('aria-controls');
-
-				// Toggle active classes on buttons
-				$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
-				$btn.addClass('active').attr('aria-selected', 'true');
-
-				// Show the target tab panel and hide the rest
-				$('.aips-tab-panel').hide().removeClass('active');
-				$('#' + targetId).show().addClass('active');
+				self.switchTab(e);
 			});
+		},
+
+		/**
+		 * Toggle the visibility of the date filter popover.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		toggleDatePopover: function(e) {
+			e.stopPropagation();
+			var $panel = $('#aips-date-popover-panel');
+			var isHidden = $panel.prop('hidden');
+
+			$panel.prop('hidden', !isHidden);
+			$('#aips-date-filter-trigger').attr('aria-expanded', isHidden ? 'true' : 'false');
+		},
+
+		/**
+		 * Prevent click event propagation inside the popover.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		preventPopoverPropagation: function(e) {
+			e.stopPropagation();
+		},
+
+		/**
+		 * Close the date popover when cancel is clicked.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		cancelDatePopover: function(e) {
+			$('#aips-date-popover-panel').prop('hidden', true);
+			$('#aips-date-filter-trigger').attr('aria-expanded', 'false');
+		},
+
+		/**
+		 * Close the date popover when clicking outside of it.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleOutsideClick: function(e) {
+			var $panel = $('#aips-date-popover-panel');
+			if (!$panel.prop('hidden')) {
+				$panel.prop('hidden', true);
+				$('#aips-date-filter-trigger').attr('aria-expanded', 'false');
+			}
+		},
+
+		/**
+		 * Validate date range input before submitting the filter form.
+		 *
+		 * @param {Event} e The form submit event.
+		 * @return {boolean}
+		 */
+		validateDateRange: function(e) {
+			var dateFromVal = $('#aips-input-date-from').val();
+			var dateToVal = $('#aips-input-date-to').val();
+
+			if (dateFromVal && dateToVal) {
+				if (dateFromVal > dateToVal) {
+					alert(window.aipsDashboardL10n.dateValidationError || 'Start Date cannot be after End Date.');
+					e.preventDefault();
+					return false;
+				}
+			}
+			return true;
+		},
+
+		/**
+		 * Handle detail tab switching, updating active classes and ARIA state.
+		 *
+		 * @param {Event} e The tab click event.
+		 * @return {void}
+		 */
+		switchTab: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var targetId = $btn.attr('aria-controls');
+
+			// Toggle active classes and ARIA state on buttons
+			$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
+			$btn.addClass('active').attr('aria-selected', 'true');
+
+			// Show the target tab panel and hide the rest
+			$('.aips-tab-panel').hide().removeClass('active').attr('aria-hidden', 'true');
+			$('#' + targetId).show().addClass('active').attr('aria-hidden', 'false');
 		},
 
 		/**

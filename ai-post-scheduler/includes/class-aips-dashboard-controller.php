@@ -60,36 +60,29 @@ class AIPS_Dashboard_Controller {
             $from_ts = $date_from_obj->getTimestamp();
             $to_ts = $date_to_obj->getTimestamp();
         } catch (Exception $e) {
+            $date_from = $default_from;
+            $date_to = $default_to;
             $from_ts = strtotime($default_from . ' 00:00:00');
             $to_ts = strtotime($default_to . ' 23:59:59');
         }
 
-        // Define DB table names
-        $table_history = $wpdb->prefix . 'aips_history';
-        $table_history_log = $wpdb->prefix . 'aips_history_log';
-        $table_author_topics = $wpdb->prefix . 'aips_author_topics';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-        $table_templates = $wpdb->prefix . 'aips_templates';
-        $table_authors = $wpdb->prefix . 'aips_authors';
+        // Server-Side Range Validation: Enforce date_from <= date_to
+        if ($from_ts > $to_ts) {
+            $tmp_ts = $from_ts;
+            $from_ts = $to_ts;
+            $to_ts = $tmp_ts;
 
-        $auxiliary_methods = array('schedule_lifecycle', 'template_lifecycle', 'campaign_lifecycle');
-        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+            $tmp_date = $date_from;
+            $date_from = $date_to;
+            $date_to = $tmp_date;
+        }
 
-        // 2. Fetch Date-Range-Scoped Summary Stats
-        $history_stats_query = $wpdb->prepare(
-            "SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
-             FROM {$table_history}
-             WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-               AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-               AND created_at >= %d AND created_at <= %d",
-            array_merge($auxiliary_methods, array($from_ts, $to_ts))
-        );
-        $history_stats_row = $wpdb->get_row($history_stats_query);
+        // Format Dates in Site Timezone for template rendering
+        $date_from_formatted = wp_date(get_option('date_format'), $from_ts);
+        $date_to_formatted = wp_date(get_option('date_format'), $to_ts);
+
+        // 2. Fetch Date-Range-Scoped Summary Stats via Repository
+        $history_stats_row = $history_repo->get_stats_in_period($from_ts, $to_ts);
 
         $total_in_period = isset($history_stats_row->total) ? (int) $history_stats_row->total : 0;
         $completed_in_period = isset($history_stats_row->completed) ? (int) $history_stats_row->completed : 0;
@@ -98,41 +91,15 @@ class AIPS_Dashboard_Controller {
         $success_rate_in_period = $total_in_period > 0 ? round(($completed_in_period / $total_in_period) * 100, 1) : 100.0;
 
         // Schedules Executed in period
-        $schedules_run_in_period = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT correlation_id)
-             FROM {$table_history}
-             WHERE created_at >= %d AND created_at <= %d
-               AND creation_method IN ('scheduled', 'author_topic_gen', 'author_post_gen', 'batch_job')",
-            $from_ts,
-            $to_ts
-        ));
+        $schedules_run_in_period = $history_repo->get_schedules_run_count_in_period($from_ts, $to_ts);
 
         // Topics Generated in period
-        $topics_created_stats = $wpdb->get_row($wpdb->prepare(
-            "SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-             FROM {$table_author_topics}
-             WHERE generated_at >= %d AND generated_at <= %d",
-            $from_ts,
-            $to_ts
-        ));
+        $topics_created_stats = $author_topics_repo->get_stats_in_period($from_ts, $to_ts);
         $topics_created_in_period = isset($topics_created_stats->total) ? (int) $topics_created_stats->total : 0;
         $topics_pending_in_period = isset($topics_created_stats->pending) ? (int) $topics_created_stats->pending : 0;
 
         // AI Calls and Errors in period
-        $ai_stats_row = $wpdb->get_row($wpdb->prepare(
-            "SELECT
-                SUM(CASE WHEN hl.log_type = 'ai_request' THEN 1 ELSE 0 END) as ai_calls,
-                SUM(CASE WHEN hl.log_type = 'error' AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) as ai_errors
-             FROM {$table_history_log} hl
-             INNER JOIN {$table_history} h ON hl.history_id = h.id
-             WHERE h.created_at >= %d AND h.created_at <= %d",
-            $from_ts,
-            $to_ts
-        ));
+        $ai_stats_row = $history_repo->get_ai_calls_and_errors_in_period($from_ts, $to_ts);
         $ai_calls_in_period = isset($ai_stats_row->ai_calls) ? (int) $ai_stats_row->ai_calls : 0;
         $ai_errors_in_period = isset($ai_stats_row->ai_errors) ? (int) $ai_stats_row->ai_errors : 0;
         $ai_error_rate_in_period = $ai_calls_in_period > 0 ? round(($ai_errors_in_period / $ai_calls_in_period) * 100, 1) : 0.0;
@@ -140,18 +107,12 @@ class AIPS_Dashboard_Controller {
         // 3. Outlook: What's going to happen in the next month
         $next_month_start = AIPS_DateTime::now()->timestamp();
         $next_month_end = AIPS_DateTime::now()->advance('+30 days')->timestamp();
-        $upcoming_runs_count = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$table_schedule}
-             WHERE is_active = 1 AND next_run >= %d AND next_run <= %d",
-            $next_month_start,
-            $next_month_end
-        ));
 
         $unified_service = new AIPS_Unified_Schedule_Service();
         $all_schedules    = $unified_service->get_all('', false);
         $upcoming_schedules = array();
         foreach ($all_schedules as $s) {
-            if (!empty($s['is_active']) && !empty($s['next_run']) && $s['next_run'] >= $next_month_start) {
+            if (!empty($s['is_active']) && !empty($s['next_run']) && $s['next_run'] >= $next_month_start && $s['next_run'] <= $next_month_end) {
                 $upcoming_schedules[] = $s;
             }
         }
@@ -159,6 +120,7 @@ class AIPS_Dashboard_Controller {
             return (int) $a['next_run'] - (int) $b['next_run'];
         });
         $upcoming_5 = array_slice($upcoming_schedules, 0, 5);
+        $upcoming_runs_count = count($upcoming_schedules);
 
         $date_format = get_option('date_format');
         $time_format = get_option('time_format');
@@ -173,19 +135,7 @@ class AIPS_Dashboard_Controller {
 
         // 4. Detail lists/tables inside range
         // Generated Posts
-        $recent_posts_query = $wpdb->prepare(
-            "SELECT h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.completed_at, h.creation_method,
-                    t.name as template_name
-             FROM {$table_history} h
-             LEFT JOIN {$table_templates} t ON h.template_id = t.id
-             WHERE h.created_at >= %d AND h.created_at <= %d
-               AND COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})
-               AND NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)
-             ORDER BY h.created_at DESC
-             LIMIT 10",
-            array_merge($auxiliary_methods, array($from_ts, $to_ts))
-        );
-        $recent_posts = $wpdb->get_results($recent_posts_query);
+        $recent_posts = $history_repo->get_recent_posts_in_period($from_ts, $to_ts, 10);
         foreach ($recent_posts as $item) {
             $item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
                 $item->created_at,
@@ -194,16 +144,7 @@ class AIPS_Dashboard_Controller {
         }
 
         // Generated Author Topics
-        $recent_topics = $wpdb->get_results($wpdb->prepare(
-            "SELECT t.*, a.name as author_name
-             FROM {$table_author_topics} t
-             LEFT JOIN {$table_authors} a ON t.author_id = a.id
-             WHERE t.generated_at >= %d AND t.generated_at <= %d
-             ORDER BY t.generated_at DESC
-             LIMIT 10",
-            $from_ts,
-            $to_ts
-        ));
+        $recent_topics = $author_topics_repo->get_recent_topics_in_period($from_ts, $to_ts, 10);
         foreach ($recent_topics as $item) {
             $item->generated_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
                 $item->generated_at,
@@ -212,17 +153,7 @@ class AIPS_Dashboard_Controller {
         }
 
         // Generated Posts via Individual Author Topic
-        $posts_by_topic = $wpdb->get_results($wpdb->prepare(
-            "SELECT h.post_id, h.generated_title, h.completed_at, t.topic_title, a.name as author_name
-             FROM {$table_history} h
-             INNER JOIN {$table_author_topics} t ON h.topic_id = t.id
-             LEFT JOIN {$table_authors} a ON h.author_id = a.id
-             WHERE h.status = 'completed' AND h.created_at >= %d AND h.created_at <= %d
-             ORDER BY h.completed_at DESC
-             LIMIT 10",
-            $from_ts,
-            $to_ts
-        ));
+        $posts_by_topic = $history_repo->get_posts_by_topic_in_period($from_ts, $to_ts, 10);
         foreach ($posts_by_topic as $item) {
             $item->completed_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
                 $item->completed_at,
@@ -231,20 +162,7 @@ class AIPS_Dashboard_Controller {
         }
 
         // Schedules Executed
-        $executed_schedules = $wpdb->get_results($wpdb->prepare(
-            "SELECT h.id, h.uuid, h.status, h.completed_at, h.created_at, h.creation_method,
-                    s.title as schedule_title, t.name as template_name, a.name as author_name
-             FROM {$table_history} h
-             LEFT JOIN {$table_schedule} s ON (h.template_id = s.template_id OR h.author_id = s.author_id)
-             LEFT JOIN {$table_templates} t ON h.template_id = t.id
-             LEFT JOIN {$table_authors} a ON h.author_id = a.id
-             WHERE h.created_at >= %d AND h.created_at <= %d
-               AND h.creation_method IN ('scheduled', 'author_topic_gen', 'author_post_gen', 'batch_job')
-             ORDER BY h.created_at DESC
-             LIMIT 10",
-            $from_ts,
-            $to_ts
-        ));
+        $executed_schedules = $history_repo->get_executed_schedules_in_period($from_ts, $to_ts, 10);
         foreach ($executed_schedules as $item) {
             $item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
                 $item->created_at,
@@ -253,20 +171,7 @@ class AIPS_Dashboard_Controller {
         }
 
         // 5. Daily analytics data for charts (within the selected range)
-        $daily_gens_raw = $wpdb->get_results($wpdb->prepare(
-            "SELECT
-                DATE(FROM_UNIXTIME(created_at)) AS day,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
-                SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
-                COUNT(*) AS total
-             FROM {$table_history}
-             WHERE created_at >= %d AND created_at <= %d
-               AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-               AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-             GROUP BY day
-             ORDER BY day ASC",
-            array_merge(array($from_ts, $to_ts), $auxiliary_methods)
-        ));
+        $daily_gens_raw = $history_repo->get_daily_generation_stats_in_period($from_ts, $to_ts);
         $daily_gens_map = array();
         foreach ($daily_gens_raw as $row) {
             $daily_gens_map[$row->day] = array(
@@ -276,32 +181,9 @@ class AIPS_Dashboard_Controller {
             );
         }
 
-        $daily_topics_raw = $wpdb->get_results($wpdb->prepare(
-            "SELECT DATE(FROM_UNIXTIME(generated_at)) AS day, COUNT(*) AS total
-             FROM {$table_author_topics}
-             WHERE generated_at >= %d AND generated_at <= %d
-             GROUP BY day
-             ORDER BY day ASC",
-            $from_ts,
-            $to_ts
-        ));
-        $daily_topics_map = array();
-        foreach ($daily_topics_raw as $row) {
-            $daily_topics_map[$row->day] = (int) $row->total;
-        }
+        $daily_topics_map = $author_topics_repo->get_daily_topic_counts_in_period($from_ts, $to_ts);
 
-        $daily_ai_stats = $wpdb->get_results($wpdb->prepare(
-            "SELECT DATE(FROM_UNIXTIME(hl.timestamp)) AS day,
-                    SUM(CASE WHEN hl.log_type = 'ai_request' THEN 1 ELSE 0 END) AS ai_calls,
-                    SUM(CASE WHEN hl.log_type = 'error' AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) AS ai_errors
-             FROM {$table_history_log} hl
-             INNER JOIN {$table_history} h ON hl.history_id = h.id
-             WHERE h.created_at >= %d AND h.created_at <= %d
-             GROUP BY day
-             ORDER BY day ASC",
-            $from_ts,
-            $to_ts
-        ));
+        $daily_ai_stats = $history_repo->get_daily_ai_stats_in_period($from_ts, $to_ts);
         $daily_ai_map = array();
         foreach ($daily_ai_stats as $row) {
             $daily_ai_map[$row->day] = $row;

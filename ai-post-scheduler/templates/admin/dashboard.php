@@ -4,8 +4,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Format dates for display
-$date_from_formatted = date_i18n(get_option('date_format'), strtotime($date_from));
-$date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
+// (Already formatted in controller: $date_from_formatted, $date_to_formatted)
 ?>
 <div class="wrap aips-wrap">
     <?php if (!class_exists('Meow_MWAI_Core')): ?>
@@ -28,14 +27,14 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                 <div class="aips-header-controls">
                     <!-- Date Range Filter Trigger Button -->
                     <div class="aips-date-filter-container">
-                        <button type="button" class="aips-btn aips-btn-secondary id-aips-date-filter-btn" id="aips-date-filter-trigger">
+                        <button type="button" class="aips-btn aips-btn-secondary id-aips-date-filter-btn" id="aips-date-filter-trigger" aria-expanded="false" aria-controls="aips-date-popover-panel" aria-haspopup="true">
                             <span class="dashicons dashicons-calendar-alt"></span>
                             <span class="aips-date-range-label"><?php echo esc_html($date_from_formatted) . ' – ' . esc_html($date_to_formatted); ?></span>
                             <span class="dashicons dashicons-arrow-down-alt2" style="font-size:12px; width:12px; height:12px; margin-left:4px;"></span>
                         </button>
                         
                         <!-- Popover Panel -->
-                        <div class="aips-date-popover" id="aips-date-popover-panel" style="display: none;">
+                        <div class="aips-date-popover" id="aips-date-popover-panel" role="dialog" aria-label="<?php esc_attr_e('Select Date Range', 'ai-post-scheduler'); ?>" hidden>
                             <form method="GET" action="<?php echo esc_url(admin_url('admin.php')); ?>" id="aips-dashboard-date-form">
                                 <input type="hidden" name="page" value="ai-post-scheduler" />
                                 <div class="aips-popover-body">
@@ -63,7 +62,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
         <div class="aips-dashboard-section-title">
             <span class="dashicons dashicons-chart-bar"></span>
             <h2><?php esc_html_e('Overview Summary', 'ai-post-scheduler'); ?></h2>
-            <span class="aips-section-meta"><?php echo sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), esc_html($date_from_formatted), esc_html($date_to_formatted)); ?></span>
+            <span class="aips-section-meta"><?php echo esc_html(sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), $date_from_formatted, $date_to_formatted)); ?></span>
         </div>
 
         <div class="aips-grid aips-grid-cols-4 aips-summary-grid">
@@ -76,7 +75,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     <span class="aips-stat-label"><?php esc_html_e('Posts Completed', 'ai-post-scheduler'); ?></span>
                     <strong class="aips-stat-value"><?php echo esc_html($completed_in_period); ?></strong>
                     <span class="aips-stat-sub-meta">
-                        <?php echo sprintf(__('Success Rate: %s%%', 'ai-post-scheduler'), esc_html($success_rate_in_period)); ?>
+                        <?php echo esc_html(sprintf(__('Success Rate: %s%%', 'ai-post-scheduler'), $success_rate_in_period)); ?>
                     </span>
                 </div>
             </div>
@@ -90,7 +89,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     <span class="aips-stat-label"><?php esc_html_e('Unsuccessful Attempts', 'ai-post-scheduler'); ?></span>
                     <strong class="aips-stat-value"><?php echo esc_html($failed_in_period + $partial_in_period); ?></strong>
                     <span class="aips-stat-sub-meta">
-                        <?php echo sprintf(__('%d Failed, %d Partial', 'ai-post-scheduler'), esc_html($failed_in_period), esc_html($partial_in_period)); ?>
+                        <?php echo esc_html(sprintf(__('%d Failed, %d Partial', 'ai-post-scheduler'), $failed_in_period, $partial_in_period)); ?>
                     </span>
                 </div>
             </div>
@@ -104,7 +103,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     <span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
                     <strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
                     <span class="aips-stat-sub-meta">
-                        <?php echo sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
+                        <?php echo esc_html(sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), $ai_error_rate_in_period, $ai_errors_in_period)); ?>
                     </span>
                 </div>
             </div>
@@ -118,7 +117,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     <span class="aips-stat-label"><?php esc_html_e('Persona Topics Created', 'ai-post-scheduler'); ?></span>
                     <strong class="aips-stat-value"><?php echo esc_html($topics_created_in_period); ?></strong>
                     <span class="aips-stat-sub-meta">
-                        <?php echo sprintf(__('%d Pending Review', 'ai-post-scheduler'), esc_html($topics_pending_in_period)); ?>
+                        <?php echo esc_html(sprintf(__('%d Pending Review', 'ai-post-scheduler'), $topics_pending_in_period)); ?>
                     </span>
                 </div>
             </div>
@@ -132,7 +131,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     <h2 class="aips-panel-title"><?php esc_html_e('Next Month Outlook (Next 30 Days)', 'ai-post-scheduler'); ?></h2>
                 </div>
                 <span class="aips-badge aips-badge-info">
-                    <?php echo sprintf(esc_html(_n('%d Scheduled Run', '%d Scheduled Runs', $upcoming_runs_count, 'ai-post-scheduler')), $upcoming_runs_count); ?>
+                    <?php echo esc_html(sprintf(_n('%d Scheduled Run', '%d Scheduled Runs', $upcoming_runs_count, 'ai-post-scheduler'), $upcoming_runs_count)); ?>
                 </span>
             </div>
             <div class="aips-panel-body">
@@ -222,7 +221,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                 <div class="aips-tab-content">
                     
                     <!-- Panel 1: Generated Posts -->
-                    <div class="aips-tab-panel active" id="tab-posts" role="tabpanel" aria-labelledby="btn-tab-posts">
+                    <div class="aips-tab-panel active" id="tab-posts" role="tabpanel" aria-labelledby="btn-tab-posts" aria-hidden="false">
                         <?php if (!empty($recent_posts)): ?>
                         <div class="aips-table-wrap">
                             <table class="aips-table">
@@ -281,7 +280,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     </div>
 
                     <!-- Panel 2: Persona Topics -->
-                    <div class="aips-tab-panel" id="tab-topics" role="tabpanel" aria-labelledby="btn-tab-topics" style="display:none;">
+                    <div class="aips-tab-panel" id="tab-topics" role="tabpanel" aria-labelledby="btn-tab-topics" style="display:none;" aria-hidden="true">
                         <?php if (!empty($recent_topics)): ?>
                         <div class="aips-table-wrap">
                             <table class="aips-table">
@@ -337,7 +336,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     </div>
 
                     <!-- Panel 3: Posts by Topic -->
-                    <div class="aips-tab-panel" id="tab-topic-posts" role="tabpanel" aria-labelledby="btn-tab-topic-posts" style="display:none;">
+                    <div class="aips-tab-panel" id="tab-topic-posts" role="tabpanel" aria-labelledby="btn-tab-topic-posts" style="display:none;" aria-hidden="true">
                         <?php if (!empty($posts_by_topic)): ?>
                         <div class="aips-table-wrap">
                             <table class="aips-table">
@@ -383,7 +382,7 @@ $date_to_formatted = date_i18n(get_option('date_format'), strtotime($date_to));
                     </div>
 
                     <!-- Panel 4: Schedules Executed -->
-                    <div class="aips-tab-panel" id="tab-schedules" role="tabpanel" aria-labelledby="btn-tab-schedules" style="display:none;">
+                    <div class="aips-tab-panel" id="tab-schedules" role="tabpanel" aria-labelledby="btn-tab-schedules" style="display:none;" aria-hidden="true">
                         <?php if (!empty($executed_schedules)): ?>
                         <div class="aips-table-wrap">
                             <table class="aips-table">
