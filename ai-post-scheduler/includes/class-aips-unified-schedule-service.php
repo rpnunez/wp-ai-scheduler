@@ -307,6 +307,16 @@ class AIPS_Unified_Schedule_Service {
 			$title = !empty($schedule->title) ? $schedule->title
 				: ($schedule->template_name ?: sprintf(__('Schedule #%d', 'ai-post-scheduler'), $schedule->id));
 
+			// Parse batch_progress to detect incomplete batches
+			$batch_progress_data = null;
+			$has_incomplete_batch = false;
+			if (!empty($schedule->batch_progress)) {
+				$batch_progress_data = json_decode($schedule->batch_progress, true);
+				if (is_array($batch_progress_data) && isset($batch_progress_data['completed'], $batch_progress_data['total'])) {
+					$has_incomplete_batch = $batch_progress_data['completed'] < $batch_progress_data['total'];
+				}
+			}
+
 			$result[] = array(
 				'id'                   => absint($schedule->id),
 				'type'                 => self::TYPE_TEMPLATE,
@@ -327,6 +337,9 @@ class AIPS_Unified_Schedule_Service {
 				'can_delete'           => empty($schedule->campaign_id),
 				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
 				'template_id'          => (int) $schedule->template_id,
+				'circuit_state'        => isset($schedule->circuit_state) ? $schedule->circuit_state : 'closed',
+				'batch_progress'       => $batch_progress_data,
+				'has_incomplete_batch' => $has_incomplete_batch,
 			);
 		}
 
@@ -370,22 +383,25 @@ class AIPS_Unified_Schedule_Service {
 			$stats = isset($topic_counts[$author->id]) ? $topic_counts[$author->id] : 0;
 
 			$result[] = array(
-				'id'          => absint($author->id),
-				'type'        => self::TYPE_AUTHOR_TOPIC,
-				'title'       => $author->name,
-				'subtitle'    => isset($author->field_niche) ? $author->field_niche : '',
-				'cron_hook'   => 'aips_generate_author_topics',
-				'frequency'   => $author->topic_generation_frequency,
-				'last_run'    => $author->topic_generation_last_run,
-				'next_run'    => $author->topic_generation_next_run,
-				'is_active'   => $is_active,
-				'status'      => $is_active ? 'active' : 'inactive',
-				'stats_count' => $stats,
-				'stats_label' => _n('topic generated', 'topics generated', $stats, 'ai-post-scheduler'),
-				'can_delete'  => false,
-				'history_id'  => null,
-				'author_id'   => (int) $author->id,
-				'author_name' => $author->name,
+				'id'                   => absint($author->id),
+				'type'                 => self::TYPE_AUTHOR_TOPIC,
+				'title'                => $author->name,
+				'subtitle'             => isset($author->field_niche) ? $author->field_niche : '',
+				'cron_hook'            => 'aips_generate_author_topics',
+				'frequency'            => $author->topic_generation_frequency,
+				'last_run'             => $author->topic_generation_last_run,
+				'next_run'             => $author->topic_generation_next_run,
+				'is_active'            => $is_active,
+				'status'               => $is_active ? 'active' : 'inactive',
+				'stats_count'          => $stats,
+				'stats_label'          => _n('topic generated', 'topics generated', $stats, 'ai-post-scheduler'),
+				'can_delete'           => false,
+				'history_id'           => null,
+				'author_id'            => (int) $author->id,
+				'author_name'          => $author->name,
+				'circuit_state'        => 'closed', // Author schedules don't have per-schedule circuit state
+				'batch_progress'       => null,
+				'has_incomplete_batch' => false,
 			);
 		}
 
@@ -428,22 +444,25 @@ class AIPS_Unified_Schedule_Service {
 			$stats = isset($post_counts[$author->id]) ? $post_counts[$author->id] : 0;
 
 			$result[] = array(
-				'id'          => absint($author->id),
-				'type'        => self::TYPE_AUTHOR_POST,
-				'title'       => $author->name,
-				'subtitle'    => $author->field_niche,
-				'cron_hook'   => 'aips_generate_author_posts',
-				'frequency'   => $author->post_generation_frequency,
-				'last_run'    => $author->post_generation_last_run,
-				'next_run'    => $author->post_generation_next_run,
-				'is_active'   => $is_active,
-				'status'      => $is_active ? 'active' : 'inactive',
-				'stats_count' => $stats,
-				'stats_label' => _n('post generated', 'posts generated', $stats, 'ai-post-scheduler'),
-				'can_delete'  => false,
-				'history_id'  => null,
-				'author_id'   => (int) $author->id,
-				'author_name' => $author->name,
+				'id'                   => absint($author->id),
+				'type'                 => self::TYPE_AUTHOR_POST,
+				'title'                => $author->name,
+				'subtitle'             => $author->field_niche,
+				'cron_hook'            => 'aips_generate_author_posts',
+				'frequency'            => $author->post_generation_frequency,
+				'last_run'             => $author->post_generation_last_run,
+				'next_run'             => $author->post_generation_next_run,
+				'is_active'            => $is_active,
+				'status'               => $is_active ? 'active' : 'inactive',
+				'stats_count'          => $stats,
+				'stats_label'          => _n('post generated', 'posts generated', $stats, 'ai-post-scheduler'),
+				'can_delete'           => false,
+				'history_id'           => null,
+				'author_id'            => (int) $author->id,
+				'author_name'          => $author->name,
+				'circuit_state'        => 'closed', // Author schedules don't have per-schedule circuit state
+				'batch_progress'       => null,
+				'has_incomplete_batch' => false,
 			);
 		}
 
