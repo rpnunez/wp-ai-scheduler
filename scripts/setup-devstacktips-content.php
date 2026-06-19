@@ -26,6 +26,13 @@
  * Usage:
  *   CLI (recommended): wp eval-file scripts/setup-devstacktips-content.php
  *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
+ *   Web execution requires manage_options and _wpnonce=wp_create_nonce('aips_devstacktips_seed')
+ *
+ * Rollback warning:
+ *   Rollback deletes seeded objects by configured names/slugs. Run a database
+ *   backup first; rollback is not guaranteed to preserve pre-existing data
+ *   that used the same names/slugs as seeded categories, source groups,
+ *   sections, voices, slices, schedules, templates, campaigns, or sources.
  *
  * @package AI_Post_Scheduler
  */
@@ -583,16 +590,40 @@ class AIPS_DevStackTips_Setup {
 
 		$slices_repo = new AIPS_Post_Slices_Repository();
 		$now = AIPS_DateTime::now()->timestamp();
+		$existing_slices = array();
+
+		foreach ($slices_repo->get_all(false) as $existing_slice) {
+			if (!empty($existing_slice->name) && !empty($existing_slice->id)) {
+				$existing_slices[(string) $existing_slice->name] = (int) $existing_slice->id;
+			}
+		}
 
 		foreach ($this->object_data['post_slices'] as $slice_data) {
-			$slice_id = $slices_repo->create(array(
+			$slice_payload = array(
 				'name' => $slice_data['name'],
 				'description' => $slice_data['description'],
 				'sort_order' => $slice_data['sort_order'],
 				'is_active' => $slice_data['is_active'],
-				'created_at' => $now,
 				'updated_at' => $now,
-			));
+			);
+
+			if (isset($existing_slices[$slice_data['name']])) {
+				$slice_id = $existing_slices[$slice_data['name']];
+				$result = $slices_repo->update($slice_id, $slice_payload);
+
+				if ($result !== false) {
+					$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
+					echo "[INFO] Post slice exists, updated: {$slice_data['name']}\n";
+				} else {
+					$this->errors[] = "Failed to update post slice: {$slice_data['name']}";
+					echo "[ERR] Failed to update: {$slice_data['name']}\n";
+				}
+				continue;
+			}
+
+			$slice_payload['created_at'] = $now;
+
+			$slice_id = $slices_repo->create($slice_payload);
 
 			if ($slice_id) {
 				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
@@ -809,6 +840,13 @@ class AIPS_DevStackTips_Setup {
 
 		$schedule_repo = new AIPS_Schedule_Repository();
 		$templates = $this->get_created_templates_by_name();
+		$existing_schedules = array();
+
+		foreach ($schedule_repo->get_all(false) as $existing_schedule) {
+			if (!empty($existing_schedule->title) && !empty($existing_schedule->id)) {
+				$existing_schedules[(string) $existing_schedule->title] = (int) $existing_schedule->id;
+			}
+		}
 
 		foreach ($this->object_data['schedules'] as $schedule_data) {
 			if (!isset($templates[$schedule_data['template_name']])) {
@@ -823,16 +861,34 @@ class AIPS_DevStackTips_Setup {
 				$schedule_data['start_time']
 			);
 
-			$schedule_id = $schedule_repo->create(array(
+			$schedule_payload = array(
 				'template_id' => $template_id,
 				'title' => $schedule_data['title'],
 				'frequency' => $schedule_data['frequency'],
 				'next_run' => $next_run,
-				'last_run' => 0,
 				'is_active' => $schedule_data['is_active'],
-				'status' => 'active',
+				'status' => !empty($schedule_data['is_active']) ? 'active' : 'inactive',
 				'schedule_type' => 'post_generation',
-			));
+			);
+
+			if (isset($existing_schedules[$schedule_data['title']])) {
+				$schedule_id = $existing_schedules[$schedule_data['title']];
+				$result = $schedule_repo->update($schedule_id, $schedule_payload);
+				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
+
+				if ($result) {
+					$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
+					echo "[INFO] Schedule exists, updated: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
+				} else {
+					$this->errors[] = "Failed to update schedule: {$schedule_data['title']}";
+					echo "[ERR] Failed to update: {$schedule_data['title']}\n";
+				}
+				continue;
+			}
+
+			$schedule_payload['last_run'] = 0;
+
+			$schedule_id = $schedule_repo->create($schedule_payload);
 
 			if ($schedule_id) {
 				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
@@ -2194,18 +2250,22 @@ class AIPS_DevStackTips_Setup {
 		echo "<p>To rollback all changes made by this script, run:</p>\n";
 		echo "<pre>wp eval-file scripts/setup-devstacktips-content.php rollback</pre>\n";
 		echo "<p>Or use the Dev Tools page and add 'rollback' as an argument.</p>\n";
+		echo "<p><strong>Rollback warning:</strong> rollback deletes by configured names/slugs and is not guaranteed to preserve pre-existing data that used the same names. Take a database backup before rollback.</p>\n";
 	}
 
 	/**
 	 * Rollback all changes made by this setup script.
 	 * 
-	 * Deletes all created entities in reverse order to maintain referential integrity.
+	 * Deletes matching entities in reverse order to maintain referential integrity.
+	 * This matches by configured names/slugs, so it may delete pre-existing data
+	 * that used the same identifiers. Take a database backup before rollback.
 	 */
 	private function rollback() {
 		global $wpdb;
 
 		echo "<h1>DevStackTips Content Rollback</h1>\n";
 		echo "<p>Rolling back all setup changes...</p>\n";
+		echo "<p><strong>Warning:</strong> rollback deletes matching names/slugs and may remove pre-existing shared terms or records. Restore from a database backup if pre-existing data must be recovered safely.</p>\n";
 
 		$deleted = array(
 			'schedules' => 0,
@@ -2439,7 +2499,7 @@ class AIPS_DevStackTips_Setup {
 	}
 }
 
-// Determine mode from CLI argument or query parameter
+// Determine mode from CLI argument or guarded web query parameter.
 $rollback_mode = false;
 if (PHP_SAPI === 'cli') {
 	// CLI mode: check for 'rollback' argument
@@ -2448,7 +2508,16 @@ if (PHP_SAPI === 'cli') {
 		$rollback_mode = true;
 	}
 } else {
-	// Web mode: check for 'rollback' query parameter
+	if (!current_user_can('manage_options')) {
+		wp_die(esc_html__('You do not have permission to run the DevStackTips seeder.', 'ai-post-scheduler'));
+	}
+
+	$nonce = isset($_REQUEST['_wpnonce']) ? sanitize_text_field(wp_unslash($_REQUEST['_wpnonce'])) : '';
+	if (!wp_verify_nonce($nonce, 'aips_devstacktips_seed')) {
+		wp_die(esc_html__('Invalid DevStackTips seeder nonce.', 'ai-post-scheduler'));
+	}
+
+	// Web mode: check for guarded 'rollback' query parameter.
 	if (isset($_GET['rollback']) && $_GET['rollback'] === '1') {
 		$rollback_mode = true;
 	}
