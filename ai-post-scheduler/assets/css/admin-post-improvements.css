@@ -1,9 +1,9 @@
-.aips-existing-posts-table .aips-btn-group {
+.aips-post-improvements-table .aips-btn-group {
 	flex-wrap: wrap;
 	gap: 6px;
 }
 
-.aips-existing-posts-toolbar {
+.aips-post-improvements-toolbar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -11,7 +11,7 @@
 	gap: 8px;
 }
 
-.aips-existing-review-component {
+.aips-post-improvement-review-component {
 	border: 1px solid #e5e7eb;
 	border-radius: 6px;
 	padding: 12px;
@@ -19,7 +19,7 @@
 	background: #fff;
 }
 
-.aips-existing-review-item {
+.aips-post-improvement-review-item {
 	margin: 10px 0;
 	padding: 10px;
 	border: 1px solid #edf2f7;
@@ -27,14 +27,14 @@
 	background: #fafafa;
 }
 
-.aips-existing-review-diff {
+.aips-post-improvement-review-diff {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
 	margin-top: 8px;
 }
 
-.aips-existing-review-diff pre {
+.aips-post-improvement-review-diff pre {
 	white-space: pre-wrap;
 	word-break: break-word;
 	background: #fff;
@@ -45,7 +45,7 @@
 	overflow: auto;
 }
 
-.aips-existing-review-rationale {
+.aips-post-improvement-review-rationale {
 	margin: 8px 0 0;
 	color: #4b5563;
 }

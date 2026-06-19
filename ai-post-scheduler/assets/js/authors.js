@@ -1933,7 +1933,7 @@
 		/**
 		 * Publish a draft post from the topic-post modal.
 		 *
-		 * Uses the existing post-review publish endpoint, then reloads the current
+		 * Uses the post review publish endpoint, then reloads the current
 		 * topic-post list to keep modal content in sync without a full page reload.
 		 *
 		 * @param {Event} e - Click event from `.aips-publish-topic-post`.

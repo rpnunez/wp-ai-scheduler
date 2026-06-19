@@ -2,7 +2,7 @@
 /**
  * Post Suggestion Prompts Builder.
  *
- * Constructs AI prompts for analyzing existing posts and generating improvement
+ * Constructs AI prompts for analyzing post improvements and generating improvement
  * suggestions. Formats post data, categories, and analysis instructions into
  * structured JSON prompts optimized for AI content analysis.
  *

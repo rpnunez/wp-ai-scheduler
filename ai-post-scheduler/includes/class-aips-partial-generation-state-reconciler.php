@@ -37,7 +37,7 @@ class AIPS_Partial_Generation_State_Reconciler {
 	 *
 	 * @param int     $post_id Post ID.
 	 * @param WP_Post $post    Post object.
-	 * @param bool    $update  Whether this is an existing post being updated.
+	 * @param bool    $update  Whether this is a post update.
 	 * @return void
 	 */
 	public function on_save_post($post_id, $post, $update) {

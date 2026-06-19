@@ -85,7 +85,7 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Upsert on an existing post_id should update the embedding.
+	 * Upsert on the same post_id should update the embedding.
 	 */
 	public function test_embeddings_upsert_updates_existing() {
 		$this->embeddings_repo->upsert( 1, array( 0.1 ), 'old-model' );

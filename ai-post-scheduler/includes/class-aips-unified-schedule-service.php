@@ -25,7 +25,7 @@ class AIPS_Unified_Schedule_Service {
 	const TYPE_TEMPLATE    = 'template_schedule';
 	const TYPE_AUTHOR_TOPIC = 'author_topic_gen';
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
-	const TYPE_EXISTING_POST_SCAN = 'existing_post_scan';
+	const TYPE_POST_IMPROVEMENT_SCAN = 'post_improvement_scan';
 
 	/**
 	 * @var AIPS_Schedule_Repository
@@ -55,7 +55,7 @@ class AIPS_Unified_Schedule_Service {
 	/**
 	 * @var AIPS_Post_Improvement_Repository
 	 */
-	private $existing_posts_repository;
+	private $post_improvements_repository;
 
 	/**
 	 * Initialise the service and its dependencies.
@@ -66,7 +66,7 @@ class AIPS_Unified_Schedule_Service {
 		$this->history_repository           = new AIPS_History_Repository();
 		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
 		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->existing_posts_repository    = new AIPS_Post_Improvement_Repository();
+		$this->post_improvements_repository    = new AIPS_Post_Improvement_Repository();
 	}
 
 	/**
@@ -92,8 +92,8 @@ class AIPS_Unified_Schedule_Service {
 		if (empty($type_filter) || $type_filter === self::TYPE_AUTHOR_POST) {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules($include_stats));
 		}
-		if (empty($type_filter) || $type_filter === self::TYPE_EXISTING_POST_SCAN) {
-			$schedules = array_merge($schedules, $this->get_existing_post_scan_schedules($include_stats));
+		if (empty($type_filter) || $type_filter === self::TYPE_POST_IMPROVEMENT_SCAN) {
+			$schedules = array_merge($schedules, $this->get_post_improvement_scan_schedules($include_stats));
 		}
 
 		// Sort by run proximity for better operator UX:
@@ -158,8 +158,8 @@ class AIPS_Unified_Schedule_Service {
 			case self::TYPE_AUTHOR_POST:
 				return $this->authors_repository->update_post_generation_active($id, $is_active);
 
-			case self::TYPE_EXISTING_POST_SCAN:
-				return $this->existing_posts_repository->update_schedule($id, array(
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
+				return $this->post_improvements_repository->update_schedule($id, array(
 					'status' => $is_active ? 'active' : 'inactive',
 				));
 
@@ -199,7 +199,7 @@ class AIPS_Unified_Schedule_Service {
 				}
 				return $generator->generate_posts_for_author($author, $quantity, 'manual', true);
 
-			case self::TYPE_EXISTING_POST_SCAN:
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
 				$service = new AIPS_Post_Improvement_Service();
 				return $service->run_schedule($id, 'manual');
 
@@ -284,8 +284,8 @@ class AIPS_Unified_Schedule_Service {
 				);
 				return $this->format_history_logs($logs);
 
-			case self::TYPE_EXISTING_POST_SCAN:
-				$runs = $this->existing_posts_repository->get_recent_runs_by_schedule($id, $limit > 0 ? $limit : 50);
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
+				$runs = $this->post_improvements_repository->get_recent_runs_by_schedule($id, $limit > 0 ? $limit : 50);
 				$entries = array();
 				foreach ($runs as $run) {
 					$entries[] = array(
@@ -294,7 +294,7 @@ class AIPS_Unified_Schedule_Service {
 						'log_type' => sanitize_text_field((string) $run->status),
 						'history_type_id' => 0,
 						'message' => sprintf(__('Scanned %1$d posts; created %2$d suggestions; skipped %3$d unchanged; failures %4$d.', 'ai-post-scheduler'), (int) $run->posts_scanned, (int) $run->suggestions_created, (int) $run->posts_skipped_unchanged, (int) $run->failures_count),
-						'event_type' => 'existing_post_scan',
+						'event_type' => 'post_improvement_scan',
 						'event_status' => sanitize_text_field((string) $run->status),
 						'context' => array(
 							'run_id' => (int) $run->id,
@@ -491,28 +491,28 @@ class AIPS_Unified_Schedule_Service {
 
 
 /**
- * Normalise existing-post scan schedules.
+ * Normalise post-improvement scan schedules.
  *
  * @param bool $include_stats Whether to include suggestion stats.
  * @return array
  */
-private function get_existing_post_scan_schedules($include_stats = true) {
-$schedules = $this->existing_posts_repository->get_schedules();
+private function get_post_improvement_scan_schedules($include_stats = true) {
+$schedules = $this->post_improvements_repository->get_schedules();
 $result = array();
 foreach ($schedules as $schedule) {
 $stats_count = 0;
 if ($include_stats) {
-$runs = $this->existing_posts_repository->get_recent_runs_by_schedule((int) $schedule->id, 1);
+$runs = $this->post_improvements_repository->get_recent_runs_by_schedule((int) $schedule->id, 1);
 if (!empty($runs)) {
 $stats_count = isset($runs[0]->suggestions_created) ? (int) $runs[0]->suggestions_created : 0;
 }
 }
 $result[] = array(
 'id' => (int) $schedule->id,
-'type' => self::TYPE_EXISTING_POST_SCAN,
-'title' => !empty($schedule->title) ? $schedule->title : sprintf(__('Existing Post Scan #%d', 'ai-post-scheduler'), (int) $schedule->id),
-'subtitle' => !empty($schedule->description) ? $schedule->description : __('Existing post improvement scan', 'ai-post-scheduler'),
-'cron_hook' => 'aips_process_existing_post_scans',
+'type' => self::TYPE_POST_IMPROVEMENT_SCAN,
+'title' => !empty($schedule->title) ? $schedule->title : sprintf(__('Post Improvement Scan #%d', 'ai-post-scheduler'), (int) $schedule->id),
+'subtitle' => !empty($schedule->description) ? $schedule->description : __('Post improvement scan', 'ai-post-scheduler'),
+'cron_hook' => 'aips_process_post_improvement_scans',
 'frequency' => $schedule->frequency,
 'last_run' => $schedule->last_run,
 'next_run' => $schedule->next_run,

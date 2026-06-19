@@ -3,7 +3,7 @@
  * Post Improvement Repository.
  *
  * Data access layer for post improvement schedules, scans, suggestions, and suggestion items.
- * Manages persistence for the existing post improvement workflow including schedule management,
+ * Manages persistence for the post improvement workflow including schedule management,
  * scan execution tracking, suggestion creation, and item-level decision tracking.
  *
  * @package AI_Post_Scheduler
@@ -22,12 +22,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Post_Improvement_Repository {
 
 	/**
-	 * Schedule type identifier for existing post scan schedules.
+	 * Schedule type identifier for post improvement scan schedules.
 	 *
 	 * @var string
 	 * @since 2.10.0
 	 */
-	public const EXISTING_POST_SCAN_SCHEDULE_TYPE = 'existing_post_scan';
+	public const POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE = 'post_improvement_scan';
 
 	/**
 	 * WordPress database object.
@@ -87,9 +87,9 @@ class AIPS_Post_Improvement_Repository {
 
 		$this->wpdb              = $wpdb;
 		$this->table_schedules   = $wpdb->prefix . 'aips_schedule';
-		$this->table_runs        = $wpdb->prefix . 'aips_existing_post_scan_runs';
-		$this->table_suggestions = $wpdb->prefix . 'aips_existing_post_suggestions';
-		$this->table_items       = $wpdb->prefix . 'aips_existing_post_suggestion_items';
+		$this->table_runs        = $wpdb->prefix . 'aips_post_improvement_scan_runs';
+		$this->table_suggestions = $wpdb->prefix . 'aips_post_improvement_suggestions';
+		$this->table_items       = $wpdb->prefix . 'aips_post_improvement_suggestion_items';
 		$this->table_history     = $wpdb->prefix . 'aips_history';
 	}
 
@@ -124,7 +124,7 @@ class AIPS_Post_Improvement_Repository {
 			'frequency'              => isset($data['frequency']) ? sanitize_key($data['frequency']) : 'daily',
 			'status'                 => isset($data['status']) ? sanitize_key($data['status']) : 'active',
 			'is_active'              => (!isset($data['status']) || 'active' === sanitize_key($data['status'])) ? 1 : 0,
-			'schedule_type'          => self::EXISTING_POST_SCAN_SCHEDULE_TYPE,
+			'schedule_type'          => self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE,
 			'next_run'               => isset($data['next_run']) ? absint($data['next_run']) : 0,
 			'last_run'               => isset($data['last_run']) ? absint($data['last_run']) : 0,
 			'run_state'              => wp_json_encode($state),
@@ -238,7 +238,7 @@ class AIPS_Post_Improvement_Repository {
 			return false;
 		}
 
-		$result = $this->wpdb->update($this->table_schedules, $fields, array('id' => $id, 'schedule_type' => self::EXISTING_POST_SCAN_SCHEDULE_TYPE), $formats, array('%d', '%s'));
+		$result = $this->wpdb->update($this->table_schedules, $fields, array('id' => $id, 'schedule_type' => self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE), $formats, array('%d', '%s'));
 		return false !== $result;
 	}
 
@@ -256,7 +256,7 @@ class AIPS_Post_Improvement_Repository {
 			return null;
 		}
 
-		$schedule = $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE id = %d AND schedule_type = %s", $id, self::EXISTING_POST_SCAN_SCHEDULE_TYPE));
+		$schedule = $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE id = %d AND schedule_type = %s", $id, self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE));
 		if (!$schedule) {
 			return null;
 		}
@@ -274,11 +274,11 @@ class AIPS_Post_Improvement_Repository {
 	 */
 	public function get_schedules($status = '') {
 		if (!empty($status)) {
-			$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s AND status = %s ORDER BY next_run ASC, id DESC", self::EXISTING_POST_SCAN_SCHEDULE_TYPE, sanitize_key($status)));
+			$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s AND status = %s ORDER BY next_run ASC, id DESC", self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE, sanitize_key($status)));
 			return array_map(array($this, 'hydrate_schedule'), $schedules);
 		}
 
-		$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s ORDER BY next_run ASC, id DESC", self::EXISTING_POST_SCAN_SCHEDULE_TYPE));
+		$schedules = $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$this->table_schedules} WHERE schedule_type = %s ORDER BY next_run ASC, id DESC", self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE));
 		return array_map(array($this, 'hydrate_schedule'), $schedules);
 	}
 
@@ -311,7 +311,7 @@ class AIPS_Post_Improvement_Repository {
 			)
 			ORDER BY next_run ASC
 			LIMIT %d",
-			self::EXISTING_POST_SCAN_SCHEDULE_TYPE, 'active', $now, $now, $limit
+			self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE, 'active', $now, $now, $limit
 		));
 
 		return array_map(array($this, 'hydrate_schedule'), $schedules);
@@ -388,7 +388,7 @@ class AIPS_Post_Improvement_Repository {
 	 * @since 2.10.0
 	 */
 	public function delete_schedule($id) {
-		return false !== $this->wpdb->delete($this->table_schedules, array('id' => absint($id), 'schedule_type' => self::EXISTING_POST_SCAN_SCHEDULE_TYPE), array('%d', '%s'));
+		return false !== $this->wpdb->delete($this->table_schedules, array('id' => absint($id), 'schedule_type' => self::POST_IMPROVEMENT_SCAN_SCHEDULE_TYPE), array('%d', '%s'));
 	}
 
 	/**

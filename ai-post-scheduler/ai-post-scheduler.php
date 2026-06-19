@@ -116,9 +116,9 @@ final class AI_Post_Scheduler {
 				'schedule' => 'daily',
 				'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
 			),
-			'aips_process_existing_post_scans' => array(
+			'aips_process_post_improvement_scans' => array(
 				'schedule' => 'hourly',
-				'label'   => __( 'Existing Post Scans', 'ai-post-scheduler' ),
+				'label'   => __( 'Post Improvement Scans', 'ai-post-scheduler' ),
 			),
 		);
 	}
@@ -779,8 +779,8 @@ final class AI_Post_Scheduler {
 		// Export-file cleanup cron handler.
 		add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
 
-		// Existing post improvement scan cron handler.
-		add_action('aips_process_existing_post_scans', function() {
+		// Post improvement scan cron handler.
+		add_action('aips_process_post_improvement_scans', function() {
 			(new AIPS_Post_Improvement_Service())->process_due_schedules();
 		});
 	}

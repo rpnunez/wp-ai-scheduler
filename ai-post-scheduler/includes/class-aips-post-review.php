@@ -432,7 +432,7 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
 		}
 		
-		// Delete the existing post if it exists
+		// Delete the post improvement if it exists
 		if ($history_item->post_id) {
 			// Verify per-post capability before deleting
 			if (!current_user_can('delete_post', $history_item->post_id)) {

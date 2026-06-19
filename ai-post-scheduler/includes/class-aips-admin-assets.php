@@ -935,7 +935,7 @@ class AIPS_Admin_Assets {
 				'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
 				'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
 				'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
-				'typeExistingPostsLabel'         => __('Existing Post Scans', 'ai-post-scheduler'),
+				'typePostImprovementsLabel'         => __('Post Improvement Scans', 'ai-post-scheduler'),
 				'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
 				'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
 				/* translators: %d: number of overdue schedules */
@@ -1063,16 +1063,16 @@ class AIPS_Admin_Assets {
 			);
 
 			wp_enqueue_script(
-				'aips-admin-existing-posts',
-				AIPS_PLUGIN_URL . 'assets/js/admin-existing-posts.js',
+				'aips-admin-post-improvements',
+				AIPS_PLUGIN_URL . 'assets/js/admin-post-improvements.js',
 				array('aips-admin-script', 'aips-admin-generated-posts'),
 				AIPS_VERSION,
 				true
 			);
 
 			wp_enqueue_style(
-				'aips-admin-existing-posts',
-				AIPS_PLUGIN_URL . 'assets/css/admin-existing-posts.css',
+				'aips-admin-post-improvements',
+				AIPS_PLUGIN_URL . 'assets/css/admin-post-improvements.css',
 				array('aips-admin-style'),
 				AIPS_VERSION
 			);
@@ -1119,13 +1119,13 @@ class AIPS_Admin_Assets {
 				'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
 			));
 
-			wp_localize_script('aips-admin-existing-posts', 'aipsExistingPostsL10n', array(
+			wp_localize_script('aips-admin-post-improvements', 'aipsPostImprovementsL10n', array(
 				'ajaxUrl' => admin_url('admin-ajax.php'),
-				'nonceFetch' => wp_create_nonce('aips_existing_posts_fetch'),
-				'nonceReview' => wp_create_nonce('aips_existing_posts_review'),
-				'nonceApply' => wp_create_nonce('aips_existing_posts_apply'),
-				'nonceDismiss' => wp_create_nonce('aips_existing_posts_dismiss'),
-				'nonceSchedule' => wp_create_nonce('aips_existing_posts_schedule'),
+				'nonceFetch' => wp_create_nonce('aips_post_improvements_fetch'),
+				'nonceReview' => wp_create_nonce('aips_post_improvements_review'),
+				'nonceApply' => wp_create_nonce('aips_post_improvements_apply'),
+				'nonceDismiss' => wp_create_nonce('aips_post_improvements_dismiss'),
+				'nonceSchedule' => wp_create_nonce('aips_post_improvements_schedule'),
 				'detailError' => __('Failed to load suggestion details.', 'ai-post-scheduler'),
 				'updateError' => __('Failed to update suggestions.', 'ai-post-scheduler'),
 				'updateSuccess' => __('Suggestion update completed.', 'ai-post-scheduler'),

@@ -640,7 +640,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	/**
 	 * Regenerate a post from a topic.
 	 *
-	 * Sets the existing post to draft and generates a new one.
+	 * Sets the post improvement to draft and generates a new one.
 	 *
 	 * @param int $post_id WordPress post ID.
 	 * @param int $topic_id Topic ID.

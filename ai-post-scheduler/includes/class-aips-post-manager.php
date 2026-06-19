@@ -148,7 +148,7 @@ class AIPS_Post_Manager {
     }
 
     /**
-     * Ensure the post title is unique across existing posts.
+     * Ensure the post title is unique across generated posts.
      *
      * Uses an exact-title check and appends numeric suffixes when needed
      * (for example, "My Title (2)"). This acts as a final safety net in case

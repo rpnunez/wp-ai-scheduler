@@ -2,7 +2,7 @@
 /**
  * Post Improvement Service.
  *
- * Business logic layer for existing post improvement scanning, AI analysis,
+ * Business logic layer for post improvement scanning, AI analysis,
  * suggestion generation, and suggestion application. Orchestrates the scan workflow,
  * coordinates with the AI service for content analysis, and manages the suggestion
  * lifecycle from creation through application or dismissal.
@@ -95,7 +95,7 @@ class AIPS_Post_Improvement_Service {
 	}
 
 	/**
-	 * Execute a scan schedule to analyze existing posts and generate suggestions.
+	 * Execute a scan schedule to analyze post improvements and generate suggestions.
 	 *
 	 * Workflow:
 	 * 1. Acquire schedule lock to prevent concurrent execution
@@ -235,7 +235,7 @@ class AIPS_Post_Improvement_Service {
 				'last_error'  => $e->getMessage(),
 			));
 
-			$this->logger->log('Existing post scan failed: ' . $e->getMessage(), 'error');
+			$this->logger->log('Post improvement scan failed: ' . $e->getMessage(), 'error');
 		} finally {
 			// Always release lock
 			$this->repository->release_schedule_lock($schedule_id, $token);

@@ -3,7 +3,7 @@
  * Taxonomy Admin Template
  *
  * Displays interface for generating and managing AI-generated taxonomy (categories and tags)
- * based on existing posts.
+ * based on post improvements.
  *
  * @package AI_Post_Scheduler
  * @since 1.7.3
@@ -28,7 +28,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Taxonomy', 'ai-post-scheduler'); ?></h1>
 					<p class="aips-page-description">
-						<?php esc_html_e('Generate and manage AI-powered categories and tags based on your existing posts', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Generate and manage AI-powered categories and tags based on your post improvements', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 				<div class="aips-page-actions">

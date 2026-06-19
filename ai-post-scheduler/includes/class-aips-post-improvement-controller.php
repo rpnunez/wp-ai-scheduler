@@ -2,7 +2,7 @@
 /**
  * Post Improvement Controller.
  *
- * Handles AJAX requests and UI interactions for the existing post improvement feature.
+ * Handles AJAX requests and UI interactions for the post improvement feature.
  * Coordinates between the frontend and the repository/service layers for suggestion
  * management, application, and dismissal workflows.
  *
@@ -51,14 +51,14 @@ class AIPS_Post_Improvement_Controller {
 		$this->service    = $service ?: new AIPS_Post_Improvement_Service($this->repository);
 
 		// Register AJAX handlers for suggestion management
-		add_action('wp_ajax_aips_existing_posts_get_suggestions', array($this, 'ajax_get_suggestions'));
-		add_action('wp_ajax_aips_existing_posts_get_suggestion_detail', array($this, 'ajax_get_suggestion_detail'));
-		add_action('wp_ajax_aips_existing_posts_apply_suggestions', array($this, 'ajax_apply_suggestions'));
-		add_action('wp_ajax_aips_existing_posts_dismiss_suggestions', array($this, 'ajax_dismiss_suggestions'));
-		add_action('wp_ajax_aips_existing_posts_reopen_suggestion', array($this, 'ajax_reopen_suggestion'));
-		add_action('wp_ajax_aips_existing_posts_run_scan_now', array($this, 'ajax_run_scan_now'));
-		add_action('wp_ajax_aips_existing_posts_save_schedule', array($this, 'ajax_save_schedule'));
-		add_action('wp_ajax_aips_existing_posts_delete_schedule', array($this, 'ajax_delete_schedule'));
+		add_action('wp_ajax_aips_post_improvements_get_suggestions', array($this, 'ajax_get_suggestions'));
+		add_action('wp_ajax_aips_post_improvements_get_suggestion_detail', array($this, 'ajax_get_suggestion_detail'));
+		add_action('wp_ajax_aips_post_improvements_apply_suggestions', array($this, 'ajax_apply_suggestions'));
+		add_action('wp_ajax_aips_post_improvements_dismiss_suggestions', array($this, 'ajax_dismiss_suggestions'));
+		add_action('wp_ajax_aips_post_improvements_reopen_suggestion', array($this, 'ajax_reopen_suggestion'));
+		add_action('wp_ajax_aips_post_improvements_run_scan_now', array($this, 'ajax_run_scan_now'));
+		add_action('wp_ajax_aips_post_improvements_save_schedule', array($this, 'ajax_save_schedule'));
+		add_action('wp_ajax_aips_post_improvements_delete_schedule', array($this, 'ajax_delete_schedule'));
 	}
 
 	/**
@@ -83,7 +83,7 @@ class AIPS_Post_Improvement_Controller {
 	 */
 	public function ajax_get_suggestions() {
 		// Verify permissions and nonce
-		$this->assert_nonce_and_capability('aips_existing_posts_fetch', 'nonce_fetch');
+		$this->assert_nonce_and_capability('aips_post_improvements_fetch', 'nonce_fetch');
 
 		// Extract and sanitize request parameters
 		$page   = isset($_POST['page']) ? absint($_POST['page']) : 1;
@@ -106,7 +106,7 @@ class AIPS_Post_Improvement_Controller {
 	 * @since 2.10.0
 	 */
 	public function ajax_get_suggestion_detail() {
-		$this->assert_nonce_and_capability('aips_existing_posts_review', 'nonce_review');
+		$this->assert_nonce_and_capability('aips_post_improvements_review', 'nonce_review');
 		$suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
 		$detail        = $this->repository->get_suggestion_detail($suggestion_id);
 
@@ -125,7 +125,7 @@ class AIPS_Post_Improvement_Controller {
 	 */
 	public function ajax_apply_suggestions() {
 		// Verify permissions and nonce
-		$this->assert_nonce_and_capability('aips_existing_posts_apply', 'nonce_apply');
+		$this->assert_nonce_and_capability('aips_post_improvements_apply', 'nonce_apply');
 
 		// Extract parameters and normalize item IDs (supports 'all' keyword)
 		$suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
@@ -154,7 +154,7 @@ class AIPS_Post_Improvement_Controller {
 	 * @since 2.10.0
 	 */
 	public function ajax_dismiss_suggestions() {
-		$this->assert_nonce_and_capability('aips_existing_posts_dismiss', 'nonce_dismiss');
+		$this->assert_nonce_and_capability('aips_post_improvements_dismiss', 'nonce_dismiss');
 		$suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
 		$item_ids      = isset($_POST['item_ids']) ? (array) wp_unslash($_POST['item_ids']) : array();
 		$item_ids      = $this->normalize_item_ids_for_suggestion($suggestion_id, $item_ids);
@@ -175,7 +175,7 @@ class AIPS_Post_Improvement_Controller {
 	 * @since 2.10.0
 	 */
 	public function ajax_reopen_suggestion() {
-		$this->assert_nonce_and_capability('aips_existing_posts_review', 'nonce_review');
+		$this->assert_nonce_and_capability('aips_post_improvements_review', 'nonce_review');
 		$suggestion_id = isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
 
 		if (!$this->repository->mark_suggestion_as($suggestion_id, 'pending')) {
@@ -192,7 +192,7 @@ class AIPS_Post_Improvement_Controller {
 	 * @since 2.10.0
 	 */
 	public function ajax_run_scan_now() {
-		$this->assert_nonce_and_capability('aips_existing_posts_schedule', 'nonce_schedule');
+		$this->assert_nonce_and_capability('aips_post_improvements_schedule', 'nonce_schedule');
 		$schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
 		$result      = $this->service->run_schedule($schedule_id, 'manual');
 
@@ -202,7 +202,7 @@ class AIPS_Post_Improvement_Controller {
 
 		AIPS_Ajax_Response::success(
 			array(
-				'message' => __('Existing-post scan started.', 'ai-post-scheduler'),
+				'message' => __('Post improvement scan started.', 'ai-post-scheduler'),
 				'run_id'  => (int) $result,
 			)
 		);
@@ -216,12 +216,12 @@ class AIPS_Post_Improvement_Controller {
 	 */
 	public function ajax_save_schedule() {
 		// Verify permissions and nonce
-		$this->assert_nonce_and_capability('aips_existing_posts_schedule', 'nonce_schedule');
+		$this->assert_nonce_and_capability('aips_post_improvements_schedule', 'nonce_schedule');
 
 		// Extract schedule ID and build data payload
 		$schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
 		$data        = array(
-			'title'                   => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : __('Scan Existing Posts', 'ai-post-scheduler'),
+			'title'                   => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : __('Scan Post Improvements', 'ai-post-scheduler'),
 			'description'             => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
 			'frequency'               => isset($_POST['frequency']) ? sanitize_key(wp_unslash($_POST['frequency'])) : 'daily',
 			'category_filters'        => isset($_POST['category_filters']) ? array_map('absint', (array) $_POST['category_filters']) : array(),
@@ -266,7 +266,7 @@ class AIPS_Post_Improvement_Controller {
 	 * @since 2.10.0
 	 */
 	public function ajax_delete_schedule() {
-		$this->assert_nonce_and_capability('aips_existing_posts_schedule', 'nonce_schedule');
+		$this->assert_nonce_and_capability('aips_post_improvements_schedule', 'nonce_schedule');
 		$schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
 
 		if (!$this->repository->delete_schedule($schedule_id)) {

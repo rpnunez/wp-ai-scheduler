@@ -33,9 +33,9 @@ class AIPS_DB_Manager {
 		'aips_bulk_batch_jobs',
 		'aips_cache_index',
 		'aips_cache_events',
-		'aips_existing_post_scan_runs',
-		'aips_existing_post_suggestions',
-		'aips_existing_post_suggestion_items',
+		'aips_post_improvement_scan_runs',
+		'aips_post_improvement_suggestions',
+		'aips_post_improvement_suggestion_items',
 	);
 
 	public function __construct() {
@@ -97,9 +97,9 @@ class AIPS_DB_Manager {
 		$table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
 		$table_cache_index          = $tables['aips_cache_index'];
 		$table_cache_events         = $tables['aips_cache_events'];
-		$table_existing_scan_runs      = $tables['aips_existing_post_scan_runs'];
-		$table_existing_suggestions    = $tables['aips_existing_post_suggestions'];
-		$table_existing_suggestion_items = $tables['aips_existing_post_suggestion_items'];
+		$table_post_improvement_scan_runs      = $tables['aips_post_improvement_scan_runs'];
+		$table_post_improvement_suggestions    = $tables['aips_post_improvement_suggestions'];
+		$table_post_improvement_suggestion_items = $tables['aips_post_improvement_suggestion_items'];
 
 		$sql = array();
 
@@ -235,7 +235,7 @@ class AIPS_DB_Manager {
 			KEY season_end_date (season_end_date)
 		) $charset_collate;";
 
-		$sql[] = "CREATE TABLE $table_existing_scan_runs (
+		$sql[] = "CREATE TABLE $table_post_improvement_scan_runs (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			schedule_id bigint(20) NOT NULL,
 			status varchar(20) NOT NULL DEFAULT 'running',
@@ -256,7 +256,7 @@ class AIPS_DB_Manager {
 			KEY status (status)
 		) $charset_collate;";
 
-		$sql[] = "CREATE TABLE $table_existing_suggestions (
+		$sql[] = "CREATE TABLE $table_post_improvement_suggestions (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			post_id bigint(20) NOT NULL,
 			run_id bigint(20) NOT NULL,
@@ -278,7 +278,7 @@ class AIPS_DB_Manager {
 			KEY schedule_id (schedule_id)
 		) $charset_collate;";
 
-		$sql[] = "CREATE TABLE $table_existing_suggestion_items (
+		$sql[] = "CREATE TABLE $table_post_improvement_suggestion_items (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			suggestion_id bigint(20) NOT NULL,
 			run_id bigint(20) NOT NULL,

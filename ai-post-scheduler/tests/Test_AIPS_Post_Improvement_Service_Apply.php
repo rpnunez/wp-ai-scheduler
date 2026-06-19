@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests apply logic for existing-post suggestions.
+ * Tests apply logic for post-improvement suggestions.
  *
  * @package AI_Post_Scheduler
  */
@@ -19,7 +19,7 @@ class Test_AIPS_Post_Improvement_Service_Apply extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
-			$this->markTestSkipped('Existing-post improvement service tests require the full WordPress test library.');
+			$this->markTestSkipped('Post improvement service tests require the full WordPress test library.');
 		}
 
 		AIPS_DB_Manager::install_tables();

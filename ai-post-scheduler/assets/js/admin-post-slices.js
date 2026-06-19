@@ -58,7 +58,7 @@
 		},
 
 		/**
-		 * Open the modal for an existing post slice.
+		 * Open the modal for a saved post slice.
 		 *
 		 * @param {Event} e Click event.
 		 * @return {void}

@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for existing-post improvement repository.
+ * Tests for post-improvement improvement repository.
  *
  * @package AI_Post_Scheduler
  */
@@ -15,7 +15,7 @@ class Test_AIPS_Post_Improvement_Repository extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
-			$this->markTestSkipped('Existing-post improvement repository tests require the full WordPress test library.');
+			$this->markTestSkipped('Post improvement repository tests require the full WordPress test library.');
 		}
 
 		AIPS_DB_Manager::install_tables();
@@ -33,7 +33,7 @@ class Test_AIPS_Post_Improvement_Repository extends WP_UnitTestCase {
 	public function test_create_schedule_defaults_include_generated_false() {
 		$schedule_id = $this->repository->create_schedule(
 			array(
-				'title'     => 'My Existing Post Scan',
+				'title'     => 'My Post Improvement Scan',
 				'frequency' => 'daily',
 				'next_run'  => time() + HOUR_IN_SECONDS,
 			)

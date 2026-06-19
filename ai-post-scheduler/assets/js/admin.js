@@ -101,7 +101,7 @@
                     template_schedule: aipsScheduleL10n.typeTemplateLabel,
                     author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
                     author_post_gen: aipsScheduleL10n.typeAuthorPostLabel,
-                    existing_post_scan: aipsScheduleL10n.typeExistingPostsLabel
+                    post_improvement_scan: aipsScheduleL10n.typePostImprovementsLabel
                 };
 
                 var queueTotal = 0;
