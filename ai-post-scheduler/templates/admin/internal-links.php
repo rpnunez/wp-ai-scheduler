@@ -206,10 +206,10 @@ $is_embedded_internal_links_view = !empty($embedded);
 <?php endif; ?>
 
 <!-- Insert Link Modal -->
-<div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
+<div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content" style="max-width:860px;width:94%;">
 		<div class="aips-modal-header">
-			<h2 id="aips-insert-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
 				<span class="dashicons dashicons-no-alt"></span>
 			</button>
@@ -243,7 +243,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 				</h3>
 				<p style="margin:0 0 10px;font-size:12px;color:#777;"><?php esc_html_e('Applied links are highlighted in green. Hover over a highlighted link to edit or remove it.', 'ai-post-scheduler'); ?></p>
 				<div id="aips-insert-post-content-wrap" style="max-height:320px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:14px 16px;background:#fafafa;">
-					<div id="aips-insert-post-content" style="font-size:13px;line-height:1.9;color:#333;white-space:pre-wrap;word-break:break-word;">
+					<div class="aips-modal-content-body" style="font-size:13px;line-height:1.9;color:#333;white-space:pre-wrap;word-break:break-word;">
 						<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
 					</div>
 				</div>
@@ -421,10 +421,10 @@ $is_embedded_internal_links_view = !empty($embedded);
 </script>
 
 <!-- Edit Anchor Text Modal -->
-<div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
+<div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-anchor-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
 				<span class="dashicons dashicons-no-alt"></span>
 			</button>
