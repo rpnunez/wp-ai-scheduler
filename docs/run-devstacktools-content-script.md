@@ -5,7 +5,7 @@ cd c:\Projects\NunezScheduler\wp-ai-scheduler
 
 2. Confirm you are in the right place and the script exists:
 ```powershell
-Get-Item .\scripts\setup-devstacktips-content.php
+Get-Item .\ai-post-scheduler\scripts\setup-devstacktips-content.php
 ```
 
 3. Check that WP-CLI is available:
@@ -40,12 +40,12 @@ wp plugin activate ai-post-scheduler
 
 9. Run a quick syntax check on the script:
 ```powershell
-php -l .\scripts\setup-devstacktips-content.php
+php -l .\ai-post-scheduler\scripts\setup-devstacktips-content.php
 ```
 
 10. Run the seeder:
 ```powershell
-wp eval-file .\scripts\setup-devstacktips-content.php
+wp eval-file .\ai-post-scheduler\scripts\setup-devstacktips-content.php
 ```
 
 11. Verify a few important settings were written:
@@ -65,7 +65,7 @@ wp option get aips_notification_preferences --format=json
 
 14. If anything looks wrong and you want to undo the seeded entities:
 ```powershell
-wp eval-file .\scripts\setup-devstacktips-content.php rollback
+wp eval-file .\ai-post-scheduler\scripts\setup-devstacktips-content.php rollback
 ```
 
 15. If rollback is not enough and you want full recovery, restore the DB backup you made:
@@ -74,6 +74,6 @@ wp db import .\backups\YOUR-BACKUP-FILE.sql
 ```
 
 A few safety notes:
-- Run this from the repo root, not `ai-post-scheduler/`, because the script path is `.\scripts\setup-devstacktips-content.php`.
+- Run this from the repo root, because the script path relative to the repo root is `.\ai-post-scheduler\scripts\setup-devstacktips-content.php`.
 - Step 4 is the important guardrail: make sure `siteurl` is your intended local/dev site before seeding.
 - The script is designed to update/create settings and seeded records, so taking the DB export first is the main protection.
