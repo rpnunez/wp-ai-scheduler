@@ -131,15 +131,31 @@ class AIPS_Planner {
         $count = 0;
         $base_time = strtotime($start_date);
 
+        $interval_seconds = 0;
+        if ($frequency === 'once') {
+            $interval_seconds = 600; // default 10 minutes stagger for 'once'
+        }
+
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        foreach ($topics as $index => $topic) {
+            if ($frequency === 'once') {
+                // Stagger topics with a 'once' frequency by a short interval (10 minutes)
+                $staggered_time = $base_time + ($index * $interval_seconds);
+                $next_run = date('Y-m-d H:i:s', $staggered_time);
+                $topic_frequency = 'once';
+            } else {
+                // For all other recurring frequencies, topics MUST share the exact same initial next_run datetime
+                // to properly utilize the background queuing system (AIPS_Batch_Queue_Service).
+                $next_run = date('Y-m-d H:i:s', $base_time);
+                $topic_frequency = 'once'; // MUST remain set to 'once'
+            }
+
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
+                'frequency' => $topic_frequency,
                 'next_run' => $next_run,
                 'is_active' => 1,
                 'topic' => $topic

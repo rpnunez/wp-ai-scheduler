@@ -156,7 +156,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	 *   next_run = base_time + ($i * 86400)
 	 * causing topics to be spread across multiple days.
 	 */
-	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
+	public function test_ajax_bulk_schedule_once_topics_have_staggered_next_run() {
 		$this->set_admin_user();
 
 		$start_date = '2030-06-15 13:15:00';
@@ -176,12 +176,14 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// For frequency 'once', next_run values must be staggered by 10 minutes.
+		$base_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_time = date('Y-m-d H:i:s', $base_time + ($i * 600));
 			$this->assertEquals(
-				$start_date,
+				$expected_time,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_time, $schedule['next_run'])
 			);
 		}
 	}
