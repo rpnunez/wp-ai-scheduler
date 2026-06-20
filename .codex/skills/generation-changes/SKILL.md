@@ -32,3 +32,6 @@ Use this skill for post generation/regeneration workflows, prompts, and scheduli
 - `ai-post-scheduler/includes/class-aips-author-post-generator.php`
 - `ai-post-scheduler/includes/class-aips-resilience-service.php`
 - `ai-post-scheduler/includes/class-aips-partial-generation-state-reconciler.php`
+
+## Testing policy
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.

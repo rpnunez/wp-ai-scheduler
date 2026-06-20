@@ -32,3 +32,6 @@ Use this skill to break a feature into implementation slices that are independen
 - `docs/DEV_HANDBOOK.md`
 - `docs/DEVELOPMENT_GUIDELINES.md`
 - `ai-post-scheduler/tests/`
+
+## Testing policy
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.

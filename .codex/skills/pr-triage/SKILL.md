@@ -29,3 +29,6 @@ Use this skill to evaluate overlap risk, readiness, and review posture for incom
 - `AGENTS.md`
 - `docs/DEVELOPMENT_GUIDELINES.md`
 - `.github/agents/PR Oracle v2.agent.md`
+
+## Testing policy
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.

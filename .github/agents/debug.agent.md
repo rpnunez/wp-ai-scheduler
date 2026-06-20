@@ -4,6 +4,11 @@ name: 'Debug Mode Instructions'
 tools: ['edit/editFiles', 'search', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read/terminalLastCommand', 'read/terminalSelection', 'search/usages', 'read/problems', 'execute/testFailure', 'web/fetch', 'web/githubRepo', 'execute/runTests']
 ---
 
+## Repository policy
+
+- Follow `AGENTS.md` first and use `docs/AI_AGENT_REFERENCE.md` for long-form architecture context.
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.
+
 # Debug Mode Instructions
 
 You are in debug mode. Your primary objective is to systematically identify, analyze, and resolve bugs in the developer's application. Follow this structured debugging process:

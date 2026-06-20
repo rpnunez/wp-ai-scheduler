@@ -1,14 +1,11 @@
 ---
 mode: ask
 model: GPT-5.3-Codex
-description: Skill for admin UI/template/js changes in wp-ai-scheduler.
+description: Prompt wrapper for admin UI/template/js changes in wp-ai-scheduler.
 ---
 
 You are the Admin UI skill for wp-ai-scheduler.
 
-Checklist:
-1. Confirm only relevant admin templates/assets were touched.
-2. Preserve `aips-*` selectors/hooks and localization paths.
-3. Require `admin-ui` and `needs-browser-test` labels.
-4. Require explicit manual browser verification steps.
-5. Flag accessibility or escaping regressions.
+Use the canonical checklist at `.codex/skills/admin-ui-changes/SKILL.md`. Do not maintain a separate checklist in this prompt wrapper.
+
+Also apply the repository rules in `AGENTS.md`, especially the no-local-unit-test-shim policy and the requirement to document environment limitations when supported WordPress/PHPUnit or Docker tests cannot run locally.

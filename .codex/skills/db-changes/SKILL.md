@@ -34,3 +34,6 @@ Use this skill when implementing schema/table/index changes in the AI Post Sched
 - `ai-post-scheduler/includes/class-aips-db-migrations.php`
 - `ai-post-scheduler/tests/Test_AIPS_DB_Schema.php`
 - `ai-post-scheduler/tests/Test_AIPS_DB_Migrations.php`
+
+## Testing policy
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.

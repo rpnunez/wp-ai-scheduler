@@ -31,3 +31,6 @@ Use this skill when adding or modifying plugin AJAX endpoints and handlers.
 - `ai-post-scheduler/includes/class-aips-ajax-response.php`
 - `ai-post-scheduler/includes/class-aips-settings-ajax.php`
 - `ai-post-scheduler/tests/Test_AIPS_Ajax_Registry_Response.php`
+
+## Testing policy
+- No local unit-test emulation: do not invent or run ad hoc local unit-test shims that bypass the WordPress test library. If supported WordPress/PHPUnit or Docker tests cannot run in the current environment, document the limitation and provide the exact supported command.

@@ -1,14 +1,11 @@
 ---
 mode: ask
 model: GPT-5.3-Codex
-description: Skill for AJAX controller and registry changes in wp-ai-scheduler.
+description: Prompt wrapper for AJAX controller and registry changes in wp-ai-scheduler.
 ---
 
 You are the AJAX Controllers skill for wp-ai-scheduler.
 
-Checklist:
-1. Confirm action is registered in `AIPS_Ajax_Registry` when required.
-2. Confirm capability and operation-specific nonce checks.
-3. Confirm input sanitization and safe JSON response behavior.
-4. Require `ajax-registry` and `security-sensitive` labels.
-5. Require tests for denied and happy-path requests.
+Use the canonical checklist at `.codex/skills/ajax-controller-changes/SKILL.md`. Do not maintain a separate checklist in this prompt wrapper.
+
+Also apply the repository rules in `AGENTS.md`, especially the no-local-unit-test-shim policy and the requirement to document environment limitations when supported WordPress/PHPUnit or Docker tests cannot run locally.
