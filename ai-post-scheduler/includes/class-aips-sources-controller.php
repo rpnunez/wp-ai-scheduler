@@ -408,7 +408,10 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
 		}
 
-		AIPS_Ajax_Response::success(array('source_data' => $row));
+		AIPS_Ajax_Response::success(array(
+			'source_data' => $row,
+			'usage'       => $this->data_repo->get_generation_usage($id, 10),
+		));
 	}
 
 	/**

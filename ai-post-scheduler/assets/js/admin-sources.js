@@ -316,6 +316,7 @@
 				return;
 			}
 
+			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_get_source_data',
 				nonce:   aipsAjax.nonce,
@@ -344,10 +345,45 @@
 				$('#aips-source-data-num-used').val(row.num_used || 0);
 				$('#aips-source-data-created-at').val(row.created_at || 0);
 				$('#aips-source-data-updated-at').val(row.updated_at || 0);
+				self.renderSourceDataUsage(response.data.usage || []);
 				$('#aips-source-data-modal').show();
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
 			});
+		},
+
+		renderSourceDataUsage: function (usage) {
+			var $wrap = $('#aips-source-data-usage-wrap');
+			var $links = $('#aips-source-data-usage-links');
+
+			if (!usage || !usage.length) {
+				$links.empty();
+				$wrap.hide();
+				return;
+			}
+
+			var html = '<ul>';
+			usage.forEach(function (item) {
+				var title = $('<div>').text(item.title || ('History #' + item.history_id)).html();
+				var historyUrl = $('<div>').text(item.history_url || '').html();
+				var postUrl = $('<div>').text(item.post_edit_url || '').html();
+				html += '<li>';
+				if (postUrl) {
+					html += '<a href="' + postUrl + '">' + title + '</a>';
+				} else if (historyUrl) {
+					html += '<a href="' + historyUrl + '">' + title + '</a>';
+				} else {
+					html += title;
+				}
+				if (historyUrl) {
+					html += ' <a class="aips-btn aips-btn-xs aips-btn-secondary" href="' + historyUrl + '">History #' + parseInt(item.history_id || 0, 10) + '</a>';
+				}
+				html += '</li>';
+			});
+			html += '</ul>';
+
+			$links.html(html);
+			$wrap.show();
 		},
 
 		saveSourceData: function (e) {

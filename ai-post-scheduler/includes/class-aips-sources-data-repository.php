@@ -483,6 +483,88 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
+	 * Find generated posts/history records that reference a source-data snapshot.
+	 *
+	 * Usage is recorded in generation history log JSON when snapshots are injected
+	 * into content prompts. This method keeps lookup SQL in the repository and
+	 * validates matches by decoding the log JSON after a broad LIKE prefilter.
+	 *
+	 * @param int $source_data_id Source data row ID.
+	 * @param int $limit          Maximum usage records to return.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function get_generation_usage( $source_data_id, $limit = 10 ) {
+		$source_data_id = absint( $source_data_id );
+		$limit          = max( 1, absint( $limit ) );
+		if ( $source_data_id <= 0 ) {
+			return array();
+		}
+
+		$history_table = $this->wpdb->prefix . 'aips_history';
+		$log_table     = $this->wpdb->prefix . 'aips_history_log';
+		$needle        = '%"source_data_id":' . $source_data_id . '%';
+
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT h.id AS history_id, h.post_id, h.generated_title, h.created_at, hl.details
+				 FROM {$log_table} hl
+				 INNER JOIN {$history_table} h ON h.id = hl.history_id
+				 WHERE hl.details LIKE %s
+				 ORDER BY hl.timestamp DESC
+				 LIMIT %d",
+				$needle,
+				$limit * 3
+			)
+		);
+
+		$usage = array();
+		foreach ( $rows as $row ) {
+			$details = ! empty( $row->details ) ? json_decode( $row->details, true ) : array();
+			if ( ! is_array( $details ) || ! $this->details_reference_source_data_id( $details, $source_data_id ) ) {
+				continue;
+			}
+
+			$post_id = isset( $row->post_id ) ? absint( $row->post_id ) : 0;
+			$usage[] = array(
+				'history_id'    => isset( $row->history_id ) ? absint( $row->history_id ) : 0,
+				'post_id'       => $post_id,
+				'title'         => ! empty( $row->generated_title ) ? (string) $row->generated_title : sprintf( __( 'History #%d', 'ai-post-scheduler' ), absint( $row->history_id ) ),
+				'created_at'    => isset( $row->created_at ) ? absint( $row->created_at ) : 0,
+				'history_url'   => admin_url( 'admin.php?page=aips-history' ),
+				'post_edit_url' => $post_id ? get_edit_post_link( $post_id, 'raw' ) : '',
+			);
+
+			if ( count( $usage ) >= $limit ) {
+				break;
+			}
+		}
+
+		return $usage;
+	}
+
+	/**
+	 * Recursively check whether decoded log details reference a source-data ID.
+	 *
+	 * @param mixed $value          Decoded JSON value.
+	 * @param int   $source_data_id Source data ID.
+	 * @return bool
+	 */
+	private function details_reference_source_data_id( $value, $source_data_id ) {
+		if ( is_array( $value ) ) {
+			if ( isset( $value['source_data_id'] ) && absint( $value['source_data_id'] ) === $source_data_id ) {
+				return true;
+			}
+			foreach ( $value as $child ) {
+				if ( $this->details_reference_source_data_id( $child, $source_data_id ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Get the number of archived content rows for a source.
 	 *
 	 * Only counts rows with fetch_status = 'success' and non-empty extracted_text.
