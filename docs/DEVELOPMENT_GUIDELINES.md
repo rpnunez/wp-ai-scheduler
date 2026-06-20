@@ -1,6 +1,6 @@
 # Development Guidelines
 
-Project-specific rules for the AI Post Scheduler plugin. Follow these in addition to the canonical guidance in `AGENTS.md`.
+Project-specific rules for the AI Post Scheduler plugin. Follow these in addition to the canonical guidance in [AGENTS.md](../AGENTS.md).
 
 ---
 

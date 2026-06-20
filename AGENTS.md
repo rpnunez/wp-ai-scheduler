@@ -14,7 +14,7 @@
 - Admin assets: `ai-post-scheduler/assets/`.
 - Tests: `ai-post-scheduler/tests/`.
 - Changelog: `ai-post-scheduler/CHANGELOG.md`.
-- Deeper docs: `README.md`, `docs/DEVELOPMENT_GUIDELINES.md`, `docs/AI_AGENT_REFERENCE.md`, `docs/FEATURE_LIST.md`, `docs/HOOKS.md`, `docs/MIGRATIONS.md`, `docs/SETUP.md`.
+- Deeper docs: [README.md](README.md), [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md), [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md), [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md), [docs/HOOKS.md](docs/HOOKS.md), [docs/MIGRATIONS.md](docs/MIGRATIONS.md), [docs/SETUP.md](docs/SETUP.md).
 
 ## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.

@@ -1,6 +1,6 @@
 # AI Agent Reference
 
-Detailed context for AI agents working on AI Post Scheduler. `AGENTS.md` is the canonical high-level instruction file; this document holds longer inventories that should not be duplicated there or in tool-specific instruction files.
+Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGENTS.md) is the canonical high-level instruction file; this document holds longer inventories that should not be duplicated there or in tool-specific instruction files.
 
 ## Runtime boot shape
 
