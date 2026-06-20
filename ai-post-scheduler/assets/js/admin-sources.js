@@ -58,7 +58,7 @@
 			$(document).on('click', '.aips-fetch-source-now', this.fetchSourceNow.bind(this));
 
 			// Close modal buttons / overlay.
-			$(document).on('click', '#aips-source-modal .aips-modal-close', this.closeModal.bind(this));
+			// $(document).on('click', '#aips-source-modal .aips-modal-close', this.closeModal.bind(this)); // Handled globally by admin.js
 			$(document).on('click', '#aips-source-modal', this.onOverlayClick.bind(this));
 
 			// Live search / filter.
@@ -67,7 +67,7 @@
 
 			// Source Groups modal.
 			$(document).on('click', '#aips-manage-source-groups-btn', this.openGroupsModal.bind(this));
-			$(document).on('click', '#aips-groups-modal .aips-modal-close', this.closeGroupsModal.bind(this));
+			// $(document).on('click', '#aips-groups-modal .aips-modal-close', this.closeGroupsModal.bind(this)); // Handled globally by admin.js
 			$(document).on('click', '#aips-groups-modal', this.onGroupsOverlayClick.bind(this));
 			$(document).on('click', '#aips-add-group-btn', this.addSourceGroup.bind(this));
 			$(document).on('click', '.aips-delete-source-group', this.deleteSourceGroup.bind(this));
@@ -87,7 +87,7 @@
 			e.preventDefault();
 			this.currentSourceId = 0;
 			this.resetForm();
-			$('#aips-source-modal-title').text(aipsSourcesL10n.addNewSource);
+			$('#aips-source-modal').find('.aips-modal-title').text(aipsSourcesL10n.addNewSource);
 			$('#aips-source-modal').show();
 		},
 
@@ -124,7 +124,7 @@
 				$('.aips-source-group-checkbox[value="' + tid + '"]').prop('checked', true);
 			});
 
-			$('#aips-source-modal-title').text(aipsSourcesL10n.editSource);
+			$('#aips-source-modal').find('.aips-modal-title').text(aipsSourcesL10n.editSource);
 			$('#aips-source-modal').show();
 		},
 

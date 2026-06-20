@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * DevStackTips Content Setup Script
  *
@@ -24,8 +24,14 @@
  * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
  *
  * Usage:
- *   CLI (recommended): wp eval-file scripts/setup-devstacktips-content.php
- *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
+ *   CLI only: wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php
+ *   To rollback (CLI): wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php rollback
+ *
+ * Rollback warning:
+ *   Rollback deletes seeded objects by configured names/slugs. Run a database
+ *   backup first; rollback is not guaranteed to preserve pre-existing data
+ *   that used the same names/slugs as seeded categories, source groups,
+ *   sections, voices, slices, schedules, templates, campaigns, or sources.
  *
  * @package AI_Post_Scheduler
  */
@@ -77,25 +83,63 @@ class AIPS_DevStackTips_Setup {
 		),
 	);
 
+	/**
+	 * Tracks items created or updated during the seeding run, keyed by entity type.
+	 *
+	 * @var array
+	 */
 	private $created_items = array();
+
+	/**
+	 * Accumulates error messages encountered during the seeding or rollback run.
+	 *
+	 * @var array
+	 */
 	private $errors = array();
+
+	/**
+	 * Holds all resolved seed data arrays, keyed by entity type (e.g. 'categories', 'voices').
+	 *
+	 * @var array
+	 */
 	private $object_data = array();
+
+	/**
+	 * Whether the instance is operating in rollback mode rather than seeding mode.
+	 *
+	 * @var bool
+	 */
 	private $rollback_mode = false;
 
+	/**
+	 * Initializes the setup instance and pre-builds all seed data.
+	 *
+	 * @param bool $rollback Pass true to run in rollback mode instead of seeding mode.
+	 */
 	public function __construct($rollback = false) {
 		$this->rollback_mode = $rollback;
 		$this->build_seeding_object_data();
 	}
 
+	/**
+	 * Executes the full seeding or rollback workflow depending on the mode set at construction.
+	 *
+	 * @return void
+	 */
 	public function run() {
 		if ($this->rollback_mode) {
 			$this->rollback();
 			return;
 		}
 
-		echo "<h1>DevStackTips Content Setup</h1>\n";
-		echo "<p>Creating complete content production system...</p>\n";
-		echo "<p>Applying strategy profile: <code>" . esc_html(self::STRATEGY_PROFILE) . "</code></p>\n";
+		echo "=========================================
+DevStackTips Content Setup
+=========================================
+";
+		echo "Creating complete content production system...
+";
+		echo "Applying strategy profile: " . esc_html(self::STRATEGY_PROFILE) . "
+";
 
 		// Step 1: Create Categories
 		$this->create_categories();
@@ -129,8 +173,16 @@ class AIPS_DevStackTips_Setup {
 
 		// Report Results
 		$this->print_summary();
+
 	}
 
+
+
+	/**
+	 * Populates $object_data with all resolved seed data arrays for every entity type.
+	 *
+	 * @return void
+	 */
 	private function build_seeding_object_data() {
 		$this->object_data = array(
 			'settings' => $this->get_settings_seed_data(),
@@ -148,28 +200,54 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the distribution configuration constant as an array.
+	 *
+	 * @return array The full distribution configuration array.
+	 */
 	private function get_distribution_config() {
 		return self::DISTRIBUTION_CONFIG;
 	}
 
+	/**
+	 * Returns the target post counts for all defined distribution periods.
+	 *
+	 * @return array Associative array of period names to post counts (e.g. ['daily' => 6, 'weekly' => 30]).
+	 */
 	private function get_target_posts_by_period() {
 		$config = $this->get_distribution_config();
 
 		return isset($config['target_posts']) ? $config['target_posts'] : array();
 	}
 
+	/**
+	 * Returns the target post count for a specific distribution period.
+	 *
+	 * @param string $period The period name (e.g. 'daily', 'weekly', 'monthly').
+	 * @return int The configured post target for that period, or 0 if not defined.
+	 */
 	private function get_target_posts_for_period($period) {
 		$targets = $this->get_target_posts_by_period();
 
 		return isset($targets[$period]) ? (int) $targets[$period] : 0;
 	}
 
+	/**
+	 * Returns the primary distribution period configured for this content strategy.
+	 *
+	 * @return string The primary period name (e.g. 'weekly').
+	 */
 	private function get_primary_distribution_period() {
 		$config = $this->get_distribution_config();
 
 		return isset($config['distribution_period']) ? (string) $config['distribution_period'] : 'weekly';
 	}
 
+	/**
+	 * Returns the target post count for the primary distribution period.
+	 *
+	 * @return int The post count target for the primary period.
+	 */
 	private function get_primary_target_post_count() {
 		return $this->get_target_posts_for_period($this->get_primary_distribution_period());
 	}
@@ -230,6 +308,11 @@ class AIPS_DevStackTips_Setup {
 		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
 	}
 
+	/**
+	 * Calculates the target post counts for each author based on their defined shares and the primary target post count.
+	 *
+	 * @return array Associative array of author names to their calculated post counts.
+	 */
 	private function get_author_post_targets() {
 		$config = $this->get_distribution_config();
 		$shares = isset($config['author_shares']) ? $config['author_shares'] : array();
@@ -237,6 +320,12 @@ class AIPS_DevStackTips_Setup {
 		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
 	}
 
+	/**
+	 * Formats any scalar or array value into a human-readable string for summary output.
+	 *
+	 * @param mixed $value The value to format (bool, array, or scalar).
+	 * @return string A display-safe string representation of the value.
+	 */
 	private function format_summary_value($value) {
 		if (is_bool($value)) {
 			return $value ? 'true' : 'false';
@@ -251,20 +340,49 @@ class AIPS_DevStackTips_Setup {
 		return ($display_value === '') ? '(empty)' : $display_value;
 	}
 
+	/**
+	 * Compares two values for equality using serialized representations to handle arrays and objects.
+	 *
+	 * @param mixed $expected The expected value.
+	 * @param mixed $actual   The actual value to compare against.
+	 * @return bool True if the serialized forms are identical, false otherwise.
+	 */
 	private function values_match($expected, $actual) {
 		return maybe_serialize($expected) === maybe_serialize($actual);
 	}
 
+	/**
+	 * Outputs a prefixed status line to indicate success or warning for a given operation.
+	 *
+	 * @param bool   $is_ok   True to prefix with [OK], false to prefix with [WARN].
+	 * @param string $message The message to display.
+	 * @return void
+	 */
 	private function report_status($is_ok, $message) {
 		echo ($is_ok ? '[OK] ' : '[WARN] ') . $message . "\n";
 	}
 
+	/**
+	 * Updates a WordPress option and immediately retrieves the stored value for verification.
+	 *
+	 * @param string $option_name The WordPress option key to update.
+	 * @param mixed  $value       The value to store.
+	 * @return mixed The value retrieved from the database immediately after the update.
+	 */
 	private function update_option_and_return($option_name, $value) {
 		update_option($option_name, $value);
 
 		return get_option($option_name);
 	}
 
+	/**
+	 * Resolves the final value for a settings entry, supporting static values, structure lookups, and category lookups.
+	 *
+	 * @param array $entry      A settings entry array. May contain 'value', 'structure_name', or 'category_name'.
+	 * @param array $structures Map of structure names to their database IDs.
+	 * @param array $categories Map of category names to their term IDs.
+	 * @return mixed|null The resolved value, or null if the entry cannot be resolved.
+	 */
 	private function resolve_setting_entry_value($entry, $structures = array(), $categories = array()) {
 		if (array_key_exists('value', $entry)) {
 			return $entry['value'];
@@ -281,10 +399,21 @@ class AIPS_DevStackTips_Setup {
 		return null;
 	}
 
+	/**
+	 * Returns the human-readable label for a settings entry, falling back to the option name.
+	 *
+	 * @param array $entry A settings entry array, optionally containing a 'label' key.
+	 * @return string The label string for display purposes.
+	 */
 	private function get_setting_entry_label($entry) {
 		return isset($entry['label']) ? $entry['label'] : $entry['option_name'];
 	}
 
+	/**
+	 * Returns all individual option entries from every settings section as a flat array.
+	 *
+	 * @return array Flat list of settings entry arrays, each containing at minimum an 'option_name' key.
+	 */
 	private function get_flattened_setting_entries() {
 		$entries = array();
 
@@ -301,6 +430,13 @@ class AIPS_DevStackTips_Setup {
 		return $entries;
 	}
 
+	/**
+	 * Resolves all settings entries to their final values, omitting any that cannot be resolved.
+	 *
+	 * @param array $structures Map of structure names to their database IDs.
+	 * @param array $categories Map of category names to their term IDs.
+	 * @return array Associative array of option names to their resolved values.
+	 */
 	private function get_resolved_configured_settings($structures = array(), $categories = array()) {
 		$configured_settings = array();
 
@@ -316,15 +452,24 @@ class AIPS_DevStackTips_Setup {
 		return $configured_settings;
 	}
 
+	/**
+	 * Writes all configured plugin settings to the WordPress options table and reports the result of each write.
+	 *
+	 * @return void
+	 */
 	private function configure_settings() {
-		echo "<h2>Step 4: Configuring Plugin Settings</h2>\n";
+		echo "
+--- Step 4: Configuring Plugin Settings ---
+";
 		$settings = $this->object_data['settings'];
 		$structures = $this->get_created_structures_by_name();
 		$categories = $this->get_created_categories_by_name();
 
 		foreach ($settings as $section) {
 			$title = isset($section['title']) ? $section['title'] : 'Settings';
-			echo "<h3>" . esc_html($title) . "</h3>\n";
+			echo "
+[ " . esc_html($title) . " ]
+";
 
 			if (empty($section['options']) || !is_array($section['options'])) {
 				continue;
@@ -345,18 +490,18 @@ class AIPS_DevStackTips_Setup {
 
 				$this->report_status(
 					$is_saved,
-					'Set ' . $label . ' = <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+					'Set ' . $label . ' = ' . $this->format_summary_value($current_value)
 				);
 
 				if (!$is_saved) {
 					$this->report_status(
 						false,
-						'Expected <code>' . esc_html($this->format_summary_value($expected_value)) . '</code> but found <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+						'Expected ' . $this->format_summary_value($expected_value) . ' but found ' . $this->format_summary_value($current_value)
 					);
 				}
 
 				if ($warning_message !== '') {
-					$this->report_status(false, esc_html($warning_message));
+					$this->report_status(false, $warning_message);
 				}
 			}
 		}
@@ -364,8 +509,17 @@ class AIPS_DevStackTips_Setup {
 		$this->report_status(true, 'All plugin settings configured for production');
 	}
 
+	/**
+	 * Creates or registers all seed categories as WordPress taxonomy terms under 'category'.
+	 *
+	 * Existing categories with a matching slug are recorded rather than duplicated.
+	 *
+	 * @return void
+	 */
 	private function create_categories() {
-		echo "<h2>Step 1: Creating Categories</h2>\n";
+		echo "
+--- Step 1: Creating Categories ---
+";
 
 		foreach ($this->object_data['categories'] as $cat_data) {
 			$existing = term_exists($cat_data['slug'], 'category');
@@ -390,8 +544,17 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed voices via the voices repository.
+	 *
+	 * Voices matched by name are updated in place; new voices are inserted.
+	 *
+	 * @return void
+	 */
 	private function create_voices() {
-		echo "<h2>Step 3: Creating Voices</h2>\n";
+		echo "
+--- Step 3: Creating Voices ---
+";
 
 		$voices_repo = new AIPS_Voices_Repository();
 		$voices = $this->object_data['voices'];
@@ -404,6 +567,10 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		foreach ($voices as $voice_data) {
+			if (isset($voice_data['content_instructions']) && is_array($voice_data['content_instructions'])) {
+				$voice_data['content_instructions'] = implode("\n", $voice_data['content_instructions']);
+			}
+
 			if (isset($existing_voices[$voice_data['name']])) {
 				$voice_id = $existing_voices[$voice_data['name']];
 				$voices_repo->update($voice_id, $voice_data);
@@ -423,8 +590,17 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed prompt sections and article structures via their respective repositories.
+	 *
+	 * Also sets the default article structure option when the 'Evergreen How-To Guide' is processed.
+	 *
+	 * @return void
+	 */
 	private function create_article_structures() {
-		echo "<h2>Step 4: Creating Article Structures</h2>\n";
+		echo "
+--- Step 4: Creating Article Structures ---
+";
 
 		$structure_repo = new AIPS_Article_Structure_Repository();
 		$section_repo = new AIPS_Prompt_Section_Repository();
@@ -484,8 +660,17 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed authors, resolving their associated structure, category, and source group IDs.
+	 *
+	 * Author post and topic generation schedules are calculated from the current time.
+	 *
+	 * @return void
+	 */
 	private function create_authors() {
-		echo "<h2>Step 5: Creating Authors</h2>\n";
+		echo "
+--- Step 5: Creating Authors ---
+";
 
 		$authors_repo = new AIPS_Authors_Repository();
 		$structures = $this->get_created_structures_by_name();
@@ -578,21 +763,52 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed post slices via the post slices repository.
+	 *
+	 * @return void
+	 */
 	private function create_post_slices() {
-		echo "<h2>Step 6: Creating Post Slices</h2>\n";
+		echo "
+--- Step 6: Creating Post Slices ---
+";
 
 		$slices_repo = new AIPS_Post_Slices_Repository();
 		$now = AIPS_DateTime::now()->timestamp();
+		$existing_slices = array();
+
+		foreach ($slices_repo->get_all(false) as $existing_slice) {
+			if (!empty($existing_slice->name) && !empty($existing_slice->id)) {
+				$existing_slices[(string) $existing_slice->name] = (int) $existing_slice->id;
+			}
+		}
 
 		foreach ($this->object_data['post_slices'] as $slice_data) {
-			$slice_id = $slices_repo->create(array(
+			$slice_payload = array(
 				'name' => $slice_data['name'],
 				'description' => $slice_data['description'],
 				'sort_order' => $slice_data['sort_order'],
 				'is_active' => $slice_data['is_active'],
-				'created_at' => $now,
 				'updated_at' => $now,
-			));
+			);
+
+			if (isset($existing_slices[$slice_data['name']])) {
+				$slice_id = $existing_slices[$slice_data['name']];
+				$result = $slices_repo->update($slice_id, $slice_payload);
+
+				if ($result !== false) {
+					$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
+					echo "[INFO] Post slice exists, updated: {$slice_data['name']}\n";
+				} else {
+					$this->errors[] = "Failed to update post slice: {$slice_data['name']}";
+					echo "[ERR] Failed to update: {$slice_data['name']}\n";
+				}
+				continue;
+			}
+
+			$slice_payload['created_at'] = $now;
+
+			$slice_id = $slices_repo->create($slice_payload);
 
 			if ($slice_id) {
 				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
@@ -604,8 +820,17 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or registers all seed source groups as taxonomy terms, then creates their associated sources.
+	 *
+	 * Sources are skipped if a matching URL already exists in the repository.
+	 *
+	 * @return void
+	 */
 	private function create_source_groups() {
-		echo "<h2>Step 7: Creating Source Groups and Sources</h2>\n";
+		echo "
+--- Step 7: Creating Source Groups and Sources ---
+";
 
 		$sources_repo = new AIPS_Sources_Repository();
 		$group_ids = array();
@@ -649,6 +874,7 @@ class AIPS_DevStackTips_Setup {
 
 			if ($source_id) {
 				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
+				$sources_repo->set_fetch_schedule($source_id, 'daily');
 				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
 				echo "[OK] Created source: {$source_data['name']}\n";
 			} else {
@@ -658,8 +884,15 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed campaigns via the campaigns repository.
+	 *
+	 * @return void
+	 */
 	private function create_campaigns() {
-		echo "<h2>Step 8: Creating Campaigns</h2>\n";
+		echo "
+--- Step 8: Creating Campaigns ---
+";
 
 		$campaigns_repo = new AIPS_Campaigns_Repository();
 		$existing_campaigns = array();
@@ -718,8 +951,17 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed templates, resolving voice, structure, campaign, category, and source group IDs.
+	 *
+	 * Templates with a missing campaign are skipped and logged as errors.
+	 *
+	 * @return void
+	 */
 	private function create_templates() {
-		echo "<h2>Step 9: Creating Templates</h2>\n";
+		echo "
+--- Step 9: Creating Templates ---
+";
 
 		$template_repo = new AIPS_Template_Repository();
 		$voices = $this->get_created_voices_by_name();
@@ -804,11 +1046,27 @@ class AIPS_DevStackTips_Setup {
 		}
 	}
 
+	/**
+	 * Creates or updates all seed schedules, resolving each schedule's template ID and calculating the next run timestamp.
+	 *
+	 * Schedules whose template cannot be found are skipped and logged as errors.
+	 *
+	 * @return void
+	 */
 	private function create_schedules() {
-		echo "<h2>Step 10: Creating Schedules</h2>\n";
+		echo "
+--- Step 10: Creating Schedules ---
+";
 
 		$schedule_repo = new AIPS_Schedule_Repository();
 		$templates = $this->get_created_templates_by_name();
+		$existing_schedules = array();
+
+		foreach ($schedule_repo->get_all(false) as $existing_schedule) {
+			if (!empty($existing_schedule->title) && !empty($existing_schedule->id)) {
+				$existing_schedules[(string) $existing_schedule->title] = (int) $existing_schedule->id;
+			}
+		}
 
 		foreach ($this->object_data['schedules'] as $schedule_data) {
 			if (!isset($templates[$schedule_data['template_name']])) {
@@ -823,16 +1081,34 @@ class AIPS_DevStackTips_Setup {
 				$schedule_data['start_time']
 			);
 
-			$schedule_id = $schedule_repo->create(array(
+			$schedule_payload = array(
 				'template_id' => $template_id,
 				'title' => $schedule_data['title'],
 				'frequency' => $schedule_data['frequency'],
 				'next_run' => $next_run,
-				'last_run' => 0,
 				'is_active' => $schedule_data['is_active'],
-				'status' => 'active',
+				'status' => !empty($schedule_data['is_active']) ? 'active' : 'inactive',
 				'schedule_type' => 'post_generation',
-			));
+			);
+
+			if (isset($existing_schedules[$schedule_data['title']])) {
+				$schedule_id = $existing_schedules[$schedule_data['title']];
+				$result = $schedule_repo->update($schedule_id, $schedule_payload);
+				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
+
+				if ($result) {
+					$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
+					echo "[INFO] Schedule exists, updated: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
+				} else {
+					$this->errors[] = "Failed to update schedule: {$schedule_data['title']}";
+					echo "[ERR] Failed to update: {$schedule_data['title']}\n";
+				}
+				continue;
+			}
+
+			$schedule_payload['last_run'] = 0;
+
+			$schedule_id = $schedule_repo->create($schedule_payload);
 
 			if ($schedule_id) {
 				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
@@ -874,6 +1150,14 @@ class AIPS_DevStackTips_Setup {
 		return $candidate->getTimestamp();
 	}
 
+	/**
+	 * Returns the seed data array for all plugin settings, organized into labeled sections.
+	 *
+	 * Each section contains a 'title' and an 'options' array of setting entries. An entry may
+	 * specify a static 'value', a 'structure_name' reference, or a 'category_name' reference.
+	 *
+	 * @return array Associative array of section keys to section data arrays.
+	 */
 	private function get_settings_seed_data() {
 		return array(
 			'content_strategy' => array(
@@ -1070,6 +1354,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all WordPress categories to create.
+	 *
+	 * @return array List of category data arrays, each with 'name', 'slug', and 'description' keys.
+	 */
 	private function get_category_seed_data() {
 		return array(
 			array(
@@ -1110,6 +1399,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all writing voices to create.
+	 *
+	 * @return array List of voice data arrays with 'name', 'title_prompt', 'content_instructions', 'excerpt_instructions', and 'is_active' keys.
+	 */
 	private function get_voice_seed_data() {
 		return array(
 			array(
@@ -1286,6 +1580,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all prompt sections to create.
+	 *
+	 * @return array Associative array keyed by section_key, each value containing 'name', 'section_key', 'description', 'content', and 'is_active' keys.
+	 */
 	private function get_section_seed_data() {
 		return array(
 			'introduction' => array(
@@ -1473,6 +1772,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all article structures to create.
+	 *
+	 * @return array List of structure data arrays, each with 'name', 'description', and 'sections' (ordered array of section_key strings) keys.
+	 */
 	private function get_structure_seed_data() {
 		return array(
 			array(
@@ -1518,6 +1822,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all authors to create, with scheduled post quantities derived from distribution targets.
+	 *
+	 * @return array List of author data arrays containing profile, generation frequency, and quantity fields.
+	 */
 	private function get_author_seed_data() {
 		$authors = array(
 			array(
@@ -1656,6 +1965,11 @@ class AIPS_DevStackTips_Setup {
 		return $authors;
 	}
 
+	/**
+	 * Returns the seed data array for all post slices to create.
+	 *
+	 * @return array List of post slice data arrays with 'name', 'description', 'sort_order', and 'is_active' keys.
+	 */
 	private function get_post_slice_seed_data() {
 		return array(
 			array(
@@ -1685,6 +1999,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all source groups to create.
+	 *
+	 * @return array List of source group data arrays with 'name', 'slug', and 'description' keys.
+	 */
 	private function get_source_group_seed_data() {
 		return array(
 			array(
@@ -1700,6 +2019,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all individual sources to create.
+	 *
+	 * @return array List of source data arrays with 'name', 'url', 'source_type', 'group_slug', and 'is_active' keys.
+	 */
 	private function get_source_seed_data() {
 		return array(
 			array(
@@ -1724,13 +2048,6 @@ class AIPS_DevStackTips_Setup {
 				'is_active' => 1,
 			),
 			array(
-				'name' => 'PHP.Watch',
-				'url' => 'https://php.watch/feed',
-				'source_type' => 'rss',
-				'group_slug' => 'php-ecosystem',
-				'is_active' => 1,
-			),
-			array(
 				'name' => 'Laravel News',
 				'url' => 'https://laravel-news.com/feed',
 				'source_type' => 'rss',
@@ -1747,6 +2064,11 @@ class AIPS_DevStackTips_Setup {
 		);
 	}
 
+	/**
+	 * Returns the seed data array for all campaigns to create, with per-period post targets derived from distribution shares.
+	 *
+	 * @return array List of campaign data arrays with 'name', 'content_goal', 'topics', and computed target post count keys.
+	 */
 	private function get_campaign_seed_data() {
 		$campaigns = array(
 			array(
@@ -1800,6 +2122,11 @@ class AIPS_DevStackTips_Setup {
 		return $campaigns;
 	}
 
+	/**
+	 * Returns the seed data array for all templates to create, with post quantities derived from campaign distribution targets.
+	 *
+	 * @return array List of template data arrays with name, campaign, voice, structure, category, and generation settings keys.
+	 */
 	private function get_template_seed_data() {
 		$templates = array(
 			array(
@@ -1925,6 +2252,11 @@ class AIPS_DevStackTips_Setup {
 		return $templates;
 	}
 
+	/**
+	 * Returns the seed data array for all schedules to create, with per-period post targets derived from their linked templates.
+	 *
+	 * @return array List of schedule data arrays with 'template_name', 'title', 'frequency', 'weekday', 'start_time', 'is_active', and computed target post count keys.
+	 */
 	private function get_schedule_seed_data() {
 		$schedules = array(
 			array(
@@ -2006,6 +2338,11 @@ class AIPS_DevStackTips_Setup {
 		return $schedules;
 	}
 
+	/**
+	 * Returns a map of created category names to their WordPress term IDs.
+	 *
+	 * @return array Associative array of category name to term ID.
+	 */
 	private function get_created_categories_by_name() {
 		$map = array();
 		if (isset($this->created_items['categories'])) {
@@ -2016,6 +2353,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns a map of created source group names to their taxonomy term IDs.
+	 *
+	 * @return array Associative array of source group name to term ID.
+	 */
 	private function get_created_source_groups_by_name() {
 		$map = array();
 		if (isset($this->created_items['source_groups'])) {
@@ -2026,6 +2368,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns a map of created template names to their database IDs.
+	 *
+	 * @return array Associative array of template name to database ID.
+	 */
 	private function get_created_templates_by_name() {
 		$map = array();
 		if (isset($this->created_items['templates'])) {
@@ -2036,6 +2383,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns a map of created voice names to their database IDs.
+	 *
+	 * @return array Associative array of voice name to database ID.
+	 */
 	private function get_created_voices_by_name() {
 		$map = array();
 		if (isset($this->created_items['voices'])) {
@@ -2046,6 +2398,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns a map of created article structure names to their database IDs.
+	 *
+	 * @return array Associative array of structure name to database ID.
+	 */
 	private function get_created_structures_by_name() {
 		$map = array();
 		if (isset($this->created_items['structures'])) {
@@ -2056,6 +2413,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns a map of created campaign names to their database IDs.
+	 *
+	 * @return array Associative array of campaign name to database ID.
+	 */
 	private function get_created_campaigns_by_name() {
 		$map = array();
 		if (isset($this->created_items['campaigns'])) {
@@ -2066,6 +2428,11 @@ class AIPS_DevStackTips_Setup {
 		return $map;
 	}
 
+	/**
+	 * Returns the complete list of WordPress option keys that this script configures, including extras used by rollback.
+	 *
+	 * @return array Flat list of unique option key strings.
+	 */
 	private function get_configured_setting_keys() {
 		$keys = array();
 
@@ -2079,8 +2446,15 @@ class AIPS_DevStackTips_Setup {
 		return array_values(array_unique($keys));
 	}
 
+	/**
+	 * Outputs a formatted HTML summary of all configured settings, throughput targets, allocations, and created items.
+	 *
+	 * Also prints next-step instructions and rollback guidance.
+	 *
+	 * @return void
+	 */
 	private function print_summary() {
-		echo "\n<h2>Setup Complete!</h2>\n";
+		echo "\n=========================================\nSetup Complete!\n=========================================\n";
 
 		$settings = $this->object_data['settings'];
 		$structures = $this->get_created_structures_by_name();
@@ -2106,45 +2480,52 @@ class AIPS_DevStackTips_Setup {
 
 		$configured_settings = $this->get_resolved_configured_settings($structures, $categories);
 
-		echo "<h3>Configured Settings (" . count($configured_settings) . " total):</h3>\n";
-		echo "<ul>\n";
-		foreach ($configured_settings as $key => $value) {
-			echo "<li><strong>" . esc_html($key) . ":</strong> <code>" . esc_html($this->format_summary_value($value)) . "</code></li>\n";
+		echo "
+[ Configured Settings (" . count($configured_settings) . " total): ]
+";
+				foreach ($configured_settings as $key => $value) {
+			echo "  * " . $key . ": " . $this->format_summary_value($value) . "
+";
 		}
-		echo "</ul>\n";
-
-		echo "<h3>Target Throughput:</h3>\n";
-		echo "<ul>\n";
-		foreach ($target_posts as $period => $count) {
-			echo "<li><strong>" . esc_html(ucfirst($period)) . " target:</strong> <code>" . esc_html((string) $count) . " posts</code></li>\n";
-		}
-		echo "<li><strong>Primary distribution period:</strong> <code>" . esc_html($primary_period) . "</code></li>\n";
-		echo "</ul>\n";
-
-		echo "<h3>Campaign Allocation (" . esc_html($primary_period) . "):</h3>\n";
-		echo "<ul>\n";
-		foreach ($campaign_targets as $name => $count) {
-			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per " . esc_html($primary_period) . "</code></li>\n";
-		}
-		echo "</ul>\n";
-
-		echo "<h3>Template Allocation (" . esc_html($primary_period) . "):</h3>\n";
-		echo "<ul>\n";
-		foreach ($template_targets as $name => $count) {
-			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per run</code></li>\n";
-		}
-		echo "</ul>\n";
-
-		echo "<h3>Author Allocation (" . esc_html($primary_period) . "):</h3>\n";
-		echo "<ul>\n";
-		foreach ($author_targets as $name => $count) {
-			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " scheduled posts per " . esc_html($primary_period) . "</code></li>\n";
-		}
-		echo "</ul>\n";
 		
-		echo "<h3>Created Items:</h3>\n";
-		echo "<ul>\n";
+		echo "
+[ Target Throughput: ]
+";
+				foreach ($target_posts as $period => $count) {
+			echo "  * " . ucfirst($period) . " target: " . $count . " posts
+";
+		}
+		echo "  * Primary distribution period: " . $primary_period . "
+";
 		
+		echo "
+[ Campaign Allocation (" . esc_html($primary_period) . "): ]
+";
+				foreach ($campaign_targets as $name => $count) {
+			echo "  * " . $name . ": " . $count . " posts per " . $primary_period . "
+";
+		}
+		
+		echo "
+[ Template Allocation (" . esc_html($primary_period) . "): ]
+";
+				foreach ($template_targets as $name => $count) {
+			echo "  * " . $name . ": " . $count . " posts per run
+";
+		}
+		
+		echo "
+[ Author Allocation (" . esc_html($primary_period) . "): ]
+";
+				foreach ($author_targets as $name => $count) {
+			echo "  * " . $name . ": " . $count . " scheduled posts per " . $primary_period . "
+";
+		}
+				
+		echo "
+[ Created Items: ]
+";
+				
 		$entity_types = array(
 			'categories' => 'Categories',
 			'voices' => 'Voices',
@@ -2161,51 +2542,72 @@ class AIPS_DevStackTips_Setup {
 		foreach ($entity_types as $key => $label) {
 			if (isset($this->created_items[$key])) {
 				$count = count($this->created_items[$key]);
-				echo "<li><strong>{$label}:</strong> {$count} created</li>\n";
+				echo "  * {$label}: {$count} created
+";
 			}
 		}
 		
-		echo "</ul>\n";
-
+		
 		if (!empty($this->errors)) {
-			echo "<h3>Errors:</h3>\n";
-			echo "<ul>\n";
-			foreach ($this->errors as $error) {
-				echo "<li>" . esc_html($error) . "</li>\n";
+			echo "
+[ Errors: ]
+";
+						foreach ($this->errors as $error) {
+				echo "  * " . $error . "
+";
 			}
-			echo "</ul>\n";
-		}
+					}
 
-		echo "\n<h3>Next Steps:</h3>\n";
-		echo "<ol>\n";
-		echo "<li><strong>[WARN] REQUIRED:</strong> Add notification email in Settings > Notifications</li>\n";
-		echo "<li><strong>[WARN] If using Unsplash:</strong> Add Unsplash Access Key in Settings > Featured Images</li>\n";
-		echo "<li>Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)</li>\n";
-		echo "<li>Review created Categories, Templates, Voices, Structures in WordPress admin</li>\n";
-		echo "<li>Verify schedule cadence against the configured throughput targets: <code>" . esc_html(wp_json_encode($target_posts)) . "</code></li>\n";
-		echo "<li>Check Source Groups and Sources for proper RSS feed URLs</li>\n";
+		echo "\n--- Next Steps ---\n";
+				echo "  1. [WARN] REQUIRED: Add notification email in Settings > Notifications
+";
+		echo "  2. [WARN] If using Unsplash: Add Unsplash Access Key in Settings > Featured Images
+";
+		echo "  3. Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)
+";
+		echo "  4. Review created Categories, Templates, Voices, Structures in WordPress admin
+";
+		echo "  5. Verify schedule cadence against the configured throughput targets: " . wp_json_encode($target_posts) . "
+";
+		echo "  6. Check Source Groups and Sources for proper RSS feed URLs
+";
 		$default_post_status = isset($configured_settings['aips_default_post_status']) ? $configured_settings['aips_default_post_status'] : 'draft';
-		echo "<li>Start with post status <code>" . esc_html($default_post_status) . "</code> to review content quality before auto-publishing</li>\n";
-		echo "<li>Monitor History page, Operations Insights, and Telemetry for generation metrics</li>\n";
-		echo "<li>Review and approve Author Topics before they generate posts</li>\n";
-		echo "</ol>\n";
-
-		echo "\n<h3>Rollback</h3>\n";
-		echo "<p>To rollback all changes made by this script, run:</p>\n";
-		echo "<pre>wp eval-file scripts/setup-devstacktips-content.php rollback</pre>\n";
-		echo "<p>Or use the Dev Tools page and add 'rollback' as an argument.</p>\n";
+		echo "  7. Start with post status " . $default_post_status . " to review content quality before auto-publishing
+";
+		echo "  8. Monitor History page, Operations Insights, and Telemetry for generation metrics
+";
+		echo "  9. Review and approve Author Topics before they generate posts
+";
+		
+		echo "\n--- Rollback ---\n";
+		echo "To rollback all changes made by this script, run:
+";
+		echo "  wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php rollback
+";
+		echo "Or use the Dev Tools page and add 'rollback' as an argument.
+";
+		echo "Rollback warning: rollback deletes by configured names/slugs and is not guaranteed to preserve pre-existing data that used the same names. Take a database backup before rollback.
+";
 	}
 
 	/**
 	 * Rollback all changes made by this setup script.
 	 * 
-	 * Deletes all created entities in reverse order to maintain referential integrity.
+	 * Deletes matching entities in reverse order to maintain referential integrity.
+	 * This matches by configured names/slugs, so it may delete pre-existing data
+	 * that used the same identifiers. Take a database backup before rollback.
 	 */
 	private function rollback() {
 		global $wpdb;
 
-		echo "<h1>DevStackTips Content Rollback</h1>\n";
-		echo "<p>Rolling back all setup changes...</p>\n";
+		echo "=========================================
+DevStackTips Content Rollback
+=========================================
+";
+		echo "Rolling back all setup changes...
+";
+		echo "Warning: rollback deletes matching names/slugs and may remove pre-existing shared terms or records. Restore from a database backup if pre-existing data must be recovered safely.
+";
 
 		$deleted = array(
 			'schedules' => 0,
@@ -2223,7 +2625,9 @@ class AIPS_DevStackTips_Setup {
 		);
 
 		// Reset settings to defaults first
-		echo "<h2>Resetting Plugin Settings</h2>\n";
+		echo "
+--- Resetting Plugin Settings ---
+";
 
 		$defaults = AIPS_Config::get_instance()->get_default_options();
 		foreach ($this->get_configured_setting_keys() as $key) {
@@ -2237,7 +2641,9 @@ class AIPS_DevStackTips_Setup {
 		// Delete in reverse order of creation to maintain referential integrity
 
 		// 1. Delete Schedules
-		echo "<h2>Deleting Schedules</h2>\n";
+		echo "
+--- Deleting Schedules ---
+";
 		$schedule_titles = wp_list_pluck($this->object_data['schedules'], 'title');
 		foreach ($schedule_titles as $title) {
 			$count = $wpdb->delete(
@@ -2252,7 +2658,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 2. Delete Campaigns
-		echo "<h2>Deleting Campaigns</h2>\n";
+		echo "
+--- Deleting Campaigns ---
+";
 		$campaign_names = wp_list_pluck($this->object_data['campaigns'], 'name');
 		foreach ($campaign_names as $name) {
 			$count = $wpdb->delete(
@@ -2267,7 +2675,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 3. Delete Templates
-		echo "<h2>Deleting Templates</h2>\n";
+		echo "
+--- Deleting Templates ---
+";
 		$template_names = wp_list_pluck($this->object_data['templates'], 'name');
 		foreach ($template_names as $name) {
 			$count = $wpdb->delete(
@@ -2282,7 +2692,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 4. Delete Sources
-		echo "<h2>Deleting Sources</h2>\n";
+		echo "
+--- Deleting Sources ---
+";
 		$source_names = wp_list_pluck($this->object_data['sources'], 'name');
 		$sources_repo = new AIPS_Sources_Repository();
 		$sources_by_label = array();
@@ -2313,7 +2725,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 5. Delete Source Groups (taxonomy terms)
-		echo "<h2>Deleting Source Groups</h2>\n";
+		echo "
+--- Deleting Source Groups ---
+";
 		$source_group_slugs = wp_list_pluck($this->object_data['source_groups'], 'slug');
 		foreach ($source_group_slugs as $slug) {
 			$term = term_exists($slug, 'aips_source_group');
@@ -2332,7 +2746,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 6. Delete Post Slices
-		echo "<h2>Deleting Post Slices</h2>\n";
+		echo "
+--- Deleting Post Slices ---
+";
 		$slice_names = wp_list_pluck($this->object_data['post_slices'], 'name');
 		foreach ($slice_names as $name) {
 			$count = $wpdb->delete(
@@ -2347,7 +2763,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 7. Delete Authors
-		echo "<h2>Deleting Authors</h2>\n";
+		echo "
+--- Deleting Authors ---
+";
 		$author_names = wp_list_pluck($this->object_data['authors'], 'name');
 		foreach ($author_names as $name) {
 			$count = $wpdb->delete(
@@ -2362,7 +2780,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 8. Delete Article Structures
-		echo "<h2>Deleting Article Structures</h2>\n";
+		echo "
+--- Deleting Article Structures ---
+";
 		$structure_names = wp_list_pluck($this->object_data['structures'], 'name');
 		foreach ($structure_names as $name) {
 			$count = $wpdb->delete(
@@ -2377,7 +2797,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 9. Delete Prompt Sections (delete all sections created by this script)
-		echo "<h2>Deleting Prompt Sections</h2>\n";
+		echo "
+--- Deleting Prompt Sections ---
+";
 		$section_names = wp_list_pluck($this->object_data['sections'], 'name');
 		foreach ($section_names as $name) {
 			$count = $wpdb->delete(
@@ -2392,7 +2814,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 10. Delete Voices
-		echo "<h2>Deleting Voices</h2>\n";
+		echo "
+--- Deleting Voices ---
+";
 		$voice_names = wp_list_pluck($this->object_data['voices'], 'name');
 		foreach ($voice_names as $name) {
 			$count = $wpdb->delete(
@@ -2407,7 +2831,9 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// 11. Delete Categories (WordPress taxonomy terms)
-		echo "<h2>Deleting Categories</h2>\n";
+		echo "
+--- Deleting Categories ---
+";
 		$category_slugs = wp_list_pluck($this->object_data['categories'], 'slug');
 		foreach ($category_slugs as $slug) {
 			$term = term_exists($slug, 'category');
@@ -2426,32 +2852,30 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		// Summary
-		echo "\n<h2>Rollback Complete</h2>\n";
-		echo "<ul>\n";
-		foreach ($deleted as $type => $count) {
-			echo "<li><strong>" . ucfirst($type) . ":</strong> {$count} deleted</li>\n";
+		echo "\n=========================================\nRollback Complete\n=========================================\n";
+				foreach ($deleted as $type => $count) {
+			echo "  * " . ucfirst($type) . ": {$count} deleted
+";
 		}
-		echo "</ul>\n";
-
+		
 		$total = array_sum($deleted);
-		echo "\n<p><strong>Total items deleted:</strong> {$total}</p>\n";
-		echo "<p>You can now re-run the setup script if needed.</p>\n";
+		echo "
+Total items deleted: {$total}
+";
+		echo "You can now re-run the setup script if needed.
+";
 	}
 }
 
-// Determine mode from CLI argument or query parameter
+if (PHP_SAPI !== 'cli') {
+	wp_die(esc_html__('The DevStackTips seeder can only be run from WP-CLI.', 'ai-post-scheduler'));
+}
+
+// Determine mode from CLI argument.
 $rollback_mode = false;
-if (PHP_SAPI === 'cli') {
-	// CLI mode: check for 'rollback' argument
-	global $argv;
-	if (isset($argv) && in_array('rollback', $argv, true)) {
-		$rollback_mode = true;
-	}
-} else {
-	// Web mode: check for 'rollback' query parameter
-	if (isset($_GET['rollback']) && $_GET['rollback'] === '1') {
-		$rollback_mode = true;
-	}
+global $argv;
+if (isset($argv) && in_array('rollback', $argv, true)) {
+	$rollback_mode = true;
 }
 
 // Run the setup or rollback
