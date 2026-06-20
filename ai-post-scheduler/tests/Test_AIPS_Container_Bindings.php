@@ -5,7 +5,7 @@
  * Verifies that core singletons are properly registered in the container
  * during plugin initialization.
  *
- * @package AI_Post_Scheduler
+ * @package AIPS_Core
  * @since 2.4.0
  */
 class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
@@ -37,7 +37,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 	 */
 	public function test_core_singletons_are_registered() {
 		// Simulate what the plugin does during init
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 
 		// Use reflection to call the private method
 		$reflection = new ReflectionClass($plugin);
@@ -68,7 +68,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 	 */
 	public function test_registered_bindings_return_singletons() {
 		// Simulate what the plugin does during init
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 
 		$reflection = new ReflectionClass($plugin);
 		$method = $reflection->getMethod('register_container_bindings');
@@ -116,7 +116,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 	 */
 	public function test_all_registered_bindings_have_singleton_scope() {
 		// Simulate what the plugin does during init
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 
 		$reflection = new ReflectionClass($plugin);
 		$method = $reflection->getMethod('register_container_bindings');
@@ -148,7 +148,7 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 	 */
 	public function test_binding_count_is_correct() {
 		// Simulate what the plugin does during init
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 
 		$reflection = new ReflectionClass($plugin);
 		$method = $reflection->getMethod('register_container_bindings');

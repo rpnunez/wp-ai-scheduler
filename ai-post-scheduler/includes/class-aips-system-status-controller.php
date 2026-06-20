@@ -92,7 +92,7 @@ class AIPS_System_Status_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$cron_events = AI_Post_Scheduler::get_cron_events();
+		$cron_events = AIPS_Core::get_cron_events();
 		$rescheduled = 0;
 		$base_timestamp = AIPS_DateTime::now()->timestamp() + MINUTE_IN_SECONDS;
 		foreach ($cron_events as $hook => $config) {
