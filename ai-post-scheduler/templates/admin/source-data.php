@@ -93,7 +93,13 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 						<thead>
 							<tr>
 								<th class="column-run-date"><?php esc_html_e('Run Date/Time', 'ai-post-scheduler'); ?></th>
-								<th class="column-content"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></th>
+								<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
+								<th class="column-status"><?php esc_html_e('Fetch Status', 'ai-post-scheduler'); ?></th>
+								<th class="column-http-status"><?php esc_html_e('HTTP', 'ai-post-scheduler'); ?></th>
+								<th class="column-title"><?php esc_html_e('Page Title', 'ai-post-scheduler'); ?></th>
+								<th class="column-content"><?php esc_html_e('Snippet', 'ai-post-scheduler'); ?></th>
+								<th class="column-char-count"><?php esc_html_e('Chars', 'ai-post-scheduler'); ?></th>
+								<th class="column-num-used"><?php esc_html_e('Used', 'ai-post-scheduler'); ?></th>
 								<th class="column-size"><?php esc_html_e('Size', 'ai-post-scheduler'); ?></th>
 								<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
@@ -101,17 +107,47 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 						<tbody>
 							<?php foreach ($items as $item): ?>
 								<?php
-								$data_id    = isset($item->id) ? (int) $item->id : 0;
-								$text       = isset($item->extracted_text) ? (string) $item->extracted_text : '';
-								$snippet    = function_exists('mb_substr') ? mb_substr($text, 0, 100) : substr($text, 0, 100);
-								$snippet    = strlen($text) > 100 ? $snippet . '…' : $snippet;
-								$bytes      = strlen($text) + strlen(isset($item->raw_html) ? (string) $item->raw_html : '');
-								$size_kb    = $bytes > 0 ? number_format_i18n($bytes / 1024, 1) : '0.0';
-								$fetched_at = isset($item->fetched_at) ? (int) $item->fetched_at : 0;
-								$run_date   = $fetched_at ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $fetched_at) : __('Not recorded', 'ai-post-scheduler');
+								$data_id           = isset($item->id) ? (int) $item->id : 0;
+								$text              = isset($item->extracted_text) ? (string) $item->extracted_text : '';
+								$snippet           = function_exists('mb_substr') ? mb_substr($text, 0, 100) : substr($text, 0, 100);
+								$snippet           = strlen($text) > 100 ? $snippet . '…' : $snippet;
+								$bytes             = strlen($text) + strlen(isset($item->raw_html) ? (string) $item->raw_html : '');
+								$size_kb           = $bytes > 0 ? number_format_i18n($bytes / 1024, 1) : '0.0';
+								$fetched_at        = isset($item->fetched_at) ? (int) $item->fetched_at : 0;
+								$run_date          = $fetched_at ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $fetched_at) : __('Not recorded', 'ai-post-scheduler');
+								$url               = isset($item->url) ? trim((string) $item->url) : '';
+								$page_title        = isset($item->page_title) ? trim((string) $item->page_title) : '';
+								$fetch_status      = isset($item->fetch_status) ? sanitize_key((string) $item->fetch_status) : '';
+								$fetch_status      = '' !== $fetch_status ? $fetch_status : 'unknown';
+								$status_badge_map  = array(
+									'success' => 'aips-badge-success',
+									'pending' => 'aips-badge-warning',
+									'failed'  => 'aips-badge-error',
+								);
+								$status_badge      = isset($status_badge_map[$fetch_status]) ? $status_badge_map[$fetch_status] : 'aips-badge-neutral';
+								$http_status       = isset($item->http_status) ? (int) $item->http_status : 0;
+								$http_badge        = $http_status >= 200 && $http_status < 300 ? 'aips-badge-success' : ($http_status >= 400 ? 'aips-badge-error' : ($http_status > 0 ? 'aips-badge-warning' : 'aips-badge-neutral'));
+								$char_count        = isset($item->char_count) ? (int) $item->char_count : strlen($text);
+								$num_used          = isset($item->num_used) ? (int) $item->num_used : 0;
 								?>
 								<tr data-source-data-id="<?php echo esc_attr($data_id); ?>">
 									<td class="column-run-date cell-primary"><?php echo esc_html($run_date); ?></td>
+									<td class="column-url">
+										<?php if ('' !== $url): ?>
+											<a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr($url); ?>"><?php echo esc_html(wp_parse_url($url, PHP_URL_HOST) ?: wp_trim_words($url, 5, '…')); ?></a>
+										<?php else: ?>
+											<span class="cell-meta">—</span>
+										<?php endif; ?>
+									</td>
+									<td class="column-status"><span class="aips-badge <?php echo esc_attr($status_badge); ?>"><?php echo esc_html(ucfirst($fetch_status)); ?></span></td>
+									<td class="column-http-status"><span class="aips-badge <?php echo esc_attr($http_badge); ?>"><?php echo $http_status > 0 ? esc_html((string) $http_status) : esc_html__('N/A', 'ai-post-scheduler'); ?></span></td>
+									<td class="column-title">
+										<?php if ('' !== $page_title): ?>
+											<?php echo esc_html($page_title); ?>
+										<?php else: ?>
+											<span class="cell-meta">—</span>
+										<?php endif; ?>
+									</td>
 									<td class="column-content">
 										<?php if ('' !== $snippet): ?>
 											<?php echo esc_html($snippet); ?>
@@ -121,6 +157,8 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 											<span class="cell-meta">—</span>
 										<?php endif; ?>
 									</td>
+									<td class="column-char-count"><?php echo esc_html(number_format_i18n($char_count)); ?></td>
+									<td class="column-num-used"><?php echo esc_html(number_format_i18n($num_used)); ?></td>
 									<td class="column-size"><?php echo esc_html($size_kb); ?> <?php esc_html_e('KB', 'ai-post-scheduler'); ?></td>
 									<td class="column-actions cell-actions">
 										<div class="aips-row-action-group">
