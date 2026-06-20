@@ -111,6 +111,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_5_0();
 		}
 
+		if ( version_compare( $from_version, '2.10.0', '<' ) ) {
+			$this->migrate_to_2_10_0();
+		}
+
 		// Apply Layer-1 schema changes (new tables / new columns) so that plugin
 		// updates delivered via WordPress auto-update — which skip activate() —
 		// still get a complete, up-to-date schema.
@@ -788,6 +792,49 @@ class AIPS_DB_Migrations {
 		$wpdb->query(
 			"ALTER TABLE `{$table}` MODIFY COLUMN post_category text DEFAULT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
+	}
+
+	/**
+	 * Migration for version 2.10.0.
+	 *
+	 * Renames post-improvement scan storage identifiers so upgraded installs
+	 * keep scan history and schedules after the naming refactor.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_2_10_0() {
+		global $wpdb;
+
+		$table_pairs = array(
+			'aips_' . 'existing' . '_post_scan_runs'        => 'aips_post_improvement_scan_runs',
+			'aips_' . 'existing' . '_post_suggestions'      => 'aips_post_improvement_suggestions',
+			'aips_' . 'existing' . '_post_suggestion_items' => 'aips_post_improvement_suggestion_items',
+		);
+
+		foreach ( $table_pairs as $old_slug => $new_slug ) {
+			$old_table = $wpdb->prefix . $old_slug;
+			$new_table = $wpdb->prefix . $new_slug;
+
+			$old_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old_table ) );
+			$new_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
+
+			if ( $old_exists === $old_table && $new_exists !== $new_table ) {
+				$wpdb->query( "RENAME TABLE `{$old_table}` TO `{$new_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		$table_schedule = $wpdb->prefix . 'aips_schedule';
+		$table_exists   = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_schedule ) );
+
+		if ( $table_exists === $table_schedule ) {
+			$wpdb->update(
+				$table_schedule,
+				array( 'schedule_type' => 'post_improvement_scan' ),
+				array( 'schedule_type' => 'existing' . '_post_scan' ),
+				array( '%s' ),
+				array( '%s' )
+			);
+		}
 	}
 
 	/**

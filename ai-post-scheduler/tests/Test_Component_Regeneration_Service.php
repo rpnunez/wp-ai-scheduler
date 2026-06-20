@@ -408,7 +408,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 	 */
 	public function test_regenerate_title_topic_context_fetches_post_content_when_missing() {
 		$post_id = $this->factory->post->create(array(
-			'post_title'   => 'Existing Post Title',
+			'post_title'   => 'Saved Post Title',
 			'post_content' => 'This is the real post content for the title test.',
 		));
 

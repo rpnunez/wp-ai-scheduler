@@ -25,6 +25,7 @@ class AIPS_Unified_Schedule_Service {
 	const TYPE_TEMPLATE    = 'template_schedule';
 	const TYPE_AUTHOR_TOPIC = 'author_topic_gen';
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
+	const TYPE_POST_IMPROVEMENT_SCAN = 'post_improvement_scan';
 
 	/**
 	 * @var AIPS_Schedule_Repository
@@ -52,6 +53,11 @@ class AIPS_Unified_Schedule_Service {
 	private $author_topic_logs_repository;
 
 	/**
+	 * @var AIPS_Post_Improvement_Repository
+	 */
+	private $post_improvements_repository;
+
+	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
@@ -60,6 +66,7 @@ class AIPS_Unified_Schedule_Service {
 		$this->history_repository           = new AIPS_History_Repository();
 		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
 		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
+		$this->post_improvements_repository    = new AIPS_Post_Improvement_Repository();
 	}
 
 	/**
@@ -84,6 +91,9 @@ class AIPS_Unified_Schedule_Service {
 		}
 		if (empty($type_filter) || $type_filter === self::TYPE_AUTHOR_POST) {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules($include_stats));
+		}
+		if (empty($type_filter) || $type_filter === self::TYPE_POST_IMPROVEMENT_SCAN) {
+			$schedules = array_merge($schedules, $this->get_post_improvement_scan_schedules($include_stats));
 		}
 
 		// Sort by run proximity for better operator UX:
@@ -148,6 +158,11 @@ class AIPS_Unified_Schedule_Service {
 			case self::TYPE_AUTHOR_POST:
 				return $this->authors_repository->update_post_generation_active($id, $is_active);
 
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
+				return $this->post_improvements_repository->update_schedule($id, array(
+					'status' => $is_active ? 'active' : 'inactive',
+				));
+
 			default:
 				return false;
 		}
@@ -183,6 +198,10 @@ class AIPS_Unified_Schedule_Service {
 					return new WP_Error('not_found', __('Author not found.', 'ai-post-scheduler'));
 				}
 				return $generator->generate_posts_for_author($author, $quantity, 'manual', true);
+
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
+				$service = new AIPS_Post_Improvement_Service();
+				return $service->run_schedule($id, 'manual');
 
 			default:
 				return new WP_Error('invalid_type', __('Invalid schedule type.', 'ai-post-scheduler'));
@@ -264,6 +283,26 @@ class AIPS_Unified_Schedule_Service {
 					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
+
+			case self::TYPE_POST_IMPROVEMENT_SCAN:
+				$runs = $this->post_improvements_repository->get_recent_runs_by_schedule($id, $limit > 0 ? $limit : 50);
+				$entries = array();
+				foreach ($runs as $run) {
+					$entries[] = array(
+						'id' => (int) $run->id,
+						'timestamp' => (int) $run->started_at,
+						'log_type' => sanitize_text_field((string) $run->status),
+						'history_type_id' => 0,
+						'message' => sprintf(__('Scanned %1$d posts; created %2$d suggestions; skipped %3$d unchanged; failures %4$d.', 'ai-post-scheduler'), (int) $run->posts_scanned, (int) $run->suggestions_created, (int) $run->posts_skipped_unchanged, (int) $run->failures_count),
+						'event_type' => 'post_improvement_scan',
+						'event_status' => sanitize_text_field((string) $run->status),
+						'context' => array(
+							'run_id' => (int) $run->id,
+							'suggestions_created' => (int) $run->suggestions_created,
+						),
+					);
+				}
+				return $entries;
 
 			default:
 				return array();
@@ -449,6 +488,49 @@ class AIPS_Unified_Schedule_Service {
 
 		return $result;
 	}
+
+
+/**
+ * Normalise post-improvement scan schedules.
+ *
+ * @param bool $include_stats Whether to include suggestion stats.
+ * @return array
+ */
+private function get_post_improvement_scan_schedules($include_stats = true) {
+$schedules = $this->post_improvements_repository->get_schedules();
+$result = array();
+foreach ($schedules as $schedule) {
+$stats_count = 0;
+if ($include_stats) {
+$runs = $this->post_improvements_repository->get_recent_runs_by_schedule((int) $schedule->id, 1);
+if (!empty($runs)) {
+$stats_count = isset($runs[0]->suggestions_created) ? (int) $runs[0]->suggestions_created : 0;
+}
+}
+$result[] = array(
+'id' => (int) $schedule->id,
+'type' => self::TYPE_POST_IMPROVEMENT_SCAN,
+'title' => !empty($schedule->title) ? $schedule->title : sprintf(__('Post Improvement Scan #%d', 'ai-post-scheduler'), (int) $schedule->id),
+'subtitle' => !empty($schedule->description) ? $schedule->description : __('Post improvement scan', 'ai-post-scheduler'),
+'cron_hook' => 'aips_process_post_improvement_scans',
+'frequency' => $schedule->frequency,
+'last_run' => $schedule->last_run,
+'next_run' => $schedule->next_run,
+'is_active' => ('active' === (string) $schedule->status) ? 1 : 0,
+'status' => ('active' === (string) $schedule->status) ? 'active' : 'inactive',
+'stats_count' => $stats_count,
+'stats_label' => _n('suggestion generated', 'suggestions generated', $stats_count, 'ai-post-scheduler'),
+'can_delete' => true,
+'history_id' => null,
+'template_id' => 0,
+'topic' => '',
+'article_structure_id' => '',
+'rotation_pattern' => '',
+);
+}
+
+return $result;
+}
 
 	/**
 	 * Convert raw log rows into the standard entry format expected by the UI.

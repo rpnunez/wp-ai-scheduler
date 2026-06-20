@@ -55,6 +55,8 @@ if (!function_exists('aips_type_badge')) {
 				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
 			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
 				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
+			case AIPS_Unified_Schedule_Service::TYPE_POST_IMPROVEMENT_SCAN:
+				return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Improvement Scan', 'ai-post-scheduler') . '</span>';
 		}
 		return '';
 	}
@@ -70,6 +72,9 @@ if (!function_exists('aips_run_output_label')) {
 		}
 		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
 			return __('Generated approved-topic post', 'ai-post-scheduler');
+		}
+		if ($type === AIPS_Unified_Schedule_Service::TYPE_POST_IMPROVEMENT_SCAN) {
+			return __('Generated post-improvement suggestions', 'ai-post-scheduler');
 		}
 		return __('Generated post from template', 'ai-post-scheduler');
 	}
@@ -165,7 +170,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<div class="aips-page-header-top">
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Schedules', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('All scheduled processes — template post generation, author topic generation, and author post generation — in one view.', 'ai-post-scheduler'); ?></p>
+					<p class="aips-page-description"><?php esc_html_e('All scheduled processes — template post generation, author topic generation, author post generation, and post-improvement scans — in one view.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
 					<?php if (!empty($templates)): ?>

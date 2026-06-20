@@ -147,6 +147,13 @@ class AIPS_Generated_Posts_Controller {
 			}
 		}
 
+		$post_improvement_search_query = isset($_GET['post_improvement_s']) ? sanitize_text_field(wp_unslash($_GET['post_improvement_s'])) : '';
+		$post_improvements_controller = new AIPS_Post_Improvement_Controller();
+		$post_improvements_data = $post_improvements_controller->get_pending_suggestions(array(
+			'page' => isset($_GET['post_improvement_paged']) ? absint($_GET['post_improvement_paged']) : 1,
+			'search' => $post_improvement_search_query,
+		));
+
 		$partial_generations = $this->history_repository->get_partial_generations(array(
 			'page' => $partial_page,
 			'per_page' => 20,
@@ -184,6 +191,7 @@ class AIPS_Generated_Posts_Controller {
 		$current_page = $generated_page; // For Generated Posts tab
 		$review_current_page = $review_page; // For Pending Review tab
 		$partial_current_page = $partial_page; // For Partial Generations tab
+		$post_improvement_current_page = isset($_GET['post_improvement_paged']) ? absint($_GET['post_improvement_paged']) : 1;
 		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
