@@ -24,9 +24,8 @@
  * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
  *
  * Usage:
- *   CLI (recommended): wp eval-file scripts/setup-devstacktips-content.php
+ *   CLI only: wp eval-file scripts/setup-devstacktips-content.php
  *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
- *   Web execution requires manage_options and _wpnonce=wp_create_nonce('aips_devstacktips_seed')
  *
  * Rollback warning:
  *   Rollback deletes seeded objects by configured names/slugs. Run a database
@@ -2790,28 +2789,15 @@ class AIPS_DevStackTips_Setup {
 	}
 }
 
-// Determine mode from CLI argument or guarded web query parameter.
+if (PHP_SAPI !== 'cli') {
+	wp_die(esc_html__('The DevStackTips seeder can only be run from WP-CLI.', 'ai-post-scheduler'));
+}
+
+// Determine mode from CLI argument.
 $rollback_mode = false;
-if (PHP_SAPI === 'cli') {
-	// CLI mode: check for 'rollback' argument
-	global $argv;
-	if (isset($argv) && in_array('rollback', $argv, true)) {
-		$rollback_mode = true;
-	}
-} else {
-	if (!current_user_can('manage_options')) {
-		wp_die(esc_html__('You do not have permission to run the DevStackTips seeder.', 'ai-post-scheduler'));
-	}
-
-	$nonce = isset($_REQUEST['_wpnonce']) ? sanitize_text_field(wp_unslash($_REQUEST['_wpnonce'])) : '';
-	if (!wp_verify_nonce($nonce, 'aips_devstacktips_seed')) {
-		wp_die(esc_html__('Invalid DevStackTips seeder nonce.', 'ai-post-scheduler'));
-	}
-
-	// Web mode: check for guarded 'rollback' query parameter.
-	if (isset($_GET['rollback']) && $_GET['rollback'] === '1') {
-		$rollback_mode = true;
-	}
+global $argv;
+if (isset($argv) && in_array('rollback', $argv, true)) {
+	$rollback_mode = true;
 }
 
 // Run the setup or rollback
