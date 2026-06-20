@@ -442,7 +442,7 @@ class AIPS_Sources_Controller {
 
 		$fetched_at = isset($_POST['fetched_at']) ? absint($_POST['fetched_at']) : (int) $existing->fetched_at;
 
-		$raw_html = isset($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : '';
+		$raw_html = isset($_POST['raw_html']) && is_string($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : '';
 		if (!current_user_can('unfiltered_html')) {
 			$raw_html = wp_kses_post($raw_html);
 		}
