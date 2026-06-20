@@ -23,6 +23,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
         ),
+        'A' =>
+        array (
+            'AIPS\\' => 5,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
@@ -38,9 +42,28 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
+        'AIPS\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/src',
+        ),
     );
 
     public static $classMap = array (
+        'AIPS\\AI\\AIService' => __DIR__ . '/../..' . '/src/AI/AIService.php',
+        'AIPS\\AI\\AIServiceInterface' => __DIR__ . '/../..' . '/src/AI/AIServiceInterface.php',
+        'AIPS\\Campaigns\\CampaignsController' => __DIR__ . '/../..' . '/src/Campaigns/CampaignsController.php',
+        'AIPS\\Campaigns\\CampaignsRepository' => __DIR__ . '/../..' . '/src/Campaigns/CampaignsRepository.php',
+        'AIPS\\Core\\Autoloader' => __DIR__ . '/../..' . '/src/Core/Autoloader.php',
+        'AIPS\\Core\\Config' => __DIR__ . '/../..' . '/src/Core/Config.php',
+        'AIPS\\Core\\Container' => __DIR__ . '/../..' . '/src/Core/Container.php',
+        'AIPS\\Core\\CorrelationID' => __DIR__ . '/../..' . '/src/Core/CorrelationID.php',
+        'AIPS\\Core\\DateTime' => __DIR__ . '/../..' . '/src/Core/DateTime.php',
+        'AIPS\\Core\\Logger' => __DIR__ . '/../..' . '/src/Core/Logger.php',
+        'AIPS\\Core\\LoggerInterface' => __DIR__ . '/../..' . '/src/Core/LoggerInterface.php',
+        'AIPS\\Routing\\AJAXRegistry' => __DIR__ . '/../..' . '/src/Routing/AJAXRegistry.php',
+        'AIPS\\Routing\\AJAXResponse' => __DIR__ . '/../..' . '/src/Routing/AJAXResponse.php',
+        'AIPS\\Taxonomy\\TaxonomyController' => __DIR__ . '/../..' . '/src/Taxonomy/TaxonomyController.php',
+        'AIPS\\Taxonomy\\TaxonomyRepository' => __DIR__ . '/../..' . '/src/Taxonomy/TaxonomyRepository.php',
         'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
         'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
         'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
@@ -74,6 +97,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Authors_Repository' => __DIR__ . '/../..' . '/includes/class-aips-authors-repository.php',
         'AIPS_Autoloader' => __DIR__ . '/../..' . '/includes/class-aips-autoloader.php',
         'AIPS_Autoloader_Test' => __DIR__ . '/../..' . '/tests/AIPS_Autoloader_Test.php',
+        'AIPS_Automations_Controller' => __DIR__ . '/../..' . '/includes/class-aips-automations-controller.php',
         'AIPS_Batch_Queue_Service' => __DIR__ . '/../..' . '/includes/class-aips-batch-queue-service.php',
         'AIPS_Batch_Queue_Service_Test' => __DIR__ . '/../..' . '/tests/AIPS_Batch_Queue_Service_Test.php',
         'AIPS_Batch_Slicer' => __DIR__ . '/../..' . '/includes/job/class-aips-batch-slicer.php',

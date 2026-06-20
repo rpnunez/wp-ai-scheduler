@@ -172,11 +172,9 @@ final class AI_Post_Scheduler {
             require_once $vendor_autoload;
         }
 
-        // Fallback shim: the legacy autoloader handles any AIPS_ class that the
-        // Composer classmap does not resolve (e.g. on installs without a vendor/
-        // directory or after adding a new class before re-running composer dump-autoload).
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
-        AIPS_Autoloader::register();
+        // Fallback shim: handles namespaced PSR-4 loading and dynamic class aliasing.
+        require_once AIPS_PLUGIN_DIR . 'src/Core/Autoloader.php';
+        \AIPS\Core\Autoloader::register();
 
         // Helpers
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
