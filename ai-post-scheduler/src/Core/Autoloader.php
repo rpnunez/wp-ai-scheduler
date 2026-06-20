@@ -104,6 +104,23 @@ class Autoloader {
 		'AIPS_Settings' => 'AIPS\\Settings\\Settings',
 		'AIPS_Settings_UI' => 'AIPS\\Settings\\SettingsUI',
 		'AIPS_Settings_Ajax' => 'AIPS\\Settings\\SettingsAJAX',
+
+		// Cache Subsystem
+		'AIPS_Cache' => 'AIPS\\Cache\\Cache',
+		'AIPS_Cache_Driver' => 'AIPS\\Cache\\CacheDriverInterface',
+		'AIPS_Cache_Monitorable_Driver' => 'AIPS\\Cache\\CacheMonitorableDriverInterface',
+		'AIPS_Cache_Array_Driver' => 'AIPS\\Cache\\Drivers\\ArrayDriver',
+		'AIPS_Cache_DB_Driver' => 'AIPS\\Cache\\Drivers\\DBDriver',
+		'AIPS_Cache_WP_Object_Cache_Driver' => 'AIPS\\Cache\\Drivers\\WPObjectCacheDriver',
+		'AIPS_Cache_Factory' => 'AIPS\\Cache\\CacheFactory',
+		'AIPS_Cache_Index' => 'AIPS\\Cache\\CacheIndex',
+		'AIPS_Cache_Invalidation_Bus' => 'AIPS\\Cache\\CacheInvalidationBus',
+		'AIPS_Cache_Policy' => 'AIPS\\Cache\\CachePolicy',
+		'AIPS_Cacheable_Repository' => 'AIPS\\Cache\\CacheableRepositoryTrait',
+		'AIPS_Repository_Cache_Config' => 'AIPS\\Cache\\RepositoryCacheConfig',
+		'AIPS_Repository_Cache_Dependencies' => 'AIPS\\Cache\\RepositoryCacheDependencies',
+		'AIPS_Repository_Cache_Key_Builder' => 'AIPS\\Cache\\RepositoryCacheKeyBuilder',
+		'AIPS_Repository_Cache_Observer' => 'AIPS\\Cache\\RepositoryCacheObserver',
 	);
 
 	/**
