@@ -816,6 +816,58 @@ class AIPS_Generator {
 
         $content = $this->strip_leading_title_block_from_content($content);
 
+        if (!$component_statuses['post_content'] || !$component_statuses['post_title']) {
+            $failed_components = array();
+
+            if (!$component_statuses['post_content']) {
+                $failed_components[] = 'post_content';
+            }
+
+            if (!$component_statuses['post_title']) {
+                $failed_components[] = 'post_title';
+            }
+
+            $error_message = __('Post generation failed before a usable post could be created.', 'ai-post-scheduler');
+            $error = new WP_Error(
+                'aips_generation_missing_required_components',
+                $error_message,
+                array(
+                    'failed_components' => $failed_components,
+                    'component_statuses' => $component_statuses,
+                )
+            );
+
+            $this->current_history->complete_failure($error_message, array(
+                'component' => 'post_generation',
+                'failed_components' => $failed_components,
+                'component_statuses' => $component_statuses,
+                'title' => $title,
+                'content_length' => strlen($content),
+            ));
+
+            $this->current_history->record(
+                'metric_generation_result',
+                'Generation failed — required content was not generated',
+                array(
+                    'outcome'          => 'failed',
+                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                    'image_attempted'  => false,
+                    'image_success'    => null,
+                )
+            );
+
+            $this->generation_logger->log('Post generation failed before post creation', 'error', array(
+                'context_type' => $context->get_type(),
+                'context_id' => $context->get_id(),
+                'failed_components' => $failed_components,
+                'component_statuses' => $component_statuses,
+            ));
+
+            $this->generation_logger->set_history_id(null);
+
+            return $error;
+        }
+
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
