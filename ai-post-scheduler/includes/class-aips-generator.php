@@ -48,6 +48,11 @@ class AIPS_Generator {
     private $post_featured_image_prompt_builder;
 
     /**
+     * @var AIPS_PostScore_Service Post quality scoring and revision service.
+     */
+    private $post_score_service;
+
+    /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
     private $markdown_parser;
@@ -67,6 +72,7 @@ class AIPS_Generator {
     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
+     * @param AIPS_PostScore_Service|null $post_score_service
      */
     public function __construct(
         ?AIPS_Logger_Interface $logger = null,
@@ -77,7 +83,8 @@ class AIPS_Generator {
         $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
-        $markdown_parser = null
+        $markdown_parser = null,
+        ?AIPS_PostScore_Service $post_score_service = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -93,6 +100,7 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_score_service = $post_score_service ?: new AIPS_PostScore_Service($this->ai_service);
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -823,6 +831,11 @@ class AIPS_Generator {
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
+        $score_enabled         = (bool) AIPS_Config::get_instance()->get_option('aips_post_score_auto_enabled');
+        $intended_status       = $context instanceof AIPS_Generation_Context
+            ? $context->get_post_status()
+            : ( $context->post_status ?? 'draft' );
+        $hold_publish_for_score = $score_enabled && 'publish' === $intended_status;
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -837,6 +850,10 @@ class AIPS_Generator {
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         );
+
+        if ($hold_publish_for_score) {
+            $post_creation_data['post_status_override'] = 'draft';
+        }
 
         // Allow integrations to hook before the post is created.
         do_action('aips_post_generation_before_post_create', $post_creation_data);
@@ -887,6 +904,16 @@ class AIPS_Generator {
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         ));
+
+        if ($score_enabled) {
+            update_post_meta($post_id, '_aips_post_score_status', 'pending');
+
+            if ($hold_publish_for_score) {
+                update_post_meta($post_id, '_aips_post_intended_status', 'publish');
+            }
+
+            wp_schedule_single_event(time(), 'aips_async_score_post', array($post_id));
+        }
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
@@ -966,6 +993,7 @@ class AIPS_Generator {
 
         return $post_id;
     }
+
 
     /**
      * Emit a generation failure notification for non-scheduled runs.

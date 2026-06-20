@@ -38,6 +38,7 @@ class AIPS_Post_Manager {
      *     @type string $topic Optional. Topic used to infer focus keyword when none provided.
      *     @type object $template Optional. Template object containing settings (legacy).
      *     @type AIPS_Generation_Context $context Optional. Generation context (preferred).
+     *     @type string $post_status_override Optional. Explicit post status override applied before insert.
      * }
      * @return int|WP_Error Post ID on success, WP_Error on failure.
      */
@@ -73,6 +74,13 @@ class AIPS_Post_Manager {
                 'missing_context',
                 __('Either a template object or generation context is required for post creation.', 'ai-post-scheduler')
             );
+        }
+
+        if (isset($data['post_status_override']) && is_string($data['post_status_override'])) {
+            $override_status = sanitize_key($data['post_status_override']);
+            if ($override_status !== '') {
+                $post_status = $override_status;
+            }
         }
 
         // Normalise post_category to an array of int IDs regardless of source format.

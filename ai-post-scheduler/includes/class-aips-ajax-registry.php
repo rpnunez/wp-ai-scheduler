@@ -273,6 +273,13 @@ class AIPS_Ajax_Registry {
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 
+		// Post Score Controller
+		'aips_post_score_score'        => 'AIPS_PostScore_Controller',
+		'aips_score_post'             => 'AIPS_PostScore_Controller',
+		'aips_post_score_run_revision' => 'AIPS_PostScore_Controller',
+		'aips_post_score_get_result'   => 'AIPS_PostScore_Controller',
+		'aips_get_post_feedback'      => 'AIPS_PostScore_Controller',
+
 		// Cache Monitor Controller
 		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
 		'aips_cache_monitor_entries'           => 'AIPS_Cache_Monitor_Controller',

@@ -182,6 +182,50 @@ class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
     }
 
     /**
+     * Ensure create_post() can hold a publish-intended post as draft before insert.
+     */
+    public function test_create_post_honors_post_status_override() {
+        $context = new class implements AIPS_Generation_Context {
+            public function get_type() { return 'template'; }
+            public function get_id() { return 0; }
+            public function get_name() { return 'Test Context'; }
+            public function get_content_prompt() { return 'Prompt'; }
+            public function get_title_prompt() { return 'Title prompt'; }
+            public function get_image_prompt() { return null; }
+            public function should_generate_featured_image() { return false; }
+            public function get_featured_image_source() { return ''; }
+            public function get_unsplash_keywords() { return ''; }
+            public function get_media_library_ids() { return ''; }
+            public function get_post_status() { return 'publish'; }
+            public function get_post_type() { return 'post'; }
+            public function get_post_category() { return array(); }
+            public function get_post_tags() { return ''; }
+            public function get_post_author() { return 1; }
+            public function get_article_structure_id() { return null; }
+            public function get_voice_id() { return null; }
+            public function get_voice() { return null; }
+            public function get_topic() { return 'Topic'; }
+            public function get_creation_method() { return 'manual'; }
+            public function get_include_sources() { return false; }
+            public function get_source_group_ids() { return array(); }
+            public function to_array() { return array(); }
+        };
+
+        $creator = new AIPS_Post_Manager();
+
+        $post_id = $creator->create_post(array(
+            'title'                => 'Held For Quality Gate',
+            'content'              => 'Generated content body.',
+            'excerpt'              => 'Generated excerpt body.',
+            'context'              => $context,
+            'post_status_override' => 'draft',
+        ));
+
+        $this->assertIsInt($post_id);
+        $this->assertSame('draft', get_post_status($post_id));
+    }
+
+    /**
      * Activate SEO plugins for tests that rely on plugin-specific meta fields.
      *
      * @return void

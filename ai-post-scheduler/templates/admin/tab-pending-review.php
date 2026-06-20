@@ -105,6 +105,28 @@ if (!defined('ABSPATH')) {
 										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
+										<?php if ( ! empty( $item->score_status ) && 'pending' === $item->score_status ): ?>
+											<div class="aips-score-badge-circle aips-score-pending" title="<?php esc_attr_e('Quality scoring in progress...', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Quality scoring in progress', 'ai-post-scheduler'); ?>">
+												<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart">
+													<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+													<path class="aips-circle" stroke-dasharray="25, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+												</svg>
+											</div>
+										<?php elseif (!empty($item->post_score)): ?>
+											<?php 
+												$score = max(0, min(100, (float) $item->post_score['overall_score']));
+												$score_display = (int) round($score);
+												$threshold = max(0, min(100, (int) $item->post_score['threshold']));
+												$color_class = $score >= 80 ? 'aips-score-green' : ($score >= 70 ? 'aips-score-orange' : 'aips-score-red');
+											?>
+											<div class="aips-score-badge-circle" title="<?php printf(esc_attr__('Quality Score: %1$s%% (Pass: %2$s%%)', 'ai-post-scheduler'), $score_display, $threshold); ?>" aria-label="<?php printf(esc_attr__('Quality Score: %1$s%% (Pass: %2$s%%)', 'ai-post-scheduler'), $score_display, $threshold); ?>">
+												<svg width="24" height="24" viewBox="0 0 36 36" class="aips-circular-chart <?php echo esc_attr($color_class); ?>">
+													<path class="aips-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+													<path class="aips-circle" stroke-dasharray="<?php echo esc_attr($score); ?>, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+													<text x="18" y="21.5" class="aips-percentage"><?php echo esc_html($score_display); ?></text>
+												</svg>
+											</div>
+										<?php endif; ?>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
@@ -277,4 +299,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

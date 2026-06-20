@@ -312,6 +312,51 @@ class AIPS_Settings_UI {
         <?php
     }
 
+
+
+    /**
+     * Render the post quality scoring section description.
+     */
+    public function post_score_section_callback() {
+        echo '<p>' . esc_html__('Configure optional AI quality scoring for generated drafts. Leave disabled to avoid extra AI calls and automatic content revisions during generation.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the auto post-score setting field.
+     */
+    public function post_score_auto_enabled_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_post_score_auto_enabled');
+        ?>
+        <input type="hidden" name="aips_post_score_auto_enabled" value="0">
+        <label>
+            <input type="checkbox" name="aips_post_score_auto_enabled" value="1" <?php checked(1, $value); ?>>
+            <?php esc_html_e('Automatically score generated drafts and run targeted revisions when they fall below the threshold.', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Disabled by default because scoring can add multiple AI requests and may mutate generated content before it is saved.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the post-score threshold field.
+     */
+    public function post_score_threshold_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_post_score_threshold');
+        ?>
+        <input type="number" name="aips_post_score_threshold" value="<?php echo esc_attr($value); ?>" min="0" max="100" class="small-text">
+        <p class="description"><?php esc_html_e('Minimum overall score (0-100) required to pass quality scoring.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize the post-score threshold setting.
+     *
+     * @param mixed $value Submitted value.
+     * @return int Threshold clamped to 0-100.
+     */
+    public function sanitize_post_score_threshold($value) {
+        return max(0, min(100, absint($value)));
+    }
+
     /**
      * Render the logging enable setting field.
      *
