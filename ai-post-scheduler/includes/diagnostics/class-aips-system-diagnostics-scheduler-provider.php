@@ -37,7 +37,7 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function check_cron() {
-		$cron_events = AI_Post_Scheduler::get_cron_events();
+		$cron_events = AIPS_Core::get_cron_events();
 		$status      = array();
 
 		foreach ( $cron_events as $event_hook => $event_config ) {
@@ -62,7 +62,7 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 		$checks = array();
 
 		// --- Per-hook cron diagnostics ---
-		$cron_events     = AI_Post_Scheduler::get_cron_events();
+		$cron_events     = AIPS_Core::get_cron_events();
 		$expected_total  = count( $cron_events );
 		$actual_total    = 0;
 		$hooks_missing   = array();

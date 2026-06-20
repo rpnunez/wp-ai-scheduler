@@ -994,7 +994,7 @@ class AIPS_DB_Manager {
             AIPS_Ajax_Response::error(__('Unauthorized', 'ai-post-scheduler'));
         }
 
-        $cron_events    = AI_Post_Scheduler::get_cron_events();
+        $cron_events    = AIPS_Core::get_cron_events();
         $unscheduled    = array();
         $rescheduled    = array();
         $failed         = array();

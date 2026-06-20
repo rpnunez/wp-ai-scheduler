@@ -2,13 +2,13 @@
 /**
  * Tests for context-aware bootstrap dispatcher (Step 15).
  *
- * Verifies that AI_Post_Scheduler::init() dispatches to the correct boot method
+ * Verifies that AIPS_Core::init() dispatches to the correct boot method
  * based on the current request context (cron, AJAX, admin, or frontend), and
  * that each boot method registers only the subsystems appropriate for its context.
  *
  * These tests run in limited mode (no full WordPress environment).
  *
- * @package AI_Post_Scheduler
+ * @package AIPS_Core
  */
 
 class Test_AIPS_Context_Boot extends WP_UnitTestCase {
@@ -78,8 +78,8 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	 */
 	public function test_plugin_class_has_init_method() {
 		$this->assertTrue(
-			method_exists( 'AI_Post_Scheduler', 'init' ),
-			'AI_Post_Scheduler must have an init() method'
+			method_exists( 'AIPS_Core', 'init' ),
+			'AIPS_Core must have an init() method'
 		);
 	}
 
@@ -89,12 +89,12 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	 * They are private but PHP Reflection can confirm their presence.
 	 */
 	public function test_plugin_class_has_all_five_boot_methods() {
-		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
+		$rc = new ReflectionClass( 'AIPS_Core' );
 
 		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
 			$this->assertTrue(
 				$rc->hasMethod( $method ),
-				"AI_Post_Scheduler must have a private {$method}() method"
+				"AIPS_Core must have a private {$method}() method"
 			);
 		}
 	}
@@ -103,7 +103,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	 * All five boot methods must be declared private.
 	 */
 	public function test_all_boot_methods_have_private_visibility() {
-		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
+		$rc = new ReflectionClass( 'AIPS_Core' );
 
 		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
 			$this->assertTrue(
@@ -130,7 +130,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_doing_cron'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertGreaterThan(
@@ -150,7 +150,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_doing_cron'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertGreaterThan(
@@ -170,7 +170,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_doing_cron'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertGreaterThan(
@@ -192,7 +192,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_doing_cron'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertSame(
@@ -213,7 +213,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		}
 
 		// All context globals default to false (frontend).
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertSame(
@@ -234,7 +234,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		}
 
 		// All context globals default to false (frontend).
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertSame(
@@ -256,7 +256,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertGreaterThan(
@@ -278,7 +278,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertSame(
@@ -341,7 +341,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		$GLOBALS['aips_test_doing_cron'] = true;
 		$GLOBALS['aips_test_is_admin']   = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		// Cron path must be taken: scheduler hook present, admin_menu absent.
@@ -420,7 +420,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertNull(
@@ -440,7 +440,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		$this->reset_singleton_instance( 'AIPS_Scheduler' );
 
 		// All context globals default to false — frontend context.
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertNull(
@@ -461,7 +461,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertNull(
@@ -482,7 +482,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertNull(
@@ -503,7 +503,7 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 
 		$GLOBALS['aips_test_is_admin'] = true;
 
-		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin = AIPS_Core::get_instance();
 		$plugin->init();
 
 		$this->assertNull(
