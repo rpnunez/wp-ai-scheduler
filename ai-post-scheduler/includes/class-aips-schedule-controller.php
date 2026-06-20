@@ -199,6 +199,19 @@ class AIPS_Schedule_Controller {
     private function get_generated_post_modal_data($post_ids) {
         $posts = array();
 
+        if (function_exists('_prime_post_caches') && !empty($post_ids)) {
+            $valid_ids = array();
+            foreach ($post_ids as $pid) {
+                $pid = absint($pid);
+                if ($pid) {
+                    $valid_ids[] = $pid;
+                }
+            }
+            if (!empty($valid_ids)) {
+                _prime_post_caches(array_unique($valid_ids), false, true);
+            }
+        }
+
         foreach ($post_ids as $post_id) {
             $post_id = absint($post_id);
 

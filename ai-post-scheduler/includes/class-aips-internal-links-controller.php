@@ -462,6 +462,18 @@ class AIPS_Internal_Links_Controller {
 		// Fetch all accepted suggestions for this source post.
 		$accepted = $this->links_repo->get_by_source_post($suggestion->source_post_id, 'accepted');
 
+		if (function_exists('_prime_post_caches')) {
+			$post_ids = array();
+			foreach ($accepted as $s) {
+				if ($s->target_post_id) {
+					$post_ids[] = $s->target_post_id;
+				}
+			}
+			if (!empty($post_ids)) {
+				_prime_post_caches(array_unique($post_ids), false, true);
+			}
+		}
+
 		$suggestions_data = array();
 		foreach ($accepted as $s) {
 			$target_post = get_post($s->target_post_id);

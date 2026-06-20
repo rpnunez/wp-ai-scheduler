@@ -366,6 +366,18 @@ class AIPS_Authors_Controller {
 		$posts = $this->logs_repository->get_generated_posts_by_author($author_id);
 		
 		// Enrich with WordPress post data
+		if (function_exists('_prime_post_caches')) {
+			$post_ids = array();
+			foreach ($posts as $post) {
+				if ($post->post_id) {
+					$post_ids[] = $post->post_id;
+				}
+			}
+			if (!empty($post_ids)) {
+				_prime_post_caches(array_unique($post_ids), false, true);
+			}
+		}
+
 		foreach ($posts as &$post) {
 			if ($post->post_id) {
 				$wp_post = get_post($post->post_id);
@@ -478,6 +490,18 @@ class AIPS_Authors_Controller {
 		// Get logs for this topic (UI display only — capped at 200 entries).
 		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
 		
+		if (function_exists('_prime_post_caches')) {
+			$post_ids = array();
+			foreach ($logs as $log) {
+				if ($log->action === 'post_generated' && $log->post_id) {
+					$post_ids[] = $log->post_id;
+				}
+			}
+			if (!empty($post_ids)) {
+				_prime_post_caches(array_unique($post_ids), false, true);
+			}
+		}
+
 		$posts = array();
 		foreach ($logs as $log) {
 			// Only include post_generated logs with valid post IDs.

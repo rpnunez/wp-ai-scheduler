@@ -182,6 +182,11 @@ class AIPS_Taxonomy_Controller {
 
 		// Build post content summary
 		$post_contents = array();
+
+		if (function_exists('_prime_post_caches') && !empty($post_ids)) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		foreach ($post_ids as $post_id) {
 			$post = get_post($post_id);
 			if ($post) {

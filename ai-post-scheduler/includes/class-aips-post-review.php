@@ -310,6 +310,10 @@ class AIPS_Post_Review {
 		
 		$success_count = 0;
 		$failed_count = 0;
+
+		if (function_exists('_prime_post_caches') && !empty($post_ids)) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
 		
 		foreach ($post_ids as $post_id) {
 			// Verify the post exists and is a draft
