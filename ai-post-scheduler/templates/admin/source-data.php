@@ -20,23 +20,34 @@ if (!isset($source_data) || !is_array($source_data)) {
 	);
 }
 
-$source       = isset($source) ? $source : null;
-$source_id    = isset($source_id) ? absint($source_id) : 0;
-$search       = isset($search) ? (string) $search : '';
+$source         = isset($source) ? $source : null;
+$source_id      = isset($source_id) ? absint($source_id) : 0;
+$search         = isset($search) ? (string) $search : '';
+$sources        = isset($sources) && is_array($sources) ? $sources : array();
+$filters        = isset($filters) && is_array($filters) ? $filters : array();
+$is_global_view = isset($is_global_view) ? (bool) $is_global_view : ($source_id <= 0);
 $source_label = ($source && !empty($source->label)) ? $source->label : (($source && !empty($source->url)) ? $source->url : __('Unknown Source', 'ai-post-scheduler'));
 $items        = isset($source_data['items']) && is_array($source_data['items']) ? $source_data['items'] : array();
 $total        = isset($source_data['total']) ? (int) $source_data['total'] : 0;
 $pages        = isset($source_data['pages']) ? (int) $source_data['pages'] : 0;
 $current      = isset($source_data['current_page']) ? max(1, (int) $source_data['current_page']) : 1;
-$base_url     = AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', array('source_id' => $source_id));
+$base_args    = $is_global_view ? array() : array('source_id' => $source_id);
+$base_url     = AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', $base_args);
 $back_url     = AIPS_Admin_Menu_Helper::get_page_url('sources');
 
-$build_page_url = static function($page_number) use ($base_url, $search) {
+$build_page_url = static function($page_number) use ($base_url, $search, $filters, $is_global_view) {
 	$args = array(
 		'source_data_paged' => absint($page_number),
 	);
 	if ('' !== $search) {
 		$args['s'] = $search;
+	}
+	if ($is_global_view) {
+		foreach (array('source_id' => 'filter_source_id', 'status' => 'filter_status', 'date_from' => 'date_from', 'date_to' => 'date_to') as $filter_key => $query_key) {
+			if (!empty($filters[$filter_key])) {
+				$args[$query_key] = $filters[$filter_key];
+			}
+		}
 	}
 	return add_query_arg($args, $base_url);
 };
@@ -48,13 +59,17 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?></h1>
 					<p class="aips-page-description">
-						<?php
-						printf(
-							/* translators: %s = source label or URL */
-							esc_html__('Manage fetched content snapshots saved for %s.', 'ai-post-scheduler'),
-							esc_html($source_label)
-						);
-						?>
+						<?php if ($is_global_view): ?>
+							<?php esc_html_e('Audit fetched content snapshots saved across all sources.', 'ai-post-scheduler'); ?>
+						<?php else: ?>
+							<?php
+							printf(
+								/* translators: %s = source label or URL */
+								esc_html__('Manage fetched content snapshots saved for %s.', 'ai-post-scheduler'),
+								esc_html($source_label)
+							);
+							?>
+						<?php endif; ?>
 					</p>
 				</div>
 				<div class="aips-page-actions">
@@ -67,7 +82,7 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 		</div>
 
 		<div class="aips-content-panel">
-			<?php if (!$source): ?>
+			<?php if (!$is_global_view && !$source): ?>
 				<div class="aips-empty-state">
 					<div class="dashicons dashicons-warning aips-empty-state-icon" aria-hidden="true"></div>
 					<h3 class="aips-empty-state-title"><?php esc_html_e('Source Not Found', 'ai-post-scheduler'); ?></h3>
@@ -76,12 +91,33 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 			<?php else: ?>
 				<form class="aips-filter-bar" method="get">
 					<input type="hidden" name="page" value="aips-source-data">
-					<input type="hidden" name="source_id" value="<?php echo esc_attr($source_id); ?>">
+					<?php if (!$is_global_view): ?>
+						<input type="hidden" name="source_id" value="<?php echo esc_attr($source_id); ?>">
+					<?php endif; ?>
+					<?php if ($is_global_view): ?>
+						<div class="aips-filter-left">
+							<select name="filter_source_id" class="aips-form-select">
+								<option value="0"><?php esc_html_e('All Sources', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($sources as $filter_source): ?>
+									<?php $filter_label = !empty($filter_source->label) ? $filter_source->label : $filter_source->url; ?>
+									<option value="<?php echo esc_attr((int) $filter_source->id); ?>" <?php selected(isset($filters['source_id']) ? (int) $filters['source_id'] : 0, (int) $filter_source->id); ?>><?php echo esc_html($filter_label); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<select name="filter_status" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
+								<option value="success" <?php selected(isset($filters['status']) ? $filters['status'] : '', 'success'); ?>><?php esc_html_e('Success', 'ai-post-scheduler'); ?></option>
+								<option value="failed" <?php selected(isset($filters['status']) ? $filters['status'] : '', 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
+								<option value="pending" <?php selected(isset($filters['status']) ? $filters['status'] : '', 'pending'); ?>><?php esc_html_e('Pending', 'ai-post-scheduler'); ?></option>
+							</select>
+							<input type="date" name="date_from" value="<?php echo esc_attr(isset($filters['date_from']) ? $filters['date_from'] : ''); ?>" class="aips-form-input">
+							<input type="date" name="date_to" value="<?php echo esc_attr(isset($filters['date_to']) ? $filters['date_to'] : ''); ?>" class="aips-form-input">
+						</div>
+					<?php endif; ?>
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-source-data-search"><?php esc_html_e('Search Source Data:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-source-data-search" name="s" value="<?php echo esc_attr($search); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search source data…', 'ai-post-scheduler'); ?>">
 						<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
-						<?php if ('' !== $search): ?>
+						<?php if ('' !== $search || ($is_global_view && (!empty($filters['source_id']) || !empty($filters['status']) || !empty($filters['date_from']) || !empty($filters['date_to'])))): ?>
 							<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url($base_url); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
 						<?php endif; ?>
 					</div>
@@ -92,6 +128,9 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 					<table class="aips-table aips-source-data-table" id="aips-source-data-table">
 						<thead>
 							<tr>
+								<?php if ($is_global_view): ?>
+									<th class="column-source"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<?php endif; ?>
 								<th class="column-run-date"><?php esc_html_e('Run Date/Time', 'ai-post-scheduler'); ?></th>
 								<th class="column-content"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></th>
 								<th class="column-size"><?php esc_html_e('Size', 'ai-post-scheduler'); ?></th>
@@ -111,7 +150,14 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 								$run_date   = $fetched_at ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $fetched_at) : __('Not recorded', 'ai-post-scheduler');
 								?>
 								<tr data-source-data-id="<?php echo esc_attr($data_id); ?>">
-									<td class="column-run-date cell-primary"><?php echo esc_html($run_date); ?></td>
+									<?php if ($is_global_view): ?>
+										<td class="column-source cell-primary">
+											<?php $item_source_label = !empty($item->source_label) ? $item->source_label : (!empty($item->source_url) ? $item->source_url : sprintf(__('Source #%d', 'ai-post-scheduler'), (int) $item->source_id)); ?>
+											<strong><?php echo esc_html($item_source_label); ?></strong>
+											<?php if (!empty($item->source_url)): ?><div class="cell-meta"><?php echo esc_html($item->source_url); ?></div><?php endif; ?>
+										</td>
+									<?php endif; ?>
+									<td class="column-run-date<?php echo $is_global_view ? '' : ' cell-primary'; ?>"><?php echo esc_html($run_date); ?></td>
 									<td class="column-content">
 										<?php if ('' !== $snippet): ?>
 											<?php echo esc_html($snippet); ?>
@@ -142,7 +188,7 @@ $build_page_url = static function($page_number) use ($base_url, $search) {
 						<div class="aips-empty-state">
 							<div class="dashicons dashicons-archive aips-empty-state-icon" aria-hidden="true"></div>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Source Data Found', 'ai-post-scheduler'); ?></h3>
-							<p class="aips-empty-state-description"><?php echo '' !== $search ? esc_html__('No saved source data matches your search.', 'ai-post-scheduler') : esc_html__('This source does not have saved fetched data yet.', 'ai-post-scheduler'); ?></p>
+							<p class="aips-empty-state-description"><?php echo '' !== $search ? esc_html__('No saved source data matches your search.', 'ai-post-scheduler') : esc_html__('No saved source data has been captured yet.', 'ai-post-scheduler'); ?></p>
 						</div>
 					<?php endif; ?>
 				</div>
