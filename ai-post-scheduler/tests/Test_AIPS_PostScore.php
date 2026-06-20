@@ -176,6 +176,28 @@ class Test_AIPS_PostScore extends WP_UnitTestCase {
 		$this->assertSame(array(), $ai->calls);
 	}
 
+
+	public function test_service_ignores_non_scalar_guidance_items() {
+		$ai = new AIPS_PostScore_Fake_AI_Service(array(
+			wp_json_encode(array(
+				'scores' => $this->passing_scores(),
+				'guidance' => array(
+					'Add concrete examples',
+					array('nested guidance should be ignored'),
+					(object) array('text' => 'object guidance should be ignored'),
+					'',
+				),
+				'summary' => 'Strong draft.',
+			)),
+		));
+		$service = new AIPS_PostScore_Service($ai, new AIPS_Prompt_Builder_Post_Score());
+
+		$result = $service->score($this->make_context(), 'Specific draft content.', 'Draft Title');
+
+		$this->assertInstanceOf(AIPS_PostScore_Result::class, $result);
+		$this->assertSame(array('Add concrete examples'), $result->get_guidance());
+	}
+
 	public function test_service_adds_default_guidance_when_low_score_has_none() {
 		$low_scores = array(
 			'coherence' => 6,
