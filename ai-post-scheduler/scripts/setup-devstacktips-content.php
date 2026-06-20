@@ -1,0 +1,2807 @@
+﻿<?php
+/**
+ * DevStackTips Content Setup Script
+ *
+ * Creates a complete content strategy for DevStackTips including:
+ * - Plugin settings (Content Strategy + Resilience & Limits + Production Settings)
+ * - 7 Categories
+ * - 5 Voices (writing styles)
+ * - 8 Article Structures
+ * - 5 Authors
+ * - 4 Post Slices
+ * - 2 Source Groups with 6 Sources
+ * - 8 Templates
+ * - 8 Campaigns
+ * - 8 Schedules
+ *
+ * Plugin Settings Configured:
+ * - Default Article Structure, Research Niches, Notifications
+ * - Telemetry, Cache System, Topic Similarity Threshold
+ * - Log Retention, Default Post Settings, Unsplash Key (placeholder)
+ *
+ * Note: After running, manually configure:
+ * - Notification email address in Settings > Notifications
+ * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
+ *
+ * Usage:
+ *   CLI only: wp eval-file scripts/setup-devstacktips-content.php
+ *   To rollback (CLI): wp eval-file scripts/setup-devstacktips-content.php rollback
+ *
+ * Rollback warning:
+ *   Rollback deletes seeded objects by configured names/slugs. Run a database
+ *   backup first; rollback is not guaranteed to preserve pre-existing data
+ *   that used the same names/slugs as seeded categories, source groups,
+ *   sections, voices, slices, schedules, templates, campaigns, or sources.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+if (!defined('ABSPATH')) {
+	die('Direct access not permitted.');
+}
+
+/**
+ * Class AIPS_DevStackTips_Setup
+ * 
+ */
+class AIPS_DevStackTips_Setup {
+	/**
+	 * Strategy profile name
+	 */
+	private const STRATEGY_PROFILE = 'devstacktips-production-v1';
+
+	/**
+	 * Distribution configuration defines the overall content distribution strategy, including:
+	 * - Primary distribution period (e.g. weekly)
+	 * - Target post counts for different periods (daily, weekly, monthly)
+	 * - Campaign shares (relative weights for how many posts each campaign should receive)
+	 * - Author shares (relative weights for how many posts each author should receive)
+	 */
+	private const DISTRIBUTION_CONFIG = array(
+		'distribution_period' => 'weekly',
+		'target_posts' => array(
+			'daily' => 6,
+			'weekly' => 30,
+			'monthly' => 120,
+		),
+		'campaign_shares' => array(
+			'Developer Foundations' => 4,
+			'Backend Engineering' => 4,
+			'Security First' => 4,
+			'Framework & Tool Comparisons' => 4,
+			'Developer Tooling' => 4,
+			'AI for Developers' => 3,
+			'PHP Ecosystem Radar' => 4,
+			'Security Intelligence Briefing' => 3,
+		),
+		'author_shares' => array(
+			'Backend Architecture Specialist' => 8,
+			'Security Expert' => 7,
+			'DevOps Practitioner' => 6,
+			'Framework Analyst' => 5,
+			'AI Engineering Pragmatist' => 4,
+		),
+	);
+
+	/**
+	 * Tracks items created or updated during the seeding run, keyed by entity type.
+	 *
+	 * @var array
+	 */
+	private $created_items = array();
+
+	/**
+	 * Accumulates error messages encountered during the seeding or rollback run.
+	 *
+	 * @var array
+	 */
+	private $errors = array();
+
+	/**
+	 * Holds all resolved seed data arrays, keyed by entity type (e.g. 'categories', 'voices').
+	 *
+	 * @var array
+	 */
+	private $object_data = array();
+
+	/**
+	 * Whether the instance is operating in rollback mode rather than seeding mode.
+	 *
+	 * @var bool
+	 */
+	private $rollback_mode = false;
+
+	/**
+	 * Initializes the setup instance and pre-builds all seed data.
+	 *
+	 * @param bool $rollback Pass true to run in rollback mode instead of seeding mode.
+	 */
+	public function __construct($rollback = false) {
+		$this->rollback_mode = $rollback;
+		$this->build_seeding_object_data();
+	}
+
+	/**
+	 * Executes the full seeding or rollback workflow depending on the mode set at construction.
+	 *
+	 * @return void
+	 */
+	public function run() {
+		if ($this->rollback_mode) {
+			$this->rollback();
+			return;
+		}
+
+		echo "<h1>DevStackTips Content Setup</h1>\n";
+		echo "<p>Creating complete content production system...</p>\n";
+		echo "<p>Applying strategy profile: <code>" . esc_html(self::STRATEGY_PROFILE) . "</code></p>\n";
+
+		// Step 1: Create Categories
+		$this->create_categories();
+
+		// Step 2: Create Voices
+		$this->create_voices();
+
+		// Step 3: Create Article Structures (with sections)
+		$this->create_article_structures();
+
+		// Step 4: Configure Plugin Settings (needs category & structure IDs)
+		$this->configure_settings();
+
+		// Step 5: Create Authors
+		$this->create_authors();
+
+		// Step 6: Create Post Slices
+		$this->create_post_slices();
+
+		// Step 7: Create Source Groups and Sources
+		$this->create_source_groups();
+
+		// Step 8: Create Campaigns
+		$this->create_campaigns();
+
+		// Step 9: Create Templates (campaign-bound)
+		$this->create_templates();
+
+		// Step 10: Create Schedules
+		$this->create_schedules();
+
+		// Report Results
+		$this->print_summary();
+	}
+
+	/**
+	 * Populates $object_data with all resolved seed data arrays for every entity type.
+	 *
+	 * @return void
+	 */
+	private function build_seeding_object_data() {
+		$this->object_data = array(
+			'settings' => $this->get_settings_seed_data(),
+			'categories' => $this->get_category_seed_data(),
+			'voices' => $this->get_voice_seed_data(),
+			'sections' => $this->get_section_seed_data(),
+			'structures' => $this->get_structure_seed_data(),
+			'authors' => $this->get_author_seed_data(),
+			'post_slices' => $this->get_post_slice_seed_data(),
+			'source_groups' => $this->get_source_group_seed_data(),
+			'sources' => $this->get_source_seed_data(),
+			'campaigns' => $this->get_campaign_seed_data(),
+			'templates' => $this->get_template_seed_data(),
+			'schedules' => $this->get_schedule_seed_data(),
+		);
+	}
+
+	/**
+	 * Returns the distribution configuration constant as an array.
+	 *
+	 * @return array The full distribution configuration array.
+	 */
+	private function get_distribution_config() {
+		return self::DISTRIBUTION_CONFIG;
+	}
+
+	/**
+	 * Returns the target post counts for all defined distribution periods.
+	 *
+	 * @return array Associative array of period names to post counts (e.g. ['daily' => 6, 'weekly' => 30]).
+	 */
+	private function get_target_posts_by_period() {
+		$config = $this->get_distribution_config();
+
+		return isset($config['target_posts']) ? $config['target_posts'] : array();
+	}
+
+	/**
+	 * Returns the target post count for a specific distribution period.
+	 *
+	 * @param string $period The period name (e.g. 'daily', 'weekly', 'monthly').
+	 * @return int The configured post target for that period, or 0 if not defined.
+	 */
+	private function get_target_posts_for_period($period) {
+		$targets = $this->get_target_posts_by_period();
+
+		return isset($targets[$period]) ? (int) $targets[$period] : 0;
+	}
+
+	/**
+	 * Returns the primary distribution period configured for this content strategy.
+	 *
+	 * @return string The primary period name (e.g. 'weekly').
+	 */
+	private function get_primary_distribution_period() {
+		$config = $this->get_distribution_config();
+
+		return isset($config['distribution_period']) ? (string) $config['distribution_period'] : 'weekly';
+	}
+
+	/**
+	 * Returns the target post count for the primary distribution period.
+	 *
+	 * @return int The post count target for the primary period.
+	 */
+	private function get_primary_target_post_count() {
+		return $this->get_target_posts_for_period($this->get_primary_distribution_period());
+	}
+
+	/**
+	 * Distributes target post counts across campaigns or authors based on defined shares.
+	 * 
+	 * @param array $weights Associative array of keys (campaign or author names) and their corresponding share weights.
+	 * @param int $target_total The total number of posts to distribute across the keys.
+	 * 
+	 * @return array Associative array of keys and the calculated number of posts to assign to each key based on their share weights.
+	 */
+	private function distribute_target_counts($weights, $target_total) {
+		$allocations = array();
+		$remainders = array();
+		$total_weight = array_sum($weights);
+		$assigned = 0;
+
+		foreach ($weights as $key => $weight) {
+			if ($total_weight <= 0) {
+				$allocations[$key] = 0;
+				$remainders[$key] = 0;
+				continue;
+			}
+
+			$raw_allocation = ($target_total * (float) $weight) / (float) $total_weight;
+			$base_allocation = (int) floor($raw_allocation);
+
+			$allocations[$key] = $base_allocation;
+			$remainders[$key] = $raw_allocation - $base_allocation;
+			$assigned += $base_allocation;
+		}
+
+		$remaining = (int) $target_total - $assigned;
+		arsort($remainders, SORT_NUMERIC);
+
+		foreach (array_keys($remainders) as $key) {
+			if ($remaining <= 0) {
+				break;
+			}
+
+			$allocations[$key]++;
+			$remaining--;
+		}
+
+		return $allocations;
+	}
+
+	/**
+	 * Calculates the target post counts for each campaign based on the defined campaign shares and the primary target post count for the distribution period. This method retrieves the campaign shares from the distribution configuration and uses the distribute_target_counts method to allocate the primary target post count across the campaigns according to their respective shares, resulting in a clear distribution of how many posts should be generated for each campaign within the content strategy for DevStackTips.
+	 * 
+	 * @return array Associative array of campaign names and the calculated number of posts to assign to each campaign based on their share weights.
+	 */
+	private function get_campaign_post_targets() {
+		$config = $this->get_distribution_config();
+		$shares = isset($config['campaign_shares']) ? $config['campaign_shares'] : array();
+
+		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
+	}
+
+	/**
+	 * Calculates the target post counts for each author based on their defined shares and the primary target post count.
+	 *
+	 * @return array Associative array of author names to their calculated post counts.
+	 */
+	private function get_author_post_targets() {
+		$config = $this->get_distribution_config();
+		$shares = isset($config['author_shares']) ? $config['author_shares'] : array();
+
+		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
+	}
+
+	/**
+	 * Formats any scalar or array value into a human-readable string for summary output.
+	 *
+	 * @param mixed $value The value to format (bool, array, or scalar).
+	 * @return string A display-safe string representation of the value.
+	 */
+	private function format_summary_value($value) {
+		if (is_bool($value)) {
+			return $value ? 'true' : 'false';
+		}
+
+		if (is_array($value)) {
+			return wp_json_encode($value);
+		}
+
+		$display_value = (string) $value;
+
+		return ($display_value === '') ? '(empty)' : $display_value;
+	}
+
+	/**
+	 * Compares two values for equality using serialized representations to handle arrays and objects.
+	 *
+	 * @param mixed $expected The expected value.
+	 * @param mixed $actual   The actual value to compare against.
+	 * @return bool True if the serialized forms are identical, false otherwise.
+	 */
+	private function values_match($expected, $actual) {
+		return maybe_serialize($expected) === maybe_serialize($actual);
+	}
+
+	/**
+	 * Outputs a prefixed status line to indicate success or warning for a given operation.
+	 *
+	 * @param bool   $is_ok   True to prefix with [OK], false to prefix with [WARN].
+	 * @param string $message The message to display.
+	 * @return void
+	 */
+	private function report_status($is_ok, $message) {
+		echo ($is_ok ? '[OK] ' : '[WARN] ') . $message . "\n";
+	}
+
+	/**
+	 * Updates a WordPress option and immediately retrieves the stored value for verification.
+	 *
+	 * @param string $option_name The WordPress option key to update.
+	 * @param mixed  $value       The value to store.
+	 * @return mixed The value retrieved from the database immediately after the update.
+	 */
+	private function update_option_and_return($option_name, $value) {
+		update_option($option_name, $value);
+
+		return get_option($option_name);
+	}
+
+	/**
+	 * Resolves the final value for a settings entry, supporting static values, structure lookups, and category lookups.
+	 *
+	 * @param array $entry      A settings entry array. May contain 'value', 'structure_name', or 'category_name'.
+	 * @param array $structures Map of structure names to their database IDs.
+	 * @param array $categories Map of category names to their term IDs.
+	 * @return mixed|null The resolved value, or null if the entry cannot be resolved.
+	 */
+	private function resolve_setting_entry_value($entry, $structures = array(), $categories = array()) {
+		if (array_key_exists('value', $entry)) {
+			return $entry['value'];
+		}
+
+		if (isset($entry['structure_name'])) {
+			return isset($structures[$entry['structure_name']]) ? $structures[$entry['structure_name']] : null;
+		}
+
+		if (isset($entry['category_name'])) {
+			return isset($categories[$entry['category_name']]) ? $categories[$entry['category_name']] : null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns the human-readable label for a settings entry, falling back to the option name.
+	 *
+	 * @param array $entry A settings entry array, optionally containing a 'label' key.
+	 * @return string The label string for display purposes.
+	 */
+	private function get_setting_entry_label($entry) {
+		return isset($entry['label']) ? $entry['label'] : $entry['option_name'];
+	}
+
+	/**
+	 * Returns all individual option entries from every settings section as a flat array.
+	 *
+	 * @return array Flat list of settings entry arrays, each containing at minimum an 'option_name' key.
+	 */
+	private function get_flattened_setting_entries() {
+		$entries = array();
+
+		foreach ($this->object_data['settings'] as $section) {
+			if (empty($section['options']) || !is_array($section['options'])) {
+				continue;
+			}
+
+			foreach ($section['options'] as $entry) {
+				$entries[] = $entry;
+			}
+		}
+
+		return $entries;
+	}
+
+	/**
+	 * Resolves all settings entries to their final values, omitting any that cannot be resolved.
+	 *
+	 * @param array $structures Map of structure names to their database IDs.
+	 * @param array $categories Map of category names to their term IDs.
+	 * @return array Associative array of option names to their resolved values.
+	 */
+	private function get_resolved_configured_settings($structures = array(), $categories = array()) {
+		$configured_settings = array();
+
+		foreach ($this->get_flattened_setting_entries() as $entry) {
+			$value = $this->resolve_setting_entry_value($entry, $structures, $categories);
+			if ($value === null) {
+				continue;
+			}
+
+			$configured_settings[$entry['option_name']] = $value;
+		}
+
+		return $configured_settings;
+	}
+
+	/**
+	 * Writes all configured plugin settings to the WordPress options table and reports the result of each write.
+	 *
+	 * @return void
+	 */
+	private function configure_settings() {
+		echo "<h2>Step 4: Configuring Plugin Settings</h2>\n";
+		$settings = $this->object_data['settings'];
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+
+		foreach ($settings as $section) {
+			$title = isset($section['title']) ? $section['title'] : 'Settings';
+			echo "<h3>" . esc_html($title) . "</h3>\n";
+
+			if (empty($section['options']) || !is_array($section['options'])) {
+				continue;
+			}
+
+			foreach ($section['options'] as $entry) {
+				$expected_value = $this->resolve_setting_entry_value($entry, $structures, $categories);
+				$label = $this->get_setting_entry_label($entry);
+				$warning_message = isset($entry['warning_message']) ? $entry['warning_message'] : '';
+
+				if ($expected_value === null) {
+					$this->report_status(false, 'Skipped ' . $label . ' because the configured source value could not be resolved');
+					continue;
+				}
+
+				$current_value = $this->update_option_and_return($entry['option_name'], $expected_value);
+				$is_saved = $this->values_match($expected_value, $current_value);
+
+				$this->report_status(
+					$is_saved,
+					'Set ' . $label . ' = <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+				);
+
+				if (!$is_saved) {
+					$this->report_status(
+						false,
+						'Expected <code>' . esc_html($this->format_summary_value($expected_value)) . '</code> but found <code>' . esc_html($this->format_summary_value($current_value)) . '</code>'
+					);
+				}
+
+				if ($warning_message !== '') {
+					$this->report_status(false, esc_html($warning_message));
+				}
+			}
+		}
+
+		$this->report_status(true, 'All plugin settings configured for production');
+	}
+
+	/**
+	 * Creates or registers all seed categories as WordPress taxonomy terms under 'category'.
+	 *
+	 * Existing categories with a matching slug are recorded rather than duplicated.
+	 *
+	 * @return void
+	 */
+	private function create_categories() {
+		echo "<h2>Step 1: Creating Categories</h2>\n";
+
+		foreach ($this->object_data['categories'] as $cat_data) {
+			$existing = term_exists($cat_data['slug'], 'category');
+			if (!$existing) {
+				$result = wp_insert_term($cat_data['name'], 'category', array(
+					'slug' => $cat_data['slug'],
+					'description' => $cat_data['description'],
+				));
+
+				if (!is_wp_error($result)) {
+					$this->created_items['categories'][] = array('id' => $result['term_id'], 'name' => $cat_data['name']);
+					echo "[OK] Created category: {$cat_data['name']}\n";
+				} else {
+					$this->errors[] = "Failed to create category: {$cat_data['name']} - " . $result->get_error_message();
+					echo "[ERR] Failed: {$cat_data['name']}\n";
+				}
+			} else {
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$this->created_items['categories'][] = array('id' => $term_id, 'name' => $cat_data['name']);
+				echo "[INFO] Category exists: {$cat_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed voices via the voices repository.
+	 *
+	 * Voices matched by name are updated in place; new voices are inserted.
+	 *
+	 * @return void
+	 */
+	private function create_voices() {
+		echo "<h2>Step 3: Creating Voices</h2>\n";
+
+		$voices_repo = new AIPS_Voices_Repository();
+		$voices = $this->object_data['voices'];
+		$existing_voices = array();
+
+		foreach ($voices_repo->get_all() as $existing_voice) {
+			if (!empty($existing_voice->name) && !empty($existing_voice->id)) {
+				$existing_voices[(string) $existing_voice->name] = (int) $existing_voice->id;
+			}
+		}
+
+		foreach ($voices as $voice_data) {
+			if (isset($existing_voices[$voice_data['name']])) {
+				$voice_id = $existing_voices[$voice_data['name']];
+				$voices_repo->update($voice_id, $voice_data);
+				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
+				echo "[INFO] Voice exists, updated: {$voice_data['name']}\n";
+				continue;
+			}
+
+			$voice_id = $voices_repo->create($voice_data);
+			if ($voice_id) {
+				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
+				echo "[OK] Created voice: {$voice_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create voice: {$voice_data['name']}";
+				echo "[ERR] Failed: {$voice_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed prompt sections and article structures via their respective repositories.
+	 *
+	 * Also sets the default article structure option when the 'Evergreen How-To Guide' is processed.
+	 *
+	 * @return void
+	 */
+	private function create_article_structures() {
+		echo "<h2>Step 4: Creating Article Structures</h2>\n";
+
+		$structure_repo = new AIPS_Article_Structure_Repository();
+		$section_repo = new AIPS_Prompt_Section_Repository();
+
+		foreach ($this->object_data['sections'] as $section_data) {
+			$existing = $section_repo->get_by_key($section_data['section_key']);
+			if (!$existing) {
+				$section_id = $section_repo->create($section_data);
+				if ($section_id) {
+					echo "[OK] Created section: {$section_data['name']}\n";
+				}
+			}
+		}
+
+		$existing_structures = array();
+		foreach ($structure_repo->get_all() as $existing_structure) {
+			if (!empty($existing_structure->name) && !empty($existing_structure->id)) {
+				$existing_structures[(string) $existing_structure->name] = (int) $existing_structure->id;
+			}
+		}
+
+		foreach ($this->object_data['structures'] as $structure_data) {
+			$structure_json = wp_json_encode(array(
+				'sections' => $structure_data['sections'],
+				'prompt_template' => '',
+			));
+
+			$structure_payload = array(
+				'name' => $structure_data['name'],
+				'description' => $structure_data['description'],
+				'structure_data' => $structure_json,
+				'is_active' => 1,
+			);
+
+			if (isset($existing_structures[$structure_data['name']])) {
+				$structure_id = $existing_structures[$structure_data['name']];
+				$structure_repo->update($structure_id, $structure_payload);
+				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
+				echo "[INFO] Structure exists, updated: {$structure_data['name']}\n";
+				continue;
+			}
+
+			$structure_id = $structure_repo->create($structure_payload);
+			if ($structure_id) {
+				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
+				if ($structure_data['name'] === 'Evergreen How-To Guide') {
+					update_option('aips_default_article_structure_id', (int) $structure_id);
+				}
+				echo "[OK] Created structure: {$structure_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
+				echo "[ERR] Failed: {$structure_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed authors, resolving their associated structure, category, and source group IDs.
+	 *
+	 * Author post and topic generation schedules are calculated from the current time.
+	 *
+	 * @return void
+	 */
+	private function create_authors() {
+		echo "<h2>Step 5: Creating Authors</h2>\n";
+
+		$authors_repo = new AIPS_Authors_Repository();
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$source_groups = $this->get_created_source_groups_by_name();
+		$interval_calc = AIPS_Interval_Calculator::instance();
+		$now = AIPS_DateTime::now()->timestamp();
+		$existing_authors = array();
+
+		foreach ($authors_repo->get_all() as $existing_author) {
+			if (!empty($existing_author->name) && !empty($existing_author->id)) {
+				$existing_authors[(string) $existing_author->name] = (int) $existing_author->id;
+			}
+		}
+
+		foreach ($this->object_data['authors'] as $author_data) {
+			$structure_id = isset($structures[$author_data['structure_name']]) ? $structures[$author_data['structure_name']] : null;
+			$post_category = isset($categories[$author_data['category_name']]) ? $categories[$author_data['category_name']] : 0;
+			$source_group_ids = array();
+			if (isset($author_data['source_group_name'], $source_groups[$author_data['source_group_name']])) {
+				$source_group_ids[] = $source_groups[$author_data['source_group_name']];
+			}
+
+			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now);
+			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now);
+
+			$author_payload = array(
+				'name' => $author_data['name'],
+				'field_niche' => $author_data['field_niche'],
+				'keywords' => $author_data['keywords'],
+				'description' => $author_data['description'],
+				'details' => $author_data['details'],
+				'article_structure_id' => $structure_id,
+				'voice_tone' => $author_data['voice_tone'],
+				'writing_style' => $author_data['writing_style'],
+				'target_audience' => $author_data['target_audience'],
+				'expertise_level' => $author_data['expertise_level'],
+				'content_goals' => $author_data['content_goals'],
+				'excluded_topics' => $author_data['excluded_topics'],
+				'preferred_content_length' => $author_data['preferred_content_length'],
+				'language' => 'en',
+				'post_status' => 'draft',
+				'post_category' => $post_category,
+				'post_author' => (get_current_user_id() > 0) ? get_current_user_id() : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author'),
+				'featured_image_source' => 'ai_prompt',
+				'topic_generation_frequency' => $author_data['topic_generation_frequency'],
+				'topic_generation_quantity' => $author_data['topic_generation_quantity'],
+				'topic_generation_next_run' => $topic_next_run,
+				'topic_generation_last_run' => 0,
+				'topic_generation_is_active' => 1,
+				'post_generation_frequency' => $author_data['post_generation_frequency'],
+				'post_generation_next_run' => $post_next_run,
+				'post_generation_last_run' => 0,
+				'post_generation_is_active' => 1,
+				'max_posts_per_topic' => $author_data['max_posts_per_topic'],
+				'manual_post_generation_quantity' => $author_data['manual_post_generation_quantity'],
+				'scheduled_post_generation_quantity' => $author_data['scheduled_post_generation_quantity'],
+				'include_sources' => isset($author_data['include_sources']) ? $author_data['include_sources'] : 0,
+				'source_group_ids' => wp_json_encode($source_group_ids),
+				'is_active' => $author_data['is_active'],
+				'created_at' => $now,
+				'updated_at' => $now,
+			);
+
+			if (isset($existing_authors[$author_data['name']])) {
+				$author_id = $existing_authors[$author_data['name']];
+				unset($author_payload['created_at']);
+				$updated = $authors_repo->update($author_id, $author_payload);
+
+				if ($updated !== false) {
+					$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
+					echo "[INFO] Author exists, updated: {$author_data['name']}\n";
+					continue;
+				}
+
+				$this->errors[] = "Failed to update author: {$author_data['name']}";
+				echo "[ERR] Failed to update author: {$author_data['name']}\n";
+				continue;
+			}
+
+			$author_id = $authors_repo->create($author_payload);
+
+			if ($author_id) {
+				$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
+				echo "[OK] Created author: {$author_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create author: {$author_data['name']}";
+				echo "[ERR] Failed: {$author_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed post slices via the post slices repository.
+	 *
+	 * @return void
+	 */
+	private function create_post_slices() {
+		echo "<h2>Step 6: Creating Post Slices</h2>\n";
+
+		$slices_repo = new AIPS_Post_Slices_Repository();
+		$now = AIPS_DateTime::now()->timestamp();
+		$existing_slices = array();
+
+		foreach ($slices_repo->get_all(false) as $existing_slice) {
+			if (!empty($existing_slice->name) && !empty($existing_slice->id)) {
+				$existing_slices[(string) $existing_slice->name] = (int) $existing_slice->id;
+			}
+		}
+
+		foreach ($this->object_data['post_slices'] as $slice_data) {
+			$slice_payload = array(
+				'name' => $slice_data['name'],
+				'description' => $slice_data['description'],
+				'sort_order' => $slice_data['sort_order'],
+				'is_active' => $slice_data['is_active'],
+				'updated_at' => $now,
+			);
+
+			if (isset($existing_slices[$slice_data['name']])) {
+				$slice_id = $existing_slices[$slice_data['name']];
+				$result = $slices_repo->update($slice_id, $slice_payload);
+
+				if ($result !== false) {
+					$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
+					echo "[INFO] Post slice exists, updated: {$slice_data['name']}\n";
+				} else {
+					$this->errors[] = "Failed to update post slice: {$slice_data['name']}";
+					echo "[ERR] Failed to update: {$slice_data['name']}\n";
+				}
+				continue;
+			}
+
+			$slice_payload['created_at'] = $now;
+
+			$slice_id = $slices_repo->create($slice_payload);
+
+			if ($slice_id) {
+				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
+				echo "[OK] Created post slice: {$slice_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create post slice: {$slice_data['name']}";
+				echo "[ERR] Failed: {$slice_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or registers all seed source groups as taxonomy terms, then creates their associated sources.
+	 *
+	 * Sources are skipped if a matching URL already exists in the repository.
+	 *
+	 * @return void
+	 */
+	private function create_source_groups() {
+		echo "<h2>Step 7: Creating Source Groups and Sources</h2>\n";
+
+		$sources_repo = new AIPS_Sources_Repository();
+		$group_ids = array();
+
+		foreach ($this->object_data['source_groups'] as $group_data) {
+			$existing = term_exists($group_data['slug'], 'aips_source_group');
+			if (!$existing) {
+				$result = wp_insert_term($group_data['name'], 'aips_source_group', array(
+					'slug' => $group_data['slug'],
+					'description' => $group_data['description'],
+				));
+
+				if (!is_wp_error($result)) {
+					$group_ids[$group_data['slug']] = $result['term_id'];
+					$this->created_items['source_groups'][] = array('id' => $result['term_id'], 'name' => $group_data['name']);
+					echo "[OK] Created source group: {$group_data['name']}\n";
+				}
+			} else {
+				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
+				$group_ids[$group_data['slug']] = $term_id;
+				$this->created_items['source_groups'][] = array('id' => $term_id, 'name' => $group_data['name']);
+				echo "[INFO] Source group exists: {$group_data['name']}\n";
+			}
+		}
+
+		foreach ($this->object_data['sources'] as $source_data) {
+			if (!isset($group_ids[$source_data['group_slug']])) {
+				continue;
+			}
+
+			if ($sources_repo->url_exists($source_data['url'])) {
+				echo "  [INFO] Source exists (URL): {$source_data['name']}\n";
+				continue;
+			}
+
+			$source_id = $sources_repo->create(array(
+				'url' => $source_data['url'],
+				'label' => $source_data['name'],
+				'is_active' => $source_data['is_active'],
+			));
+
+			if ($source_id) {
+				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
+				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
+				echo "[OK] Created source: {$source_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create source: {$source_data['name']}";
+				echo "[ERR] Failed: {$source_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed campaigns via the campaigns repository.
+	 *
+	 * @return void
+	 */
+	private function create_campaigns() {
+		echo "<h2>Step 8: Creating Campaigns</h2>\n";
+
+		$campaigns_repo = new AIPS_Campaigns_Repository();
+		$existing_campaigns = array();
+
+		foreach ($campaigns_repo->get_campaigns(null, null) as $existing_campaign) {
+			if (!empty($existing_campaign->name) && !empty($existing_campaign->id)) {
+				$existing_campaigns[(string) $existing_campaign->name] = (int) $existing_campaign->id;
+			}
+		}
+
+		foreach ($this->object_data['campaigns'] as $campaign_data) {
+			$campaign_id = 0;
+
+			if (isset($existing_campaigns[$campaign_data['name']])) {
+				$campaign_id = (int) $existing_campaigns[$campaign_data['name']];
+				$updated = $campaigns_repo->update_campaign($campaign_id, array(
+					'content_goal' => $campaign_data['content_goal'],
+					'campaign_mode' => 'template',
+					'is_active' => 1,
+					'is_archived' => 0,
+				));
+
+				if (is_wp_error($updated)) {
+					$this->errors[] = "Failed to update campaign: {$campaign_data['name']}";
+					echo "[ERR] Failed to update campaign: {$campaign_data['name']}\n";
+					continue;
+				}
+
+				echo "[INFO] Campaign exists, updated: {$campaign_data['name']}\n";
+			} else {
+				$campaign_id = $campaigns_repo->create_campaign(array(
+					'name' => $campaign_data['name'],
+					'content_goal' => $campaign_data['content_goal'],
+					'campaign_mode' => 'template',
+					'is_active' => 1,
+					'is_archived' => 0,
+				));
+			}
+
+			if ($campaign_id) {
+				$this->created_items['campaigns'][] = array('id' => $campaign_id, 'name' => $campaign_data['name']);
+				if (!isset($existing_campaigns[$campaign_data['name']])) {
+					echo "[OK] Created campaign: {$campaign_data['name']}\n";
+				}
+
+				echo "  Topics to assign:\n";
+				$topics_array = explode("\n", $campaign_data['topics']);
+				foreach (array_slice($topics_array, 0, 3) as $topic) {
+					echo "    - {$topic}\n";
+				}
+				echo "    ... and " . (count($topics_array) - 3) . " more\n";
+			} else {
+				$this->errors[] = "Failed to create campaign: {$campaign_data['name']}";
+				echo "[ERR] Failed: {$campaign_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed templates, resolving voice, structure, campaign, category, and source group IDs.
+	 *
+	 * Templates with a missing campaign are skipped and logged as errors.
+	 *
+	 * @return void
+	 */
+	private function create_templates() {
+		echo "<h2>Step 9: Creating Templates</h2>\n";
+
+		$template_repo = new AIPS_Template_Repository();
+		$voices = $this->get_created_voices_by_name();
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$source_groups = $this->get_created_source_groups_by_name();
+		$campaigns = $this->get_created_campaigns_by_name();
+		$default_post_author = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author');
+		$current_user_id = (int) get_current_user_id();
+		$post_author = $current_user_id > 0 ? $current_user_id : $default_post_author;
+		$existing_templates = array();
+
+		foreach ($template_repo->get_all() as $existing_template) {
+			if (!empty($existing_template->name) && !empty($existing_template->id)) {
+				$existing_templates[(string) $existing_template->name] = (int) $existing_template->id;
+			}
+		}
+
+		foreach ($this->object_data['templates'] as $template_data) {
+			$voice_id = isset($voices[$template_data['voice_name']]) ? $voices[$template_data['voice_name']] : null;
+			$structure_id = isset($structures[$template_data['structure_name']]) ? $structures[$template_data['structure_name']] : null;
+			$campaign_id = isset($template_data['campaign_name'], $campaigns[$template_data['campaign_name']]) ? $campaigns[$template_data['campaign_name']] : 0;
+
+			if (empty($campaign_id)) {
+				$this->errors[] = "Campaign not found for template: {$template_data['name']} ({$template_data['campaign_name']})";
+				echo "[ERR] Campaign not found for template: {$template_data['name']}\n";
+				continue;
+			}
+
+			$category_ids = array();
+			if (isset($template_data['categories'])) {
+				foreach ($template_data['categories'] as $cat_name) {
+					if (isset($categories[$cat_name])) {
+						$category_ids[] = $categories[$cat_name];
+					}
+				}
+			}
+
+			$source_group_ids = array();
+			if (isset($template_data['source_group']) && isset($source_groups[$template_data['source_group']])) {
+				$source_group_ids[] = $source_groups[$template_data['source_group']];
+			}
+
+			$template_payload = array(
+				'name' => $template_data['name'],
+				'prompt_template' => $template_data['prompt_template'],
+				'title_prompt' => 'Generate a concise, specific, SEO-friendly technical post title for this topic.',
+				'voice_id' => $voice_id,
+				'article_structure_id' => $structure_id,
+				'post_quantity' => isset($template_data['post_quantity']) ? $template_data['post_quantity'] : 1,
+				'post_status' => 'draft',
+				'post_type' => 'post',
+				'post_category' => !empty($category_ids) ? $category_ids[0] : 0,
+				'post_tags' => isset($template_data['post_tags']) ? $template_data['post_tags'] : '',
+				'post_author' => $post_author,
+				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
+				'featured_image_source' => isset($template_data['featured_image_source']) ? $template_data['featured_image_source'] : 'ai_prompt',
+				'image_prompt' => isset($template_data['image_prompt']) ? $template_data['image_prompt'] : '',
+				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
+				'include_sources' => isset($template_data['include_sources']) ? (int) $template_data['include_sources'] : 0,
+				'source_group_ids' => wp_json_encode($source_group_ids),
+				'campaign_id' => $campaign_id,
+				'is_active' => 1,
+			);
+
+			if (isset($existing_templates[$template_data['name']])) {
+				$template_id = $existing_templates[$template_data['name']];
+				$template_repo->update($template_id, $template_payload);
+				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
+				echo "[INFO] Template exists, updated: {$template_data['name']}\n";
+				continue;
+			}
+
+			$template_id = $template_repo->create($template_payload);
+			if ($template_id) {
+				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
+				echo "[OK] Created template: {$template_data['name']}\n";
+			} else {
+				$this->errors[] = "Failed to create template: {$template_data['name']}";
+				echo "[ERR] Failed: {$template_data['name']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Creates or updates all seed schedules, resolving each schedule's template ID and calculating the next run timestamp.
+	 *
+	 * Schedules whose template cannot be found are skipped and logged as errors.
+	 *
+	 * @return void
+	 */
+	private function create_schedules() {
+		echo "<h2>Step 10: Creating Schedules</h2>\n";
+
+		$schedule_repo = new AIPS_Schedule_Repository();
+		$templates = $this->get_created_templates_by_name();
+		$existing_schedules = array();
+
+		foreach ($schedule_repo->get_all(false) as $existing_schedule) {
+			if (!empty($existing_schedule->title) && !empty($existing_schedule->id)) {
+				$existing_schedules[(string) $existing_schedule->title] = (int) $existing_schedule->id;
+			}
+		}
+
+		foreach ($this->object_data['schedules'] as $schedule_data) {
+			if (!isset($templates[$schedule_data['template_name']])) {
+				$this->errors[] = "Template not found for schedule: {$schedule_data['title']}";
+				echo "[ERR] Template not found: {$schedule_data['template_name']}\n";
+				continue;
+			}
+
+			$template_id = $templates[$schedule_data['template_name']];
+			$next_run = $this->get_next_weekday_timestamp(
+				isset($schedule_data['weekday']) ? (int) $schedule_data['weekday'] : 1,
+				$schedule_data['start_time']
+			);
+
+			$schedule_payload = array(
+				'template_id' => $template_id,
+				'title' => $schedule_data['title'],
+				'frequency' => $schedule_data['frequency'],
+				'next_run' => $next_run,
+				'is_active' => $schedule_data['is_active'],
+				'status' => !empty($schedule_data['is_active']) ? 'active' : 'inactive',
+				'schedule_type' => 'post_generation',
+			);
+
+			if (isset($existing_schedules[$schedule_data['title']])) {
+				$schedule_id = $existing_schedules[$schedule_data['title']];
+				$result = $schedule_repo->update($schedule_id, $schedule_payload);
+				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
+
+				if ($result) {
+					$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
+					echo "[INFO] Schedule exists, updated: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
+				} else {
+					$this->errors[] = "Failed to update schedule: {$schedule_data['title']}";
+					echo "[ERR] Failed to update: {$schedule_data['title']}\n";
+				}
+				continue;
+			}
+
+			$schedule_payload['last_run'] = 0;
+
+			$schedule_id = $schedule_repo->create($schedule_payload);
+
+			if ($schedule_id) {
+				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
+				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
+				echo "[OK] Created schedule: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
+			} else {
+				$this->errors[] = "Failed to create schedule: {$schedule_data['title']}";
+				echo "[ERR] Failed: {$schedule_data['title']}\n";
+			}
+		}
+	}
+
+	/**
+	 * Calculate the timestamp for the next occurrence of a specific weekday and time.
+	 * 
+	 * @param int $iso_weekday 1 (Monday) to 7 (Sunday)
+	 * @param string $time_hhmm Time in "HH:MM" format (24-hour)
+	 * 
+	 * @return int Unix timestamp for the next occurrence of that weekday and time, relative to the current time in the site's timezone.
+	 */
+	private function get_next_weekday_timestamp($iso_weekday, $time_hhmm) {
+		$iso_weekday = max(1, min(7, (int) $iso_weekday));
+		$time_hhmm = preg_match('/^\d{2}:\d{2}$/', (string) $time_hhmm) ? (string) $time_hhmm : '09:00';
+
+		$site_tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone(get_option('timezone_string') ?: 'UTC');
+		$now = new DateTimeImmutable('now', $site_tz);
+
+		$days_ahead = $iso_weekday - (int) $now->format('N');
+		if ($days_ahead < 0) {
+			$days_ahead += 7;
+		}
+
+		$candidate = $now->modify('+' . $days_ahead . ' days')->setTime((int) substr($time_hhmm, 0, 2), (int) substr($time_hhmm, 3, 2));
+
+		if ($candidate->getTimestamp() <= $now->getTimestamp()) {
+			$candidate = $candidate->modify('+7 days');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	/**
+	 * Returns the seed data array for all plugin settings, organized into labeled sections.
+	 *
+	 * Each section contains a 'title' and an 'options' array of setting entries. An entry may
+	 * specify a static 'value', a 'structure_name' reference, or a 'category_name' reference.
+	 *
+	 * @return array Associative array of section keys to section data arrays.
+	 */
+	private function get_settings_seed_data() {
+		return array(
+			'content_strategy' => array(
+				'title' => 'Content Strategy',
+				'options' => array(
+					array(
+						'option_name' => 'aips_site_niche',
+						'value' => 'Full-Stack Software Development, Web Architecture',
+					),
+					array(
+						'option_name' => 'aips_site_target_audience',
+						'value' => 'Professional Software Engineers, Web Developers (Mid to Senior Level)',
+					),
+					array(
+						'option_name' => 'aips_site_content_goals',
+						'value' => 'Provide authoritative technical deep-dives, establish industry credibility, drive affiliate revenue via trusted/actionable recommendations, and rank for high-value "how-to" and "best practice" keywords.',
+					),
+					array(
+						'option_name' => 'aips_site_brand_voice',
+						'value' => 'Authoritative yet approachable, Professional, expert-level',
+					),
+					array(
+						'option_name' => 'aips_site_content_language',
+						'value' => 'en',
+					),
+					array(
+						'option_name' => 'aips_site_content_guidelines',
+						'value' => 'Minimum 5-10 paragraphs depending on topic. Use H2/H3 hierarchy. Mandatory: brief hyperlinked a "Sources" section. Break code into small, explained chunks. Security focus. Always emphasize "real-world" patterns.',
+					),
+					array(
+						'option_name' => 'aips_site_excluded_topics',
+						'value' => 'Politics, religion, celebrity gossip, gambling, adult content, clickbait/listicles with no technical depth ("get rich quick" schemes, unverified rumors/hacks about hardware, non-technical software (e.g., Word/Excel), and general consumer electronics reviews.',
+					),
+				),
+			),
+			'resilience_settings' => array(
+				'title' => 'Resilience & Limits (Production Settings)',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_retry',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_retry_max_attempts',
+						'value' => 3,
+					),
+					array(
+						'option_name' => 'aips_retry_initial_delay',
+						'value' => 2,
+					),
+					array(
+						'option_name' => 'aips_enable_rate_limiting',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_rate_limit_requests',
+						'value' => 20,
+					),
+					array(
+						'option_name' => 'aips_rate_limit_period',
+						'value' => 60,
+					),
+					array(
+						'option_name' => 'aips_enable_circuit_breaker',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_circuit_breaker_threshold',
+						'value' => 5,
+					),
+					array(
+						'option_name' => 'aips_circuit_breaker_timeout',
+						'value' => 300,
+					),
+				),
+			),
+			'default_article_structure' => array(
+				'title' => 'Default Article Structure',
+				'options' => array(
+					array(
+						'option_name' => 'aips_default_article_structure_id',
+						'structure_name' => 'Evergreen How-To Guide',
+						'label' => 'default article structure: Evergreen How-To Guide',
+					),
+				),
+			),
+			'notification_preferences' => array(
+				'title' => 'Notification Preferences',
+				'options' => array(
+					array(
+						'option_name' => 'aips_review_notifications_email',
+						'value' => '',
+						'warning_message' => 'Please add notification email in Settings > Notifications',
+					),
+					array(
+						'option_name' => 'aips_notification_preferences',
+						'value' => array(
+							'generation_failed' => 'email',
+							'quota_alert' => 'email',
+							'post_ready_for_review' => 'both',
+							'template_generated' => 'db',
+							'manual_generation_completed' => 'db',
+							'partial_generation_completed' => 'both',
+							'author_topics_generated' => 'db',
+							'author_topics_failed' => 'email',
+							'author_posts_generated' => 'db',
+							'author_posts_failed' => 'email',
+							'bulk_batch_completed' => 'db',
+							'errors' => 'email',
+							'daily_digest' => 'email',
+							'weekly_digest' => 'email',
+							'monthly_digest' => 'email',
+						),
+					),
+				),
+			),
+			'research_and_discovery' => array(
+				'title' => 'Research & Discovery',
+				'options' => array(
+					array(
+						'option_name' => 'aips_research_niches',
+						'value' => array(
+							'PHP and Backend Development Trends',
+							'Application Security and Vulnerability Prevention',
+							'Modern Framework Comparisons (Laravel, Symfony, etc.)',
+							'DevOps Tools and Automation',
+							'AI Tools for Developers',
+							'Database Optimization and Best Practices',
+							'Software Architecture Patterns',
+							'API Design and Integration',
+						),
+					),
+					array(
+						'option_name' => 'aips_topic_similarity_threshold',
+						'value' => 0.75,
+					),
+				),
+			),
+			'featured_images' => array(
+				'title' => 'Featured Images',
+				'options' => array(
+					array(
+						'option_name' => 'aips_unsplash_access_key',
+						'value' => '',
+						'warning_message' => 'Please add Unsplash Access Key in Settings if using Unsplash images',
+					),
+				),
+			),
+			'performance_monitoring' => array(
+				'title' => 'Performance Monitoring',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_telemetry',
+						'value' => true,
+					),
+				),
+			),
+			'cache_configuration' => array(
+				'title' => 'Cache Configuration',
+				'options' => array(
+					array(
+						'option_name' => 'aips_enable_cache_system',
+						'value' => false,
+					),
+				),
+			),
+			'log_management' => array(
+				'title' => 'Log Management',
+				'options' => array(
+					array(
+						'option_name' => 'aips_log_retention_days',
+						'value' => 60,
+					),
+				),
+			),
+			'default_post_settings' => array(
+				'title' => 'Default Post Settings',
+				'options' => array(
+					array(
+						'option_name' => 'aips_default_post_status',
+						'value' => 'draft',
+					),
+					array(
+						'option_name' => 'aips_default_category',
+						'category_name' => 'Backend Development',
+						'label' => 'default category: Backend Development',
+					),
+					array(
+						'option_name' => 'aips_default_post_author',
+						'value' => 1,
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all WordPress categories to create.
+	 *
+	 * @return array List of category data arrays, each with 'name', 'slug', and 'description' keys.
+	 */
+	private function get_category_seed_data() {
+		return array(
+			array(
+				'name' => 'Backend Development',
+				'slug' => 'backend-development',
+				'description' => 'Server-side programming, APIs, databases, and backend architecture',
+			),
+			array(
+				'name' => 'Security',
+				'slug' => 'security',
+				'description' => 'Application security, vulnerabilities, and secure coding practices',
+			),
+			array(
+				'name' => 'DevOps & Tools',
+				'slug' => 'devops-tools',
+				'description' => 'Developer tools, workflows, Git, Docker, and automation',
+			),
+			array(
+				'name' => 'Framework Guides',
+				'slug' => 'framework-guides',
+				'description' => 'Framework tutorials and comparisons',
+			),
+			array(
+				'name' => 'AI for Developers',
+				'slug' => 'ai-for-developers',
+				'description' => 'Practical AI tools and workflows for software development',
+			),
+			array(
+				'name' => 'PHP Development',
+				'slug' => 'php-development',
+				'description' => 'PHP tutorials, patterns, and best practices',
+			),
+			array(
+				'name' => 'Database',
+				'slug' => 'database',
+				'description' => 'SQL, database design, optimization, and management',
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all writing voices to create.
+	 *
+	 * @return array List of voice data arrays with 'name', 'title_prompt', 'content_instructions', 'excerpt_instructions', and 'is_active' keys.
+	 */
+	private function get_voice_seed_data() {
+		return array(
+			array(
+				'name' => 'DevStackTips Default',
+				'title_prompt' => 'Create a clear, technical, and specific title for this topic. Avoid generic phrases like "ultimate guide" or "everything you need to know". Make it actionable and developer-focused.',
+				'content_instructions' => ['You are writing for software developers and technical readers on DevStackTips, a practical developer resource site.',
+					'Writing style:',
+					'- Be clear and concrete',
+					'- Use short paragraphs and informative headings',
+					'- Prefer practical examples over abstract explanations',
+					'- Be technically confident but not arrogant',
+					'- Avoid hype, filler, and exaggerated claims',
+					'- Never mention being an AI',
+					'- Do not use phrases like "ultimate guide" or "game-changing"',
+					'Content approach:',
+					'- Focus on what developers need to know',
+					'- Include code examples where relevant',
+					'- Explain the "why" behind recommendations',
+					'- Be honest about tradeoffs and limitations',
+					'- Use active voice',
+					'- Keep intros brief and get to the point quickly',
+
+					'Avoid:',
+					'- Marketing language or sales pitches',
+					'- Generic filler sentences',
+					'- Inventing statistics or benchmarks',
+					'- Making version-specific claims without verification',
+					'- Overly broad generalizations',
+				],
+				'excerpt_instructions' => 'Write a concise 1-2 sentence summary that captures the core value for developers.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Senior Backend Mentor',
+				'title_prompt' => 'Create a title that emphasizes the architectural or design aspect. Use terms like "patterns", "strategies", "best practices", or "architecture".',
+				'content_instructions' => 'You are a senior backend engineer mentoring developers through DevStackTips.
+
+				Writing approach:
+				- Explain not just what to do, but WHY
+				- Highlight tradeoffs, limitations, and common mistakes
+				- Emphasize maintainability, reliability, and security
+				- Share practical wisdom from real-world experience
+				- Be opinionated but fair
+
+				Content structure:
+				- Start with the problem or context
+				- Explain the reasoning behind solutions
+				- Include "when to use" and "when NOT to use" guidance
+				- Point out anti-patterns and pitfalls
+				- Focus on long-term consequences of design decisions
+
+				Technical depth:
+				- Assume intermediate to advanced knowledge
+				- Use precise technical terminology
+				- Explain edge cases and failure scenarios
+				- Discuss performance and security implications
+				- Reference architectural principles when relevant
+
+				Avoid:
+				- Oversimplifying complex topics
+				- Presenting one approach as universally correct
+				- Ignoring operational concerns
+				- Theoretical-only advice without practical application',
+				'excerpt_instructions' => 'Highlight the key architectural insight or tradeoff discussed.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Hands-On Tutorial Coach',
+				'title_prompt' => 'Create a "How to..." title that clearly states what the reader will accomplish. Be specific about the outcome.',
+				'content_instructions' => 'You are a patient, practical tutorial instructor helping developers learn by doing.
+
+				Teaching style:
+				- Break complex tasks into clear sequential steps
+				- Assume readers want to apply this immediately
+				- Be encouraging without being condescending
+				- Explain each step\'s purpose
+				- Anticipate where learners might get stuck
+
+				Content structure:
+				- Start with what the reader will build/learn
+				- List prerequisites clearly
+				- Number steps sequentially
+				- Include validation checkpoints
+				- Show expected output at each stage
+				- Provide troubleshooting tips
+
+				Code and examples:
+				- Include complete, working code samples
+				- Explain what each code block does
+				- Use comments in code where helpful
+				- Show before/after comparisons
+				- Provide copy-paste ready snippets
+
+				Tone:
+				- Friendly and approachable
+				- Direct and action-oriented
+				- Patient with beginners
+				- Practical over theoretical
+				- Focus on getting it working first, optimization second',
+				'excerpt_instructions' => 'Describe what the reader will be able to do after following this tutorial.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Neutral Technical Analyst',
+				'title_prompt' => 'Create a balanced comparison title using "vs" or "Comparing". Avoid suggesting one option is superior.',
+				'content_instructions' => 'You are an objective technical analyst comparing tools, frameworks, and approaches for developers.
+
+					Comparison approach:
+					- Present options fairly and without bias
+					- Acknowledge that different contexts require different solutions
+					- Use structured comparison frameworks
+					- Focus on objective criteria
+					- Avoid declaring universal winners
+
+					Content structure:
+					- Start with clear comparison criteria
+					- Present strengths and weaknesses of each option
+					- Include comparison tables where appropriate
+					- Discuss ideal use cases for each
+					- Address migration/switching considerations
+
+					Analysis style:
+					- Evidence-based over opinion-based
+					- Acknowledge trade-offs explicitly
+					- Consider multiple perspectives
+					- Discuss real-world constraints
+					- Address both technical and practical factors
+
+					What to avoid:
+					- Fanboy enthusiasm or bashing
+					- Ignoring legitimate use cases
+					- Outdated information presented as current
+					- Oversimplifying nuanced differences
+					- Personal preference disguised as objective analysis',
+				'excerpt_instructions' => 'Summarize the key differences and when to choose each option.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'AI Engineering Editor',
+				'title_prompt' => 'Create a title that addresses AI tools or workflows pragmatically. Include "for Developers" or "in Development" to keep focus practical.',
+				'content_instructions' => 'You are writing about AI tools and practices for developers, with both enthusiasm and appropriate caution.
+
+				Content approach:
+				- Avoid AI hype and exaggeration
+				- Focus on practical developer use cases
+				- Address accuracy, risks, and evaluation methods
+				- Discuss governance and quality control
+				- Balance opportunity with realistic limitations
+
+				Technical coverage:
+				- Explain how AI tools fit into developer workflows
+				- Discuss prompt engineering practically
+				- Cover evaluation and testing approaches
+				- Address when NOT to use AI
+				- Include human review checkpoints
+
+				Tone:
+				- Pragmatic and grounded
+				- Current but not breathless
+				- Honest about limitations
+				- Security and quality conscious
+				- Focus on sustainable practices
+
+				Critical areas to address:
+				- Accuracy and hallucination risks
+				- Code review requirements
+				- Privacy and security implications
+				- Cost considerations
+				- When traditional approaches are better
+				- Responsible AI practices',
+				'excerpt_instructions' => 'Emphasize both the benefits and limitations of the AI approach discussed.',
+				'is_active' => 1,
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all prompt sections to create.
+	 *
+	 * @return array Associative array keyed by section_key, each value containing 'name', 'section_key', 'description', 'content', and 'is_active' keys.
+	 */
+	private function get_section_seed_data() {
+		return array(
+			'introduction' => array(
+				'name' => 'Introduction',
+				'section_key' => 'introduction',
+				'description' => 'Opening section that establishes context and relevance',
+				'content' => 'Start with a brief introduction explaining why this topic matters to developers. Keep it concise and focused on practical relevance.',
+				'is_active' => 1,
+			),
+			'what_youll_learn' => array(
+				'name' => 'What You\'ll Learn',
+				'section_key' => 'what_youll_learn',
+				'description' => 'Learning objectives section',
+				'content' => 'List 3-5 specific things the reader will learn or be able to do after reading this article.',
+				'is_active' => 1,
+			),
+			'prerequisites' => array(
+				'name' => 'Prerequisites',
+				'section_key' => 'prerequisites',
+				'description' => 'Required knowledge and setup',
+				'content' => 'List any required knowledge, tools, or setup needed before following this tutorial.',
+				'is_active' => 1,
+			),
+			'core_concepts' => array(
+				'name' => 'Core Concepts',
+				'section_key' => 'core_concepts',
+				'description' => 'Fundamental concepts overview',
+				'content' => 'Explain the fundamental concepts readers need to understand. Define key terms and provide context.',
+				'is_active' => 1,
+			),
+			'step_by_step' => array(
+				'name' => 'Step-by-Step Instructions',
+				'section_key' => 'step_by_step',
+				'description' => 'Sequential implementation steps',
+				'content' => 'Provide numbered, sequential steps. For each step, explain what to do, why, and what the expected result is.',
+				'is_active' => 1,
+			),
+			'code_examples' => array(
+				'name' => 'Code Examples',
+				'section_key' => 'code_examples',
+				'description' => 'Working code samples',
+				'content' => 'Include complete, working code examples with explanations. Use code blocks with proper syntax highlighting.',
+				'is_active' => 1,
+			),
+			'common_mistakes' => array(
+				'name' => 'Common Mistakes',
+				'section_key' => 'common_mistakes',
+				'description' => 'Pitfalls to avoid',
+				'content' => 'List 3-5 common mistakes developers make with this approach, and how to avoid them.',
+				'is_active' => 1,
+			),
+			'best_practices' => array(
+				'name' => 'Best Practices',
+				'section_key' => 'best_practices',
+				'description' => 'Recommended approaches',
+				'content' => 'Share best practices and recommendations for production use.',
+				'is_active' => 1,
+			),
+			'when_to_use' => array(
+				'name' => 'When to Use / When Not to Use',
+				'section_key' => 'when_to_use',
+				'description' => 'Use case guidance',
+				'content' => 'Explain when this approach is ideal and when alternatives should be considered. Be honest about limitations.',
+				'is_active' => 1,
+			),
+			'conclusion' => array(
+				'name' => 'Conclusion',
+				'section_key' => 'conclusion',
+				'description' => 'Summary and next steps',
+				'content' => 'Summarize key takeaways and suggest next steps for further learning.',
+				'is_active' => 1,
+			),
+			'faq' => array(
+				'name' => 'FAQ',
+				'section_key' => 'faq',
+				'description' => 'Frequently asked questions',
+				'content' => 'Answer 3-5 common questions related to this topic.',
+				'is_active' => 1,
+			),
+			'problem_statement' => array(
+				'name' => 'Problem Statement',
+				'section_key' => 'problem_statement',
+				'description' => 'Define the problem being solved',
+				'content' => 'Clearly define the problem or challenge this approach addresses.',
+				'is_active' => 1,
+			),
+			'technical_context' => array(
+				'name' => 'Technical Context',
+				'section_key' => 'technical_context',
+				'description' => 'Background and context',
+				'content' => 'Provide technical background and context needed to understand the solution.',
+				'is_active' => 1,
+			),
+			'implementation_strategy' => array(
+				'name' => 'Implementation Strategy',
+				'section_key' => 'implementation_strategy',
+				'description' => 'Overall approach',
+				'content' => 'Outline the overall implementation strategy before diving into details.',
+				'is_active' => 1,
+			),
+			'performance_considerations' => array(
+				'name' => 'Performance Considerations',
+				'section_key' => 'performance_considerations',
+				'description' => 'Performance implications',
+				'content' => 'Discuss performance implications, optimization opportunities, and scalability concerns.',
+				'is_active' => 1,
+			),
+			'security_considerations' => array(
+				'name' => 'Security Considerations',
+				'section_key' => 'security_considerations',
+				'description' => 'Security implications',
+				'content' => 'Address security implications, risks, and secure coding practices.',
+				'is_active' => 1,
+			),
+			'testing_validation' => array(
+				'name' => 'Testing / Validation',
+				'section_key' => 'testing_validation',
+				'description' => 'How to test and validate',
+				'content' => 'Explain how to test and validate the implementation.',
+				'is_active' => 1,
+			),
+			'operational_tips' => array(
+				'name' => 'Operational Tips',
+				'section_key' => 'operational_tips',
+				'description' => 'Production operation guidance',
+				'content' => 'Provide operational guidance for running this in production (monitoring, logging, debugging).',
+				'is_active' => 1,
+			),
+			'comparison_overview' => array(
+				'name' => 'Overview',
+				'section_key' => 'comparison_overview',
+				'description' => 'Comparison introduction',
+				'content' => 'Introduce both options being compared and the criteria for comparison.',
+				'is_active' => 1,
+			),
+			'quick_summary_table' => array(
+				'name' => 'Quick Summary Table',
+				'section_key' => 'quick_summary_table',
+				'description' => 'At-a-glance comparison',
+				'content' => 'Create a comparison table with key features side-by-side.',
+				'is_active' => 1,
+			),
+			'option_a' => array(
+				'name' => 'What Option A Is',
+				'section_key' => 'option_a',
+				'description' => 'First option overview',
+				'content' => 'Explain what the first option is, its history, and core features.',
+				'is_active' => 1,
+			),
+			'option_b' => array(
+				'name' => 'What Option B Is',
+				'section_key' => 'option_b',
+				'description' => 'Second option overview',
+				'content' => 'Explain what the second option is, its history, and core features.',
+				'is_active' => 1,
+			),
+			'developer_experience' => array(
+				'name' => 'Developer Experience',
+				'section_key' => 'developer_experience',
+				'description' => 'DX comparison',
+				'content' => 'Compare the developer experience, learning curve, and documentation quality.',
+				'is_active' => 1,
+			),
+			'ecosystem_community' => array(
+				'name' => 'Ecosystem / Community',
+				'section_key' => 'ecosystem_community',
+				'description' => 'Community and ecosystem',
+				'content' => 'Compare community size, available packages/plugins, and ecosystem maturity.',
+				'is_active' => 1,
+			),
+			'use_cases' => array(
+				'name' => 'Best Use Cases',
+				'section_key' => 'use_cases',
+				'description' => 'Recommended use cases',
+				'content' => 'Describe the ideal use cases for each option.',
+				'is_active' => 1,
+			),
+			'recommendation' => array(
+				'name' => 'Final Recommendation',
+				'section_key' => 'recommendation',
+				'description' => 'Summary and guidance',
+				'content' => 'Provide balanced recommendations based on different scenarios and requirements.',
+				'is_active' => 1,
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all article structures to create.
+	 *
+	 * @return array List of structure data arrays, each with 'name', 'description', and 'sections' (ordered array of section_key strings) keys.
+	 */
+	private function get_structure_seed_data() {
+		return array(
+			array(
+				'name' => 'Evergreen How-To Guide',
+				'description' => 'For foundational tutorials and step-by-step guides',
+				'sections' => array('introduction', 'what_youll_learn', 'prerequisites', 'core_concepts', 'step_by_step', 'code_examples', 'common_mistakes', 'best_practices', 'when_to_use', 'conclusion', 'faq'),
+			),
+			array(
+				'name' => 'Advanced Technical Tutorial',
+				'description' => 'For deeper backend, security, and DevOps content',
+				'sections' => array('problem_statement', 'technical_context', 'prerequisites', 'implementation_strategy', 'step_by_step', 'code_examples', 'performance_considerations', 'security_considerations', 'testing_validation', 'operational_tips', 'conclusion'),
+			),
+			array(
+				'name' => 'Comparison Article',
+				'description' => 'For framework, tool, and approach comparisons',
+				'sections' => array('comparison_overview', 'quick_summary_table', 'option_a', 'option_b', 'developer_experience', 'performance_considerations', 'ecosystem_community', 'use_cases', 'recommendation'),
+			),
+			array(
+				'name' => 'Architecture Deep Dive',
+				'description' => 'For design patterns and system architecture topics',
+				'sections' => array('problem_statement', 'core_concepts', 'technical_context', 'implementation_strategy', 'best_practices', 'common_mistakes', 'use_cases', 'conclusion'),
+			),
+			array(
+				'name' => 'Security Best Practices',
+				'description' => 'For security-focused content',
+				'sections' => array('problem_statement', 'security_considerations', 'best_practices', 'code_examples', 'testing_validation', 'operational_tips', 'conclusion'),
+			),
+			array(
+				'name' => 'Tool / Workflow Explainer',
+				'description' => 'For Git, Composer, Docker, CI/CD, SSH, etc.',
+				'sections' => array('introduction', 'core_concepts', 'step_by_step', 'code_examples', 'common_mistakes', 'best_practices', 'conclusion'),
+			),
+			array(
+				'name' => 'AI-for-Devs Article',
+				'description' => 'For AI workflow and tooling content',
+				'sections' => array('problem_statement', 'best_practices', 'code_examples', 'use_cases', 'security_considerations', 'when_to_use', 'conclusion'),
+			),
+			array(
+				'name' => 'News / Trend Analysis',
+				'description' => 'For timely technical analysis',
+				'sections' => array('introduction', 'technical_context', 'use_cases', 'recommendation', 'conclusion'),
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all authors to create, with scheduled post quantities derived from distribution targets.
+	 *
+	 * @return array List of author data arrays containing profile, generation frequency, and quantity fields.
+	 */
+	private function get_author_seed_data() {
+		$authors = array(
+			array(
+				'name' => 'Backend Architecture Specialist',
+				'field_niche' => 'Backend Development, System Architecture, API Design',
+				'keywords' => 'API design, microservices, system architecture, scalability, caching, database optimization',
+				'description' => 'Senior backend engineer focused on API design, system architecture, and scalability patterns',
+				'details' => 'Specializes in building scalable backend systems. Covers topics like RESTful APIs, GraphQL, microservices architecture, database optimization, and caching strategies. Target audience is intermediate to advanced backend developers.',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Advanced Technical Tutorial',
+				'voice_tone' => 'Professional, authoritative, mentoring',
+				'writing_style' => 'Technical deep-dive with practical examples',
+				'target_audience' => 'Intermediate to advanced backend developers',
+				'expertise_level' => 'advanced',
+				'content_goals' => 'Educate developers on scalable architecture patterns, Build practical skills, Share production-tested solutions',
+				'excluded_topics' => 'Basic programming concepts, Frontend frameworks, Mobile development',
+				'preferred_content_length' => 'long',
+				'category_name' => 'Backend Development',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Security Expert',
+				'field_niche' => 'Application Security, Secure Coding, Vulnerability Prevention',
+				'keywords' => 'SQL injection, XSS, CSRF, authentication, encryption, secure coding, OWASP',
+				'description' => 'Application security specialist covering vulnerabilities, secure coding, and best practices',
+				'details' => 'Focuses on practical application security for developers. Covers common vulnerabilities (OWASP Top 10), secure coding practices, authentication/authorization, encryption, and security testing. Emphasizes prevention over remediation.',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Security Best Practices',
+				'voice_tone' => 'Professional, serious, educational',
+				'writing_style' => 'Security-focused tutorial with code examples',
+				'target_audience' => 'All developers who write server-side code',
+				'expertise_level' => 'intermediate',
+				'content_goals' => 'Prevent security vulnerabilities, Educate on secure coding, Build security awareness',
+				'excluded_topics' => 'Network security hardware, Penetration testing tools, Compliance regulations',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'Security',
+				'source_group_name' => 'Security News',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'include_sources' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'DevOps Practitioner',
+				'field_niche' => 'Developer Tools, DevOps, Automation',
+				'keywords' => 'Git, Docker, CI/CD, automation, deployment, developer productivity, workflows',
+				'description' => 'Developer tools and workflow specialist focused on Git, Docker, CI/CD, and automation',
+				'details' => 'Covers practical developer tools and DevOps workflows. Topics include Git workflows, Docker containerization, CI/CD pipelines, build automation, and developer productivity tools. Focuses on hands-on tutorials.',
+				'voice_name' => 'Hands-On Tutorial Coach',
+				'structure_name' => 'Tool / Workflow Explainer',
+				'voice_tone' => 'Practical, encouraging, step-by-step',
+				'writing_style' => 'Tutorial with clear instructions and examples',
+				'target_audience' => 'Developers looking to improve their workflows and tooling',
+				'expertise_level' => 'beginner_intermediate',
+				'content_goals' => 'Teach practical tool usage, Improve developer productivity, Share workflow best practices',
+				'excluded_topics' => 'Cloud infrastructure management, Kubernetes orchestration, Enterprise IT',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'DevOps & Tools',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Framework Analyst',
+				'field_niche' => 'Framework Comparisons, Technology Evaluation',
+				'keywords' => 'framework comparison, Laravel vs Symfony, React vs Vue, technology choices, migration',
+				'description' => 'Objective framework and tool comparison specialist',
+				'details' => 'Provides balanced, unbiased comparisons of frameworks and tools. Covers PHP frameworks, JavaScript frameworks, databases, and other technology choices. Helps developers make informed decisions.',
+				'voice_name' => 'Neutral Technical Analyst',
+				'structure_name' => 'Comparison Article',
+				'voice_tone' => 'Neutral, objective, analytical',
+				'writing_style' => 'Comparison with pros/cons and use-case analysis',
+				'target_audience' => 'Developers evaluating technology choices',
+				'expertise_level' => 'intermediate',
+				'content_goals' => 'Help developers make informed choices, Present balanced comparisons, Avoid bias',
+				'excluded_topics' => 'Opinionated framework advocacy, Deprecated technologies, Proprietary tools',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'Framework Guides',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'AI Engineering Pragmatist',
+				'field_niche' => 'AI for Developers, Practical AI Integration',
+				'keywords' => 'AI code review, prompt engineering, GitHub Copilot, ChatGPT, LLM integration, AI evaluation',
+				'description' => 'Practical AI integration specialist for developer workflows',
+				'details' => 'Focuses on practical AI tools for developers. Covers AI-assisted coding, prompt engineering, code review with AI, LLM integration in applications, and honest evaluation of AI capabilities and limitations.',
+				'voice_name' => 'AI Engineering Editor',
+				'structure_name' => 'AI-for-Devs Article',
+				'voice_tone' => 'Pragmatic, honest, forward-thinking',
+				'writing_style' => 'Practical guide with real-world examples',
+				'target_audience' => 'Developers exploring AI integration',
+				'expertise_level' => 'intermediate',
+				'content_goals' => 'Demystify AI for developers, Share practical integration patterns, Balance hype with reality',
+				'excluded_topics' => 'Deep learning theory, AI research papers, ML model training',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'AI for Developers',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+		);
+		$post_targets = $this->get_author_post_targets();
+
+		foreach ($authors as &$author) {
+			$weekly_target = isset($post_targets[$author['name']]) ? (int) $post_targets[$author['name']] : 1;
+			$author['scheduled_post_generation_quantity'] = max(1, $weekly_target);
+			$author['topic_generation_quantity'] = max($author['scheduled_post_generation_quantity'], 5);
+		}
+
+		unset($author);
+
+		return $authors;
+	}
+
+	/**
+	 * Returns the seed data array for all post slices to create.
+	 *
+	 * @return array List of post slice data arrays with 'name', 'description', 'sort_order', and 'is_active' keys.
+	 */
+	private function get_post_slice_seed_data() {
+		return array(
+			array(
+				'name' => 'Developer Resources Footer',
+				'description' => 'Add an additional resources list and next-steps guidance for readers who want to keep learning and apply the topic in a small project.',
+				'sort_order' => 10,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Security Disclaimer',
+				'description' => 'Insert a short security reminder that emphasizes validating and sanitizing input, distrust of external data, and least-privilege practices.',
+				'sort_order' => 20,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Code Example Standards',
+				'description' => 'Prepend a note that code samples should be reviewed and adapted for error handling, edge cases, and project-specific constraints.',
+				'sort_order' => 30,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Version Note',
+				'description' => 'Append a version disclaimer reminding readers to check current upstream documentation because APIs and tooling evolve over time.',
+				'sort_order' => 40,
+				'is_active' => 1,
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all source groups to create.
+	 *
+	 * @return array List of source group data arrays with 'name', 'slug', and 'description' keys.
+	 */
+	private function get_source_group_seed_data() {
+		return array(
+			array(
+				'name' => 'Security News',
+				'slug' => 'security-news',
+				'description' => 'Security vulnerabilities, patches, and best practices',
+			),
+			array(
+				'name' => 'PHP Ecosystem',
+				'slug' => 'php-ecosystem',
+				'description' => 'PHP frameworks, libraries, and community updates',
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all individual sources to create.
+	 *
+	 * @return array List of source data arrays with 'name', 'url', 'source_type', 'group_slug', and 'is_active' keys.
+	 */
+	private function get_source_seed_data() {
+		return array(
+			array(
+				'name' => 'OWASP Top 10',
+				'url' => 'https://owasp.org/www-project-top-ten/',
+				'source_type' => 'rss',
+				'group_slug' => 'security-news',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Snyk Blog Security',
+				'url' => 'https://snyk.io/blog/',
+				'source_type' => 'rss',
+				'group_slug' => 'security-news',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Security Week',
+				'url' => 'https://www.securityweek.com/feed/',
+				'source_type' => 'rss',
+				'group_slug' => 'security-news',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'PHP.Watch',
+				'url' => 'https://php.watch/feed',
+				'source_type' => 'rss',
+				'group_slug' => 'php-ecosystem',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Laravel News',
+				'url' => 'https://laravel-news.com/feed',
+				'source_type' => 'rss',
+				'group_slug' => 'php-ecosystem',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Symfony Blog',
+				'url' => 'https://symfony.com/blog/',
+				'source_type' => 'rss',
+				'group_slug' => 'php-ecosystem',
+				'is_active' => 1,
+			),
+		);
+	}
+
+	/**
+	 * Returns the seed data array for all campaigns to create, with per-period post targets derived from distribution shares.
+	 *
+	 * @return array List of campaign data arrays with 'name', 'content_goal', 'topics', and computed target post count keys.
+	 */
+	private function get_campaign_seed_data() {
+		$campaigns = array(
+			array(
+				'name' => 'Developer Foundations',
+				'content_goal' => 'Foundational tutorials for core development concepts and tools',
+				'topics' => "How to Use Composer in PHP Projects\nUnderstanding Composer Autoloading\nGit Rebase vs Merge Explained\nHow to Resolve Git Merge Conflicts\nUnderstanding REST APIs for Developers\nSQL Joins Explained with Examples\nDocker Basics for PHP Developers\nUsing Environment Variables Safely in Applications\nPHP Namespaces Explained for Beginners\nHow to Debug a 500 Internal Server Error",
+			),
+			array(
+				'name' => 'Backend Engineering',
+				'content_goal' => 'Intermediate backend development patterns and practices',
+				'topics' => "Repository Pattern in PHP Applications\nImplementing API Rate Limiting Strategies\nBackground Jobs and Queue Workers Explained\nDesigning Idempotent API Endpoints\nStructured Logging Best Practices\nAPI Authentication with Bearer Tokens\nHandling Retries Safely in Distributed Systems\nInput Validation vs Sanitization\nCaching Strategies for Web Applications\nService Layer Pattern in Backend Applications",
+			),
+			array(
+				'name' => 'Security First',
+				'content_goal' => 'Security best practices and vulnerability prevention',
+				'topics' => "How to Prevent SQL Injection in PHP\nCSRF Protection Explained and Implemented\nXSS Prevention Best Practices\nSecure Password Storage with Hashing\nSecrets Management for Developers\nSecure File Upload Handling\nHTTPS, TLS, and SSL Certificates Explained\nSession Security Best Practices\nProtecting API Keys in Applications\nCommon WordPress Security Mistakes",
+			),
+			array(
+				'name' => 'Framework & Tool Comparisons',
+				'content_goal' => 'Fair comparisons of frameworks, libraries, and tools',
+				'topics' => "Laravel vs Symfony: Framework Comparison\nMySQL vs PostgreSQL for Web Applications\nPHPUnit vs Pest for PHP Testing\nRedis vs Memcached for Caching\nREST vs GraphQL API Design\nDocker Compose vs Kubernetes for Development\nGit vs SVN Version Control\nJWT vs Session Cookies for Authentication\nNginx vs Apache Web Servers\nMicroservices vs Monolith Architecture",
+			),
+			array(
+				'name' => 'Developer Tooling',
+				'content_goal' => 'Practical guides for developer tools and workflows',
+				'topics' => "Advanced Git Commands Every Developer Should Know\nComposer Scripts for Automation\nGit Hooks for Code Quality\nUsing Makefiles in Application Projects\nSSH Key Management Best Practices\nGit Interactive Rebase Tutorial\nDebugging Docker Builds\nLinux File Permissions Explained\nBash Scripting for Developers\nCI/CD Pipeline Basics",
+			),
+			array(
+				'name' => 'AI for Developers',
+				'content_goal' => 'Practical AI guidance for developer workflows',
+				'topics' => "When AI Helps Developers Most\nRisks of AI-Generated Technical Content\nHow to Review AI-Written Code for Accuracy\nPrompt Engineering for Technical Documentation\nAI Agents for Developer Workflows\nWhat Makes AI Content Useful vs Spam\nAI-Assisted Code Review Best Practices\nUsing AI for API Documentation\nEvaluating AI-Generated Code Quality\nWhen NOT to Use AI in Development",
+			),
+			array(
+				'name' => 'PHP Ecosystem Radar',
+				'content_goal' => 'Track PHP ecosystem updates and translate them into implementation-ready guidance',
+				'topics' => "What Changed in PHP 8.4 for Backend Teams\nLaravel Release Notes: What Matters in Production\nSymfony Upgrade Guide: Breaking Changes to Watch\nComposer Dependency Strategy for Long-Lived Projects\nFramework Migration Checklists for Teams\nPHP Package Vetting for Security and Stability\nInterpreting RFCs for Engineering Planning\nHow to Adopt New PHP Features Safely\nRuntime Upgrades with Minimal Risk\nDeprecation Management in PHP Applications",
+			),
+			array(
+				'name' => 'Security Intelligence Briefing',
+				'content_goal' => 'Deliver actionable security briefings tied to current vulnerabilities and prevention patterns',
+				'topics' => "CVE Triage Workflow for Engineering Teams\nPatch Prioritization Under Time Constraints\nHow to Communicate Security Risk to Stakeholders\nDependency Vulnerability Response Playbook\nFrom Advisory to Action: Turning Alerts into Fixes\nThreat Modeling for Existing Applications\nSecure Defaults for New Services\nIncident Readiness Checklist for Web Apps\nHow to Validate Security Fixes in CI\nPost-Incident Lessons Learned Template",
+			),
+		);
+		$post_targets = $this->get_campaign_post_targets();
+
+		foreach ($campaigns as &$campaign) {
+			$campaign['target_posts_per_' . $this->get_primary_distribution_period()] = isset($post_targets[$campaign['name']]) ? (int) $post_targets[$campaign['name']] : 0;
+		}
+		unset($campaign);
+
+		return $campaigns;
+	}
+
+	/**
+	 * Returns the seed data array for all templates to create, with post quantities derived from campaign distribution targets.
+	 *
+	 * @return array List of template data arrays with name, campaign, voice, structure, category, and generation settings keys.
+	 */
+	private function get_template_seed_data() {
+		$templates = array(
+			array(
+				'name' => 'Beginner How-To',
+				'description' => 'Beginner-friendly tutorials for fundamental concepts',
+				'campaign_name' => 'Developer Foundations',
+				'voice_name' => 'Hands-On Tutorial Coach',
+				'structure_name' => 'Evergreen How-To Guide',
+				'categories' => array('Backend Development', 'PHP Development'),
+				'post_tags' => 'php,backend,developer-fundamentals,tutorial',
+				'prompt_template' => 'Write a comprehensive beginner-friendly tutorial about {{topic}}. Focus on helping developers learn by doing.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Intermediate Backend',
+				'description' => 'Intermediate backend development patterns and practices',
+				'campaign_name' => 'Backend Engineering',
+				'voice_name' => 'DevStackTips Default',
+				'structure_name' => 'Advanced Technical Tutorial',
+				'categories' => array('Backend Development', 'Database'),
+				'post_tags' => 'backend,architecture,api,scalability',
+				'prompt_template' => 'Write an intermediate-level backend development tutorial about {{topic}}. Assume familiarity with programming fundamentals.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A clean, modern illustration representing {{topic}} in software development. Abstract geometric shapes, blues and teals, professional developer aesthetic, minimalist design',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Security Guide',
+				'description' => 'Security best practices and vulnerability prevention',
+				'campaign_name' => 'Security First',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Security Best Practices',
+				'categories' => array('Security', 'Backend Development'),
+				'post_tags' => 'security,owasp,secure-coding,vulnerabilities',
+				'prompt_template' => 'Write a security-focused guide about {{topic}}. Help developers build secure applications by explaining vulnerabilities and secure patterns.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A secure lock symbol overlaid on a modern application window or code editor, cybersecurity theme, dark blues and greens, shield iconography, professional and trustworthy aesthetic',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Framework Comparison',
+				'description' => 'Fair comparisons of frameworks, libraries, and tools',
+				'campaign_name' => 'Framework & Tool Comparisons',
+				'voice_name' => 'Neutral Technical Analyst',
+				'structure_name' => 'Comparison Article',
+				'categories' => array('Framework Guides'),
+				'post_tags' => 'comparison,frameworks,tradeoffs,decision-making',
+				'prompt_template' => 'Write a balanced, objective comparison of {{topic}}. Present both options fairly without bias.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Developer Tooling',
+				'description' => 'Practical guides for developer tools and workflows',
+				'campaign_name' => 'Developer Tooling',
+				'voice_name' => 'Hands-On Tutorial Coach',
+				'structure_name' => 'Tool / Workflow Explainer',
+				'categories' => array('DevOps & Tools'),
+				'post_tags' => 'devops,developer-tools,automation,workflow',
+				'prompt_template' => 'Write a practical guide for {{topic}}. Show developers how to use this tool effectively in their daily workflow.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'unsplash',
+				'unsplash_keywords' => 'developer tools, programming, code, terminal, workflow',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'AI for Developers',
+				'description' => 'Practical AI guidance for developer workflows',
+				'campaign_name' => 'AI for Developers',
+				'voice_name' => 'AI Engineering Editor',
+				'structure_name' => 'AI-for-Devs Article',
+				'categories' => array('AI for Developers'),
+				'post_tags' => 'ai,developer-productivity,prompt-engineering,quality-control',
+				'prompt_template' => 'Write practical guidance about {{topic}}. Focus on real developer use cases and address both benefits and limitations honestly.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Security News',
+				'description' => 'Security-focused content informed by current vulnerability reports',
+				'campaign_name' => 'Security Intelligence Briefing',
+				'voice_name' => 'Senior Backend Mentor',
+				'structure_name' => 'Security Best Practices',
+				'categories' => array('Security'),
+				'post_tags' => 'security-news,cve,incident-response,threat-intelligence',
+				'source_group' => 'Security News',
+				'include_sources' => 1,
+				'prompt_template' => 'Write a security guide about {{topic}}. Reference current security trends and vulnerabilities where relevant.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'Cybersecurity shield protecting code and data, modern digital security concept, dark theme with accent colors',
+			),
+			array(
+				'name' => 'PHP Framework Deep Dive',
+				'description' => 'In-depth PHP framework tutorials informed by ecosystem updates',
+				'campaign_name' => 'PHP Ecosystem Radar',
+				'voice_name' => 'DevStackTips Default',
+				'structure_name' => 'Advanced Technical Tutorial',
+				'categories' => array('PHP Development', 'Framework Guides'),
+				'post_tags' => 'php,laravel,symfony,ecosystem-updates',
+				'source_group' => 'PHP Ecosystem',
+				'include_sources' => 1,
+				'prompt_template' => 'Write a detailed tutorial about {{topic}}. Incorporate current best practices from the PHP community.',
+				'generate_featured_image' => 0,
+				'featured_image_source' => 'ai_prompt',
+			),
+		);
+		$post_targets = $this->get_campaign_post_targets();
+
+		foreach ($templates as &$template) {
+			$weekly_target = isset($post_targets[$template['campaign_name']]) ? (int) $post_targets[$template['campaign_name']] : 1;
+			$template['post_quantity'] = max(1, $weekly_target);
+			$template['target_posts_per_' . $this->get_primary_distribution_period()] = $template['post_quantity'];
+		}
+		unset($template);
+
+		return $templates;
+	}
+
+	/**
+	 * Returns the seed data array for all schedules to create, with per-period post targets derived from their linked templates.
+	 *
+	 * @return array List of schedule data arrays with 'template_name', 'title', 'frequency', 'weekday', 'start_time', 'is_active', and computed target post count keys.
+	 */
+	private function get_schedule_seed_data() {
+		$schedules = array(
+			array(
+				'template_name' => 'Beginner How-To',
+				'title' => 'Core Monday - Developer Foundations',
+				'frequency' => 'weekly',
+				'weekday' => 1,
+				'start_time' => '09:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Intermediate Backend',
+				'title' => 'Core Tuesday - Backend Engineering',
+				'frequency' => 'weekly',
+				'weekday' => 2,
+				'start_time' => '09:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Security Guide',
+				'title' => 'Core Wednesday - Security First',
+				'frequency' => 'weekly',
+				'weekday' => 3,
+				'start_time' => '09:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Framework Comparison',
+				'title' => 'Core Thursday - Framework Comparisons',
+				'frequency' => 'weekly',
+				'weekday' => 4,
+				'start_time' => '09:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Developer Tooling',
+				'title' => 'Core Friday - Developer Tooling',
+				'frequency' => 'weekly',
+				'weekday' => 5,
+				'start_time' => '09:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'AI for Developers',
+				'title' => 'Flex Tuesday PM - AI Workflow Insights',
+				'frequency' => 'weekly',
+				'weekday' => 2,
+				'start_time' => '14:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Security News',
+				'title' => 'Flex Thursday PM - Security Intelligence Briefing',
+				'frequency' => 'weekly',
+				'weekday' => 4,
+				'start_time' => '14:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'PHP Framework Deep Dive',
+				'title' => 'Flex Saturday - PHP Ecosystem Radar',
+				'frequency' => 'weekly',
+				'weekday' => 6,
+				'start_time' => '10:00',
+				'is_active' => 1,
+			),
+		);
+		$template_targets = array();
+
+		foreach ($this->get_template_seed_data() as $template) {
+			$template_targets[$template['name']] = isset($template['post_quantity']) ? (int) $template['post_quantity'] : 1;
+		}
+
+		foreach ($schedules as &$schedule) {
+			$schedule['target_posts_per_' . $this->get_primary_distribution_period()] = isset($template_targets[$schedule['template_name']]) ? $template_targets[$schedule['template_name']] : 1;
+		}
+		unset($schedule);
+
+		return $schedules;
+	}
+
+	/**
+	 * Returns a map of created category names to their WordPress term IDs.
+	 *
+	 * @return array Associative array of category name to term ID.
+	 */
+	private function get_created_categories_by_name() {
+		$map = array();
+		if (isset($this->created_items['categories'])) {
+			foreach ($this->created_items['categories'] as $category) {
+				$map[$category['name']] = $category['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns a map of created source group names to their taxonomy term IDs.
+	 *
+	 * @return array Associative array of source group name to term ID.
+	 */
+	private function get_created_source_groups_by_name() {
+		$map = array();
+		if (isset($this->created_items['source_groups'])) {
+			foreach ($this->created_items['source_groups'] as $group) {
+				$map[$group['name']] = $group['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns a map of created template names to their database IDs.
+	 *
+	 * @return array Associative array of template name to database ID.
+	 */
+	private function get_created_templates_by_name() {
+		$map = array();
+		if (isset($this->created_items['templates'])) {
+			foreach ($this->created_items['templates'] as $template) {
+				$map[$template['name']] = $template['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns a map of created voice names to their database IDs.
+	 *
+	 * @return array Associative array of voice name to database ID.
+	 */
+	private function get_created_voices_by_name() {
+		$map = array();
+		if (isset($this->created_items['voices'])) {
+			foreach ($this->created_items['voices'] as $voice) {
+				$map[$voice['name']] = $voice['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns a map of created article structure names to their database IDs.
+	 *
+	 * @return array Associative array of structure name to database ID.
+	 */
+	private function get_created_structures_by_name() {
+		$map = array();
+		if (isset($this->created_items['structures'])) {
+			foreach ($this->created_items['structures'] as $structure) {
+				$map[$structure['name']] = $structure['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns a map of created campaign names to their database IDs.
+	 *
+	 * @return array Associative array of campaign name to database ID.
+	 */
+	private function get_created_campaigns_by_name() {
+		$map = array();
+		if (isset($this->created_items['campaigns'])) {
+			foreach ($this->created_items['campaigns'] as $campaign) {
+				$map[$campaign['name']] = $campaign['id'];
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Returns the complete list of WordPress option keys that this script configures, including extras used by rollback.
+	 *
+	 * @return array Flat list of unique option key strings.
+	 */
+	private function get_configured_setting_keys() {
+		$keys = array();
+
+		foreach ($this->get_flattened_setting_entries() as $entry) {
+			$keys[] = $entry['option_name'];
+		}
+
+		$keys[] = 'aips_cache_driver';
+		$keys[] = 'aips_cache_default_ttl';
+
+		return array_values(array_unique($keys));
+	}
+
+	/**
+	 * Outputs a formatted HTML summary of all configured settings, throughput targets, allocations, and created items.
+	 *
+	 * Also prints next-step instructions and rollback guidance.
+	 *
+	 * @return void
+	 */
+	private function print_summary() {
+		echo "\n<h2>Setup Complete!</h2>\n";
+
+		$settings = $this->object_data['settings'];
+		$structures = $this->get_created_structures_by_name();
+		$categories = $this->get_created_categories_by_name();
+		$primary_period = $this->get_primary_distribution_period();
+		$target_posts = $this->get_target_posts_by_period();
+		$template_targets = array();
+		$campaign_targets = array();
+		$author_targets = array();
+
+		foreach ($this->object_data['templates'] as $template) {
+			$template_targets[$template['name']] = isset($template['post_quantity']) ? (int) $template['post_quantity'] : 0;
+		}
+
+		foreach ($this->object_data['campaigns'] as $campaign) {
+			$key = 'target_posts_per_' . $primary_period;
+			$campaign_targets[$campaign['name']] = isset($campaign[$key]) ? (int) $campaign[$key] : 0;
+		}
+
+		foreach ($this->object_data['authors'] as $author) {
+			$author_targets[$author['name']] = isset($author['scheduled_post_generation_quantity']) ? (int) $author['scheduled_post_generation_quantity'] : 0;
+		}
+
+		$configured_settings = $this->get_resolved_configured_settings($structures, $categories);
+
+		echo "<h3>Configured Settings (" . count($configured_settings) . " total):</h3>\n";
+		echo "<ul>\n";
+		foreach ($configured_settings as $key => $value) {
+			echo "<li><strong>" . esc_html($key) . ":</strong> <code>" . esc_html($this->format_summary_value($value)) . "</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Target Throughput:</h3>\n";
+		echo "<ul>\n";
+		foreach ($target_posts as $period => $count) {
+			echo "<li><strong>" . esc_html(ucfirst($period)) . " target:</strong> <code>" . esc_html((string) $count) . " posts</code></li>\n";
+		}
+		echo "<li><strong>Primary distribution period:</strong> <code>" . esc_html($primary_period) . "</code></li>\n";
+		echo "</ul>\n";
+
+		echo "<h3>Campaign Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($campaign_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per " . esc_html($primary_period) . "</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Template Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($template_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " posts per run</code></li>\n";
+		}
+		echo "</ul>\n";
+
+		echo "<h3>Author Allocation (" . esc_html($primary_period) . "):</h3>\n";
+		echo "<ul>\n";
+		foreach ($author_targets as $name => $count) {
+			echo "<li><strong>" . esc_html($name) . ":</strong> <code>" . esc_html((string) $count) . " scheduled posts per " . esc_html($primary_period) . "</code></li>\n";
+		}
+		echo "</ul>\n";
+		
+		echo "<h3>Created Items:</h3>\n";
+		echo "<ul>\n";
+		
+		$entity_types = array(
+			'categories' => 'Categories',
+			'voices' => 'Voices',
+			'structures' => 'Article Structures',
+			'authors' => 'Authors',
+			'slices' => 'Post Slices',
+			'source_groups' => 'Source Groups',
+			'sources' => 'Sources',
+			'templates' => 'Templates',
+			'campaigns' => 'Campaigns',
+			'schedules' => 'Schedules',
+		);
+
+		foreach ($entity_types as $key => $label) {
+			if (isset($this->created_items[$key])) {
+				$count = count($this->created_items[$key]);
+				echo "<li><strong>{$label}:</strong> {$count} created</li>\n";
+			}
+		}
+		
+		echo "</ul>\n";
+
+		if (!empty($this->errors)) {
+			echo "<h3>Errors:</h3>\n";
+			echo "<ul>\n";
+			foreach ($this->errors as $error) {
+				echo "<li>" . esc_html($error) . "</li>\n";
+			}
+			echo "</ul>\n";
+		}
+
+		echo "\n<h3>Next Steps:</h3>\n";
+		echo "<ol>\n";
+		echo "<li><strong>[WARN] REQUIRED:</strong> Add notification email in Settings > Notifications</li>\n";
+		echo "<li><strong>[WARN] If using Unsplash:</strong> Add Unsplash Access Key in Settings > Featured Images</li>\n";
+		echo "<li>Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)</li>\n";
+		echo "<li>Review created Categories, Templates, Voices, Structures in WordPress admin</li>\n";
+		echo "<li>Verify schedule cadence against the configured throughput targets: <code>" . esc_html(wp_json_encode($target_posts)) . "</code></li>\n";
+		echo "<li>Check Source Groups and Sources for proper RSS feed URLs</li>\n";
+		$default_post_status = isset($configured_settings['aips_default_post_status']) ? $configured_settings['aips_default_post_status'] : 'draft';
+		echo "<li>Start with post status <code>" . esc_html($default_post_status) . "</code> to review content quality before auto-publishing</li>\n";
+		echo "<li>Monitor History page, Operations Insights, and Telemetry for generation metrics</li>\n";
+		echo "<li>Review and approve Author Topics before they generate posts</li>\n";
+		echo "</ol>\n";
+
+		echo "\n<h3>Rollback</h3>\n";
+		echo "<p>To rollback all changes made by this script, run:</p>\n";
+		echo "<pre>wp eval-file scripts/setup-devstacktips-content.php rollback</pre>\n";
+		echo "<p>Or use the Dev Tools page and add 'rollback' as an argument.</p>\n";
+		echo "<p><strong>Rollback warning:</strong> rollback deletes by configured names/slugs and is not guaranteed to preserve pre-existing data that used the same names. Take a database backup before rollback.</p>\n";
+	}
+
+	/**
+	 * Rollback all changes made by this setup script.
+	 * 
+	 * Deletes matching entities in reverse order to maintain referential integrity.
+	 * This matches by configured names/slugs, so it may delete pre-existing data
+	 * that used the same identifiers. Take a database backup before rollback.
+	 */
+	private function rollback() {
+		global $wpdb;
+
+		echo "<h1>DevStackTips Content Rollback</h1>\n";
+		echo "<p>Rolling back all setup changes...</p>\n";
+		echo "<p><strong>Warning:</strong> rollback deletes matching names/slugs and may remove pre-existing shared terms or records. Restore from a database backup if pre-existing data must be recovered safely.</p>\n";
+
+		$deleted = array(
+			'schedules' => 0,
+			'campaigns' => 0,
+			'templates' => 0,
+			'sources' => 0,
+			'source_groups' => 0,
+			'slices' => 0,
+			'authors' => 0,
+			'structures' => 0,
+			'sections' => 0,
+			'voices' => 0,
+			'categories' => 0,
+			'settings' => 0,
+		);
+
+		// Reset settings to defaults first
+		echo "<h2>Resetting Plugin Settings</h2>\n";
+
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		foreach ($this->get_configured_setting_keys() as $key) {
+			if (array_key_exists($key, $defaults)) {
+				update_option($key, $defaults[$key]);
+				$deleted['settings']++;
+			}
+		}
+		echo "[OK] Reset configured settings to plugin defaults\n";
+
+		// Delete in reverse order of creation to maintain referential integrity
+
+		// 1. Delete Schedules
+		echo "<h2>Deleting Schedules</h2>\n";
+		$schedule_titles = wp_list_pluck($this->object_data['schedules'], 'title');
+		foreach ($schedule_titles as $title) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_schedule',
+				array('title' => $title),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['schedules'] += $count;
+				echo "[OK] Deleted schedule: {$title}\n";
+			}
+		}
+
+		// 2. Delete Campaigns
+		echo "<h2>Deleting Campaigns</h2>\n";
+		$campaign_names = wp_list_pluck($this->object_data['campaigns'], 'name');
+		foreach ($campaign_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_campaigns',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['campaigns'] += $count;
+				echo "[OK] Deleted campaign: {$name}\n";
+			}
+		}
+
+		// 3. Delete Templates
+		echo "<h2>Deleting Templates</h2>\n";
+		$template_names = wp_list_pluck($this->object_data['templates'], 'name');
+		foreach ($template_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_templates',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['templates'] += $count;
+				echo "[OK] Deleted template: {$name}\n";
+			}
+		}
+
+		// 4. Delete Sources
+		echo "<h2>Deleting Sources</h2>\n";
+		$source_names = wp_list_pluck($this->object_data['sources'], 'name');
+		$sources_repo = new AIPS_Sources_Repository();
+		$sources_by_label = array();
+		foreach ($sources_repo->get_all() as $existing_source) {
+			if (!empty($existing_source->id) && !empty($existing_source->label)) {
+				if (!isset($sources_by_label[(string) $existing_source->label])) {
+					$sources_by_label[(string) $existing_source->label] = array();
+				}
+				$sources_by_label[(string) $existing_source->label][] = (int) $existing_source->id;
+			}
+		}
+
+		foreach ($source_names as $name) {
+			$source_ids = isset($sources_by_label[$name]) ? $sources_by_label[$name] : array();
+			foreach ($source_ids as $source_id) {
+				$sources_repo->delete_source_terms((int) $source_id);
+			}
+
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_sources',
+				array('label' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['sources'] += $count;
+				echo "[OK] Deleted source: {$name}\n";
+			}
+		}
+
+		// 5. Delete Source Groups (taxonomy terms)
+		echo "<h2>Deleting Source Groups</h2>\n";
+		$source_group_slugs = wp_list_pluck($this->object_data['source_groups'], 'slug');
+		foreach ($source_group_slugs as $slug) {
+			$term = term_exists($slug, 'aips_source_group');
+			if ($term) {
+				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+				$result = wp_delete_term($term_id, 'aips_source_group');
+				if (!is_wp_error($result)) {
+					$deleted['source_groups']++;
+					echo "[OK] Deleted source group: {$slug}\n";
+				} else {
+					$error_message = $result->get_error_message();
+					$this->errors[] = "Failed to delete source group: {$slug} ({$error_message})";
+					echo "[ERR] Failed to delete source group: {$slug} ({$error_message})\n";
+				}
+			}
+		}
+
+		// 6. Delete Post Slices
+		echo "<h2>Deleting Post Slices</h2>\n";
+		$slice_names = wp_list_pluck($this->object_data['post_slices'], 'name');
+		foreach ($slice_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_post_slices',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['slices'] += $count;
+				echo "[OK] Deleted post slice: {$name}\n";
+			}
+		}
+
+		// 7. Delete Authors
+		echo "<h2>Deleting Authors</h2>\n";
+		$author_names = wp_list_pluck($this->object_data['authors'], 'name');
+		foreach ($author_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_authors',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['authors'] += $count;
+				echo "[OK] Deleted author: {$name}\n";
+			}
+		}
+
+		// 8. Delete Article Structures
+		echo "<h2>Deleting Article Structures</h2>\n";
+		$structure_names = wp_list_pluck($this->object_data['structures'], 'name');
+		foreach ($structure_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_article_structures',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['structures'] += $count;
+				echo "[OK] Deleted article structure: {$name}\n";
+			}
+		}
+
+		// 9. Delete Prompt Sections (delete all sections created by this script)
+		echo "<h2>Deleting Prompt Sections</h2>\n";
+		$section_names = wp_list_pluck($this->object_data['sections'], 'name');
+		foreach ($section_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_prompt_sections',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['sections'] += $count;
+				echo "[OK] Deleted prompt section: {$name}\n";
+			}
+		}
+
+		// 10. Delete Voices
+		echo "<h2>Deleting Voices</h2>\n";
+		$voice_names = wp_list_pluck($this->object_data['voices'], 'name');
+		foreach ($voice_names as $name) {
+			$count = $wpdb->delete(
+				$wpdb->prefix . 'aips_voices',
+				array('name' => $name),
+				array('%s')
+			);
+			if ($count > 0) {
+				$deleted['voices'] += $count;
+				echo "[OK] Deleted voice: {$name}\n";
+			}
+		}
+
+		// 11. Delete Categories (WordPress taxonomy terms)
+		echo "<h2>Deleting Categories</h2>\n";
+		$category_slugs = wp_list_pluck($this->object_data['categories'], 'slug');
+		foreach ($category_slugs as $slug) {
+			$term = term_exists($slug, 'category');
+			if ($term) {
+				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
+				$result = wp_delete_term($term_id, 'category');
+				if (!is_wp_error($result)) {
+					$deleted['categories']++;
+					echo "[OK] Deleted category: {$slug}\n";
+				} else {
+					$error_message = $result->get_error_message();
+					$this->errors[] = "Failed to delete category: {$slug} ({$error_message})";
+					echo "[ERR] Failed to delete category: {$slug} ({$error_message})\n";
+				}
+			}
+		}
+
+		// Summary
+		echo "\n<h2>Rollback Complete</h2>\n";
+		echo "<ul>\n";
+		foreach ($deleted as $type => $count) {
+			echo "<li><strong>" . ucfirst($type) . ":</strong> {$count} deleted</li>\n";
+		}
+		echo "</ul>\n";
+
+		$total = array_sum($deleted);
+		echo "\n<p><strong>Total items deleted:</strong> {$total}</p>\n";
+		echo "<p>You can now re-run the setup script if needed.</p>\n";
+	}
+}
+
+if (PHP_SAPI !== 'cli') {
+	wp_die(esc_html__('The DevStackTips seeder can only be run from WP-CLI.', 'ai-post-scheduler'));
+}
+
+// Determine mode from CLI argument.
+$rollback_mode = false;
+global $argv;
+if (isset($argv) && in_array('rollback', $argv, true)) {
+	$rollback_mode = true;
+}
+
+// Run the setup or rollback
+$setup = new AIPS_DevStackTips_Setup($rollback_mode);
+$setup->run();
+
+
