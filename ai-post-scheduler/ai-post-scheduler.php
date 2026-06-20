@@ -24,10 +24,13 @@ if (!defined('AIPS_REQUEST_START')) {
     define('AIPS_REQUEST_START', microtime(true));
 }
 
-// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
-// slow/duplicate query analysis can inspect the collected query log.
+// Enable SAVEQUERIES as early as possible only when query telemetry is
+// explicitly enabled so ordinary telemetry requests avoid query-log overhead.
 if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
-    define('SAVEQUERIES', true);
+    $aips_telemetry_subsystems = get_option('aips_telemetry_subsystems', array());
+    if (is_array($aips_telemetry_subsystems) && !empty($aips_telemetry_subsystems['queries'])) {
+        define('SAVEQUERIES', true);
+    }
 }
 
 if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
@@ -494,9 +497,21 @@ final class AI_Post_Scheduler {
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
-        // Boot request-level telemetry if the option is enabled.
+        // Boot request-level telemetry only for request types with an enabled
+        // subsystem. Other subsystem events lazily boot telemetry when emitted.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            AIPS_Telemetry::instance()->boot();
+            $aips_request_type = 'frontend';
+            if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
+                $aips_request_type = 'ajax';
+            } elseif (function_exists('wp_doing_cron') && wp_doing_cron()) {
+                $aips_request_type = 'cron';
+            } elseif (function_exists('is_admin') && is_admin()) {
+                $aips_request_type = 'admin';
+            }
+
+            if (AIPS_Telemetry::should_record_request_type($aips_request_type)) {
+                AIPS_Telemetry::instance()->boot();
+            }
         }
 
         // Register the Source Group taxonomy (not attached to any post type).

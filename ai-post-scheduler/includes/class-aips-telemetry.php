@@ -98,6 +98,74 @@ class AIPS_Telemetry {
 		return $enabled;
 	}
 
+
+	/**
+	 * Whether a telemetry subsystem is enabled for the current request.
+	 *
+	 * @param string $subsystem Subsystem key.
+	 * @return bool
+	 */
+	public static function is_subsystem_enabled($subsystem) {
+		if (!self::is_enabled() || !class_exists('AIPS_Telemetry_Subsystems')) {
+			return false;
+		}
+
+		$key = sanitize_key((string) $subsystem);
+		if (null === AIPS_Telemetry_Subsystems::get($key)) {
+			return false;
+		}
+
+		$config = get_option('aips_telemetry_subsystems', AIPS_Telemetry_Subsystems::default_enabled_map());
+		if (!is_array($config)) {
+			$config = AIPS_Telemetry_Subsystems::default_enabled_map();
+		}
+
+		$defaults = AIPS_Telemetry_Subsystems::default_enabled_map();
+		$value    = array_key_exists($key, $config) ? $config[$key] : (isset($defaults[$key]) ? $defaults[$key] : false);
+
+		return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+	}
+
+	/**
+	 * Whether telemetry should persist the current request type.
+	 *
+	 * @param string $request_type Request type.
+	 * @return bool
+	 */
+	public static function should_record_request_type($request_type) {
+		$type = sanitize_key((string) $request_type);
+
+		if ('frontend' === $type) {
+			return self::is_subsystem_enabled('frontend');
+		}
+
+		if ('ajax' === $type) {
+			return self::is_subsystem_enabled('ajax_admin');
+		}
+
+		if ('cron' === $type) {
+			return self::is_subsystem_enabled('cron');
+		}
+
+		return self::is_enabled();
+	}
+
+	/**
+	 * Return the payload policy for a telemetry subsystem.
+	 *
+	 * @param string $subsystem Subsystem key.
+	 * @return string
+	 */
+	public static function payload_policy_for($subsystem) {
+		if (!class_exists('AIPS_Telemetry_Subsystems')) {
+			return '';
+		}
+
+		$definition = AIPS_Telemetry_Subsystems::get($subsystem);
+
+		return isset($definition['payload_policy']) ? (string) $definition['payload_policy'] : '';
+	}
+
 	/**
 	 * Return (and lazily create) the singleton.
 	 *
@@ -139,6 +207,12 @@ class AIPS_Telemetry {
 			if (empty($bucket)) {
 				$bucket = $this->infer_bucket($data);
 			}
+
+			if (!self::is_subsystem_enabled($bucket)) {
+				return;
+			}
+
+			$this->boot();
 
 			$data['_bucket'] = $bucket;
 			$data['_ts'] = (int) round((microtime(true) - $this->start_time) * 1000000);
@@ -189,13 +263,17 @@ class AIPS_Telemetry {
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
 		$request_uri    = isset($_SERVER['REQUEST_URI']) ? $this->sanitize_request_uri(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))) : '';
 		$request_type   = $this->resolve_request_type();
+		if (!self::should_record_request_type($request_type) && empty($this->events)) {
+			return;
+		}
+
 		$page           = $this->resolve_page();
-		$query_summary  = $this->build_query_summary(isset($wpdb) ? $wpdb : null);
+		$query_summary  = self::is_subsystem_enabled('queries') ? $this->build_query_summary(isset($wpdb) ? $wpdb : null) : $this->empty_query_summary();
 		$event_summary  = $this->get_event_summary();
 		$cache_summary  = $this->build_cache_summary($event_summary);
 		$categories     = $this->resolve_event_categories($event_summary, $query_summary, $elapsed_ms);
 
-		if ($elapsed_ms >= (float) AIPS_TELEMETRY_SLOW_REQUEST_MS) {
+		if (self::is_subsystem_enabled('performance') && $elapsed_ms >= (float) AIPS_TELEMETRY_SLOW_REQUEST_MS) {
 			$this->add_event('performance', array(
 				'type'       => 'slow_request',
 				'elapsed_ms' => $elapsed_ms,
@@ -432,6 +510,24 @@ class AIPS_Telemetry {
 	}
 
 	/**
+	 * Return an empty query summary without inspecting wpdb query logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function empty_query_summary() {
+		return array(
+			'savequeries_enabled'     => defined('SAVEQUERIES') && SAVEQUERIES,
+			'slow_query_threshold_ms' => (float) AIPS_TELEMETRY_SLOW_QUERY_MS,
+			'total_logged_queries'    => 0,
+			'slow_query_count'        => 0,
+			'duplicate_query_count'   => 0,
+			'duplicate_query_groups'  => 0,
+			'slow_queries'            => array(),
+			'duplicate_queries'       => array(),
+		);
+	}
+
+	/**
 	 * Analyse the recorded SQL query log when SAVEQUERIES is enabled.
 	 *
 	 * @param wpdb|null $wpdb WordPress DB adapter.
@@ -526,7 +622,7 @@ class AIPS_Telemetry {
 		}
 
 		if (!empty($query_summary['total_logged_queries'])) {
-			$categories[] = 'query';
+			$categories[] = 'queries';
 		}
 
 		if (!empty($query_summary['slow_query_count']) || !empty($query_summary['duplicate_query_count']) || $elapsed_ms >= (float) AIPS_TELEMETRY_SLOW_REQUEST_MS) {
