@@ -250,19 +250,23 @@ class AIPS_Sources_Data_Repository {
 
 		$date_from = isset( $filters['date_from'] ) ? sanitize_text_field( $filters['date_from'] ) : '';
 		if ( '' !== $date_from ) {
-			$from_timestamp = strtotime( $date_from . ' 00:00:00' );
-			if ( false !== $from_timestamp ) {
+			try {
+				$date = new \DateTime( $date_from . ' 00:00:00', wp_timezone() );
 				$where .= ' AND sd.fetched_at >= %d';
-				$args[] = $from_timestamp;
+				$args[] = $date->getTimestamp();
+			} catch ( \Exception $e ) {
+				// Ignore invalid date format.
 			}
 		}
 
 		$date_to = isset( $filters['date_to'] ) ? sanitize_text_field( $filters['date_to'] ) : '';
 		if ( '' !== $date_to ) {
-			$to_timestamp = strtotime( $date_to . ' 23:59:59' );
-			if ( false !== $to_timestamp ) {
+			try {
+				$date = new \DateTime( $date_to . ' 23:59:59', wp_timezone() );
 				$where .= ' AND sd.fetched_at <= %d';
-				$args[] = $to_timestamp;
+				$args[] = $date->getTimestamp();
+			} catch ( \Exception $e ) {
+				// Ignore invalid date format.
 			}
 		}
 
@@ -279,8 +283,9 @@ class AIPS_Sources_Data_Repository {
 			$args[] = $like;
 		}
 
-		$count_sql = "SELECT COUNT(*) FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where}";
-		$total     = (int) ( empty( $args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$args ) ) );
+		$count_join = '' !== $search ? " LEFT JOIN {$sources_table} s ON sd.source_id = s.id" : '';
+		$count_sql  = "SELECT COUNT(*) FROM {$this->table_name} sd{$count_join} {$where}";
+		$total      = (int) ( empty( $args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$args ) ) );
 
 		$query_args   = $args;
 		$query_args[] = $per_page;
