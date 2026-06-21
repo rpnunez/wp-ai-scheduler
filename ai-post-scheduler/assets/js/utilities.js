@@ -847,6 +847,58 @@
             $btn.prop('disabled', false);
         },
 
+        /**
+         * Build a user-friendly message for plugin rate-limit errors.
+         *
+         * @param {number|undefined} retryAfter Seconds until a slot opens (0 or
+         *   undefined = omit the "try again in" sentence).
+         * @returns {string}
+         */
+        buildRateLimitMessage: function(retryAfter) {
+            var base = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.rateLimitedByPlugin)
+                ? aipsUtilitiesL10n.rateLimitedByPlugin
+                : 'Requests to the AI scheduler are temporarily paused by the rate limiter.';
+
+            if (retryAfter > 0) {
+                var mins = Math.floor(retryAfter / 60);
+                var secs = retryAfter % 60;
+                var when = mins > 0
+                    ? (mins + 'm' + (secs > 0 ? ' ' + secs + 's' : ''))
+                    : (secs + 's');
+                var template = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.rateLimitRetryAfter)
+                    ? aipsUtilitiesL10n.rateLimitRetryAfter
+                    : 'You can try again in %s.';
+                base += ' ' + template.replace('%s', when);
+            }
+            return base;
+        },
+
+        /**
+         * Show an AJAX error toast, automatically handling plugin rate-limit
+         * errors with a warning-level toast and retry guidance.
+         *
+         * Replaces the scattered inline pattern:
+         *   AIPS.Utilities.showToast(response.data.message || fallback, 'error');
+         *
+         * @param {Object} response    The jQuery AJAX response object.
+         * @param {string} fallbackMsg Fallback message when response has no message.
+         */
+        showAjaxError: function(response, fallbackMsg) {
+            if (response && response.data && response.data.code === 'rate_limit_exceeded') {
+                AIPS.Utilities.showToast(
+                    AIPS.Utilities.buildRateLimitMessage(response.data.retry_after),
+                    'warning'
+                );
+            } else {
+                AIPS.Utilities.showToast(
+                    (response && response.data && response.data.message)
+                        ? response.data.message
+                        : (fallbackMsg || ''),
+                    'error'
+                );
+            }
+        },
+
         // ── String / escaping helpers ───────────────────────────────────────────
 
         /**

@@ -248,7 +248,7 @@ class AIPS_Resilience_Service {
 
         // Check rate limiting
         if (!$this->check_rate_limit()) {
-            return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'), array('retry_after' => $this->get_rate_limit_retry_after()));
         }
 
         // Execute with retry logic
@@ -648,6 +648,32 @@ class AIPS_Resilience_Service {
             'period' => $period,
             'remaining' => max(0, $rl_config['requests'] - count($recent_requests)),
         );
+    }
+
+    /**
+     * Get the number of seconds until the next rate-limit slot opens.
+     *
+     * @return int Seconds until a request slot becomes available (0 if under limit).
+     */
+    public function get_rate_limit_retry_after() {
+        $rl_config = $this->config->get_rate_limit_config();
+        $period    = $rl_config['period'];
+        $current_time = time();
+
+        $requests = get_transient('aips_rate_limiter_requests');
+        if ($requests === false || empty($requests)) {
+            return 0;
+        }
+
+        $recent = array_filter($requests, function($ts) use ($current_time, $period) {
+            return ($current_time - $ts) < $period;
+        });
+
+        if (empty($recent)) {
+            return 0;
+        }
+
+        return (int) ceil(min($recent) + $period - $current_time);
     }
 
     /**

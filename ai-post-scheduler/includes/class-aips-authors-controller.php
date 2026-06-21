@@ -402,7 +402,7 @@ class AIPS_Authors_Controller {
 		$result = $this->topics_scheduler->generate_now($author_id);
 
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		// Create admin bar notification for manual topic generation
@@ -543,7 +543,7 @@ class AIPS_Authors_Controller {
 		), $count);
 
 		if (is_wp_error($suggestions)) {
-			AIPS_Ajax_Response::error(array('message' => $suggestions->get_error_message()));
+			AIPS_Ajax_Response::wp_error($suggestions);
 		}
 
 		do_action('aips_author_suggestions_generated', array(
