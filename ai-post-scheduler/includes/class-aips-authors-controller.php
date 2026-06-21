@@ -142,6 +142,7 @@ class AIPS_Authors_Controller {
 			'scheduled_post_generation_quantity' => isset($_POST['scheduled_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['scheduled_post_generation_quantity']))) : 1,
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+			'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),

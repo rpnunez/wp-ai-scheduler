@@ -420,8 +420,21 @@ $is_embedded_templates_view = !empty($embedded);
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="affiliate_links_enabled" name="affiliate_links_enabled" value="1">
+                                <?php esc_html_e('Inject Affiliate Links?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description">
+                                <?php printf(
+                                    esc_html__( 'When enabled, affiliate link mappings matching this post tags will be injected. Manage mappings on the %s page.', 'ai-post-scheduler' ),
+                                    '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                                ); ?>
+                            </p>
+                        </div>
                     </div>
-                    
+
                     <!-- Step 3: Featured Image -->
                     <div class="aips-wizard-step-content" data-step="3" style="display: none;">
                         <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>

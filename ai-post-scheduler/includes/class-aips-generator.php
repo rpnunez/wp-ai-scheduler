@@ -824,6 +824,17 @@ class AIPS_Generator {
 
         $generation_incomplete = in_array(false, $component_statuses, true);
 
+        // Generation-time affiliate link injection (when enabled on the template/author).
+        if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() ) {
+            $raw_tags = $context->get_post_tags();
+            if ( ! empty( $raw_tags ) ) {
+                $tag_names = array_filter( array_map( 'trim', explode( ',', $raw_tags ) ) );
+                if ( ! empty( $tag_names ) ) {
+                    $content = ( new AIPS_Affiliate_Links_Service() )->inject_into_content( $content, $tag_names );
+                }
+            }
+        }
+
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
