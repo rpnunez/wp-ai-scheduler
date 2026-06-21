@@ -160,7 +160,7 @@ if (!defined('ABSPATH')) {
 					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-schedules" id="btn-tab-schedules">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Schedules Executed', 'ai-post-scheduler'); ?>
-						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="schedules"><?php echo esc_html(count($schedule_runs ?? [])); ?></span>
+						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="schedules"><?php echo esc_html(count($executed_schedules ?? [])); ?></span>
 					</button>
 				</div>
 

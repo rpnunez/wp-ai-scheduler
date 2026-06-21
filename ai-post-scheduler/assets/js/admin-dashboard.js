@@ -691,7 +691,13 @@
 
 				$.each(tabsConfig, function(i, config) {
 					var $panel = $(config.panelId);
-					if (config.dataList && config.dataList.length > 0) {
+					var count = config.dataList ? config.dataList.length : 0;
+
+					// Update live tab count badge
+					var tabKey = config.panelId.replace('#tab-', '');
+					$('[data-count-tab="' + tabKey + '"]').text(count);
+
+					if (count > 0) {
 						var html = '';
 						$.each(config.dataList, function(idx, item) {
 							if (config.processItem) {

@@ -108,13 +108,13 @@ class AIPS_Dashboard_Controller {
 		$period_duration = $to_ts - $from_ts;
 		$prev_from_ts = $from_ts - $period_duration - 1;
 		$prev_to_ts = $from_ts - 1;
-		$prev_summary = $dashboard_repo->get_summary_stats( $prev_from_ts, $prev_to_ts );
+		$prev_summary = $dashboard_repo->get_summary_stats( $prev_from_ts, $prev_to_ts ) ?: array();
 		$prev_completed = isset( $prev_summary['completed'] ) ? (int) $prev_summary['completed'] : 0;
 		$prev_failed = isset( $prev_summary['failed'] ) ? (int) $prev_summary['failed'] : 0;
 		$prev_partial = isset( $prev_summary['partial'] ) ? (int) $prev_summary['partial'] : 0;
-		$prev_topics_stats = $dashboard_repo->get_topics_stats( $prev_from_ts, $prev_to_ts );
+		$prev_topics_stats = $dashboard_repo->get_topics_stats( $prev_from_ts, $prev_to_ts ) ?: array();
 		$prev_topics_created = isset( $prev_topics_stats['total'] ) ? (int) $prev_topics_stats['total'] : 0;
-		$prev_ai_stats = $dashboard_repo->get_ai_stats( $prev_from_ts, $prev_to_ts );
+		$prev_ai_stats = $dashboard_repo->get_ai_stats( $prev_from_ts, $prev_to_ts ) ?: array();
 		$prev_ai_calls = isset( $prev_ai_stats['ai_calls'] ) ? (int) $prev_ai_stats['ai_calls'] : 0;
 		$trend_data = array(
 			'completed'  => $this->calc_trend( $completed_in_period, $prev_completed ),

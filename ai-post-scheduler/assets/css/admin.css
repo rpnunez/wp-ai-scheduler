@@ -293,7 +293,7 @@
 .aips-schedule-status-column {
     border: 1px solid var(--aips-gray-100);
     border-radius: var(--aips-radius-md);
-    background: linear-gradient(180deg, var(--aips-white) 0%, #fbfdff 100%);
+    background: linear-gradient(180deg, var(--aips-white) 0%, var(--aips-gray-50) 100%);
     padding: var(--aips-space-3);
 }
 
@@ -1098,9 +1098,6 @@
 
 .aips-btn-ghost:hover {
     border-color: var(--aips-gray-400);
-}
-
-.aips-btn-ghost:hover {
     background: var(--aips-gray-50);
 }
 
