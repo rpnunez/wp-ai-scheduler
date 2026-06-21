@@ -291,6 +291,11 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 				</div>
 				<div class="aips-form-row"><label for="aips-source-data-updated-at"><?php esc_html_e('Updated At', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-updated-at" class="regular-text" readonly></div>
 				<div class="aips-form-row"><label for="aips-source-data-content-hash"><?php esc_html_e('Content Hash', 'ai-post-scheduler'); ?></label><input type="text" id="aips-source-data-content-hash" class="large-text code" readonly></div>
+				<div class="aips-form-row" id="aips-source-data-usage-wrap" style="display:none;">
+					<label><?php esc_html_e('Used in generated posts/history', 'ai-post-scheduler'); ?></label>
+					<div id="aips-source-data-usage-links" class="aips-source-data-usage-links"></div>
+					<p class="description"><?php esc_html_e('These links are based on generation history metadata captured when this snapshot was injected into a prompt.', 'ai-post-scheduler'); ?></p>
+				</div>
 			</form>
 		</div>
 		<div class="aips-modal-footer">
