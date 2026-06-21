@@ -28,7 +28,7 @@
     ]
   },
   "scripts": {
-    "test:setup": "bash bin/prepare-wp-tests.sh",
+    "test:setup": "bash ../bin/prepare-wp-tests.sh",
     "test": [
       "@test:setup",
       "php vendor/bin/phpunit --configuration phpunit.xml"
@@ -41,7 +41,7 @@
       "@test:setup",
       "php vendor/bin/phpunit --configuration phpunit.xml --verbose"
     ],
-    "lint:repository-boundary": "php tools/check-repository-boundary.php"
+    "lint:repository-boundary": "php ../scripts/check-repository-boundary.php"
   },
   "config": {
     "allow-plugins": {

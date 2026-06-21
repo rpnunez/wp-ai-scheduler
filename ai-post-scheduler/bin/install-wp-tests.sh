@@ -1,1 +1,0 @@
-../../scripts/install-wp-tests.sh

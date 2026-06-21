@@ -21,7 +21,10 @@ if ( php_sapi_name() !== 'cli' && ! defined( 'WP_CLI' ) ) {
 }
 
 // Bootstrap WordPress
-$wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
+$wp_load_path = dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/wp-load.php';
+if (!file_exists($wp_load_path)) {
+	$wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
+}
 if (!file_exists($wp_load_path)) {
 	echo "Error: WordPress not found at $wp_load_path\n";
 	exit(1);
@@ -30,7 +33,7 @@ if (!file_exists($wp_load_path)) {
 require_once $wp_load_path;
 
 // Include the MCP bridge
-require_once dirname(__FILE__) . '/mcp-bridge.php';
+require_once dirname(__DIR__) . '/ai-post-scheduler/mcp-bridge.php';
 
 echo "=== AI Post Scheduler MCP Bridge Test Suite ===\n\n";
 

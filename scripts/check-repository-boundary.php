@@ -1,6 +1,6 @@
 <?php
-$root = dirname(__DIR__);
-$whitelistFile = $root . '/config/repository-boundary-whitelist.txt';
+$root = dirname(__DIR__) . '/ai-post-scheduler';
+$whitelistFile = __DIR__ . '/repository-boundary-whitelist.txt';
 $whitelist = array();
 if (file_exists($whitelistFile)) {
 	$lines = file($whitelistFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-INSTALL_SCRIPT="$PLUGIN_DIR/../scripts/install-wp-tests.sh"
+PLUGIN_DIR="$(cd "$SCRIPT_DIR/../ai-post-scheduler" && pwd)"
+INSTALL_SCRIPT="$(cd "$SCRIPT_DIR/../scripts" && pwd)/install-wp-tests.sh"
 
 try_install_svn() {
 	if command -v svn >/dev/null 2>&1; then

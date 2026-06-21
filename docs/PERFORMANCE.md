@@ -6,7 +6,7 @@ The AI Post Scheduler plugin includes a performance benchmarking system to detec
 
 ## Components
 
-### 1. Benchmark Script (`ai-post-scheduler/bin/benchmark.php`)
+### 1. Benchmark Script (`bin/benchmark.php`)
 
 A PHP CLI script that:
 - Boots WordPress in a test environment
@@ -59,19 +59,17 @@ PRs fail if metrics exceed these thresholds compared to baseline:
 
 ### Prerequisites
 
-1. Install WordPress test library:
+1. Install WordPress test library from repository root:
    ```bash
-   cd ai-post-scheduler
-   bash bin/install-wp-tests.sh wordpress_test root '' localhost latest true
+   bash scripts/install-wp-tests.sh wordpress_test root '' localhost latest true
    ```
 
 2. Set up WordPress environment at `/tmp/wordpress` with wp-config.php
 
 ### Run Benchmark
 
-Basic usage:
+Basic usage from repository root:
 ```bash
-cd ai-post-scheduler
 php bin/benchmark.php --wp-core-dir=/tmp/wordpress
 ```
 

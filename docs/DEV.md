@@ -202,15 +202,13 @@ If `WP_TESTS_DIR/includes/functions.php` is missing, `tests/bootstrap.php` fails
 ### Performance Benchmarks
 
 ```bash
-cd ai-post-scheduler
-
-# Run benchmark
+# Run benchmark from repository root
 php bin/benchmark.php --wp-core-dir=/tmp/wordpress
 
 # Compare against baseline
 php bin/benchmark.php \
   --wp-core-dir=/tmp/wordpress \
-  --baseline-file=../.github/performance-baseline.json \
+  --baseline-file=.github/performance-baseline.json \
   --fail-on-regression
 ```
 

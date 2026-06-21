@@ -21,7 +21,7 @@ if ( php_sapi_name() !== 'cli' && ! defined( 'WP_CLI' ) ) {
 echo "=== MCP Bridge Validation Script ===\n\n";
 
 // Check that mcp-bridge.php exists
-$bridge_file = __DIR__ . '/mcp-bridge.php';
+$bridge_file = dirname(__DIR__) . '/ai-post-scheduler/mcp-bridge.php';
 if (!file_exists($bridge_file)) {
 	echo "❌ FAILED: mcp-bridge.php not found!\n";
 	exit(1);
@@ -98,8 +98,8 @@ echo "✅ JSON-RPC 2.0 protocol implemented\n";
 
 // Check documentation files
 $docs = array(
-	'MCP_BRIDGE_README.md' => 'Documentation',
-	'mcp-bridge-schema.json' => 'JSON Schema',
+	'../docs/mcp/MCP_BRIDGE_QUICKSTART.md' => 'Documentation',
+	'../ai-post-scheduler/mcp-bridge-schema.json' => 'JSON Schema',
 	'test-mcp-bridge.php' => 'Test script',
 	'mcp-client-example.py' => 'Python client',
 	'mcp-client-example.sh' => 'Shell client'
@@ -114,7 +114,7 @@ foreach ($docs as $file => $desc) {
 }
 
 // Validate JSON schema
-$schema_file = __DIR__ . '/mcp-bridge-schema.json';
+$schema_file = dirname(__DIR__) . '/ai-post-scheduler/mcp-bridge-schema.json';
 if (file_exists($schema_file)) {
 	$schema_content = file_get_contents($schema_file);
 	if ($schema_content === false) {
