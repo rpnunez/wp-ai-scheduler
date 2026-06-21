@@ -53,6 +53,20 @@ class AIPS_Generator {
     private $markdown_parser;
 
     /**
+     * Extract safe content enhancement placeholders from generated content.
+     *
+     * @param string $content Generated post content.
+     * @return array<int, string> Unique enhancement slugs.
+     */
+    private function extract_content_enhancement_placeholders($content) {
+        if (!preg_match_all('/\{\{aips_enhancement:([a-z0-9_-]+)\}\}/i', (string) $content, $matches)) {
+            return array();
+        }
+
+        return array_values(array_unique(array_map('sanitize_title', $matches[1])));
+    }
+
+    /**
      * Constructor.
      *
      * Accepts dependencies for easier testing; falls back to concrete
@@ -760,6 +774,13 @@ class AIPS_Generator {
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
+        $selected_content_enhancements = $this->extract_content_enhancement_placeholders($content);
+        if (!empty($selected_content_enhancements)) {
+            $this->generation_logger->log('Content enhancement opportunities selected', 'info', array(
+                'slugs' => $selected_content_enhancements,
+            ));
+        }
+        $content = (new AIPS_Content_Enhancement_Inserter())->replace_placeholders($content);
         $component_statuses['post_content'] = ($content !== '');
 
         // Resolve AI variables from the title prompt using the generated content
