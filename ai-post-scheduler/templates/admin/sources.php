@@ -50,6 +50,10 @@ $is_embedded_sources_view = !empty($embedded);
 					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Assign Sources to Source Groups to allow Authors and Templates to selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
+					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-source-data')); ?>">
+						<span class="dashicons dashicons-archive"></span>
+						<?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?>
+					</a>
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
 						<span class="dashicons dashicons-category"></span>
 						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
