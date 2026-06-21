@@ -34,6 +34,7 @@ $current      = isset($source_data['current_page']) ? max(1, (int) $source_data[
 $base_args    = $is_global_view ? array() : array('source_id' => $source_id);
 $base_url     = AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', $base_args);
 $back_url     = AIPS_Admin_Menu_Helper::get_page_url('sources');
+$can_edit_source_data = current_user_can('manage_options');
 
 $build_page_url = static function($page_number) use ($base_url, $search, $filters, $is_global_view) {
 	$args = array(
@@ -260,31 +261,37 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 	</div>
 </div>
 
-<div id="aips-source-data-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-data-modal-title">
+<div id="aips-source-data-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-source-data-modal-title" data-can-edit="<?php echo $can_edit_source_data ? esc_attr('1') : esc_attr('0'); ?>">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 id="aips-source-data-modal-title"><?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-source-data-form" novalidate>
+			<div id="aips-source-data-view-notice" class="notice notice-info inline">
+				<p><?php esc_html_e('Source snapshots open read-only by default so historical source content is not changed accidentally.', 'ai-post-scheduler'); ?></p>
+			</div>
+			<div id="aips-source-data-edit-warning" class="notice notice-warning inline" style="display:none;">
+				<p><?php esc_html_e('Editing this snapshot changes the source content available to future generation. Review changes carefully before saving.', 'ai-post-scheduler'); ?></p>
+			</div>
+			<form id="aips-source-data-form" class="aips-source-data-readonly" novalidate>
 				<input type="hidden" id="aips-source-data-id" name="data_id" value="0">
 				<div class="aips-form-grid aips-form-grid-2">
 					<div class="aips-form-row"><label for="aips-source-data-display-id"><?php esc_html_e('ID', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-display-id" class="regular-text" readonly></div>
 					<div class="aips-form-row"><label for="aips-source-data-source-id"><?php esc_html_e('Source ID', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-source-id" class="regular-text" readonly></div>
 				</div>
-				<div class="aips-form-row"><label for="aips-source-data-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></label><input type="url" id="aips-source-data-url" name="url" class="large-text"></div>
-				<div class="aips-form-row"><label for="aips-source-data-page-title"><?php esc_html_e('Page Title', 'ai-post-scheduler'); ?></label><input type="text" id="aips-source-data-page-title" name="page_title" class="large-text"></div>
-				<div class="aips-form-row"><label for="aips-source-data-meta-description"><?php esc_html_e('Meta Description', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-meta-description" name="meta_description" rows="3" class="large-text"></textarea></div>
-				<div class="aips-form-row"><label for="aips-source-data-extracted-text"><?php esc_html_e('Extracted Text', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-extracted-text" name="extracted_text" rows="10" class="large-text code"></textarea></div>
-				<div class="aips-form-row"><label for="aips-source-data-raw-html"><?php esc_html_e('Raw HTML', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-raw-html" name="raw_html" rows="8" class="large-text code"></textarea><p class="description"><?php esc_html_e('Raw HTML editing may be restricted depending on your permissions; users without unfiltered HTML access will have unsafe markup sanitized when saving.', 'ai-post-scheduler'); ?></p></div>
-				<div class="aips-form-row"><label for="aips-source-data-fetch-status"><?php esc_html_e('Fetch Status', 'ai-post-scheduler'); ?></label><select id="aips-source-data-fetch-status" name="fetch_status" class="aips-form-select"><option value="pending"><?php esc_html_e('Pending', 'ai-post-scheduler'); ?></option><option value="success"><?php esc_html_e('Success', 'ai-post-scheduler'); ?></option><option value="failed"><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option></select></div>
+				<div class="aips-form-row"><label for="aips-source-data-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></label><input type="url" id="aips-source-data-url" name="url" class="large-text" readonly></div>
+				<div class="aips-form-row"><label for="aips-source-data-page-title"><?php esc_html_e('Page Title', 'ai-post-scheduler'); ?></label><input type="text" id="aips-source-data-page-title" name="page_title" class="large-text" readonly></div>
+				<div class="aips-form-row"><label for="aips-source-data-meta-description"><?php esc_html_e('Meta Description', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-meta-description" name="meta_description" rows="3" class="large-text" readonly></textarea></div>
+				<div class="aips-form-row"><label for="aips-source-data-extracted-text"><?php esc_html_e('Extracted Text', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-extracted-text" name="extracted_text" rows="10" class="large-text code" readonly></textarea></div>
+				<div class="aips-form-row"><label for="aips-source-data-raw-html"><?php esc_html_e('Raw HTML', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-raw-html" name="raw_html" rows="8" class="large-text code" readonly></textarea><p class="description"><?php esc_html_e('Raw HTML editing may be restricted depending on your permissions; users without unfiltered HTML access will have unsafe markup sanitized when saving.', 'ai-post-scheduler'); ?></p></div>
+				<div class="aips-form-row"><label for="aips-source-data-fetch-status"><?php esc_html_e('Fetch Status', 'ai-post-scheduler'); ?></label><select id="aips-source-data-fetch-status" name="fetch_status" class="aips-form-select" disabled><option value="pending"><?php esc_html_e('Pending', 'ai-post-scheduler'); ?></option><option value="success"><?php esc_html_e('Success', 'ai-post-scheduler'); ?></option><option value="failed"><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option></select></div>
 				<div class="aips-form-grid aips-form-grid-2">
-					<div class="aips-form-row"><label for="aips-source-data-http-status"><?php esc_html_e('HTTP Status', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-http-status" name="http_status" class="small-text" min="0" step="1"></div>
+					<div class="aips-form-row"><label for="aips-source-data-http-status"><?php esc_html_e('HTTP Status', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-http-status" name="http_status" class="small-text" min="0" step="1" readonly></div>
 					<div class="aips-form-row"><label for="aips-source-data-num-used"><?php esc_html_e('Times Used', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-num-used" class="small-text" readonly></div>
 				</div>
-				<div class="aips-form-row"><label for="aips-source-data-error-message"><?php esc_html_e('Error Message', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-error-message" name="error_message" rows="3" class="large-text"></textarea></div>
-				<div class="aips-form-row"><label for="aips-source-data-fetched-at"><?php esc_html_e('Fetched At Timestamp', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-fetched-at" name="fetched_at" class="regular-text" min="0" step="1"><p class="description"><?php esc_html_e('Unix timestamp for when this source data was fetched.', 'ai-post-scheduler'); ?></p></div>
+				<div class="aips-form-row"><label for="aips-source-data-error-message"><?php esc_html_e('Error Message', 'ai-post-scheduler'); ?></label><textarea id="aips-source-data-error-message" name="error_message" rows="3" class="large-text" readonly></textarea></div>
+				<div class="aips-form-row"><label for="aips-source-data-fetched-at"><?php esc_html_e('Fetched At Timestamp', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-fetched-at" name="fetched_at" class="regular-text" min="0" step="1" readonly><p class="description"><?php esc_html_e('Unix timestamp for when this source data was fetched.', 'ai-post-scheduler'); ?></p></div>
 				<div class="aips-form-grid aips-form-grid-2">
 					<div class="aips-form-row"><label for="aips-source-data-char-count"><?php esc_html_e('Character Count', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-char-count" class="regular-text" readonly></div>
 					<div class="aips-form-row"><label for="aips-source-data-created-at"><?php esc_html_e('Created At', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-created-at" class="regular-text" readonly></div>
@@ -299,8 +306,11 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 			</form>
 		</div>
 		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-			<button type="button" class="button button-primary" id="aips-save-source-data-btn"><?php esc_html_e('Save Source Data', 'ai-post-scheduler'); ?></button>
+			<?php if ($can_edit_source_data): ?>
+				<button type="button" class="button" id="aips-edit-source-data-btn"><?php esc_html_e('Edit Snapshot', 'ai-post-scheduler'); ?></button>
+			<?php endif; ?>
+			<button type="button" class="button button-primary aips-modal-close" id="aips-close-source-data-btn"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="button button-primary" id="aips-save-source-data-btn" style="display:none;"><?php esc_html_e('Save Source Data', 'ai-post-scheduler'); ?></button>
 		</div>
 	</div>
 </div>

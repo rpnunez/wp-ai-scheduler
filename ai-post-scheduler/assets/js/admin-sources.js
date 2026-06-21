@@ -24,6 +24,9 @@
 		/** @type {number} ID of the source currently being edited (0 = new). */
 		currentSourceId: 0,
 
+		/** @type {boolean} Whether the source data modal is explicitly in edit mode. */
+		sourceDataEditMode: false,
+
 		/**
 		 * Bootstrap the Sources page.
 		 *
@@ -68,6 +71,7 @@
 			// Source data modal.
 			$(document).on('click', '.aips-view-source-data', this.openSourceDataModal.bind(this));
 			$(document).on('click', '.aips-delete-source-data', this.deleteSourceData.bind(this));
+			$(document).on('click', '#aips-edit-source-data-btn', this.enableSourceDataEditMode.bind(this));
 			$(document).on('click', '#aips-save-source-data-btn', this.saveSourceData.bind(this));
 			$(document).on('click', '#aips-source-data-modal .aips-modal-close', this.closeSourceDataModal.bind(this));
 			$(document).on('click', '#aips-source-data-modal', this.onSourceDataOverlayClick.bind(this));
@@ -346,6 +350,7 @@
 				$('#aips-source-data-created-at').val(row.created_at || 0);
 				$('#aips-source-data-updated-at').val(row.updated_at || 0);
 				self.renderSourceDataUsage(response.data.usage || []);
+				self.setSourceDataEditMode(false);
 				$('#aips-source-data-modal').show();
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
@@ -386,8 +391,40 @@
 			$wrap.show();
 		},
 
+
+		enableSourceDataEditMode: function (e) {
+			e.preventDefault();
+
+			var message = aipsSourcesL10n.editDataWarning || 'Editing this snapshot changes the source content available to future generation. Continue?';
+			if (!confirm(message)) {
+				return;
+			}
+
+			this.setSourceDataEditMode(true);
+		},
+
+		setSourceDataEditMode: function (isEditMode) {
+			var canEdit = $('#aips-source-data-modal').data('can-edit') === 1 || $('#aips-source-data-modal').data('can-edit') === '1';
+			var editableSelector = '#aips-source-data-url, #aips-source-data-page-title, #aips-source-data-meta-description, #aips-source-data-extracted-text, #aips-source-data-raw-html, #aips-source-data-http-status, #aips-source-data-error-message, #aips-source-data-fetched-at';
+
+			this.sourceDataEditMode = !!(isEditMode && canEdit);
+			$(editableSelector).prop('readonly', !this.sourceDataEditMode);
+			$('#aips-source-data-fetch-status').prop('disabled', !this.sourceDataEditMode);
+			$('#aips-source-data-form').toggleClass('aips-source-data-readonly', !this.sourceDataEditMode);
+			$('#aips-source-data-view-notice').toggle(!this.sourceDataEditMode);
+			$('#aips-source-data-edit-warning').toggle(this.sourceDataEditMode);
+			$('#aips-edit-source-data-btn').toggle(canEdit && !this.sourceDataEditMode);
+			$('#aips-close-source-data-btn').toggle(!this.sourceDataEditMode).text(aipsSourcesL10n.close || 'Close');
+			$('#aips-save-source-data-btn').toggle(this.sourceDataEditMode).text(aipsSourcesL10n.saveData || 'Save Source Data').prop('disabled', false);
+		},
+
 		saveSourceData: function (e) {
 			e.preventDefault();
+			if (!this.sourceDataEditMode) {
+				this.closeSourceDataModal(e);
+				return;
+			}
+
 			var data = {
 				action:           'aips_save_source_data',
 				nonce:            aipsAjax.nonce,
@@ -401,6 +438,7 @@
 				http_status:      $('#aips-source-data-http-status').val(),
 				error_message:    $('#aips-source-data-error-message').val(),
 				fetched_at:       $('#aips-source-data-fetched-at').val(),
+				edit_snapshot:    1,
 			};
 
 			$('#aips-save-source-data-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
@@ -444,11 +482,13 @@
 
 		closeSourceDataModal: function (e) {
 			e.preventDefault();
+			this.setSourceDataEditMode(false);
 			$('#aips-source-data-modal').hide();
 		},
 
 		onSourceDataOverlayClick: function (e) {
 			if ($(e.target).is('#aips-source-data-modal')) {
+				this.setSourceDataEditMode(false);
 				$('#aips-source-data-modal').hide();
 			}
 		},
