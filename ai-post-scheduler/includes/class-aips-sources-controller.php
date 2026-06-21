@@ -408,7 +408,10 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
 		}
 
-		AIPS_Ajax_Response::success(array('source_data' => $row));
+		AIPS_Ajax_Response::success(array(
+			'source_data' => $row,
+			'usage'       => $this->data_repo->get_generation_usage($id, 10),
+		));
 	}
 
 	/**
@@ -442,12 +445,17 @@ class AIPS_Sources_Controller {
 
 		$fetched_at = isset($_POST['fetched_at']) ? absint($_POST['fetched_at']) : (int) $existing->fetched_at;
 
+		$raw_html = isset($_POST['raw_html']) && is_string($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : '';
+		if (!current_user_can('unfiltered_html')) {
+			$raw_html = wp_kses_post($raw_html);
+		}
+
 		$data = array(
 			'url'              => isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '',
 			'page_title'       => isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : '',
 			'meta_description' => isset($_POST['meta_description']) ? sanitize_textarea_field(wp_unslash($_POST['meta_description'])) : '',
 			'extracted_text'   => isset($_POST['extracted_text']) ? sanitize_textarea_field(wp_unslash($_POST['extracted_text'])) : '',
-			'raw_html'         => isset($_POST['raw_html']) ? wp_unslash( $_POST['raw_html'] ) : '',
+			'raw_html'         => $raw_html,
 			'fetch_status'     => $fetch_status,
 			'http_status'      => isset($_POST['http_status']) ? absint($_POST['http_status']) : 0,
 			'error_message'    => isset($_POST['error_message']) ? sanitize_textarea_field(wp_unslash($_POST['error_message'])) : '',

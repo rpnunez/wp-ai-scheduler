@@ -370,6 +370,7 @@ INSTRUCTIONS;
         $block = "Trusted Sources (use the following content and URLs as factual references):\n\n";
 
         $used_row_ids = array();
+        $used_snapshots = array();
 
         foreach ($source_rows as $source) {
             $sid   = (int) $source->id;
@@ -385,6 +386,15 @@ INSTRUCTIONS;
                 }
                 $block .= $snippet . "\n";
                 $used_row_ids[] = (int) $row->id;
+                $used_snapshots[] = array(
+                    'source_data_id' => (int) $row->id,
+                    'source_id'      => $sid,
+                    'label'          => (string) $label,
+                    'url'            => isset($row->url) && $row->url ? (string) $row->url : (string) $source->url,
+                    'page_title'     => isset($row->page_title) ? (string) $row->page_title : '',
+                    'fetched_at'     => isset($row->fetched_at) ? (int) $row->fetched_at : 0,
+                    'char_count'     => isset($row->char_count) ? (int) $row->char_count : strlen($snippet),
+                );
             } else {
                 $block .= "[Content not yet fetched — reference this URL where relevant]\n";
             }
@@ -395,6 +405,10 @@ INSTRUCTIONS;
         // Advance the round-robin counter for every archive row used in this prompt.
         foreach ($used_row_ids as $row_id) {
             $data_repo->increment_num_used($row_id);
+        }
+
+        if (!empty($used_snapshots)) {
+            do_action('aips_source_snapshots_injected', $used_snapshots, $term_ids, $source_rows);
         }
 
         /**

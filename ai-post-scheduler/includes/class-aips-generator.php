@@ -48,6 +48,13 @@ class AIPS_Generator {
     private $post_featured_image_prompt_builder;
 
     /**
+     * Source-data snapshots selected for the current content prompt.
+     *
+     * @var array<int,array<string,mixed>>
+     */
+    private $current_source_snapshots = array();
+
+    /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
     private $markdown_parser;
@@ -576,8 +583,11 @@ class AIPS_Generator {
      * @return array|WP_Error Array with title, content, excerpt, and image prompt, or WP_Error.
      */
     public function generate_preview($context) {
-        // Build the full content prompt from context
+        // Build the full content prompt from context and capture source snapshot usage.
+        $this->current_source_snapshots = array();
+        add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
         $content_prompt = $this->post_content_prompt_builder->build($context);
+        remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
 
         // Build contextual instructions
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -727,8 +737,11 @@ class AIPS_Generator {
             $this->logger->log('Failed to create history record', 'error');
         }
 
-        // Build the full content prompt from context
+        // Build the full content prompt from context and capture source snapshot usage.
+        $this->current_source_snapshots = array();
+        add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
         $content_prompt = $this->post_content_prompt_builder->build($context);
+        remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
 
         if ($this->current_history) {
             $this->current_history->record(
@@ -867,6 +880,10 @@ class AIPS_Generator {
             return $post_id;
         }
 
+        if (!empty($this->current_source_snapshots)) {
+            update_post_meta($post_id, 'aips_source_snapshots_used', $this->current_source_snapshots);
+        }
+
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content);
@@ -965,6 +982,65 @@ class AIPS_Generator {
         $this->generation_logger->set_history_id(null);
 
         return $post_id;
+    }
+
+    /**
+     * Record selected source-data snapshots once they are injected into a prompt.
+     *
+     * @param array $snapshots Selected source snapshot metadata.
+     * @param array $term_ids  Source group term IDs.
+     * @param array $sources   Source rows.
+     * @return void
+     */
+    public function record_source_snapshots_injected($snapshots, $term_ids = array(), $sources = array()) {
+        if (empty($snapshots) || !is_array($snapshots)) {
+            return;
+        }
+
+        $normalized = array();
+        $ids = array();
+
+        foreach ($snapshots as $snapshot) {
+            if (empty($snapshot['source_data_id'])) {
+                continue;
+            }
+
+            $source_data_id = absint($snapshot['source_data_id']);
+            $ids[] = $source_data_id;
+            $normalized[] = array(
+                'source_data_id' => $source_data_id,
+                'source_id'      => isset($snapshot['source_id']) ? absint($snapshot['source_id']) : 0,
+                'label'          => isset($snapshot['label']) ? sanitize_text_field($snapshot['label']) : '',
+                'url'            => isset($snapshot['url']) ? esc_url_raw($snapshot['url']) : '',
+                'page_title'     => isset($snapshot['page_title']) ? sanitize_text_field($snapshot['page_title']) : '',
+                'fetched_at'     => isset($snapshot['fetched_at']) ? absint($snapshot['fetched_at']) : 0,
+                'char_count'     => isset($snapshot['char_count']) ? absint($snapshot['char_count']) : 0,
+            );
+        }
+
+        if (empty($normalized)) {
+            return;
+        }
+
+        $this->current_source_snapshots = $normalized;
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'activity',
+                __('Injected source snapshots into content prompt', 'ai-post-scheduler'),
+                array(
+                    'source_data_ids' => array_values(array_unique($ids)),
+                    'snapshots'       => $normalized,
+                ),
+                null,
+                array(
+                    'component'         => 'content',
+                    'source_data_ids'   => array_values(array_unique($ids)),
+                    'source_snapshots'  => $normalized,
+                    'source_group_ids'  => array_map('absint', (array) $term_ids),
+                )
+            );
+        }
     }
 
     /**
