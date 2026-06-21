@@ -774,6 +774,11 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // Post-save affiliate link injection — fires after every generated post.
+        add_action('aips_post_generated', function($post_id) {
+            (new AIPS_Affiliate_Links_Service())->inject_for_post(absint($post_id));
+        }, 10, 1);
     }
 
     /**
@@ -845,6 +850,7 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
     }
 
     /**

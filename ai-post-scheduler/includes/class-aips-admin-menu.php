@@ -218,6 +218,15 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
+            null,
+            __('Affiliate Links', 'ai-post-scheduler'),
+            __('Affiliate Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-affiliate-links',
+            array($this, 'render_affiliate_links_page')
+        );
+
+        add_submenu_page(
             'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
@@ -369,6 +378,7 @@ class AIPS_Admin_Menu {
                 'aips-sources',
                 'aips-taxonomy',
                 'aips-internal-links',
+                'aips-affiliate-links',
                 'aips-author-topics',
                 AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
@@ -717,6 +727,11 @@ class AIPS_Admin_Menu {
      *
      * @return void
      */
+    public function render_affiliate_links_page() {
+        $controller = new AIPS_Affiliate_Links_Controller();
+        $controller->render_page();
+    }
+
     public function render_internal_links_page() {
         global $aips_internal_links_controller;
 
