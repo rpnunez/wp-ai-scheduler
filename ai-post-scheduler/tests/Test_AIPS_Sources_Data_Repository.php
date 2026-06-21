@@ -232,11 +232,64 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 			'fetch_status'   => 'success',
 		) );
 
-		$result = $this->repo->get_paginated_by_source_id( 302, 'searchable', 20, 1 );
+		$result = $this->repo->get_paginated_by_source_id( 302, 'Second', 20, 1 );
 
 		$this->assertSame( 1, $result['total'] );
 		$this->assertCount( 1, $result['items'] );
 		$this->assertEquals( 'Second Page', $result['items'][0]->page_title );
+	}
+
+	/** @test */
+	public function test_get_paginated_by_source_id_searches_body_only_when_enabled() {
+		$this->repo->insert_if_new( 305, array(
+			'url'            => 'https://body-one.example.com',
+			'page_title'     => 'Body First',
+			'extracted_text' => 'Alpha body only token.',
+			'fetch_status'   => 'success',
+		) );
+
+		$default_result = $this->repo->get_paginated_by_source_id( 305, 'token', 20, 1 );
+		$body_result    = $this->repo->get_paginated_by_source_id( 305, 'token', 20, 1, array(
+			'search_body_text' => true,
+		) );
+
+		$this->assertSame( 0, $default_result['total'] );
+		$this->assertSame( 1, $body_result['total'] );
+	}
+
+	/** @test */
+	public function test_get_paginated_by_source_id_applies_structured_filters() {
+		$this->repo->insert_if_new( 306, array(
+			'url'            => 'https://filters-success.example.com',
+			'page_title'     => 'Filter Success',
+			'extracted_text' => str_repeat( 'A', 80 ),
+			'fetch_status'   => 'success',
+			'http_status'    => 200,
+		) );
+		$success = $this->repo->get_by_source_id( 306 );
+		$this->repo->update( (int) $success->id, array(
+			'fetched_at' => AIPS_DateTime::fromDate( '2026-01-15' )->timestamp(),
+		) );
+
+		$this->repo->insert_if_new( 306, array(
+			'url'            => 'https://filters-failed.example.com',
+			'page_title'     => 'Filter Failed',
+			'extracted_text' => str_repeat( 'B', 20 ),
+			'fetch_status'   => 'failed',
+			'http_status'    => 404,
+		) );
+
+		$result = $this->repo->get_paginated_by_source_id( 306, '', 20, 1, array(
+			'fetch_status'      => 'success',
+			'http_status_class' => 200,
+			'fetched_after'     => '2026-01-01',
+			'fetched_before'    => '2026-01-31',
+			'min_char_count'    => 50,
+			'max_char_count'    => 100,
+		) );
+
+		$this->assertSame( 1, $result['total'] );
+		$this->assertEquals( 'Filter Success', $result['items'][0]->page_title );
 	}
 
 	/** @test */
