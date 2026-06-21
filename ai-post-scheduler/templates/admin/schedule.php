@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (!defined('ABSPATH')) {
 	exit;
 }
@@ -171,7 +171,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<?php if (!empty($templates)): ?>
 					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
 						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
 					</button>
 					<?php else: ?>
 					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
@@ -185,17 +185,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <?php endif; ?>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
-				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
-				<div class="aips-schedule-status-columns">
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-				</div>
+				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status...', 'ai-post-scheduler'); ?></div>
 				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
 			</div>
 		</div>
@@ -482,7 +472,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<div class="aips-empty-state-actions">
 						<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
 							<span class="dashicons dashicons-plus-alt"></span>
-							<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
+							<?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
 						</button>
 					</div>
 					<?php endif; ?>

@@ -97,38 +97,28 @@
                         .replace(/'/g, '&#39;');
                 };
 
-                var typeLabels = {
-                    template_schedule: aipsScheduleL10n.typeTemplateLabel,
-                    author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
-                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel
-                };
-
-                var queueTotal = 0;
-                $.each(d.queue_depth || {}, function(_, count) {
-                    queueTotal += parseInt(count || 0, 10);
-                });
-
                 var counts = d.schedule_counts || {};
+                var overdue = parseInt(counts.overdue || 0, 10);
                 var cards = [
                     {
-                        label: aipsScheduleL10n.activeSchedulesLabel,
+                        label: aipsScheduleL10n.activeSchedulesLabel  || 'Active Schedules',
                         value: parseInt(counts.active || 0, 10),
                         tone: 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.upcomingSchedulesLabel,
+                        label: aipsScheduleL10n.upcomingSchedulesLabel || 'Upcoming (24h)',
                         value: parseInt(counts.upcoming_24h || 0, 10),
-                        tone: 'success'
+                        tone: parseInt(counts.upcoming_24h || 0, 10) > 0 ? 'success' : 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.queueDepthLabel,
-                        value: queueTotal,
-                        tone: 'info'
+                        label: aipsScheduleL10n.overdueSchedulesLabel  || 'Overdue',
+                        value: overdue,
+                        tone: overdue > 0 ? 'error' : 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.bulkFailedLabel,
-                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                        label: aipsScheduleL10n.inactiveSchedulesLabel || 'Inactive / Paused',
+                        value: parseInt(counts.inactive || 0, 10),
+                        tone: 'neutral'
                     }
                 ];
 
@@ -139,41 +129,6 @@
                     '</div>';
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
-
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
-                });
-
-                $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
-
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
-
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
-                );
 
                 var warnings = [];
                 if (d.last_error) {
