@@ -242,6 +242,10 @@ class AIPS_Ajax_Registry {
 
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
+		'aips_save_developer_integration'   => 'AIPS_Developer_Integrations_Controller',
+		'aips_delete_developer_integration' => 'AIPS_Developer_Integrations_Controller',
+		'aips_get_developer_integration'    => 'AIPS_Developer_Integrations_Controller',
+		'aips_toggle_developer_integration' => 'AIPS_Developer_Integrations_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',

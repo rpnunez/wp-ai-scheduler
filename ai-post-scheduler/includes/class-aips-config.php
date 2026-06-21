@@ -139,6 +139,11 @@ class AIPS_Config {
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
+            'aips_developer_integrations_enabled' => false,
+            'aips_developer_integration_default_disclosure_text' => 'This post may include a partner integration.',
+            'aips_developer_integration_default_cta_text' => 'Learn more',
+            'aips_developer_integration_provider_allowlist' => array('custom', 'github', 'zapier', 'make', 'webhook'),
+            'aips_developer_integrations' => array(),
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
             // Notifications
