@@ -661,7 +661,7 @@ class AIPS_Resilience_Service {
         $current_time = time();
 
         $requests = get_transient('aips_rate_limiter_requests');
-        if ($requests === false || empty($requests)) {
+        if (!is_array($requests) || empty($requests)) {
             return 0;
         }
 
@@ -673,7 +673,7 @@ class AIPS_Resilience_Service {
             return 0;
         }
 
-        return (int) ceil(min($recent) + $period - $current_time);
+        return max(0, (int) ceil(min($recent) + $period - $current_time));
     }
 
     /**

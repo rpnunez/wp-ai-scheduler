@@ -886,7 +886,7 @@
         showAjaxError: function(response, fallbackMsg) {
             if (response && response.data && response.data.code === 'rate_limit_exceeded') {
                 AIPS.Utilities.showToast(
-                    AIPS.Utilities.buildRateLimitMessage(response.data.retry_after),
+                    response.data.message || AIPS.Utilities.buildRateLimitMessage(response.data.retry_after),
                     'warning'
                 );
             } else {

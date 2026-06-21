@@ -178,11 +178,11 @@
 							if (successCount > 0) {
 								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
 								if (rateLimited) {
-									setTimeout(() => AIPS.Utilities.showToast(AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning'), 1200);
+									setTimeout(() => AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning'), 1200);
 								}
 								setTimeout(() => location.reload(), rateLimited ? 4000 : 800);
 							} else if (rateLimited) {
-								AIPS.Utilities.showToast(AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning');
+								AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning');
 							} else {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 							}

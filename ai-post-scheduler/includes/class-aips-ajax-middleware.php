@@ -45,8 +45,11 @@ class AIPS_Ajax_Middleware {
 	 */
 	public static function enrich_resilience_errors( $response, $code ) {
 		if ( $code === 'rate_limit_exceeded' ) {
-			$service     = new AIPS_Resilience_Service();
-			$retry_after = $service->get_rate_limit_retry_after();
+			// Prefer retry_after already attached by execute_safely(); only hit the
+			// transient as a fallback (e.g. errors constructed outside the service).
+			$retry_after = isset( $response['retry_after'] )
+				? (int) $response['retry_after']
+				: ( new AIPS_Resilience_Service() )->get_rate_limit_retry_after();
 
 			$response['retry_after'] = $retry_after;
 			$response['message']     = self::format_rate_limit_message( $retry_after );
