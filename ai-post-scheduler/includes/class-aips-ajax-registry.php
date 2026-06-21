@@ -287,6 +287,9 @@ class AIPS_Ajax_Registry {
 		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
 		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
 		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
+
+		// Dashboard Controller
+		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',
 	);
 
 	/**

@@ -1,5 +1,5 @@
 /**
- * Dashboard page chart rendering and event binding.
+ * Dashboard page chart rendering, event binding, and AJAX interactions.
  *
  * Relies on `aipsDashboardL10n` (localised by AIPS_Admin_Assets) and
  * `aipsDashboardChartData` (embedded by the dashboard template) to build
@@ -42,54 +42,290 @@
 		 * @return {void}
 		 */
 		bindEvents: function() {
-			// Date Filter Popover toggles
-			$(document).on('click', '#aips-date-filter-trigger', function(e) {
-				e.stopPropagation();
-				$('#aips-date-popover-panel').toggle();
-			});
+			$(document).on('click', '#aips-date-filter-trigger', this.handleDateFilterTrigger.bind(this));
+			$(document).on('click', '#aips-date-popover-panel', this.handlePopoverClick.bind(this));
+			$(document).on('click', '#aips-date-popover-cancel', this.handlePopoverCancel.bind(this));
+			$(document).on('click', this.handleDocumentClick.bind(this));
+			$(document).on('submit', '#aips-dashboard-date-form', this.handleDateFormSubmit.bind(this));
+			$(document).on('click', '.aips-tab-btn', this.handleTabSwitch.bind(this));
+			$(document).on('click', '.aips-dashboard-publish-post', this.handlePublishPost.bind(this));
+			$(document).on('click', '.aips-dashboard-approve-topic', this.handleApproveTopic.bind(this));
+			$(document).on('click', '.aips-dashboard-reject-topic', this.handleRejectTopic.bind(this));
+			$(document).on('click', '.aips-dashboard-run-schedule', this.handleRunSchedule.bind(this));
+		},
 
-			$(document).on('click', '#aips-date-popover-panel', function(e) {
-				e.stopPropagation();
-			});
+		/**
+		 * Toggle the date range filter popover panel.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleDateFilterTrigger: function(e) {
+			e.stopPropagation();
+			$('#aips-date-popover-panel').toggle();
+		},
 
-			$(document).on('click', '#aips-date-popover-cancel', function(e) {
-				$('#aips-date-popover-panel').hide();
-			});
+		/**
+		 * Prevent clicks inside the popover panel from propagation.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handlePopoverClick: function(e) {
+			e.stopPropagation();
+		},
 
-			$(document).on('click', function() {
-				$('#aips-date-popover-panel').hide();
-			});
+		/**
+		 * Hide the date popover panel.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handlePopoverCancel: function(e) {
+			$('#aips-date-popover-panel').hide();
+		},
 
-			// Client-side date range validation
-			$(document).on('submit', '#aips-dashboard-date-form', function(e) {
-				var dateFromVal = $('#aips-input-date-from').val();
-				var dateToVal = $('#aips-input-date-to').val();
+		/**
+		 * Hide the date popover panel when clicking outside.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleDocumentClick: function(e) {
+			$('#aips-date-popover-panel').hide();
+		},
 
-				if (dateFromVal && dateToVal) {
-					var fromDate = new Date(dateFromVal + 'T00:00:00');
-					var toDate = new Date(dateToVal + 'T23:59:59');
+		/**
+		 * Handle AJAX date range form submission.
+		 *
+		 * @param {Event} e The submit event.
+		 * @return {boolean|void}
+		 */
+		handleDateFormSubmit: function(e) {
+			e.preventDefault();
+			
+			var dateFromVal = $('#aips-input-date-from').val();
+			var dateToVal = $('#aips-input-date-to').val();
+			var l10n = window.aipsDashboardL10n || {};
 
-					if (fromDate > toDate) {
-						alert(window.aipsDashboardL10n.dateValidationError || 'Start Date cannot be after End Date.');
-						e.preventDefault();
-						return false;
+			if (dateFromVal && dateToVal) {
+				var fromDate = new Date(dateFromVal + 'T00:00:00');
+				var toDate = new Date(dateToVal + 'T23:59:59');
+
+				if (fromDate > toDate) {
+					alert(l10n.dateValidationError || 'Start Date cannot be after End Date.');
+					return false;
+				}
+			}
+
+			// Hide popover
+			$('#aips-date-popover-panel').hide();
+
+			// Show spinner overlay
+			$('.aips-dashboard-spinner-overlay').show();
+
+			var self = this;
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_dashboard_data',
+					nonce: l10n.nonce,
+					date_from: dateFromVal,
+					date_to: dateToVal
+				},
+				success: function(response) {
+					$('.aips-dashboard-spinner-overlay').hide();
+					if (response.success && response.data) {
+						self.updateDashboardData(response.data);
+					} else {
+						alert(response.data || 'Failed to fetch dashboard data.');
 					}
+				},
+				error: function() {
+					$('.aips-dashboard-spinner-overlay').hide();
+					alert('An error occurred while fetching dashboard data.');
 				}
 			});
+		},
 
-			// Detail tab switching logic
-			$(document).on('click', '.aips-tab-btn', function(e) {
-				e.preventDefault();
-				var $btn = $(this);
-				var targetId = $btn.attr('aria-controls');
+		/**
+		 * Handle detail switching tabs.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleTabSwitch: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var targetId = $btn.attr('aria-controls');
 
-				// Toggle active classes on buttons
-				$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
-				$btn.addClass('active').attr('aria-selected', 'true');
+			// Toggle active classes on buttons
+			$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
+			$btn.addClass('active').attr('aria-selected', 'true');
 
-				// Show the target tab panel and hide the rest
-				$('.aips-tab-panel').hide().removeClass('active');
-				$('#' + targetId).show().addClass('active');
+			// Show the target tab panel and hide the rest
+			$('.aips-tab-panel').hide().removeClass('active');
+			$('#' + targetId).show().addClass('active');
+		},
+
+		/**
+		 * Handle inline publish post action.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handlePublishPost: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var postId = $btn.data('id');
+			var l10n = window.aipsDashboardL10n || {};
+
+			if (!confirm('Are you sure you want to publish this post now?')) {
+				return;
+			}
+
+			$btn.text('Publishing...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_publish_post',
+					nonce: l10n.nonce,
+					post_id: postId
+				},
+				success: function(response) {
+					if (response.success) {
+						var $tr = $btn.closest('tr');
+						$tr.find('.aips-badge')
+							.removeClass('aips-badge-warning aips-badge-neutral')
+							.addClass('aips-badge-success')
+							.text('Completed');
+						$btn.remove();
+					} else {
+						alert(response.data || 'Failed to publish post.');
+						$btn.text('Publish Now');
+					}
+				},
+				error: function() {
+					alert('An error occurred while publishing the post.');
+					$btn.text('Publish Now');
+				}
+			});
+		},
+
+		/**
+		 * Handle inline approve topic action.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleApproveTopic: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var topicId = $btn.data('id');
+			var l10n = window.aipsDashboardL10n || {};
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_approve_topic',
+					nonce: l10n.nonce,
+					id: topicId
+				},
+				success: function(response) {
+					if (response.success) {
+						var $tr = $btn.closest('tr');
+						$tr.find('.status-badge')
+							.removeClass('aips-badge-warning aips-badge-error')
+							.addClass('aips-badge-success')
+							.text('Approved');
+						$tr.find('.actions-container').empty();
+					} else {
+						alert(response.data || 'Failed to approve topic.');
+					}
+				},
+				error: function() {
+					alert('An error occurred while approving the topic.');
+				}
+			});
+		},
+
+		/**
+		 * Handle inline reject topic action.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleRejectTopic: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var topicId = $btn.data('id');
+			var l10n = window.aipsDashboardL10n || {};
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_reject_topic',
+					nonce: l10n.nonce,
+					id: topicId
+				},
+				success: function(response) {
+					if (response.success) {
+						var $tr = $btn.closest('tr');
+						$tr.find('.status-badge')
+							.removeClass('aips-badge-warning aips-badge-success')
+							.addClass('aips-badge-error')
+							.text('Rejected');
+						$tr.find('.actions-container').empty();
+					} else {
+						alert(response.data || 'Failed to reject topic.');
+					}
+				},
+				error: function() {
+					alert('An error occurred while rejecting the topic.');
+				}
+			});
+		},
+
+		/**
+		 * Handle inline trigger schedule/automation run action.
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleRunSchedule: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var scheduleId = $btn.data('id');
+			var l10n = window.aipsDashboardL10n || {};
+
+			$btn.text('Running...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_unified_run_now',
+					nonce: l10n.nonce,
+					id: scheduleId
+				},
+				success: function(response) {
+					if (response.success) {
+						alert('Automated run triggered successfully!');
+						$btn.text('Run Now');
+					} else {
+						alert(response.data || 'Failed to trigger schedule.');
+						$btn.text('Run Now');
+					}
+				},
+				error: function() {
+					alert('An error occurred while triggering the schedule.');
+					$btn.text('Run Now');
+				}
 			});
 		},
 
@@ -108,7 +344,6 @@
 			}
 
 			if (typeof Chart === 'undefined') {
-				// If Chart.js failed to load, show an error message in each chart container instead of the canvas.
 				var chartUnavailableMessage = l10n.chartUnavailable || 'Chart library failed to load.';
 				$('.aips-dashboard-chart-wrap').each(function() {
 					$(this)
@@ -124,7 +359,7 @@
 				return;
 			}
 
-			// 1. AI Calls & Errors (Daily) - NEW Chart
+			// 1. AI Calls & Errors (Daily)
 			this.renderChart(
 				'aips-chart-ai-calls',
 				data.labels,
@@ -149,7 +384,7 @@
 					}
 				],
 				'bar',
-				l10n.chartAiCallsTitle || 'AI Calls & Errors (Daily)'
+				l10n.chartAiCallsTitle || 'AI Calls & Errors by Day'
 			);
 
 			// 2. Posts by day: Completed vs Failed (Bar Chart)
@@ -286,6 +521,140 @@
 				options: options
 			});
 		},
+
+		/**
+		 * Dynamically update dashboard widgets, charts, and tables from AJAX response data.
+		 *
+		 * @param {Object} data Unified dashboard JSON payload.
+		 * @return {void}
+		 */
+		updateDashboardData: function(data) {
+			// 1. Update Date labels and form boundaries
+			$('.aips-date-range-label').text(data.date_from_formatted + ' – ' + data.date_to_formatted);
+			$('#aips-input-date-from').attr('max', data.date_to).val(data.date_from);
+			$('#aips-input-date-to').attr('min', data.date_from).val(data.date_to);
+
+			// 2. Update Section Headers Meta Title date descriptions
+			$('.aips-section-meta').text('Activity from ' + data.date_from_formatted + ' to ' + data.date_to_formatted);
+
+			// 3. Update top-level metrics counters
+			// Card 1: Completed Posts
+			$('.aips-stat-success .aips-stat-value').text(data.completed_in_period);
+			$('.aips-stat-success .aips-stat-sub-meta').text('Success Rate: ' + data.success_rate_in_period + '%');
+
+			// Card 2: Unsuccessful Attempts (Failed + Partial)
+			var unsuccessfulCount = parseInt(data.failed_in_period) + parseInt(data.partial_in_period);
+			$('.aips-stat-danger .aips-stat-value').text(unsuccessfulCount);
+			$('.aips-stat-danger .aips-stat-sub-meta').text(data.failed_in_period + ' Failed, ' + data.partial_in_period + ' Partial');
+
+			// Card 3: AI Requests
+			$('.aips-stat-info .aips-stat-value').text(data.ai_calls_in_period);
+			$('.aips-stat-info .aips-stat-sub-meta').text('Error Rate: ' + data.ai_error_rate_in_period + '% (' + data.ai_errors_in_period + ' errors)');
+
+			// Card 4: Author Topics
+			$('.aips-stat-warning .aips-stat-value').text(data.topics_created_in_period);
+			$('.aips-stat-warning .aips-stat-sub-meta').text(data.topics_pending_in_period + ' Pending Review');
+
+			// 4. Update Chart.js datasets
+			if (typeof Chart !== 'undefined') {
+				var cd = data.chart_data;
+				
+				// Update Chart 1: AI Calls & Errors
+				if (this.charts['aips-chart-ai-calls']) {
+					this.charts['aips-chart-ai-calls'].data.labels = cd.labels;
+					this.charts['aips-chart-ai-calls'].data.datasets[0].data = cd.aiCalls;
+					this.charts['aips-chart-ai-calls'].data.datasets[1].data = cd.aiErrors;
+					this.charts['aips-chart-ai-calls'].update();
+				}
+
+				// Update Chart 2: Posts by day
+				if (this.charts['aips-chart-posts-by-day']) {
+					this.charts['aips-chart-posts-by-day'].data.labels = cd.labels;
+					this.charts['aips-chart-posts-by-day'].data.datasets[0].data = cd.completed;
+					this.charts['aips-chart-posts-by-day'].data.datasets[1].data = cd.failed;
+					this.charts['aips-chart-posts-by-day'].update();
+				}
+
+				// Update Chart 3: Topics by day
+				if (this.charts['aips-chart-topics-by-day']) {
+					this.charts['aips-chart-topics-by-day'].data.labels = cd.labels;
+					this.charts['aips-chart-topics-by-day'].data.datasets[0].data = cd.topics;
+					this.charts['aips-chart-topics-by-day'].update();
+				}
+
+				// Update Chart 4: Error rate by day
+				if (this.charts['aips-chart-error-rate']) {
+					this.charts['aips-chart-error-rate'].data.labels = cd.labels;
+					this.charts['aips-chart-error-rate'].data.datasets[0].data = cd.errorRate;
+					this.charts['aips-chart-error-rate'].update();
+				}
+			}
+
+			// 5. Render list tables using AIPS.Templates
+			if (window.AIPS && AIPS.Templates) {
+				var tabsConfig = [
+					{
+						panelId: '#tab-posts',
+						dataList: data.recent_posts,
+						templateId: 'aips-tmpl-dashboard-posts-row',
+						processItem: function(item) {
+							item.title_html = item.edit_url 
+								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+								: '<div class="cell-primary">' + item.generated_title + '</div>';
+							item.actions_html = (item.status === 'draft' || item.status === 'pending')
+								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-publish-post" data-id="' + item.post_id + '">Publish Now</a></div>'
+								: '';
+						}
+					},
+					{
+						panelId: '#tab-topics',
+						dataList: data.recent_topics,
+						templateId: 'aips-tmpl-dashboard-topics-row',
+						processItem: function(item) {
+							item.actions_html = (item.status === 'pending')
+								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-approve-topic" data-id="' + item.id + '">Approve</a> | <a href="#" class="aips-dashboard-reject-topic" style="color:#d63638;" data-id="' + item.id + '">Reject</a></div>'
+								: '';
+						}
+					},
+					{
+						panelId: '#tab-topic-posts',
+						dataList: data.posts_by_topic,
+						templateId: 'aips-tmpl-dashboard-topic-posts-row',
+						processItem: function(item) {
+							item.title_html = item.edit_url 
+								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+								: '<div class="cell-primary">' + item.generated_title + '</div>';
+						}
+					},
+					{
+						panelId: '#tab-schedules',
+						dataList: data.executed_schedules,
+						templateId: 'aips-tmpl-dashboard-schedules-row',
+						processItem: function(item) {
+							item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
+						}
+					}
+				];
+
+				$.each(tabsConfig, function(i, config) {
+					var $panel = $(config.panelId);
+					if (config.dataList && config.dataList.length > 0) {
+						var html = '';
+						$.each(config.dataList, function(idx, item) {
+							if (config.processItem) {
+								config.processItem(item);
+							}
+							html += AIPS.Templates.renderRaw(config.templateId, item);
+						});
+						$panel.find('.aips-table-wrap').show().find('tbody').html(html);
+						$panel.find('.aips-empty-state').hide();
+					} else {
+						$panel.find('.aips-table-wrap').hide();
+						$panel.find('.aips-empty-state').show();
+					}
+				});
+			}
+		}
 	};
 
 	$(document).ready(function() {
