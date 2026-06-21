@@ -89,7 +89,7 @@
 
                 var d = resp.data;
                 var escapeHtml = function(value) {
-                    return String(value || '')
+                    return String(value == null ? '' : value)
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;')
