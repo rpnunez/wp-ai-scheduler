@@ -113,7 +113,7 @@
 				var toDate = new Date(dateToVal + 'T23:59:59');
 
 				if (fromDate > toDate) {
-					alert(l10n.dateValidationError || 'Start Date cannot be after End Date.');
+					AIPS.Utilities.showToast(l10n.dateValidationError || 'Start Date cannot be after End Date.', 'error');
 					return false;
 				}
 			}
@@ -139,12 +139,12 @@
 					if (response.success && response.data) {
 						self.updateDashboardData(response.data);
 					} else {
-						alert(response.data || 'Failed to fetch dashboard data.');
+						AIPS.Utilities.showToast(response.data || 'Failed to fetch dashboard data.', 'error');
 					}
 				},
 				error: function() {
 					$('.aips-dashboard-spinner-overlay').hide();
-					alert('An error occurred while fetching dashboard data.');
+					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
 				}
 			});
 		},
@@ -204,12 +204,12 @@
 							.text('Completed');
 						$btn.remove();
 					} else {
-						alert(response.data || 'Failed to publish post.');
+						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
 						$btn.text('Publish Now');
 					}
 				},
 				error: function() {
-					alert('An error occurred while publishing the post.');
+					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
 					$btn.text('Publish Now');
 				}
 			});
@@ -244,11 +244,11 @@
 							.text('Approved');
 						$tr.find('.actions-container').empty();
 					} else {
-						alert(response.data || 'Failed to approve topic.');
+						AIPS.Utilities.showToast(response.data || 'Failed to approve topic.', 'error');
 					}
 				},
 				error: function() {
-					alert('An error occurred while approving the topic.');
+					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
 				}
 			});
 		},
@@ -282,11 +282,11 @@
 							.text('Rejected');
 						$tr.find('.actions-container').empty();
 					} else {
-						alert(response.data || 'Failed to reject topic.');
+						AIPS.Utilities.showToast(response.data || 'Failed to reject topic.', 'error');
 					}
 				},
 				error: function() {
-					alert('An error occurred while rejecting the topic.');
+					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
 				}
 			});
 		},
@@ -315,15 +315,15 @@
 				},
 				success: function(response) {
 					if (response.success) {
-						alert('Automated run triggered successfully!');
+						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
 						$btn.text('Run Now');
 					} else {
-						alert(response.data || 'Failed to trigger schedule.');
+						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
 						$btn.text('Run Now');
 					}
 				},
 				error: function() {
-					alert('An error occurred while triggering the schedule.');
+					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
 					$btn.text('Run Now');
 				}
 			});
