@@ -661,7 +661,8 @@ class AIPS_Admin_Menu {
         $repo      = new AIPS_Sources_Repository();
         $data_repo = new AIPS_Sources_Data_Repository();
         $source    = $source_id ? $repo->get_by_id($source_id) : null;
-        $sources   = $repo->get_all(false);
+        $is_global_view = $source_id <= 0;
+        $sources   = $is_global_view ? $repo->get_all(false) : array();
 
         $filters = array(
             'source_id' => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
