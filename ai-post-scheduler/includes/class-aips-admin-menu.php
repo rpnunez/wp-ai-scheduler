@@ -653,10 +653,18 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_source_data_page() {
-        $source_id = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
-        $paged     = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
-        $search    = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
-        $filters   = array(
+        $source_id      = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+        $paged          = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
+        $search         = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+        $is_global_view = $source_id <= 0;
+        $per_page       = 20;
+
+        $repo      = new AIPS_Sources_Repository();
+        $data_repo = new AIPS_Sources_Data_Repository();
+        $source    = $source_id ? $repo->get_by_id($source_id) : null;
+        $sources   = $is_global_view ? $repo->get_all(false) : array();
+
+        $filters = array(
             'fetch_status'      => isset($_GET['fetch_status']) ? sanitize_key(wp_unslash($_GET['fetch_status'])) : '',
             'http_status_class' => isset($_GET['http_status_class']) ? absint(wp_unslash($_GET['http_status_class'])) : 0,
             'fetched_after'     => isset($_GET['fetched_after']) ? sanitize_text_field(wp_unslash($_GET['fetched_after'])) : '',
@@ -664,14 +672,12 @@ class AIPS_Admin_Menu {
             'min_char_count'    => isset($_GET['min_char_count']) ? absint(wp_unslash($_GET['min_char_count'])) : 0,
             'max_char_count'    => isset($_GET['max_char_count']) ? absint(wp_unslash($_GET['max_char_count'])) : 0,
             'search_body_text'  => !empty($_GET['search_body_text']),
+            'source_id'         => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
         );
-        $per_page  = 20;
 
-        $repo      = new AIPS_Sources_Repository();
-        $data_repo = new AIPS_Sources_Data_Repository();
-        $source    = $source_id ? $repo->get_by_id($source_id) : null;
-
-        if (!$source) {
+        if ($is_global_view) {
+            $source_data = $data_repo->get_paginated($search, $per_page, $paged, $filters);
+        } elseif (!$source) {
             $source_data = array(
                 'items'        => array(),
                 'total'        => 0,

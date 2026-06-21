@@ -252,6 +252,106 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
+	 * Retrieve a paginated set of source data rows across all sources.
+	 *
+	 * Rows are enriched with source_label and source_url from the sources table.
+	 *
+	 * @param string $search   Optional search term.
+	 * @param int    $per_page Rows per page.
+	 * @param int    $page     Current page.
+	 * @param array  $filters  Optional structured filters (same keys as get_paginated_by_source_id, plus source_id).
+	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
+	 */
+	public function get_paginated( $search = '', $per_page = 20, $page = 1, array $filters = array() ) {
+		$per_page      = max( 1, min( 100, absint( $per_page ) ) );
+		$page          = max( 1, absint( $page ) );
+		$offset        = ( $page - 1 ) * $per_page;
+		$search        = is_string( $search ) ? trim( $search ) : '';
+		$sources_table = $this->wpdb->prefix . 'aips_sources';
+
+		$filter_source_id = isset( $filters['source_id'] ) ? absint( $filters['source_id'] ) : 0;
+		$norm             = $this->normalize_pagination_filters( $filters );
+
+		$where = 'WHERE 1=1';
+		$args  = array();
+
+		if ( $filter_source_id > 0 ) {
+			$where .= ' AND sd.source_id = %d';
+			$args[] = $filter_source_id;
+		}
+
+		if ( '' !== $norm['fetch_status'] ) {
+			$where .= ' AND sd.fetch_status = %s';
+			$args[] = $norm['fetch_status'];
+		}
+
+		if ( $norm['http_status_class'] > 0 ) {
+			$where .= ' AND sd.http_status >= %d AND sd.http_status <= %d';
+			$args[] = $norm['http_status_class'];
+			$args[] = $norm['http_status_class'] + 99;
+		}
+
+		if ( $norm['fetched_after'] > 0 ) {
+			$where .= ' AND sd.fetched_at >= %d';
+			$args[] = $norm['fetched_after'];
+		}
+
+		if ( $norm['fetched_before'] > 0 ) {
+			$where .= ' AND sd.fetched_at <= %d';
+			$args[] = $norm['fetched_before'];
+		}
+
+		if ( $norm['min_char_count'] > 0 ) {
+			$where .= ' AND sd.char_count >= %d';
+			$args[] = $norm['min_char_count'];
+		}
+
+		if ( $norm['max_char_count'] > 0 ) {
+			$where .= ' AND sd.char_count <= %d';
+			$args[] = $norm['max_char_count'];
+		}
+
+		if ( '' !== $search ) {
+			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$search_fields = array( 'sd.url', 'sd.page_title', 'sd.fetch_status', 'sd.error_message', 's.label', 's.url' );
+
+			if ( ! empty( $norm['search_body_text'] ) ) {
+				$search_fields[] = 'sd.extracted_text';
+			}
+
+			$where .= ' AND (' . implode( ' LIKE %s OR ', $search_fields ) . ' LIKE %s)';
+			foreach ( $search_fields as $field ) {
+				$args[] = $like;
+			}
+		}
+
+		$count_args = empty( $args ) ? array() : $args;
+		$count_sql  = "SELECT COUNT(*) FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where}";
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$total = (int) ( empty( $count_args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$count_args ) ) );
+
+		$query_args   = $args;
+		$query_args[] = $per_page;
+		$query_args[] = $offset;
+
+		$items = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT sd.*, s.label AS source_label, s.url AS source_url FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where} ORDER BY sd.fetched_at DESC, sd.id DESC LIMIT %d OFFSET %d",
+				...$query_args
+			)
+		);
+
+		return array(
+			'items'        => $items,
+			'total'        => $total,
+			'pages'        => (int) ceil( $total / $per_page ),
+			'current_page' => $page,
+			'per_page'     => $per_page,
+		);
+	}
+
+	/**
 	 * Normalize structured filters for source data pagination.
 	 *
 	 * @param array $filters Raw filter values.
