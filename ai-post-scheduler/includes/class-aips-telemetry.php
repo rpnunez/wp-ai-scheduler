@@ -180,9 +180,19 @@ class AIPS_Telemetry {
 			return;
 		}
 
+		$elapsed_ms = round((microtime(true) - $this->start_time) * 1000, 2);
+
+		// Skip ordinary frontend page loads. Recording every visitor request adds
+		// a DB write and JSON-serialisation cost per page view with minimal
+		// diagnostic value. Slow frontend requests still get recorded so outliers
+		// are not missed.
+		if ('frontend' === $this->resolve_request_type() && $elapsed_ms < (float) AIPS_TELEMETRY_SLOW_REQUEST_MS) {
+			$this->flushed = true;
+			return;
+		}
+
 		global $wpdb;
 
-		$elapsed_ms     = round((microtime(true) - $this->start_time) * 1000, 2);
 		$num_queries    = isset($wpdb) ? (int) $wpdb->num_queries : 0;
 		$peak_memory    = memory_get_peak_usage(true);
 		$user_id        = function_exists('is_user_logged_in') && is_user_logged_in() ? (int) get_current_user_id() : 0;

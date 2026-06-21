@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.0.0
+ * Version: 3.0.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -24,10 +24,17 @@ if (!defined('AIPS_REQUEST_START')) {
     define('AIPS_REQUEST_START', microtime(true));
 }
 
-// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
-// slow/duplicate query analysis can inspect the collected query log.
+// Enable SAVEQUERIES for telemetry-enabled admin and cron requests only.
+// Enabling it on frontend page loads forces WordPress to keep every query in
+// memory for every visitor request, which is the single biggest per-request
+// overhead when telemetry is on.
 if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
-    define('SAVEQUERIES', true);
+    $aips_is_admin_or_cron = (defined('WP_ADMIN') && WP_ADMIN)
+                           || (defined('DOING_CRON') && DOING_CRON);
+    if ($aips_is_admin_or_cron) {
+        define('SAVEQUERIES', true);
+    }
+    unset($aips_is_admin_or_cron);
 }
 
 if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
@@ -44,7 +51,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.0.0');
+    define('AIPS_VERSION', '3.0.1');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -331,9 +338,25 @@ final class AI_Post_Scheduler {
         // Keep DB version initialization during activation.
         $defaults['aips_db_version'] = AIPS_VERSION;
         
+        // Large/complex options only needed during admin or cron — not on every
+        // frontend page load.  Marking them non-autoload prevents WordPress from
+        // pulling them into memory on each visitor request.
+        $no_autoload_keys = array(
+            'aips_notification_preferences',
+            'aips_research_niches',
+            'aips_site_niche',
+            'aips_site_target_audience',
+            'aips_site_content_goals',
+            'aips_site_brand_voice',
+            'aips_site_content_guidelines',
+            'aips_site_excluded_topics',
+            'aips_feature_flags',
+        );
+
         foreach ($defaults as $key => $value) {
             if (!AIPS_Config::get_instance()->has_option($key)) {
-                add_option($key, $value);
+                $autoload = in_array($key, $no_autoload_keys, true) ? false : null;
+                add_option($key, $value, '', $autoload);
             }
         }
     }
@@ -752,13 +775,26 @@ final class AI_Post_Scheduler {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
         }, 10, 1);
 
-        // Research controller registers the aips_scheduled_research cron hook.
-        new AIPS_Research_Controller();
+        // Research controller: lazy-resolve only when its hook fires, using the
+        // same self-removing priority-5 resolver pattern as the other cron handlers
+        // above. Avoids constructing AIPS_Research_Service, the trending-topics
+        // repository, history service, etc. on every unrelated cron dispatch.
+        $research_resolver = null;
+        $research_resolver = function() use (&$research_resolver) {
+            remove_action('aips_scheduled_research', $research_resolver, 5);
+            AIPS_Research_Controller::instance();
+        };
+        add_action('aips_scheduled_research', $research_resolver, 5);
 
-        // Sources cron: fetch content for sources that have a fetch_interval configured.
-        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
-        // correct recurrence (every_6_hours) during construction.
-        AIPS_Sources_Cron::instance();
+        // Sources cron: same lazy pattern — only construct the fetcher stack when
+        // the aips_fetch_sources hook actually fires. The cron event itself is
+        // already guaranteed to exist (registered at activation via get_cron_events()).
+        $sources_resolver = null;
+        $sources_resolver = function() use (&$sources_resolver) {
+            remove_action('aips_fetch_sources', $sources_resolver, 5);
+            AIPS_Sources_Cron::instance();
+        };
+        add_action('aips_fetch_sources', $sources_resolver, 5);
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();
@@ -840,11 +876,18 @@ final class AI_Post_Scheduler {
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
 
-        // Internal Links controller must be available globally so the admin-menu
-        // render callback can call $controller->render_page() without reconstructing
-        // the object (which would double-register all AJAX hooks).
-        global $aips_internal_links_controller;
-        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+        // Internal Links controller: only construct when on its admin page. The
+        // current_screen hook fires before the admin-menu page callback, so the
+        // global is set in time for render_internal_links_page(). AJAX requests
+        // from the internal links page are already routed via AIPS_Ajax_Registry
+        // in boot_ajax() and do not rely on this global.
+        add_action('current_screen', function() {
+            $screen = get_current_screen();
+            if ($screen && false !== strpos($screen->id, 'aips-internal-links')) {
+                global $aips_internal_links_controller;
+                $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+            }
+        });
     }
 
     /**

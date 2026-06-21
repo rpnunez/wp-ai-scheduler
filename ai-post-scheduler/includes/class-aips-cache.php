@@ -116,6 +116,14 @@ class AIPS_Cache {
 		}
 		$this->cache_index_checked = true;
 
+		// No value in recording cache-monitor events when the cache system is
+		// disabled — the array driver is ephemeral and the index entries would
+		// be noise.  Skip construction to avoid two extra DB writes per cache
+		// operation on sites where aips_enable_cache_system = false.
+		if (!self::is_system_enabled()) {
+			return null;
+		}
+
 		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
 		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
 			return null;

@@ -154,6 +154,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_9_1();
 		}
 
+		if ( version_compare( $from_version, '3.0.1', '<' ) ) {
+			$this->migrate_to_3_0_1();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -787,6 +791,43 @@ class AIPS_DB_Migrations {
 		// Step 3: Change the column type from BIGINT to TEXT.
 		$wpdb->query(
 			"ALTER TABLE `{$table}` MODIFY COLUMN post_category text DEFAULT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+	}
+
+	/**
+	 * Migration for version 3.0.1.
+	 *
+	 * Updates large/complex plugin options to autoload = false so they are not
+	 * pulled into memory on every WordPress page load. These options are only
+	 * needed during admin or cron requests, not on frontend page views.
+	 */
+	private function migrate_to_3_0_1() {
+		$no_autoload_keys = array(
+			'aips_notification_preferences',
+			'aips_research_niches',
+			'aips_site_niche',
+			'aips_site_target_audience',
+			'aips_site_content_goals',
+			'aips_site_brand_voice',
+			'aips_site_content_guidelines',
+			'aips_site_excluded_topics',
+			'aips_feature_flags',
+		);
+
+		$not_set = new stdClass();
+		$updated = 0;
+
+		foreach ( $no_autoload_keys as $key ) {
+			$value = get_option( $key, $not_set );
+			if ( $value !== $not_set ) {
+				update_option( $key, $value, false );
+				$updated++;
+			}
+		}
+
+		$this->logger->log(
+			sprintf( 'Migration 3.0.1: set autoload=no for %d plugin options.', $updated ),
+			'info'
 		);
 	}
 
