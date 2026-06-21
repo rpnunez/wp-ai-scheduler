@@ -150,17 +150,19 @@ class AIPS_Sources_Data_Repository {
 	 * Retrieve a paginated set of source data rows for one source.
 	 *
 	 * @param int    $source_id Source ID.
-	 * @param string $search    Optional search term.
+	 * @param string $search    Optional search term. Defaults to cheaper fields unless search_body_text is enabled.
 	 * @param int    $per_page  Rows per page.
 	 * @param int    $page      Current page.
+	 * @param array  $filters   Optional structured filters.
 	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
 	 */
-	public function get_paginated_by_source_id( $source_id, $search = '', $per_page = 20, $page = 1 ) {
+	public function get_paginated_by_source_id( $source_id, $search = '', $per_page = 20, $page = 1, array $filters = array() ) {
 		$source_id = absint( $source_id );
 		$per_page  = max( 1, min( 100, absint( $per_page ) ) );
 		$page      = max( 1, absint( $page ) );
 		$offset    = ( $page - 1 ) * $per_page;
 		$search    = is_string( $search ) ? trim( $search ) : '';
+		$filters   = $this->normalize_pagination_filters( $filters );
 
 		if ( $source_id <= 0 ) {
 			return array(
@@ -175,15 +177,49 @@ class AIPS_Sources_Data_Repository {
 		$where = 'WHERE source_id = %d';
 		$args  = array( $source_id );
 
+		if ( '' !== $filters['fetch_status'] ) {
+			$where .= ' AND fetch_status = %s';
+			$args[] = $filters['fetch_status'];
+		}
+
+		if ( $filters['http_status_class'] > 0 ) {
+			$where .= ' AND http_status >= %d AND http_status <= %d';
+			$args[] = $filters['http_status_class'];
+			$args[] = $filters['http_status_class'] + 99;
+		}
+
+		if ( $filters['fetched_after'] > 0 ) {
+			$where .= ' AND fetched_at >= %d';
+			$args[] = $filters['fetched_after'];
+		}
+
+		if ( $filters['fetched_before'] > 0 ) {
+			$where .= ' AND fetched_at <= %d';
+			$args[] = $filters['fetched_before'];
+		}
+
+		if ( $filters['min_char_count'] > 0 ) {
+			$where .= ' AND char_count >= %d';
+			$args[] = $filters['min_char_count'];
+		}
+
+		if ( $filters['max_char_count'] > 0 ) {
+			$where .= ' AND char_count <= %d';
+			$args[] = $filters['max_char_count'];
+		}
+
 		if ( '' !== $search ) {
-			$like    = '%' . $this->wpdb->esc_like( $search ) . '%';
-			$where  .= ' AND (url LIKE %s OR page_title LIKE %s OR meta_description LIKE %s OR extracted_text LIKE %s OR fetch_status LIKE %s OR error_message LIKE %s)';
-			$args[]  = $like;
-			$args[]  = $like;
-			$args[]  = $like;
-			$args[]  = $like;
-			$args[]  = $like;
-			$args[]  = $like;
+			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$search_fields = array( 'url', 'page_title', 'fetch_status', 'error_message' );
+
+			if ( ! empty( $filters['search_body_text'] ) ) {
+				$search_fields[] = 'extracted_text';
+			}
+
+			$where .= ' AND (' . implode( ' LIKE %s OR ', $search_fields ) . ' LIKE %s)';
+			foreach ( $search_fields as $field ) {
+				$args[] = $like;
+			}
 		}
 
 		$total = (int) $this->wpdb->get_var(
@@ -213,6 +249,68 @@ class AIPS_Sources_Data_Repository {
 			'current_page' => $page,
 			'per_page'     => $per_page,
 		);
+	}
+
+	/**
+	 * Normalize structured filters for source data pagination.
+	 *
+	 * @param array $filters Raw filter values.
+	 * @return array Normalized filter values.
+	 */
+	private function normalize_pagination_filters( array $filters ): array {
+		$allowed_statuses     = array( 'pending', 'success', 'failed' );
+		$allowed_http_classes = array( 100, 200, 300, 400, 500 );
+
+		$fetch_status = isset( $filters['fetch_status'] ) ? sanitize_key( $filters['fetch_status'] ) : '';
+		if ( ! in_array( $fetch_status, $allowed_statuses, true ) ) {
+			$fetch_status = '';
+		}
+
+		$http_status_class = isset( $filters['http_status_class'] ) ? absint( $filters['http_status_class'] ) : 0;
+		if ( ! in_array( $http_status_class, $allowed_http_classes, true ) ) {
+			$http_status_class = 0;
+		}
+
+		$fetched_after  = isset( $filters['fetched_after'] ) ? $this->date_filter_to_timestamp( $filters['fetched_after'], false ) : 0;
+		$fetched_before = isset( $filters['fetched_before'] ) ? $this->date_filter_to_timestamp( $filters['fetched_before'], true ) : 0;
+
+		return array(
+			'fetch_status'      => $fetch_status,
+			'http_status_class' => $http_status_class,
+			'fetched_after'     => $fetched_after,
+			'fetched_before'    => $fetched_before,
+			'min_char_count'    => isset( $filters['min_char_count'] ) ? absint( $filters['min_char_count'] ) : 0,
+			'max_char_count'    => isset( $filters['max_char_count'] ) ? absint( $filters['max_char_count'] ) : 0,
+			'search_body_text'  => ! empty( $filters['search_body_text'] ),
+		);
+	}
+
+	/**
+	 * Convert a YYYY-MM-DD filter to a UTC timestamp.
+	 *
+	 * @param mixed $date   Date filter input.
+	 * @param bool  $end_of_day Whether to return the final second of the date.
+	 * @return int Timestamp or zero when invalid.
+	 */
+	private function date_filter_to_timestamp( $date, bool $end_of_day = false ): int {
+		$date = is_string( $date ) ? trim( $date ) : '';
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches ) ) {
+			return 0;
+		}
+
+		if ( ! checkdate( (int) $matches[2], (int) $matches[3], (int) $matches[1] ) ) {
+			return 0;
+		}
+
+		try {
+			$date_time = AIPS_DateTime::fromDate( $date );
+			if ( $end_of_day ) {
+				$date_time = $date_time->modify( '+1 day -1 second' );
+			}
+			return $date_time->timestamp();
+		} catch ( Exception $e ) {
+			return 0;
+		}
 	}
 
 	/**
