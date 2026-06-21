@@ -1528,37 +1528,38 @@ class AIPS_Admin_Assets {
     /**
      * Enqueue assets for the main dashboard page.
      */
-    private function enqueue_dashboard_assets() {
-        wp_enqueue_script(
-            'aips-chartjs',
-            apply_filters(
-                'aips_chartjs_src',
-                AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
-            ),
-            array(),
-            '4.4.2',
-            true
-        );
+	private function enqueue_dashboard_assets() {
+		wp_enqueue_script(
+			'aips-chartjs',
+			apply_filters(
+				'aips_chartjs_src',
+				AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+			),
+			array(),
+			'4.4.2',
+			true
+		);
 
-        wp_enqueue_script(
-            'aips-dashboard-script',
-            AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
-            array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs'),
-            AIPS_VERSION,
-            true
-        );
+		wp_enqueue_script(
+			'aips-dashboard-script',
+			AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
+			array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs', 'aips-templates-script'),
+			AIPS_VERSION,
+			true
+		);
 
-        wp_localize_script('aips-dashboard-script', 'aipsDashboardL10n', array(
-            'chartPostsTitle'      => __('Post Generations by Day', 'ai-post-scheduler'),
-            'chartTopicsTitle'     => __('Topic Generations by Day', 'ai-post-scheduler'),
-            'chartErrorRateTitle'  => __('AI Error Rate (%)', 'ai-post-scheduler'),
-            'chartCompletedLabel'  => __('Completed', 'ai-post-scheduler'),
-            'chartFailedLabel'     => __('Failed', 'ai-post-scheduler'),
-            'chartTopicsLabel'     => __('Topics Generated', 'ai-post-scheduler'),
-            'chartErrorRateLabel'  => __('Error Rate (%)', 'ai-post-scheduler'),
-            'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
-        ));
-    }
+		wp_localize_script('aips-dashboard-script', 'aipsDashboardL10n', array(
+			'nonce'                => wp_create_nonce('aips_ajax_nonce'),
+			'chartPostsTitle'      => __('Post Generations by Day', 'ai-post-scheduler'),
+			'chartTopicsTitle'     => __('Topic Generations by Day', 'ai-post-scheduler'),
+			'chartErrorRateTitle'  => __('AI Error Rate (%)', 'ai-post-scheduler'),
+			'chartCompletedLabel'  => __('Completed', 'ai-post-scheduler'),
+			'chartFailedLabel'     => __('Failed', 'ai-post-scheduler'),
+			'chartTopicsLabel'     => __('Topics Generated', 'ai-post-scheduler'),
+			'chartErrorRateLabel'  => __('Error Rate (%)', 'ai-post-scheduler'),
+			'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+		));
+	}
 
     /**
      * Enqueue assets for the telemetry page.

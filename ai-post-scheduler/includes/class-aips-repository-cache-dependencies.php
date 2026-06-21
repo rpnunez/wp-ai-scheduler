@@ -70,6 +70,24 @@ class AIPS_Repository_Cache_Dependencies {
 			case 'author_topics.get_all_approved_for_queue':
 				return array( 'author_topics', 'dashboard_counts' );
 
+			case 'dashboard.get_summary_stats':
+			case 'dashboard.get_schedules_run_count':
+			case 'dashboard.get_ai_stats':
+			case 'dashboard.get_daily_generation_stats':
+			case 'dashboard.get_daily_ai_stats':
+				return array( 'history', 'dashboard_counts' );
+
+			case 'dashboard.get_topics_stats':
+			case 'dashboard.get_recent_topics':
+			case 'dashboard.get_daily_topic_totals':
+				return array( 'author_topics', 'dashboard_counts' );
+
+			case 'dashboard.get_upcoming_runs_count':
+			case 'dashboard.get_recent_posts':
+			case 'dashboard.get_posts_by_topic':
+			case 'dashboard.get_executed_schedules':
+				return array( 'history', 'unified_schedule' );
+
 			default:
 				return array();
 		}

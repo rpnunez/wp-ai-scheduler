@@ -216,6 +216,99 @@ class AIPS_Sources_Data_Repository {
 	}
 
 	/**
+	 * Retrieve a paginated set of source data rows across sources.
+	 *
+	 * Rows are enriched with source_label and source_url from the sources table.
+	 *
+	 * @param string $search   Optional search term.
+	 * @param int    $per_page Rows per page.
+	 * @param int    $page     Current page.
+	 * @param array  $filters  Optional filters: source_id, status, date_from, date_to.
+	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
+	 */
+	public function get_paginated( $search = '', $per_page = 20, $page = 1, array $filters = array() ) {
+		$per_page      = max( 1, min( 100, absint( $per_page ) ) );
+		$page          = max( 1, absint( $page ) );
+		$offset        = ( $page - 1 ) * $per_page;
+		$search        = is_string( $search ) ? trim( $search ) : '';
+		$sources_table = $this->wpdb->prefix . 'aips_sources';
+
+		$where = 'WHERE 1=1';
+		$args  = array();
+
+		$filter_source_id = isset( $filters['source_id'] ) ? absint( $filters['source_id'] ) : 0;
+		if ( $filter_source_id > 0 ) {
+			$where .= ' AND sd.source_id = %d';
+			$args[] = $filter_source_id;
+		}
+
+		$status = isset( $filters['status'] ) ? sanitize_key( $filters['status'] ) : '';
+		if ( '' !== $status ) {
+			$where .= ' AND sd.fetch_status = %s';
+			$args[] = $status;
+		}
+
+		$date_from = isset( $filters['date_from'] ) ? sanitize_text_field( $filters['date_from'] ) : '';
+		if ( '' !== $date_from ) {
+			try {
+				$date = new \DateTime( $date_from . ' 00:00:00', wp_timezone() );
+				$where .= ' AND sd.fetched_at >= %d';
+				$args[] = $date->getTimestamp();
+			} catch ( \Exception $e ) {
+				// Ignore invalid date format.
+			}
+		}
+
+		$date_to = isset( $filters['date_to'] ) ? sanitize_text_field( $filters['date_to'] ) : '';
+		if ( '' !== $date_to ) {
+			try {
+				$date = new \DateTime( $date_to . ' 23:59:59', wp_timezone() );
+				$where .= ' AND sd.fetched_at <= %d';
+				$args[] = $date->getTimestamp();
+			} catch ( \Exception $e ) {
+				// Ignore invalid date format.
+			}
+		}
+
+		if ( '' !== $search ) {
+			$like   = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$where .= ' AND (sd.url LIKE %s OR sd.page_title LIKE %s OR sd.meta_description LIKE %s OR sd.extracted_text LIKE %s OR sd.fetch_status LIKE %s OR sd.error_message LIKE %s OR s.label LIKE %s OR s.url LIKE %s)';
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+			$args[] = $like;
+		}
+
+		$count_join = '' !== $search ? " LEFT JOIN {$sources_table} s ON sd.source_id = s.id" : '';
+		$count_sql  = "SELECT COUNT(*) FROM {$this->table_name} sd{$count_join} {$where}";
+		$total      = (int) ( empty( $args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$args ) ) );
+
+		$query_args   = $args;
+		$query_args[] = $per_page;
+		$query_args[] = $offset;
+
+		$items = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT sd.*, s.label AS source_label, s.url AS source_url FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where} ORDER BY sd.fetched_at DESC, sd.id DESC LIMIT %d OFFSET %d",
+				...$query_args
+			)
+		);
+
+		return array(
+			'items'        => $items,
+			'total'        => $total,
+			'pages'        => (int) ceil( $total / $per_page ),
+			'current_page' => $page,
+			'per_page'     => $per_page,
+		);
+	}
+
+	/**
 	 * Update one source data row.
 	 *
 	 * @param int   $id   Source data row ID.

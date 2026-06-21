@@ -661,8 +661,20 @@ class AIPS_Admin_Menu {
         $repo      = new AIPS_Sources_Repository();
         $data_repo = new AIPS_Sources_Data_Repository();
         $source    = $source_id ? $repo->get_by_id($source_id) : null;
+        $is_global_view = $source_id <= 0;
+        $sources   = $is_global_view ? $repo->get_all(false) : array();
 
-        if (!$source) {
+        $filters = array(
+            'source_id' => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
+            'status'    => isset($_GET['filter_status']) ? sanitize_key(wp_unslash($_GET['filter_status'])) : '',
+            'date_from' => isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '',
+            'date_to'   => isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '',
+        );
+        $is_global_view = $source_id <= 0;
+
+        if ($is_global_view) {
+            $source_data = $data_repo->get_paginated($search, $per_page, $paged, $filters);
+        } elseif (!$source) {
             $source_data = array(
                 'items'        => array(),
                 'total'        => 0,
