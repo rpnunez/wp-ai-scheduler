@@ -115,13 +115,19 @@ class AIPS_Telemetry {
 			return false;
 		}
 
-		$config = get_option('aips_telemetry_subsystems', AIPS_Telemetry_Subsystems::default_enabled_map());
-		if (!is_array($config)) {
-			$config = AIPS_Telemetry_Subsystems::default_enabled_map();
+		// Cache the option and defaults for the lifetime of the request — this
+		// method is called from hot paths (add_event, container bind/make, cache).
+		static $config   = null;
+		static $defaults = null;
+		if (null === $config) {
+			$defaults = AIPS_Telemetry_Subsystems::default_enabled_map();
+			$config   = get_option('aips_telemetry_subsystems', $defaults);
+			if (!is_array($config)) {
+				$config = $defaults;
+			}
 		}
 
-		$defaults = AIPS_Telemetry_Subsystems::default_enabled_map();
-		$value    = array_key_exists($key, $config) ? $config[$key] : (isset($defaults[$key]) ? $defaults[$key] : false);
+		$value = array_key_exists($key, $config) ? $config[$key] : (isset($defaults[$key]) ? $defaults[$key] : false);
 
 		return filter_var($value, FILTER_VALIDATE_BOOLEAN);
 	}
@@ -147,6 +153,13 @@ class AIPS_Telemetry {
 			return self::is_subsystem_enabled('cron');
 		}
 
+		if ('admin' === $type) {
+			return self::is_subsystem_enabled('admin');
+		}
+
+		// Unknown request types are allowed through when telemetry is globally on
+		// so future request contexts are not silently dropped before a subsystem
+		// key is added to the registry.
 		return self::is_enabled();
 	}
 
@@ -263,6 +276,10 @@ class AIPS_Telemetry {
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
 		$request_uri    = isset($_SERVER['REQUEST_URI']) ? $this->sanitize_request_uri(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))) : '';
 		$request_type   = $this->resolve_request_type();
+		// Skip the flush only when the request type has no enabled subsystem AND
+		// no events were buffered by other subsystems (e.g. generation, errors).
+		// If events exist we must flush even for gated request types so those
+		// subsystem records are not lost.
 		if (!self::should_record_request_type($request_type) && empty($this->events)) {
 			return;
 		}

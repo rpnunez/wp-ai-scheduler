@@ -574,8 +574,8 @@ class AIPS_Cache {
 			return;
 		}
 
-		$operation = sanitize_key( $operation );
-		$key       = $operation . 's';
+		$clean_op = sanitize_key( $operation );
+		$key      = $clean_op . 's';
 
 		if (!isset(self::$telemetry_counts[$key])) {
 			self::$telemetry_counts[$key] = 0;

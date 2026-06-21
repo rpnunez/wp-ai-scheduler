@@ -79,6 +79,12 @@ class AIPS_Telemetry_Subsystems {
 				'default_enabled' => false,
 				'payload_policy'  => 'plugin_frontend_activity_only',
 			),
+			'admin'       => array(
+				'label'           => __('Admin', 'ai-post-scheduler'),
+				'description'     => __('Records plugin-owned wp-admin page activity. Does not record ordinary admin page views outside the plugin.', 'ai-post-scheduler'),
+				'default_enabled' => false,
+				'payload_policy'  => 'plugin_admin_activity_only',
+			),
 		);
 	}
 

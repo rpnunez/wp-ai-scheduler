@@ -26,6 +26,9 @@ if (!defined('AIPS_REQUEST_START')) {
 
 // Enable SAVEQUERIES as early as possible only when query telemetry is
 // explicitly enabled so ordinary telemetry requests avoid query-log overhead.
+// NOTE: AIPS_Telemetry_Subsystems is not loaded yet at this point, so we read
+// the option directly. The default for 'queries' is intentionally false — do
+// NOT add it to a fallback array here or SAVEQUERIES will be on by default.
 if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
     $aips_telemetry_subsystems = get_option('aips_telemetry_subsystems', array());
     if (is_array($aips_telemetry_subsystems) && !empty($aips_telemetry_subsystems['queries'])) {
