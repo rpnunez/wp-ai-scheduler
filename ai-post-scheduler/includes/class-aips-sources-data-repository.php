@@ -210,7 +210,7 @@ class AIPS_Sources_Data_Repository {
 
 		if ( '' !== $search ) {
 			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
-			$search_fields = array( 'url', 'page_title', 'fetch_status', 'error_message' );
+			$search_fields = array( 'url', 'page_title', 'meta_description', 'fetch_status', 'error_message' );
 
 			if ( ! empty( $filters['search_body_text'] ) ) {
 				$search_fields[] = 'extracted_text';
@@ -313,7 +313,7 @@ class AIPS_Sources_Data_Repository {
 
 		if ( '' !== $search ) {
 			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
-			$search_fields = array( 'sd.url', 'sd.page_title', 'sd.fetch_status', 'sd.error_message', 's.label', 's.url' );
+			$search_fields = array( 'sd.url', 'sd.page_title', 'sd.meta_description', 'sd.fetch_status', 'sd.error_message', 's.label', 's.url' );
 
 			if ( ! empty( $norm['search_body_text'] ) ) {
 				$search_fields[] = 'sd.extracted_text';
@@ -325,10 +325,9 @@ class AIPS_Sources_Data_Repository {
 			}
 		}
 
-		$count_args = empty( $args ) ? array() : $args;
-		$count_sql  = "SELECT COUNT(*) FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where}";
+		$count_sql = "SELECT COUNT(*) FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where}";
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) ( empty( $count_args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$count_args ) ) );
+		$total = (int) ( empty( $args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$args ) ) );
 
 		$query_args   = $args;
 		$query_args[] = $per_page;
@@ -405,7 +404,7 @@ class AIPS_Sources_Data_Repository {
 		try {
 			$date_time = AIPS_DateTime::fromDate( $date );
 			if ( $end_of_day ) {
-				$date_time = $date_time->modify( '+1 day -1 second' );
+				$date_time = $date_time->advance( '+1 day -1 second' );
 			}
 			return $date_time->timestamp();
 		} catch ( Exception $e ) {
