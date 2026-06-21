@@ -653,24 +653,27 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_source_data_page() {
-        $source_id = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
-        $paged     = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
-        $search    = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
-        $per_page  = 20;
+        $source_id      = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+        $paged          = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
+        $search         = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+        $is_global_view = $source_id <= 0;
+        $per_page       = 20;
 
         $repo      = new AIPS_Sources_Repository();
         $data_repo = new AIPS_Sources_Data_Repository();
         $source    = $source_id ? $repo->get_by_id($source_id) : null;
-        $is_global_view = $source_id <= 0;
         $sources   = $is_global_view ? $repo->get_all(false) : array();
 
         $filters = array(
-            'source_id' => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
-            'status'    => isset($_GET['filter_status']) ? sanitize_key(wp_unslash($_GET['filter_status'])) : '',
-            'date_from' => isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '',
-            'date_to'   => isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '',
+            'fetch_status'      => isset($_GET['fetch_status']) ? sanitize_key(wp_unslash($_GET['fetch_status'])) : '',
+            'http_status_class' => isset($_GET['http_status_class']) ? absint(wp_unslash($_GET['http_status_class'])) : 0,
+            'fetched_after'     => isset($_GET['fetched_after']) ? sanitize_text_field(wp_unslash($_GET['fetched_after'])) : '',
+            'fetched_before'    => isset($_GET['fetched_before']) ? sanitize_text_field(wp_unslash($_GET['fetched_before'])) : '',
+            'min_char_count'    => isset($_GET['min_char_count']) ? absint(wp_unslash($_GET['min_char_count'])) : 0,
+            'max_char_count'    => isset($_GET['max_char_count']) ? absint(wp_unslash($_GET['max_char_count'])) : 0,
+            'search_body_text'  => !empty($_GET['search_body_text']),
+            'source_id'         => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
         );
-        $is_global_view = $source_id <= 0;
 
         if ($is_global_view) {
             $source_data = $data_repo->get_paginated($search, $per_page, $paged, $filters);
@@ -683,7 +686,7 @@ class AIPS_Admin_Menu {
                 'per_page'     => $per_page,
             );
         } else {
-            $source_data = $data_repo->get_paginated_by_source_id($source_id, $search, $per_page, $paged);
+            $source_data = $data_repo->get_paginated_by_source_id($source_id, $search, $per_page, $paged, $filters);
         }
 
         include AIPS_PLUGIN_DIR . 'templates/admin/source-data.php';
