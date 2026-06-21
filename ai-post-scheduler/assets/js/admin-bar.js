@@ -55,6 +55,25 @@
 		},
 
 		/**
+		 * Show or hide the live AI-running spinner in the admin bar badge.
+		 *
+		 * @param {boolean} running Whether AI is currently processing.
+		 * @return {void}
+		 */
+		adminBarSetAiRunning: function (running) {
+			var $spinner = $('#wp-admin-bar-aips-toolbar .aips-toolbar-ai-spinner');
+			if (running) {
+				if (!$spinner.length) {
+					$('#wp-admin-bar-aips-toolbar > .ab-item .ab-label').after(
+						$('<span class="aips-toolbar-ai-spinner aips-spin dashicons dashicons-update" title="AI is running" aria-label="AI processing in progress">')
+					);
+				}
+			} else {
+				$spinner.remove();
+			}
+		},
+
+		/**
 		 * Build the "no new notifications" placeholder list item HTML.
 		 *
 		 * @return {string} HTML string.

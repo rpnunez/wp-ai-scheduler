@@ -104,6 +104,25 @@ class AIPS_Dashboard_Controller {
 		$ai_errors_in_period = isset( $ai_stats_row['ai_errors'] ) ? (int) $ai_stats_row['ai_errors'] : 0;
 		$ai_error_rate_in_period = $ai_calls_in_period > 0 ? round( ( $ai_errors_in_period / $ai_calls_in_period ) * 100, 1 ) : 0.0;
 
+		// Compute prev-period stats for trend indicators (same duration, immediately before current period)
+		$period_duration = $to_ts - $from_ts;
+		$prev_from_ts = $from_ts - $period_duration - 1;
+		$prev_to_ts = $from_ts - 1;
+		$prev_summary = $dashboard_repo->get_summary_stats( $prev_from_ts, $prev_to_ts );
+		$prev_completed = isset( $prev_summary['completed'] ) ? (int) $prev_summary['completed'] : 0;
+		$prev_failed = isset( $prev_summary['failed'] ) ? (int) $prev_summary['failed'] : 0;
+		$prev_partial = isset( $prev_summary['partial'] ) ? (int) $prev_summary['partial'] : 0;
+		$prev_topics_stats = $dashboard_repo->get_topics_stats( $prev_from_ts, $prev_to_ts );
+		$prev_topics_created = isset( $prev_topics_stats['total'] ) ? (int) $prev_topics_stats['total'] : 0;
+		$prev_ai_stats = $dashboard_repo->get_ai_stats( $prev_from_ts, $prev_to_ts );
+		$prev_ai_calls = isset( $prev_ai_stats['ai_calls'] ) ? (int) $prev_ai_stats['ai_calls'] : 0;
+		$trend_data = array(
+			'completed'  => $this->calc_trend( $completed_in_period, $prev_completed ),
+			'failures'   => $this->calc_trend( $failed_in_period + $partial_in_period, $prev_failed + $prev_partial ),
+			'ai_calls'   => $this->calc_trend( $ai_calls_in_period, $prev_ai_calls ),
+			'topics'     => $this->calc_trend( $topics_created_in_period, $prev_topics_created ),
+		);
+
 		$date_format = $this->get_cached_date_format();
 		
 		$recent_posts = $dashboard_repo->get_recent_posts( $from_ts, $to_ts, 10 );
@@ -241,6 +260,7 @@ class AIPS_Dashboard_Controller {
 			'posts_by_topic'           => $posts_by_topic_formatted,
 			'executed_schedules'       => $executed_schedules_formatted,
 			'chart_data'               => $chart_data,
+			'trend_data'               => $trend_data,
 		) );
 	}
 
@@ -466,6 +486,22 @@ class AIPS_Dashboard_Controller {
 	 * @param string $fallback Fallback date in YYYY-MM-DD format.
 	 * @return string
 	 */
+	/**
+	 * Calculate a trend percentage between current and previous period values.
+	 *
+	 * @param int $current Current period value.
+	 * @param int $previous Previous period value.
+	 * @return array{pct: float, direction: string} Trend percentage and direction ('up'|'down'|'neutral').
+	 */
+	private function calc_trend( $current, $previous ) {
+		if ( $previous === 0 ) {
+			return array( 'pct' => 0, 'direction' => 'neutral' );
+		}
+		$pct = round( ( ( $current - $previous ) / $previous ) * 100, 1 );
+		$direction = $pct > 0 ? 'up' : ( $pct < 0 ? 'down' : 'neutral' );
+		return array( 'pct' => abs( $pct ), 'direction' => $direction );
+	}
+
 	private function normalize_dashboard_date_input($value, $fallback) {
 		if (empty($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
 			return $fallback;

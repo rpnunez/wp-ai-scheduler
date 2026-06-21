@@ -20,8 +20,27 @@ class AIPS_Admin_Menu {
      */
     public function __construct() {
         add_action('admin_menu', array($this, 'add_menu_pages'));
+        add_filter('admin_body_class', array($this, 'add_body_class'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
+    }
+
+    /**
+     * Tag all plugin admin pages with a shared body class.
+     *
+     * This lets us scope CSS to plugin pages only — specifically to fix
+     * #wpbody float containment so #wpfooter (position: absolute; bottom: 0)
+     * appears below the full page content rather than at viewport-bottom.
+     *
+     * @param string $classes Space-separated body classes.
+     * @return string
+     */
+    public function add_body_class( $classes ) {
+        $screen = get_current_screen();
+        if ( $screen && false !== strpos( $screen->id, 'aips' ) ) {
+            $classes .= ' aips-admin-page';
+        }
+        return $classes;
     }
 
     /**

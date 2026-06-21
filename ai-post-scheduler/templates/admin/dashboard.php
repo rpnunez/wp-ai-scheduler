@@ -35,6 +35,11 @@ if (!defined('ABSPATH')) {
 						<div class="aips-date-popover" id="aips-date-popover-panel">
 							<form method="GET" action="<?php echo esc_url(admin_url('admin.php')); ?>" id="aips-dashboard-date-form">
 								<input type="hidden" name="page" value="ai-post-scheduler" />
+								<div class="aips-popover-presets">
+									<button type="button" class="aips-btn aips-btn-ghost aips-btn-sm aips-date-preset" data-days="7"><?php esc_html_e('Last 7 days', 'ai-post-scheduler'); ?></button>
+									<button type="button" class="aips-btn aips-btn-ghost aips-btn-sm aips-date-preset" data-days="30"><?php esc_html_e('Last 30 days', 'ai-post-scheduler'); ?></button>
+									<button type="button" class="aips-btn aips-btn-ghost aips-btn-sm aips-date-preset" data-preset="month"><?php esc_html_e('This month', 'ai-post-scheduler'); ?></button>
+								</div>
 								<div class="aips-popover-body">
 									<div class="aips-form-group">
 										<label class="aips-form-label" for="aips-input-date-from"><?php esc_html_e('Start Date', 'ai-post-scheduler'); ?></label>
@@ -71,10 +76,11 @@ if (!defined('ABSPATH')) {
 				</div>
 				<div class="aips-stat-content">
 					<span class="aips-stat-label"><?php esc_html_e('Posts Completed', 'ai-post-scheduler'); ?></span>
-					<strong class="aips-stat-value"><?php echo esc_html($completed_in_period); ?></strong>
+					<strong class="aips-stat-value" data-stat="completed"><?php echo esc_html($completed_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
 						<?php echo sprintf(__('Success Rate: %s%%', 'ai-post-scheduler'), esc_html($success_rate_in_period)); ?>
 					</span>
+					<span class="aips-stat-trend" data-trend="completed" aria-hidden="true"></span>
 				</div>
 			</div>
 
@@ -85,10 +91,11 @@ if (!defined('ABSPATH')) {
 				</div>
 				<div class="aips-stat-content">
 					<span class="aips-stat-label"><?php esc_html_e('Unsuccessful Attempts', 'ai-post-scheduler'); ?></span>
-					<strong class="aips-stat-value"><?php echo esc_html($failed_in_period + $partial_in_period); ?></strong>
+					<strong class="aips-stat-value" data-stat="failures"><?php echo esc_html($failed_in_period + $partial_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
 						<?php echo sprintf(__('%d Failed, %d Partial', 'ai-post-scheduler'), esc_html($failed_in_period), esc_html($partial_in_period)); ?>
 					</span>
+					<span class="aips-stat-trend" data-trend="failures" aria-hidden="true"></span>
 				</div>
 			</div>
 
@@ -99,10 +106,11 @@ if (!defined('ABSPATH')) {
 				</div>
 				<div class="aips-stat-content">
 					<span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
-					<strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
+					<strong class="aips-stat-value" data-stat="ai_calls"><?php echo esc_html($ai_calls_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
 						<?php echo sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
 					</span>
+					<span class="aips-stat-trend" data-trend="ai_calls" aria-hidden="true"></span>
 				</div>
 			</div>
 
@@ -113,10 +121,11 @@ if (!defined('ABSPATH')) {
 				</div>
 				<div class="aips-stat-content">
 					<span class="aips-stat-label"><?php esc_html_e('Author Topics Created', 'ai-post-scheduler'); ?></span>
-					<strong class="aips-stat-value"><?php echo esc_html($topics_created_in_period); ?></strong>
+					<strong class="aips-stat-value" data-stat="topics"><?php echo esc_html($topics_created_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
 						<?php echo sprintf(__('%d Pending Review', 'ai-post-scheduler'), esc_html($topics_pending_in_period)); ?>
 					</span>
+					<span class="aips-stat-trend" data-trend="topics" aria-hidden="true"></span>
 				</div>
 			</div>
 		</div>
@@ -136,26 +145,36 @@ if (!defined('ABSPATH')) {
 					<button class="aips-tab-btn active" role="tab" aria-selected="true" aria-controls="tab-posts" id="btn-tab-posts">
 						<span class="dashicons dashicons-edit"></span>
 						<?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?>
+						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="posts"><?php echo esc_html(count($recent_posts)); ?></span>
 					</button>
 					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topics" id="btn-tab-topics">
 						<span class="dashicons dashicons-welcome-write-blog"></span>
 						<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
+						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="topics"><?php echo esc_html(count($recent_topics)); ?></span>
 					</button>
 					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topic-posts" id="btn-tab-topic-posts">
 						<span class="dashicons dashicons-admin-links"></span>
 						<?php esc_html_e('Posts by Topic', 'ai-post-scheduler'); ?>
+						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="topic-posts"><?php echo esc_html(count($posts_by_topic ?? [])); ?></span>
 					</button>
 					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-schedules" id="btn-tab-schedules">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Schedules Executed', 'ai-post-scheduler'); ?>
+						<span class="aips-badge aips-badge-neutral aips-tab-count" data-count-tab="schedules"><?php echo esc_html(count($schedule_runs ?? [])); ?></span>
 					</button>
 				</div>
 
 				<!-- Tab Panels -->
 				<div class="aips-tab-content">
-					
+
 					<!-- Panel 1: Generated Posts -->
 					<div class="aips-tab-panel active" id="tab-posts" role="tabpanel" aria-labelledby="btn-tab-posts">
+						<div class="aips-skeleton-rows" aria-hidden="true">
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+						</div>
 						<?php if (!empty($recent_posts)): ?>
 						<div class="aips-table-wrap">
 							<table class="aips-table">
@@ -215,6 +234,12 @@ if (!defined('ABSPATH')) {
 
 					<!-- Panel 2: Author Topics -->
 					<div class="aips-tab-panel" id="tab-topics" role="tabpanel" aria-labelledby="btn-tab-topics">
+						<div class="aips-skeleton-rows" aria-hidden="true">
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+						</div>
 						<?php if (!empty($recent_topics)): ?>
 						<div class="aips-table-wrap">
 							<table class="aips-table">
@@ -271,6 +296,11 @@ if (!defined('ABSPATH')) {
 
 					<!-- Panel 3: Posts by Topic -->
 					<div class="aips-tab-panel" id="tab-topic-posts" role="tabpanel" aria-labelledby="btn-tab-topic-posts">
+						<div class="aips-skeleton-rows" aria-hidden="true">
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+						</div>
 						<?php if (!empty($posts_by_topic)): ?>
 						<div class="aips-table-wrap">
 							<table class="aips-table">
@@ -317,6 +347,11 @@ if (!defined('ABSPATH')) {
 
 					<!-- Panel 4: Schedules Executed -->
 					<div class="aips-tab-panel" id="tab-schedules" role="tabpanel" aria-labelledby="btn-tab-schedules">
+						<div class="aips-skeleton-rows" aria-hidden="true">
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+							<span class="aips-skeleton aips-skeleton-row"></span>
+						</div>
 						<?php if (!empty($executed_schedules)): ?>
 						<div class="aips-table-wrap">
 							<table class="aips-table">
@@ -382,11 +417,11 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 
-			<!-- Right: Dynamic Analytics Charts -->
+			<!-- Right: Dynamic Analytics Charts (primary chart full-width, others 2×2 grid) -->
 			<div class="aips-dashboard-charts-column">
-				
-				<!-- Chart Box: AI Calls & AI Errors -->
-				<div class="aips-content-panel glass-morphic">
+
+				<!-- Primary Chart: AI Calls & Errors (full width) -->
+				<div class="aips-content-panel glass-morphic aips-chart-primary">
 					<div class="aips-panel-header">
 						<h2 class="aips-panel-title"><?php esc_html_e('AI Calls & Errors by Day', 'ai-post-scheduler'); ?></h2>
 					</div>
@@ -397,42 +432,46 @@ if (!defined('ABSPATH')) {
 					</div>
 				</div>
 
-				<!-- Chart Box: Post Generations -->
-				<div class="aips-content-panel glass-morphic">
-					<div class="aips-panel-header">
-						<h2 class="aips-panel-title"><?php esc_html_e('Post Generations by Day', 'ai-post-scheduler'); ?></h2>
-					</div>
-					<div class="aips-panel-body">
-						<div class="aips-dashboard-chart-wrap">
-							<canvas id="aips-chart-posts-by-day" aria-label="<?php esc_attr_e('Post Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
+				<!-- Secondary Charts: 2×2 grid -->
+				<div class="aips-charts-grid">
+
+					<!-- Chart Box: Post Generations -->
+					<div class="aips-content-panel glass-morphic">
+						<div class="aips-panel-header">
+							<h2 class="aips-panel-title"><?php esc_html_e('Post Generations by Day', 'ai-post-scheduler'); ?></h2>
+						</div>
+						<div class="aips-panel-body">
+							<div class="aips-dashboard-chart-wrap">
+								<canvas id="aips-chart-posts-by-day" aria-label="<?php esc_attr_e('Post Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<!-- Chart Box: Topic Generations -->
-				<div class="aips-content-panel glass-morphic">
-					<div class="aips-panel-header">
-						<h2 class="aips-panel-title"><?php esc_html_e('Topic Generations by Day', 'ai-post-scheduler'); ?></h2>
-					</div>
-					<div class="aips-panel-body">
-						<div class="aips-dashboard-chart-wrap">
-							<canvas id="aips-chart-topics-by-day" aria-label="<?php esc_attr_e('Topic Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
+					<!-- Chart Box: Topic Generations -->
+					<div class="aips-content-panel glass-morphic">
+						<div class="aips-panel-header">
+							<h2 class="aips-panel-title"><?php esc_html_e('Topic Generations by Day', 'ai-post-scheduler'); ?></h2>
+						</div>
+						<div class="aips-panel-body">
+							<div class="aips-dashboard-chart-wrap">
+								<canvas id="aips-chart-topics-by-day" aria-label="<?php esc_attr_e('Topic Generations by Day', 'ai-post-scheduler'); ?>" role="img"></canvas>
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<!-- Chart Box: AI Error Rate -->
-				<div class="aips-content-panel glass-morphic">
-					<div class="aips-panel-header">
-						<h2 class="aips-panel-title"><?php esc_html_e('AI Error Rate (%)', 'ai-post-scheduler'); ?></h2>
-					</div>
-					<div class="aips-panel-body">
-						<div class="aips-dashboard-chart-wrap">
-							<canvas id="aips-chart-error-rate" aria-label="<?php esc_attr_e('AI Error Rate', 'ai-post-scheduler'); ?>" role="img"></canvas>
+					<!-- Chart Box: AI Error Rate -->
+					<div class="aips-content-panel glass-morphic">
+						<div class="aips-panel-header">
+							<h2 class="aips-panel-title"><?php esc_html_e('AI Error Rate (%)', 'ai-post-scheduler'); ?></h2>
+						</div>
+						<div class="aips-panel-body">
+							<div class="aips-dashboard-chart-wrap">
+								<canvas id="aips-chart-error-rate" aria-label="<?php esc_attr_e('AI Error Rate', 'ai-post-scheduler'); ?>" role="img"></canvas>
+							</div>
 						</div>
 					</div>
-				</div>
 
+				</div><!-- .aips-charts-grid -->
 			</div>
 		</div>
 
