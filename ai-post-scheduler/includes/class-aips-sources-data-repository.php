@@ -502,17 +502,19 @@ class AIPS_Sources_Data_Repository {
 
 		$history_table = $this->wpdb->prefix . 'aips_history';
 		$log_table     = $this->wpdb->prefix . 'aips_history_log';
-		$needle        = '%"source_data_id":' . $source_data_id . '%';
+		$needle_comma  = '%"source_data_id":' . $source_data_id . ',%';
+		$needle_close  = '%"source_data_id":' . $source_data_id . '}%';
 
 		$rows = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT h.id AS history_id, h.post_id, h.generated_title, h.created_at, hl.details
 				 FROM {$log_table} hl
 				 INNER JOIN {$history_table} h ON h.id = hl.history_id
-				 WHERE hl.details LIKE %s
+				 WHERE hl.details LIKE %s OR hl.details LIKE %s
 				 ORDER BY hl.timestamp DESC
 				 LIMIT %d",
-				$needle,
+				$needle_comma,
+				$needle_close,
 				$limit * 3
 			)
 		);
