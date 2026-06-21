@@ -185,7 +185,12 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <?php endif; ?>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
-				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status...', 'ai-post-scheduler'); ?></div>
+				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards">
+					<div class="aips-schedule-status-card"><span class="aips-skeleton aips-skeleton-label"></span><span class="aips-skeleton aips-skeleton-value"></span></div>
+					<div class="aips-schedule-status-card"><span class="aips-skeleton aips-skeleton-label"></span><span class="aips-skeleton aips-skeleton-value"></span></div>
+					<div class="aips-schedule-status-card"><span class="aips-skeleton aips-skeleton-label"></span><span class="aips-skeleton aips-skeleton-value"></span></div>
+					<div class="aips-schedule-status-card"><span class="aips-skeleton aips-skeleton-label"></span><span class="aips-skeleton aips-skeleton-value"></span></div>
+				</div>
 				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
 			</div>
 		</div>

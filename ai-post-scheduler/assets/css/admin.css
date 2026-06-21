@@ -287,6 +287,24 @@
     margin-top: var(--aips-space-2);
 }
 
+/* Skeleton placeholders inside stat cards */
+.aips-schedule-status-card .aips-skeleton {
+    display: block;
+}
+
+.aips-skeleton-label {
+    height: 10px;
+    width: 60%;
+    border-radius: var(--aips-radius-sm);
+}
+
+.aips-skeleton-value {
+    height: 28px;
+    width: 40%;
+    margin-top: var(--aips-space-2);
+    border-radius: var(--aips-radius-sm);
+}
+
 @media (max-width: 1024px) {
     .aips-schedule-status-summary-cards {
         grid-template-columns: repeat(2, minmax(140px, 1fr));
