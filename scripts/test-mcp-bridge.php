@@ -21,10 +21,16 @@ if ( php_sapi_name() !== 'cli' && ! defined( 'WP_CLI' ) ) {
 }
 
 // Bootstrap WordPress
-$wp_load_path = dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/wp-load.php';
-if (!file_exists($wp_load_path)) {
-	$wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
+$dir = dirname(__FILE__);
+while ($dir && !file_exists($dir . '/wp-load.php')) {
+	$parent = dirname($dir);
+	if ($parent === $dir) {
+		break;
+	}
+	$dir = $parent;
 }
+$wp_load_path = $dir ? $dir . '/wp-load.php' : '';
+
 if (!file_exists($wp_load_path)) {
 	echo "Error: WordPress not found at $wp_load_path\n";
 	exit(1);
