@@ -166,7 +166,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 								$status_badge      = isset($status_badge_map[$fetch_status]) ? $status_badge_map[$fetch_status] : 'aips-badge-neutral';
 								$http_status       = isset($item->http_status) ? (int) $item->http_status : 0;
 								$http_badge        = $http_status >= 200 && $http_status < 300 ? 'aips-badge-success' : ($http_status >= 400 ? 'aips-badge-error' : ($http_status > 0 ? 'aips-badge-warning' : 'aips-badge-neutral'));
-								$char_count        = isset($item->char_count) ? (int) $item->char_count : strlen($text);
+								$char_count        = isset($item->char_count) ? (int) $item->char_count : mb_strlen($text);
 								$num_used          = isset($item->num_used) ? (int) $item->num_used : 0;
 								?>
 								<tr data-source-data-id="<?php echo esc_attr($data_id); ?>">
@@ -180,7 +180,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 									<td class="column-run-date cell-primary"><?php echo esc_html($run_date); ?></td>
 									<td class="column-url">
 										<?php if ('' !== $url): ?>
-											<a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr($url); ?>"><?php echo esc_html(wp_parse_url($url, PHP_URL_HOST) ?: wp_trim_words($url, 5, '…')); ?></a>
+											<a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr($url); ?>"><?php echo esc_html(wp_parse_url($url, PHP_URL_HOST) ?: url_shorten($url)); ?></a>
 										<?php else: ?>
 											<span class="cell-meta">—</span>
 										<?php endif; ?>
