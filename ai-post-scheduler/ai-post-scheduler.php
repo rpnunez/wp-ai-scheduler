@@ -355,7 +355,7 @@ final class AI_Post_Scheduler {
 
         foreach ($defaults as $key => $value) {
             if (!AIPS_Config::get_instance()->has_option($key)) {
-                $autoload = in_array($key, $no_autoload_keys, true) ? false : null;
+                $autoload = in_array($key, $no_autoload_keys, true) ? 'no' : 'yes';
                 add_option($key, $value, '', $autoload);
             }
         }
@@ -775,26 +775,18 @@ final class AI_Post_Scheduler {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
         }, 10, 1);
 
-        // Research controller: lazy-resolve only when its hook fires, using the
-        // same self-removing priority-5 resolver pattern as the other cron handlers
-        // above. Avoids constructing AIPS_Research_Service, the trending-topics
-        // repository, history service, etc. on every unrelated cron dispatch.
-        $research_resolver = null;
-        $research_resolver = function() use (&$research_resolver) {
-            remove_action('aips_scheduled_research', $research_resolver, 5);
-            AIPS_Research_Controller::instance();
-        };
-        add_action('aips_scheduled_research', $research_resolver, 5);
+        // Research controller: lazy — only instantiate when hook fires. Direct closure
+        // avoids the priority-snapshotting pitfall: WordPress snapshots priorities at the
+        // start of do_action(), so a resolver that registers at priority 10 mid-dispatch
+        // would never execute in that cycle.
+        add_action('aips_scheduled_research', function() {
+            AIPS_Research_Controller::instance()->run_scheduled_research();
+        });
 
-        // Sources cron: same lazy pattern — only construct the fetcher stack when
-        // the aips_fetch_sources hook actually fires. The cron event itself is
-        // already guaranteed to exist (registered at activation via get_cron_events()).
-        $sources_resolver = null;
-        $sources_resolver = function() use (&$sources_resolver) {
-            remove_action('aips_fetch_sources', $sources_resolver, 5);
-            AIPS_Sources_Cron::instance();
-        };
-        add_action('aips_fetch_sources', $sources_resolver, 5);
+        // Sources cron: same direct-closure lazy pattern.
+        add_action('aips_fetch_sources', function() {
+            AIPS_Sources_Cron::instance()->run();
+        });
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();

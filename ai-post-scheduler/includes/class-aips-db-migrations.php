@@ -820,7 +820,7 @@ class AIPS_DB_Migrations {
 		foreach ( $no_autoload_keys as $key ) {
 			$value = get_option( $key, $not_set );
 			if ( $value !== $not_set ) {
-				update_option( $key, $value, false );
+				update_option( $key, $value, 'no' );
 				$updated++;
 			}
 		}
