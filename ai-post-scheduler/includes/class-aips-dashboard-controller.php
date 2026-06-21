@@ -14,6 +14,9 @@ class AIPS_Dashboard_Controller {
     /** Number of days used for chart history. */
     const CHART_DAYS = 14;
 
+    /** Maximum number of days allowed in the dashboard date filter. */
+    const MAX_DATE_RANGE_DAYS = 365;
+
     /**
      * Render the main dashboard page.
      *
@@ -40,28 +43,36 @@ class AIPS_Dashboard_Controller {
         $date_from_input = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
         $date_to_input = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
 
-        if (!empty($date_from_input) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from_input)) {
-            $date_from = $date_from_input;
-        } else {
-            $date_from = $default_from;
-        }
-
-        if (!empty($date_to_input) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to_input)) {
-            $date_to = $date_to_input;
-        } else {
-            $date_to = $default_to;
-        }
+        $date_from = $this->normalize_dashboard_date_input($date_from_input, $default_from);
+        $date_to = $this->normalize_dashboard_date_input($date_to_input, $default_to);
 
         // Convert local date strings to UTC Unix timestamps for DB queries
         $timezone = wp_timezone();
         try {
             $date_from_obj = new DateTimeImmutable($date_from . ' 00:00:00', $timezone);
             $date_to_obj = new DateTimeImmutable($date_to . ' 23:59:59', $timezone);
+
+            if ($date_from_obj > $date_to_obj) {
+                $date_from = $default_from;
+                $date_to = $default_to;
+                $date_from_obj = new DateTimeImmutable($date_from . ' 00:00:00', $timezone);
+                $date_to_obj = new DateTimeImmutable($date_to . ' 23:59:59', $timezone);
+            }
+
+            if ($date_from_obj->diff($date_to_obj)->days >= self::MAX_DATE_RANGE_DAYS) {
+                $date_from_obj = $date_to_obj->sub(new DateInterval('P' . (self::MAX_DATE_RANGE_DAYS - 1) . 'D'))->setTime(0, 0, 0);
+                $date_from = $date_from_obj->format('Y-m-d');
+            }
+
             $from_ts = $date_from_obj->getTimestamp();
             $to_ts = $date_to_obj->getTimestamp();
         } catch (Exception $e) {
-            $from_ts = strtotime($default_from . ' 00:00:00');
-            $to_ts = strtotime($default_to . ' 23:59:59');
+            $date_from = $default_from;
+            $date_to = $default_to;
+            $date_from_obj = new DateTimeImmutable($date_from . ' 00:00:00', $timezone);
+            $date_to_obj = new DateTimeImmutable($date_to . ' 23:59:59', $timezone);
+            $from_ts = $date_from_obj->getTimestamp();
+            $to_ts = $date_to_obj->getTimestamp();
         }
 
         // Define DB table names
@@ -183,7 +194,7 @@ class AIPS_Dashboard_Controller {
                AND NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)
              ORDER BY h.created_at DESC
              LIMIT 10",
-            array_merge($auxiliary_methods, array($from_ts, $to_ts))
+            array_merge(array($from_ts, $to_ts), $auxiliary_methods)
         );
         $recent_posts = $wpdb->get_results($recent_posts_query);
         foreach ($recent_posts as $item) {
@@ -366,6 +377,23 @@ class AIPS_Dashboard_Controller {
         $partial_generations    = $history_repo->get_partial_generations(array('per_page' => -1))['total'] ?? 0;
 
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+    }
+
+    /**
+     * Normalize a dashboard date filter value to a valid YYYY-MM-DD date.
+     *
+     * @param string $value Raw date filter value.
+     * @param string $fallback Fallback date in YYYY-MM-DD format.
+     * @return string
+     */
+    private function normalize_dashboard_date_input($value, $fallback) {
+        if (empty($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $fallback;
+        }
+
+        list($year, $month, $day) = array_map('intval', explode('-', $value));
+
+        return checkdate($month, $day, $year) ? $value : $fallback;
     }
 
     /**
