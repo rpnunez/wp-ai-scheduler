@@ -142,20 +142,34 @@ class AIPS_AI_Provider_Factory {
     /**
      * Instantiate a provider by id, or null if the id is unknown / class missing.
      *
+     * Results are cached per request so that repeated factory calls within the
+     * same page load (e.g. available_providers(), unavailable_reasons(), and
+     * all_providers() called in sequence from the settings UI) return the same
+     * instance rather than creating fresh objects each time.
+     *
      * @param string $id Provider id.
      * @return AIPS_AI_Provider_Interface|null
      */
     private static function instantiate(string $id): ?AIPS_AI_Provider_Interface {
+        static $instances = array();
+
+        if (array_key_exists($id, $instances)) {
+            return $instances[$id];
+        }
+
         if (!isset(self::REGISTRY[$id])) {
+            $instances[$id] = null;
             return null;
         }
 
         $class = self::REGISTRY[$id];
 
         if (!class_exists($class)) {
+            $instances[$id] = null;
             return null;
         }
 
-        return new $class();
+        $instances[$id] = new $class();
+        return $instances[$id];
     }
 }

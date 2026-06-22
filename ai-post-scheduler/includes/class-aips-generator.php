@@ -760,7 +760,6 @@ class AIPS_Generator {
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
-        $content = $this->strip_leading_title_block_from_content($content);
         $component_statuses['post_content'] = ($content !== '');
 
         if (!$component_statuses['post_content']) {
@@ -853,6 +852,8 @@ class AIPS_Generator {
         } else {
             $component_statuses['post_title'] = true;
         }
+
+        $content = $this->strip_leading_title_block_from_content($content);
 
         // Use actual generated Content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);

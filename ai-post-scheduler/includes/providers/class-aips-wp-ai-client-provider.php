@@ -68,25 +68,32 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     /**
      * Create a probe builder for capability checks (always uses an empty prompt).
      *
+     * Uses WeakMap so that entries are automatically removed when the provider
+     * instance is GC'd, preventing stale-cache hits when PHP recycles object
+     * identities (which spl_object_hash-keyed static arrays suffer from).
+     *
      * @return object|null Prompt builder, or null when unavailable/errored.
      */
     private function create_prompt_builder() {
-        static $cache = array();
-        $hash = spl_object_hash($this);
+        static $cache = null;
 
-        if (array_key_exists($hash, $cache)) {
-            return $cache[$hash];
+        if ($cache === null) {
+            $cache = new WeakMap();
+        }
+
+        if (isset($cache[$this])) {
+            return $cache[$this];
         }
 
         if (!function_exists('wp_ai_client_prompt')) {
-            $cache[$hash] = null;
+            $cache[$this] = null;
             return null;
         }
 
         $builder = wp_ai_client_prompt('');
-        $cache[$hash] = is_wp_error($builder) ? null : $builder;
+        $cache[$this] = is_wp_error($builder) ? null : $builder;
 
-        return $cache[$hash];
+        return $cache[$this];
     }
 
     /**

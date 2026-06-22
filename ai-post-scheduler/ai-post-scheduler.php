@@ -405,7 +405,9 @@ final class AI_Post_Scheduler {
         });
 
         $container->singleton(AIPS_AI_Service::class, function( $container ) {
-            return AIPS_AI_Service::instance();
+            return new AIPS_AI_Service(
+                provider: $container->make(AIPS_AI_Provider_Interface::class)
+            );
         });
 
         $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {

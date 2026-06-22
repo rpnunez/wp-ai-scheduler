@@ -166,11 +166,14 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         $image = $ai->simpleImageQuery($prompt, $params);
 
         // Some engines return an array of URLs; unwrap the first.
-        if (is_array($image) && !empty($image[0])) {
+        if (is_array($image)) {
+            if (empty($image[0])) {
+                throw new Exception(__('AI Engine returned an empty image response.', 'ai-post-scheduler'));
+            }
             $image = $image[0];
         }
 
-        return (string) $image;
+        return is_string($image) ? $image : (string) $image;
     }
 
     /**
