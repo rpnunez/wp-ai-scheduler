@@ -762,7 +762,7 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
-        // Ask AI to generate the article body
+        // Generate the Post Content
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
         if (is_wp_error($content)) {
@@ -775,15 +775,59 @@ class AIPS_Generator {
 
         $content = $this->normalize_generated_content_for_wordpress($content);
         $selected_content_enhancements = $this->extract_content_enhancement_placeholders($content);
+      
         if (!empty($selected_content_enhancements)) {
             $this->generation_logger->log('Content enhancement opportunities selected', 'info', array(
                 'slugs' => $selected_content_enhancements,
             ));
         }
+      
         $content = (new AIPS_Content_Enhancement_Inserter())->replace_placeholders($content);
+      
+        $content = $this->strip_leading_title_block_from_content($content);
+      
         $component_statuses['post_content'] = ($content !== '');
 
-        // Resolve AI variables from the title prompt using the generated content
+        if (!$component_statuses['post_content']) {
+            $error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
+
+            $error = new WP_Error(
+                'aips_generation_missing_required_content',
+                $error_message,
+                array(
+                    'component_statuses' => $component_statuses,
+                )
+            );
+
+            $this->current_history->complete_failure($error_message, array(
+                'component' => 'post_content',
+                'component_statuses' => $component_statuses,
+                'content_length' => mb_strlen($content),
+            ));
+
+            $this->current_history->record(
+                'metric_generation_result',
+                'Generation failed - required Post Content was not generated',
+                array(
+                    'outcome'          => 'failed',
+                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                    'image_attempted'  => false,
+                    'image_success'    => null,
+                )
+            );
+
+            $this->generation_logger->log('Post generation failed before post creation', 'error', array(
+                'context_type' => $context->get_type(),
+                'context_id' => $context->get_id(),
+                'component_statuses' => $component_statuses,
+            ));
+
+            $this->generation_logger->set_history_id(null);
+
+            return $error;
+        }
+
+        // Resolve AI variables from the Title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title using the context and content.
@@ -800,7 +844,7 @@ class AIPS_Generator {
             );
         }
 
-        // Detect unresolved template placeholders in the generated title.
+        // Detect unresolved template placeholders in the generated Title.
         $has_unresolved_placeholders = false;
 
         if (!is_wp_error($title) && is_string($title)) {
@@ -820,12 +864,12 @@ class AIPS_Generator {
         }
 
         if (is_wp_error($title) || $has_unresolved_placeholders) {
-            // Fall back to a safe default title when AI fails or leaves unresolved variables.
-            $base_title = __('AI Generated Post', 'ai-post-scheduler');
+            // Fall back to a safe default Title when AI fails or leaves unresolved variables.
+            $base_title = __('AIPS Generated Post', 'ai-post-scheduler');
             $topic_str = $context->get_topic();
 
             if (!empty($topic_str)) {
-                // Include topic in fallback title for context, truncated for safety
+                // Include topic in fallback Title for context, truncated for safety
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
 
@@ -835,14 +879,15 @@ class AIPS_Generator {
             $component_statuses['post_title'] = true;
         }
 
-        $content = $this->strip_leading_title_block_from_content($content);
-
-        // Use actual generated content for excerpt, truncated to prevent token limits
+        // Use actual generated Content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
         $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+
+        // Set Post Excerpt component status based on whether excerpt generation was successful
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
+        // Determine whether this Post has "Partial Generations" or not
         $generation_incomplete = in_array(false, $component_statuses, true);
 
         // Use Post Manager Service to save the generated post in WP
