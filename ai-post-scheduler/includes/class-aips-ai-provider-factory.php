@@ -117,6 +117,34 @@ class AIPS_AI_Provider_Factory {
         return $all;
     }
 
+
+    /**
+     * List unavailable providers with diagnostic reasons for the settings UI.
+     *
+     * @return array<string,string> Map of id => unavailable reason.
+     */
+    public static function unavailable_reasons(): array {
+        $reasons = array();
+
+        foreach (array_keys(self::REGISTRY) as $id) {
+            $provider = self::instantiate($id);
+
+            if ($provider === null || $provider->is_available()) {
+                continue;
+            }
+
+            if (method_exists($provider, 'get_unavailable_reason')) {
+                $reason = (string) $provider->get_unavailable_reason();
+            } else {
+                $reason = __('Provider is not currently available.', 'ai-post-scheduler');
+            }
+
+            $reasons[$id] = $reason;
+        }
+
+        return $reasons;
+    }
+
     /**
      * Instantiate a provider by id, or null if the id is unknown / class missing.
      *

@@ -150,9 +150,14 @@ final class AI_Post_Scheduler {
     private function check_dependencies() {
         add_action('admin_init', function() {
             // The plugin needs at least one AI backend: the Meow Apps AI Engine
-            // plugin OR the native WordPress AI Client (wp_ai_client_prompt()).
+            // plugin OR a ready native WordPress AI Client text-generation connector.
             $has_meow = class_exists('Meow_MWAI_Core');
-            $has_wp_ai_client = function_exists('wp_ai_client_prompt');
+            $has_wp_ai_client = false;
+
+            if (class_exists('AIPS_WP_AI_Client_Provider')) {
+                $wp_ai_client = new AIPS_WP_AI_Client_Provider();
+                $has_wp_ai_client = $wp_ai_client->is_available();
+            }
 
             if (!$has_meow && !$has_wp_ai_client) {
                 add_action('admin_notices', function() {

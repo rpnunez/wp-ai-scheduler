@@ -107,24 +107,33 @@ class AIPS_Settings_UI {
     public function ai_provider_field_callback() {
         $value     = (string) AIPS_Config::get_instance()->get_option('aips_ai_provider');
         $available = AIPS_AI_Provider_Factory::available_providers();
+        $reasons   = AIPS_AI_Provider_Factory::unavailable_reasons();
         // Show every known provider so an unavailable one can still be selected,
-        // marking which are not currently detected.
+        // while clearly marking whether it is ready for text generation.
         $all = AIPS_AI_Provider_Factory::all_providers();
         ?>
         <select name="aips_ai_provider" id="aips_ai_provider">
             <option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (recommended)', 'ai-post-scheduler'); ?></option>
             <?php foreach ($all as $id => $label) : ?>
+                <?php $is_available = isset($available[$id]); ?>
                 <option value="<?php echo esc_attr($id); ?>" <?php selected($value, $id); ?>>
                     <?php
                     echo esc_html($label);
-                    if (!isset($available[$id])) {
-                        echo ' ' . esc_html__('(not detected)', 'ai-post-scheduler');
+                    if (!$is_available) {
+                        echo ' ' . esc_html__('(currently unavailable)', 'ai-post-scheduler');
                     }
                     ?>
                 </option>
             <?php endforeach; ?>
         </select>
-        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then the WordPress AI Client. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a WordPress AI Client connector that is ready for text generation. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference).', 'ai-post-scheduler'); ?></p>
+        <?php if (!empty($reasons)) : ?>
+            <ul class="description aips-provider-readiness">
+                <?php foreach ($reasons as $id => $reason) : ?>
+                    <li><strong><?php echo esc_html(isset($all[$id]) ? $all[$id] : $id); ?>:</strong> <?php echo esc_html($reason); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
         <?php
     }
 
