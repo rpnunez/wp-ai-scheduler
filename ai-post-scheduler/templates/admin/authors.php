@@ -626,10 +626,18 @@ $site_ctx = AIPS_Site_Context::get();
                 </label>
                 <p class="description">
                     <?php
-                    printf(
-                        /* translators: %s: link to Affiliate Links page */
-                        esc_html__( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                        '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                    echo wp_kses(
+                        sprintf(
+                            /* translators: %s: link to Affiliate Links page */
+                            __( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
+                            '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                        ),
+                        array(
+                            'a' => array(
+                                'href'   => array(),
+                                'target' => array(),
+                            ),
+                        )
                     );
                     ?>
                 </p>

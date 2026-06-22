@@ -82,17 +82,23 @@ class AIPS_Affiliate_Link_Inserter_Service {
 			return;
 		}
 
-		wp_update_post( array(
+		$updated = wp_update_post( array(
 			'ID'           => $post_id,
 			'post_content' => $content,
 		) );
 
-		$this->record_injected_ids( $post_id, array_merge( $already_injected, $injected_ids ) );
-
-		$this->logger->log(
-			sprintf( 'Affiliate links injected into post %d: mapping IDs %s', $post_id, implode( ', ', $injected_ids ) ),
-			'info'
-		);
+		if ( ! is_wp_error( $updated ) && 0 !== $updated ) {
+			$this->record_injected_ids( $post_id, array_merge( $already_injected, $injected_ids ) );
+			$this->logger->log(
+				sprintf( 'Affiliate links injected into post %d: mapping IDs %s', $post_id, implode( ', ', $injected_ids ) ),
+				'info'
+			);
+		} else {
+			$this->logger->log(
+				sprintf( 'Failed to update post %d during affiliate link injection', $post_id ),
+				'error'
+			);
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -193,7 +199,7 @@ class AIPS_Affiliate_Link_Inserter_Service {
 		$inserted  = 0;
 
 		$content = preg_replace_callback(
-			'/<h[1-6][^>]*>' . $escaped . '<\/h[1-6]>/i',
+			'/<h[1-6][^>]*>\s*(?:<[^>]+>)*\s*' . $escaped . '\s*(?:<\/[^>]+>)*\s*<\/h[1-6]>/i',
 			function ( $match ) use ( $rendered_cta, $max, &$inserted ) {
 				if ( $inserted >= $max ) {
 					return $match[0];
@@ -229,8 +235,11 @@ class AIPS_Affiliate_Link_Inserter_Service {
 		$escaped  = preg_quote( $match_text, '/' );
 
 		$content = preg_replace_callback(
-			'/' . $escaped . '/i',
+			'/([^"]+>)|(' . $escaped . ')/i',
 			function ( $match ) use ( $rendered_cta, $max, &$inserted ) {
+				if ( ! empty( $match[1] ) ) {
+					return $match[0];
+				}
 				if ( $inserted >= $max ) {
 					return $match[0];
 				}
@@ -288,7 +297,7 @@ class AIPS_Affiliate_Link_Inserter_Service {
 		}
 
 		if ( strpos( $content, $match ) === false ) {
-			$this->logger->log( 'Affiliate AI injection: match sentence not found in content.', 'debug' );
+			$this->logger->log( 'Affiliate AI injection: match sentence not found in content.', 'warning' );
 			return $content;
 		}
 

@@ -427,9 +427,17 @@ $is_embedded_templates_view = !empty($embedded);
                                 <?php esc_html_e('Inject Affiliate Links?', 'ai-post-scheduler'); ?>
                             </label>
                             <p class="description">
-                                <?php printf(
-                                    esc_html__( 'When enabled, affiliate link mappings matching this post tags will be injected. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                                    '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                                <?php echo wp_kses(
+                                    sprintf(
+                                        __( 'When enabled, affiliate link mappings matching this post tags will be injected. Manage mappings on the %s page.', 'ai-post-scheduler' ),
+                                        '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                                    ),
+                                    array(
+                                        'a' => array(
+                                            'href'   => array(),
+                                            'target' => array(),
+                                        ),
+                                    )
                                 ); ?>
                             </p>
                         </div>
