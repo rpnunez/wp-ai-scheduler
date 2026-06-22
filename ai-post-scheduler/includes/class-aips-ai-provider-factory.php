@@ -133,13 +133,7 @@ class AIPS_AI_Provider_Factory {
                 continue;
             }
 
-            if (method_exists($provider, 'get_unavailable_reason')) {
-                $reason = (string) $provider->get_unavailable_reason();
-            } else {
-                $reason = __('Provider is not currently available.', 'ai-post-scheduler');
-            }
-
-            $reasons[$id] = $reason;
+            $reasons[$id] = $provider->get_unavailable_reason();
         }
 
         return $reasons;

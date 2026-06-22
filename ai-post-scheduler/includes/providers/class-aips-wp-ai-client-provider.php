@@ -52,7 +52,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
             return __('WordPress AI Client is not installed or active.', 'ai-post-scheduler');
         }
 
-        $builder = $this->create_prompt_builder('');
+        $builder = $this->create_prompt_builder();
 
         if ($builder === null) {
             return __('WordPress AI Client could not create a prompt builder. Check connector configuration.', 'ai-post-scheduler');
@@ -66,12 +66,11 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     }
 
     /**
-     * Create a prompt builder without throwing, for readiness/capability probes.
+     * Create a probe builder for capability checks (always uses an empty prompt).
      *
-     * @param string $prompt Prompt text.
      * @return object|null Prompt builder, or null when unavailable/errored.
      */
-    private function create_prompt_builder(string $prompt) {
+    private function create_prompt_builder() {
         static $cache = array();
         $hash = spl_object_hash($this);
 
@@ -84,7 +83,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
             return null;
         }
 
-        $builder = wp_ai_client_prompt($prompt);
+        $builder = wp_ai_client_prompt('');
         $cache[$hash] = is_wp_error($builder) ? null : $builder;
 
         return $cache[$hash];
@@ -98,7 +97,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      */
     public function supports_text_generation($builder = null): bool {
         if ($builder === null) {
-            $builder = $this->create_prompt_builder('');
+            $builder = $this->create_prompt_builder();
         }
 
         if (!is_object($builder) || !method_exists($builder, 'is_supported_for_text_generation')) {
@@ -116,7 +115,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      */
     public function supports_image_generation($builder = null): bool {
         if ($builder === null) {
-            $builder = $this->create_prompt_builder('');
+            $builder = $this->create_prompt_builder();
         }
 
         if (!is_object($builder) || !method_exists($builder, 'is_supported_for_image_generation')) {
@@ -180,7 +179,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     /**
      * {@inheritDoc}
      */
-    public function generate_text(string $prompt, array $params) {
+    public function generate_text(string $prompt, array $params): string {
         $builder = $this->build_prompt($prompt, $params);
 
         if (!$this->supports_text_generation($builder)) {
@@ -199,7 +198,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     /**
      * {@inheritDoc}
      */
-    public function generate_json(?string $prompt, array $params) {
+    public function generate_json(?string $prompt, array $params): ?array {
         // Native structured JSON requires a schema; without one, fall back to the
         // service's text-based JSON extraction.
         if (empty($params['json_schema']) || !is_array($params['json_schema'])) {
@@ -226,7 +225,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     /**
      * {@inheritDoc}
      */
-    public function generate_image(string $prompt, array $params) {
+    public function generate_image(string $prompt, array $params): string {
         $builder = $this->build_prompt($prompt, $params);
 
         if (!$this->supports_image_generation($builder)) {
@@ -247,16 +246,16 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
         if (is_array($result) && !empty($result[0])) {
             $first = $result[0];
 
-            return (is_object($first) && method_exists($first, 'getDataUri')) ? $first->getDataUri() : $first;
+            return (is_object($first) && method_exists($first, 'getDataUri')) ? $first->getDataUri() : (string) $first;
         }
 
-        return $result;
+        return is_string($result) ? $result : '';
     }
 
     /**
      * {@inheritDoc}
      */
-    public function generate_embedding(string $text, array $params) {
+    public function generate_embedding(string $text, array $params): array {
         // The WordPress AI Client does not expose a stable embeddings API yet.
         throw new Exception('embeddings_not_supported: ' . __('Embeddings are not supported by the WordPress AI Client.', 'ai-post-scheduler'));
     }
@@ -265,7 +264,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      * {@inheritDoc}
      */
     public function supports_native_json(): bool {
-        $builder = $this->create_prompt_builder('');
+        $builder = $this->create_prompt_builder();
 
         return is_object($builder) && method_exists($builder, 'as_json_response') && $this->supports_text_generation($builder);
     }

@@ -30,20 +30,24 @@ class AIPS_Null_AI_Provider implements AIPS_AI_Provider_Interface {
         return false;
     }
 
-    public function generate_text(string $prompt, array $params) {
-        throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
+    public function get_unavailable_reason(): string {
+        return __('No AI provider is currently available.', 'ai-post-scheduler');
     }
 
-    public function generate_json(?string $prompt, array $params) {
-        throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
+    public function generate_text(string $prompt, array $params): string {
+        throw new Exception(__('No AI provider is currently available.', 'ai-post-scheduler'));
     }
 
-    public function generate_image(string $prompt, array $params) {
-        throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
+    public function generate_json(?string $prompt, array $params): ?array {
+        throw new Exception(__('No AI provider is currently available.', 'ai-post-scheduler'));
     }
 
-    public function generate_embedding(string $text, array $params) {
-        throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
+    public function generate_image(string $prompt, array $params): string {
+        throw new Exception(__('No AI provider is currently available.', 'ai-post-scheduler'));
+    }
+
+    public function generate_embedding(string $text, array $params): array {
+        throw new Exception(__('No AI provider is currently available.', 'ai-post-scheduler'));
     }
 
     public function supports_native_json(): bool {

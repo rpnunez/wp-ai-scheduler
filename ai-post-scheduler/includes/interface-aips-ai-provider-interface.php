@@ -47,6 +47,13 @@ interface AIPS_AI_Provider_Interface {
     public function is_available(): bool;
 
     /**
+     * Explain why the provider cannot currently serve generation requests.
+     *
+     * @return string Human-readable reason, or an empty string when ready.
+     */
+    public function get_unavailable_reason(): string;
+
+    /**
      * Generate text from a prompt.
      *
      * Returns the raw text payload on success. On failure, throw an Exception
@@ -59,7 +66,7 @@ interface AIPS_AI_Provider_Interface {
      * @return string Generated text.
      * @throws Exception On backend failure.
      */
-    public function generate_text(string $prompt, array $params);
+    public function generate_text(string $prompt, array $params): string;
 
     /**
      * Generate structured JSON output natively.
@@ -73,7 +80,7 @@ interface AIPS_AI_Provider_Interface {
      * @return array|null Decoded JSON array, or null to request the text fallback.
      * @throws Exception On backend failure.
      */
-    public function generate_json(?string $prompt, array $params);
+    public function generate_json(?string $prompt, array $params): ?array;
 
     /**
      * Generate an image from a prompt.
@@ -86,7 +93,7 @@ interface AIPS_AI_Provider_Interface {
      * @return string Image URL or data URI.
      * @throws Exception On backend failure.
      */
-    public function generate_image(string $prompt, array $params);
+    public function generate_image(string $prompt, array $params): string;
 
     /**
      * Generate an embedding vector for a text string.
@@ -100,7 +107,7 @@ interface AIPS_AI_Provider_Interface {
      * @return array Embedding vector.
      * @throws Exception On backend failure or when embeddings are unsupported.
      */
-    public function generate_embedding(string $text, array $params);
+    public function generate_embedding(string $text, array $params): array;
 
     /**
      * Whether this provider exposes a native structured-JSON generation path.

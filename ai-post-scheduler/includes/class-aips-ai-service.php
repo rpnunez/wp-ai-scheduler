@@ -135,7 +135,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     public function generate_text($prompt, $options = array()) {
         if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
             $this->emit_integration_error_notification('text', $error, $options);
             return $error;
@@ -236,7 +236,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         if (!$available) {
             $this->logger->log('AI provider is not available.', 'error');
 
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
 
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
@@ -370,7 +370,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     public function generate_json_from_text($prompt, $options = array()) {
         if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
             return $error;
@@ -583,7 +583,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     public function generate_image($prompt, $options = array()) {
         if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
 
             $this->log_call('image', $prompt, $options, $error);
             $this->emit_integration_error_notification('image', $error, $options);
@@ -794,7 +794,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     public function generate_embedding($text, $options = array()) {
         if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('embedding', $text, $options, $error);
             $this->emit_integration_error_notification('embedding', $error, $options);
             return $error;

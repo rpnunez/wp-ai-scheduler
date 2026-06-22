@@ -57,6 +57,13 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function get_unavailable_reason(): string {
+        return __('Meow Apps AI Engine plugin is not installed or active.', 'ai-post-scheduler');
+    }
+
+    /**
      * Translate canonical parameters into Meow AI Engine's native param names.
      *
      * Meow expects camelCase keys (maxTokens, envId). The plugin's canonical
@@ -103,20 +110,20 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
     /**
      * {@inheritDoc}
      */
-    public function generate_text(string $prompt, array $params) {
+    public function generate_text(string $prompt, array $params): string {
         $ai = $this->get_ai_engine();
 
         if (!$ai) {
             throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
         }
 
-        return $ai->simpleTextQuery($prompt, $this->map_params($params));
+        return (string) $ai->simpleTextQuery($prompt, $this->map_params($params));
     }
 
     /**
      * {@inheritDoc}
      */
-    public function generate_json(?string $prompt, array $params) {
+    public function generate_json(?string $prompt, array $params): ?array {
         $ai = $this->get_ai_engine();
 
         if (!$ai) {
@@ -142,18 +149,13 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
 
         $result = $ai->simpleJsonQuery($prompt, $json_params);
 
-        if (!is_array($result)) {
-            // Let the service classify this as an invalid/empty JSON response.
-            return $result;
-        }
-
-        return $result;
+        return is_array($result) ? $result : null;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function generate_image(string $prompt, array $params) {
+    public function generate_image(string $prompt, array $params): string {
         $ai = $this->get_ai_engine();
 
         if (!$ai) {
@@ -168,13 +170,13 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
             $image = $image[0];
         }
 
-        return $image;
+        return (string) $image;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function generate_embedding(string $text, array $params) {
+    public function generate_embedding(string $text, array $params): array {
         if (!$this->supports_embeddings()) {
             throw new Exception(__('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
         }
