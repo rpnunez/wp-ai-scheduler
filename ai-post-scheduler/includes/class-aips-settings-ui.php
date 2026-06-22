@@ -97,9 +97,41 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the AI provider selection field.
+     *
+     * Lets the admin pick which AI backend serves requests. "Auto-detect" lets
+     * AIPS_AI_Provider_Factory choose the first available provider (Meow first).
+     *
+     * @return void
+     */
+    public function ai_provider_field_callback() {
+        $value     = (string) AIPS_Config::get_instance()->get_option('aips_ai_provider');
+        $available = AIPS_AI_Provider_Factory::available_providers();
+        // Show every known provider so an unavailable one can still be selected,
+        // marking which are not currently detected.
+        $all = AIPS_AI_Provider_Factory::all_providers();
+        ?>
+        <select name="aips_ai_provider" id="aips_ai_provider">
+            <option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (recommended)', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($all as $id => $label) : ?>
+                <option value="<?php echo esc_attr($id); ?>" <?php selected($value, $id); ?>>
+                    <?php
+                    echo esc_html($label);
+                    if (!isset($available[$id])) {
+                        echo ' ' . esc_html__('(not detected)', 'ai-post-scheduler');
+                    }
+                    ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then the WordPress AI Client. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the AI model setting field.
      *
-     * Displays a text input for specifying a custom AI Engine model.
+     * Displays a text input for specifying a custom AI model.
      *
      * @return void
      */
@@ -107,7 +139,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('AI model to use (leave empty for the provider default). For the WordPress AI Client you may enter a comma-separated model preference list, e.g. "claude-sonnet-4-5, gemini-3-pro-preview".', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -812,6 +844,27 @@ class AIPS_Settings_UI {
         }
 
         return in_array($value, $allowed, true) ? $value : 'array';
+    }
+
+    /**
+     * Sanitize the AI provider selection.
+     *
+     * Accepts an empty string (auto-detect) or a known provider id; anything
+     * else falls back to auto-detect.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return string
+     */
+    public function sanitize_ai_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+
+        if ($value === '') {
+            return '';
+        }
+
+        $known = array_keys(AIPS_AI_Provider_Factory::all_providers());
+
+        return in_array($value, $known, true) ? $value : '';
     }
 
 }

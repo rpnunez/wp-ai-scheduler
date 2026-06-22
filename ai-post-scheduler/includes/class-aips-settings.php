@@ -123,6 +123,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_circuit_breaker_timeout'],
 			),
+			'aips_ai_provider' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_provider'),
+				'default'           => $defaults['aips_ai_provider'],
+			),
 			'aips_ai_model' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
@@ -250,6 +254,14 @@ class AIPS_Settings {
             __('AI Settings', 'ai-post-scheduler'),
             array($this->ui, 'ai_section_callback'),
             'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_ai_provider',
+            __('AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
         );
 
         add_settings_field(

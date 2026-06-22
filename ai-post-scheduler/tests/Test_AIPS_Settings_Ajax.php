@@ -251,6 +251,14 @@ class Test_AIPS_Settings_Ajax_Fake_AI_Service implements AIPS_AI_Service_Interfa
 		return '';
 	}
 
+	public function generate_embedding($text, $options = array()) {
+		return array();
+	}
+
+	public function supports_embeddings() {
+		return false;
+	}
+
 	public function get_call_log() {
 		return array();
 	}
