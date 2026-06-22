@@ -39,10 +39,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     }
 
     /**
-     * @var mixed AI Engine instance
+     * @var AIPS_AI_Provider_Interface Active AI transport provider
      */
-    private $ai_engine;
-    
+    private $provider;
+
     /**
      * @var AIPS_Logger_Interface Logger instance
      */
@@ -64,7 +64,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     private $resilience_service;
 
     /**
-     * Optional query option keys supported by AI Engine.
+     * Optional canonical query option keys forwarded to providers.
      */
     private const OPTIONAL_QUERY_OPTION_KEYS = array(
         'context',
@@ -78,8 +78,16 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     
     /**
      * Initialize the AI Service.
+     *
+     * @param AIPS_Logger_Interface|null       $logger             Logger.
+     * @param mixed                            $config             Config manager.
+     * @param mixed                            $resilience_service Resilience service.
+     * @param AIPS_AI_Provider_Interface|null  $provider           AI transport provider.
+     *                                                             Defaults to the
+     *                                                             provider chosen by
+     *                                                             AIPS_AI_Provider_Factory.
      */
-    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null) {
+    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null, ?AIPS_AI_Provider_Interface $provider = null) {
         if ($logger) {
             $this->logger = $logger;
         } else {
@@ -92,33 +100,27 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
+        $this->provider = $provider ?: AIPS_AI_Provider_Factory::create();
 
         $this->call_log = array();
     }
-    
+
     /**
-     * Get the AI Engine instance.
+     * Get the active AI provider.
      *
-     * Lazy-loads the AI Engine and caches it for reuse.
-     *
-     * @return mixed|null The AI Engine instance or null if not available.
+     * @return AIPS_AI_Provider_Interface
      */
     private function get_ai_engine() {
-        if ($this->ai_engine === null) {
-            global $mwai;
-            $this->ai_engine = $mwai;
-        }
-
-        return $this->ai_engine;
+        return $this->provider;
     }
-    
+
     /**
-     * Check if AI Engine is available and ready to use.
+     * Check if an AI provider is available and ready to use.
      *
-     * @return bool True if AI Engine is available, false otherwise.
+     * @return bool True if a provider is available, false otherwise.
      */
     public function is_available() {
-        return $this->get_ai_engine() !== null;
+        return $this->provider->is_available();
     }
     
     /**
@@ -132,15 +134,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
+        if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
             $this->emit_integration_error_notification('text', $error, $options);
             return $error;
         }
-      
+
         $params = $this->prepare_options($options, $prompt);
 
         $log_context = array(
@@ -172,12 +172,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
         // call those methods inside this closure.
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
             try {
-                // Use simpleTextQuery API method
-                $result = $ai->simpleTextQuery($prompt, $params);
+                $result = $this->provider->generate_text($prompt, $params);
 
-                $this->logger->log('Received response from simpleTextQuery', 'debug', array(
+                $this->logger->log('Received response from provider text generation', 'debug', array(
                     'response' => $result,
                 ));
 
@@ -191,7 +190,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 return $error;
 
             } catch (Exception $e) {
-                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $provider_code = $this->provider->extract_error_code($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
@@ -223,24 +222,20 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
-        // Check if AI Engine is available using consistent availability check
-        $ai = $this->get_ai_engine();
+        $available = $this->provider->is_available();
 
         $this->logger->log(
             sprintf(
-                'Attempting to generate JSON with AI Engine. AI available: %s',
-                $ai ? 'Yes' : 'No'
+                'Attempting to generate JSON with AI provider. AI available: %s',
+                $available ? 'Yes' : 'No'
              ),
              'info'
         );
 
-        if (!$ai) {
-            $this->logger->log('AI Engine is not available.', 'error');
-        }
-        
-        // If AI Engine is not available, log and emit notification, then return error
-        
-        if (!$ai) {
+        // If no provider is available, log and emit notification, then return error.
+        if (!$available) {
+            $this->logger->log('AI provider is not available.', 'error');
+
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('json', $prompt, $options, $error);
@@ -248,14 +243,14 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
             return $error;
         }
-        
-        // If $ai doesn't have simpleJsonQuery, fall back to text-based JSON
-        if (!method_exists($ai, 'simpleJsonQuery')) {
-            $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
+
+        // If the provider has no native structured-JSON path, fall back to text-based JSON.
+        if (!$this->provider->supports_native_json()) {
+            $this->logger->log('Using fallback JSON generation (native JSON not supported)', 'info');
 
             return $this->fallback_json_generation($prompt, $options);
         }
-        
+
         $params = $this->prepare_options($options, $prompt);
         
         // Execute safely with retry, circuit breaker, and rate limiting.
@@ -265,36 +260,24 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // generate_text() → execute_safely(), creating a nested resilience context inside a
         // retry iteration.  Instead, return WP_Error('json_query_unavailable', …) as a
         // sentinel so the caller can invoke the fallback after execute_safely() returns.
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
             try {
-                // Filter options for simpleJsonQuery - it only supports specific parameters
-                // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
-                $json_query_params = array();
-                
-                // Only pass model if specified
-                if (!empty($params['model'])) {
-                    $json_query_params['model'] = $params['model'];
-                }
-                
-                // Only pass env_id if specified. Support both 'env_id' and legacy 'envId' keys.
-                if (isset($params['env_id'])) {
-                    $json_query_params['env_id'] = $params['env_id'];
-                } elseif (isset($params['envId'])) {
-                    $json_query_params['env_id'] = $params['envId'];
-                }
-                
-                // Log what we're sending to help debug
-                $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
-                
-                // Use simpleJsonQuery which returns structured JSON data
-                $result = $ai->simpleJsonQuery($prompt, $json_query_params);
+                // Use the provider's native structured-JSON path. It returns a
+                // decoded array, or null to request the text-based fallback.
+                $result = $this->provider->generate_json($prompt, $params);
 
-                $this->logger->log('AI Engine simpleJsonQuery response: ' . print_r($result, true), 'debug');
-                
+                if ($result === null) {
+                    $this->logger->log('Provider requested text-based JSON fallback', 'info');
+
+                    return new WP_Error('json_query_unavailable', __('Native JSON generation unavailable.', 'ai-post-scheduler'));
+                }
+
+                $this->logger->log('AI provider JSON response: ' . print_r($result, true), 'debug');
+
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
 
-                    $this->logger->log('AI Engine returned empty response for simpleJsonQuery.', 'error');
+                    $this->logger->log('AI provider returned an empty native JSON response.', 'error');
 
                     $this->log_call('json', $prompt, $options, $error);
 
@@ -305,7 +288,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
 
-                    $this->logger->log('AI Engine returned invalid JSON data for simpleJsonQuery.', 'error', array(
+                    $this->logger->log('AI provider returned invalid native JSON data.', 'error', array(
                         'response_preview' => substr(print_r($result, true), 0, 200),
                     ));
 
@@ -324,7 +307,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 // If the exception is not a recognisable provider error (e.g. the method itself
                 // rejected the params), return the 'json_query_unavailable' sentinel so the
                 // caller triggers the text-based fallback path outside this closure.
-                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $provider_code = $this->provider->extract_error_code($e->getMessage());
 
                 if ($provider_code !== '') {
                     $error = new WP_Error($provider_code, $e->getMessage());
@@ -332,7 +315,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                     return $error;
                 }
 
-                $this->logger->log('simpleJsonQuery failed with non-provider error, will try fallback: ' . $e->getMessage(), 'warning');
+                $this->logger->log('Native JSON generation failed with non-provider error, will try fallback: ' . $e->getMessage(), 'warning');
 
                 return new WP_Error('json_query_unavailable', $e->getMessage());
             }
@@ -386,9 +369,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error
      */
     public function generate_json_from_text($prompt, $options = array()) {
-        $ai = $this->get_ai_engine();
-
-        if (!$ai) {
+        if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
@@ -418,9 +399,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         $this->logger->log('Calling AI Engine for text-based JSON generation: ' . wp_json_encode($log_context), 'info');
 
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
             try {
-                $text_response = $ai->simpleTextQuery($prompt, $params);
+                $text_response = $this->provider->generate_text($prompt, $params);
 
                 if (!$text_response || empty($text_response)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
@@ -468,7 +449,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
                 return $data;
             } catch (Exception $e) {
-                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $provider_code = $this->provider->extract_error_code($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('json', $prompt, $options, $error);
                 return $error;
@@ -601,9 +582,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string|WP_Error The image URL or WP_Error on failure.
      */
     public function generate_image($prompt, $options = array()) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
+        if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('image', $prompt, $options, $error);
@@ -612,21 +591,17 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             return $error;
         }
 
+        // Image options are passed through to the provider as-is (no token
+        // budgeting), preserving historical behavior. Providers translate the
+        // canonical keys they understand.
+        $params = is_array($options) ? $options : array();
+
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state is managed by execute_safely — do NOT call record_failure / record_success
         // inside this closure.
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
             try {
-                // Build params array for simpleImageQuery
-                $params = array();
-                
-                // Pass through any options as params
-                if (!empty($options)) {
-                    $params = $options;
-                }
-                
-                // Use simpleImageQuery API method
-                $image_url = $ai->simpleImageQuery($prompt, $params);
+                $image_url = $this->provider->generate_image($prompt, $params);
 
                 if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
@@ -653,7 +628,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
                 return $image_url;
             } catch (Exception $e) {
-                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $provider_code = $this->provider->extract_error_code($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
 
                 $this->log_call('image', $prompt, $options, $error);
@@ -744,17 +719,18 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     private function prepare_options($options, $prompt = '') {
         $ai_config = AIPS_Config::get_instance()->get_ai_config();
-        
+
         $default_options = array(
             'model'       => $ai_config['model'],
-            'envId'       => $ai_config['env_id'],
+            'env_id'      => $ai_config['env_id'],
             'temperature' => $ai_config['temperature'],
         );
 
-        if (isset($options['env_id'])) {
-            $default_options['envId'] = $options['env_id'];
-        } elseif (isset($options['envId'])) {
-            $default_options['envId'] = $options['envId'];
+        $options = wp_parse_args($options);
+
+        // Accept legacy 'envId' from callers; canonicalize to 'env_id'.
+        if (isset($options['envId']) && !isset($options['env_id'])) {
+            $options['env_id'] = $options['envId'];
         }
 
         $options = wp_parse_args($options, $default_options);
@@ -764,31 +740,30 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $params['model'] = $options['model'];
         }
 
-        if (!empty($options['envId'])) {
-            $params['envId'] = $options['envId'];
+        if (!empty($options['env_id'])) {
+            $params['env_id'] = $options['env_id'];
         }
 
-        // Determine maxTokens: respect any explicit developer override; otherwise
+        // Determine max_tokens: respect any explicit developer override; otherwise
         // calculate dynamically based on the prompt and request type.
-        if (isset($options['maxTokens'])) {
-            $params['maxTokens'] = $options['maxTokens'];
-        } elseif (isset($options['max_tokens'])) {
-            // Backward compatibility for legacy callers.
-            $params['maxTokens'] = $options['max_tokens'];
+        if (isset($options['max_tokens'])) {
+            $params['max_tokens'] = $options['max_tokens'];
+        } elseif (isset($options['maxTokens'])) {
+            // Backward compatibility for legacy callers using camelCase.
+            $params['max_tokens'] = $options['maxTokens'];
         } else {
-            $type               = isset($options['request_type']) ? $options['request_type'] : 'content';
-            $params['maxTokens'] = $this->calculate_max_tokens($prompt, $type);
+            $type                 = isset($options['request_type']) ? $options['request_type'] : 'content';
+            $params['max_tokens'] = $this->calculate_max_tokens($prompt, $type);
         }
 
         if (isset($options['temperature'])) {
             $params['temperature'] = $options['temperature'];
         }
 
-        // Forward optional advanced options to maintain backwards compatibility
-        // with callers that rely on passing these through to simpleTextQuery().
+        // Forward optional advanced canonical keys; providers translate them to
+        // their native API as needed.
         foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
-            // env_id is already normalized to envId above, so we avoid
-            // passing it through again here to prevent ambiguity.
+            // env_id is already handled above.
             if ('env_id' === $key) {
                 continue;
             }
@@ -797,60 +772,79 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $params[$key] = $options[$key];
             }
         }
+
+        // Pass through a JSON schema for providers that support native structured JSON.
+        if (isset($options['json_schema'])) {
+            $params['json_schema'] = $options['json_schema'];
+        }
+
         return $params;
     }
 
     /**
-     * Apply optional AI Engine query settings when available.
+     * Generate an embedding vector for a text string.
      *
-     * @param object $query   The AI Engine query object.
-     * @param array  $options Options passed to the AI request.
-     * @return void
+     * Delegates the raw call to the active provider while reusing the service's
+     * resilience and logging. Providers that cannot do embeddings surface an
+     * 'embeddings_not_supported' error.
+     *
+     * @param string $text    The text to embed.
+     * @param array  $options Optional. Canonical options (e.g. embeddings_env_id).
+     * @return array|WP_Error The embedding vector or WP_Error on failure.
      */
-    private function apply_optional_query_settings($query, $options) {
-        foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
-            if (!isset($options[$key])) {
-                continue;
-            }
+    public function generate_embedding($text, $options = array()) {
+        if (!$this->provider->is_available()) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $this->log_call('embedding', $text, $options, $error);
+            $this->emit_integration_error_notification('embedding', $error, $options);
+            return $error;
+        }
 
-            switch ($key) {
-                case 'context':
-                    if (method_exists($query, 'set_context')) {
-                        $query->set_context($options[$key]);
-                    }
-                    break;
-                case 'instructions':
-                    if (method_exists($query, 'set_instructions')) {
-                        $query->set_instructions($options[$key]);
-                    }
-                    break;
-                case 'messages':
-                    if (method_exists($query, 'set_messages')) {
-                        $query->set_messages($options[$key]);
-                    }
-                    break;
-                case 'env_id':
-                    if (method_exists($query, 'set_env_id')) {
-                        $query->set_env_id($options[$key]);
-                    }
-                    break;
-                case 'embeddings_env_id':
-                    if (method_exists($query, 'set_embeddings_env_id')) {
-                        $query->set_embeddings_env_id($options[$key]);
-                    }
-                    break;
-                case 'max_results':
-                    if (method_exists($query, 'set_max_results')) {
-                        $query->set_max_results($options[$key]);
-                    }
-                    break;
-                case 'api_key':
-                    if (method_exists($query, 'set_api_key')) {
-                        $query->set_api_key($options[$key]);
-                    }
-                    break;
+        if (!$this->provider->supports_embeddings()) {
+            return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI provider.', 'ai-post-scheduler'));
+        }
+
+        $params = is_array($options) ? $options : array();
+
+        $result = $this->resilience_service->execute_safely(function() use ($text, $params, $options) {
+            try {
+                $embedding = $this->provider->generate_embedding($text, $params);
+
+                if (empty($embedding) || !is_array($embedding)) {
+                    $error = new WP_Error('empty_response', __('AI provider returned an empty embedding response.', 'ai-post-scheduler'));
+                    $this->log_call('embedding', $text, $options, $error);
+                    return $error;
+                }
+
+                $this->log_call('embedding', $text, $options, null, wp_json_encode($embedding));
+                return $embedding;
+            } catch (Exception $e) {
+                $provider_code = $this->provider->extract_error_code($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'embedding_failed', $e->getMessage());
+                $this->log_call('embedding', $text, $options, $error);
+                return $error;
+            }
+        }, 'embedding', $text, $options);
+
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call('embedding', $text, $options, $result);
+                $this->emit_quota_alert_notification('embedding', $result, $options);
             }
         }
+
+        return $result;
+    }
+
+    /**
+     * Whether the active provider can generate embeddings.
+     *
+     * @return bool
+     */
+    public function supports_embeddings() {
+        return $this->provider->is_available() && $this->provider->supports_embeddings();
     }
 
     /**

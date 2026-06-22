@@ -149,10 +149,20 @@ final class AI_Post_Scheduler {
      */
     private function check_dependencies() {
         add_action('admin_init', function() {
-            if (!class_exists('Meow_MWAI_Core')) {
+            // The plugin needs at least one AI backend: the Meow Apps AI Engine
+            // plugin OR a ready native WordPress AI Client text-generation connector.
+            $has_meow = class_exists('Meow_MWAI_Core');
+            $has_wp_ai_client = false;
+
+            if (class_exists('AIPS_WP_AI_Client_Provider')) {
+                $wp_ai_client = new AIPS_WP_AI_Client_Provider();
+                $has_wp_ai_client = $wp_ai_client->is_available();
+            }
+
+            if (!$has_meow && !$has_wp_ai_client) {
                 add_action('admin_notices', function() {
                     echo '<div class="notice notice-error"><p>';
-                    echo esc_html__('AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated.', 'ai-post-scheduler');
+                    echo esc_html__('AI Post Scheduler requires an AI provider: either the Meow Apps AI Engine plugin, or WordPress 7.0+ with the AI Client (Connectors API). Please install or enable one.', 'ai-post-scheduler');
                     echo '</p></div>';
                 });
             }
@@ -388,6 +398,10 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_Logger_Interface::class, function( $container ) {
             return $container->make(AIPS_Logger::class);
+        });
+
+        $container->singleton(AIPS_AI_Provider_Interface::class, function( $container ) {
+            return AIPS_AI_Provider_Factory::create();
         });
 
         $container->singleton(AIPS_AI_Service::class, function( $container ) {
