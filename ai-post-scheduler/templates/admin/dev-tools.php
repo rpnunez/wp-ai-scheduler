@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
                 <form id="aips-dev-scaffold-form">
                     <div class="aips-form-section">
                         <h3 class="aips-form-section-title">
-                            <span class="dashicons dashicons-admin-tools"></span>
+                            <span class="dashicons dashicons-admin-tools" aria-hidden="true"></span>
                             <?php esc_html_e('Generate Template Scaffold', 'ai-post-scheduler'); ?>
                         </h3>
                         <p class="aips-field-description" style="margin-bottom: 20px;">
@@ -64,7 +64,7 @@ if (!defined('ABSPATH')) {
 
                         <div class="aips-form-actions">
                             <button type="submit" id="aips-dev-scaffold-submit" class="aips-btn aips-btn-primary aips-btn-lg">
-                                <span class="dashicons dashicons-admin-tools"></span>
+                                <span class="dashicons dashicons-admin-tools" aria-hidden="true"></span>
                                 <?php esc_html_e('Generate Scaffold', 'ai-post-scheduler'); ?>
                             </button>
                             <span class="spinner" style="float: none; margin-top: 4px;"></span>

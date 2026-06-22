@@ -33,7 +33,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 				</div>
 				<div class="aips-page-actions">
 					<button class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
-						<span class="dashicons dashicons-update"></span>
+						<span class="dashicons dashicons-update" aria-hidden="true"></span>
 						<?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
