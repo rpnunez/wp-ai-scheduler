@@ -165,12 +165,12 @@ class AIPS_Content_Enhancement_Repository {
 	private function normalize( array $data, string $id, int $now ): array {
 		$config     = AIPS_Config::get_instance();
 		$allowlist  = $config->get_option( 'aips_content_enhancement_provider_allowlist', array() );
-		$provider   = sanitize_key( $data['provider'] ?? 'custom' );
+		$provider   = sanitize_key( ! empty( $data['provider'] ) ? $data['provider'] : 'custom' );
 		$is_allowed = empty( $allowlist ) || in_array( $provider, $allowlist, true );
-		$type       = sanitize_key( $data['type'] ?? $provider );
-		$types      = array( 'embed', 'calculator', 'ticker', 'code_playground', 'cta_card', 'comparison_table', 'shortcode' );
+		$type       = sanitize_key( ! empty( $data['type'] ) ? $data['type'] : $provider );
+		$types      = array_keys( AIPS_Content_Enhancement::get_types() );
 		$name       = sanitize_text_field( $data['name'] ?? '' );
-		$slug       = sanitize_title( $data['slug'] ?? $name );
+		$slug       = ! empty( $data['slug'] ) ? sanitize_title( $data['slug'] ) : sanitize_title( $name );
 
 		return array(
 			'id'              => $id,

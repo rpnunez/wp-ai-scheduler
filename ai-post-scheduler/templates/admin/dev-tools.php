@@ -104,8 +104,8 @@ $content_enhancement_default_cta = $config->get_option('aips_content_enhancement
                     <div class="aips-form-row">
                         <label for="content_enhancement_type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></label>
                         <select id="content_enhancement_type" name="type" class="aips-form-input">
-                            <?php foreach (array('embed', 'calculator', 'ticker', 'code_playground', 'cta_card', 'comparison_table', 'shortcode') as $type) : ?>
-                                <option value="<?php echo esc_attr($type); ?>"><?php echo esc_html(ucwords(str_replace('_', ' ', $type))); ?></option>
+                            <?php foreach ( AIPS_Content_Enhancement::get_types() as $type => $label ) : ?>
+                                <option value="<?php echo esc_attr($type); ?>"><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

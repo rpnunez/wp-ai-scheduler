@@ -35,14 +35,11 @@ class AIPS_Prompt_Builder_Content_Enhancement {
 		);
 
 		foreach ( $enhancements as $enhancement ) {
-			$lines[] = sprintf(
-				'- %s (slug: %s, type: %s, provider: %s) Use when: %s',
-				$enhancement['name'] ?? '',
-				$enhancement['slug'] ?? '',
-				$enhancement['type'] ?? 'embed',
-				$enhancement['provider'] ?? 'custom',
-				$enhancement['use_case'] ?? ''
-			);
+			$lines[] = '- ' . ( $enhancement['name'] ?? '' ) .
+				' (slug: ' . ( $enhancement['slug'] ?? '' ) .
+				', type: ' . ( $enhancement['type'] ?? 'embed' ) .
+				', provider: ' . ( $enhancement['provider'] ?? 'custom' ) .
+				') Use when: ' . ( $enhancement['use_case'] ?? '' );
 		}
 
 		return implode( "\n", $lines );
