@@ -123,7 +123,27 @@ $content_enhancement_default_cta = $config->get_option('aips_content_enhancement
                     </div>
                     <div class="aips-form-row">
                         <label for="content_enhancement_endpoint_url"><?php esc_html_e('Endpoint URL', 'ai-post-scheduler'); ?></label>
-                        <input type="url" id="content_enhancement_endpoint_url" name="endpoint_url" class="aips-form-input" placeholder="<?php esc_attr_e('https://example.com/webhook', 'ai-post-scheduler'); ?>">
+                        <input type="url" id="content_enhancement_endpoint_url" name="endpoint_url" class="aips-form-input" placeholder="<?php esc_attr_e('https://example.com/embed', 'ai-post-scheduler'); ?>">
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="content_enhancement_referral_url"><?php esc_html_e('Referral URL', 'ai-post-scheduler'); ?></label>
+                        <input type="url" id="content_enhancement_referral_url" name="referral_url" class="aips-form-input" placeholder="<?php esc_attr_e('https://example.com/referral', 'ai-post-scheduler'); ?>">
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="content_enhancement_utm_campaign"><?php esc_html_e('UTM Campaign', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="content_enhancement_utm_campaign" name="utm_campaign" class="aips-form-input">
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="content_enhancement_utm_source"><?php esc_html_e('UTM Source', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="content_enhancement_utm_source" name="utm_source" class="aips-form-input">
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="content_enhancement_utm_medium"><?php esc_html_e('UTM Medium', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="content_enhancement_utm_medium" name="utm_medium" class="aips-form-input">
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="content_enhancement_rel_attributes"><?php esc_html_e('Rel Attributes', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="content_enhancement_rel_attributes" name="rel_attributes" class="aips-form-input" value="sponsored nofollow noopener noreferrer">
                     </div>
                     <div class="aips-form-row">
                         <label for="content_enhancement_disclosure_text"><?php esc_html_e('Disclosure Text', 'ai-post-scheduler'); ?></label>
@@ -131,7 +151,7 @@ $content_enhancement_default_cta = $config->get_option('aips_content_enhancement
                     </div>
                     <div class="aips-form-row">
                         <label for="content_enhancement_cta_text"><?php esc_html_e('CTA Text', 'ai-post-scheduler'); ?></label>
-                        <input type="text" id="content_enhancement_cta_text" name="cta_text" class="aips-form-input" value="<?php echo esc_attr($content_enhancement_default_cta); ?>">
+                        <input type="text" id="content_enhancement_cta_text" name="cta_label" class="aips-form-input" value="<?php echo esc_attr($content_enhancement_default_cta); ?>">
                     </div>
                     <label class="aips-checkbox-label">
                         <input type="checkbox" id="content_enhancement_is_active" name="is_active" value="1">

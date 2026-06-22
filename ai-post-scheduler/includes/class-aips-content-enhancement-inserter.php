@@ -41,6 +41,10 @@ class AIPS_Content_Enhancement_Inserter {
 	 * @return string
 	 */
 	public function replace_placeholders( string $content ): string {
+		if ( ! $this->is_allowed_post_status_context() ) {
+			return $content;
+		}
+
 		$replaced = preg_replace_callback( '/\{\{aips_enhancement:([a-z0-9_-]+)\}\}/i', function( $matches ) {
 			$slug        = sanitize_title( $matches[1] );
 			$enhancement = $this->repository->find_by_slug( $slug );
@@ -53,5 +57,17 @@ class AIPS_Content_Enhancement_Inserter {
 		}, $content );
 
 		return is_string( $replaced ) ? $replaced : $content;
+	}
+
+	/**
+	 * Check whether content enhancements may be inserted for the configured status.
+	 *
+	 * @return bool
+	 */
+	private function is_allowed_post_status_context(): bool {
+		$status  = AIPS_Config::get_instance()->get_option( 'aips_default_post_status', 'draft' );
+		$allowed = AIPS_Config::get_instance()->get_option( 'aips_content_enhancement_allowed_post_statuses', array( 'draft', 'future' ) );
+
+		return is_array( $allowed ) && in_array( $status, $allowed, true );
 	}
 }

@@ -20,12 +20,18 @@ class AIPS_Content_Enhancement_Renderer {
 	private $repository;
 
 	/**
+	 * @var AIPS_Referral_Link_Builder
+	 */
+	private $link_builder;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Content_Enhancement_Repository|null $repository Optional repository override.
 	 */
-	public function __construct( ?AIPS_Content_Enhancement_Repository $repository = null ) {
-		$this->repository = $repository ?: new AIPS_Content_Enhancement_Repository();
+	public function __construct( ?AIPS_Content_Enhancement_Repository $repository = null, ?AIPS_Referral_Link_Builder $link_builder = null ) {
+		$this->repository   = $repository ?: new AIPS_Content_Enhancement_Repository();
+		$this->link_builder = $link_builder ?: new AIPS_Referral_Link_Builder();
 	}
 
 	/**
@@ -104,8 +110,10 @@ class AIPS_Content_Enhancement_Renderer {
 		$type       = sanitize_key( $enhancement['type'] ?? 'embed' );
 		$provider   = sanitize_key( $enhancement['provider'] ?? 'custom' );
 		$disclosure = sanitize_textarea_field( $enhancement['disclosure_text'] ?? '' );
-		$cta        = sanitize_text_field( $enhancement['cta_text'] ?? '' );
+		$cta        = sanitize_text_field( $enhancement['cta_label'] ?? $enhancement['cta_text'] ?? '' );
 		$url        = esc_url_raw( $enhancement['endpoint_url'] ?? '' );
+		$referral   = $this->link_builder->build( $enhancement );
+		$rel        = AIPS_Referral_Link_Builder::sanitize_rel( $enhancement['rel_attributes'] ?? AIPS_Referral_Link_Builder::DEFAULT_REL );
 
 		if ( ! empty( $enhancement['is_active'] ) !== true ) {
 			return $this->fallback( $slug, __( 'Content enhancement is disabled.', 'ai-post-scheduler' ) );
@@ -130,7 +138,7 @@ class AIPS_Content_Enhancement_Renderer {
 			$html .= '<strong class="aips-content-enhancement__title">' . esc_html( $name ) . '</strong>';
 		}
 
-		if ( $disclosure ) {
+		if ( AIPS_Config::get_instance()->get_option( 'aips_content_enhancement_disclosures_enabled', true ) && $disclosure ) {
 			$html .= '<p class="aips-content-enhancement__disclosure">' . esc_html( $disclosure ) . '</p>';
 		}
 
@@ -139,7 +147,7 @@ class AIPS_Content_Enhancement_Renderer {
 		$html .= '</div>';
 
 		if ( $cta ) {
-			$html .= '<p><a class="aips-content-enhancement__cta" href="' . esc_url( $url ) . '" rel="nofollow sponsored noopener" target="_blank">' . esc_html( $cta ) . '</a></p>';
+			$html .= '<p><a class="aips-content-enhancement__cta" href="' . esc_url( $referral ? $referral : $url ) . '" rel="' . esc_attr( $rel ) . '" target="_blank">' . esc_html( $cta ) . '</a></p>';
 		}
 
 		$html .= '</div>';

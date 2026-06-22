@@ -142,6 +142,8 @@ class AIPS_Config {
             'aips_content_enhancements_enabled' => false,
             'aips_content_enhancement_default_disclosure_text' => 'This post may include a partner integration.',
             'aips_content_enhancement_default_cta_text' => 'Learn more',
+            'aips_content_enhancement_disclosures_enabled' => true,
+            'aips_content_enhancement_allowed_post_statuses' => array('draft', 'future'),
             'aips_content_enhancement_provider_allowlist' => array('custom', 'embed', 'calculator', 'ticker', 'code_playground', 'cta_card', 'comparison_table', 'shortcode'),
             'aips_content_enhancement_provider_domains' => array(),
             'aips_content_enhancements' => array(),

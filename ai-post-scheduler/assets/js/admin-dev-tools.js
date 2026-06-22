@@ -67,8 +67,13 @@
         $('#content_enhancement_provider').val(enhancement.provider || 'custom');
         $('#content_enhancement_use_case').val(enhancement.use_case || '');
         $('#content_enhancement_endpoint_url').val(enhancement.endpoint_url || '');
+        $('#content_enhancement_referral_url').val(enhancement.referral_url || '');
+        $('#content_enhancement_utm_campaign').val(enhancement.utm_campaign || '');
+        $('#content_enhancement_utm_source').val(enhancement.utm_source || '');
+        $('#content_enhancement_utm_medium').val(enhancement.utm_medium || '');
+        $('#content_enhancement_rel_attributes').val(enhancement.rel_attributes || 'sponsored nofollow noopener noreferrer');
         $('#content_enhancement_disclosure_text').val(enhancement.disclosure_text || '');
-        $('#content_enhancement_cta_text').val(enhancement.cta_text || '');
+        $('#content_enhancement_cta_text').val(enhancement.cta_label || enhancement.cta_text || '');
         $('#content_enhancement_is_active').prop('checked', !!enhancement.is_active);
     }
 
