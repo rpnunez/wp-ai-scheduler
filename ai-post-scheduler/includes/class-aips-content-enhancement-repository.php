@@ -165,6 +165,7 @@ class AIPS_Content_Enhancement_Repository {
 	private function normalize( array $data, string $id, int $now ): array {
 		$config     = AIPS_Config::get_instance();
 		$allowlist  = $config->get_option( 'aips_content_enhancement_provider_allowlist', array() );
+		$allowlist  = is_array( $allowlist ) ? $allowlist : array();
 		$provider   = sanitize_key( ! empty( $data['provider'] ) ? $data['provider'] : 'custom' );
 		$is_allowed = empty( $allowlist ) || in_array( $provider, $allowlist, true );
 		$type       = sanitize_key( ! empty( $data['type'] ) ? $data['type'] : $provider );

@@ -73,7 +73,7 @@ class AIPS_Diagnostics_Controller {
 
 		if (self::is_tab_available('dev-tools')) {
 			$tabs['dev-tools'] = array(
-				'label' => __('Enhancements', 'ai-post-scheduler'),
+				'label' => __('Dev Tools', 'ai-post-scheduler'),
 			);
 		}
 

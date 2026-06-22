@@ -43,6 +43,7 @@ class AIPS_Admin_Menu_Helper {
 		'history'              => 'aips-history',
 		'seeder'               => 'aips-seeder',
 		'dev_tools'            => 'aips-dev-tools',
+		'content_enhancements' => 'aips-content-enhancements',
 		'diagnostics'          => 'aips-diagnostics',
 		'automations'          => 'aips-automations',
 		'research'             => 'aips-research',
@@ -75,6 +76,7 @@ class AIPS_Admin_Menu_Helper {
 		'sources'        => 'sources',
 		'internal_links' => 'internal-links',
 		'taxonomy'       => 'taxonomy',
+		'content_enhancements' => 'content-enhancements',
 	);
 
 	/**

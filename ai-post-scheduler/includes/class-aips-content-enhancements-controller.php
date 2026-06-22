@@ -52,6 +52,7 @@ class AIPS_Content_Enhancements_Controller {
 		}
 
 		$allowlist = AIPS_Config::get_instance()->get_option( 'aips_content_enhancement_provider_allowlist', array() );
+		$allowlist = is_array( $allowlist ) ? $allowlist : array();
 		if ( ! empty( $allowlist ) && ! in_array( $provider, $allowlist, true ) ) {
 			AIPS_Ajax_Response::invalid_request( __( 'Provider is not allowed.', 'ai-post-scheduler' ) );
 			return;
