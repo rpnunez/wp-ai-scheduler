@@ -284,8 +284,8 @@ class AIPS_Admin_Menu {
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
-                __('Dev Tools', 'ai-post-scheduler'),
-                __('Dev Tools', 'ai-post-scheduler'),
+                __('Content Enhancements', 'ai-post-scheduler'),
+                __('Enhancements', 'ai-post-scheduler'),
                 'manage_options',
                 'aips-dev-tools',
                 array($this, 'render_dev_tools_page')

@@ -59,62 +59,68 @@
 (function($) {
     'use strict';
 
-    function fillDeveloperIntegrationForm(integration) {
-        $('#developer_integration_id').val(integration.id || '');
-        $('#developer_integration_name').val(integration.name || '');
-        $('#developer_integration_provider').val(integration.provider || 'custom');
-        $('#developer_integration_endpoint_url').val(integration.endpoint_url || '');
-        $('#developer_integration_disclosure_text').val(integration.disclosure_text || '');
-        $('#developer_integration_cta_text').val(integration.cta_text || '');
-        $('#developer_integration_is_active').prop('checked', !!integration.is_active);
+    function fillContentEnhancementForm(enhancement) {
+        $('#content_enhancement_id').val(enhancement.id || '');
+        $('#content_enhancement_name').val(enhancement.name || '');
+        $('#content_enhancement_slug').val(enhancement.slug || '');
+        $('#content_enhancement_type').val(enhancement.type || 'embed');
+        $('#content_enhancement_provider').val(enhancement.provider || 'custom');
+        $('#content_enhancement_use_case').val(enhancement.use_case || '');
+        $('#content_enhancement_endpoint_url').val(enhancement.endpoint_url || '');
+        $('#content_enhancement_disclosure_text').val(enhancement.disclosure_text || '');
+        $('#content_enhancement_cta_text').val(enhancement.cta_text || '');
+        $('#content_enhancement_is_active').prop('checked', !!enhancement.is_active);
     }
 
-    function resetDeveloperIntegrationForm() {
-        fillDeveloperIntegrationForm({
-            provider: $('#developer_integration_provider option:first').val(),
-            disclosure_text: $('#developer_integration_disclosure_text').prop('defaultValue'),
-            cta_text: $('#developer_integration_cta_text').prop('defaultValue')
+    function resetContentEnhancementForm() {
+        fillContentEnhancementForm({
+            type: $('#content_enhancement_type option:first').val(),
+            provider: $('#content_enhancement_provider option:first').val(),
+            disclosure_text: $('#content_enhancement_disclosure_text').prop('defaultValue'),
+            cta_text: $('#content_enhancement_cta_text').prop('defaultValue')
         });
     }
 
-    function renderDeveloperIntegrations(integrations) {
-        var $list = $('#aips-developer-integrations-list');
+    function renderContentEnhancements(enhancements) {
+        var $list = $('#aips-content-enhancements-list');
         $list.empty();
 
-        $.each(integrations || [], function(index, integration) {
-            var isActive = !!integration.is_active;
-            var $row = $('<tr>').attr('data-integration', JSON.stringify(integration));
-            $('<td>').text(integration.name || '').appendTo($row);
-            $('<td>').text(integration.provider || '').appendTo($row);
+        $.each(enhancements || [], function(index, enhancement) {
+            var isActive = !!enhancement.is_active;
+            var $row = $('<tr>').attr('data-enhancement', JSON.stringify(enhancement));
+            $('<td>').text(enhancement.name || '').appendTo($row);
+            $('<td>').text('{{aips_enhancement:' + (enhancement.slug || '') + '}}').appendTo($row);
+            $('<td>').text(enhancement.type || '').appendTo($row);
+            $('<td>').text(enhancement.provider || '').appendTo($row);
             $('<td>').text(isActive ? 'Active' : 'Inactive').appendTo($row);
             $('<td>').append(
-                $('<button type="button" class="button aips-edit-developer-integration">').text('Edit'),
+                $('<button type="button" class="button aips-edit-content-enhancement">').text('Edit'),
                 ' ',
-                $('<button type="button" class="button aips-toggle-developer-integration">').text(isActive ? 'Disable' : 'Enable'),
+                $('<button type="button" class="button aips-toggle-content-enhancement">').text(isActive ? 'Disable' : 'Enable'),
                 ' ',
-                $('<button type="button" class="button aips-delete-developer-integration">').text('Delete')
+                $('<button type="button" class="button aips-delete-content-enhancement">').text('Delete')
             ).appendTo($row);
             $list.append($row);
         });
     }
 
-    function postDeveloperIntegration(data, done, always) {
+    function postContentEnhancement(data, done, always) {
         data.nonce = aipsAjax.nonce;
         $.post(aipsAjax.ajaxUrl, data, function(response) {
             if (response.success) {
-                if (response.data.integrations) {
-                    renderDeveloperIntegrations(response.data.integrations);
+                if (response.data.enhancements) {
+                    renderContentEnhancements(response.data.enhancements);
                 }
                 if (window.AIPS && AIPS.Utilities) {
-                    AIPS.Utilities.showToast(response.data.message || 'Integration updated.', 'success');
+                    AIPS.Utilities.showToast(response.data.message || 'Content enhancement updated.', 'success');
                 }
                 done(response.data);
             } else if (window.AIPS && AIPS.Utilities) {
-                AIPS.Utilities.showToast(response.data.message || 'Unable to update integration.', 'error');
+                AIPS.Utilities.showToast(response.data.message || 'Unable to update content enhancement.', 'error');
             }
         }).fail(function() {
             if (window.AIPS && AIPS.Utilities) {
-                AIPS.Utilities.showToast('Unable to update integration.', 'error');
+                AIPS.Utilities.showToast('Unable to update content enhancement.', 'error');
             }
         }).always(function() {
             if (always) {
@@ -124,45 +130,45 @@
     }
 
     $(document).ready(function() {
-        $('#aips-developer-integration-form').on('submit', function(e) {
+        $('#aips-content-enhancement-form').on('submit', function(e) {
             e.preventDefault();
             var $form = $(this);
             var $spinner = $form.find('.spinner');
             $spinner.addClass('is-active');
 
-            postDeveloperIntegration($form.serializeArray().reduce(function(data, item) {
+            postContentEnhancement($form.serializeArray().reduce(function(data, item) {
                 data[item.name] = item.value;
                 return data;
-            }, { action: 'aips_save_developer_integration' }), function() {
-                resetDeveloperIntegrationForm();
+            }, { action: 'aips_save_content_enhancement' }), function() {
+                resetContentEnhancementForm();
             }, function() {
                 $spinner.removeClass('is-active');
             });
         });
 
-        $('#aips-developer-integration-reset').on('click', resetDeveloperIntegrationForm);
+        $('#aips-content-enhancement-reset').on('click', resetContentEnhancementForm);
 
-        $('#aips-developer-integrations-list').on('click', '.aips-edit-developer-integration', function() {
-            fillDeveloperIntegrationForm($(this).closest('tr').data('integration'));
+        $('#aips-content-enhancements-list').on('click', '.aips-edit-content-enhancement', function() {
+            fillContentEnhancementForm($(this).closest('tr').data('enhancement'));
         });
 
-        $('#aips-developer-integrations-list').on('click', '.aips-toggle-developer-integration', function() {
-            var integration = $(this).closest('tr').data('integration');
-            postDeveloperIntegration({
-                action: 'aips_toggle_developer_integration',
-                integration_id: integration.id,
-                is_active: integration.is_active ? '' : '1'
+        $('#aips-content-enhancements-list').on('click', '.aips-toggle-content-enhancement', function() {
+            var enhancement = $(this).closest('tr').data('enhancement');
+            postContentEnhancement({
+                action: 'aips_toggle_content_enhancement',
+                enhancement_id: enhancement.id,
+                is_active: enhancement.is_active ? '' : '1'
             }, function() {});
         });
 
-        $('#aips-developer-integrations-list').on('click', '.aips-delete-developer-integration', function() {
-            var integration = $(this).closest('tr').data('integration');
-            if (!window.confirm('Delete this integration?')) {
+        $('#aips-content-enhancements-list').on('click', '.aips-delete-content-enhancement', function() {
+            var enhancement = $(this).closest('tr').data('enhancement');
+            if (!window.confirm('Delete this enhancement?')) {
                 return;
             }
-            postDeveloperIntegration({
-                action: 'aips_delete_developer_integration',
-                integration_id: integration.id
+            postContentEnhancement({
+                action: 'aips_delete_content_enhancement',
+                enhancement_id: enhancement.id
             }, function() {});
         });
     });

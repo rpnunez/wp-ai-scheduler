@@ -38,14 +38,20 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $diversity_injector;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Content_Enhancement Content enhancement guidance builder.
+	 */
+	private $content_enhancement_builder;
+
+	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
 	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null  $diversity_injector            Optional diversity injector.
 	 */
-	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null) {
+	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null, $content_enhancement_builder = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
 		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		$this->content_enhancement_builder = $content_enhancement_builder ?: new AIPS_Prompt_Builder_Content_Enhancement();
 	}
 
 	/**
@@ -123,6 +129,11 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
+		$content_enhancement_block = $this->content_enhancement_builder->build_content_enhancement_block($topic, $context);
+		if (!empty($content_enhancement_block)) {
+			$processed_prompt .= "\n\n" . $content_enhancement_block;
+		}
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
@@ -161,6 +172,11 @@ class AIPS_Prompt_Builder_Post_Content {
 		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($template);
 		if (!empty($uniqueness_seed_line_block)) {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
+		}
+
+		$content_enhancement_block = $this->content_enhancement_builder->build_content_enhancement_block($topic, $template);
+		if (!empty($content_enhancement_block)) {
+			$processed_prompt .= "\n\n" . $content_enhancement_block;
 		}
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
