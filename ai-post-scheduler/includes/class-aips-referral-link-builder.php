@@ -30,9 +30,9 @@ class AIPS_Referral_Link_Builder {
 		}
 
 		$params = array(
-			'utm_campaign' => sanitize_key( $enhancement['utm_campaign'] ?? '' ),
-			'utm_source'   => sanitize_key( $enhancement['utm_source'] ?? '' ),
-			'utm_medium'   => sanitize_key( $enhancement['utm_medium'] ?? '' ),
+			'utm_campaign' => sanitize_text_field( $enhancement['utm_campaign'] ?? '' ),
+			'utm_source'   => sanitize_text_field( $enhancement['utm_source'] ?? '' ),
+			'utm_medium'   => sanitize_text_field( $enhancement['utm_medium'] ?? '' ),
 		);
 
 		foreach ( $params as $key => $value ) {

@@ -81,9 +81,9 @@ class AIPS_Content_Enhancements_Controller {
 			'cta_label'       => sanitize_text_field( wp_unslash( $_POST['cta_label'] ?? $_POST['cta_text'] ?? '' ) ),
 			'endpoint_url'    => esc_url_raw( wp_unslash( $_POST['endpoint_url'] ?? '' ) ),
 			'referral_url'    => esc_url_raw( wp_unslash( $_POST['referral_url'] ?? '' ) ),
-			'utm_campaign'    => sanitize_key( wp_unslash( $_POST['utm_campaign'] ?? '' ) ),
-			'utm_source'      => sanitize_key( wp_unslash( $_POST['utm_source'] ?? '' ) ),
-			'utm_medium'      => sanitize_key( wp_unslash( $_POST['utm_medium'] ?? '' ) ),
+			'utm_campaign'    => sanitize_text_field( wp_unslash( $_POST['utm_campaign'] ?? '' ) ),
+			'utm_source'      => sanitize_text_field( wp_unslash( $_POST['utm_source'] ?? '' ) ),
+			'utm_medium'      => sanitize_text_field( wp_unslash( $_POST['utm_medium'] ?? '' ) ),
 			'rel_attributes'  => AIPS_Referral_Link_Builder::sanitize_rel( sanitize_text_field( wp_unslash( $_POST['rel_attributes'] ?? '' ) ) ),
 			'is_active'       => ! empty( $_POST['is_active'] ),
 		) );

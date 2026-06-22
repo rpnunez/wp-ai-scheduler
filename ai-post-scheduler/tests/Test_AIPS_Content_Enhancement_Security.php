@@ -57,9 +57,9 @@ class Test_AIPS_Content_Enhancement_Security extends WP_UnitTestCase {
 		));
 
 		$this->assertStringStartsWith('https://example.com/signup?ref=abc', $url);
-		$this->assertStringContainsString('utm_campaign=partnerlaunch', $url);
-		$this->assertStringContainsString('utm_source=aischeduler', $url);
-		$this->assertStringContainsString('utm_medium=postcta', $url);
+		$this->assertStringContainsString('utm_campaign=Partner%20Launch', $url);
+		$this->assertStringContainsString('utm_source=AI%20Scheduler', $url);
+		$this->assertStringContainsString('utm_medium=Post%20CTA', $url);
 	}
 
 	public function test_renderer_blocks_domains_and_escapes_cta_disclosure() {
