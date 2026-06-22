@@ -57,12 +57,24 @@ class AIPS_Content_Enhancements_Controller {
 			return;
 		}
 
+		$slug = sanitize_title( wp_unslash( $_POST['slug'] ?? '' ) );
+		if ( empty( $slug ) ) {
+			$slug = sanitize_title( $name );
+		}
+
+		$id       = sanitize_key( wp_unslash( $_POST['enhancement_id'] ?? '' ) );
+		$existing = $this->repository->find_by_slug( $slug );
+		if ( $existing && ( empty( $id ) || $existing['id'] !== $id ) ) {
+			AIPS_Ajax_Response::invalid_request( __( 'An enhancement with this slug already exists.', 'ai-post-scheduler' ) );
+			return;
+		}
+
 		$record = $this->repository->save( array(
-			'id'              => sanitize_key( wp_unslash( $_POST['enhancement_id'] ?? '' ) ),
+			'id'              => $id,
 			'name'            => $name,
 			'provider'        => $provider,
 			'type'            => $type,
-			'slug'            => sanitize_title( wp_unslash( $_POST['slug'] ?? '' ) ),
+			'slug'            => $slug,
 			'use_case'        => sanitize_textarea_field( wp_unslash( $_POST['use_case'] ?? '' ) ),
 			'disclosure_text' => sanitize_textarea_field( wp_unslash( $_POST['disclosure_text'] ?? '' ) ),
 			'cta_text'        => sanitize_text_field( wp_unslash( $_POST['cta_text'] ?? '' ) ),
