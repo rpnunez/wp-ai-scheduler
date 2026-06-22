@@ -35,10 +35,10 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **183 core classes** and **11 interfaces** organized into **18 functional categories**.
+This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **184 core classes** and **11 interfaces** organized into **18 functional categories**.
 
-- **Total Lines of Code**: 71,332
-- **Total Classes**: 183
+- **Total Lines of Code**: 72,295
+- **Total Classes**: 184
 - **Total Interfaces**: 11
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, AI Integration, Infrastructure & DI, Caching, Telemetry & Observability, Notifications, Sources & Research, Internal Links & Embeddings, Resilience & Reliability, User Interface & Admin, Data Management, Database & Repositories, Diagnostics, Configuration & Settings, Onboarding, Utilities
 
@@ -685,7 +685,7 @@ flowchart TD
 
 ### User Interface & Admin
 
-This category contains 20 classes:
+This category contains 21 classes:
 
 - **Admin Assets** (`AIPS_Admin_Assets`): Class AIPS_Admin_Assets
 - **Admin Bar** (`AIPS_Admin_Bar`): Class AIPS_Admin_Bar
@@ -698,6 +698,7 @@ This category contains 20 classes:
 - **Cache Monitor Controller** (`AIPS_Cache_Monitor_Controller`): Class AIPS_Cache_Monitor_Controller
 - **Campaigns Controller** (`AIPS_Campaigns_Controller`): No description available
 - **Dashboard Controller** (`AIPS_Dashboard_Controller`): AIPS_Dashboard_Controller
+- **Dashboard Repository** (`AIPS_Dashboard_Repository`): AIPS_Dashboard_Repository
 - **Dev Tools** (`AIPS_Dev_Tools`): Class AIPS_Dev_Tools
 - **Diagnostics Controller** (`AIPS_Diagnostics_Controller`): Class AIPS_Diagnostics_Controller
 - **Generated Posts Controller** (`AIPS_Generated_Posts_Controller`): Generated Posts Controller
@@ -725,6 +726,7 @@ flowchart TD
     Cache_Monitor_Controller["Cache Monitor Controller"]
     Campaigns_Controller["Campaigns Controller"]
     Dashboard_Controller["Dashboard Controller"]
+    Dashboard_Repository[("Dashboard Repository")]
     Dev_Tools["Dev Tools"]
     Diagnostics_Controller["Diagnostics Controller"]
     Generated_Posts_Controller["Generated Posts Controller"]
@@ -752,6 +754,7 @@ flowchart TD
     Automations_Controller --> Admin_Menu_Helper
     Automations_Controller --> Campaigns_Controller
     Campaigns_Controller --> Admin_Menu_Helper
+    Dashboard_Controller --> Dashboard_Repository
     Diagnostics_Controller --> Cache_Monitor_Controller
     Diagnostics_Controller --> Dev_Tools
     Diagnostics_Controller --> Operations_Insights_Controller
@@ -760,6 +763,7 @@ flowchart TD
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef controller fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class Dashboard_Repository repository
     class Admin_Flow_Controller,AI_Assistance_Controller,AI_Edit_Controller,Automations_Controller,Cache_Monitor_Controller,Campaigns_Controller,Dashboard_Controller,Diagnostics_Controller,Generated_Posts_Controller,Operations_Insights_Controller,Post_Slices_Controller,Schedule_Controller,Structures_Controller,System_Status_Controller,Taxonomy_Controller controller
 ```
 
@@ -1217,7 +1221,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 1769
+**Lines of Code**: 1770
 
 **Technical Details**:
 
@@ -1232,7 +1236,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring — class has 1769 lines (may violate SRP)
+1. Consider refactoring — class has 1770 lines (may violate SRP)
 2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -1272,7 +1276,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Flow_Controller`
 
-**Lines of Code**: 20
+**Lines of Code**: 21
 
 **Technical Details**:
 
@@ -1346,7 +1350,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Ajax_Registry`
 
-**Lines of Code**: 330
+**Lines of Code**: 333
 
 **Technical Details**:
 
@@ -2437,24 +2441,55 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Dashboard_Controller`
 
-**Lines of Code**: 226
+**Lines of Code**: 574
 
 **Technical Details**:
 
-- **Public Methods** (1): `render_page()`
-- **Dependencies** (7): `AIPS_Author_Topics_Repository`, `AIPS_DateTime`, `AIPS_History_Repository`, `AIPS_Post_Review_Repository`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`, `AIPS_Unified_Schedule_Service`
+- **Public Methods** (3): `__construct()`, `ajax_get_dashboard_data()`, `render_page()`
+- **Dependencies** (10): `AIPS_Ajax_Response`, `AIPS_Author_Topics_Repository`, `AIPS_Cache_Factory`, `AIPS_Dashboard_Repository`, `AIPS_DateTime`, `AIPS_History_Repository`, `AIPS_Post_Review_Repository`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`, `AIPS_Unified_Schedule_Service`
+- **Action Hooks** (1): `wp_ajax_aips_get_dashboard_data`
+- **AJAX Handlers**: `wp_ajax_aips_get_dashboard_data`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Options
+- **Infrastructure**: Cache, Ajax Response
 
 **Missing Functionality**:
 
-- No AJAX handlers or action hooks registered
 - No input validation methods visible
 
 **Recommended Improvements**:
 
-1. Consider resolving dependencies from AIPS_Container instead of direct instantiation
-2. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+1. [WARNING] Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_dashboard_data
+2. Consider refactoring — class has 574 lines (may violate SRP)
+3. High coupling — depends on 10 classes
+4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+5. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+
+---
+
+### Dashboard Repository
+
+**Summary**: AIPS_Dashboard_Repository
+
+**File**: `ai-post-scheduler/includes/class-aips-dashboard-repository.php`
+
+**Class**: `AIPS_Dashboard_Repository`
+
+**Lines of Code**: 589
+
+**Technical Details**:
+
+- **Public Methods** (13): `__construct()`, `get_summary_stats()`, `get_schedules_run_count()`, `get_topics_stats()`, `get_ai_stats()`, `get_upcoming_runs_count()`, `get_recent_posts()`, `get_recent_topics()`, `get_posts_by_topic()`, `get_executed_schedules()`, ... and 3 more
+- **Database Operations**: Uses Wpdb, Has Repository
+
+**Missing Functionality**:
+
+- Missing save/update methods for data persistence
+- Does not implement an interface — consider adding a contract
+
+**Recommended Improvements**:
+
+1. Consider refactoring — class has 589 lines (may violate SRP)
 
 ---
 
@@ -4268,7 +4303,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Repository_Cache_Dependencies`
 
-**Lines of Code**: 243
+**Lines of Code**: 261
 
 **Technical Details**:
 
@@ -5462,7 +5497,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Templates`
 
-**Lines of Code**: 247
+**Lines of Code**: 250
 
 **Technical Details**:
 
@@ -5748,7 +5783,7 @@ This section reports on adherence to the project's architectural standards.
 
 **Standard**: All AJAX hooks should be registered through AIPS_Ajax_Registry, not directly in class constructors.
 
-**Status**: ⚠️ 29 finding(s)
+**Status**: ⚠️ 30 finding(s)
 
 | Class | Severity | Details |
 |-------|----------|---------|
@@ -5760,6 +5795,7 @@ This section reports on adherence to the project's architectural standards.
 | `AIPS_Cache_Monitor_Controller` | warning | Registers 13 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_cache_monitor_summary, aips_cache_monitor_entries, aips_cache_monitor_inspect, aips_cache_monitor_delete_entry, aips_cache_monitor_delete_bulk |
 | `AIPS_Calendar_Controller` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_calendar_events |
 | `AIPS_Campaigns_Controller` | warning | Registers 11 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_campaigns, aips_get_campaign_metrics, aips_toggle_campaign, aips_duplicate_campaign, aips_archive_campaign |
+| `AIPS_Dashboard_Controller` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_dashboard_data |
 | `AIPS_Data_Management` | warning | Registers 2 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_export_data, aips_import_data |
 | `AIPS_DB_Manager` | warning | Registers 5 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_repair_db, aips_fix_datetime_values, aips_reinstall_db, aips_wipe_db, aips_flush_cron_events |
 | `AIPS_Dev_Tools` | warning | Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_generate_scaffold |
@@ -5871,8 +5907,8 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 |--------------------------|------------------|------------|
 | AIPS_Container (DI) | 33 | 18% |
 | AIPS_Config | 36 | 20% |
-| AIPS_Cache | 18 | 10% |
-| AIPS_Ajax_Response | 31 | 17% |
+| AIPS_Cache | 19 | 10% |
+| AIPS_Ajax_Response | 32 | 17% |
 | AIPS_Logger | 40 | 22% |
 | AIPS_Telemetry | 10 | 5% |
 | AIPS_Correlation_ID | 12 | 7% |
@@ -5905,7 +5941,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 | Sources & Research | 8 | Research_Controller, Research_Service, Sources_Controller, ... (5 more) |
 | Internal Links & Embeddings | 7 | Embeddings_Cron, Embeddings_Service, Internal_Link_Inserter_Service, ... (4 more) |
 | Resilience & Reliability | 2 | Resilience_Service, Token_Budget |
-| User Interface & Admin | 20 | Admin_Assets, Admin_Bar, Admin_Flow_Controller, ... (17 more) |
+| User Interface & Admin | 21 | Admin_Assets, Admin_Bar, Admin_Flow_Controller, ... (18 more) |
 | Data Management | 8 | Data_Management_Export_JSON, Data_Management_Export_MySQL, Data_Management_Export, ... (5 more) |
 | Database & Repositories | 13 | AI_Assistance_Repository, Cache_Monitor_Repository, Campaigns_Repository, ... (10 more) |
 | Diagnostics | 6 | System_Diagnostics_Service, System_Status, System_Diagnostics_Environment_Provider, ... (3 more) |
@@ -5917,7 +5953,7 @@ Adoption rates for key plugin infrastructure across all scanned classes.
 
 | Class | Lines | File |
 |-------|-------|------|
-| Admin Assets | 1769 | `class-aips-admin-assets.php` |
+| Admin Assets | 1770 | `class-aips-admin-assets.php` |
 | History | 1481 | `class-aips-history.php` |
 | History Repository | 1454 | `class-aips-history-repository.php` |
 | Db Manager | 1299 | `class-aips-db-manager.php` |

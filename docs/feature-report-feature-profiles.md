@@ -65,7 +65,7 @@
 * **Class**: `AIPS_Admin_Assets`
 * **Missing Functionality**: None identified
 * **Recommended Improvements**: 
-    1. Consider refactoring — class has 1769 lines (may violate SRP)
+    1. Consider refactoring — class has 1770 lines (may violate SRP)
     2. Document custom hooks in HOOKS.md for third-party developers
 
 ---
@@ -569,12 +569,25 @@
 * **Summary**: AIPS_Dashboard_Controller
 * **File**: `ai-post-scheduler/includes/class-aips-dashboard-controller.php`
 * **Class**: `AIPS_Dashboard_Controller`
-* **Missing Functionality**: 
-    * No AJAX handlers or action hooks registered
-    * No input validation methods visible
+* **Missing Functionality**: No input validation methods visible
 * **Recommended Improvements**: 
-    1. Consider resolving dependencies from AIPS_Container instead of direct instantiation
-    2. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+    1. [WARNING] Registers 1 AJAX hook(s) in constructor instead of via AIPS_Ajax_Registry: aips_get_dashboard_data
+    2. Consider refactoring — class has 574 lines (may violate SRP)
+    3. High coupling — depends on 10 classes
+    4. Consider resolving dependencies from AIPS_Container instead of direct instantiation
+    5. Uses get_option()/update_option() — migrate to AIPS_Config for caching and defaults
+
+---
+
+### Dashboard Repository
+* **Summary**: AIPS_Dashboard_Repository
+* **File**: `ai-post-scheduler/includes/class-aips-dashboard-repository.php`
+* **Class**: `AIPS_Dashboard_Repository`
+* **Missing Functionality**: 
+    * Missing save/update methods for data persistence
+    * Does not implement an interface — consider adding a contract
+* **Recommended Improvements**: 
+    1. Consider refactoring — class has 589 lines (may violate SRP)
 
 ---
 
