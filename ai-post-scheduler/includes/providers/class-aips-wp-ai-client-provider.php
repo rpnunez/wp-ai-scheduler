@@ -72,13 +72,22 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      * @return object|null Prompt builder, or null when unavailable/errored.
      */
     private function create_prompt_builder(string $prompt) {
+        static $cache = array();
+        $hash = spl_object_hash($this);
+
+        if (array_key_exists($hash, $cache)) {
+            return $cache[$hash];
+        }
+
         if (!function_exists('wp_ai_client_prompt')) {
+            $cache[$hash] = null;
             return null;
         }
 
         $builder = wp_ai_client_prompt($prompt);
+        $cache[$hash] = is_wp_error($builder) ? null : $builder;
 
-        return is_wp_error($builder) ? null : $builder;
+        return $cache[$hash];
     }
 
     /**

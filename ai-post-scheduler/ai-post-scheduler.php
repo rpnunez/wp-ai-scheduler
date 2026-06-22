@@ -154,7 +154,7 @@ final class AI_Post_Scheduler {
             $has_meow = class_exists('Meow_MWAI_Core');
             $has_wp_ai_client = false;
 
-            if (class_exists('AIPS_WP_AI_Client_Provider')) {
+            if (function_exists('wp_ai_client_prompt') && class_exists('AIPS_WP_AI_Client_Provider')) {
                 $wp_ai_client = new AIPS_WP_AI_Client_Provider();
                 $has_wp_ai_client = $wp_ai_client->is_available();
             }
