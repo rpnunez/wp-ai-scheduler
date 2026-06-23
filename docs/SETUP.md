@@ -44,3 +44,7 @@ cd ai-post-scheduler
 composer install
 composer test
 ```
+
+## MCP Bridge
+
+To connect MCP-compatible tools (GitHub Copilot, automation scripts) to the plugin, see [docs/MCP_BRIDGE.md](MCP_BRIDGE.md).
