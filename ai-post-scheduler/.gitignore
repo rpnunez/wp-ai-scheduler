@@ -1,0 +1,20 @@
+# Composer dependencies
+vendor/
+composer.lock
+
+# Codeception output
+tests/_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# WordPress
+wp-config-local.php
+wp-content/uploads/
