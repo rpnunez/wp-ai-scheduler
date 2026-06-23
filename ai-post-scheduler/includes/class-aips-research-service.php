@@ -130,23 +130,7 @@ class AIPS_Research_Service {
         $prompt .= "4. Evergreen value combined with timeliness\n";
         $prompt .= "5. Content gap opportunities\n\n";
 
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"topic\": The topic/title (string)\n";
-        $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-        $prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
-        $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-
-        $prompt .= "Example format:\n";
-        $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"topic\": \"How AI is Transforming Content Creation in 2025\",\n";
-        $prompt .= "    \"score\": 95,\n";
-        $prompt .= "    \"reason\": \"High search volume, current AI adoption surge\",\n";
-        $prompt .= "    \"keywords\": [\"AI content\", \"automation\", \"GPT-4\", \"content marketing\", \"2025 trends\"]\n";
-        $prompt .= "  }\n";
-        $prompt .= "]\n\n";
-
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
+        $prompt .= "Return a JSON array where each item has: \"topic\" (string), \"score\" (integer 1-100), \"reason\" (string, max 100 chars), \"keywords\" (array of 3-5 strings).";
 
         return $prompt;
     }
@@ -474,12 +458,7 @@ class AIPS_Research_Service {
         $prompt .= "- Prefer specific, actionable topics over generic ones.\n";
         $prompt .= "- Consider gaps or follow-up angles suggested by the source content.\n\n";
 
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"topic\": The topic/title (string)\n";
-        $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-        $prompt .= "- \"reason\": Why it's relevant to the source material (max 100 chars, string)\n";
-        $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
+        $prompt .= "Return a JSON array where each item has: \"topic\" (string), \"score\" (integer 1-100), \"reason\" (string, max 100 chars), \"keywords\" (array of 3-5 strings).";
 
         return $prompt;
     }
