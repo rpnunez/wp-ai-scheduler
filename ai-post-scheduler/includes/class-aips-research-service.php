@@ -75,13 +75,9 @@ class AIPS_Research_Service {
             'keywords' => $keywords,
         ));
 
-        // Use generate_json for structured data response
-        // $result = $this->ai_service->generate_json($prompt, array(
-        //     'temperature' => 0.7,
-        //     'maxTokens' => 2000,
-        // ));
-        $result = $this->ai_service->generate_text($prompt, array(
+        $result = $this->ai_service->generate_json($prompt, array(
             'temperature' => 0.7,
+            'json_schema' => $this->get_topic_json_schema(),
         ));
 
         if (is_wp_error($result)) {
@@ -89,26 +85,7 @@ class AIPS_Research_Service {
             return $result;
         }
 
-        // Validate and normalize the JSON response
         $topics = $this->validate_and_normalize_topics($result, $count);
-
-        // If validation failed, try falling back to text-based parsing
-        if (is_wp_error($topics) && $topics->get_error_code() === 'invalid_format') {
-            $this->logger->log('JSON validation failed, attempting text-based fallback parsing', 'warning');
-            
-            // Try to convert result back to string for legacy parser
-            $text_response = is_string($result) ? $result : wp_json_encode($result);
-            
-            if (!empty($text_response)) {
-                $fallback_topics = $this->parse_research_response($text_response, $count);
-                
-                if (!is_wp_error($fallback_topics) && is_array($fallback_topics) && !empty($fallback_topics)) {
-                    $this->logger->log('Fallback text parsing succeeded', 'info');
-
-                    $topics = $fallback_topics;
-                }
-            }
-        }
 
         if (is_wp_error($topics)) {
             return $topics;
@@ -211,61 +188,31 @@ class AIPS_Research_Service {
     }
 
     /**
-     * Parse the AI research response into structured topic data.
+     * JSON schema for the topic array returned by the AI.
      *
-     * Extracts and validates topic information from the AI's JSON response.
+     * Passed to providers that support native structured-JSON output (e.g. Gemini
+     * via as_json_response()) so the model is constrained to the expected shape
+     * and the text-based extraction fallback is not needed.
      *
-     * @param string $response The raw AI response.
-     * @param int    $count    Expected number of topics.
-     * @return array|WP_Error  Parsed topics array or WP_Error on parse failure.
+     * @return array<string, mixed>
      */
-    private function parse_research_response($response, $count) {
-        // Clean up the response
-        $json_str = trim($response);
-
-        // Remove potential markdown code blocks
-        $json_str = preg_replace('/^```json\s*/m', '', $json_str);
-        $json_str = preg_replace('/^```\s*/m', '', $json_str);
-        $json_str = preg_replace('/```$/m', '', $json_str);
-        $json_str = trim($json_str);
-
-        // Decode JSON
-        $topics = json_decode($json_str, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->logger->log("Failed to parse research JSON: " . json_last_error_msg(), 'error', array(
-                'response_preview' => substr($json_str, 0, 200),
-            ));
-
-            // Fallback: try to extract topics from text
-            return $this->fallback_parse_topics($response, $count);
-        }
-
-        if (!is_array($topics)) {
-            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
-        }
-
-        // Validate and normalize topics
-        $validated_topics = array();
-        foreach ($topics as $topic) {
-            if ($this->validate_topic_structure($topic)) {
-                $validated_topics[] = $this->normalize_topic($topic);
-            }
-        }
-
-        if (empty($validated_topics)) {
-            return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
-        }
-
-        // Sort by score (highest first)
-        usort($validated_topics, function($a, $b) {
-            return $b['score'] - $a['score'];
-        });
-
-        // Limit to requested count
-        $validated_topics = array_slice($validated_topics, 0, $count);
-
-        return $validated_topics;
+    private function get_topic_json_schema(): array {
+        return array(
+            'type'  => 'array',
+            'items' => array(
+                'type'       => 'object',
+                'properties' => array(
+                    'topic'    => array('type' => 'string'),
+                    'score'    => array('type' => 'integer'),
+                    'reason'   => array('type' => 'string'),
+                    'keywords' => array(
+                        'type'  => 'array',
+                        'items' => array('type' => 'string'),
+                    ),
+                ),
+                'required' => array('topic', 'score', 'reason', 'keywords'),
+            ),
+        );
     }
 
     /**
@@ -303,60 +250,6 @@ class AIPS_Research_Service {
     }
 
     /**
-     * Fallback parser for when JSON parsing fails.
-     *
-     * Attempts to extract topic information from free-form text.
-     *
-     * @param string $response The raw AI response.
-     * @param int    $count    Number of topics to extract.
-     * @return array|WP_Error  Extracted topics or WP_Error.
-     */
-    private function fallback_parse_topics($response, $count) {
-        $this->logger->log("Attempting fallback topic extraction", 'info');
-
-        // Split by lines and look for topic-like patterns
-        $lines = explode("\n", $response);
-        $topics = array();
-        $score = 100; // Start high and decrease
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            // Skip empty lines and short lines
-            if (strlen($line) < 10) {
-                continue;
-            }
-
-            // Remove common list markers
-            $line = preg_replace('/^[\d]+[\.\)]\s*/', '', $line);
-            $line = preg_replace('/^[-*•]\s*/', '', $line);
-            $line = trim($line);
-
-            if (!empty($line)) {
-                $topics[] = array(
-                    'topic' => sanitize_text_field($line),
-                    'score' => $score,
-                    'reason' => 'Extracted from AI response',
-                    'keywords' => array(),
-                    'researched_at' => AIPS_DateTime::now()->timestamp(),
-                );
-
-                $score = max(50, $score - 5); // Decrease score for each topic
-
-                if (count($topics) >= $count) {
-                    break;
-                }
-            }
-        }
-
-        if (empty($topics)) {
-            return new WP_Error('extraction_failed', __('Failed to extract topics from AI response.', 'ai-post-scheduler'));
-        }
-
-        return $topics;
-    }
-
-    /**
      * Get the top N topics from a list of researched topics.
      *
      * @param array $topics All researched topics.
@@ -368,7 +261,6 @@ class AIPS_Research_Service {
             return array();
         }
 
-        // Already sorted by score in parse_research_response
         return array_slice($topics, 0, absint($count));
     }
 
@@ -535,7 +427,10 @@ class AIPS_Research_Service {
             'info'
         );
 
-        $result = $this->ai_service->generate_text( $prompt, array( 'temperature' => 0.7 ) );
+        $result = $this->ai_service->generate_json( $prompt, array(
+            'temperature' => 0.7,
+            'json_schema' => $this->get_topic_json_schema(),
+        ) );
 
         if ( is_wp_error( $result ) ) {
             $this->logger->log( 'Source-based research failed: ' . $result->get_error_message(), 'error' );
@@ -543,16 +438,6 @@ class AIPS_Research_Service {
         }
 
         $topics = $this->validate_and_normalize_topics( $result, $count );
-
-        if ( is_wp_error( $topics ) && $topics->get_error_code() === 'invalid_format' ) {
-            $text_response = is_string( $result ) ? $result : wp_json_encode( $result );
-            if ( ! empty( $text_response ) ) {
-                $fallback = $this->parse_research_response( $text_response, $count );
-                if ( ! is_wp_error( $fallback ) && ! empty( $fallback ) ) {
-                    $topics = $fallback;
-                }
-            }
-        }
 
         if ( is_wp_error( $topics ) ) {
             return $topics;
