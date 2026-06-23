@@ -7,11 +7,24 @@
 >
     <!-- Segregated Test Suites for faster TDD -->
     <testsuites>
+        <testsuite name="Unit">
+            <directory suffix=".php">./tests</directory>
+            <exclude>./tests/bootstrap.php</exclude>
+            <exclude>./tests/index.php</exclude>
+            <exclude>./tests/test-batch-queue-service.php</exclude>
+            <exclude>./tests/Scenarios</exclude>
+            <exclude>./tests/Helpers</exclude>
+            <exclude>./tests/Acceptance</exclude>
+        </testsuite>
+        <testsuite name="Scenarios">
+            <directory suffix=".php">./tests/Scenarios</directory>
+        </testsuite>
         <testsuite name="All">
             <directory suffix=".php">./tests</directory>
             <exclude>./tests/bootstrap.php</exclude>
             <exclude>./tests/index.php</exclude>
             <exclude>./tests/test-batch-queue-service.php</exclude>
+            <exclude>./tests/Acceptance</exclude>
         </testsuite>
     </testsuites>
 
