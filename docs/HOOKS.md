@@ -39,12 +39,12 @@ Fires after a post has been created but one or more requested components failed 
     *   `int $history_id`: The ID of the history record associated with this generation.
 
 #### `aips_post_components_updated`
-Fires after AI Edit saves updated post components.
+Fires after AI Assistance saves updated post components.
 
 *   **Arguments:**
     *   `int $post_id`: The updated post ID.
     *   `array $updated_components`: Updated component keys (`title`, `excerpt`, `content`, `featured_image`).
-    *   `array $components`: Raw component payload submitted by AI Edit.
+    *   `array $components`: Raw component payload submitted by AI Assistance.
 
 #### `aips_generation_failed`
 Fires when a non-scheduled/manual generation flow fails and should create a high-priority notification.
