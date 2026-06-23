@@ -128,7 +128,7 @@ rm -r docs/features/templates
 Before deleting `docs/features/generated-posts/post_partial_generation_regeneration_post_save.md`, scan it for any still-current behavior:
 
 ```bash
-grep -i "aips_\|class-\|table\|schema" docs/features/generated-posts/post_partial_generation_regeneration_post_save.md
+grep -Ei "aips_|class-|table|schema" docs/features/generated-posts/post_partial_generation_regeneration_post_save.md
 ```
 
 If any architectural facts are not captured in `docs/AI_AGENT_REFERENCE.md`, migrate them first.
@@ -227,7 +227,7 @@ rm -r docs/features/ai-edit
 ### Step 3.6 — Verify no broken references
 
 ```bash
-rg -rn "docs/features/ai-edit\|ai-edit/" docs README.md AGENTS.md .github
+rg -rn "docs/features/ai-edit|ai-edit/" docs README.md AGENTS.md .github
 ```
 
 Update any links that pointed to the old path.
@@ -243,14 +243,14 @@ Commit message: `docs: rename ai-edit folder to ai-assistance and update content
 Before deleting, scan for content not already in canonical docs:
 
 ```bash
-grep -i "datetime\|timestamp\|created_at\|bigint\|unix" \
+grep -Ei "datetime|timestamp|created_at|bigint|unix" \
   docs/plans/standardize-datetime/DB_SCHEMA.md \
   docs/plans/standardize-datetime/FINDINGS.md
 ```
 
 If the DateTime conventions (e.g. `AIPS_DateTime::fromTimestampOrNull()`, `created_at` as bigint Unix timestamp) are not yet documented in `docs/DEVELOPMENT_GUIDELINES.md`, add a short "Date and Time Handling" section there before deleting.
 
-Cross-check: `docs/features/ai-edit/docs.md` (and the new `AI_ASSISTANCE_DEV_GUIDE.md`) already contains:
+Cross-check: `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md` already contains:
 
 > `created_at` stores a Unix timestamp (bigint) aligned with the DateTime refactor; use `AIPS_DateTime::fromTimestampOrNull()` to convert to display format.
 
@@ -274,7 +274,7 @@ Check whether `MCP_BRIDGE_README.md` describes a currently maintained workflow:
 
 ```bash
 cat docs/mcp/MCP_BRIDGE_README.md
-grep -r "mcp\|MCP" AGENTS.md docs/DEVELOPMENT_GUIDELINES.md docs/SETUP.md
+grep -Er "mcp|MCP" AGENTS.md docs/DEVELOPMENT_GUIDELINES.md docs/SETUP.md
 ```
 
 **If MCP bridge is no longer maintained:**
@@ -325,7 +325,7 @@ rm docs/DEV.md docs/DEV_HANDBOOK.md
 `docs/PERFORMANCE.md` (210 lines) covers the performance benchmarking system. If CI/CD benchmarking is still active, keep the file. If the benchmarking system is removed or the CI configuration no longer references it, delete the file.
 
 ```bash
-grep -r "benchmark\|performance" .github/workflows/ 2>/dev/null | head -20
+grep -Er "benchmark|performance" .github/workflows/ 2>/dev/null | head -20
 ```
 
 ### Step 6.4 — Review `docs/Design_Guidelines.md`
@@ -338,7 +338,7 @@ Check whether it describes current UI standards still in use. If it references r
 
 ```bash
 ls docs/FEAT*
-grep "FEATURE_LIST\|FEATURES.MD" AGENTS.md
+grep -E "FEATURE_LIST|FEATURES.MD" AGENTS.md
 ```
 
 Options:
