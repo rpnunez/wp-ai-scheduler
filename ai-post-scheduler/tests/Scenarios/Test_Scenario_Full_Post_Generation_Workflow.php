@@ -30,7 +30,7 @@ class Test_Scenario_Full_Post_Generation_Workflow extends WP_UnitTestCase {
 			'post_type'                       => 'post',
 			'post_status'                     => 'draft',
 			'prompt_template'                 => 'Write a blog post about {{topic}}',
-			'title_prompt'                    => 'Create a catchy title about {{topic}}',
+			'title_prompt'                    => 'Create a catchy blog post title',
 			'image_prompt'                    => 'Generate a featured image for {{topic}}',
 			'post_author'                     => get_current_user_id(),
 			'is_active'                       => 1,
