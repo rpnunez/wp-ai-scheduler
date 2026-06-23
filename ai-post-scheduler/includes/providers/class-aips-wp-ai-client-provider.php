@@ -89,8 +89,8 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
             $cache[$this] = null;
             return null;
         }
-
-        $builder = wp_ai_client_prompt('');
+        
+        $builder = wp_ai_client_prompt(null);
         $cache[$this] = is_wp_error($builder) ? null : $builder;
 
         return $cache[$this];
@@ -107,7 +107,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
             $builder = $this->create_prompt_builder();
         }
 
-        if (!is_object($builder) || !method_exists($builder, 'is_supported_for_text_generation')) {
+        if (!is_object($builder)) {
             return false;
         }
 
@@ -125,7 +125,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
             $builder = $this->create_prompt_builder();
         }
 
-        if (!is_object($builder) || !method_exists($builder, 'is_supported_for_image_generation')) {
+        if (!is_object($builder)) {
             return false;
         }
 
@@ -150,18 +150,18 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
         if (!empty($params['model'])) {
             $preferences = array_filter(array_map('trim', explode(',', (string) $params['model'])));
 
-            if (!empty($preferences) && method_exists($builder, 'using_model_preference')) {
+            if (!empty($preferences) && is_callable([$builder, 'using_model_preference'])) {
                 $builder = $builder->using_model_preference(...array_values($preferences));
             }
         }
 
-        if (isset($params['temperature']) && method_exists($builder, 'using_temperature')) {
+        if (isset($params['temperature']) && is_callable([$builder, 'using_temperature'])) {
             $builder = $builder->using_temperature((float) $params['temperature']);
         }
 
         $max_tokens = isset($params['max_tokens']) ? $params['max_tokens'] : (isset($params['maxTokens']) ? $params['maxTokens'] : null);
 
-        if ($max_tokens !== null && method_exists($builder, 'using_max_tokens')) {
+        if ($max_tokens !== null && is_callable([$builder, 'using_max_tokens'])) {
             $builder = $builder->using_max_tokens((int) $max_tokens);
         }
 
@@ -214,7 +214,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 
         $builder = $this->build_prompt((string) $prompt, $params);
 
-        if (!method_exists($builder, 'as_json_response') || !$this->supports_text_generation($builder)) {
+        if (!is_callable([$builder, 'as_json_response']) || !$this->supports_text_generation($builder)) {
             return null;
         }
 
@@ -273,7 +273,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     public function supports_native_json(): bool {
         $builder = $this->create_prompt_builder();
 
-        return is_object($builder) && method_exists($builder, 'as_json_response') && $this->supports_text_generation($builder);
+        return is_object($builder) && is_callable([$builder, 'as_json_response']) && $this->supports_text_generation($builder);
     }
 
     /**
