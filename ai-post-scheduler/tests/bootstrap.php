@@ -61,5 +61,8 @@ tests_add_filter('muplugins_loaded', '_manually_load_plugin');
 
 require WP_TESTS_DIR . '/includes/bootstrap.php';
 
+// Load test helpers and traits
+require_once dirname(__FILE__) . '/Helpers/trait-database-assertions.php';
+
 add_filter('wp_doing_ajax', '__return_true');
 add_filter('wp_die_ajax_handler', '_aips_use_full_wp_ajax_die_handler');
