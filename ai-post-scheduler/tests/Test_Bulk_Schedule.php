@@ -149,12 +149,8 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 
 	/**
 	 * Scheduling N topics via ajax_bulk_schedule with frequency='once' must
-	 * produce N schedule entries that ALL share the user-specified start_date
-	 * as their next_run datetime.
-	 *
-	 * Before the fix, each topic at index $i received
-	 *   next_run = base_time + ($i * 86400)
-	 * causing topics to be spread across multiple days.
+	 * produce N schedule entries that stagger the next_run time by 10 minutes
+	 * to prevent queue overloading.
 	 */
 	public function test_ajax_bulk_schedule_once_all_topics_share_same_next_run() {
 		$this->set_admin_user();
@@ -176,12 +172,16 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// Topics with 'once' frequency should be staggered to avoid immediate overload.
+		$base_time = strtotime($start_date);
+		$stagger_seconds = 10 * 60; // 10 minutes
+
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * $stagger_seconds));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
 		}
 	}
