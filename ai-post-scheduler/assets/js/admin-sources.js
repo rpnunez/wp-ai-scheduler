@@ -395,7 +395,7 @@
 		enableSourceDataEditMode: function (e) {
 			e.preventDefault();
 
-			var message = aipsSourcesL10n.editDataWarning || 'Editing this snapshot changes the source content available to future generation. Continue?';
+			var message = aipsSourcesL10n.editDataWarning || 'Editing this snapshot changes the source content available to future content generation. Continue?';
 			if (!confirm(message)) {
 				return;
 			}
