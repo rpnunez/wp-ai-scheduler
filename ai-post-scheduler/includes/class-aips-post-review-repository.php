@@ -150,13 +150,19 @@ class AIPS_Post_Review_Repository {
 			LIMIT %d OFFSET %d
 		", $query_args));
 
+		// Only join pm_status in the count query when the filter actually references it
+		$count_join = '';
+		if (!empty($review_status)) {
+			$count_join = "LEFT JOIN {$postmeta_table} pm_status ON p.ID = pm_status.post_id AND pm_status.meta_key = '_aips_review_status'";
+		}
+
 		// Query for total count
 		$count_args = $where_args;
 		if (!empty($count_args)) {
 			$total = $this->wpdb->get_var($this->wpdb->prepare(
 				"SELECT COUNT(*) FROM {$this->table_name} h
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
-				LEFT JOIN {$postmeta_table} pm_status ON p.ID = pm_status.post_id AND pm_status.meta_key = '_aips_review_status'
+				{$count_join}
 				WHERE $where_sql",
 				$count_args
 			));
@@ -164,7 +170,7 @@ class AIPS_Post_Review_Repository {
 			$total = $this->wpdb->get_var(
 				"SELECT COUNT(*) FROM {$this->table_name} h
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
-				LEFT JOIN {$postmeta_table} pm_status ON p.ID = pm_status.post_id AND pm_status.meta_key = '_aips_review_status'
+				{$count_join}
 				WHERE $where_sql"
 			);
 		}

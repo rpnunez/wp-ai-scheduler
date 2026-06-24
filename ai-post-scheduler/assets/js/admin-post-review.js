@@ -760,14 +760,15 @@
 						var $display = $wrap.find('.aips-review-note-display');
 						if (note) {
 							var truncated = note.length > 100 ? note.substring(0, 100) + '…' : note;
-							$display.html(
-								'<span class="aips-review-note-text">' + AIPS.Templates.escape(truncated) + '</span> ' +
-								'<button type="button" class="aips-note-edit-btn aips-btn-link" data-post-id="' + postId + '" data-note="' + AIPS.Templates.escape(note) + '" title="Edit note"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Edit note</span></button>'
-							).removeClass('aips-review-note-empty');
+							$display.html(AIPS.Templates.render('tmpl-aips-review-note-display', {
+								note:      truncated,
+								post_id:   postId,
+								full_note: note,
+							})).removeClass('aips-review-note-empty');
 						} else {
-							$display.html(
-								'<button type="button" class="aips-note-add-btn aips-btn-link" data-post-id="' + postId + '" title="Add reviewer note"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span> Add note</button>'
-							).addClass('aips-review-note-empty');
+							$display.html(AIPS.Templates.render('tmpl-aips-review-note-add', {
+								post_id: postId,
+							})).addClass('aips-review-note-empty');
 						}
 						$wrap.find('.aips-review-note-editor').hide();
 						$display.show();
@@ -834,7 +835,7 @@
 						var $badge = $tr.find('.aips-badge--warning');
 						if (isFlagged) {
 							if ($badge.length === 0) {
-								$tr.find('.aips-post-title-cell .cell-primary').after('<span class="aips-badge aips-badge--warning">Needs Revision</span>');
+								$tr.find('.aips-post-title-cell .cell-primary').after(AIPS.Templates.renderRaw('tmpl-aips-needs-revision-badge', {}));
 							}
 						} else {
 							$badge.remove();

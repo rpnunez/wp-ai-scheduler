@@ -847,7 +847,7 @@ final class AI_Post_Scheduler {
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
 
         // Dashboard widget: shows pending review count with a link to the queue.
-        ( new AIPS_Dashboard_Widget() )->register();
+        ( new AIPS_WP_Widgets() )->register();
     }
 
     /**

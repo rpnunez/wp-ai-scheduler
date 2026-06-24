@@ -349,6 +349,28 @@ $review_status = isset($review_status) ? $review_status : '';
 					<?php endif; ?>
 				</div>
 
+<!-- JS template: review note display (has note text + edit button) -->
+<script type="text/html" id="tmpl-aips-review-note-display">
+<span class="aips-review-note-text">{{note}}</span>
+<button type="button" class="aips-note-edit-btn aips-btn-link" data-post-id="{{post_id}}" data-note="{{full_note}}" title="<?php esc_attr_e('Edit note', 'ai-post-scheduler'); ?>">
+	<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+	<span class="screen-reader-text"><?php esc_html_e('Edit note', 'ai-post-scheduler'); ?></span>
+</button>
+</script>
+
+<!-- JS template: review note add button (no note yet) -->
+<script type="text/html" id="tmpl-aips-review-note-add">
+<button type="button" class="aips-note-add-btn aips-btn-link" data-post-id="{{post_id}}" title="<?php esc_attr_e('Add reviewer note', 'ai-post-scheduler'); ?>">
+	<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
+	<?php esc_html_e('Add note', 'ai-post-scheduler'); ?>
+</button>
+</script>
+
+<!-- JS template: needs revision badge -->
+<script type="text/html" id="tmpl-aips-needs-revision-badge">
+<span class="aips-badge aips-badge--warning"><?php esc_html_e('Needs Revision', 'ai-post-scheduler'); ?></span>
+</script>
+
 <!-- Schedule Publish Modal -->
 <div id="aips-schedule-publish-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-schedule-publish-modal-title">
 	<div class="aips-modal-overlay"></div>
@@ -363,7 +385,7 @@ $review_status = isset($review_status) ? $review_status : '';
 			<p class="aips-schedule-modal-subtitle"></p>
 			<div class="aips-schedule-field">
 				<label for="aips-schedule-date-input"><?php esc_html_e('Publish on:', 'ai-post-scheduler'); ?></label>
-				<input type="datetime-local" id="aips-schedule-date-input" class="aips-form-input" min="<?php echo esc_attr(date('Y-m-d\TH:i', time() + 60)); ?>">
+				<input type="datetime-local" id="aips-schedule-date-input" class="aips-form-input" min="<?php echo esc_attr(current_datetime()->modify('+1 minute')->format('Y-m-d\TH:i')); ?>">
 				<p class="description"><?php esc_html_e('Date and time are in the site\'s local timezone.', 'ai-post-scheduler'); ?></p>
 			</div>
 		</div>

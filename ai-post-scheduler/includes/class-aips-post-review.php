@@ -234,9 +234,13 @@ class AIPS_Post_Review {
 		$is_scheduled   = false;
 
 		if ($scheduled_date) {
-			$timestamp = strtotime($scheduled_date);
-			if ($timestamp && $timestamp > time()) {
-				$local_date = date('Y-m-d H:i:s', $timestamp);
+			try {
+				$datetime = new DateTime($scheduled_date, wp_timezone());
+			} catch (Exception $e) {
+				$datetime = false;
+			}
+			if ($datetime && $datetime->getTimestamp() > time()) {
+				$local_date = $datetime->format('Y-m-d H:i:s');
 				$gmt_date   = get_gmt_from_date($local_date);
 				$update_data = array(
 					'ID'            => $post_id,
