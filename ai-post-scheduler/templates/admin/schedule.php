@@ -170,12 +170,12 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				<div class="aips-page-actions">
 					<?php if (!empty($templates)): ?>
 					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
+						<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
 					</button>
 					<?php else: ?>
 					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-media-document"></span>
+						<span class="dashicons dashicons-media-document" aria-hidden="true"></span>
 						<?php esc_html_e('Create Template First', 'ai-post-scheduler'); ?>
 					</a>
 					<?php endif; ?>
@@ -388,7 +388,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<td class="column-status">
 							<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;">
 								<span class="aips-badge <?php echo esc_attr($badge_cls); ?>">
-									<span class="dashicons <?php echo esc_attr($icon_cls); ?>"></span>
+									<span class="dashicons <?php echo esc_attr($icon_cls); ?>" aria-hidden="true"></span>
 									<?php echo esc_html($status_lbl); ?>
 								</span>
 								<label class="aips-toggle">
@@ -418,7 +418,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
 									data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
 									data-is-active="<?php echo esc_attr($is_active); ?>">
-									<span class="dashicons dashicons-edit"></span>
+									<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 								</button>
 								<?php endif; ?>
 
@@ -428,7 +428,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-controls-play"></span>
+									<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
 								</button>
 
 								<!-- Delete (template schedules only) -->
@@ -437,13 +437,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-trash"></span>
+									<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 								</button>
 								<?php elseif (!empty($sched['campaign_id'])): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-danger" disabled
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-trash"></span>
+									<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 								</button>
 								<?php endif; ?>
 							</div>
@@ -460,7 +460,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
 						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
-							<span class="dashicons dashicons-dismiss"></span>
+							<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 						</button>
 					</div>
@@ -481,7 +481,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<?php if (!empty($templates)): ?>
 					<div class="aips-empty-state-actions">
 						<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-							<span class="dashicons dashicons-plus-alt"></span>
+							<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 							<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
 						</button>
 					</div>
