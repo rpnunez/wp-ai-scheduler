@@ -557,9 +557,11 @@ class AIPS_History {
                 }
             }
 
+            $log_type_label = isset($details['log_subtype']) ? (string) $details['log_subtype'] : '';
+
             $logs[] = array(
                 'id' => (int) $log->id,
-                'log_type' => (string) $log->log_type,
+                'log_type' => $log_type_label,
                 'history_type_id' => (int) $log->history_type_id,
                 'type_label' => AIPS_History_Type::get_label((int) $log->history_type_id),
                 'type_class' => $this->get_history_type_class((int) $log->history_type_id),
@@ -882,7 +884,7 @@ class AIPS_History {
      * @return bool
      */
     private function is_ai_request_history_log($log) {
-        return (string) $log['history_type_id'] === '5' || (isset($log['log_type']) && $log['log_type'] === 'ai_request');
+        return (int) $log['history_type_id'] === AIPS_History_Type::AI_REQUEST;
     }
 
     /**
@@ -892,7 +894,7 @@ class AIPS_History {
      * @return bool
      */
     private function is_ai_response_history_log($log) {
-        return (string) $log['history_type_id'] === '6' || (isset($log['log_type']) && $log['log_type'] === 'ai_response');
+        return (int) $log['history_type_id'] === AIPS_History_Type::AI_RESPONSE;
     }
 
     /**

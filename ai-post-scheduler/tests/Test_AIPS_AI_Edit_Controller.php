@@ -304,8 +304,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Snapshot',
 				'output' => array('value' => 'Previous Title'),
 				'context' => array(
@@ -360,8 +360,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Image Snapshot',
 				'output' => array(
 					'attachment_id' => $attachment_id,
@@ -414,8 +414,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Original AI Title',
 				'output' => array('value' => 'Original AI Title'),
 				'context' => array(
