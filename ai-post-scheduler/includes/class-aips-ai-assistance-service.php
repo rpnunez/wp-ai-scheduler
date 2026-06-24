@@ -41,7 +41,7 @@ class AIPS_AI_Assistance_Service {
 	 * @param AIPS_AI_Assistance_Repository $repository Repository.
 	 * @param AIPS_Prompt_Builder_AI_Assistance|null $prompt_builder Prompt builder.
 	 */
-	public function __construct( $ai_service, AIPS_AI_Assistance_Repository $repository, $prompt_builder = null ) {
+	public function __construct( $ai_service, AIPS_AI_Assistance_Repository $repository, ?AIPS_Prompt_Builder_AI_Assistance $prompt_builder = null ) {
 		$this->ai_service = $ai_service;
 		$this->repository = $repository;
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_AI_Assistance();

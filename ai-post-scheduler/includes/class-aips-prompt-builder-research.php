@@ -28,7 +28,7 @@ class AIPS_Prompt_Builder_Research {
 	 * @param array  $keywords Additional keywords for context.
 	 * @return string The formatted prompt.
 	 */
-	public function build_trending_topics_prompt($niche, $count, $keywords = array()) {
+	public function build_trending_topics_prompt($niche, $count, array $keywords = array()) {
 		$now          = AIPS_DateTime::now();
 		$current_date = $now->toDisplay('F j, Y');
 		$current_year = $now->toDisplay('Y');
@@ -79,7 +79,7 @@ class AIPS_Prompt_Builder_Research {
 	 * @param string $source_context Scraped source content block.
 	 * @return string Formatted prompt.
 	 */
-	public function build_source_research_prompt($niche, $count, $keywords, $source_context) {
+	public function build_source_research_prompt($niche, $count, array $keywords, $source_context) {
 		$current_date = AIPS_DateTime::now()->toDisplay('F j, Y');
 
 		$prompt  = "You are a content research expert. Using the source material below as your primary reference, ";

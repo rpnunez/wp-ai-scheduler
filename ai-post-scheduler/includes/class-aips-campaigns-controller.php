@@ -64,7 +64,7 @@ class AIPS_Campaigns_Controller {
 		?AIPS_Unified_Schedule_Service $unified_schedule_service = null,
 		?AIPS_Config $config = null,
 		?AIPS_AI_Service_Interface $ai_service = null,
-		$prompt_builder = null
+		?AIPS_Prompt_Builder_Campaign $prompt_builder = null
 	) {
 		$container = AIPS_Container::get_instance();
 

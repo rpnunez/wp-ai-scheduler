@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Prompt_Builder_Content_Audit {
 
-	public function build_gap_analysis_prompt($niche, $existing_content) {
+	public function build_gap_analysis_prompt($niche, array $existing_content) {
 		$content_list = '';
 		if (!empty($existing_content)) {
 			foreach ($existing_content as $item) {

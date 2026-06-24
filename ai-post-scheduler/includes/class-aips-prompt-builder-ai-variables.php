@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Prompt_Builder_AI_Variables {
 
-	public function build($ai_variables, $context) {
+	public function build(array $ai_variables, $context) {
 		if (empty($ai_variables)) {
 			return '';
 		}

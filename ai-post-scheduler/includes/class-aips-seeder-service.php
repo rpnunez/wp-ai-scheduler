@@ -11,12 +11,12 @@ class AIPS_Seeder_Service {
     private $schedule_repository;
     private $prompt_builder;
 
-    public function __construct() {
+    public function __construct(?AIPS_Prompt_Builder_Seeder $prompt_builder = null) {
         $this->generator = new AIPS_Generator();
         $this->voices = new AIPS_Voices();
         $this->templates = new AIPS_Templates();
         $this->schedule_repository = new AIPS_Schedule_Repository();
-        $this->prompt_builder = new AIPS_Prompt_Builder_Seeder();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Seeder();
     }
 
     /**

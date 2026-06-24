@@ -15,9 +15,9 @@ class AIPS_Planner {
      */
     private $prompt_builder;
 
-    public function __construct() {
+    public function __construct(?AIPS_Prompt_Builder_Planner $prompt_builder = null) {
         $this->bulk_generator_service = $this->make_bulk_generator_service();
-        $this->prompt_builder = new AIPS_Prompt_Builder_Planner();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Planner();
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
         add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));

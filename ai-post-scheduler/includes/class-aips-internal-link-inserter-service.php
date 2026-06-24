@@ -85,7 +85,7 @@ class AIPS_Internal_Link_Inserter_Service {
 		$links_repo = null,
 		$ai_service = null,
 		$logger = null,
-		$prompt_builder = null
+		?AIPS_Prompt_Builder_Internal_Link $prompt_builder = null
 	) {
 		$this->links_repo = $links_repo ?: new AIPS_Internal_Links_Repository();
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();

@@ -25,6 +25,20 @@ if (!defined('ABSPATH')) {
  * dynamically using AI during content generation.
  */
 class AIPS_Template_Processor {
+
+    /**
+     * @var AIPS_Prompt_Builder_AI_Variables AI variable prompt builder.
+     */
+    private $ai_variables_prompt_builder;
+
+    /**
+     * Constructor.
+     *
+     * @param AIPS_Prompt_Builder_AI_Variables|null $ai_variables_prompt_builder AI variable prompt builder.
+     */
+    public function __construct(?AIPS_Prompt_Builder_AI_Variables $ai_variables_prompt_builder = null) {
+        $this->ai_variables_prompt_builder = $ai_variables_prompt_builder ?: new AIPS_Prompt_Builder_AI_Variables();
+    }
     
     /**
      * Process template variables in a given string.
@@ -136,8 +150,7 @@ class AIPS_Template_Processor {
      * @return string The prompt to send to AI for variable resolution.
      */
     public function build_ai_variables_prompt($ai_variables, $context) {
-        $prompt_builder = new AIPS_Prompt_Builder_AI_Variables();
-        return $prompt_builder->build($ai_variables, $context);
+        return $this->ai_variables_prompt_builder->build($ai_variables, $context);
     }
     
     /**
