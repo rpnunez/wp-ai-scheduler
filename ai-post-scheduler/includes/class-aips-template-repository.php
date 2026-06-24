@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+    require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Template_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to templates.
  */
 class AIPS_Template_Repository {
+    use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -42,17 +47,12 @@ class AIPS_Template_Repository {
      * @var string The templates table name (with prefix)
      */
     private $table_name;
-    
+
     /**
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
 
-    /**
-     * @var AIPS_Cache In-request identity-map cache.
-     */
-    private $cache = null;
-    
     /**
      * Initialize the repository.
      */
@@ -60,54 +60,50 @@ class AIPS_Template_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_template_repository' );
     }
-    
+
     /**
      * Get all templates with optional filtering.
      *
-     * Results are cached for the duration of the request using the named
-     * named cache instance so repeat calls within the same request
-     * do not issue additional DB queries.
+     * Results are cached with a long-tier persistent cache and invalidated
+     * whenever a template is created, updated, or deleted.
      *
      * @param bool $active_only Optional. Return only active templates. Default false.
      * @return array Array of template objects.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $where  = $active_only ? "WHERE is_active = 1" : "";
-        $result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
-        $this->cache->set( $key, $result );
-        return $result;
+        return $this->cache_read(
+            'templates.get_all',
+            array( 'active_only' => (bool) $active_only ),
+            function() use ( $active_only ) {
+                $where  = $active_only ? "WHERE is_active = 1" : "";
+                return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+            }
+        );
     }
-    
+
     /**
      * Get a single template by ID.
      *
-     * Non-null results are cached for the duration of the request. Null
-     * results (record not found) are always fetched fresh from the DB.
+     * Non-null results are cached with a long-tier persistent cache.
+     * Null results (record not found) are never cached.
      *
      * @param int $id Template ID.
      * @return object|null Template object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $result = $this->wpdb->get_row( $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE id = %d",
-            $id
-        ) );
-        if ( $result !== null ) {
-            $this->cache->set( $key, $result );
-        }
-        return $result;
+        return $this->cache_read(
+            'templates.get_by_id',
+            array( 'template_id' => absint( $id ) ),
+            function() use ( $id ) {
+                return $this->wpdb->get_row( $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name} WHERE id = %d",
+                    $id
+                ) );
+            }
+        );
     }
-    
+
     /**
      * Search templates by name.
      *
@@ -120,7 +116,7 @@ class AIPS_Template_Repository {
             '%' . $this->wpdb->esc_like($search_term) . '%'
         ));
     }
-    
+
     /**
      * Normalise a raw post_category value to a JSON-encoded array string
      * suitable for DB storage.
@@ -195,16 +191,16 @@ class AIPS_Template_Repository {
         );
 
         $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
-        
+
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-        
+
         if ( $result ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'template', array(), 'template_created' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
     }
-    
+
     /**
      * Update an existing template.
      *
@@ -216,37 +212,37 @@ class AIPS_Template_Repository {
         $update_data = array();
         $format = array();
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
-        
+
         if (isset($data['name'])) {
             $update_data['name'] = sanitize_text_field($data['name']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['prompt_template'])) {
             $update_data['prompt_template'] = wp_kses_post($data['prompt_template']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['title_prompt'])) {
             $update_data['title_prompt'] = sanitize_text_field($data['title_prompt']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['voice_id'])) {
             $update_data['voice_id'] = $data['voice_id'] ? absint($data['voice_id']) : null;
             $format[] = '%d';
         }
-        
+
         if (isset($data['post_quantity'])) {
             $update_data['post_quantity'] = absint($data['post_quantity']);
             $format[] = '%d';
         }
-        
+
         if (isset($data['image_prompt'])) {
             $update_data['image_prompt'] = wp_kses_post($data['image_prompt']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['generate_featured_image'])) {
             $update_data['generate_featured_image'] = $data['generate_featured_image'] ? 1 : 0;
             $format[] = '%d';
@@ -267,7 +263,7 @@ class AIPS_Template_Repository {
             $update_data['featured_image_media_ids'] = sanitize_text_field($data['featured_image_media_ids']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['post_status'])) {
             $update_data['post_status'] = sanitize_text_field($data['post_status']);
             $format[] = '%s';
@@ -277,17 +273,17 @@ class AIPS_Template_Repository {
             $update_data['post_type'] = sanitize_key($data['post_type']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['post_category'])) {
             $update_data['post_category'] = $this->sanitise_post_categories( $data['post_category'] );
             $format[] = '%s';
         }
-        
+
         if (isset($data['post_tags'])) {
             $update_data['post_tags'] = sanitize_text_field($data['post_tags']);
             $format[] = '%s';
         }
-        
+
         if (isset($data['post_author'])) {
             $update_data['post_author'] = absint($data['post_author']);
             $format[] = '%d';
@@ -307,19 +303,19 @@ class AIPS_Template_Repository {
             $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
             $format[] = '%d';
         }
-        
+
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
             $format[] = '%d';
         }
-        
+
         if (empty($update_data)) {
             return false;
         }
 
         $update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
         $format[] = '%d';
-        
+
         $result = $this->wpdb->update(
             $this->table_name,
             $update_data,
@@ -329,12 +325,12 @@ class AIPS_Template_Repository {
         ) !== false;
 
         if ( $result ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'template', array( 'template_id' => absint( $id ) ), 'template_updated' );
         }
 
         return $result;
     }
-    
+
     /**
      * Delete a template by ID.
      *
@@ -344,7 +340,7 @@ class AIPS_Template_Repository {
     public function delete($id) {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
         if ( $result ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'template', array( 'template_id' => absint( $id ) ), 'template_deleted' );
         }
         return $result;
     }
@@ -361,7 +357,7 @@ class AIPS_Template_Repository {
             absint($campaign_id)
         ));
     }
-    
+
     /**
      * Toggle template active status.
      *
@@ -372,7 +368,7 @@ class AIPS_Template_Repository {
     public function set_active($id, $is_active) {
         return $this->update($id, array('is_active' => $is_active));
     }
-    
+
     /**
      * Count templates by status.
      *
@@ -388,13 +384,13 @@ class AIPS_Template_Repository {
                 SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
             FROM {$this->table_name}
         ");
-        
+
         return array(
             'total' => isset($results->total) ? (int) $results->total : 0,
             'active' => isset($results->active) ? (int) $results->active : 0,
         );
     }
-    
+
     /**
      * Check if a template name already exists.
      *
@@ -415,7 +411,37 @@ class AIPS_Template_Repository {
                 $name
             ));
         }
-        
+
         return $result > 0;
+    }
+
+    /**
+     * Return the repository cache group for template reads.
+     *
+     * @return string
+     */
+    protected function repository_cache_group(): string {
+        return 'aips_templates';
+    }
+
+    /**
+     * Return the explicit repository cache policies for template reads.
+     *
+     * @return array
+     */
+    protected function repository_cache_policies(): array {
+        return array(
+            'templates.get_all'   => array(
+                'tier'        => 'long',
+                'tags'        => array( 'templates' ),
+                'description' => 'Cache template list reads including active-only filtering.',
+            ),
+            'templates.get_by_id' => array(
+                'tier'        => 'long',
+                'tags'        => array( 'templates', 'template:{template_id}' ),
+                'cache_null'  => false,
+                'description' => 'Cache single-template reads by ID.',
+            ),
+        );
     }
 }

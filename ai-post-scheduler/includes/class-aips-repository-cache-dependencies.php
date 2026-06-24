@@ -88,6 +88,27 @@ class AIPS_Repository_Cache_Dependencies {
 			case 'dashboard.get_executed_schedules':
 				return array( 'history', 'unified_schedule' );
 
+			case 'templates.get_all':
+			case 'templates.get_by_id':
+				return array( 'templates' );
+
+			case 'article_structures.get_all':
+			case 'article_structures.get_by_id':
+				return array( 'article_structures' );
+
+			case 'prompt_sections.get_all':
+			case 'prompt_sections.get_by_id':
+			case 'prompt_sections.get_by_key':
+				return array( 'prompt_sections' );
+
+			case 'voices.get_all':
+			case 'voices.get_by_id':
+				return array( 'voices' );
+
+			case 'post_slices.get_all':
+			case 'post_slices.get_by_id':
+				return array( 'post_slices' );
+
 			default:
 				return array();
 		}
@@ -119,6 +140,21 @@ class AIPS_Repository_Cache_Dependencies {
 
 			case 'unified_schedule':
 				return array( 'unified_schedule' );
+
+			case 'template':
+				return array( 'templates', 'unified_schedule' );
+
+			case 'article_structure':
+				return array( 'article_structures' );
+
+			case 'prompt_section':
+				return array( 'prompt_sections' );
+
+			case 'voice':
+				return array( 'voices' );
+
+			case 'post_slice':
+				return array( 'post_slices' );
 
 			default:
 				$domain = sanitize_key( $domain );

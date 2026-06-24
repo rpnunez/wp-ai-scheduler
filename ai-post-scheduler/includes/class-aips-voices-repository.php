@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+    require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Voices_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to voices.
  */
 class AIPS_Voices_Repository {
+    use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -49,58 +54,51 @@ class AIPS_Voices_Repository {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache.
-     */
-    private $cache = null;
-
-    /**
      * Initialize the repository.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_voices';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_voices_repository' );
     }
 
     /**
      * Get all voices.
      *
-     * Results are cached for the duration of the request so repeat calls
-     * within the same request do not issue additional DB queries.
+     * Results are cached with a long-tier persistent cache and invalidated
+     * whenever a voice is created, updated, or deleted.
      *
      * @param bool $active_only Whether to return only active voices.
      * @return array Array of voice objects.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $where  = $active_only ? "WHERE is_active = 1" : "";
-        $result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
-        $this->cache->set( $key, $result );
-        return $result;
+        return $this->cache_read(
+            'voices.get_all',
+            array( 'active_only' => (bool) $active_only ),
+            function() use ( $active_only ) {
+                $where  = $active_only ? "WHERE is_active = 1" : "";
+                return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+            }
+        );
     }
 
     /**
      * Get a single voice by ID.
      *
-     * Non-null results are cached for the duration of the request.
+     * Non-null results are cached with a long-tier persistent cache.
+     * Null results (record not found) are never cached.
      *
      * @param int $id Voice ID.
      * @return object|null Voice object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $result = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE id = %d", $id ) );
-        if ( $result !== null ) {
-            $this->cache->set( $key, $result );
-        }
-        return $result;
+        return $this->cache_read(
+            'voices.get_by_id',
+            array( 'voice_id' => absint( $id ) ),
+            function() use ( $id ) {
+                return $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE id = %d", $id ) );
+            }
+        );
     }
 
     /**
@@ -126,7 +124,7 @@ class AIPS_Voices_Repository {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 
         if ( $result ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'voice', array(), 'voice_created' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -181,7 +179,7 @@ class AIPS_Voices_Repository {
         );
 
         if ( $result !== false ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'voice', array( 'voice_id' => absint( $id ) ), 'voice_updated' );
         }
 
         return $result !== false;
@@ -196,7 +194,7 @@ class AIPS_Voices_Repository {
     public function delete($id) {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
         if ( $result !== false ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'voice', array( 'voice_id' => absint( $id ) ), 'voice_deleted' );
         }
         return $result !== false;
     }
@@ -226,5 +224,35 @@ class AIPS_Voices_Repository {
         }
 
         return $this->wpdb->get_results($sql);
+    }
+
+    /**
+     * Return the repository cache group for voice reads.
+     *
+     * @return string
+     */
+    protected function repository_cache_group(): string {
+        return 'aips_voices';
+    }
+
+    /**
+     * Return the explicit repository cache policies for voice reads.
+     *
+     * @return array
+     */
+    protected function repository_cache_policies(): array {
+        return array(
+            'voices.get_all'   => array(
+                'tier'        => 'long',
+                'tags'        => array( 'voices' ),
+                'description' => 'Cache voice list reads including active-only filtering.',
+            ),
+            'voices.get_by_id' => array(
+                'tier'        => 'long',
+                'tags'        => array( 'voices', 'voice:{voice_id}' ),
+                'cache_null'  => false,
+                'description' => 'Cache single voice reads by ID.',
+            ),
+        );
     }
 }

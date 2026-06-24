@@ -65,9 +65,8 @@ class AIPS_Authors_Repository {
 	/**
 	 * Get all authors with optional filtering.
 	 *
-	 * Results are cached for the duration of the request using the named
-	 * named cache instance so repeat calls within the same request
-	 * do not issue additional DB queries.
+	 * Results are cached with a medium-tier persistent cache (TTL ~5 min) and
+	 * invalidated whenever an author is created, updated, or deleted.
 	 *
 	 * @param bool $active_only Optional. Return only active authors. Default false.
 	 * @return array Array of author objects.
