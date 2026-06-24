@@ -58,7 +58,7 @@ php bin/benchmark.php --wp-core-dir=/tmp/wordpress --baseline-file=../.github/pe
 
 ### Request-context boot
 
-`AI_Post_Scheduler::init()` (in `ai-post-scheduler/ai-post-scheduler.php`) is the single entry point registered on `plugins_loaded`. It always calls `boot_common()`, then exactly one context branch:
+`AI_Post_Scheduler::init()` (in `ai-post-scheduler/ai-post-scheduler.php`) is the context-dispatch entry point, registered on the `init` hook. The singleton itself is created on `plugins_loaded` (priority 5) via `aips_init()`. `init()` always calls `boot_common()`, then exactly one context branch:
 
 | Context | Boot method | What it loads |
 |---|---|---|
