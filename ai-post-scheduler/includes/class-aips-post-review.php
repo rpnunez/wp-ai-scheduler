@@ -69,6 +69,8 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
 		add_action('wp_ajax_aips_bulk_regenerate_posts', array($this, 'ajax_bulk_regenerate_posts'));
 		add_action('wp_ajax_aips_get_post_preview', array($this, 'ajax_get_post_preview'));
+		add_action('wp_ajax_aips_save_review_note', array($this, 'ajax_save_review_note'));
+		add_action('wp_ajax_aips_flag_needs_revision', array($this, 'ajax_flag_needs_revision'));
 	}
 	
 	/**
@@ -138,14 +140,16 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
-		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
-		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
-		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-		
+		$page          = isset($_POST['page']) ? absint($_POST['page']) : 1;
+		$search        = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$template_id   = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+		$review_status = isset($_POST['review_status']) ? sanitize_key($_POST['review_status']) : '';
+
 		$draft_posts = $this->get_draft_posts(array(
-			'page' => $page,
-			'search' => $search,
-			'template_id' => $template_id,
+			'page'          => $page,
+			'search'        => $search,
+			'template_id'   => $template_id,
+			'review_status' => $review_status,
 		));
 		
 		AIPS_Ajax_Response::success($draft_posts);
@@ -185,20 +189,20 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
-		// Verify the post exists and is a draft managed by this plugin
+		// Verify the post exists and is in the review queue (draft or pending)
 		$post = get_post($post_id);
-		if (!$post || $post->post_status !== 'draft') {
+		if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 			$history->record(
 				'activity',
-				__('Post publish failed: Post not found or not a draft', 'ai-post-scheduler'),
+				__('Post publish failed: Post not found or not in review queue', 'ai-post-scheduler'),
 				array('event_type' => 'post_published', 'event_status' => 'failed'),
 				null,
 				array('post_id' => $post_id)
 			);
-			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(__('Post not found or not in review queue.', 'ai-post-scheduler'));
 		}
-		
+
 		// Verify the post is in the review queue (has a history record)
 		if (!$this->history_service->post_has_history_and_completed($post_id)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
@@ -211,7 +215,7 @@ class AIPS_Post_Review {
 			);
 			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
 		}
-		
+
 		// Check per-post capability
 		if (!current_user_can('publish_post', $post_id)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
@@ -224,12 +228,35 @@ class AIPS_Post_Review {
 			);
 			AIPS_Ajax_Response::error(__('You do not have permission to publish this post.', 'ai-post-scheduler'));
 		}
-		
-		$result = wp_update_post(array(
-			'ID' => $post_id,
-			'post_status' => 'publish',
-		));
-		
+
+		// Support scheduled publish: accept an optional future date/time
+		$scheduled_date = isset($_POST['scheduled_date']) ? sanitize_text_field(wp_unslash($_POST['scheduled_date'])) : '';
+		$is_scheduled   = false;
+
+		if ($scheduled_date) {
+			$timestamp = strtotime($scheduled_date);
+			if ($timestamp && $timestamp > time()) {
+				$local_date = date('Y-m-d H:i:s', $timestamp);
+				$gmt_date   = get_gmt_from_date($local_date);
+				$update_data = array(
+					'ID'            => $post_id,
+					'post_status'   => 'future',
+					'post_date'     => $local_date,
+					'post_date_gmt' => $gmt_date,
+				);
+				$is_scheduled = true;
+			}
+		}
+
+		if (!$is_scheduled) {
+			$update_data = array(
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			);
+		}
+
+		$result = wp_update_post($update_data);
+
 		if (is_wp_error($result)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 			$history->record(
@@ -241,27 +268,38 @@ class AIPS_Post_Review {
 			);
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
-		
+
+		// Clear any review flags from meta now that it's approved
+		delete_post_meta($post_id, '_aips_review_status');
+
 		// Log the publish activity
+		$event_label = $is_scheduled
+			? __('Post scheduled from review queue', 'ai-post-scheduler')
+			: __('Post published from review queue', 'ai-post-scheduler');
 		$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 		$history->record(
 			'activity',
-			__('Post published from review queue', 'ai-post-scheduler'),
+			$event_label,
 			array('event_type' => 'post_published', 'event_status' => 'success'),
 			null,
-			array('post_id' => $post_id)
+			array('post_id' => $post_id, 'scheduled' => $is_scheduled)
 		);
-		
+
 		/**
-		 * Fires after a post is published from the review queue.
+		 * Fires after a post is published (or scheduled) from the review queue.
 		 *
 		 * @param int $post_id Post ID that was published.
 		 */
 		do_action('aips_post_review_published', $post_id);
-		
+
+		$message = $is_scheduled
+			? __('Post scheduled successfully.', 'ai-post-scheduler')
+			: __('Post published successfully.', 'ai-post-scheduler');
+
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Post published successfully.', 'ai-post-scheduler'),
-			'post_id' => $post_id,
+			'message'   => $message,
+			'post_id'   => $post_id,
+			'scheduled' => $is_scheduled,
 		));
 	}
 	
@@ -312,14 +350,14 @@ class AIPS_Post_Review {
 		$failed_count = 0;
 		
 		foreach ($post_ids as $post_id) {
-			// Verify the post exists and is a draft
+			// Verify the post exists and is in the review queue (draft or pending)
 			$post = get_post($post_id);
-			if (!$post || $post->post_status !== 'draft') {
+			if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
 				$failed_count++;
 				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 				$history->record(
 					'activity',
-					__('Bulk publish failed: Post not found or not a draft', 'ai-post-scheduler'),
+					__('Bulk publish failed: Post not found or not in review queue', 'ai-post-scheduler'),
 					array('event_type' => 'post_published', 'event_status' => 'failed'),
 					null,
 					array('post_id' => $post_id)
@@ -362,7 +400,8 @@ class AIPS_Post_Review {
 			
 			if (!is_wp_error($result)) {
 				$success_count++;
-				
+				delete_post_meta($post_id, '_aips_review_status');
+
 				// Log the publish activity
 				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 				$history->record(
@@ -583,12 +622,12 @@ class AIPS_Post_Review {
 				$post_id = $history_post_id;
 
 				$post = get_post($post_id);
-				if (!$post || $post->post_status !== 'draft') {
+				if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
 					return new WP_Error(
-						'not_draft',
+						'not_in_queue',
 						sprintf(
 							/* translators: %d: post ID */
-							__('Post ID %d not found or not a draft', 'ai-post-scheduler'),
+							__('Post ID %d not found or not in review queue', 'ai-post-scheduler'),
 							$post_id
 						)
 					);
@@ -737,18 +776,18 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
-		// Verify the post exists and is a draft
+		// Verify the post exists and is in the review queue (draft or pending)
 		$post = get_post($post_id);
-		if (!$post || $post->post_status !== 'draft') {
+		if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 			$history->record(
 				'activity',
-				__('Post delete failed: Post not found or not a draft', 'ai-post-scheduler'),
+				__('Post delete failed: Post not found or not in review queue', 'ai-post-scheduler'),
 				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
 				null,
 				array('post_id' => $post_id)
 			);
-			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(__('Post not found or not in review queue.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post is in the review queue
@@ -875,11 +914,11 @@ class AIPS_Post_Review {
 				continue;
 			}
 			
-			// Verify the post exists and is a draft
+			// Verify the post exists and is in the review queue (draft or pending)
 			$post = get_post($post_id);
-			if (!$post || $post->post_status !== 'draft') {
+			if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
 				$failed_count++;
-				$history->record('warning', sprintf(__('Cannot delete post ID %d: Not found or not a draft', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
+				$history->record('warning', sprintf(__('Cannot delete post ID %d: Not found or not in review queue', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
 				continue;
 			}
 			
@@ -943,6 +982,97 @@ class AIPS_Post_Review {
 			'message' => sprintf(__('%d posts deleted successfully.', 'ai-post-scheduler'), $success_count),
 			'count' => $success_count,
 			'failed' => $failed_count,
+		));
+	}
+
+	/**
+	 * AJAX handler to save a reviewer note on a draft post.
+	 *
+	 * Stores or clears the note in `_aips_review_note` post meta.
+	 */
+	public function ajax_save_review_note() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		if (!$post_id) {
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
+		}
+
+		$post = get_post($post_id);
+		if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
+			AIPS_Ajax_Response::error(__('Post not found or not in review queue.', 'ai-post-scheduler'));
+		}
+
+		$note = isset($_POST['note']) ? sanitize_textarea_field(wp_unslash($_POST['note'])) : '';
+
+		if ($note === '') {
+			delete_post_meta($post_id, '_aips_review_note');
+		} else {
+			update_post_meta($post_id, '_aips_review_note', $note);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message' => __('Review note saved.', 'ai-post-scheduler'),
+			'note'    => $note,
+			'post_id' => $post_id,
+		));
+	}
+
+	/**
+	 * AJAX handler to flag a post as needing revision, or clear the flag.
+	 *
+	 * When `action_type` is 'flag', sets `_aips_review_status = needs_revision`.
+	 * When `action_type` is 'clear', removes the meta key.
+	 * Optionally saves a reason note at the same time.
+	 */
+	public function ajax_flag_needs_revision() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$post_id     = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$action_type = isset($_POST['action_type']) ? sanitize_key($_POST['action_type']) : 'flag';
+
+		if (!$post_id) {
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
+		}
+
+		$post = get_post($post_id);
+		if (!$post || !in_array($post->post_status, array('draft', 'pending'), true)) {
+			AIPS_Ajax_Response::error(__('Post not found or not in review queue.', 'ai-post-scheduler'));
+		}
+
+		if ($action_type === 'clear') {
+			delete_post_meta($post_id, '_aips_review_status');
+			AIPS_Ajax_Response::success(array(
+				'message'        => __('Revision flag cleared.', 'ai-post-scheduler'),
+				'post_id'        => $post_id,
+				'review_status'  => '',
+			));
+		}
+
+		update_post_meta($post_id, '_aips_review_status', 'needs_revision');
+
+		// Optionally save the reason as the review note
+		if (!empty($_POST['note'])) {
+			$note = sanitize_textarea_field(wp_unslash($_POST['note']));
+			update_post_meta($post_id, '_aips_review_note', $note);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'        => __('Post flagged as needing revision.', 'ai-post-scheduler'),
+			'post_id'        => $post_id,
+			'review_status'  => 'needs_revision',
 		));
 	}
 }
