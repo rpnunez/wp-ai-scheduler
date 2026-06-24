@@ -9,12 +9,14 @@ class AIPS_Seeder_Service {
     private $voices;
     private $templates;
     private $schedule_repository;
+    private $prompt_builder;
 
     public function __construct() {
         $this->generator = new AIPS_Generator();
         $this->voices = new AIPS_Voices();
         $this->templates = new AIPS_Templates();
         $this->schedule_repository = new AIPS_Schedule_Repository();
+        $this->prompt_builder = new AIPS_Prompt_Builder_Seeder();
     }
 
     /**
@@ -49,12 +51,7 @@ class AIPS_Seeder_Service {
             return array('success' => false, 'message' => 'AI Engine not available.');
         }
 
-        $prompt = "Generate a list of {$count} unique personas for blog writing. \n";
-        if (!empty($keywords)) {
-            $prompt .= "Use the following keywords to inspire the personas: {$keywords}. \n";
-        }
-        $prompt .= "Each persona must have a 'name', 'content_instructions' (writing style description), and 'title_prompt' (instructions for writing titles). \n";
-        $prompt .= "Return ONLY a valid JSON array of objects. Example: [{\"name\": \"Tech Guru\", \"content_instructions\": \"...\", \"title_prompt\": \"...\"}]";
+        $prompt = $this->prompt_builder->build_voices_prompt($count, $keywords);
 
         $data = $this->generate_json($prompt);
 
@@ -95,12 +92,7 @@ class AIPS_Seeder_Service {
             return array('success' => false, 'message' => 'AI Engine not available.');
         }
 
-        $prompt = "Generate a list of {$count} blog post templates. \n";
-        if (!empty($keywords)) {
-            $prompt .= "The templates should be relevant to these keywords/niche: {$keywords}. \n";
-        }
-        $prompt .= "Each template needs a 'name', 'prompt_template' (e.g., 'Write a blog post about {{topic}}...'), and 'image_prompt'. \n";
-        $prompt .= "Return ONLY a valid JSON array of objects. Example: [{\"name\": \"How-to Guide\", \"prompt_template\": \"...\", \"image_prompt\": \"...\"}]";
+        $prompt = $this->prompt_builder->build_templates_prompt($count, $keywords);
 
         $data = $this->generate_json($prompt);
 
@@ -175,13 +167,7 @@ class AIPS_Seeder_Service {
             return array('success' => false, 'message' => 'No active templates found. Please seed templates first.');
         }
 
-        $prompt = "Generate a list of {$count} interesting blog post topics/titles. \n";
-        if (!empty($keywords)) {
-            $prompt .= "The topics MUST be related to these keywords: {$keywords}. \n";
-        } else {
-            $prompt .= "Topics should be about Technology, Lifestyle, or Business. \n";
-        }
-        $prompt .= "Return ONLY a valid JSON array of strings. Example: [\"Topic 1\", \"Topic 2\"]";
+        $prompt = $this->prompt_builder->build_planner_topics_prompt($count, $keywords);
 
         $topics = $this->generate_json($prompt);
 

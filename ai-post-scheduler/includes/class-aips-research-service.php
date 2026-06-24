@@ -32,14 +32,21 @@ class AIPS_Research_Service {
     private $logger;
 
     /**
+     * @var AIPS_Prompt_Builder_Research Research prompt builder.
+     */
+    private $prompt_builder;
+
+    /**
      * Initialize the Research Service.
      *
-     * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service instance for dependency injection.
+     * @param AIPS_AI_Service_Interface|null  $ai_service     Optional AI service instance for dependency injection.
+     * @param AIPS_Prompt_Builder_Research|null $prompt_builder Optional prompt builder instance for dependency injection.
      */
-    public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
+    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, $prompt_builder = null) {
         $container = AIPS_Container::get_instance();
         $this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
         $this->logger = $container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Research();
     }
 
     /**
@@ -66,7 +73,7 @@ class AIPS_Research_Service {
         $count = max(1, min(50, absint($count)));
 
         // Build research prompt
-        $prompt = $this->build_research_prompt($niche, $count, $keywords);
+        $prompt = $this->prompt_builder->build_trending_topics_prompt($niche, $count, $keywords);
 
         // Execute AI research
         $this->logger->log("Starting trending topics research for niche: {$niche}", 'info', array(
@@ -119,59 +126,6 @@ class AIPS_Research_Service {
         ));
 
         return $topics;
-    }
-
-    /**
-     * Build the AI prompt for trending topics research.
-     *
-     * Creates a detailed prompt that guides the AI to provide
-     * structured, ranked topic suggestions.
-     *
-     * @param string $niche    The niche to research.
-     * @param int    $count    Number of topics to generate.
-     * @param array  $keywords Additional keywords for context.
-     * @return string The formatted prompt.
-     */
-    private function build_research_prompt($niche, $count, $keywords) {
-        $now = AIPS_DateTime::now();
-        $current_date = $now->toDisplay('F j, Y');
-        $current_year = $now->toDisplay('Y');
-
-        $prompt = "You are a content research expert analyzing trending topics for '{$niche}' as of {$current_date}.\n\n";
-
-        $prompt .= "Your task: Identify the top {$count} most trending, relevant, and engaging topics in this niche right now.\n\n";
-
-        if (!empty($keywords)) {
-            $keyword_list = implode(', ', $keywords);
-            $prompt .= "Focus areas: {$keyword_list}\n\n";
-        }
-
-        $prompt .= "Consider:\n";
-        $prompt .= "1. Current events and news in {$current_year}\n";
-        $prompt .= "2. Seasonal relevance for " . $now->toDisplay('F') . "\n";
-        $prompt .= "3. Search trends and user interest\n";
-        $prompt .= "4. Evergreen value combined with timeliness\n";
-        $prompt .= "5. Content gap opportunities\n\n";
-
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"topic\": The topic/title (string)\n";
-        $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-        $prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
-        $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-
-        $prompt .= "Example format:\n";
-        $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"topic\": \"How AI is Transforming Content Creation in 2025\",\n";
-        $prompt .= "    \"score\": 95,\n";
-        $prompt .= "    \"reason\": \"High search volume, current AI adoption surge\",\n";
-        $prompt .= "    \"keywords\": [\"AI content\", \"automation\", \"GPT-4\", \"content marketing\", \"2025 trends\"]\n";
-        $prompt .= "  }\n";
-        $prompt .= "]\n\n";
-
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
-
-        return $prompt;
     }
 
     /**
@@ -528,7 +482,7 @@ class AIPS_Research_Service {
             $source_context .= "\n";
         }
 
-        $prompt = $this->build_source_research_prompt( $niche, $count, $keywords, $source_context );
+        $prompt = $this->prompt_builder->build_source_research_prompt( $niche, $count, $keywords, $source_context );
 
         $this->logger->log(
             sprintf( 'AIPS_Research_Service: source-based research for niche "%s" with %d source(s).', $niche, count( $source_rows ) ),
@@ -561,41 +515,4 @@ class AIPS_Research_Service {
         return $topics;
     }
 
-    /**
-     * Build the AI prompt for source-grounded research.
-     *
-     * @param string $niche          The niche context.
-     * @param int    $count          Number of topics to produce.
-     * @param array  $keywords       Optional focus keywords.
-     * @param string $source_context Scraped source content block.
-     * @return string Formatted prompt.
-     */
-    private function build_source_research_prompt( $niche, $count, $keywords, $source_context ) {
-        $current_date = AIPS_DateTime::now()->toDisplay( 'F j, Y' );
-
-        $prompt  = "You are a content research expert. Using the source material below as your primary reference, ";
-        $prompt .= "identify {$count} specific, high-value blog post topics for the '{$niche}' niche as of {$current_date}.\n\n";
-
-        if ( ! empty( $keywords ) ) {
-            $keyword_list = implode( ', ', (array) $keywords );
-            $prompt .= "Additional focus keywords: {$keyword_list}\n\n";
-        }
-
-        $prompt .= "SOURCE MATERIAL:\n";
-        $prompt .= $source_context . "\n";
-
-        $prompt .= "Instructions:\n";
-        $prompt .= "- Ground your topic suggestions in the specific facts, trends, and insights from the sources above.\n";
-        $prompt .= "- Prefer specific, actionable topics over generic ones.\n";
-        $prompt .= "- Consider gaps or follow-up angles suggested by the source content.\n\n";
-
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"topic\": The topic/title (string)\n";
-        $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-        $prompt .= "- \"reason\": Why it's relevant to the source material (max 100 chars, string)\n";
-        $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
-
-        return $prompt;
-    }
 }
