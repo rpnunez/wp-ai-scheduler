@@ -89,25 +89,55 @@ class AIPS_Repository_Cache_Dependencies {
 				return array( 'history', 'unified_schedule' );
 
 			case 'templates.get_all':
-			case 'templates.get_by_id':
 				return array( 'templates' );
 
+			case 'templates.get_by_id':
+				$tags = array( 'templates' );
+				if (isset( $args['template_id'] ) && is_numeric( $args['template_id'] )) {
+					$tags[] = 'template:' . (int) $args['template_id'];
+				}
+				return $tags;
+
 			case 'article_structures.get_all':
-			case 'article_structures.get_by_id':
 				return array( 'article_structures' );
 
+			case 'article_structures.get_by_id':
+				$tags = array( 'article_structures' );
+				if (isset( $args['structure_id'] ) && is_numeric( $args['structure_id'] )) {
+					$tags[] = 'article_structure:' . (int) $args['structure_id'];
+				}
+				return $tags;
+
 			case 'prompt_sections.get_all':
-			case 'prompt_sections.get_by_id':
 			case 'prompt_sections.get_by_key':
 				return array( 'prompt_sections' );
 
+			case 'prompt_sections.get_by_id':
+				$tags = array( 'prompt_sections' );
+				if (isset( $args['section_id'] ) && is_numeric( $args['section_id'] )) {
+					$tags[] = 'prompt_section:' . (int) $args['section_id'];
+				}
+				return $tags;
+
 			case 'voices.get_all':
-			case 'voices.get_by_id':
 				return array( 'voices' );
 
+			case 'voices.get_by_id':
+				$tags = array( 'voices' );
+				if (isset( $args['voice_id'] ) && is_numeric( $args['voice_id'] )) {
+					$tags[] = 'voice:' . (int) $args['voice_id'];
+				}
+				return $tags;
+
 			case 'post_slices.get_all':
-			case 'post_slices.get_by_id':
 				return array( 'post_slices' );
+
+			case 'post_slices.get_by_id':
+				$tags = array( 'post_slices' );
+				if (isset( $args['slice_id'] ) && is_numeric( $args['slice_id'] )) {
+					$tags[] = 'post_slice:' . (int) $args['slice_id'];
+				}
+				return $tags;
 
 			default:
 				return array();
@@ -142,19 +172,39 @@ class AIPS_Repository_Cache_Dependencies {
 				return array( 'unified_schedule' );
 
 			case 'template':
-				return array( 'templates', 'unified_schedule' );
+				$tags = array( 'templates', 'unified_schedule' );
+				if (isset( $context['template_id'] ) && is_numeric( $context['template_id'] )) {
+					$tags[] = 'template:' . (int) $context['template_id'];
+				}
+				return $tags;
 
 			case 'article_structure':
-				return array( 'article_structures' );
+				$tags = array( 'article_structures' );
+				if (isset( $context['structure_id'] ) && is_numeric( $context['structure_id'] )) {
+					$tags[] = 'article_structure:' . (int) $context['structure_id'];
+				}
+				return $tags;
 
 			case 'prompt_section':
-				return array( 'prompt_sections' );
+				$tags = array( 'prompt_sections' );
+				if (isset( $context['section_id'] ) && is_numeric( $context['section_id'] )) {
+					$tags[] = 'prompt_section:' . (int) $context['section_id'];
+				}
+				return $tags;
 
 			case 'voice':
-				return array( 'voices' );
+				$tags = array( 'voices' );
+				if (isset( $context['voice_id'] ) && is_numeric( $context['voice_id'] )) {
+					$tags[] = 'voice:' . (int) $context['voice_id'];
+				}
+				return $tags;
 
 			case 'post_slice':
-				return array( 'post_slices' );
+				$tags = array( 'post_slices' );
+				if (isset( $context['slice_id'] ) && is_numeric( $context['slice_id'] )) {
+					$tags[] = 'post_slice:' . (int) $context['slice_id'];
+				}
+				return $tags;
 
 			default:
 				$domain = sanitize_key( $domain );

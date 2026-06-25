@@ -67,9 +67,10 @@ class AIPS_Post_Slices_Repository {
 	 * @return array
 	 */
 	public function get_all($active_only = false) {
+		$active_only = (bool) $active_only;
 		return $this->cache_read(
 			'post_slices.get_all',
-			array( 'active_only' => (bool) $active_only ),
+			array( 'active_only' => $active_only ),
 			function() use ( $active_only ) {
 				if ($active_only) {
 					$sql = $this->wpdb->prepare(
@@ -93,9 +94,10 @@ class AIPS_Post_Slices_Repository {
 	 * @return object|null
 	 */
 	public function get_by_id($id) {
+		$id = absint( $id );
 		return $this->cache_read(
 			'post_slices.get_by_id',
-			array( 'slice_id' => absint( $id ) ),
+			array( 'slice_id' => $id ),
 			function() use ( $id ) {
 				return $this->wpdb->get_row(
 					$this->wpdb->prepare(

@@ -85,9 +85,11 @@ class AIPS_Author_Topics_Repository {
 	 * @return object|null Topic object or null if not found.
 	 */
 	public function get_by_id($id, $author_id = null) {
-		$args = array( 'topic_id' => absint( $id ) );
-		if (null !== $author_id && absint( $author_id ) > 0) {
-			$args['author_id'] = absint( $author_id );
+		$id        = absint( $id );
+		$author_id = ($author_id !== null && absint( $author_id ) > 0) ? absint( $author_id ) : null;
+		$args      = array( 'topic_id' => $id );
+		if ($author_id !== null) {
+			$args['author_id'] = $author_id;
 		}
 
 		return $this->cache_read(

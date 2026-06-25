@@ -72,9 +72,10 @@ class AIPS_Prompt_Section_Repository {
 	 * @return array Array of section objects.
 	 */
 	public function get_all($active_only = false) {
+		$active_only = (bool) $active_only;
 		return $this->cache_read(
 			'prompt_sections.get_all',
-			array( 'active_only' => (bool) $active_only ),
+			array( 'active_only' => $active_only ),
 			function() use ( $active_only ) {
 				$where  = $active_only ? "WHERE is_active = 1" : "";
 				return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
@@ -92,9 +93,10 @@ class AIPS_Prompt_Section_Repository {
 	 * @return object|null Section object or null if not found.
 	 */
 	public function get_by_id($id) {
+		$id = absint( $id );
 		return $this->cache_read(
 			'prompt_sections.get_by_id',
-			array( 'section_id' => absint( $id ) ),
+			array( 'section_id' => $id ),
 			function() use ( $id ) {
 				return $this->wpdb->get_row( $this->wpdb->prepare(
 					"SELECT * FROM {$this->table_name} WHERE id = %d",
