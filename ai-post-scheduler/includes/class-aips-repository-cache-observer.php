@@ -88,6 +88,16 @@ class AIPS_Repository_Cache_Observer {
 	}
 
 	/**
+	 * Record a repository cache refresh event (forced refresh of cached value).
+	 *
+	 * @param array $event Event metadata.
+	 * @return void
+	 */
+	public function record_refresh(array $event) {
+		$this->record('refresh', $event);
+	}
+
+	/**
 	 * Normalize and emit an observability event.
 	 *
 	 * @param string $event_type Event type.

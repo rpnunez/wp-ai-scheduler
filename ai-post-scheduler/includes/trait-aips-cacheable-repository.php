@@ -65,34 +65,44 @@ trait AIPS_Cacheable_Repository {
 		if (empty( $options['force_refresh'] ) && $cache->has( $key, $this->repository_cache_group() )) {
 			$start   = microtime( true );
 			$payload = $cache->get( $key, $this->repository_cache_group() );
-			$this->record_repository_cache_read(
+
+			if ($this->is_repository_cache_payload( $payload )) {
+				$this->record_repository_cache_read(
+					$observer,
+					array(
+						'operation_id' => $operation_id,
+						'key_hash'     => $key_hash,
+						'tier'         => $tier,
+						'tags'         => $tags,
+						'hit'          => true,
+						'miss'         => false,
+						'stale'        => false,
+						'elapsed_ms'   => $this->elapsed_ms( $start ),
+					)
+				);
+				return $payload['value'];
+			}
+
+			$this->record_repository_cache_warning(
+				$observer,
+				array(
+					'operation_id'        => $operation_id,
+					'key_hash'            => $key_hash,
+					'tier'                => $tier,
+					'tags'                => $tags,
+					'invalidation_reason' => 'invalid_cache_payload',
+				)
+			);
+		}
+
+		if ( ! empty( $options['force_refresh'] ) ) {
+			$this->record_repository_cache_refresh(
 				$observer,
 				array(
 					'operation_id' => $operation_id,
 					'key_hash'     => $key_hash,
 					'tier'         => $tier,
 					'tags'         => $tags,
-					'hit'          => true,
-					'miss'         => false,
-					'stale'        => false,
-					'elapsed_ms'   => $this->elapsed_ms( $start ),
-				)
-			);
-
-			if ($this->is_repository_cache_payload( $payload )) {
-				return $payload['value'];
-			}
-		}
-
-		if ( ! empty( $options['force_refresh'] ) ) {
-			$this->record_repository_cache_bypass(
-				$observer,
-				array(
-					'operation_id'          => $operation_id,
-					'key_hash'              => $key_hash,
-					'tier'                  => $tier,
-					'tags'                  => $tags,
-					'invalidation_reason'   => 'force_refresh',
 				)
 			);
 		}
@@ -498,6 +508,18 @@ trait AIPS_Cacheable_Repository {
 	 */
 	private function record_repository_cache_bypass( AIPS_Repository_Cache_Observer $observer, array $event ) {
 		$observer->record_bypass( $this->repository_cache_event_context( $event ) );
+	}
+
+	/**
+	 * Record a normalized repository cache refresh event (forced refresh of cached value).
+	 *
+	 * @param AIPS_Repository_Cache_Observer $observer Observer instance.
+	 * @param array                          $event Event payload.
+	 * @return void
+	 */
+	private function record_repository_cache_refresh( AIPS_Repository_Cache_Observer $observer, array $event ) {
+		$event['invalidation_reason'] = 'force_refresh';
+		$observer->record_refresh( $this->repository_cache_event_context( $event ) );
 	}
 
 	/**

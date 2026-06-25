@@ -276,7 +276,7 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 'warning', $logger->entries[0]['level'] );
 		$this->assertSame( 'warning', $logger->entries[0]['context']['event_type'] );
 		$this->assertSame( 'unknown_placeholder:missing_id', $logger->entries[0]['context']['invalidation_reason'] );
-		$this->assertSame( array( 'authors' ), $logger->entries[1]['context']['tags'] );
+		$this->assertSame( array( 'authors', 'author_44' ), $logger->entries[1]['context']['tags'] );
 	}
 
 	public function test_force_refresh_rebuilds_cached_value_and_updates_cache() {
@@ -304,8 +304,9 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 'value_2', $second );
 		$this->assertSame( 'value_2', $third );
 		$this->assertSame( 2, $calls );
-		$this->assertSame( 'Repository cache bypass', $logger->entries[2]['message'] );
+		$this->assertSame( 'Repository cache refresh', $logger->entries[2]['message'] );
 		$this->assertSame( 'force_refresh', $logger->entries[2]['context']['invalidation_reason'] );
+		$this->assertSame( 'refresh', $logger->entries[2]['context']['event_type'] );
 	}
 
 	public function test_cache_bypass_read_skips_cache_and_records_bypass() {
@@ -568,5 +569,217 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		$this->assertSame( 'Repository cache invalidation', $logger->entries[0]['message'] );
 		$this->assertSame( array( 'authors', 'author_generation_schedule', 'dashboard_counts', 'unified_schedule', 'author_12' ), $logger->entries[0]['context']['tags'] );
 		$this->assertSame( 'author_saved', $logger->entries[0]['context']['invalidation_reason'] );
+	}
+
+	// Phase 0: Baseline Regression Tests
+
+	public function test_tag_version_invalidation_bumps_version_without_deleting_cache() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			)
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first = $subject->read( 'authors.get_all', array(), $callback );
+		$subject->invalidate_tags_public( array( 'authors' ), 'test_invalidation' );
+		$second = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $second );
+		$this->assertSame( 2, $calls );
+	}
+
+	public function test_invalid_cached_payload_triggers_rebuild_not_hit() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$cache = AIPS_Cache_Factory::instance();
+		$tags = array( 'authors' );
+		$tag_versions = $cache->get_tag_versions( $tags, 'test_repository' );
+		$key = AIPS_Repository_Cache_Key_Builder::build_key( 'authors.get_all', array(), $tag_versions );
+
+		// Seed invalid payload (missing wrapper).
+		$cache->set( $key, array( 'value' => 'stale_value' ), 3600, 'test_repository' );
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'fresh_value';
+		};
+
+		$result = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'fresh_value', $result );
+		$this->assertSame( 1, $calls );
+		$this->assertSame( 'Repository cache read', $logger->entries[0]['message'] );
+		$this->assertFalse( $logger->entries[0]['context']['hit'] );
+		$this->assertTrue( $logger->entries[0]['context']['miss'] );
+	}
+
+	public function test_force_refresh_skips_cache_read_but_writes_fresh_value() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first  = $subject->read( 'authors.get_all', array(), $callback );
+		$second = $subject->read( 'authors.get_all', array(), $callback, array( 'force_refresh' => true ) );
+		$third  = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $second );
+		$this->assertSame( 'value_2', $third );
+		$this->assertSame( 2, $calls );
+
+		// Verify force_refresh is recorded as a distinct refresh event, not a bypass.
+		$this->assertSame( 'Repository cache refresh', $logger->entries[2]['message'] );
+		$this->assertSame( 'refresh', $logger->entries[2]['context']['event_type'] );
+		$this->assertFalse( $logger->entries[2]['context']['bypass'] ?? false );
+	}
+
+	public function test_queue_sensitive_bypass_prevents_cache_read() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_due' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first  = $subject->read( 'authors.get_due', array(), $callback );
+		$second = $subject->read( 'authors.get_due', array(), $callback, array( 'queue_sensitive' => true ) );
+		$third  = $subject->read( 'authors.get_due', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $second );
+		$this->assertSame( 'value_1', $third );
+		$this->assertSame( 2, $calls );
+		// Entry 0: cache miss read, Entry 1: cache write, Entry 2: queue_sensitive bypass
+		$this->assertSame( 'queue_sensitive', $logger->entries[2]['context']['invalidation_reason'] );
+	}
+
+	public function test_cron_bypass_policy_skips_cache_during_cron() {
+		add_filter( 'wp_doing_cron', '__return_true' );
+
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier'          => 'medium',
+					'tags'          => array( 'authors' ),
+					'bypass_on_cron' => true,
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first  = $subject->read( 'authors.get_all', array(), $callback );
+		$second = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $second );
+		$this->assertSame( 2, $calls );
+		$this->assertSame( 'cron_bypass', $logger->entries[0]['context']['invalidation_reason'] );
+	}
+
+	public function test_scoped_cache_bypass_within_without_cache_scope() {
+		$subject = $this->make_subject(
+			array(
+				'authors.get_all' => array(
+					'tier' => 'medium',
+					'tags' => array( 'authors' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'value_' . $calls;
+		};
+
+		$first = $subject->read( 'authors.get_all', array(), $callback );
+
+		$scoped = $subject->without_cache(
+			function() use ( $subject, $callback ) {
+				return $subject->read( 'authors.get_all', array(), $callback );
+			}
+		);
+
+		$after = $subject->read( 'authors.get_all', array(), $callback );
+
+		$this->assertSame( 'value_1', $first );
+		$this->assertSame( 'value_2', $scoped );
+		$this->assertSame( 'value_1', $after );
+		$this->assertSame( 2, $calls );
+	}
+
+	public function test_dashboard_invalidation_from_related_domain_writes() {
+		$subject = $this->make_subject(
+			array(
+				'dashboard.get_summary_stats' => array(
+					'tier' => 'short',
+					'tags' => array( 'history' ),
+				),
+			),
+			$logger
+		);
+
+		$calls = 0;
+		$callback = function() use ( &$calls ) {
+			$calls++;
+			return 'stats_' . $calls;
+		};
+
+		$first = $subject->read( 'dashboard.get_summary_stats', array(), $callback );
+
+		$subject->invalidate_domain( 'post_generation', array( 'author_id' => 5 ), 'post_generated' );
+
+		$second = $subject->read( 'dashboard.get_summary_stats', array(), $callback );
+
+		$this->assertSame( 'stats_1', $first );
+		$this->assertSame( 'stats_2', $second );
+		$this->assertSame( 2, $calls );
 	}
 }

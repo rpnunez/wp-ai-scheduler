@@ -83,6 +83,8 @@ class AIPS_Repository_Cache_Dependencies {
 				return array( 'author_topics', 'dashboard_counts' );
 
 			case 'dashboard.get_upcoming_runs_count':
+				return array( 'schedules', 'unified_schedule', 'dashboard_counts' );
+
 			case 'dashboard.get_recent_posts':
 			case 'dashboard.get_posts_by_topic':
 			case 'dashboard.get_executed_schedules':
@@ -113,6 +115,13 @@ class AIPS_Repository_Cache_Dependencies {
 
 			case 'post_generation':
 				return self::tags_for_post_generation_invalidation( $context );
+
+			case 'history':
+				return array( 'history', 'dashboard_counts' );
+
+			case 'schedule':
+			case 'schedules':
+				return array( 'schedules', 'unified_schedule', 'dashboard_counts' );
 
 			case 'dashboard':
 				return array( 'dashboard_counts' );

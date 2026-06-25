@@ -20,6 +20,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to generation history.
  */
 class AIPS_History_Repository implements AIPS_History_Repository_Interface {
+	use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -60,6 +61,30 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
     }
+
+	/**
+	 * Return the repository cache group used by this repository.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'history';
+	}
+
+	/**
+	 * Return the explicit repository cache policy map for this repository.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'history.create'            => array( 'tier' => 'none' ),
+			'history.update'            => array( 'tier' => 'none' ),
+			'history.delete'            => array( 'tier' => 'none' ),
+			'history.delete_by_status'  => array( 'tier' => 'none' ),
+			'history.delete_bulk'       => array( 'tier' => 'none' ),
+		);
+	}
 
     /**
      * Count completed generations for a schedule.
@@ -1104,9 +1129,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-        
+
         if ($result) {
             delete_transient('aips_history_stats');
+			$this->invalidate_cache_domain(
+				'post_generation',
+				array(
+					'author_id' => isset( $insert_data['author_id'] ) ? $insert_data['author_id'] : null,
+					'topic_id'  => isset( $insert_data['topic_id'] ) ? $insert_data['topic_id'] : null,
+				),
+				'history_created'
+			);
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -1187,6 +1220,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+			$this->invalidate_cache_domain(
+				'post_generation',
+				array(
+					'author_id' => isset( $update_data['author_id'] ) ? $update_data['author_id'] : null,
+					'topic_id'  => isset( $update_data['topic_id'] ) ? $update_data['topic_id'] : null,
+				),
+				'history_updated'
+			);
         }
 
         return $result !== false;
@@ -1206,10 +1247,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         if ($status === 'all') {
-            return $this->wpdb->query("DELETE FROM {$this->table_name}");
+            $result = $this->wpdb->query("DELETE FROM {$this->table_name}");
+			if ($result !== false) {
+				$this->invalidate_cache_domain( 'post_generation', array(), 'history_deleted_by_status' );
+			}
+			return $result;
         }
-        
-        return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
+
+        $result = $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
+		if ($result !== false) {
+			$this->invalidate_cache_domain( 'post_generation', array(), 'history_deleted_by_status' );
+		}
+		return $result;
     }
     
     /**
@@ -1223,6 +1272,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+			$this->invalidate_cache_domain( 'post_generation', array(), 'history_deleted' );
         }
 
         return $result !== false;
@@ -1258,6 +1308,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+			$this->invalidate_cache_domain( 'post_generation', array(), 'history_bulk_deleted' );
         }
 
         return $result;

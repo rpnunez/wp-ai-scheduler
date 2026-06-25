@@ -20,6 +20,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to scheduling.
  */
 class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
+	use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -68,6 +69,35 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY ) );
     }
+
+	/**
+	 * Return the repository cache group used by this repository.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'schedule';
+	}
+
+	/**
+	 * Return the explicit repository cache policy map for this repository.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'schedule.create'              => array( 'tier' => 'none' ),
+			'schedule.create_bulk'         => array( 'tier' => 'none' ),
+			'schedule.update'              => array( 'tier' => 'none' ),
+			'schedule.update_last_run'     => array( 'tier' => 'none' ),
+			'schedule.update_next_run'     => array( 'tier' => 'none' ),
+			'schedule.update_batch_progress' => array( 'tier' => 'none' ),
+			'schedule.update_run_state'    => array( 'tier' => 'none' ),
+			'schedule.delete'              => array( 'tier' => 'none' ),
+			'schedule.delete_by_template'  => array( 'tier' => 'none' ),
+			'schedule.delete_bulk'         => array( 'tier' => 'none' ),
+		);
+	}
     
     /**
      * Get all schedules with optional template details.
@@ -290,10 +320,15 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
-        
+
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedule_created'
+			);
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -447,6 +482,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedule_updated'
+			);
         }
 
 		return $result !== false;
@@ -499,6 +539,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedule_deleted'
+			);
         }
 
         return $result !== false;
@@ -556,6 +601,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedules_deleted_by_template'
+			);
         }
 
         return $result;
@@ -711,6 +761,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedules_created_bulk'
+			);
         }
 
         return $result;
@@ -745,6 +800,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
             AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_SCHEDULE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain(
+				'unified_schedule',
+				array(),
+				'schedules_bulk_deleted'
+			);
         }
 
         return $result;
