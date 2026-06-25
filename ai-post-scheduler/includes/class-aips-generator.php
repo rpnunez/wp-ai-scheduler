@@ -935,8 +935,8 @@ class AIPS_Generator {
                 'duration_seconds'   => (int) round( microtime(true) - $generation_start ),
                 'image_attempted'    => $image_was_attempted,
                 'image_success'      => $image_was_attempted ? (bool) $featured_image_success : null,
-                'word_count'         => str_word_count( wp_strip_all_tags( $content ) ),
-                'char_count'         => mb_strlen( $content ),
+                'word_count'         => str_word_count( wp_strip_all_tags( (string) $content ) ),
+                'char_count'         => mb_strlen( (string) $content ),
                 'component_statuses' => $component_statuses,
             )
         );

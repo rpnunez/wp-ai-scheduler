@@ -825,15 +825,15 @@ class AIPS_DB_Migrations {
 
 		// Backfill: copy log_type into details JSON as log_subtype, in batches.
 		$batch_size = 500;
-		$offset     = 0;
+		$last_id    = 0;
 		$updated    = 0;
 
 		do {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT id, log_type, details FROM `{$table}` ORDER BY id LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					$batch_size,
-					$offset
+					"SELECT id, log_type, details FROM `{$table}` WHERE id > %d ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$last_id,
+					$batch_size
 				)
 			);
 
@@ -857,8 +857,10 @@ class AIPS_DB_Migrations {
 				}
 			}
 
-			$offset += $batch_size;
-		} while ( count( $rows ) === $batch_size );
+			if ( ! empty( $rows ) ) {
+				$last_id = (int) end( $rows )->id;
+			}
+		} while ( ! empty( $rows ) );
 
 		// Drop the column now that data is safely in details JSON.
 		$wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN log_type" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
