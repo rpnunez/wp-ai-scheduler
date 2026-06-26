@@ -534,8 +534,8 @@ class AIPS_Metrics_Repository {
 	 * giving an accurate population average.  The window boundary uses
 	 * CURRENT_TIMESTAMP() to stay in the same timezone as the DB default.
 	 *
-	 * AI requests are identified by `log_type = 'ai_request'` — the value the
-	 * generator writes via `record('ai_request', ...)` for every AI call.
+	 * AI requests are identified by `history_type_id = AIPS_History_Type::AI_REQUEST (= 5)` —
+	 * set by the container when `record('ai_request', ...)` is called.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Average count (0.0 if no data).
