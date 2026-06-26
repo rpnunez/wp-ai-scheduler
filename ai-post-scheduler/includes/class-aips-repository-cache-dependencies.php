@@ -139,6 +139,40 @@ class AIPS_Repository_Cache_Dependencies {
 				}
 				return $tags;
 
+			case 'schedules.get_all':
+			case 'schedules.get_due_schedules':
+			case 'schedules.get_active':
+				return array( 'schedules' );
+
+			case 'schedules.get_by_id':
+				$tags = array( 'schedules' );
+				if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
+					$tags[] = 'schedule:' . (int) $args['schedule_id'];
+				}
+				return $tags;
+
+			case 'campaigns.get_campaign_by_id':
+				$tags = array( 'campaigns' );
+				if (isset( $args['campaign_id'] ) && is_numeric( $args['campaign_id'] )) {
+					$tags[] = 'campaign:' . (int) $args['campaign_id'];
+				}
+				return $tags;
+
+			case 'history.get_stats':
+				return array( 'history' );
+
+			case 'history.get_schedule_completed_count':
+				$tags = array( 'history' );
+				if (isset( $args['schedule_id'] ) && is_numeric( $args['schedule_id'] )) {
+					$tags[] = 'history_schedule:' . (int) $args['schedule_id'];
+				}
+				return $tags;
+
+			case 'metrics.get_generation_metrics':
+			case 'metrics.get_queue_depth_metrics':
+			case 'metrics.get_queue_health_metrics':
+				return array( 'metrics' );
+
 			default:
 				return array();
 		}
@@ -205,6 +239,30 @@ class AIPS_Repository_Cache_Dependencies {
 					$tags[] = 'post_slice:' . (int) $context['slice_id'];
 				}
 				return $tags;
+
+			case 'schedule':
+				$tags = array( 'schedules', 'unified_schedule' );
+				if (isset( $context['schedule_id'] ) && is_numeric( $context['schedule_id'] )) {
+					$tags[] = 'schedule:' . (int) $context['schedule_id'];
+				}
+				return $tags;
+
+			case 'campaign':
+				$tags = array( 'campaigns' );
+				if (isset( $context['campaign_id'] ) && is_numeric( $context['campaign_id'] )) {
+					$tags[] = 'campaign:' . (int) $context['campaign_id'];
+				}
+				return $tags;
+
+			case 'history':
+				$tags = array( 'history' );
+				if (isset( $context['schedule_id'] ) && is_numeric( $context['schedule_id'] )) {
+					$tags[] = 'history_schedule:' . (int) $context['schedule_id'];
+				}
+				return $tags;
+
+			case 'metrics':
+				return array( 'metrics' );
 
 			default:
 				$domain = sanitize_key( $domain );

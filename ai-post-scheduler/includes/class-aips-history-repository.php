@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+    require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_History_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to generation history.
  */
 class AIPS_History_Repository implements AIPS_History_Repository_Interface {
+    use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -97,28 +102,23 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return 0;
         }
 
-        $cache_key = 'aips_schedule_completed_count_' . $schedule_id;
-        $cached_count = get_transient($cache_key);
-
-        if ($cached_count !== false) {
-            return (int) $cached_count;
-        }
-
-        $count = (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name}
-            WHERE template_id = %d
-            AND status = %s
-            AND created_at >= (
-                SELECT created_at FROM {$this->schedule_table} WHERE id = %d
-            )",
-            (int) $schedule->template_id,
-            'completed',
-            $schedule_id
-        ));
-
-        set_transient($cache_key, $count, DAY_IN_SECONDS);
-
-        return $count;
+        return $this->cache_read(
+            'history.get_schedule_completed_count',
+            array( 'schedule_id' => $schedule_id ),
+            function() use ( $schedule, $schedule_id ) {
+                return (int) $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name}
+                    WHERE template_id = %d
+                    AND status = %s
+                    AND created_at >= (
+                        SELECT created_at FROM {$this->schedule_table} WHERE id = %d
+                    )",
+                    (int) $schedule->template_id,
+                    'completed',
+                    $schedule_id
+                ));
+            }
+        );
     }
 
     /**
@@ -128,7 +128,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return void
      */
     public function invalidate_schedule_completed_count_cache($schedule_id) {
-        delete_transient('aips_schedule_completed_count_' . absint($schedule_id));
+        $this->invalidate_cache_domain( 'history', array( 'schedule_id' => absint( $schedule_id ) ), 'schedule_count_invalidated' );
     }
 
     /**
@@ -744,44 +744,42 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     public function get_stats() {
-        $cached_stats = get_transient('aips_history_stats');
+        return $this->cache_read(
+            'history.get_stats',
+            array(),
+            function() {
+                $auxiliary_methods = $this->get_auxiliary_creation_methods();
+                $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+                $results = $this->wpdb->get_row(
+                    $this->wpdb->prepare(
+                        "SELECT
+                            COUNT(*) as total,
+                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                            SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
+                         FROM {$this->table_name}
+                         WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
+                           AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
+                        ...$auxiliary_methods
+                    )
+                );
 
-        if ($cached_stats !== false) {
-            return $cached_stats;
-        }
+                $stats = array(
+                    'total'      => isset($results->total)      ? (int) $results->total      : 0,
+                    'completed'  => isset($results->completed)  ? (int) $results->completed  : 0,
+                    'failed'     => isset($results->failed)     ? (int) $results->failed     : 0,
+                    'processing' => isset($results->processing) ? (int) $results->processing : 0,
+                    'partial'    => isset($results->partial)    ? (int) $results->partial    : 0,
+                );
 
-        $auxiliary_methods = $this->get_auxiliary_creation_methods();
-        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
-        $results = $this->wpdb->get_row(
-            $this->wpdb->prepare(
-                "SELECT
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                    SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                    SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
-                 FROM {$this->table_name}
-                 WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
-                ...$auxiliary_methods
-            )
+                $stats['success_rate'] = $stats['total'] > 0
+                    ? round(($stats['completed'] / $stats['total']) * 100, 1)
+                    : 0;
+
+                return $stats;
+            }
         );
-
-        $stats = array(
-            'total' => isset($results->total) ? (int) $results->total : 0,
-            'completed' => isset($results->completed) ? (int) $results->completed : 0,
-            'failed' => isset($results->failed) ? (int) $results->failed : 0,
-            'processing' => isset($results->processing) ? (int) $results->processing : 0,
-            'partial' => isset($results->partial) ? (int) $results->partial : 0,
-        );
-        
-        $stats['success_rate'] = $stats['total'] > 0 
-            ? round(($stats['completed'] / $stats['total']) * 100, 1) 
-            : 0;
-
-        set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
-        
-        return $stats;
     }
 
     /**
@@ -1106,7 +1104,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
         if ($result) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -1186,7 +1184,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
         return $result !== false;
@@ -1222,7 +1220,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
         return $result !== false;
@@ -1257,7 +1255,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $result = $this->wpdb->query($query);
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
         return $result;
@@ -1324,7 +1322,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         // Clear cache
         if ($deleted !== false && $deleted > 0) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
         
         return array(
@@ -1449,5 +1447,35 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $revisions;
+    }
+
+    /**
+     * Return the repository cache group for history reads.
+     *
+     * @return string
+     */
+    protected function repository_cache_group(): string {
+        return 'aips_history';
+    }
+
+    /**
+     * Return the explicit repository cache policies for history reads.
+     *
+     * @return array
+     */
+    protected function repository_cache_policies(): array {
+        return array(
+            'history.get_stats'                    => array(
+                'tier'        => 'medium',
+                'tags'        => array( 'history' ),
+                'description' => 'Cache history aggregate stats (total, completed, failed, etc.).',
+            ),
+            'history.get_schedule_completed_count' => array(
+                'tier'        => 'long',
+                'tags'        => array( 'history', 'history_schedule:{schedule_id}' ),
+                'cache_null'  => false,
+                'description' => 'Cache per-schedule completed generation counts.',
+            ),
+        );
     }
 }

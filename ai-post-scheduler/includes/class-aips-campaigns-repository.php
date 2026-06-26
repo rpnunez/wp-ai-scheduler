@@ -11,7 +11,12 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 class AIPS_Campaigns_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null
@@ -58,25 +63,6 @@ class AIPS_Campaigns_Repository {
 	 */
 	private $schedule_repository;
 
-	/**
-	 * @var AIPS_Cache|null
-	 */
-	private $cache;
-
-	/**
-	 * @var bool
-	 */
-	private $cache_initialized;
-
-	/**
-	 * @var int
-	 */
-	private const CAMPAIGN_CACHE_TTL = 43200;
-
-	/**
-	 * @var string
-	 */
-	private const CAMPAIGN_CACHE_GROUP = 'campaigns_repository';
 
 	/**
 	 * Get singleton instance.
@@ -105,8 +91,6 @@ class AIPS_Campaigns_Repository {
 		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
 		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
 		$this->schedule_repository = $schedule_repository ?: AIPS_Schedule_Repository::instance();
-		$this->cache = null;
-		$this->cache_initialized = false;
 	}
 
 	/**
@@ -150,7 +134,6 @@ class AIPS_Campaigns_Repository {
 
 		foreach ($rows as $row) {
 			$this->normalize_campaign_row($row);
-			$this->set_cached_campaign_row($row);
 		}
 
 		return $rows;
@@ -158,6 +141,9 @@ class AIPS_Campaigns_Repository {
 
 	/**
 	 * Fetch one campaign row.
+	 *
+	 * Non-null results are cached with a long-tier persistent cache.
+	 * Null results (campaign not found) are never cached.
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @return object|null
@@ -168,22 +154,20 @@ class AIPS_Campaigns_Repository {
 			return null;
 		}
 
-		$cached_campaign = $this->get_cached_campaign_row($campaign_id);
-		if ($cached_campaign !== null) {
-			return $cached_campaign;
-		}
-
-		$sql = $this->build_campaign_metrics_query('WHERE c.id = %d');
-		$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
-		if (empty($rows)) {
-			return null;
-		}
-
-		$row = $rows[0];
-		$this->normalize_campaign_row($row);
-		$this->set_cached_campaign_row($row);
-
-		return $row;
+		return $this->cache_read(
+			'campaigns.get_campaign_by_id',
+			array( 'campaign_id' => $campaign_id ),
+			function() use ( $campaign_id ) {
+				$sql  = $this->build_campaign_metrics_query('WHERE c.id = %d');
+				$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
+				if (empty($rows)) {
+					return null;
+				}
+				$row = $rows[0];
+				$this->normalize_campaign_row($row);
+				return $row;
+			}
+		);
 	}
 
 	/**
@@ -473,7 +457,7 @@ class AIPS_Campaigns_Repository {
 			$this->wpdb->query('COMMIT');
 		}
 
-		$this->flush_campaign_cache($campaign_id);
+		$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $campaign_id ) ), 'campaign_updated' );
 
 		return array(
 			'campaign_id' => (int) $campaign_id,
@@ -562,7 +546,7 @@ class AIPS_Campaigns_Repository {
 			$this->wpdb->query('COMMIT');
 		}
 
-		$this->flush_campaign_cache($new_campaign_id);
+		$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $new_campaign_id ) ), 'campaign_duplicated' );
 
 		return (int) $new_campaign_id;
 	}
@@ -722,7 +706,7 @@ class AIPS_Campaigns_Repository {
 			$this->wpdb->query('COMMIT');
 		}
 
-		$this->flush_campaign_cache($campaign_id);
+		$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $campaign_id ) ), 'campaign_updated' );
 
 		return true;
 	}
@@ -748,33 +732,6 @@ class AIPS_Campaigns_Repository {
 			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d",
 			absint($campaign_id)
 		));
-	}
-
-	/**
-	 * Invalidate one campaign cache entry.
-	 *
-	 * @param int $campaign_id Campaign ID.
-	 * @return void
-	 */
-	public function flush_campaign_cache($campaign_id) {
-		$campaign_id = absint($campaign_id);
-		if (!$campaign_id) {
-			return;
-		}
-
-		$cache = $this->get_cache();
-		if (!$cache) {
-			return;
-		}
-
-		try {
-			$cache->delete(
-				$this->get_campaign_cache_key($campaign_id),
-				self::CAMPAIGN_CACHE_GROUP
-			);
-		} catch (Throwable $e) {
-			return;
-		}
 	}
 
 	/**
@@ -804,7 +761,7 @@ class AIPS_Campaigns_Repository {
 		}
 
 		$campaign_id = (int) $this->wpdb->insert_id;
-		$this->flush_campaign_cache($campaign_id);
+		$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $campaign_id ) ), 'campaign_created' );
 
 		return $campaign_id;
 	}
@@ -870,7 +827,7 @@ class AIPS_Campaigns_Repository {
 		}
 
 		if ($updated !== false) {
-			$this->flush_campaign_cache($campaign_id);
+			$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $campaign_id ) ), 'campaign_updated' );
 		}
 
 		return true;
@@ -1067,117 +1024,27 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
-	 * Build campaign cache key.
+	 * Return the repository cache group for campaign reads.
 	 *
-	 * @param int $campaign_id Campaign ID.
 	 * @return string
 	 */
-	private function get_campaign_cache_key($campaign_id) {
-		return 'aips_campaign_' . absint($campaign_id) . '_data';
+	protected function repository_cache_group(): string {
+		return 'aips_campaigns';
 	}
 
 	/**
-	 * Get cache instance for campaign metrics.
+	 * Return the explicit repository cache policies for campaign reads.
 	 *
-	 * @return AIPS_Cache|null
+	 * @return array
 	 */
-	private function get_cache() {
-		if ($this->cache_initialized) {
-			return $this->cache;
-		}
-
-		try {
-			$this->cache = AIPS_Cache_Factory::make('db');
-		} catch (Throwable $e) {
-			$this->cache = null;
-			if (class_exists('AIPS_Logger')) {
-				AIPS_Logger::instance()->warning('Failed to initialize DB cache for campaign metrics; continuing without cache.', array(
-					'error' => $e->getMessage(),
-					'exception_class' => get_class($e),
-				));
-			}
-		}
-
-		$this->cache_initialized = true;
-
-		return $this->cache;
-	}
-
-	/**
-	 * Read one cached campaign row.
-	 *
-	 * @param int $campaign_id Campaign ID.
-	 * @return object|null
-	 */
-	private function get_cached_campaign_row($campaign_id) {
-		$cache = $this->get_cache();
-		if (!$cache) {
-			return null;
-		}
-
-		try {
-			$cached_row = $cache->get(
-				$this->get_campaign_cache_key($campaign_id),
-				self::CAMPAIGN_CACHE_GROUP
-			);
-		} catch (Throwable $e) {
-			return null;
-		}
-
-		if (is_array($cached_row)) {
-			$cached_row = (object) $cached_row;
-		}
-
-		if (!is_object($cached_row)) {
-			return null;
-		}
-
-		$required_keys = array(
-			'id',
-			'generated_posts_count',
-			'total_history_count',
-			'linked_template_count',
-			'linked_schedule_count',
-			'active_schedule_count',
-			'primary_template_id',
-			'primary_schedule_id',
+	protected function repository_cache_policies(): array {
+		return array(
+			'campaigns.get_campaign_by_id' => array(
+				'tier'        => 'long',
+				'tags'        => array( 'campaigns', 'campaign:{campaign_id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single campaign reads by ID including metrics aggregates.',
+			),
 		);
-		foreach ($required_keys as $required_key) {
-			if (!property_exists($cached_row, $required_key)) {
-				return null;
-			}
-		}
-
-		$this->normalize_campaign_row($cached_row);
-
-		return $cached_row;
-	}
-
-	/**
-	 * Store one campaign row in cache.
-	 *
-	 * @param object $row Campaign row.
-	 * @return void
-	 */
-	private function set_cached_campaign_row($row) {
-		if (!isset($row->id)) {
-			return;
-		}
-
-		$cache = $this->get_cache();
-		if (!$cache) {
-			return;
-		}
-
-		try {
-			$cache->set(
-				$this->get_campaign_cache_key((int) $row->id),
-				$row,
-				self::CAMPAIGN_CACHE_TTL,
-				self::CAMPAIGN_CACHE_GROUP
-			);
-		} catch (Throwable $e) {
-			return;
-		}
 	}
 }
