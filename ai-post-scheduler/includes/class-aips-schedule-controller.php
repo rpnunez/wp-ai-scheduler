@@ -199,6 +199,10 @@ class AIPS_Schedule_Controller {
     private function get_generated_post_modal_data($post_ids) {
         $posts = array();
 
+        if (function_exists('_prime_post_caches')) {
+            _prime_post_caches(array_unique(array_filter(array_map('absint', $post_ids))), false, true);
+        }
+
         foreach ($post_ids as $post_id) {
             $post_id = absint($post_id);
 
