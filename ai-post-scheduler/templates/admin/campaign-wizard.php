@@ -215,7 +215,7 @@ $authors = get_users(array(
 											<input type="number" name="post_type_rules[<?php echo esc_attr($index); ?>][quantity]" min="1" max="100" value="<?php echo esc_attr($rule['quantity'] ?? 1); ?>" style="width: 100%;">
 										</div>
 										<div style="padding-top: 20px;">
-											<button type="button" class="button button-small aips-remove-post-type-rule" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
+											<button type="button" class="button button-small aips-remove-post-type-rule" aria-label="<?php esc_attr_e('Remove rule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>
 											</button>
 										</div>
