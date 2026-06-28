@@ -26,3 +26,9 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+## 2026-06-28 - Optimize CSV Export Query Payload
+**Area:** `AIPS_History::ajax_export_history`
+**Status:** opened PR
+**PR:** ⚡ Bolt: Optimize history CSV export query payload
+**Learning:** The CSV export was loading up to 10,000 history records with `fields => 'all'`, which included large `longtext` columns (`prompt`, `generated_content`, `generation_log`) that are never output in the CSV.
+**Action:** Explicitly pass `'fields' => 'list'` when querying history records for CSV export to reduce memory usage and query payload size.

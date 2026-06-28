@@ -126,6 +126,7 @@ class AIPS_History {
             'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
+            'fields' => 'list',
         ));
 
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
