@@ -176,13 +176,19 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$base_time = strtotime($start_date);
+		$stagger_seconds = 10 * 60; // 10 minutes default stagger
+
+		// For 'once' frequency, topics should be staggered by 10 minutes.
 		foreach ($schedules as $i => $schedule) {
+			$expected_next_run = date('Y-m-d H:i:s', $base_time + ($i * $stagger_seconds));
 			$this->assertEquals(
-				$start_date,
+				$expected_next_run,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have staggered next_run = %s, got %s', $i, $expected_next_run, $schedule['next_run'])
 			);
+			// Also ensure that the DB frequency remains 'once'
+			$this->assertEquals('once', $schedule['frequency'], 'Database frequency must remain once');
 		}
 	}
 
