@@ -106,6 +106,16 @@ class AIPS_Planner {
         AIPS_Ajax_Response::success(array('topics' => $topics));
     }
 
+    /**
+     * AJAX handler to bulk schedule generated topics.
+     *
+     * Processes selected topics from the Planner interface and schedules them using
+     * the chosen template and start date. If a repeating frequency is chosen, the topics
+     * will be staggered over that frequency interval but stored as 'once' schedules.
+     * If the 'once' frequency is chosen, topics will be staggered by 10 minutes.
+     *
+     * @return void Outputs a JSON response via AIPS_Ajax_Response.
+     */
     public function ajax_bulk_schedule() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -134,9 +144,28 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
+        $calculator = new AIPS_Interval_Calculator();
+        $interval = $calculator->get_interval_duration($frequency);
 
-        foreach ($topics as $topic) {
+        // If the specified frequency isn't found/supported (0), default to 0.
+        // For 'once', we'll stagger by 10 minutes to avoid API spike issues.
+        // For other frequencies, we use the true duration.
+        $stagger_seconds = 0;
+        if ($frequency === 'once') {
+            $stagger_seconds = 600; // 10 minutes
+        } elseif ($interval > 0) {
+            $stagger_seconds = $interval;
+        }
+
+        foreach ($topics as $index => $topic) {
+            // When scheduling in bulk, we want each generated topic's `next_run` staggered
+            // by the chosen frequency, BUT the item itself remains a one-off ('once') schedule.
+            // Exception: For truly recurring bulk schedules (not typical via planner but supported),
+            // they would share the same next_run. But based on UI intent, "Daily" for 5 topics
+            // means "publish one per day", so they are offset, and the DB frequency is 'once'.
+            $staggered_time = $base_time + ($index * $stagger_seconds);
+            $next_run = date('Y-m-d H:i:s', $staggered_time);
+
             $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
