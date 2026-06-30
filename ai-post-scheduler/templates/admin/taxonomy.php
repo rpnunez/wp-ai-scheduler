@@ -32,7 +32,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
+					<button type="button" class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?>
 					</button>
@@ -65,11 +65,11 @@ $is_embedded_taxonomy_view = !empty($embedded);
 		<div class="aips-content-panel" id="aips-taxonomy-panel">
 			<!-- Tabs -->
 			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link active" data-tab="categories">
+				<button type="button" class="aips-tab-link active" data-tab="categories">
 					<?php esc_html_e('Categories', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="categories-count"><?php echo esc_html($status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected']); ?></span>
 				</button>
-				<button class="aips-tab-link" data-tab="tags">
+				<button type="button" class="aips-tab-link" data-tab="tags">
 					<?php esc_html_e('Tags', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="tags-count"><?php echo esc_html($status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected']); ?></span>
 				</button>
@@ -85,7 +85,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 						<option value="generate_terms"><?php esc_html_e('Generate Terms', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-taxonomy-search"><?php esc_html_e('Search Taxonomy:', 'ai-post-scheduler'); ?></label>
@@ -210,15 +210,15 @@ $is_embedded_taxonomy_view = !empty($embedded);
 
 <script type="text/html" id="aips-tmpl-taxonomy-actions-pending">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-taxonomy" data-id="{{id}}">{{approveLabel}}</button>
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-taxonomy" data-id="{{id}}">{{rejectLabel}}</button>
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-taxonomy" data-id="{{id}}">{{approveLabel}}</button>
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-taxonomy" data-id="{{id}}">{{rejectLabel}}</button>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-taxonomy-actions-approved">
 <div class="cell-actions">
 	{{createControl}}
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-icon aips-delete-taxonomy" data-id="{{id}}" aria-label="{{deleteLabel}}">
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-icon aips-delete-taxonomy" data-id="{{id}}" aria-label="{{deleteLabel}}">
 		<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 		<span class="screen-reader-text">{{deleteLabel}}</span>
 	</button>
@@ -227,7 +227,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 
 <script type="text/html" id="aips-tmpl-taxonomy-actions-rejected">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-delete-taxonomy" data-id="{{id}}">{{deleteLabel}}</button>
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-delete-taxonomy" data-id="{{id}}">{{deleteLabel}}</button>
 </div>
 </script>
 

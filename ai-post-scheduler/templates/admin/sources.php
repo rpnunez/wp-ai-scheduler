@@ -176,19 +176,19 @@ $is_embedded_sources_view = !empty($embedded);
 							</td>
 							<td class="column-actions">
 								<div class="aips-action-buttons">
-									<button class="aips-btn aips-btn-sm aips-edit-source"
+									<button type="button" class="aips-btn aips-btn-sm aips-edit-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
 										<span class="dashicons dashicons-edit"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
 									</button>
-									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now"
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Fetch content now', 'ai-post-scheduler'); ?>">
 										<span class="dashicons dashicons-download"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Fetch Now', 'ai-post-scheduler'); ?></span>
 									</button>
-									<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										data-active="<?php echo esc_attr($source->is_active); ?>"
 										title="<?php echo $source->is_active ? esc_attr__('Deactivate', 'ai-post-scheduler') : esc_attr__('Activate', 'ai-post-scheduler'); ?>">
@@ -197,7 +197,7 @@ $is_embedded_sources_view = !empty($embedded);
 											<?php echo $source->is_active ? esc_html__('Deactivate', 'ai-post-scheduler') : esc_html__('Activate', 'ai-post-scheduler'); ?>
 										</span>
 									</button>
-									<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source"
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 										<span class="dashicons dashicons-trash"></span>
@@ -367,7 +367,7 @@ $is_embedded_sources_view = !empty($embedded);
 								<tr data-term-id="<?php echo esc_attr($group->term_id); ?>">
 									<td><?php echo esc_html($group->name); ?></td>
 									<td>
-										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-group"
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-group"
 											data-term-id="<?php echo esc_attr($group->term_id); ?>"
 											title="<?php esc_attr_e('Delete group', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-trash"></span>
