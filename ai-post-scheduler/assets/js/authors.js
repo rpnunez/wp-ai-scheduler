@@ -872,6 +872,7 @@
 				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
 				secondaryDateHeader: secondaryDateHeaderHtml,
 				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+				selectAllTopicsLabel: AIPS.Templates.escape(aipsAuthorsL10n.selectAllTopics || 'Select all topics'),
 				rows: rowsHtml
 			});
 
@@ -1439,6 +1440,7 @@
 				reasonLabel: AIPS.Templates.escape(aipsAuthorsL10n.reason),
 				userLabel: AIPS.Templates.escape(aipsAuthorsL10n.user),
 				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.date),
+				selectAllFeedbackLabel: AIPS.Templates.escape(aipsAuthorsL10n.selectAllFeedback || 'Select all feedback'),
 				rows: rowsHtml
 			});
 
@@ -2722,6 +2724,7 @@
 				authorLabel: AIPS.Templates.escape(aipsAuthorsL10n.author || 'Author'),
 				fieldLabel: AIPS.Templates.escape(aipsAuthorsL10n.fieldNiche || 'Field/Niche'),
 				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.approvedDate || 'Approved Date'),
+				selectAllQueueLabel: AIPS.Templates.escape(aipsAuthorsL10n.selectAllQueue || 'Select all in queue'),
 				rows: rowsHtml
 			});
 
