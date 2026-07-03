@@ -134,12 +134,16 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        foreach ($topics as $index => $topic) {
+            // When frequency is 'once', stagger bulk topics by 10 minutes (600 seconds)
+            // When recurring, topics must share the exact same next_run datetime to utilize batching
+            $topic_time = ($frequency === 'once') ? $base_time + ($index * 600) : $base_time;
+            $next_run = date('Y-m-d H:i:s', $topic_time);
+
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
+                'frequency' => 'once', // Ensure individual schedule remains one-off in the DB
                 'next_run' => $next_run,
                 'is_active' => 1,
                 'topic' => $topic
