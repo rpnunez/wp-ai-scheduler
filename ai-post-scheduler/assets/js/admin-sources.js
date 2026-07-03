@@ -309,6 +309,12 @@
 		// Source Data modal / CRUD
 		// -----------------------------------------------------------------
 
+		/**
+		 * Open the Source Data modal and load a row for editing.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		openSourceDataModal: function (e) {
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
@@ -319,7 +325,7 @@
 			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_get_source_data',
-				nonce:   aipsAjax.nonce,
+				nonce:   aipsSourcesL10n.sourceDataNonces.get,
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
@@ -352,6 +358,12 @@
 			});
 		},
 
+		/**
+		 * Render links to posts/history records that used a source-data row.
+		 *
+		 * @param {Array} usage Usage rows from the server.
+		 * @return {void}
+		 */
 		renderSourceDataUsage: function (usage) {
 			var $wrap = $('#aips-source-data-usage-wrap');
 			var $links = $('#aips-source-data-usage-links');
@@ -386,11 +398,17 @@
 			$wrap.show();
 		},
 
+		/**
+		 * Save changes to the currently loaded source-data row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		saveSourceData: function (e) {
 			e.preventDefault();
 			var data = {
 				action:           'aips_save_source_data',
-				nonce:            aipsAjax.nonce,
+				nonce:            aipsSourcesL10n.sourceDataNonces.save,
 				data_id:          $('#aips-source-data-id').val(),
 				url:              $('#aips-source-data-url').val(),
 				page_title:       $('#aips-source-data-page-title').val(),
@@ -420,6 +438,12 @@
 			});
 		},
 
+		/**
+		 * Confirm then delete one source-data row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		deleteSourceData: function (e) {
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
@@ -428,7 +452,7 @@
 			}
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_delete_source_data',
-				nonce:   aipsAjax.nonce,
+				nonce:   aipsSourcesL10n.sourceDataNonces.delete,
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
@@ -442,11 +466,23 @@
 			});
 		},
 
+		/**
+		 * Close the Source Data modal.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		closeSourceDataModal: function (e) {
 			e.preventDefault();
 			$('#aips-source-data-modal').hide();
 		},
 
+		/**
+		 * Close the Source Data modal when the backdrop is clicked.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		onSourceDataOverlayClick: function (e) {
 			if ($(e.target).is('#aips-source-data-modal')) {
 				$('#aips-source-data-modal').hide();

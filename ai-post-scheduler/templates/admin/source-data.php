@@ -210,10 +210,15 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 							<?php foreach ($items as $item): ?>
 								<?php
 								$data_id          = isset($item->id) ? (int) $item->id : 0;
+								// extracted_text on list rows is a bounded snippet (see repository); char_count
+								// is the true full-text character count, computed once at write time.
 								$text             = isset($item->extracted_text) ? (string) $item->extracted_text : '';
+								$char_count       = isset($item->char_count) ? (int) $item->char_count : (function_exists('mb_strlen') ? mb_strlen($text) : strlen($text));
 								$snippet          = function_exists('mb_substr') ? mb_substr($text, 0, 100) : substr($text, 0, 100);
-								$snippet          = strlen($text) > 100 ? $snippet . '…' : $snippet;
-								$bytes            = strlen($text) + strlen(isset($item->raw_html) ? (string) $item->raw_html : '');
+								$snippet          = $char_count > 100 ? $snippet . '…' : $snippet;
+								$extracted_bytes  = isset($item->extracted_text_bytes) ? (int) $item->extracted_text_bytes : strlen($text);
+								$raw_html_bytes   = isset($item->raw_html_bytes) ? (int) $item->raw_html_bytes : 0;
+								$bytes            = $extracted_bytes + $raw_html_bytes;
 								$size_kb          = $bytes > 0 ? number_format_i18n($bytes / 1024, 1) : '0.0';
 								$fetched_at       = isset($item->fetched_at) ? (int) $item->fetched_at : 0;
 								$run_date         = $fetched_at ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $fetched_at) : __('Not recorded', 'ai-post-scheduler');
@@ -229,7 +234,6 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 								$status_badge     = isset($status_badge_map[$item_status]) ? $status_badge_map[$item_status] : 'aips-badge-neutral';
 								$http_status      = isset($item->http_status) ? (int) $item->http_status : 0;
 								$http_badge       = $http_status >= 200 && $http_status < 300 ? 'aips-badge-success' : ($http_status >= 400 ? 'aips-badge-error' : ($http_status > 0 ? 'aips-badge-warning' : 'aips-badge-neutral'));
-								$char_count       = isset($item->char_count) ? (int) $item->char_count : (function_exists('mb_strlen') ? mb_strlen($text) : strlen($text));
 								$num_used         = isset($item->num_used) ? (int) $item->num_used : 0;
 								?>
 								<tr data-source-data-id="<?php echo esc_attr($data_id); ?>">

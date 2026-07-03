@@ -91,6 +91,7 @@ class AIPS_Sources_Data_Repository {
 
 		$extracted_text = isset( $data['extracted_text'] ) ? sanitize_textarea_field( $data['extracted_text'] ) : '';
 		$content_hash   = '' !== $extracted_text ? hash( 'sha256', $extracted_text ) : null;
+		$char_count     = isset( $data['char_count'] ) ? absint( $data['char_count'] ) : ( function_exists( 'mb_strlen' ) ? mb_strlen( $extracted_text ) : strlen( $extracted_text ) );
 
 		// Skip if this exact content snapshot is already stored.
 		if ( null !== $content_hash ) {
@@ -115,7 +116,7 @@ class AIPS_Sources_Data_Repository {
 			'meta_description' => isset( $data['meta_description'] ) ? sanitize_textarea_field( $data['meta_description'] ) : '',
 			'extracted_text'   => $extracted_text,
 			'raw_html'         => isset( $data['raw_html'] ) ? $data['raw_html'] : '',
-			'char_count'       => isset( $data['char_count'] ) ? absint( $data['char_count'] ) : 0,
+			'char_count'       => $char_count,
 			'content_hash'     => $content_hash,
 			'num_used'         => 0,
 			'fetch_status'     => isset( $data['fetch_status'] ) ? sanitize_text_field( $data['fetch_status'] ) : 'success',
@@ -234,10 +235,19 @@ class AIPS_Sources_Data_Repository {
 		$query_args[] = $per_page;
 		$query_args[] = $offset;
 
+		// Longtext columns (extracted_text, raw_html) are excluded from the list
+		// query and replaced with a bounded snippet plus computed byte lengths,
+		// since list rows only ever display a short preview + a size figure.
+		// Full content is available via get_by_id().
 		$items = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT * FROM {$this->table_name} {$where} ORDER BY fetched_at DESC, id DESC LIMIT %d OFFSET %d",
+				"SELECT id, source_id, url, page_title, meta_description, fetch_status, http_status, error_message,
+				        char_count, num_used, content_hash, fetched_at, created_at, updated_at,
+				        LEFT(extracted_text, 500) AS extracted_text,
+				        LENGTH(extracted_text) AS extracted_text_bytes,
+				        LENGTH(raw_html) AS raw_html_bytes
+				 FROM {$this->table_name} {$where} ORDER BY fetched_at DESC, id DESC LIMIT %d OFFSET %d",
 				...$query_args
 			)
 		);
@@ -333,10 +343,18 @@ class AIPS_Sources_Data_Repository {
 		$query_args[] = $per_page;
 		$query_args[] = $offset;
 
+		// See get_paginated_by_source_id() for why longtext columns are excluded
+		// from the list query in favor of a bounded snippet + byte lengths.
 		$items = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT sd.*, s.label AS source_label, s.url AS source_url FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where} ORDER BY sd.fetched_at DESC, sd.id DESC LIMIT %d OFFSET %d",
+				"SELECT sd.id, sd.source_id, sd.url, sd.page_title, sd.meta_description, sd.fetch_status, sd.http_status, sd.error_message,
+				        sd.char_count, sd.num_used, sd.content_hash, sd.fetched_at, sd.created_at, sd.updated_at,
+				        LEFT(sd.extracted_text, 500) AS extracted_text,
+				        LENGTH(sd.extracted_text) AS extracted_text_bytes,
+				        LENGTH(sd.raw_html) AS raw_html_bytes,
+				        s.label AS source_label, s.url AS source_url
+				 FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where} ORDER BY sd.fetched_at DESC, sd.id DESC LIMIT %d OFFSET %d",
 				...$query_args
 			)
 		);
@@ -492,6 +510,90 @@ class AIPS_Sources_Data_Repository {
 		);
 
 		return false !== $result && $result > 0;
+	}
+
+	/**
+	 * Retrieve recent generation history rows that used one source-data snapshot.
+	 *
+	 * @param int $id    Source data row ID.
+	 * @param int $limit Maximum rows to return.
+	 * @return array<int,array<string,mixed>> Usage rows for the admin modal.
+	 */
+	public function get_generation_usage( $id, $limit = 10 ) {
+		$id    = absint( $id );
+		$limit = max( 1, min( 50, absint( $limit ) ) );
+
+		if ( $id <= 0 ) {
+			return array();
+		}
+
+		$history_table     = $this->wpdb->prefix . 'aips_history';
+		$history_log_table = $this->wpdb->prefix . 'aips_history_log';
+		$candidate_limit   = $limit * 5;
+
+		$candidates = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT hl.details, hl.timestamp, h.id AS history_id, h.post_id, h.generated_title, h.created_at, h.completed_at, p.post_title
+				 FROM {$history_log_table} hl
+				 INNER JOIN {$history_table} h ON hl.history_id = h.id
+				 LEFT JOIN {$this->wpdb->posts} p ON h.post_id = p.ID
+				 WHERE hl.details LIKE %s
+				   AND hl.details LIKE %s
+				 ORDER BY hl.timestamp DESC, hl.id DESC
+				 LIMIT %d",
+				'%"source_data_ids"%',
+				'%' . $this->wpdb->esc_like( (string) $id ) . '%',
+				$candidate_limit
+			)
+		);
+
+		if ( empty( $candidates ) ) {
+			return array();
+		}
+
+		$usage = array();
+
+		foreach ( $candidates as $row ) {
+			$details = json_decode( (string) $row->details, true );
+			if ( ! is_array( $details ) || empty( $details['context']['source_data_ids'] ) || ! is_array( $details['context']['source_data_ids'] ) ) {
+				continue;
+			}
+
+			$source_data_ids = array_map( 'absint', $details['context']['source_data_ids'] );
+			if ( ! in_array( $id, $source_data_ids, true ) ) {
+				continue;
+			}
+
+			$post_id = isset( $row->post_id ) ? absint( $row->post_id ) : 0;
+			$title   = '';
+
+			if ( isset( $row->post_title ) && '' !== (string) $row->post_title ) {
+				$title = (string) $row->post_title;
+			} elseif ( isset( $row->generated_title ) && '' !== (string) $row->generated_title ) {
+				$title = (string) $row->generated_title;
+			} else {
+				$title = sprintf(
+					/* translators: %d = history row ID */
+					__( 'History #%d', 'ai-post-scheduler' ),
+					(int) $row->history_id
+				);
+			}
+
+			$usage[] = array(
+				'history_id'    => (int) $row->history_id,
+				'post_id'       => $post_id,
+				'title'         => $title,
+				'history_url'   => AIPS_Admin_Menu_Helper::get_page_url( 'history', array( 'history_id' => (int) $row->history_id ) ),
+				'post_edit_url' => $post_id ? get_edit_post_link( $post_id, 'raw' ) : '',
+				'used_at'       => isset( $row->timestamp ) ? (int) $row->timestamp : 0,
+			);
+
+			if ( count( $usage ) >= $limit ) {
+				break;
+			}
+		}
+
+		return $usage;
 	}
 
 	/**

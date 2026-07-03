@@ -390,7 +390,7 @@ class AIPS_Sources_Controller {
 	 * @return void Sends JSON response.
 	 */
 	public function ajax_get_source_data() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_source_data_get', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -420,7 +420,7 @@ class AIPS_Sources_Controller {
 	 * @return void Sends JSON response.
 	 */
 	public function ajax_save_source_data() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_source_data_save', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -438,27 +438,32 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
 		}
 
-		$fetch_status = isset($_POST['fetch_status']) ? sanitize_key(wp_unslash($_POST['fetch_status'])) : 'success';
+		$url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : (isset($existing->url) ? (string) $existing->url : '');
+		if ('' === $url || !filter_var($url, FILTER_VALIDATE_URL)) {
+			AIPS_Ajax_Response::error(__('Please enter a valid URL (e.g. https://example.com).', 'ai-post-scheduler'));
+		}
+
+		$fetch_status = isset($_POST['fetch_status']) ? sanitize_key(wp_unslash($_POST['fetch_status'])) : (isset($existing->fetch_status) ? sanitize_key((string) $existing->fetch_status) : 'success');
 		if (!in_array($fetch_status, array('pending', 'success', 'failed'), true)) {
 			AIPS_Ajax_Response::error(__('Invalid fetch status.', 'ai-post-scheduler'));
 		}
 
 		$fetched_at = isset($_POST['fetched_at']) ? absint($_POST['fetched_at']) : (int) $existing->fetched_at;
 
-		$raw_html = isset($_POST['raw_html']) && is_string($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : '';
+		$raw_html = isset($_POST['raw_html']) && is_string($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : (isset($existing->raw_html) ? (string) $existing->raw_html : '');
 		if (!current_user_can('unfiltered_html')) {
 			$raw_html = wp_kses_post($raw_html);
 		}
 
 		$data = array(
-			'url'              => isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '',
-			'page_title'       => isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : '',
-			'meta_description' => isset($_POST['meta_description']) ? sanitize_textarea_field(wp_unslash($_POST['meta_description'])) : '',
-			'extracted_text'   => isset($_POST['extracted_text']) ? sanitize_textarea_field(wp_unslash($_POST['extracted_text'])) : '',
+			'url'              => $url,
+			'page_title'       => isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : (isset($existing->page_title) ? (string) $existing->page_title : ''),
+			'meta_description' => isset($_POST['meta_description']) ? sanitize_textarea_field(wp_unslash($_POST['meta_description'])) : (isset($existing->meta_description) ? (string) $existing->meta_description : ''),
+			'extracted_text'   => isset($_POST['extracted_text']) ? sanitize_textarea_field(wp_unslash($_POST['extracted_text'])) : (isset($existing->extracted_text) ? (string) $existing->extracted_text : ''),
 			'raw_html'         => $raw_html,
 			'fetch_status'     => $fetch_status,
-			'http_status'      => isset($_POST['http_status']) ? absint($_POST['http_status']) : 0,
-			'error_message'    => isset($_POST['error_message']) ? sanitize_textarea_field(wp_unslash($_POST['error_message'])) : '',
+			'http_status'      => isset($_POST['http_status']) ? absint($_POST['http_status']) : (isset($existing->http_status) ? absint($existing->http_status) : 0),
+			'error_message'    => isset($_POST['error_message']) ? sanitize_textarea_field(wp_unslash($_POST['error_message'])) : (isset($existing->error_message) ? (string) $existing->error_message : ''),
 			'fetched_at'       => $fetched_at,
 		);
 
@@ -479,7 +484,7 @@ class AIPS_Sources_Controller {
 	 * @return void Sends JSON response.
 	 */
 	public function ajax_delete_source_data() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_source_data_delete', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 

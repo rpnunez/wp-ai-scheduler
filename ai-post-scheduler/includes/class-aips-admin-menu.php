@@ -376,6 +376,7 @@ class AIPS_Admin_Menu {
                 'aips-templates',
                 'aips-authors',
                 'aips-sources',
+                'aips-source-data',
                 'aips-taxonomy',
                 'aips-internal-links',
                 'aips-author-topics',

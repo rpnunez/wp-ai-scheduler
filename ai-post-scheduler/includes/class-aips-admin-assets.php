@@ -1475,6 +1475,11 @@ class AIPS_Admin_Assets {
                 'saveDataFailed'     => __('Failed to save source data.', 'ai-post-scheduler'),
                 'deleteDataFailed'   => __('Failed to delete source data.', 'ai-post-scheduler'),
                 'saveData'           => __('Save Source Data', 'ai-post-scheduler'),
+                'sourceDataNonces'   => array(
+                    'get'    => wp_create_nonce('aips_source_data_get'),
+                    'save'   => wp_create_nonce('aips_source_data_save'),
+                    'delete' => wp_create_nonce('aips_source_data_delete'),
+                ),
             ));
     }
 
