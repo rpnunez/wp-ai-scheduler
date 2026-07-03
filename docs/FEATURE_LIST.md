@@ -1,6 +1,6 @@
 # AI Post Scheduler — Feature Reference
 
-**Plugin Version:** 1.7.3  
+**Plugin Version:** 3.0.0  
 **Total Classes:** 128  
 **Total Lines of Code:** ~44,000  
 **Feature Categories:** 9  
