@@ -11,6 +11,12 @@
 
 	Object.assign(AIPS, {
 
+		/** Matches any AJAX `action` that triggers AI content generation. */
+		AI_RUNNING_ACTION_PATTERN: /generate|run_now/i,
+
+		/** Number of in-flight AI-generation requests, used to track the running state across overlapping calls. */
+		aiRunningRequestCount: 0,
+
 		/**
 		 * Bootstrap the Admin Bar module.
 		 *
@@ -18,6 +24,7 @@
 		 */
 		adminBarInit: function () {
 			this.adminBarBindEvents();
+			this.adminBarBindAiRunningIndicator();
 		},
 
 		/**
@@ -27,6 +34,54 @@
 			$(document).on('click', '#wpadminbar .aips-mark-read', this.adminBarMarkRead);
 			$(document).on('click', '#wpadminbar .aips-mark-all-read', this.adminBarMarkAllRead);
 			$(document).on('click', '#wpadminbar .aips-toolbar-notification, #wpadminbar .aips-toolbar-notif-header', this.adminBarStopPropagation);
+		},
+
+		/**
+		 * Show the toolbar AI spinner for the duration of any AJAX request whose
+		 * `action` matches an AI-generation endpoint (e.g. `aips_run_now`,
+		 * `aips_generate_topics`), across all admin pages/modules — instead of
+		 * wiring each generation call site individually.
+		 */
+		adminBarBindAiRunningIndicator: function () {
+			$(document).ajaxSend(function (event, jqXHR, ajaxSettings) {
+				if (!AIPS.adminBarIsAiRunningAction(ajaxSettings)) {
+					return;
+				}
+				AIPS.aiRunningRequestCount++;
+				AIPS.adminBarSetAiRunning(true);
+			});
+
+			$(document).ajaxComplete(function (event, jqXHR, ajaxSettings) {
+				if (!AIPS.adminBarIsAiRunningAction(ajaxSettings)) {
+					return;
+				}
+				AIPS.aiRunningRequestCount = Math.max(0, AIPS.aiRunningRequestCount - 1);
+				if (AIPS.aiRunningRequestCount === 0) {
+					AIPS.adminBarSetAiRunning(false);
+				}
+			});
+		},
+
+		/**
+		 * Determine whether an AJAX request's `action` parameter identifies it
+		 * as an AI-generation request.
+		 *
+		 * @param {Object} ajaxSettings jQuery AJAX settings for the request.
+		 * @return {boolean}
+		 */
+		adminBarIsAiRunningAction: function (ajaxSettings) {
+			var data = ajaxSettings && ajaxSettings.data;
+			if (!data) {
+				return false;
+			}
+			var action = typeof data === 'string'
+				? (function () {
+					var match = /(?:^|&)action=([^&]*)/.exec(data);
+					return match ? decodeURIComponent(match[1]) : '';
+				})()
+				: data.action;
+
+			return !!action && AIPS.AI_RUNNING_ACTION_PATTERN.test(action);
 		},
 
 		/**

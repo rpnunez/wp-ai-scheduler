@@ -131,12 +131,6 @@
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
                 var warnings = [];
-                if (d.last_error) {
-                    warnings.push('<div class="notice notice-error inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.lastErrorDetected) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.history) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.viewHistory) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.system_status) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.systemStatus) + '</a></p></div>');
-                }
-                if (d.retry_pending) {
-                    warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
-                }
                 if (parseInt((counts.overdue || 0), 10) > 0) {
                     warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
                 }
@@ -148,15 +142,15 @@
          * Activate the tab matching the current URL hash on page load.
          *
          * Reads `window.location.hash`, strips the leading `#`, and triggers
-         * a click on the corresponding `.nav-tab[data-tab]` element so the
-         * correct tab panel is displayed immediately after navigation.
+         * a click on the corresponding `.aips-tab-link[data-tab]` element so
+         * the correct tab panel is displayed immediately after navigation.
          */
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
             if (hash) {
                 var tabId = hash.substring(1); // Remove the # prefix
-                var $tabLink = $('.nav-tab[data-tab], .aips-tab-link[data-tab]').filter(function() {
+                var $tabLink = $('.aips-tab-link[data-tab]').filter(function() {
                     return $(this).data('tab') === tabId;
                 });
                 if ($tabLink.length) {
@@ -299,7 +293,6 @@
             $(document).on('click', '#aips-test-connection', this.testConnection);
 
             // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
             $(document).on('click', '.aips-tab-link', this.switchAipsTab);
             
             // Preserve tab hash on form submissions
@@ -436,45 +429,6 @@
             });
         },
 
-        /**
-         * Switch to the tab identified by the clicked `.nav-tab`'s `data-tab`
-         * attribute.
-         *
-         * Updates `window.location.hash`, toggles `.nav-tab-active` and ARIA
-         * attributes on the tab links, and shows/hides the corresponding
-         * `.aips-tab-content` panel.
-         *
-         * @param {Event} e - Click event from a `.nav-tab` element.
-         */
-        switchTab: function(e) {
-            e.preventDefault();
-            var tabId = $(this).data('tab');
-
-            // Update the URL hash instead of query parameter
-            window.location.hash = '#' + tabId;
-
-            // Update nav-tab states and accessibility
-            $('.nav-tab')
-                .removeClass('nav-tab-active')
-                .attr('aria-selected', 'false')
-                .attr('tabindex', '-1');
-            $(this)
-                .addClass('nav-tab-active')
-                .attr('aria-selected', 'true')
-                .attr('tabindex', '0')
-                .focus();
-
-            // Update tab content visibility and ARIA attributes
-            $('.aips-tab-content')
-                .hide()
-                .attr('hidden', 'hidden')
-                .attr('aria-hidden', 'true');
-            $('#' + tabId + '-tab')
-                .show()
-                .removeAttr('hidden')
-                .attr('aria-hidden', 'false');
-        },
-        
         /**
          * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
          * `data-tab` attribute.

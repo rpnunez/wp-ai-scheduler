@@ -170,8 +170,6 @@
 					date_to: dateToVal
 				},
 				success: function(response) {
-					$('.aips-dashboard-spinner-overlay').hide();
-					$('.aips-tab-panel').removeClass('is-loading');
 					if (response.success && response.data) {
 						self.updateDashboardData(response.data);
 					} else {
@@ -179,9 +177,11 @@
 					}
 				},
 				error: function() {
+					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
+				},
+				complete: function() {
 					$('.aips-dashboard-spinner-overlay').hide();
 					$('.aips-tab-panel').removeClass('is-loading');
-					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
 				}
 			});
 		},
@@ -594,11 +594,14 @@
 
 			// 3b. Update trend indicators
 			if (data.trend_data) {
-				var self2 = this;
 				$.each(data.trend_data, function(key, trend) {
 					var $el = $('[data-trend="' + key + '"]');
-					if (!$el.length || trend.pct === 0) {
+					if (!$el.length || !trend.has_baseline) {
 						$el.text('').removeClass('aips-trend-up aips-trend-down');
+						return;
+					}
+					if (trend.direction === 'flat') {
+						$el.text('No change vs prev').removeClass('aips-trend-up aips-trend-down');
 						return;
 					}
 					var arrow = trend.direction === 'up' ? '↑' : '↓';

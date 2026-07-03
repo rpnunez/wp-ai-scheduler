@@ -489,17 +489,21 @@ class AIPS_Dashboard_Controller {
 	/**
 	 * Calculate a trend percentage between current and previous period values.
 	 *
+	 * `has_baseline` distinguishes "no previous-period data to compare against"
+	 * from a genuine zero-change ('flat') trend, which the UI would otherwise
+	 * render identically.
+	 *
 	 * @param int $current Current period value.
 	 * @param int $previous Previous period value.
-	 * @return array{pct: float, direction: string} Trend percentage and direction ('up'|'down'|'neutral').
+	 * @return array{pct: float, direction: string, has_baseline: bool} Trend percentage, direction ('up'|'down'|'flat'), and whether a previous-period baseline exists.
 	 */
 	private function calc_trend( $current, $previous ) {
 		if ( $previous === 0 ) {
-			return array( 'pct' => 0, 'direction' => 'neutral' );
+			return array( 'pct' => 0, 'direction' => 'flat', 'has_baseline' => false );
 		}
 		$pct = round( ( ( $current - $previous ) / $previous ) * 100, 1 );
-		$direction = $pct > 0 ? 'up' : ( $pct < 0 ? 'down' : 'neutral' );
-		return array( 'pct' => abs( $pct ), 'direction' => $direction );
+		$direction = $pct > 0 ? 'up' : ( $pct < 0 ? 'down' : 'flat' );
+		return array( 'pct' => abs( $pct ), 'direction' => $direction, 'has_baseline' => true );
 	}
 
 	private function normalize_dashboard_date_input($value, $fallback) {

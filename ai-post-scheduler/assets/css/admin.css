@@ -141,10 +141,13 @@
    display: flow-root on #wpbody creates a BFC that contains the float,
    making #wpwrap tall enough to push the footer below all plugin content.
 
-   We scope this to pages that contain .aips-wrap (all plugin pages) using
-   :has() — no PHP body-class filter needed, and admin.css loads globally
-   so we must not affect non-plugin admin pages.
+   Scoped to plugin pages via the `.aips-admin-page` body class added by
+   AIPS_Admin_Menu::add_plugin_body_class(). The `:has()` selector is a
+   redundant progressive enhancement for the rare case markup renders without
+   the body class; it isn't relied on alone since it has no fallback in
+   browsers that don't support it (pre-2023 Firefox).
    ========================================================================== */
+.aips-admin-page #wpbody,
 #wpbody:has(.aips-wrap) {
     display: flow-root;
 }
