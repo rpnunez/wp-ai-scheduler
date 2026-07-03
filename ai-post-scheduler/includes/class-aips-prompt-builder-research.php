@@ -37,10 +37,7 @@ class AIPS_Prompt_Builder_Research {
 
 		$prompt .= "Your task: Identify the top {$count} most trending, relevant, and engaging topics in this niche right now.\n\n";
 
-		if (!empty($keywords)) {
-			$keyword_list = implode(', ', (array) $keywords);
-			$prompt .= "Focus areas: {$keyword_list}\n\n";
-		}
+		$prompt .= $this->format_keywords_line($keywords, 'Focus areas');
 
 		$prompt .= "Consider:\n";
 		$prompt .= "1. Current events and news in {$current_year}\n";
@@ -49,11 +46,7 @@ class AIPS_Prompt_Builder_Research {
 		$prompt .= "4. Evergreen value combined with timeliness\n";
 		$prompt .= "5. Content gap opportunities\n\n";
 
-		$prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
-		$prompt .= "- \"topic\": The topic/title (string)\n";
-		$prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-		$prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
-		$prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
+		$prompt .= $this->build_topics_json_contract("Why it's trending (max 100 chars, string)");
 
 		$prompt .= "Example format:\n";
 		$prompt .= "[\n";
@@ -85,10 +78,7 @@ class AIPS_Prompt_Builder_Research {
 		$prompt  = "You are a content research expert. Using the source material below as your primary reference, ";
 		$prompt .= "identify {$count} specific, high-value blog post topics for the '{$niche}' niche as of {$current_date}.\n\n";
 
-		if (!empty($keywords)) {
-			$keyword_list = implode(', ', (array) $keywords);
-			$prompt .= "Additional focus keywords: {$keyword_list}\n\n";
-		}
+		$prompt .= $this->format_keywords_line($keywords, 'Additional focus keywords');
 
 		$prompt .= "SOURCE MATERIAL:\n";
 		$prompt .= $source_context . "\n";
@@ -98,12 +88,41 @@ class AIPS_Prompt_Builder_Research {
 		$prompt .= "- Prefer specific, actionable topics over generic ones.\n";
 		$prompt .= "- Consider gaps or follow-up angles suggested by the source content.\n\n";
 
-		$prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
+		$prompt .= $this->build_topics_json_contract("Why it's relevant to the source material (max 100 chars, string)");
+		$prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
+
+		return $prompt;
+	}
+
+	/**
+	 * Format the optional keyword focus line shared by both research prompts.
+	 *
+	 * @param array  $keywords Focus keywords.
+	 * @param string $label    Line label (e.g. "Focus areas").
+	 * @return string
+	 */
+	private function format_keywords_line(array $keywords, $label) {
+		if (empty($keywords)) {
+			return '';
+		}
+
+		$keyword_list = implode(', ', $keywords);
+
+		return "{$label}: {$keyword_list}\n\n";
+	}
+
+	/**
+	 * Build the shared topic/score/reason/keywords JSON contract block.
+	 *
+	 * @param string $reason_description Description for the "reason" field.
+	 * @return string
+	 */
+	private function build_topics_json_contract($reason_description) {
+		$prompt  = "Return ONLY a valid JSON array of objects. Each object must have:\n";
 		$prompt .= "- \"topic\": The topic/title (string)\n";
 		$prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
-		$prompt .= "- \"reason\": Why it's relevant to the source material (max 100 chars, string)\n";
+		$prompt .= "- \"reason\": {$reason_description}\n";
 		$prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-		$prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
 
 		return $prompt;
 	}
