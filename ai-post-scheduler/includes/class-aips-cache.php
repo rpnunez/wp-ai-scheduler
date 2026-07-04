@@ -345,7 +345,10 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return $callback();
 		}
-		if ($this->has( $key, $group )) {
+
+		$sentinel = new stdClass();
+		$value    = $this->get( $key, $group, $sentinel );
+		if ($value !== $sentinel) {
 			$this->record_cache_event(
 				'remember',
 				array(
@@ -355,7 +358,7 @@ class AIPS_Cache {
 					'hit'   => true,
 				)
 			);
-			return $this->get( $key, $group );
+			return $value;
 		}
 
 		$value = $callback();
