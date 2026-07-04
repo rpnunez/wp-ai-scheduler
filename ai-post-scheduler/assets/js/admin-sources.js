@@ -69,7 +69,8 @@
 			$(document).on('click', '.aips-view-source-data', this.openSourceDataModal.bind(this));
 			$(document).on('click', '.aips-delete-source-data', this.deleteSourceData.bind(this));
 			$(document).on('click', '#aips-save-source-data-btn', this.saveSourceData.bind(this));
-			$(document).on('click', '#aips-source-data-modal .aips-modal-close', this.closeSourceDataModal.bind(this));
+			$(document).on('click', '#aips-source-data-modal-close-header', this.closeSourceDataModal.bind(this));
+			$(document).on('click', '#aips-source-data-modal-close-footer', this.closeSourceDataModal.bind(this));
 			$(document).on('click', '#aips-source-data-modal', this.onSourceDataOverlayClick.bind(this));
 
 			// Source Groups modal.
@@ -334,6 +335,19 @@
 				}
 
 				var row = response.data.source_data || {};
+				var $modal = $('#aips-source-data-modal');
+				if (!$modal.length) {
+					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					return;
+				}
+
+				var formFields = ['aips-source-data-id', 'aips-source-data-display-id', 'aips-source-data-source-id', 'aips-source-data-url', 'aips-source-data-page-title', 'aips-source-data-meta-description', 'aips-source-data-extracted-text', 'aips-source-data-raw-html', 'aips-source-data-fetch-status', 'aips-source-data-http-status', 'aips-source-data-error-message', 'aips-source-data-fetched-at', 'aips-source-data-char-count', 'aips-source-data-content-hash', 'aips-source-data-num-used', 'aips-source-data-created-at', 'aips-source-data-updated-at'];
+				var missingFields = formFields.filter(function(field) { return !$('#' + field).length; });
+				if (missingFields.length > 0) {
+					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					return;
+				}
+
 				$('#aips-source-data-id').val(row.id || 0);
 				$('#aips-source-data-display-id').val(row.id || 0);
 				$('#aips-source-data-source-id').val(row.source_id || 0);
@@ -352,7 +366,7 @@
 				$('#aips-source-data-created-at').val(row.created_at || 0);
 				$('#aips-source-data-updated-at').val(row.updated_at || 0);
 				self.renderSourceDataUsage(response.data.usage || []);
-				$('#aips-source-data-modal').show();
+				$modal.show();
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
 			});
@@ -374,27 +388,7 @@
 				return;
 			}
 
-			var html = '<ul>';
-			usage.forEach(function (item) {
-				var title = $('<div>').text(item.title || ('History #' + item.history_id)).html();
-				var historyUrl = $('<div>').text(item.history_url || '').html();
-				var postUrl = $('<div>').text(item.post_edit_url || '').html();
-				html += '<li>';
-				if (postUrl) {
-					html += '<a href="' + postUrl + '">' + title + '</a>';
-				} else if (historyUrl) {
-					html += '<a href="' + historyUrl + '">' + title + '</a>';
-				} else {
-					html += title;
-				}
-				if (historyUrl) {
-					html += ' <a class="aips-btn aips-btn-xs aips-btn-secondary" href="' + historyUrl + '">History #' + parseInt(item.history_id || 0, 10) + '</a>';
-				}
-				html += '</li>';
-			});
-			html += '</ul>';
-
-			$links.html(html);
+			$links.html(AIPS.Templates.render('aips-source-data-usage-list', { items: usage }));
 			$wrap.show();
 		},
 
@@ -447,9 +441,25 @@
 		deleteSourceData: function (e) {
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
-			if (!confirm(aipsSourcesL10n.deleteDataConfirm)) {
-				return;
-			}
+			var self = this;
+			AIPS.Utilities.confirm(aipsSourcesL10n.deleteDataConfirm, '', {
+				confirm: { text: aipsSourcesL10n.delete || 'Delete', className: 'button-primary' },
+				cancel: { text: aipsSourcesL10n.cancel || 'Cancel', className: 'button' }
+			}, function(confirmed) {
+				if (!confirmed) {
+					return;
+				}
+				self.performDeleteSourceData(id);
+			});
+		},
+
+		/**
+		 * Send the delete request for source data after confirmation.
+		 *
+		 * @param {number} id Source data row ID.
+		 * @return {void}
+		 */
+		performDeleteSourceData: function (id) {
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_delete_source_data',
 				nonce:   aipsSourcesL10n.sourceDataNonces.delete,

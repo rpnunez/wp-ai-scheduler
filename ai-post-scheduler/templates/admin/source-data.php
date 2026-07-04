@@ -53,7 +53,7 @@ $has_active_filters = '' !== $search
 	|| $search_body_text
 	|| ($is_global_view && $filter_source_id > 0);
 
-$build_page_url = static function($page_number) use ($base_url, $search, $filters, $is_global_view) {
+$build_page_url = static function($page_number) use ($base_url, $search, $filters, $is_global_view, $filter_source_id) {
 	$args = array('source_data_paged' => absint($page_number));
 	if ('' !== $search) {
 		$args['s'] = $search;
@@ -71,8 +71,8 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 	if (!empty($filters['search_body_text'])) {
 		$args['search_body_text'] = 1;
 	}
-	if ($is_global_view && !empty($filters['source_id'])) {
-		$args['filter_source_id'] = $filters['source_id'];
+	if ($is_global_view && $filter_source_id > 0) {
+		$args['filter_source_id'] = $filter_source_id;
 	}
 	return add_query_arg($args, $base_url);
 };
@@ -330,7 +330,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 id="aips-source-data-modal-title"><?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?></h2>
-			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+			<button type="button" id="aips-source-data-modal-close-header" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
 			<form id="aips-source-data-form" novalidate>
@@ -365,8 +365,27 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 			</form>
 		</div>
 		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" id="aips-source-data-modal-close-footer" class="button"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
 			<button type="button" class="button button-primary" id="aips-save-source-data-btn"><?php esc_html_e('Save Source Data', 'ai-post-scheduler'); ?></button>
 		</div>
 	</div>
 </div>
+
+<script type="text/template" id="aips-source-data-usage-list">
+	<ul>
+	<# _.each( data.items, function( item ) { #>
+		<li>
+			<# if ( item.post_edit_url ) { #>
+				<a href="<%= item.post_edit_url %>"><%= item.title || ('History #' + item.history_id) %></a>
+			<# } else if ( item.history_url ) { #>
+				<a href="<%= item.history_url %>"><%= item.title || ('History #' + item.history_id) %></a>
+			<# } else { #>
+				<%= item.title || ('History #' + item.history_id) %>
+			<# } #>
+			<# if ( item.history_url ) { #>
+				<a class="aips-btn aips-btn-xs aips-btn-secondary" href="<%= item.history_url %>">History #<%= parseInt( item.history_id || 0 ) %></a>
+			<# } #>
+		</li>
+	<# }); #>
+	</ul>
+</script>

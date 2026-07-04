@@ -555,7 +555,15 @@ class AIPS_Sources_Data_Repository {
 
 		foreach ( $candidates as $row ) {
 			$details = json_decode( (string) $row->details, true );
-			if ( ! is_array( $details ) || empty( $details['context']['source_data_ids'] ) || ! is_array( $details['context']['source_data_ids'] ) ) {
+			if ( ! is_array( $details ) ) {
+				continue;
+			}
+
+			if ( ! isset( $details['context'] ) || ! is_array( $details['context'] ) ) {
+				continue;
+			}
+
+			if ( empty( $details['context']['source_data_ids'] ) || ! is_array( $details['context']['source_data_ids'] ) ) {
 				continue;
 			}
 

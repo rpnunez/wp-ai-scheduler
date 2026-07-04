@@ -392,20 +392,24 @@ class AIPS_Sources_Controller {
 	public function ajax_get_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_get', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
 		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
+			return;
 		}
 
 		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
 		if (!$id) {
 			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
 		}
 
 		$row = $this->data_repo->get_by_id($id);
 		if (!$row) {
 			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
+			return;
 		}
 
 		AIPS_Ajax_Response::success(array(
@@ -422,30 +426,36 @@ class AIPS_Sources_Controller {
 	public function ajax_save_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_save', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
 		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
+			return;
 		}
 
 		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
 		if (!$id) {
 			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
 		}
 
 		$existing = $this->data_repo->get_by_id($id);
 		if (!$existing) {
 			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
+			return;
 		}
 
 		$url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : (isset($existing->url) ? (string) $existing->url : '');
 		if ('' === $url || !filter_var($url, FILTER_VALIDATE_URL)) {
 			AIPS_Ajax_Response::error(__('Please enter a valid URL (e.g. https://example.com).', 'ai-post-scheduler'));
+			return;
 		}
 
 		$fetch_status = isset($_POST['fetch_status']) ? sanitize_key(wp_unslash($_POST['fetch_status'])) : (isset($existing->fetch_status) ? sanitize_key((string) $existing->fetch_status) : 'success');
 		if (!in_array($fetch_status, array('pending', 'success', 'failed'), true)) {
 			AIPS_Ajax_Response::error(__('Invalid fetch status.', 'ai-post-scheduler'));
+			return;
 		}
 
 		$fetched_at = isset($_POST['fetched_at']) ? absint($_POST['fetched_at']) : (int) $existing->fetched_at;
@@ -486,20 +496,24 @@ class AIPS_Sources_Controller {
 	public function ajax_delete_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_delete', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
 		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
+			return;
 		}
 
 		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
 		if (!$id) {
 			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
 		}
 
 		$result = $this->data_repo->delete($id);
 		if (!$result) {
 			AIPS_Ajax_Response::error(__('Failed to delete source data.', 'ai-post-scheduler'));
+			return;
 		}
 
 		AIPS_Ajax_Response::success(array(), __('Source data deleted.', 'ai-post-scheduler'));
