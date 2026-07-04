@@ -108,6 +108,11 @@ class AIPS_Cache {
 	 * @return AIPS_Cache_Index|null
 	 */
 	private function get_cache_index(): ?AIPS_Cache_Index {
+		// Request-scoped entries vanish at request end; indexing them costs
+		// DB writes for data the Cache Monitor could never usefully display.
+		if ($this->driver instanceof AIPS_Cache_Array_Driver) {
+			return null;
+		}
 		if ($this->cache_index !== null) {
 			return $this->cache_index;
 		}
