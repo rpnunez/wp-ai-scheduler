@@ -34,6 +34,27 @@ class AIPS_Cache_Index {
 	private $max_entries;
 
 	/**
+	 * Deduped buffer of key hashes accessed during this request.
+	 *
+	 * @var array<string, true>
+	 */
+	private static $pending_access = array();
+
+	/**
+	 * Whether any index row was written this request (max-entries check needed).
+	 *
+	 * @var bool
+	 */
+	private static $needs_enforcement = false;
+
+	/**
+	 * Whether the shutdown flush hook has been registered.
+	 *
+	 * @var bool
+	 */
+	private static $flush_hooked = false;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -68,7 +89,8 @@ class AIPS_Cache_Index {
 
 		try {
 			$this->upsert_index_row( $key, $value, $ttl, $group, $context );
-			$this->enforce_max_entries();
+			self::$needs_enforcement = true;
+			self::schedule_flush();
 		} catch ( Throwable $e ) {
 			// Index errors must never break cache writes.
 		}
@@ -128,16 +150,57 @@ class AIPS_Cache_Index {
 		if (!$this->enabled) {
 			return;
 		}
+		$key_hash = hash( 'sha256', $group . ':' . $key );
+		self::$pending_access[ $key_hash ] = true;
+		self::schedule_flush();
+	}
 
-		try {
-			global $wpdb;
-			$table    = $wpdb->prefix . 'aips_cache_index';
-			$key_hash = hash( 'sha256', $group . ':' . $key );
-			$now      = AIPS_DateTime::now()->timestamp();
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->update( $table, array( 'last_accessed_at' => $now ), array( 'key_hash' => $key_hash ), array( '%d' ), array( '%s' ) );
-		} catch ( Throwable $e ) {
-			// Swallow.
+	/**
+	 * Register the shutdown flush hook, once per request.
+	 *
+	 * @return void
+	 */
+	private static function schedule_flush(): void {
+		if (self::$flush_hooked) {
+			return;
+		}
+		self::$flush_hooked = true;
+		add_action( 'shutdown', array( __CLASS__, 'flush_pending' ), 100 );
+	}
+
+	/**
+	 * Persist buffered access timestamps and run max-entries enforcement once.
+	 * Idempotent; safe to call directly in tests.
+	 *
+	 * @return void
+	 */
+	public static function flush_pending(): void {
+		if (!empty( self::$pending_access )) {
+			try {
+				global $wpdb;
+				$table  = $wpdb->prefix . 'aips_cache_index';
+				$hashes = array_keys( self::$pending_access );
+				self::$pending_access = array();
+				$now          = AIPS_DateTime::now()->timestamp();
+				$placeholders = implode( ',', array_fill( 0, count( $hashes ), '%s' ) );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( $wpdb->prepare(
+					"UPDATE `{$table}` SET `last_accessed_at` = %d WHERE `key_hash` IN ({$placeholders})",
+					array_merge( array( $now ), $hashes )
+				) );
+			} catch ( Throwable $e ) {
+				self::$pending_access = array();
+			}
+		}
+
+		if (self::$needs_enforcement) {
+			self::$needs_enforcement = false;
+			try {
+				$index = new self();
+				$index->enforce_max_entries();
+			} catch ( Throwable $e ) {
+				// Swallow — enforcement retries on the next request.
+			}
 		}
 	}
 
@@ -413,7 +476,7 @@ class AIPS_Cache_Index {
 	 *
 	 * @return void
 	 */
-	private function enforce_max_entries(): void {
+	public function enforce_max_entries(): void {
 		if ($this->max_entries <= 0) {
 			return;
 		}
