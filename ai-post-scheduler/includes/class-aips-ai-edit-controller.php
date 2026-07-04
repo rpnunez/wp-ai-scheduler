@@ -30,6 +30,11 @@ class AIPS_AI_Edit_Controller {
 	 * @var AIPS_History_Repository_Interface
 	 */
 	private $history_repository;
+
+	/**
+	 * @var AIPS_Post_Manager
+	 */
+	private $post_manager;
 	
 	/**
 	 * Constructor
@@ -41,6 +46,7 @@ class AIPS_AI_Edit_Controller {
 		$container = AIPS_Container::get_instance();
 		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
 		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->post_manager       = new AIPS_Post_Manager();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -405,9 +411,9 @@ class AIPS_AI_Edit_Controller {
 		// Update featured image
 		if (isset($components['featured_image_id'])) {
 			$attachment_id = absint($components['featured_image_id']);
+			$updated_components[] = 'featured_image';
 			if ($attachment_id > 0) {
 				set_post_thumbnail($post_id, $attachment_id);
-				$updated_components[] = 'featured_image';
 			} else {
 				delete_post_thumbnail($post_id);
 			}
@@ -429,6 +435,7 @@ class AIPS_AI_Edit_Controller {
 		}
 
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
+		$this->reconcile_partial_generation_state($post_id);
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
@@ -590,6 +597,27 @@ class AIPS_AI_Edit_Controller {
 				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
 			}
 		}
+
+		$sanitized_components = array();
+		switch ($component) {
+			case 'title':
+				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+				break;
+			case 'excerpt':
+				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
+				break;
+			case 'content':
+				$sanitized_components['content'] = wp_kses_post((string) $restored_value);
+				break;
+			case 'featured_image':
+				$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
+					? absint($restored_value['attachment_id'])
+					: 0;
+				break;
+		}
+
+		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
+		$this->reconcile_partial_generation_state($post_id);
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
@@ -649,5 +677,18 @@ class AIPS_AI_Edit_Controller {
 			default:
 				return '';
 		}
+	}
+
+	/**
+	 * Reconcile partial-generation metadata against the post's current persisted state.
+	 *
+	 * This is used after AJAX save/restore requests because the AI Edit
+	 * controller is booted in AJAX mode without the admin save_post reconciler.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function reconcile_partial_generation_state($post_id) {
+		$this->post_manager->reconcile_generation_status_meta_from_post($post_id);
 	}
 }
