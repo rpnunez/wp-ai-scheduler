@@ -138,7 +138,8 @@ class AIPS_DB_Manager {
             details longtext,
             PRIMARY KEY  (id),
             KEY history_id (history_id),
-            KEY history_type_id (history_type_id)
+            KEY history_type_id (history_type_id),
+            KEY history_id_log_type (history_id, log_type)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_campaigns (
