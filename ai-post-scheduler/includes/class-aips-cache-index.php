@@ -63,9 +63,21 @@ class AIPS_Cache_Index {
 		// always calls config_cache->set() after reading from the DB, which would
 		// trigger the index on the config cache (record_set() -> upsert_index_row()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
-		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
-		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
+		$monitor_enabled   = get_option( 'aips_cache_monitor_enabled', '0' );
+		$index_enabled     = get_option( 'aips_cache_monitor_index_enabled', '1' );
+		$this->enabled     = ( $monitor_enabled !== '0' && $monitor_enabled !== 0 && $monitor_enabled !== false && $monitor_enabled !== '' )
+			&& ( $index_enabled !== '0' && $index_enabled !== 0 && $index_enabled !== false );
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
+	}
+
+	/**
+	 * Whether the Cache Monitor master switch is on (direct option read).
+	 *
+	 * @return bool
+	 */
+	public static function is_monitor_enabled(): bool {
+		$value = get_option( 'aips_cache_monitor_enabled', '0' );
+		return ( $value !== '0' && $value !== 0 && $value !== false && $value !== '' );
 	}
 
 	// -----------------------------------------------------------------------

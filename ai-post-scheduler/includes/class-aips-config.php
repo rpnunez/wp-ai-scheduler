@@ -188,7 +188,7 @@ class AIPS_Config {
             // Telemetry
             'aips_enable_telemetry' => false,
             // Cache Monitor
-            'aips_cache_monitor_enabled'               => true,
+            'aips_cache_monitor_enabled'               => false,
             'aips_cache_monitor_index_enabled'         => true,
             'aips_cache_monitor_metrics_enabled'       => true,
             'aips_cache_monitor_event_retention_days'  => 30,

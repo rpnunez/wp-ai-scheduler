@@ -132,6 +132,9 @@ class AIPS_Cache {
 		}
 		$this->cache_index_checked = true;
 
+		if (!AIPS_Cache_Index::is_monitor_enabled()) {
+			return null;
+		}
 		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
 		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
 			return null;

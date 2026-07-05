@@ -179,6 +179,34 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_cache_monitor_enabled' => array(
+				'sanitize_callback' => array($ui, 'sanitize_yes_no'),
+				'default'           => $defaults['aips_cache_monitor_enabled'],
+			),
+			'aips_cache_monitor_index_enabled' => array(
+				'sanitize_callback' => array($ui, 'sanitize_yes_no'),
+				'default'           => $defaults['aips_cache_monitor_index_enabled'],
+			),
+			'aips_cache_monitor_metrics_enabled' => array(
+				'sanitize_callback' => array($ui, 'sanitize_yes_no'),
+				'default'           => $defaults['aips_cache_monitor_metrics_enabled'],
+			),
+			'aips_cache_monitor_event_retention_days' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_monitor_event_retention_days'],
+			),
+			'aips_cache_monitor_max_index_entries' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_monitor_max_index_entries'],
+			),
+			'aips_cache_monitor_live_refresh_enabled' => array(
+				'sanitize_callback' => array($ui, 'sanitize_yes_no'),
+				'default'           => $defaults['aips_cache_monitor_live_refresh_enabled'],
+			),
+			'aips_cache_monitor_live_refresh_interval' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_monitor_live_refresh_interval'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
@@ -601,8 +629,71 @@ class AIPS_Settings {
             'aips_cache_section'
         );
 
+        // -----------------------------------------------------------------------
+        // Cache Monitor section (developer tooling; master switch default: off).
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_cache_monitor_section',
+            __('Cache Monitor', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
 
+        add_settings_field(
+            'aips_cache_monitor_enabled',
+            __('Enable Cache Monitor?', 'ai-post-scheduler'),
+            function() { $this->ui->render_yes_no_radio('aips_cache_monitor_enabled', __('Developer tool: inspect cache entries, tags, and events under Diagnostics → Cache Monitor. Adds bookkeeping queries to every request while enabled — leave off in production.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
 
+        add_settings_field(
+            'aips_cache_monitor_index_enabled',
+            __('Track Cache Index?', 'ai-post-scheduler'),
+            function() { $this->ui->render_yes_no_radio('aips_cache_monitor_index_enabled', __('Maintain a metadata index of cache entries so the monitor can list them. Requires the Cache Monitor to be enabled.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_metrics_enabled',
+            __('Record Cache Metrics?', 'ai-post-scheduler'),
+            function() { $this->ui->render_yes_no_radio('aips_cache_monitor_metrics_enabled', __('Record hit/miss/invalidation events for the monitor\'s Operations and Events views.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_event_retention_days',
+            __('Event Retention (days)', 'ai-post-scheduler'),
+            function() { $this->ui->render_number_field('aips_cache_monitor_event_retention_days', 1, 365, __('Days to keep monitor events before daily maintenance prunes them.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_max_index_entries',
+            __('Max Index Entries', 'ai-post-scheduler'),
+            function() { $this->ui->render_number_field('aips_cache_monitor_max_index_entries', 100, 100000, __('Upper bound on index rows; oldest rows are trimmed beyond this.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_live_refresh_enabled',
+            __('Live Refresh?', 'ai-post-scheduler'),
+            function() { $this->ui->render_yes_no_radio('aips_cache_monitor_live_refresh_enabled', __('Auto-refresh the monitor overview while the page is open.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
+
+        add_settings_field(
+            'aips_cache_monitor_live_refresh_interval',
+            __('Live Refresh Interval (seconds)', 'ai-post-scheduler'),
+            function() { $this->ui->render_number_field('aips_cache_monitor_live_refresh_interval', 5, 300, __('Seconds between live refreshes.', 'ai-post-scheduler')); },
+            'aips-settings',
+            'aips_cache_monitor_section'
+        );
 
 
 

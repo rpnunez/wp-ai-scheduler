@@ -737,6 +737,9 @@ final class AI_Post_Scheduler {
 
         // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
         add_action('aips_cache_monitor_maintenance', function() {
+            if (!AIPS_Cache_Index::is_monitor_enabled()) {
+                return;
+            }
             $repository  = new AIPS_Cache_Monitor_Repository();
             $cache_index = new AIPS_Cache_Index();
             $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
