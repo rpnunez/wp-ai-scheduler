@@ -98,24 +98,31 @@ class AIPS_Generated_Posts_Controller {
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
 
+		// Batch schedule lookups for all templates on this page
+		$template_ids = array();
+		foreach ($history['items'] as $item) {
+			if (!empty( $item->template_id )) {
+				$template_ids[] = (int) $item->template_id;
+			}
+		}
+		$schedules_by_template = $this->schedule_repository->get_by_templates( $template_ids );
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
 			if (!$item->post_id) {
 				continue;
 			}
-			
+
 			$post = get_post($item->post_id);
 			if (!$post) {
 				continue;
 			}
-			
+
 			// Get most recent schedule for this template (if exists)
 			$schedule = null;
-			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
+			if ($item->template_id && !empty( $schedules_by_template[ (int) $item->template_id ] )) {
+				$schedule = $schedules_by_template[ (int) $item->template_id ][0];
 			}
 			
 			// Format source information

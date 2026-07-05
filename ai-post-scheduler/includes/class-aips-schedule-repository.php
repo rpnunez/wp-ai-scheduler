@@ -184,7 +184,34 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
         ", $template_id));
     }
-    
+
+    /**
+     * Fetch schedules for multiple templates in one query.
+     *
+     * @param array $template_ids Template IDs.
+     * @return array<int, array<object>> Schedules grouped by template_id, each ordered by next_run ASC.
+     */
+    public function get_by_templates( array $template_ids ) {
+        $template_ids = array_values( array_filter( array_unique( array_map( 'absint', $template_ids ) ) ) );
+        if ( empty( $template_ids ) ) {
+            return array();
+        }
+
+        $placeholders = implode( ',', array_fill( 0, count( $template_ids ), '%d' ) );
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $rows = $this->wpdb->get_results( $this->wpdb->prepare(
+            "SELECT * FROM {$this->schedule_table} WHERE template_id IN ({$placeholders}) ORDER BY next_run ASC",
+            $template_ids
+        ) );
+
+        $grouped = array();
+        foreach ( (array) $rows as $row ) {
+            $grouped[ (int) $row->template_id ][] = $row;
+        }
+
+        return $grouped;
+    }
+
     /**
      * Create a new schedule.
      *
