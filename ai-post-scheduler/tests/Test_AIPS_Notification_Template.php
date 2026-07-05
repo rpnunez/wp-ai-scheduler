@@ -605,6 +605,61 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		$this->assertEquals(1, $this->repository->count_unread());
 
+		$notifications = $this->repository->get_unread(1);
+		$this->assertSame('Partial generation completed', $notifications[0]->title);
+
+		wp_delete_post($post_id, true);
+	}
+
+	public function test_post_ready_for_review_uses_action_title_without_post_name() {
+		update_option('aips_notification_preferences', array(
+			'post_ready_for_review' => 'db',
+		));
+
+		$post_id = wp_insert_post(array(
+			'post_title'  => 'Review Me',
+			'post_status' => 'draft',
+			'post_type'   => 'post',
+		));
+
+		$this->notifications->post_ready_for_review(array(
+			'post_id'       => $post_id,
+			'dedupe_key'    => 'test_post_ready_for_review_action_title_' . $post_id,
+			'dedupe_window' => 0,
+		));
+
+		$notifications = $this->repository->get_unread(1);
+		$this->assertCount(1, $notifications);
+		$this->assertSame('Post ready for review', $notifications[0]->title);
+		$this->assertStringContainsString('Review Me', $notifications[0]->message);
+		$this->assertStringNotContainsString('Review Me', $notifications[0]->title);
+
+		wp_delete_post($post_id, true);
+	}
+
+	public function test_manual_generation_completed_uses_action_title_without_post_name() {
+		update_option('aips_notification_preferences', array(
+			'manual_generation_completed' => 'db',
+		));
+
+		$post_id = wp_insert_post(array(
+			'post_title'  => 'Generated Example',
+			'post_status' => 'draft',
+			'post_type'   => 'post',
+		));
+
+		$this->notifications->manual_generation_completed(array(
+			'post_id'       => $post_id,
+			'dedupe_key'    => 'test_manual_generation_completed_action_title_' . $post_id,
+			'dedupe_window' => 0,
+		));
+
+		$notifications = $this->repository->get_unread(1);
+		$this->assertCount(1, $notifications);
+		$this->assertSame('Manual generation completed', $notifications[0]->title);
+		$this->assertStringContainsString('Generated Example', $notifications[0]->message);
+		$this->assertStringNotContainsString('Generated Example', $notifications[0]->title);
+
 		wp_delete_post($post_id, true);
 	}
 
@@ -775,7 +830,7 @@ class AIPS_Test_Notifications_Repository extends AIPS_Notifications_Repository {
 		return $id;
 	}
 
-	public function count_unread() {
+	public function count_unread($user_id = 0) {
 		$unread = array_filter($this->notifications, function($notification) {
 			return empty($notification->is_read);
 		});
@@ -783,7 +838,7 @@ class AIPS_Test_Notifications_Repository extends AIPS_Notifications_Repository {
 		return count($unread);
 	}
 
-	public function get_unread($limit = 20) {
+	public function get_unread($limit = 20, $user_id = 0) {
 		$limit = absint($limit);
 		if ($limit < 1) {
 			$limit = 20;
@@ -794,6 +849,25 @@ class AIPS_Test_Notifications_Repository extends AIPS_Notifications_Repository {
 		}));
 
 		return array_slice(array_reverse($unread), 0, $limit);
+	}
+
+	public function mark_as_read($id, $user_id = 0) {
+		foreach ($this->notifications as $index => $notification) {
+			if ((int) $notification->id === (int) $id) {
+				$this->notifications[$index]->is_read = 1;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public function mark_all_as_read($user_id = 0) {
+		foreach ($this->notifications as $index => $notification) {
+			$this->notifications[$index]->is_read = 1;
+		}
+
+		return true;
 	}
 
 	public function was_recently_sent($dedupe_key, $window_seconds = 3600) {

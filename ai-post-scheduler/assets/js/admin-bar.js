@@ -55,18 +55,45 @@
 		},
 
 		/**
-		 * Build the "no new notifications" placeholder list item HTML.
+		 * Build the "no notifications" placeholder list item HTML.
 		 *
 		 * @return {string} HTML string.
 		 */
 		adminBarNoNotificationsHtml: function () {
-			var noNotifText = wp && wp.i18n
-				? wp.i18n.__('No new notifications', 'ai-post-scheduler')
-				: 'No new notifications';
+			var noNotifText = window.wp && window.wp.i18n
+				? wp.i18n.__('No notifications', 'ai-post-scheduler')
+				: 'No notifications';
 			return '<li id="wp-admin-bar-aips-toolbar-no-notifications" class="aips-toolbar-no-notifications ab-empty-item">'
 				+ '<span class="ab-item aips-toolbar-empty">'
 				+ $('<div>').text(noNotifText).html()
 				+ '</span></li>';
+		},
+
+		/**
+		 * Update the notifications header summary based on current DOM and unread count.
+		 *
+		 * @param {number} count Remaining unread count for the current user.
+		 */
+		adminBarRefreshHeader: function (count) {
+			var l10n       = window.aipsAdminBarL10n || {};
+			var $header    = $('#wp-admin-bar-aips-toolbar-notifications-header');
+			var $summary   = $header.find('.aips-toolbar-notif-summary');
+			var shownCount = $('#wpadminbar li.aips-toolbar-notification').length;
+			var summary;
+
+			if (!$summary.length || count <= 0) {
+				return;
+			}
+
+			if (count > shownCount && shownCount > 0) {
+				summary = (l10n.showingSummaryTemplate || 'Showing %1$d of %2$d unread')
+					.replace('%1$d', shownCount)
+					.replace('%2$d', count);
+			} else {
+				summary = String(count) + ' ' + (l10n.unreadSummaryLabel || 'unread');
+			}
+
+			$summary.text(summary);
 		},
 
 		/**
@@ -102,6 +129,8 @@
 							$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(
 								AIPS.adminBarNoNotificationsHtml()
 							);
+						} else {
+							AIPS.adminBarRefreshHeader(response.data.unread_count || 0);
 						}
 					});
 					AIPS.adminBarUpdateBadge(response.data.unread_count);
@@ -139,6 +168,7 @@
 				if (response && response.success) {
 					$('#wpadminbar li.aips-toolbar-notification').remove();
 					$('#wp-admin-bar-aips-toolbar-notifications-header').remove();
+					$('#wp-admin-bar-aips-toolbar-no-notifications').remove();
 
 					// Add "no notifications" placeholder inside the submenu <ul>.
 					$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(

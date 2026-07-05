@@ -38,14 +38,14 @@ interface AIPS_Notifications_Repository_Interface {
 	 * @param int $limit Max rows.
 	 * @return array
 	 */
-	public function get_unread($limit = 20);
+	public function get_unread($limit = 20, $user_id = 0);
 
 	/**
 	 * Count unread notifications.
 	 *
 	 * @return int
 	 */
-	public function count_unread();
+	public function count_unread($user_id = 0);
 
 	/**
 	 * Mark one notification as read.
@@ -53,14 +53,14 @@ interface AIPS_Notifications_Repository_Interface {
 	 * @param int $id Notification ID.
 	 * @return bool
 	 */
-	public function mark_as_read($id);
+	public function mark_as_read($id, $user_id = 0);
 
 	/**
 	 * Mark all notifications as read.
 	 *
 	 * @return int|false
 	 */
-	public function mark_all_as_read();
+	public function mark_all_as_read($user_id = 0);
 
 	/**
 	 * Check whether a dedupe key was sent recently.

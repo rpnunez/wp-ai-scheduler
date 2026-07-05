@@ -1,3 +1,12 @@
+## [3.0.1] - 2026-07-05
+
+### Added
+- **Per-User Notification Read State**: Added notification read receipts so admin-bar unread counts and mark-as-read actions are scoped to the current admin user.
+
+### Changed
+- **AI Scheduler Admin Bar**: Rebuilt the flyout with a 2-column quick-links panel, wider popup layout, aligned `Context` and `Mark as Read` actions, and clearer unread summary copy.
+- **Notification Titles**: Normalized admin-bar notification titles to short action labels while keeping post/template details in the message body.
+
 ## [3.0.0] - 2026-06-21
 
 ### Added

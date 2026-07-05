@@ -93,6 +93,7 @@ class AIPS_Notification_Senders {
 			$this->dispatcher,
 			'author_topics_generated',
 			array(
+				'title'    => $this->get_admin_bar_title( 'author_topics_generated', __('Author topics generated', 'ai-post-scheduler') ),
 				'channels' => array(AIPS_Notifications::CHANNEL_DB),
 				'url'      => $url,
 				'message'  => $message,
@@ -109,7 +110,7 @@ class AIPS_Notification_Senders {
 	public function generation_failed( array $payload ) {
 		$resource_label = !empty($payload['resource_label']) ? $payload['resource_label'] : __('AI generation request', 'ai-post-scheduler');
 		$error_message  = !empty($payload['error_message'])  ? $payload['error_message']  : __('Unknown error', 'ai-post-scheduler');
-		$title          = sprintf(__('Generation failed: %s', 'ai-post-scheduler'), $resource_label);
+		$title          = $this->get_admin_bar_title( 'generation_failed', __('Generation failed', 'ai-post-scheduler') );
 		$message        = sprintf(__('Generation failed for %1$s. Error: %2$s', 'ai-post-scheduler'), $resource_label, $error_message);
 
 		call_user_func(
@@ -137,7 +138,7 @@ class AIPS_Notification_Senders {
 	public function quota_alert( array $payload ) {
 		$request_type  = !empty($payload['request_type'])  ? $payload['request_type']  : __('request', 'ai-post-scheduler');
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Quota threshold reached.', 'ai-post-scheduler');
-		$title         = sprintf(__('Quota alert: %s', 'ai-post-scheduler'), $request_type);
+		$title         = $this->get_admin_bar_title( 'quota_alert', __('Quota alert', 'ai-post-scheduler') );
 		$message       = sprintf(__('AI requests are being blocked for %1$s operations. Error: %2$s', 'ai-post-scheduler'), $request_type, $error_message);
 
 		call_user_func(
@@ -164,7 +165,7 @@ class AIPS_Notification_Senders {
 	 */
 	public function integration_error( array $payload ) {
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('AI integration unavailable.', 'ai-post-scheduler');
-		$title         = __('AI integration error', 'ai-post-scheduler');
+		$title         = $this->get_admin_bar_title( 'integration_error', __('AI integration error', 'ai-post-scheduler') );
 		$message       = sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
 
 		call_user_func(
@@ -192,7 +193,7 @@ class AIPS_Notification_Senders {
 	public function scheduler_error( array $payload ) {
 		$schedule_name = !empty($payload['schedule_name']) ? $payload['schedule_name'] : __('Scheduled run', 'ai-post-scheduler');
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown scheduler error', 'ai-post-scheduler');
-		$title         = sprintf(__('Scheduler error: %s', 'ai-post-scheduler'), $schedule_name);
+		$title         = $this->get_admin_bar_title( 'scheduler_error', __('Scheduler error', 'ai-post-scheduler') );
 		$message       = sprintf(__('The scheduler could not complete "%1$s". Error: %2$s', 'ai-post-scheduler'), $schedule_name, $error_message);
 
 		call_user_func(
@@ -219,7 +220,7 @@ class AIPS_Notification_Senders {
 	 */
 	public function system_error( array $payload ) {
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown system error', 'ai-post-scheduler');
-		$title         = !empty($payload['title'])         ? $payload['title']         : __('System error', 'ai-post-scheduler');
+		$title         = !empty($payload['title']) ? $payload['title'] : $this->get_admin_bar_title( 'system_error', __('System error', 'ai-post-scheduler') );
 		$message       = sprintf(__('A system-level plugin error occurred. Error: %s', 'ai-post-scheduler'), $error_message);
 
 		call_user_func(
@@ -249,11 +250,7 @@ class AIPS_Notification_Senders {
 		$post_count    = count($post_ids);
 		$template_name = !empty($payload['template_name']) ? $payload['template_name'] : __('Template', 'ai-post-scheduler');
 
-		$title = sprintf(
-			_n('%1$d post generated from "%2$s"', '%1$d posts generated from "%2$s"', $post_count, 'ai-post-scheduler'),
-			$post_count,
-			$template_name
-		);
+		$title = $this->get_admin_bar_title( 'template_generated', __('Scheduled generation completed', 'ai-post-scheduler') );
 
 		$message = sprintf(
 			_n('Scheduled run generated %1$d post for template "%2$s".', 'Scheduled run generated %1$d posts for template "%2$s".', $post_count, 'ai-post-scheduler'),
@@ -290,7 +287,7 @@ class AIPS_Notification_Senders {
 		$post       = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title   = sprintf(__('Manual generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$title   = $this->get_admin_bar_title( 'manual_generation_completed', __('Manual generation completed', 'ai-post-scheduler') );
 		$message = sprintf(__('Manual generation created post "%s".', 'ai-post-scheduler'), $post_title);
 		$url     = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
 
@@ -321,7 +318,7 @@ class AIPS_Notification_Senders {
 		$post       = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title   = sprintf(__('Post ready for review: %s', 'ai-post-scheduler'), $post_title);
+		$title   = $this->get_admin_bar_title( 'post_ready_for_review', __('Post ready for review', 'ai-post-scheduler') );
 		$message = sprintf(__('Generated post "%s" is awaiting review.', 'ai-post-scheduler'), $post_title);
 		$url     = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
 
@@ -351,7 +348,7 @@ class AIPS_Notification_Senders {
 		$post_id    = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
 		$post_label = !empty($payload['post_title']) ? $payload['post_title'] : sprintf(__('Post #%d', 'ai-post-scheduler'), $post_id);
 
-		$title   = sprintf(__('Post rejected: %s', 'ai-post-scheduler'), $post_label);
+		$title   = $this->get_admin_bar_title( 'post_rejected', __('Post rejected', 'ai-post-scheduler') );
 		$message = sprintf(__('Generated draft "%s" was removed from the review queue.', 'ai-post-scheduler'), $post_label);
 		$url     = !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
 
@@ -382,7 +379,7 @@ class AIPS_Notification_Senders {
 		$post       = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title   = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$title   = $this->get_admin_bar_title( 'partial_generation_completed', __('Partial generation completed', 'ai-post-scheduler') );
 		$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
 		$url     = !empty($payload['url']) ? $payload['url'] : admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
 
@@ -720,7 +717,7 @@ class AIPS_Notification_Senders {
 			$this->dispatcher,
 			'research_topics_ready',
 			array(
-				'title'         => sprintf(__('Research topics ready (%d)', 'ai-post-scheduler'), $count),
+				'title'         => $this->get_admin_bar_title( 'research_topics_ready', __('Research topics ready', 'ai-post-scheduler') ),
 				'message'       => sprintf(__('Scheduled research found %1$d new topic(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
 				'url'           => AIPS_Admin_Menu_Helper::get_page_url('aips-research'),
 				'level'         => 'info',
@@ -732,5 +729,16 @@ class AIPS_Notification_Senders {
 				'dedupe_window' => 300,
 			)
 		);
+	}
+
+	/**
+	 * Resolve the short admin-bar title for a notification type.
+	 *
+	 * @param string $type Notification type slug.
+	 * @param string $fallback Fallback title.
+	 * @return string
+	 */
+	private function get_admin_bar_title( $type, $fallback ) {
+		return AIPS_Notification_Registry::get_admin_bar_title( $type, $fallback );
 	}
 }

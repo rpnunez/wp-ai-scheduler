@@ -21,6 +21,7 @@ class AIPS_DB_Manager {
         'aips_author_topic_logs',
         'aips_topic_feedback',
         'aips_notifications',
+        'aips_notification_reads',
         'aips_sources',
         'aips_source_group_terms',
         'aips_sources_data',
@@ -82,6 +83,7 @@ class AIPS_DB_Manager {
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
         $table_notifications        = $tables['aips_notifications'];
+        $table_notification_reads   = $tables['aips_notification_reads'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_sources_data         = $tables['aips_sources_data'];
@@ -419,6 +421,15 @@ class AIPS_DB_Manager {
             KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_notification_reads (
+            notification_id bigint(20) NOT NULL,
+            user_id bigint(20) NOT NULL,
+            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (notification_id, user_id),
+            KEY user_id (user_id),
+            KEY read_at (read_at)
+        ) $charset_collate;";
+
         $sql[] = "CREATE TABLE $table_sources (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             url varchar(2083) NOT NULL,
@@ -649,6 +660,11 @@ class AIPS_DB_Manager {
         $schema = $instance->get_schema();
         global $wpdb;
 
+        $preflight_result = self::repair_tables_before_dbdelta($schema);
+        if (is_wp_error($preflight_result)) {
+            return $preflight_result;
+        }
+
         foreach ($schema as $sql) {
             $pre_error = $wpdb->last_error;
             dbDelta($sql);
@@ -671,6 +687,187 @@ class AIPS_DB_Manager {
 
         // Record that the DB schema is now at the current plugin version
         update_option('aips_db_version', AIPS_VERSION);
+
+        return true;
+    }
+
+    /**
+     * Repair legacy table states that would cause dbDelta to fail before it runs.
+     *
+     * Some older installs can lose the single-column `id` primary key on a table
+     * while still containing rows with duplicate or zero ids. In that state,
+     * dbDelta will fail when it attempts to re-add the primary key. Repair those
+     * ids up front so dbDelta can safely normalize the schema.
+     *
+     * @param array $schema Array of CREATE TABLE statements from get_schema().
+     * @return true|WP_Error
+     */
+    private static function repair_tables_before_dbdelta($schema) {
+        foreach ($schema as $sql) {
+            $table_name = self::extract_table_name_from_schema_sql($sql);
+            if ('' === $table_name || !self::schema_uses_single_id_primary_key($sql)) {
+                continue;
+            }
+
+            $repair_result = self::maybe_repair_single_id_primary_key_table($table_name);
+            if (is_wp_error($repair_result)) {
+                return $repair_result;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Extract the fully-qualified table name from a CREATE TABLE statement.
+     *
+     * @param string $sql CREATE TABLE SQL statement.
+     * @return string
+     */
+    private static function extract_table_name_from_schema_sql($sql) {
+        if (!is_string($sql) || '' === $sql) {
+            return '';
+        }
+
+        if (!preg_match('/CREATE TABLE\s+`?([^\s(]+)`?\s*\(/i', $sql, $matches)) {
+            return '';
+        }
+
+        return (string) $matches[1];
+    }
+
+    /**
+     * Determine whether the schema expects a single-column primary key on `id`.
+     *
+     * @param string $sql CREATE TABLE SQL statement.
+     * @return bool
+     */
+    private static function schema_uses_single_id_primary_key($sql) {
+        if (!is_string($sql) || '' === $sql) {
+            return false;
+        }
+
+        return 1 === preg_match('/PRIMARY KEY\s*\(\s*`?id`?\s*\)/i', $sql);
+    }
+
+    /**
+     * Repair duplicate/non-positive ids on legacy tables that are missing a primary key.
+     *
+     * @param string $table Fully-qualified table name.
+     * @return true|WP_Error
+     */
+    private static function maybe_repair_single_id_primary_key_table($table) {
+        global $wpdb;
+
+        if (!is_string($table) || '' === $table) {
+            return true;
+        }
+
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+        if ($table_exists !== $table) {
+            return true;
+        }
+
+        $id_column = $wpdb->get_row($wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            'id'
+        ));
+        if (!$id_column) {
+            return true;
+        }
+
+        $primary_key = $wpdb->get_row(
+            "SHOW INDEX FROM `{$table}` WHERE Key_name = 'PRIMARY'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+        if ($primary_key) {
+            return true;
+        }
+
+        $invalid_ids = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM (
+                SELECT id
+                FROM `{$table}`
+                GROUP BY id
+                HAVING id <= 0 OR COUNT(*) > 1
+            ) AS invalid_ids" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+
+        if ($invalid_ids <= 0) {
+            return true;
+        }
+
+        $repair_column = 'aips_repair_row_id';
+        $repair_exists = $wpdb->get_row($wpdb->prepare(
+            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $repair_column
+        ));
+
+        if (!$repair_exists) {
+            $add_result = $wpdb->query(
+                "ALTER TABLE `{$table}` ADD COLUMN `{$repair_column}` bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            );
+
+            if (false === $add_result) {
+                return new WP_Error('db_install_failed', 'Failed to add temporary repair primary key for ' . $table . ': ' . $wpdb->last_error);
+            }
+        }
+
+        $rows = $wpdb->get_results(
+            "SELECT `{$repair_column}` AS repair_row_id, id
+            FROM `{$table}`
+            ORDER BY id ASC, `{$repair_column}` ASC", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            ARRAY_A
+        );
+
+        if (empty($rows)) {
+            $cleanup_result = $wpdb->query(
+                "ALTER TABLE `{$table}` DROP PRIMARY KEY, DROP COLUMN `{$repair_column}`" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            );
+
+            if (false === $cleanup_result) {
+                return new WP_Error('db_install_failed', 'Failed to clean temporary repair key for ' . $table . ': ' . $wpdb->last_error);
+            }
+
+            return true;
+        }
+
+        $next_id = (int) $wpdb->get_var(
+            "SELECT MAX(id) FROM `{$table}` WHERE id > 0" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+        $seen_ids = array();
+
+        foreach ($rows as $row) {
+            $current_id = isset($row['id']) ? (int) $row['id'] : 0;
+            $row_id     = isset($row['repair_row_id']) ? (int) $row['repair_row_id'] : 0;
+
+            if ($current_id > 0 && !isset($seen_ids[$current_id])) {
+                $seen_ids[$current_id] = true;
+                continue;
+            }
+
+            $next_id++;
+            $update_result = $wpdb->update(
+                $table,
+                array('id' => $next_id),
+                array($repair_column => $row_id),
+                array('%d'),
+                array('%d')
+            );
+
+            if (false === $update_result) {
+                return new WP_Error('db_install_failed', 'Failed to repair duplicate ids for ' . $table . ': ' . $wpdb->last_error);
+            }
+
+            $seen_ids[$next_id] = true;
+        }
+
+        $cleanup_result = $wpdb->query(
+            "ALTER TABLE `{$table}` DROP PRIMARY KEY, DROP COLUMN `{$repair_column}`" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        );
+
+        if (false === $cleanup_result) {
+            return new WP_Error('db_install_failed', 'Failed to remove temporary repair key for ' . $table . ': ' . $wpdb->last_error);
+        }
 
         return true;
     }
@@ -754,6 +951,9 @@ class AIPS_DB_Manager {
             'aips_notifications' => array(
                 array( 'read_at', false ),
                 array( 'created_at', false ),
+            ),
+            'aips_notification_reads' => array(
+                array( 'read_at', false ),
             ),
             'aips_sources' => array(
                 array( 'last_fetched_at', false ),
