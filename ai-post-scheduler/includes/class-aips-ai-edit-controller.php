@@ -560,7 +560,7 @@ class AIPS_AI_Edit_Controller {
 		// Restore the value to the post
 		$post_data = array('ID' => $post_id);
 		$restored_value = $revision_to_restore['value'];
-		
+
 		switch ($component) {
 			case 'title':
 				$post_data['post_title'] = sanitize_text_field($restored_value);
@@ -572,19 +572,22 @@ class AIPS_AI_Edit_Controller {
 				$post_data['post_content'] = wp_kses_post($restored_value);
 				break;
 			case 'featured_image':
-				// For featured image, the value is an array with attachment_id
-				if (is_array($restored_value) && isset($restored_value['attachment_id'])) {
-					$attachment_id = absint($restored_value['attachment_id']);
-					if ($attachment_id > 0) {
-						set_post_thumbnail($post_id, $attachment_id);
-					} else {
-						delete_post_thumbnail($post_id);
-					}
-					$restored_value = array(
-						'attachment_id' => $attachment_id,
-						'url' => $attachment_id ? wp_get_attachment_url($attachment_id) : '',
-					);
+				$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
+				if (is_wp_error($restored_featured_image)) {
+					AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
 				}
+
+				$attachment_id = $restored_featured_image['attachment_id'];
+				if ($attachment_id > 0) {
+					$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
+					if (false === $thumbnail_result) {
+						AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
+					}
+				} else {
+					delete_post_thumbnail($post_id);
+				}
+
+				$restored_value = $restored_featured_image;
 				break;
 		}
 		
@@ -677,6 +680,35 @@ class AIPS_AI_Edit_Controller {
 			default:
 				return '';
 		}
+	}
+
+	/**
+	 * Validate and normalize a featured image revision payload before restore.
+	 *
+	 * Featured image revisions are stored as arrays with attachment_id/url. If
+	 * that shape is missing, the restore should fail instead of silently
+	 * pretending the component was restored.
+	 *
+	 * @param mixed $value Raw revision payload.
+	 * @return array|WP_Error
+	 */
+	private function normalize_featured_image_revision_value($value) {
+		if (!is_array($value) || !array_key_exists('attachment_id', $value)) {
+			return new WP_Error('invalid_featured_image_revision', __('Invalid featured image revision data.', 'ai-post-scheduler'));
+		}
+
+		$attachment_id = absint($value['attachment_id']);
+		if ($attachment_id > 0) {
+			$attachment = get_post($attachment_id);
+			if (!$attachment || 'attachment' !== $attachment->post_type) {
+				return new WP_Error('invalid_featured_image_revision', __('Invalid featured image revision data.', 'ai-post-scheduler'));
+			}
+		}
+
+		return array(
+			'attachment_id' => $attachment_id,
+			'url' => $attachment_id ? wp_get_attachment_url($attachment_id) : '',
+		);
 	}
 
 	/**

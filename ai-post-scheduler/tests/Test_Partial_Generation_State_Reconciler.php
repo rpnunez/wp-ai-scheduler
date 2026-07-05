@@ -243,6 +243,42 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The after-insert callback should remain callable when WordPress does not
+	 * provide a post_before argument.
+	 */
+	public function test_after_insert_hook_accepts_optional_post_before_argument() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'AI Generated Post: Optional Argument',
+			'post_excerpt' => '',
+			'post_content' => '',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title'     => false,
+			'post_excerpt'   => false,
+			'featured_image' => true,
+			'post_content'   => false,
+		)));
+		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
+		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+
+		wp_update_post(array(
+			'ID'           => $post_id,
+			'post_excerpt' => 'Optional argument excerpt',
+			'post_content' => 'Optional argument content',
+		));
+
+		$this->reconciler->on_after_insert_post($post_id, get_post($post_id), true);
+
+		$this->assertSame('false', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
+		$statuses = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_excerpt']);
+		$this->assertTrue($statuses['post_content']);
+	}
+
+	/**
 	 * The featured-image path must reconcile after the thumbnail is persisted.
 	 */
 	public function test_reconciles_featured_image_after_thumbnail_update() {

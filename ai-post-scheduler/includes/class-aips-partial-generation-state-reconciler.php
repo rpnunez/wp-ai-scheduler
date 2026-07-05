@@ -57,7 +57,7 @@ class AIPS_Partial_Generation_State_Reconciler {
 	 * @param WP_Post|null $post_before Previous post object when available.
 	 * @return void
 	 */
-	public function on_after_insert_post($post_id, $post, $update, $post_before) {
+	public function on_after_insert_post($post_id, $post, $update, $post_before = null) {
 		$this->reconcile_from_post_object($post_id, $post, $update, 'wp_after_insert_post');
 	}
 

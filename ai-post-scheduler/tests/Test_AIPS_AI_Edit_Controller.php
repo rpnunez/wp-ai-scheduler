@@ -425,6 +425,76 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Invalid featured-image revision payloads should be rejected instead of
+	 * silently falling back to a no-op restore.
+	 */
+	public function test_restore_component_revision_rejects_invalid_featured_image_payload() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Featured Image Restore Target',
+		));
+
+		$current_attachment_id = $this->factory->post->create(array(
+			'post_type'      => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_status'    => 'inherit',
+		));
+		update_post_meta($post_id, '_thumbnail_id', $current_attachment_id);
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			'ai_response',
+			array(
+				'message' => 'Broken Featured Image Snapshot',
+				'output' => array(
+					'url' => 'https://example.com/broken.jpg',
+				),
+				'context' => array(
+					'component' => 'featured_image',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'featured_image' => false,
+			'post_content'   => true,
+		)));
+		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
+		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+
+		$_POST = array(
+			'action' => 'aips_restore_component_revision',
+			'post_id' => $post_id,
+			'component' => 'featured_image',
+			'revision_id' => $revision_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Invalid featured image revision data', $response['data']['message']);
+		$this->assertSame($current_attachment_id, get_post_thumbnail_id($post_id));
+		$this->assertSame('true', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
+	}
+
+	/**
 	 * Test restore_component_revision snapshots a manual draft before overwrite.
 	 */
 	public function test_restore_component_revision_captures_manual_snapshot() {
