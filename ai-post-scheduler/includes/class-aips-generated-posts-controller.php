@@ -93,6 +93,8 @@ class AIPS_Generated_Posts_Controller {
 		// Prime post caches for the generated posts loop
 		$this->prime_history_post_caches( $history['items'] );
 
+		$this->prime_source_caches( $history['items'] );
+
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
 		$date_format = get_option('date_format');
 		$time_format = get_option('time_format');
@@ -168,6 +170,8 @@ class AIPS_Generated_Posts_Controller {
 		// Prime post caches for the partial generations loop
 		$this->prime_history_post_caches( $partial_generations['items'] );
 
+		$this->prime_source_caches( $partial_generations['items'] );
+
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
 			if (!$item->post_id) {
@@ -232,6 +236,46 @@ class AIPS_Generated_Posts_Controller {
 		}
 		if (!empty( $post_ids ) && function_exists( '_prime_post_caches' )) {
 			_prime_post_caches( array_unique( $post_ids ), false, false );
+		}
+	}
+
+	/**
+	 * Batch-load authors and topics referenced by a page of history items
+	 * into the per-request memo caches consumed by format_source().
+	 *
+	 * @param array $items History rows.
+	 * @return void
+	 */
+	private function prime_source_caches( array $items ) {
+		$author_ids = array();
+		$topic_ids  = array();
+		foreach ($items as $item) {
+			if (!empty( $item->author_id ) && !isset( $this->author_cache[ $item->author_id ] )) {
+				$author_ids[] = (int) $item->author_id;
+			}
+			if (!empty( $item->topic_id ) && !isset( $this->topic_cache[ $item->topic_id ] )) {
+				$topic_ids[] = (int) $item->topic_id;
+			}
+		}
+
+		if (!empty( $author_ids )) {
+			$authors_repository = new AIPS_Authors_Repository();
+			foreach ($author_ids as $id) {
+				$this->author_cache[ $id ] = null;
+			}
+			foreach ($authors_repository->get_by_ids( $author_ids ) as $id => $row) {
+				$this->author_cache[ $id ] = $row;
+			}
+		}
+
+		if (!empty( $topic_ids )) {
+			$topics_repository = new AIPS_Author_Topics_Repository();
+			foreach ($topic_ids as $id) {
+				$this->topic_cache[ $id ] = null;
+			}
+			foreach ($topics_repository->get_by_ids( $topic_ids ) as $id => $row) {
+				$this->topic_cache[ $id ] = $row;
+			}
 		}
 	}
 
@@ -531,12 +575,12 @@ class AIPS_Generated_Posts_Controller {
 		if (!empty($history_item->template_id)) {
 			// Template-based generation with caching
 			$template_id = $history_item->template_id;
-			
-			if (!isset($this->template_cache[$template_id])) {
+
+			if (!array_key_exists($template_id, $this->template_cache)) {
 				$template_repository = new AIPS_Template_Repository();
 				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
 			}
-			
+
 			$template = $this->template_cache[$template_id];
 			$source = __('Template', 'ai-post-scheduler');
 			if ($template && isset($template->name)) {
@@ -546,13 +590,13 @@ class AIPS_Generated_Posts_Controller {
 			// Author Topic-based generation with caching
 			$author_id = $history_item->author_id;
 			$topic_id = $history_item->topic_id;
-			
-			if (!isset($this->author_cache[$author_id])) {
+
+			if (!array_key_exists($author_id, $this->author_cache)) {
 				$authors_repository = new AIPS_Authors_Repository();
 				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
 			}
-			
-			if (!isset($this->topic_cache[$topic_id])) {
+
+			if (!array_key_exists($topic_id, $this->topic_cache)) {
 				$topics_repository = new AIPS_Author_Topics_Repository();
 				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
 			}
