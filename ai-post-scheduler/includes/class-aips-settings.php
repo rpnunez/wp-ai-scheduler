@@ -207,6 +207,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_monitor_live_refresh_interval'],
 			),
+			'aips_query_dump_enabled' => array(
+				'sanitize_callback' => array($ui, 'sanitize_yes_no'),
+				'default'           => $defaults['aips_query_dump_enabled'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
