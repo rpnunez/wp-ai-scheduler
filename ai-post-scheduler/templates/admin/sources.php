@@ -51,11 +51,11 @@ $is_embedded_sources_view = !empty($embedded);
 				</div>
 				<div class="aips-page-actions">
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
-						<span class="dashicons dashicons-category"></span>
+						<span class="dashicons dashicons-category" aria-hidden="true"></span>
 						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
 					</button>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
+						<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
 						<?php esc_html_e('Add Source', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -131,7 +131,7 @@ $is_embedded_sources_view = !empty($embedded);
 							<td class="column-fetch-status">
 								<?php if ($content_count_val > 0): ?>
 									<span class="aips-badge aips-badge-success" title="<?php echo esc_attr($last_fetched_at); ?>">
-										<span class="dashicons dashicons-archive"></span>
+										<span class="dashicons dashicons-archive" aria-hidden="true"></span>
 										<?php
 										printf(
 											/* translators: %d = number of archived content snapshots */
@@ -142,12 +142,12 @@ $is_embedded_sources_view = !empty($embedded);
 									</span>
 								<?php elseif ($fetch_status_val === 'failed'): ?>
 									<span class="aips-badge aips-badge-warning">
-										<span class="dashicons dashicons-warning"></span>
+										<span class="dashicons dashicons-warning" aria-hidden="true"></span>
 										<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
 									</span>
 								<?php elseif ($fetch_status_val === 'pending'): ?>
 									<span class="aips-badge aips-badge-neutral">
-										<span class="dashicons dashicons-clock"></span>
+										<span class="dashicons dashicons-clock" aria-hidden="true"></span>
 										<?php esc_html_e('Pending', 'ai-post-scheduler'); ?>
 									</span>
 								<?php else: ?>
@@ -164,12 +164,12 @@ $is_embedded_sources_view = !empty($embedded);
 							<td class="column-status">
 								<?php if ($source->is_active): ?>
 									<span class="aips-badge aips-badge-success">
-										<span class="dashicons dashicons-yes-alt"></span>
+										<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 										<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 									</span>
 								<?php else: ?>
 									<span class="aips-badge aips-badge-neutral">
-										<span class="dashicons dashicons-minus"></span>
+										<span class="dashicons dashicons-minus" aria-hidden="true"></span>
 										<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
 									</span>
 								<?php endif; ?>
@@ -179,13 +179,13 @@ $is_embedded_sources_view = !empty($embedded);
 									<button class="aips-btn aips-btn-sm aips-edit-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-edit"></span>
+										<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
 									</button>
 									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Fetch content now', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-download"></span>
+										<span class="dashicons dashicons-download" aria-hidden="true"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Fetch Now', 'ai-post-scheduler'); ?></span>
 									</button>
 									<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
@@ -200,7 +200,7 @@ $is_embedded_sources_view = !empty($embedded);
 									<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source"
 										data-id="<?php echo esc_attr($source->id); ?>"
 										title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-trash"></span>
+										<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 										<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
 									</button>
 								</div>
@@ -370,7 +370,7 @@ $is_embedded_sources_view = !empty($embedded);
 										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-group"
 											data-term-id="<?php echo esc_attr($group->term_id); ?>"
 											title="<?php esc_attr_e('Delete group', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-trash"></span>
+											<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 										</button>
 									</td>
 								</tr>
@@ -387,7 +387,7 @@ $is_embedded_sources_view = !empty($embedded);
 				<input type="text" id="aips-new-group-name" class="regular-text"
 					placeholder="<?php esc_attr_e('New group name…', 'ai-post-scheduler'); ?>" style="flex:1;">
 				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-group-btn">
-					<span class="dashicons dashicons-plus-alt2"></span>
+					<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
 					<?php esc_html_e('Add Group', 'ai-post-scheduler'); ?>
 				</button>
 			</div>
