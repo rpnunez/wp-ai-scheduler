@@ -89,7 +89,10 @@ class AIPS_Generated_Posts_Controller {
 			'campaign_id' => $campaign_id,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
-		
+
+		// Prime post caches for the generated posts loop
+		$this->prime_history_post_caches( $history['items'] );
+
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
 		$date_format = get_option('date_format');
 		$time_format = get_option('time_format');
@@ -155,6 +158,9 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 
+		// Prime post caches for the partial generations loop
+		$this->prime_history_post_caches( $partial_generations['items'] );
+
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
 			if (!$item->post_id) {
@@ -202,6 +208,24 @@ class AIPS_Generated_Posts_Controller {
 		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
+	}
+
+	/**
+	 * Warm the WP post cache for a page of history items in one query.
+	 *
+	 * @param array $items History rows carrying post_id.
+	 * @return void
+	 */
+	private function prime_history_post_caches( array $items ) {
+		$post_ids = array();
+		foreach ($items as $item) {
+			if (!empty( $item->post_id )) {
+				$post_ids[] = (int) $item->post_id;
+			}
+		}
+		if (!empty( $post_ids ) && function_exists( '_prime_post_caches' )) {
+			_prime_post_caches( array_unique( $post_ids ), false, false );
+		}
 	}
 
 	/**
