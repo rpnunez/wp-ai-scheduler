@@ -20,6 +20,7 @@ class Test_AIPS_Query_Dump extends WP_UnitTestCase {
 		$lines = array_filter( explode( "\n", (string) file_get_contents( $path ) ) );
 		$last  = json_decode( end( $lines ), true );
 		$this->assertSame( 'SELECT 1', $last['sql'] );
+		$this->assertFileExists( dirname( $path ) . '/.htaccess' );
 		unlink( $path );
 	}
 

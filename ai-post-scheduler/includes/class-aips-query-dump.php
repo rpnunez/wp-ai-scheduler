@@ -23,7 +23,8 @@ class AIPS_Query_Dump {
 	/**
 	 * Write the current query buffer to a timestamped .jsonl file.
 	 *
-	 * @return string|null Absolute file path, or null when nothing was written.
+	 * @return string|null Absolute file path, or null when nothing was written or the
+	 *                      write failed partway through (the partial file is removed).
 	 */
 	public function capture(): ?string {
 		global $wpdb;
@@ -47,29 +48,54 @@ class AIPS_Query_Dump {
 			file_put_contents( $dir . '/index.php', "<?php // Silence is golden.\n" );
 		}
 
+		// Deny direct HTTP access to dump files (Apache only; nginx ignores .htaccess).
+		if (!file_exists( $dir . '/.htaccess' )) {
+			$htaccess = "<IfModule mod_authz_core.c>\n"
+				. "\tRequire all denied\n"
+				. "</IfModule>\n"
+				. "<IfModule !mod_authz_core.c>\n"
+				. "\tDeny from all\n"
+				. "</IfModule>\n";
+			file_put_contents( $dir . '/.htaccess', $htaccess );
+		}
+
 		$request = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : 'cli';
-		$path    = sprintf( '%s/queries-%s-%s.jsonl', $dir, gmdate( 'Ymd-His' ), wp_generate_password( 6, false ) );
+		$path    = sprintf( '%s/queries-%s-%s.jsonl', $dir, gmdate( 'Ymd-His' ), wp_generate_password( 16, false ) );
 
 		$handle = fopen( $path, 'w' );
 		if (false === $handle) {
 			return null;
 		}
 
-		fwrite( $handle, wp_json_encode( array( 'meta' => array(
+		$failed = false;
+
+		if (false === fwrite( $handle, wp_json_encode( array( 'meta' => array(
 			'request' => $request,
 			'total'   => count( $wpdb->queries ),
 			'time'    => gmdate( 'c' ),
-		) ) ) . "\n" );
+		) ) ) . "\n" )) {
+			$failed = true;
+		}
 
-		foreach ($wpdb->queries as $q) {
-			fwrite( $handle, wp_json_encode( array(
-				'sql'     => isset( $q[0] ) ? preg_replace( '/\s+/', ' ', trim( (string) $q[0] ) ) : '',
-				'seconds' => isset( $q[1] ) ? (float) $q[1] : 0,
-				'caller'  => isset( $q[2] ) ? (string) $q[2] : '',
-			) ) . "\n" );
+		if (!$failed) {
+			foreach ($wpdb->queries as $q) {
+				if (false === fwrite( $handle, wp_json_encode( array(
+					'sql'     => isset( $q[0] ) ? preg_replace( '/\s+/', ' ', trim( (string) $q[0] ) ) : '',
+					'seconds' => isset( $q[1] ) ? (float) $q[1] : 0,
+					'caller'  => isset( $q[2] ) ? (string) $q[2] : '',
+				) ) . "\n" )) {
+					$failed = true;
+					break;
+				}
+			}
 		}
 
 		fclose( $handle );
+
+		if ($failed) {
+			unlink( $path );
+			return null;
+		}
 
 		return $path;
 	}
