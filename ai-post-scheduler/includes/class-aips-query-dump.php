@@ -69,21 +69,25 @@ class AIPS_Query_Dump {
 
 		$failed = false;
 
-		if (false === fwrite( $handle, wp_json_encode( array( 'meta' => array(
+		$meta_json = wp_json_encode( array( 'meta' => array(
 			'request' => $request,
 			'total'   => count( $wpdb->queries ),
 			'time'    => gmdate( 'c' ),
-		) ) ) . "\n" )) {
+		) ) );
+
+		if ( false === $meta_json || false === fwrite( $handle, $meta_json . "\n" ) ) {
 			$failed = true;
 		}
 
 		if (!$failed) {
 			foreach ($wpdb->queries as $q) {
-				if (false === fwrite( $handle, wp_json_encode( array(
+				$q_json = wp_json_encode( array(
 					'sql'     => isset( $q[0] ) ? preg_replace( '/\s+/', ' ', trim( (string) $q[0] ) ) : '',
 					'seconds' => isset( $q[1] ) ? (float) $q[1] : 0,
 					'caller'  => isset( $q[2] ) ? (string) $q[2] : '',
-				) ) . "\n" )) {
+				) );
+
+				if ( false === $q_json || false === fwrite( $handle, $q_json . "\n" ) ) {
 					$failed = true;
 					break;
 				}
