@@ -90,4 +90,184 @@ class Test_AIPS_Cache_Index_Hot_Path extends WP_UnitTestCase {
 		$this->assertSame( array(), array_values( $count_queries ),
 			'record_set must not run COUNT(*) per write.' );
 	}
+
+	// -----------------------------------------------------------------------
+	// prune_orphans() hashed-key reconciliation
+	//
+	// AIPS_Cache_Db_Driver::namespace_key() hashes {prefix}:{rawkey} down to
+	// a sha256 digest when it exceeds MAX_KEY_LENGTH (191 chars). The index
+	// only ever records the raw, un-prefixed key, so prune_orphans()'s join
+	// (exact match / raw-suffix LIKE against aips_cache.cache_key) can never
+	// match a hashed row -- these tests guard against that false positive.
+	// -----------------------------------------------------------------------
+
+	private function truncate_cache_tables(): void {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_cache_index" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_cache" );
+	}
+
+	public function test_prune_orphans_does_not_delete_live_hashed_key_index_row() {
+		global $wpdb;
+		$this->truncate_cache_tables();
+		update_option( 'aips_cache_driver', 'db' );
+
+		$group = 'authors';
+		$tier  = 'medium';
+		// Mirrors AIPS_Repository_Cache_Key_Builder::build_key()'s shape/length.
+		$raw_key = 'aips_repo:authors.get_by_id:' . hash( 'sha256', 'a' ) . ':' . hash( 'sha256', 'b' ) . ':ctx:' . hash( 'sha256', 'c' );
+
+		$prefix     = AIPS_Repository_Cache_Config::build_cache_name( $group, $tier );
+		$namespaced = $prefix . ':' . $raw_key;
+		$this->assertGreaterThan( AIPS_Cache_Db_Driver::MAX_KEY_LENGTH, strlen( $namespaced ),
+			'Precondition: namespaced key must exceed MAX_KEY_LENGTH for this test to be meaningful.' );
+		$hashed = hash( 'sha256', $namespaced );
+
+		$now = time();
+		$wpdb->insert( $wpdb->prefix . 'aips_cache', array(
+			'cache_key'   => $hashed,
+			'cache_group' => $group,
+			'value'       => maybe_serialize( 'still alive' ),
+			'expires_at'  => 0,
+			'updated_at'  => $now,
+		) );
+		$wpdb->insert( $wpdb->prefix . 'aips_cache_index', array(
+			'cache_key'   => $raw_key,
+			'key_hash'    => hash( 'sha256', $group . ':' . $raw_key ),
+			'cache_group' => $group,
+			'driver'      => 'db',
+			'tier'        => $tier,
+			'created_at'  => $now,
+			'updated_at'  => $now,
+			'expires_at'  => 0,
+		) );
+
+		$deleted = ( new AIPS_Cache_Index() )->prune_orphans();
+
+		$this->assertSame( 0, $deleted, 'A live hashed-key entry must not be reported as pruned.' );
+		$this->assertSame(
+			1,
+			(int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}aips_cache_index WHERE cache_key = %s AND cache_group = %s",
+				$raw_key,
+				$group
+			) ),
+			'The index row for the live hashed-key entry must survive.'
+		);
+		$this->assertSame(
+			1,
+			(int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}aips_cache WHERE cache_key = %s AND cache_group = %s",
+				$hashed,
+				$group
+			) ),
+			'The real cache row must be untouched.'
+		);
+	}
+
+	public function test_prune_orphans_still_deletes_genuinely_orphaned_short_key() {
+		global $wpdb;
+		$this->truncate_cache_tables();
+		update_option( 'aips_cache_driver', 'db' );
+
+		$group   = 'small_group';
+		$tier    = 'short';
+		$raw_key = 'aips_repo:small.op:' . hash( 'sha256', 'x' );
+		$now     = time();
+
+		// No corresponding aips_cache row -- genuinely orphaned.
+		$wpdb->insert( $wpdb->prefix . 'aips_cache_index', array(
+			'cache_key'   => $raw_key,
+			'key_hash'    => hash( 'sha256', $group . ':' . $raw_key ),
+			'cache_group' => $group,
+			'driver'      => 'db',
+			'tier'        => $tier,
+			'created_at'  => $now,
+			'updated_at'  => $now,
+			'expires_at'  => 0,
+		) );
+
+		$deleted = ( new AIPS_Cache_Index() )->prune_orphans();
+
+		$this->assertSame( 1, $deleted );
+		$this->assertSame(
+			0,
+			(int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}aips_cache_index WHERE cache_key = %s AND cache_group = %s",
+				$raw_key,
+				$group
+			) ),
+			'A genuinely orphaned short-key index row must still be pruned.'
+		);
+	}
+
+	public function test_prune_orphans_deletes_non_repository_orphan_with_empty_tier() {
+		global $wpdb;
+		$this->truncate_cache_tables();
+		update_option( 'aips_cache_driver', 'db' );
+
+		$group   = 'aips_template_repository';
+		$raw_key = 'all:0';
+		$now     = time();
+
+		// tier = '' mimics a non-repository-trait AIPS_Cache_Factory::named()
+		// usage; no corresponding aips_cache row -- genuinely orphaned.
+		$wpdb->insert( $wpdb->prefix . 'aips_cache_index', array(
+			'cache_key'   => $raw_key,
+			'key_hash'    => hash( 'sha256', $group . ':' . $raw_key ),
+			'cache_group' => $group,
+			'driver'      => 'db',
+			'tier'        => '',
+			'created_at'  => $now,
+			'updated_at'  => $now,
+			'expires_at'  => 0,
+		) );
+
+		$deleted = ( new AIPS_Cache_Index() )->prune_orphans();
+
+		$this->assertSame( 1, $deleted,
+			'Non-repository (empty tier) orphans must still be pruned -- no regression on the pre-existing path.' );
+	}
+
+	public function test_prune_orphans_preserves_non_repository_live_short_key() {
+		global $wpdb;
+		$this->truncate_cache_tables();
+		update_option( 'aips_cache_driver', 'db' );
+
+		$group   = 'aips_template_repository';
+		$prefix  = 'aips_template_repository';
+		$raw_key = 'id:8';
+		$now     = time();
+
+		$wpdb->insert( $wpdb->prefix . 'aips_cache', array(
+			'cache_key'   => $prefix . ':' . $raw_key,
+			'cache_group' => $group,
+			'value'       => maybe_serialize( 'still alive' ),
+			'expires_at'  => 0,
+			'updated_at'  => $now,
+		) );
+		$wpdb->insert( $wpdb->prefix . 'aips_cache_index', array(
+			'cache_key'   => $raw_key,
+			'key_hash'    => hash( 'sha256', $group . ':' . $raw_key ),
+			'cache_group' => $group,
+			'driver'      => 'db',
+			'tier'        => '',
+			'created_at'  => $now,
+			'updated_at'  => $now,
+			'expires_at'  => 0,
+		) );
+
+		$deleted = ( new AIPS_Cache_Index() )->prune_orphans();
+
+		$this->assertSame( 0, $deleted );
+		$this->assertSame(
+			1,
+			(int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}aips_cache_index WHERE cache_key = %s AND cache_group = %s",
+				$raw_key,
+				$group
+			) ),
+			'A live non-repository short-key entry must survive (regression guard on unchanged phase-1 SQL).'
+		);
+	}
 }
