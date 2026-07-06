@@ -47,6 +47,6 @@
     }
   },
   "postCreateCommand": "composer install && mkdir -p .vscode && echo '{\"mcpServers\": {\"wp-ai-scheduler-tools\": {\"command\": \"php\",\"args\": [\"/var/www/html/wp-content/plugins/ai-post-scheduler/mcp-bridge.php\"]}}}' > .vscode/cline_mcp_settings.json && (wp core is-installed --allow-root || echo 'Waiting for WP installation...')",
-  "postStartCommand": "until wp core is-installed --allow-root >/dev/null 2>&1; do sleep 2; echo 'Waiting for DB...'; done && wp eval-file scripts/setup-devstacktips-content.php --allow-root",
+  "postStartCommand": "until wp core is-installed --allow-root >/dev/null 2>&1; do sleep 2; echo 'Waiting for DB...'; done && if [ ! -f .vscode/.seeded ]; then wp eval-file scripts/setup-devstacktips-content.php --allow-root && touch .vscode/.seeded; fi",
   "remoteUser": "root"
 }
