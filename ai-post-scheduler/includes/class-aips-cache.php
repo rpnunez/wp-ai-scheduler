@@ -22,6 +22,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Cache {
 
 	/**
+	 * Prefix used to build the underlying storage key for a tag version
+	 * counter. Single source of truth — see build_tag_version_key().
+	 */
+	const TAG_VERSION_KEY_PREFIX = 'tag_version:';
+
+	/**
 	 * Underlying cache driver.
 	 *
 	 * @var AIPS_Cache_Driver
@@ -264,8 +270,8 @@ class AIPS_Cache {
 		}
 		$result = $this->driver->delete( $key, $group );
 		if ($result) {
-			if (0 === strpos( (string) $key, 'tag_version:' )) {
-				unset( $this->tag_version_memo[ $group . "\0" . substr( (string) $key, strlen( 'tag_version:' ) ) ] );
+			if (0 === strpos( (string) $key, self::TAG_VERSION_KEY_PREFIX )) {
+				unset( $this->tag_version_memo[ $group . "\0" . substr( (string) $key, strlen( self::TAG_VERSION_KEY_PREFIX ) ) ] );
 			}
 			$index = $this->get_cache_index();
 			if ($index) {
@@ -480,7 +486,7 @@ class AIPS_Cache {
 			return $this->tag_version_memo[ $memo_key ];
 		}
 
-		$key     = 'tag_version:' . $tag_key;
+		$key     = $this->build_tag_version_key( $tag_key );
 		$version = max( 1, (int) $this->get( $key, $group, 1 ) );
 
 		$this->tag_version_memo[ $memo_key ] = $version;
@@ -617,7 +623,7 @@ class AIPS_Cache {
 	 * @return string
 	 */
 	private function build_tag_version_key( $tag ) {
-		return 'tag_version:' . $this->sanitize_tag( $tag );
+		return self::TAG_VERSION_KEY_PREFIX . $this->sanitize_tag( $tag );
 	}
 
 	/**

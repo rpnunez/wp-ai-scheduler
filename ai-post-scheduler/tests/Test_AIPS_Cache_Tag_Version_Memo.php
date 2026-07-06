@@ -64,4 +64,39 @@ class Test_AIPS_Cache_Tag_Version_Memo extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $calls['get'] ?? 0, 'flush() must invalidate the tag-version memo.' );
 	}
+
+	/**
+	 * get_tag_version() and bump_tag_version() must store/read under the
+	 * exact same underlying driver key. A second AIPS_Cache instance sharing
+	 * the same driver (but with its own empty memo) forces a real driver
+	 * read, bypassing the memo entirely — if the two methods ever used
+	 * different key formats, this cross-instance read would miss the bumped
+	 * value and fall back to the miss-default (1) instead.
+	 */
+	public function test_get_and_bump_use_the_same_underlying_driver_key() {
+		$calls  = array();
+		$driver = new class( $calls ) implements AIPS_Cache_Driver {
+			private $calls;
+			private $store = array();
+			public function __construct( &$calls ) { $this->calls =& $calls; }
+			public function get( $key, $group = 'default' ) {
+				$this->calls['get'] = ( $this->calls['get'] ?? 0 ) + 1;
+				return $this->store[ $group ][ $key ] ?? null;
+			}
+			public function set( $key, $value, $ttl = 0, $group = 'default' ) {
+				$this->store[ $group ][ $key ] = $value;
+				return true;
+			}
+			public function delete( $key, $group = 'default' ) { unset( $this->store[ $group ][ $key ] ); return true; }
+			public function flush() { $this->store = array(); return true; }
+			public function has( $key, $group = 'default' ) { return isset( $this->store[ $group ][ $key ] ); }
+		};
+
+		$writer = new AIPS_Cache( $driver );
+		$new    = $writer->bump_tag_version( 'authors', 'aips_authors' );
+
+		$reader = new AIPS_Cache( $driver ); // fresh instance, empty memo, same driver/store
+		$this->assertSame( $new, $reader->get_tag_version( 'authors', 'aips_authors' ),
+			'get_tag_version() must read back the value bump_tag_version() wrote, via the same driver key.' );
+	}
 }
