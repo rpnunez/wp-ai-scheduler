@@ -250,10 +250,10 @@ class AIPS_Generated_Posts_Controller {
 		$author_ids = array();
 		$topic_ids  = array();
 		foreach ($items as $item) {
-			if (!empty( $item->author_id ) && !isset( $this->author_cache[ $item->author_id ] )) {
+			if (!empty( $item->author_id ) && !array_key_exists( $item->author_id, $this->author_cache )) {
 				$author_ids[] = (int) $item->author_id;
 			}
-			if (!empty( $item->topic_id ) && !isset( $this->topic_cache[ $item->topic_id ] )) {
+			if (!empty( $item->topic_id ) && !array_key_exists( $item->topic_id, $this->topic_cache )) {
 				$topic_ids[] = (int) $item->topic_id;
 			}
 		}

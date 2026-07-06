@@ -36,4 +36,37 @@ class Test_AIPS_Author_Batch_Lookups extends WP_UnitTestCase {
 		$repo = new AIPS_Authors_Repository();
 		$this->assertSame( array(), $repo->get_by_ids( array() ) );
 	}
+
+	/**
+	 * Reproduces the double-fetch bug: prime_source_caches() seeds a missing
+	 * author/topic id with null, then (before this fix) used isset() to decide
+	 * whether to re-fetch — isset() is false for null, so the second call in
+	 * the same request (render_page() calls prime_source_caches() twice: once
+	 * for the Generated Posts list, once for Partial Generations) re-issued a
+	 * redundant get_by_ids() query for the same missing id.
+	 */
+	public function test_prime_source_caches_does_not_refetch_missing_ids_on_second_call() {
+		$missing_author_id = 999999;
+		$missing_topic_id  = 888888;
+
+		$items = array(
+			(object) array( 'author_id' => $missing_author_id, 'topic_id' => $missing_topic_id ),
+		);
+
+		$controller = new AIPS_Generated_Posts_Controller();
+		$method     = new ReflectionMethod( AIPS_Generated_Posts_Controller::class, 'prime_source_caches' );
+		$method->setAccessible( true );
+
+		// First call: misses, seeds null, issues the batch queries.
+		$method->invoke( $controller, $items );
+
+		// Second call (mirrors render_page()'s second prime_source_caches()
+		// call for the Partial Generations list): must not re-query.
+		global $wpdb;
+		$queries_before = $wpdb->num_queries;
+		$method->invoke( $controller, $items );
+
+		$this->assertSame( $queries_before, $wpdb->num_queries,
+			'Second prime_source_caches() call must not re-fetch ids already known to be missing.' );
+	}
 }
