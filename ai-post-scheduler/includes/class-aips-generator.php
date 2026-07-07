@@ -715,6 +715,72 @@ class AIPS_Generator {
             $this->logger->log('Failed to create history record', 'error');
         }
 
+        $content = $this->generate_core_content($context, $component_statuses, $generation_start);
+        if (is_wp_error($content)) {
+            return $content;
+        }
+
+        $title = $this->generate_post_title_for_context($context, $content, $component_statuses);
+        $excerpt = $this->generate_post_excerpt_for_context($context, $title, $content, $component_statuses);
+
+        // Determine whether this Post has "Partial Generations" or not
+        $generation_incomplete = in_array(false, $component_statuses, true);
+
+        // Use Post Manager Service to save the generated post in WP
+        $post_creation_data = array(
+            'title'                 => $title,
+            'content'               => $content,
+            'excerpt'               => $excerpt,
+            'context'               => $context,
+            // Provide SEO context for downstream plugins.
+            'focus_keyword'         => $context->get_topic() ? $context->get_topic() : $title,
+            'meta_description'      => $excerpt,
+            'seo_title'             => $title,
+            'generation_incomplete' => $generation_incomplete,
+            'component_statuses'    => $component_statuses,
+        );
+
+        // Allow integrations to hook before the post is created.
+        do_action('aips_post_generation_before_post_create', $post_creation_data);
+
+        $post_id = $this->post_manager->create_post($post_creation_data);
+
+        if (is_wp_error($post_id)) {
+            // Use new history API to complete with failure
+            $this->current_history->complete_failure($post_id->get_error_message(), array(
+                'component'      => 'post_creation',
+                'title'          => $title,
+                'content_length' => strlen($content),
+            ));
+
+            // Write a metric snapshot so the metrics repository can count this failure
+            // without querying scattered tables.
+            $this->current_history->record(
+                'metric_generation_result',
+                'Generation failed — post could not be created',
+                array(
+                    'outcome'          => 'failed',
+                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                    'image_attempted'  => false,
+                    'image_success'    => null,
+                )
+            );
+
+            return $post_id;
+        }
+
+        return $this->finalize_post_creation($context, $post_id, $title, $content, $component_statuses, $generation_start);
+    }
+
+    /**
+     * Generates the core post content and updates statuses.
+     *
+     * @param AIPS_Generation_Context $context            The generation context.
+     * @param array                   &$component_statuses The tracking array for component success.
+     * @param float                   $generation_start   The generation start time for metrics.
+     * @return string|WP_Error Generated content or WP_Error on failure.
+     */
+    private function generate_core_content($context, &$component_statuses, $generation_start) {
         // Build the full content prompt from context
         $content_prompt = $this->post_content_prompt_builder->build($context);
 
@@ -788,6 +854,18 @@ class AIPS_Generator {
             return $error;
         }
 
+        return $content;
+    }
+
+    /**
+     * Generates a safe post title and updates the title component status.
+     *
+     * @param AIPS_Generation_Context $context            The generation context.
+     * @param string                  $content            The generated content.
+     * @param array                   &$component_statuses The tracking array for component success.
+     * @return string Generated post title.
+     */
+    private function generate_post_title_for_context($context, $content, &$component_statuses) {
         // Resolve AI variables from the Title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
@@ -841,6 +919,19 @@ class AIPS_Generator {
             $component_statuses['post_title'] = true;
         }
 
+        return $title;
+    }
+
+    /**
+     * Generates a post excerpt and updates its component status.
+     *
+     * @param AIPS_Generation_Context $context            The generation context.
+     * @param string                  $title              The generated title.
+     * @param string                  $content            The generated content.
+     * @param array                   &$component_statuses The tracking array for component success.
+     * @return string Generated excerpt.
+     */
+    private function generate_post_excerpt_for_context($context, $title, $content, &$component_statuses) {
         // Use actual generated Content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
@@ -849,52 +940,21 @@ class AIPS_Generator {
         // Set Post Excerpt component status based on whether excerpt generation was successful
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
-        // Determine whether this Post has "Partial Generations" or not
-        $generation_incomplete = in_array(false, $component_statuses, true);
+        return $excerpt;
+    }
 
-        // Use Post Manager Service to save the generated post in WP
-        $post_creation_data = array(
-            'title' => $title,
-            'content' => $content,
-            'excerpt' => $excerpt,
-            'context' => $context,
-            // Provide SEO context for downstream plugins.
-            'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
-            'meta_description' => $excerpt,
-            'seo_title' => $title,
-            'generation_incomplete' => $generation_incomplete,
-            'component_statuses' => $component_statuses,
-        );
-
-        // Allow integrations to hook before the post is created.
-        do_action('aips_post_generation_before_post_create', $post_creation_data);
-
-        $post_id = $this->post_manager->create_post($post_creation_data);
-
-        if (is_wp_error($post_id)) {
-            // Use new history API to complete with failure
-            $this->current_history->complete_failure($post_id->get_error_message(), array(
-                'component' => 'post_creation',
-                'title' => $title,
-                'content_length' => strlen($content),
-            ));
-
-            // Write a metric snapshot so the metrics repository can count this failure
-            // without querying scattered tables.
-            $this->current_history->record(
-                'metric_generation_result',
-                'Generation failed — post could not be created',
-                array(
-                    'outcome'          => 'failed',
-                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                    'image_attempted'  => false,
-                    'image_success'    => null,
-                )
-            );
-
-            return $post_id;
-        }
-
+    /**
+     * Finalizes post creation by generating image and saving the state.
+     *
+     * @param AIPS_Generation_Context $context            The generation context.
+     * @param int                     $post_id            The ID of the generated post.
+     * @param string                  $title              The generated title.
+     * @param string                  $content            The generated content.
+     * @param array                   $component_statuses The component statuses.
+     * @param float                   $generation_start   The generation start time for metrics.
+     * @return int The ID of the post created.
+     */
+    private function finalize_post_creation($context, $post_id, $title, $content, $component_statuses, $generation_start) {
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content);
