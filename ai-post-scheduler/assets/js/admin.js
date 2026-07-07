@@ -696,6 +696,9 @@
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
 
+                        // Restore affiliate links setting.
+                        $('#affiliate_links_enabled').prop('checked', t.affiliate_links_enabled == 1);
+
                         // Restore source group settings.
                         var includeSources = t.include_sources == 1;
                         $('#include_sources').prop('checked', includeSources);
@@ -894,6 +897,7 @@
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
@@ -970,6 +974,7 @@
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });

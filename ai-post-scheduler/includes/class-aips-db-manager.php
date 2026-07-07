@@ -27,6 +27,7 @@ class AIPS_DB_Manager {
         'aips_taxonomy',
         'aips_post_embeddings',
         'aips_internal_links',
+        'aips_affiliate_links',
         'aips_cache',
         'aips_telemetry',
         'aips_ai_assistance',
@@ -88,6 +89,7 @@ class AIPS_DB_Manager {
         $table_taxonomy             = $tables['aips_taxonomy'];
         $table_post_embeddings      = $tables['aips_post_embeddings'];
         $table_internal_links       = $tables['aips_internal_links'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
@@ -177,6 +179,7 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
+            affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -318,6 +321,7 @@ class AIPS_DB_Manager {
             scheduled_post_generation_quantity int DEFAULT 1,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -514,6 +518,25 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY similarity_score (similarity_score),
             UNIQUE KEY source_target (source_post_id, target_post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_affiliate_links (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            tag varchar(255) NOT NULL,
+            label varchar(255) NOT NULL DEFAULT '',
+            affiliate_url text NOT NULL,
+            enabled tinyint(1) NOT NULL DEFAULT 1,
+            cta_html longtext,
+            cta_position varchar(20) NOT NULL DEFAULT 'append',
+            cta_heading varchar(255) DEFAULT NULL,
+            cta_match_text varchar(255) DEFAULT NULL,
+            cta_max_insertions tinyint(3) unsigned NOT NULL DEFAULT 1,
+            use_ai_injection tinyint(1) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY tag (tag),
+            KEY enabled (enabled)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (
@@ -776,6 +799,10 @@ class AIPS_DB_Manager {
                 array( 'created_at', false ),
             ),
             'aips_internal_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_affiliate_links' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),

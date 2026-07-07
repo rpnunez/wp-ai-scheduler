@@ -326,6 +326,9 @@
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
 
+						// Restore affiliate links setting.
+						$('#author_affiliate_links_enabled').prop('checked', author.affiliate_links_enabled == 1);
+
 						// Restore source group settings.
 						var includeSources = author.include_sources == 1;
 						$('#author_include_sources').prop('checked', includeSources);

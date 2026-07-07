@@ -619,6 +619,30 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
 
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="author_affiliate_links_enabled" name="affiliate_links_enabled" value="1">
+                    <?php esc_html_e('Inject Affiliate Links?', 'ai-post-scheduler'); ?>
+                </label>
+                <p class="description">
+                    <?php
+                    echo wp_kses(
+                        sprintf(
+                            /* translators: %s: link to Affiliate Links page */
+                            __( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
+                            '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                        ),
+                        array(
+                            'a' => array(
+                                'href'   => array(),
+                                'target' => array(),
+                            ),
+                        )
+                    );
+                    ?>
+                </p>
+            </div>
+
             <div class="aips-modal-footer form-actions">
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>

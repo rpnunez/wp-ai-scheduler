@@ -173,6 +173,13 @@ interface AIPS_Generation_Context {
 	public function get_source_group_ids();
 
 	/**
+	 * Whether affiliate links should be injected into generated content.
+	 *
+	 * @return bool
+	 */
+	public function get_affiliate_links_enabled();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.
