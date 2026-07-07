@@ -31,7 +31,7 @@ class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_
 	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
 	public function get_by_id($id) { return null; }
 	public function get_by_post_id($post_id) { return array(); }
-	public function add_log_entry($history_id, $log_type, $details, $history_type_id = null) { return true; }
+	public function add_log_entry($history_id, $details, $history_type_id = null) { return true; }
 	public function update($id, $data) { return true; }
 	public function get_logs_by_history_id($history_id, $type_filter = array(), $limit = 0) { return array(); }
 	public function get_estimated_generation_time($limit = 20) { return 0; }

@@ -40,6 +40,58 @@ class AIPS_History {
     }
 
     /**
+     * Human-readable labels for known creation_method values.
+     *
+     * @return array<string,string>
+     */
+    private static function creation_method_labels(): array {
+        return array(
+            'manual'                  => __( 'Manual', 'ai-post-scheduler' ),
+            'scheduled'               => __( 'Scheduled', 'ai-post-scheduler' ),
+            'template_schedule'       => __( 'Template Schedule', 'ai-post-scheduler' ),
+            'author_topic_gen'        => __( 'Author Topics', 'ai-post-scheduler' ),
+            'author_post_gen'         => __( 'Author Posts', 'ai-post-scheduler' ),
+            'author_topic_generation' => __( 'Author Topics', 'ai-post-scheduler' ),
+            'author_post_generation'  => __( 'Author Posts', 'ai-post-scheduler' ),
+            'author_embeddings'       => __( 'Author Embeddings', 'ai-post-scheduler' ),
+            'post_generation'         => __( 'Post Generation', 'ai-post-scheduler' ),
+            'bulk_generate'           => __( 'Bulk Generation', 'ai-post-scheduler' ),
+            'bulk_generate_now'       => __( 'Bulk Generation', 'ai-post-scheduler' ),
+            'bulk_generation'         => __( 'Bulk Generation', 'ai-post-scheduler' ),
+            'bulk_regenerate'         => __( 'Bulk Regeneration', 'ai-post-scheduler' ),
+        );
+    }
+
+    /**
+     * Return a display title for a history row, falling back to the creation
+     * method label or a generic placeholder when no generated title exists.
+     *
+     * @param object $item History row object from wp_aips_history.
+     * @return string
+     */
+    public static function get_display_title( object $item ): string {
+        if ( ! empty( $item->generated_title ) ) {
+            return $item->generated_title;
+        }
+        $labels = self::creation_method_labels();
+        if ( ! empty( $item->creation_method ) && isset( $labels[ $item->creation_method ] ) ) {
+            return $labels[ $item->creation_method ];
+        }
+        return __( 'Generation Event', 'ai-post-scheduler' );
+    }
+
+    /**
+     * Return a human-readable label for a creation_method value.
+     *
+     * @param string $method Raw creation_method value from the DB.
+     * @return string
+     */
+    public static function get_creation_method_label( string $method ): string {
+        $labels = self::creation_method_labels();
+        return $labels[ $method ] ?? ucwords( str_replace( '_', ' ', $method ) );
+    }
+
+    /**
      * AJAX handler to bulk delete selected history records.
      *
      * @return void
@@ -557,9 +609,11 @@ class AIPS_History {
                 }
             }
 
+            $log_type_label = isset($details['log_subtype']) ? (string) $details['log_subtype'] : '';
+
             $logs[] = array(
                 'id' => (int) $log->id,
-                'log_type' => (string) $log->log_type,
+                'log_type' => $log_type_label,
                 'history_type_id' => (int) $log->history_type_id,
                 'type_label' => AIPS_History_Type::get_label((int) $log->history_type_id),
                 'type_class' => $this->get_history_type_class((int) $log->history_type_id),
@@ -882,7 +936,7 @@ class AIPS_History {
      * @return bool
      */
     private function is_ai_request_history_log($log) {
-        return (string) $log['history_type_id'] === '5' || (isset($log['log_type']) && $log['log_type'] === 'ai_request');
+        return (int) $log['history_type_id'] === AIPS_History_Type::AI_REQUEST;
     }
 
     /**
@@ -892,7 +946,7 @@ class AIPS_History {
      * @return bool
      */
     private function is_ai_response_history_log($log) {
-        return (string) $log['history_type_id'] === '6' || (isset($log['log_type']) && $log['log_type'] === 'ai_response');
+        return (int) $log['history_type_id'] === AIPS_History_Type::AI_RESPONSE;
     }
 
     /**

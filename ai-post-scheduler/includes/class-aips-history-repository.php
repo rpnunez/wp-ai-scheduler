@@ -187,7 +187,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $days = max(1, absint($days));
 
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(details, '$.context')), ''), 'unknown') AS service_key, COUNT(*) AS retry_count FROM {$this->table_name_log} WHERE log_type = %s AND timestamp >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY service_key ORDER BY retry_count DESC",
+            "SELECT COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(details, '$.context')), ''), 'unknown') AS service_key, COUNT(*) AS retry_count FROM {$this->table_name_log} WHERE history_type_id = %d AND JSON_UNQUOTE(JSON_EXTRACT(details, '$.log_subtype')) = %s AND timestamp >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY service_key ORDER BY retry_count DESC",
+            AIPS_History_Type::LOG,
             'retry',
             $days
         ), ARRAY_A);
@@ -652,30 +653,27 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Add a log entry to a history item.
      *
-     * @param int    $history_id      The ID of the history item.
-     * @param string $log_type        The type of log entry (e.g., 'ai_call', 'error').
-     * @param array  $details         The details of the log entry.
-     * @param int    $history_type_id Optional. History type constant from AIPS_History_Type. Default AIPS_History_Type::LOG.
+     * @param int          $history_id      The ID of the history item.
+     * @param array|string $details         The details of the log entry (include 'log_subtype' for semantic label).
+     * @param int|null     $history_type_id Optional. History type constant from AIPS_History_Type. Default AIPS_History_Type::LOG.
      * @return int|false The inserted ID on success, false on failure.
      */
-    public function add_log_entry($history_id, $log_type, $details, $history_type_id = null) {
-        // Default to LOG type if not specified
+    public function add_log_entry($history_id, $details, $history_type_id = null) {
         if ($history_type_id === null) {
             $history_type_id = AIPS_History_Type::LOG;
         }
-        
+
         $insert_data = array(
-            'history_id' => $history_id,
-            'log_type' => $log_type,
+            'history_id'      => $history_id,
             'history_type_id' => $history_type_id,
-            'details' => wp_json_encode($details),
-            'timestamp' => AIPS_DateTime::now()->timestamp(),
+            'details'         => wp_json_encode($details),
+            'timestamp'       => AIPS_DateTime::now()->timestamp(),
         );
-        
-        $format = array('%d', '%s', '%d', '%s', '%d');
-        
+
+        $format = array('%d', '%d', '%s', '%d');
+
         $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
-        
+
         return $result ? $this->wpdb->insert_id : false;
     }
     
@@ -1004,8 +1002,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Search filter
         if (!empty($filters['search'])) {
             $search_term = '%' . $this->wpdb->esc_like($filters['search']) . '%';
-            $where_clauses[] = "(log_type LIKE %s OR details LIKE %s)";
-            $where_args[] = $search_term;
+            $where_clauses[] = "details LIKE %s";
             $where_args[] = $search_term;
         }
 
@@ -1351,10 +1348,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             "SELECT COUNT(*)
             FROM {$this->table_name_log}
             WHERE history_id = %d
-            AND log_type = 'metric_generation_result'
+            AND history_type_id = %d
             AND details LIKE %s
             AND details LIKE %s",
             $history_id,
+            AIPS_History_Type::METRIC,
             '%"image_attempted":true%',
             '%"image_success":false%'
         ));
@@ -1390,7 +1388,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 			FROM {$history_log_table} hl
 			INNER JOIN {$history_table} h ON hl.history_id = h.id
 			WHERE hl.history_type_id = %d
-			AND hl.log_type = 'ai_response'
 			AND hl.details LIKE %s
 			AND (
 				h.post_id = %d

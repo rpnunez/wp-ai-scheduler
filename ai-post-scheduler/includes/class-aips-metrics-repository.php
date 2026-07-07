@@ -534,8 +534,8 @@ class AIPS_Metrics_Repository {
 	 * giving an accurate population average.  The window boundary uses
 	 * CURRENT_TIMESTAMP() to stay in the same timezone as the DB default.
 	 *
-	 * AI requests are identified by `log_type = 'ai_request'` — the value the
-	 * generator writes via `record('ai_request', ...)` for every AI call.
+	 * AI requests are identified by `history_type_id = AIPS_History_Type::AI_REQUEST (= 5)` —
+	 * set by the container when `record('ai_request', ...)` is called.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Average count (0.0 if no data).
@@ -560,10 +560,11 @@ class AIPS_Metrics_Repository {
 					FROM {$this->table_history} h
 					LEFT JOIN {$this->table_history_log} hl
 						ON hl.history_id = h.id
-						AND hl.log_type = 'ai_request'
+						AND hl.history_type_id = %d
 					WHERE h.status = 'completed'
 					  AND h.created_at >= %d
 				) AS stats",
+				AIPS_History_Type::AI_REQUEST,
 				$cutoff
 			)
 		);
@@ -601,10 +602,10 @@ class AIPS_Metrics_Repository {
 				"SELECT COUNT(*)
 				FROM {$this->table_history_log} hl
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
-				WHERE hl.log_type = %s
+				WHERE hl.history_type_id = %d
 				  AND hl.details LIKE %s
 				  AND h.created_at >= %d",
-				'metric_generation_result',
+				AIPS_History_Type::METRIC,
 				'%"image_attempted":true%',
 				$cutoff
 			)
@@ -620,11 +621,11 @@ class AIPS_Metrics_Repository {
 				"SELECT COUNT(*)
 				FROM {$this->table_history_log} hl
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
-				WHERE hl.log_type = %s
+				WHERE hl.history_type_id = %d
 				  AND hl.details LIKE %s
 				  AND hl.details LIKE %s
 				  AND h.created_at >= %d",
-				'metric_generation_result',
+				AIPS_History_Type::METRIC,
 				'%"image_attempted":true%',
 				'%"image_success":false%',
 				$cutoff

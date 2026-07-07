@@ -328,7 +328,7 @@ class AIPS_Campaigns_Repository {
 				'history_log' AS activity_source,
 				l.id AS activity_id,
 				h.id AS history_id,
-				l.log_type AS activity_type,
+				COALESCE(JSON_UNQUOTE(JSON_EXTRACT(l.details, '$.log_subtype')), CAST(l.history_type_id AS CHAR)) AS activity_type,
 				COALESCE(NULLIF(l.details, ''), 'Log entry') AS activity_details,
 				l.timestamp AS activity_timestamp,
 				h.post_id AS post_id,
