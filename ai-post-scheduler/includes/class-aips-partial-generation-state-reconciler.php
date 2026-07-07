@@ -121,9 +121,9 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
-		$has_generation_meta_keys = metadata_exists('post', $post_id, 'aips_post_generation_component_statuses')
-			|| metadata_exists('post', $post_id, 'aips_post_generation_incomplete')
-			|| metadata_exists('post', $post_id, 'aips_post_generation_had_partial');
+		$has_generation_meta_keys = metadata_exists('post', $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES)
+			|| metadata_exists('post', $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE)
+			|| metadata_exists('post', $post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL);
 
 		if (!$has_generation_meta_keys) {
 			return;

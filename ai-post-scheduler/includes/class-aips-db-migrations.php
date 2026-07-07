@@ -154,6 +154,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_9_1();
 		}
 
+		if ( version_compare( $from_version, '3.0.1', '<' ) ) {
+			$this->migrate_to_3_0_1();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -787,6 +791,102 @@ class AIPS_DB_Migrations {
 		// Step 3: Change the column type from BIGINT to TEXT.
 		$wpdb->query(
 			"ALTER TABLE `{$table}` MODIFY COLUMN post_category text DEFAULT NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+	}
+
+	/**
+	 * Migration for version 3.0.1.
+	 *
+	 * Normalizes plugin-owned post meta to the private `_aips_*` convention and
+	 * backfills a generated-post marker for existing plugin-created posts.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_0_1() {
+		global $wpdb;
+
+		$postmeta_table = $wpdb->postmeta;
+		$posts_table    = $wpdb->posts;
+		$history_table  = $wpdb->prefix . 'aips_history';
+		$rename_map     = array(
+			'aips_post_generation_component_statuses' => AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES,
+			'aips_post_generation_incomplete'         => AIPS_Post_Manager::META_GENERATION_INCOMPLETE,
+			'aips_post_generation_had_partial'        => AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL,
+		);
+
+		foreach ( $rename_map as $legacy_key => $canonical_key ) {
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE legacy_pm
+					FROM {$postmeta_table} legacy_pm
+					INNER JOIN {$postmeta_table} canonical_pm
+						ON canonical_pm.post_id = legacy_pm.post_id
+						AND canonical_pm.meta_key = %s
+					WHERE legacy_pm.meta_key = %s",
+					$canonical_key,
+					$legacy_key
+				)
+			);
+
+			$wpdb->update(
+				$postmeta_table,
+				array( 'meta_key' => $canonical_key ),
+				array( 'meta_key' => $legacy_key ),
+				array( '%s' ),
+				array( '%s' )
+			);
+		}
+
+		$history_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $history_table ) );
+		if ( $history_table_exists === $history_table ) {
+			$wpdb->query(
+				$wpdb->prepare(
+					"INSERT INTO {$postmeta_table} (post_id, meta_key, meta_value)
+					SELECT DISTINCT h.post_id, %s, '1'
+					FROM {$history_table} h
+					INNER JOIN {$posts_table} p ON p.ID = h.post_id
+					LEFT JOIN {$postmeta_table} existing_pm
+						ON existing_pm.post_id = h.post_id
+						AND existing_pm.meta_key = %s
+					WHERE h.post_id IS NOT NULL
+					AND h.post_id > 0
+					AND existing_pm.meta_id IS NULL",
+					AIPS_Post_Manager::META_GENERATED_POST,
+					AIPS_Post_Manager::META_GENERATED_POST
+				)
+			);
+		}
+
+		$source_keys   = array_values(
+			array_filter(
+				AIPS_Post_Manager::CANONICAL_PLUGIN_POST_META_KEYS,
+				function ( $meta_key ) {
+					return AIPS_Post_Manager::META_GENERATED_POST !== $meta_key;
+				}
+			)
+		);
+		$placeholders = implode( ', ', array_fill( 0, count( $source_keys ), '%s' ) );
+		$query_args   = array_merge(
+			array(
+				AIPS_Post_Manager::META_GENERATED_POST,
+				AIPS_Post_Manager::META_GENERATED_POST,
+			),
+			$source_keys
+		);
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$postmeta_table} (post_id, meta_key, meta_value)
+				SELECT DISTINCT source_pm.post_id, %s, '1'
+				FROM {$postmeta_table} source_pm
+				INNER JOIN {$posts_table} p ON p.ID = source_pm.post_id
+				LEFT JOIN {$postmeta_table} generated_pm
+					ON generated_pm.post_id = source_pm.post_id
+					AND generated_pm.meta_key = %s
+				WHERE source_pm.meta_key IN ({$placeholders})
+				AND generated_pm.meta_id IS NULL",
+				$query_args
+			)
 		);
 	}
 

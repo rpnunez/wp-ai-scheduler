@@ -530,9 +530,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 GROUP BY post_id
             ) latest ON latest.latest_history_id = h.id
             INNER JOIN {$posts_table} p ON h.post_id = p.ID
-            LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
-            LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
-            LEFT JOIN {$postmeta_table} pm_status ON pm_status.post_id = p.ID AND pm_status.meta_key = 'aips_post_generation_component_statuses'
+            LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
+            LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
+            LEFT JOIN {$postmeta_table} pm_status ON pm_status.post_id = p.ID AND pm_status.meta_key = '" . AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES . "'
             LEFT JOIN {$templates_table} t ON h.template_id = t.id
             WHERE $where_sql
                 ORDER BY $orderby_sql";
@@ -562,8 +562,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     GROUP BY post_id
                 ) latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
-                LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
-                LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+                LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
+                LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
                 WHERE $where_sql",
                 $where_args
             ));
@@ -578,8 +578,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     GROUP BY post_id
                 ) latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
-                LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
-                LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+                LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
+                LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
                 WHERE $where_sql"
             );
         }
@@ -714,7 +714,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                  WHERE meta_key = %s
                  ORDER BY meta_id DESC
                  LIMIT %d",
-                '_aips_post_generation_total_time',
+                AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME,
                 $limit
             )
         );
