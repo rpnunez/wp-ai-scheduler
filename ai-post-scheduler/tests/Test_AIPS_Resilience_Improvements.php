@@ -470,4 +470,132 @@ return new WP_Error( 'json_query_unavailable', 'Method failed' );
 $status = $service->get_circuit_breaker_status();
 $this->assertSame( 0, $status['failures'], 'json_query_unavailable should not count as a CB failure' );
 }
+
+// -----------------------------------------------------------------------
+// execute_safely — local rate-limiter retry/backoff
+// -----------------------------------------------------------------------
+
+/**
+ * Create a resilience service with the local rate limiter ENABLED and
+ * already exhausted (one request already recorded against a 1-request
+ * window), plus circuit breaker/retry disabled so only the rate-limit
+ * gate is under test.
+ *
+ * @param int $period Rate limit window, in seconds.
+ * @return AIPS_Resilience_Service
+ */
+private function make_rate_limited_service( $period = 1 ) {
+$GLOBALS['aips_test_options'] = array(
+'aips_enable_circuit_breaker' => false,
+'aips_enable_retry'           => false,
+'aips_enable_rate_limiting'   => true,
+'aips_rate_limit_requests'    => 1,
+'aips_rate_limit_period'      => $period,
+);
+update_option( 'aips_enable_circuit_breaker', false );
+update_option( 'aips_enable_retry', false );
+update_option( 'aips_enable_rate_limiting', true );
+update_option( 'aips_rate_limit_requests', 1 );
+update_option( 'aips_rate_limit_period', $period );
+
+delete_transient( 'aips_circuit_breaker_state' );
+delete_transient( 'aips_rate_limiter_requests' );
+
+return new AIPS_Resilience_Service();
+}
+
+/**
+ * When the local rate-limiter window frees up within
+ * RATE_LIMIT_RETRY_MAX_ATTEMPTS, execute_safely() must wait and retry the
+ * gate rather than failing the call outright.
+ */
+public function test_execute_safely_waits_for_rate_limit_capacity_to_free_up() {
+$service = $this->make_rate_limited_service( 1 ); // 1-second window
+
+// Exhaust the single-slot window immediately.
+$service->check_rate_limit();
+
+$calls = 0;
+$result = $service->execute_safely(
+function() use ( &$calls ) {
+$calls++;
+return 'OK';
+},
+'text', 'prompt', array()
+);
+
+delete_transient( 'aips_rate_limiter_requests' );
+
+$this->assertSame( 1, $calls, 'Underlying function should run once capacity frees up' );
+$this->assertSame( 'OK', $result );
+}
+
+/**
+ * When the local rate-limiter never frees up within the bounded attempts,
+ * execute_safely() must still fail with rate_limit_exceeded, and that
+ * failure must not be recorded against the circuit breaker.
+ */
+public function test_execute_safely_returns_rate_limit_exceeded_when_capacity_never_frees() {
+// A long window guarantees capacity will not free up within the bounded
+// retry attempts, so the gate must give up and return an error.
+$service = $this->make_rate_limited_service( 3600 );
+
+// Exhaust the single-slot window immediately.
+$service->check_rate_limit();
+
+$calls = 0;
+$result = $service->execute_safely(
+function() use ( &$calls ) {
+$calls++;
+return 'OK';
+},
+'text', 'prompt', array()
+);
+
+delete_transient( 'aips_rate_limiter_requests' );
+
+$this->assertSame( 0, $calls, 'Underlying function must never run while rate-limited' );
+$this->assertTrue( is_wp_error( $result ) );
+$this->assertSame( 'rate_limit_exceeded', $result->get_error_code() );
+
+$status = $service->get_circuit_breaker_status();
+$this->assertSame( 0, $status['failures'], 'rate_limit_exceeded must not count as a CB failure' );
+}
+
+/**
+ * The circuit breaker must remain fail-fast: no wait/retry when it is open,
+ * regardless of the new rate-limit retry logic.
+ */
+public function test_execute_safely_circuit_breaker_still_fails_fast() {
+$GLOBALS['aips_test_options'] = array(
+'aips_enable_circuit_breaker'    => true,
+'aips_circuit_breaker_threshold' => 1,
+'aips_circuit_breaker_timeout'   => 300,
+'aips_enable_retry'              => false,
+'aips_enable_rate_limiting'      => false,
+);
+update_option( 'aips_enable_circuit_breaker', true );
+update_option( 'aips_circuit_breaker_threshold', 1 );
+update_option( 'aips_circuit_breaker_timeout', 300 );
+update_option( 'aips_enable_retry', false );
+update_option( 'aips_enable_rate_limiting', false );
+
+delete_transient( 'aips_circuit_breaker_state' );
+
+$service = new AIPS_Resilience_Service();
+$service->record_failure( 'generation_failed' );
+
+$calls = 0;
+$result = $service->execute_safely(
+function() use ( &$calls ) {
+$calls++;
+return 'OK';
+},
+'text', 'prompt', array()
+);
+
+$this->assertSame( 0, $calls, 'Underlying function must never run while circuit breaker is open' );
+$this->assertTrue( is_wp_error( $result ) );
+$this->assertSame( 'circuit_breaker_open', $result->get_error_code() );
+}
 }
