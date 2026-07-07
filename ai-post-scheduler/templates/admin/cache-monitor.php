@@ -70,7 +70,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 					</h2>
 					<div class="aips-btn-group">
 						<button type="button" class="aips-btn aips-btn-secondary aips-cache-monitor-refresh" data-nonce="<?php echo esc_attr($nonce); ?>">
-							<span class="dashicons dashicons-update"></span>
+							<span class="dashicons dashicons-update" aria-hidden="true"></span>
 							<?php esc_html_e('Refresh', 'ai-post-scheduler'); ?>
 						</button>
 						<?php if (!$monitor_enabled): ?>
@@ -205,7 +205,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 							?>
 								<div class="aips-capability-item">
 									<span class="aips-badge <?php echo $supported ? 'aips-badge-success' : 'aips-badge-secondary'; ?>">
-										<span class="dashicons <?php echo $supported ? 'dashicons-yes-alt' : 'dashicons-minus'; ?>"></span>
+										<span class="dashicons <?php echo $supported ? 'dashicons-yes-alt' : 'dashicons-minus'; ?>" aria-hidden="true"></span>
 										<?php echo esc_html($cap_label); ?>
 									</span>
 								</div>
@@ -296,12 +296,12 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<div class="aips-btn-group">
 							<button type="button" class="aips-btn aips-btn-secondary aips-cache-flush-expired"
 								data-nonce="<?php echo esc_attr($action_nonce); ?>">
-								<span class="dashicons dashicons-trash"></span>
+								<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 								<?php esc_html_e('Flush Expired', 'ai-post-scheduler'); ?>
 							</button>
 							<button type="button" class="aips-btn aips-btn-danger aips-cache-flush-all-btn"
 								data-nonce="<?php echo esc_attr($action_nonce); ?>">
-								<span class="dashicons dashicons-warning"></span>
+								<span class="dashicons dashicons-warning" aria-hidden="true"></span>
 								<?php esc_html_e('Flush All Plugin Cache', 'ai-post-scheduler'); ?>
 							</button>
 						</div>
@@ -408,7 +408,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<div class="aips-modal-header">
 							<h2><?php esc_html_e('Inspect Cache Entry', 'ai-post-scheduler'); ?></h2>
 							<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-no-alt"></span>
+								<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 							</button>
 						</div>
 						<div class="aips-modal-body" id="aips-cache-inspect-body">
