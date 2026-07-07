@@ -318,7 +318,7 @@ class AIPS_Generated_Posts_Controller {
 						'type' => AIPS_History_Type::get_label($type_id),
 						'type_id' => $type_id,
 						'timestamp' => $log_entry->timestamp,
-						'log_type' => $log_entry->log_type,
+						'log_type' => isset($details['log_subtype']) ? (string) $details['log_subtype'] : '',
 						'details' => $details,
 					);
 					break;

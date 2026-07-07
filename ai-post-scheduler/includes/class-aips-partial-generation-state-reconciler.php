@@ -29,6 +29,7 @@ class AIPS_Partial_Generation_State_Reconciler {
 		$this->post_manager = new AIPS_Post_Manager();
 
 		add_action('save_post', array($this, 'on_save_post'), 20, 3);
+		add_action('wp_after_insert_post', array($this, 'on_after_insert_post'), 20, 4);
 		add_action('aips_post_components_updated', array($this, 'on_post_components_updated'), 10, 3);
 	}
 
@@ -41,26 +42,23 @@ class AIPS_Partial_Generation_State_Reconciler {
 	 * @return void
 	 */
 	public function on_save_post($post_id, $post, $update) {
-		if (!$update || empty($post_id) || !$post || $post->post_type !== 'post') {
-			return;
-		}
+		$this->reconcile_from_post_object($post_id, $post, $update, 'save_post');
+	}
 
-		if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
-			return;
-		}
-
-		$has_generation_meta_keys = metadata_exists('post', $post_id, 'aips_post_generation_component_statuses')
-			|| metadata_exists('post', $post_id, 'aips_post_generation_incomplete')
-			|| metadata_exists('post', $post_id, 'aips_post_generation_had_partial');
-
-		if (!$has_generation_meta_keys) {
-			return;
-		}
-
-		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id);
-		if (is_array($statuses)) {
-			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'save_post');
-		}
+	/**
+	 * Reconcile metadata after the post has been fully inserted/updated.
+	 *
+	 * This fires later than save_post and catches the plain Edit Post screen
+	 * after WordPress has persisted the final post state.
+	 *
+	 * @param int     $post_id      Post ID.
+	 * @param WP_Post $post         Post object.
+	 * @param bool    $update       Whether this is an existing post being updated.
+	 * @param WP_Post|null $post_before Previous post object when available.
+	 * @return void
+	 */
+	public function on_after_insert_post($post_id, $post, $update, $post_before = null) {
+		$this->reconcile_from_post_object($post_id, $post, $update, 'wp_after_insert_post');
 	}
 
 	/**
@@ -101,6 +99,39 @@ class AIPS_Partial_Generation_State_Reconciler {
 		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id, $overrides);
 		if (is_array($statuses)) {
 			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'aips_post_components_updated');
+		}
+	}
+
+	/**
+	 * Reconcile partial-generation metadata for a post object when it is eligible.
+	 *
+	 * @param int        $post_id  Post ID.
+	 * @param WP_Post    $post     Post object.
+	 * @param bool       $update   Whether this is an existing post being updated.
+	 * @param string     $source   Action source used in the reconciliation hook.
+	 * @return void
+	 */
+	private function reconcile_from_post_object($post_id, $post, $update, $source) {
+		$post_id = absint($post_id);
+		if (!$update || empty($post_id) || !$post || $post->post_type !== 'post') {
+			return;
+		}
+
+		if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+			return;
+		}
+
+		$has_generation_meta_keys = metadata_exists('post', $post_id, 'aips_post_generation_component_statuses')
+			|| metadata_exists('post', $post_id, 'aips_post_generation_incomplete')
+			|| metadata_exists('post', $post_id, 'aips_post_generation_had_partial');
+
+		if (!$has_generation_meta_keys) {
+			return;
+		}
+
+		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id);
+		if (is_array($statuses)) {
+			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, $source);
 		}
 	}
 }

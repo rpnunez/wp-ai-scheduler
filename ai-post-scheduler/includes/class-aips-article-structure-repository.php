@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Article_Structure_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to article structures.
  */
 class AIPS_Article_Structure_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -42,17 +47,12 @@ class AIPS_Article_Structure_Repository {
 	 * @var string The article structures table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
 
-	/**
-	 * @var AIPS_Cache In-request identity-map cache.
-	 */
-	private $cache = null;
-	
 	/**
 	 * Initialize the repository.
 	 */
@@ -60,60 +60,57 @@ class AIPS_Article_Structure_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_article_structures';
-		$this->cache = AIPS_Cache_Factory::named( AIPS_Cache_Policy::cache_name( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY ) );
 	}
-	
+
 	/**
 	 * Get all article structures with optional filtering.
 	 *
-	 * Results are cached for the duration of the request using the named
-	 * named cache instance so repeat calls within the same request
-	 * do not issue additional DB queries.
+	 * Results are cached with a long-tier persistent cache and invalidated
+	 * whenever a structure is created, updated, or deleted.
 	 *
 	 * @param bool $active_only Optional. Return only active structures. Default false.
 	 * @return array Array of structure objects.
 	 */
 	public function get_all($active_only = false) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'all', array('active_only' => $active_only) );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$where  = $active_only ? "WHERE is_active = 1" : "";
-		$result = $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
-		$this->cache->set( $key, $result );
-		return $result;
+		$active_only = (bool) $active_only;
+		return $this->cache_read(
+			'article_structures.get_all',
+			array( 'active_only' => $active_only ),
+			function() use ( $active_only ) {
+				$where  = $active_only ? "WHERE is_active = 1" : "";
+				return $this->wpdb->get_results( "SELECT * FROM {$this->table_name} $where ORDER BY name ASC" );
+			}
+		);
 	}
-	
+
 	/**
 	 * Get a single article structure by ID.
 	 *
-	 * Non-null results are cached for the duration of the request. Null
-	 * results (record not found) are always fetched fresh from the DB.
+	 * Non-null results are cached with a long-tier persistent cache.
+	 * Null results (record not found) are never cached.
 	 *
 	 * @param int $id Structure ID.
 	 * @return object|null Structure object or null if not found.
 	 */
 	public function get_by_id($id) {
-		$key = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'id', array('id' => $id) );
-		if ( $this->cache->has( $key ) ) {
-			return $this->cache->get( $key );
-		}
-		$result = $this->wpdb->get_row( $this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			$id
-		) );
-		if ( $result !== null ) {
-			$this->cache->set( $key, $result );
-		}
-		return $result;
+		$id = absint( $id );
+		return $this->cache_read(
+			'article_structures.get_by_id',
+			array( 'structure_id' => $id ),
+			function() use ( $id ) {
+				return $this->wpdb->get_row( $this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE id = %d",
+					$id
+				) );
+			}
+		);
 	}
-	
+
 	/**
 	 * Get the default article structure.
 	 *
 	 * The configured default article structure ID is stored as a plugin setting.
-	 * The underlying structure row is resolved via get_by_id(), which is cached
-	 * for the duration of the request.
+	 * The underlying structure row is resolved via get_by_id(), which is cached.
 	 *
 	 * @return object|null Default structure object or null if not found.
 	 */
@@ -136,7 +133,7 @@ class AIPS_Article_Structure_Repository {
 
 		return $structure;
 	}
-	
+
 	/**
 	 * Create a new article structure.
 	 *
@@ -161,18 +158,18 @@ class AIPS_Article_Structure_Repository {
 			'created_at' => $now,
 			'updated_at' => $now,
 		);
-		
+
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
-		
+
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-		
+
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain( 'article_structure', array(), 'article_structure_created' );
 		}
 
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Update an existing article structure.
 	 *
@@ -183,34 +180,34 @@ class AIPS_Article_Structure_Repository {
 	public function update($id, $data) {
 		$update_data = array();
 		$format = array();
-		
+
 		if (isset($data['name'])) {
 			$update_data['name'] = sanitize_text_field($data['name']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['description'])) {
 			$update_data['description'] = sanitize_textarea_field($data['description']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['structure_data'])) {
 			$update_data['structure_data'] = $data['structure_data'];
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['is_active'])) {
 			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
 			$format[] = '%d';
 		}
-		
+
 		if (empty($update_data)) {
 			return false;
 		}
 
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		$format[] = '%d';
-		
+
 		$result = $this->wpdb->update(
 			$this->table_name,
 			$update_data,
@@ -220,12 +217,12 @@ class AIPS_Article_Structure_Repository {
 		) !== false;
 
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain( 'article_structure', array( 'structure_id' => absint( $id ) ), 'article_structure_updated' );
 		}
 
 		return $result;
 	}
-	
+
 	/**
 	 * Delete an article structure by ID.
 	 *
@@ -235,11 +232,11 @@ class AIPS_Article_Structure_Repository {
 	public function delete($id) {
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 		if ( $result ) {
-			AIPS_Cache_Invalidation_Bus::invalidate( AIPS_Cache_Policy::SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY, 'update' );
+			$this->invalidate_cache_domain( 'article_structure', array( 'structure_id' => absint( $id ) ), 'article_structure_deleted' );
 		}
 		return $result;
 	}
-	
+
 	/**
 	 * Toggle structure active status.
 	 *
@@ -250,7 +247,7 @@ class AIPS_Article_Structure_Repository {
 	public function set_active($id, $is_active) {
 		return $this->update($id, array('is_active' => $is_active));
 	}
-	
+
 	/**
 	 * Count structures by status.
 	 *
@@ -266,13 +263,13 @@ class AIPS_Article_Structure_Repository {
 				SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
 			FROM {$this->table_name}
 		");
-		
+
 		return array(
 			'total' => isset($results->total) ? (int) $results->total : 0,
 			'active' => isset($results->active) ? (int) $results->active : 0,
 		);
 	}
-	
+
 	/**
 	 * Check if a structure name already exists.
 	 *
@@ -293,7 +290,37 @@ class AIPS_Article_Structure_Repository {
 				$name
 			));
 		}
-		
+
 		return $result > 0;
+	}
+
+	/**
+	 * Return the repository cache group for article structure reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_article_structures';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for article structure reads.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'article_structures.get_all'   => array(
+				'tier'        => 'long',
+				'tags'        => array( 'article_structures' ),
+				'description' => 'Cache article structure list reads including active-only filtering.',
+			),
+			'article_structures.get_by_id' => array(
+				'tier'        => 'long',
+				'tags'        => array( 'article_structures', 'article_structure:{structure_id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single article structure reads by ID.',
+			),
+		);
 	}
 }
