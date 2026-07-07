@@ -272,10 +272,12 @@ class AIPS_History_Container {
 		// Determine history type ID based on log_type
 		$history_type_id = $this->map_log_type_to_history_type($log_type);
 		
-		// Build details array
+		// Build details array — log_subtype carries the semantic string label
+		// so callers can search/display it even though there is no log_type column.
 		$details = array(
-			'message' => $message,
-			'timestamp' => AIPS_DateTime::now()->timestamp(),
+			'log_subtype' => $log_type,
+			'message'     => $message,
+			'timestamp'   => AIPS_DateTime::now()->timestamp(),
 		);
 		
 		// Add input if provided
@@ -311,7 +313,6 @@ class AIPS_History_Container {
 		
 		return $this->repository->add_log_entry(
 			$this->history_id,
-			$log_type,
 			$details,
 			$history_type_id
 		);

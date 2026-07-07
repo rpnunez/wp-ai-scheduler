@@ -1,33 +1,52 @@
 {
-  "name": "wp-ai-scheduler",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/php:1": {
-      "version": "8.2",
-      "installComposer": true,
-      "xdebug": true
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    }
-  },
+  "name": "WP AI Scheduler Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "web",
+  "workspaceFolder": "/var/www/html/wp-content/plugins/ai-post-scheduler",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "xdebug.php-debug",
-        "bmewburn.vscode-intelephense-client",
-        "editorconfig.editorconfig",
-        "eamodio.gitlens",
-        "ms-azuretools.vscode-docker"
-      ],
       "settings": {
-        "php.validate.executablePath": "/usr/bin/php",
-        "intelephense.environment.phpVersion": "8.2",
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
+        "php.validate.executablePath": "/usr/local/bin/php",
+        "phpunit.phpunit": "vendor/bin/phpunit",
+        "search.exclude": {
+          "**/vendor": true,
+          "**/node_modules": true,
+          "**/.git": true,
+          "**/.aips-agent": true
+        },
+        "editor.formatOnSave": true,
+        "[php]": {
+          "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
+        },
+        "roo-cline.allowedCommands": [
+          "wp", "php", "composer", "phpunit"
+        ]
+      },
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug",
+        "continue.continue",
+        "rooveterinaryinc.roo-cline"
+      ]
     }
   },
-  "postCreateCommand": "bash .devcontainer/postCreateCommand",
-  "remoteUser": "vscode"
+  "forwardPorts": [ 
+    8080,
+    8082,
+    3307,
+    9003
+  ],
+"portsAttributes": {
+    "8080": {
+      "label": "WordPress Website",
+      "onAutoForward": "notify"
+    },
+    "8082": {
+      "label": "PHPMyAdmin",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "composer install && mkdir -p .vscode && echo '{\"mcpServers\": {\"wp-ai-scheduler-tools\": {\"command\": \"php\",\"args\": [\"/var/www/html/wp-content/plugins/ai-post-scheduler/mcp-bridge.php\"]}}}' > .vscode/cline_mcp_settings.json && (wp core is-installed --allow-root || echo 'Waiting for WP installation...')",
+  "postStartCommand": "until wp core is-installed --allow-root >/dev/null 2>&1; do sleep 2; echo 'Waiting for DB...'; done && if [ ! -f .vscode/.seeded ]; then wp eval-file scripts/setup-devstacktips-content.php --allow-root && touch .vscode/.seeded; fi",
+  "remoteUser": "root"
 }
